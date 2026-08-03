@@ -1,7 +1,6 @@
-const fetch = require('node-fetch');
-
 exports.handler = async function(event, context) {
   try {
+    // Using native fetch (no package.json or node-fetch dependencies required)
     const response = await fetch("https://www.rotowire.com/football/tables/adp.php?pos=ALL&scoring=PPR", {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
