@@ -33,7 +33,6 @@
         /* Sticky Header */
         .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); color: white; padding: 0.6rem 1rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .header-title { font-weight: bold; font-size: 1rem; display: flex; align-items: center; gap: 0.6rem; letter-spacing: 0.5px;}
-        .header-logo { height: 32px; width: 32px; border-radius: 6px; object-fit: cover; border: 1px solid var(--primary-green); }
         .header-controls { display: flex; align-items: center; gap: 0.5rem; }
         
         .btn-header { background-color: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border); padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; min-width: 40px; text-align: center; transition: all 0.2s; display: flex; align-items: center; gap: 4px;}
@@ -106,8 +105,7 @@
 
 <div class="header">
     <div class="header-title">
-        <img src="logo.png" alt="🏈" class="header-logo" onerror="this.style.display='none'">
-        My Draft Strategist
+        ⚡ My Draft Strategist
         <span id="pickTracker" class="badge" style="background: var(--primary-green); color: white;">Pick: 1.01</span>
     </div>
     <div class="header-controls">
@@ -127,6 +125,11 @@
     <!-- SETUP TAB -->
     <div id="setupTab" class="tab-content active">
         
+        <!-- LARGE HERO LOGO -->
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <img src="logo.png" alt="My Draft Strategist" onerror="this.style.display='none'" style="width: 100%; max-width: 350px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+        </div>
+
         <div class="settings-card">
             <h3>1. Load Rankings</h3>
             <div id="metaDisplay" class="status-badge"></div>
@@ -214,7 +217,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.8.2
+            Draft Strategist v0.8.3
         </div>
     </div>
 
@@ -525,6 +528,7 @@
         } else {
             metaEl.style.display = 'none';
             if(btn) flashButton(btn, "⚠️ Error Parsing Data", true);
+            alert("Error: Could not detect player names. Ensure your file has a 'Player' or 'Name' header.");
         }
     }
     
@@ -532,6 +536,7 @@
     async function fetchAutoADP(btn) {
         if (players.length === 0) {
             flashButton(btn, "⚠️ Load Rankings First", true);
+            alert("You must load a set of player rankings before fetching ADP.");
             return;
         }
 
@@ -544,9 +549,18 @@
 
         try {
             const response = await fetch('/.netlify/functions/getAdp');
-            if (!response.ok) throw new Error("Netlify endpoint unreachable");
+            
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || `HTTP Error ${response.status}`);
+            }
             
             const rotoData = await response.json();
+            
+            if(!Array.isArray(rotoData) || rotoData.length === 0) {
+                 throw new Error("Received empty or invalid data from ADP source.");
+            }
+            
             let matchedCount = 0;
 
             players.forEach(p => {
@@ -578,8 +592,9 @@
             flashButton(btn, `✅ Complete!`);
 
         } catch(err) {
-            console.warn(err);
-            flashButton(btn, "⚠️ Network Error", true);
+            console.error(err);
+            flashButton(btn, "⚠️ Fetch Error", true);
+            alert(`Failed to fetch live ADP.\n\nReason: ${err.message}\n\nPlease check your Netlify logs or use manual paste fallback.`);
         }
     }
 
@@ -587,6 +602,7 @@
         const text = document.getElementById('adpPasteArea').value;
         if (!text) {
             flashButton(btn, "⚠️ Paste ADP First", true);
+            alert("You must paste your ADP data into the box first.");
             return;
         }
         
@@ -623,6 +639,7 @@
             flashButton(btn, `✅ Updated!`);
         } else {
             flashButton(btn, "⚠️ No Matches Found", true);
+            alert("No players matched your pasted ADP list. Ensure you are pasting Names and Numbers.");
         }
     }
 
@@ -648,7 +665,10 @@
         const draftId = document.getElementById('sleeperDraftId').value.trim();
         
         if(!username || !draftId) {
-            if(!isSilent && btn) flashButton(btn, "⚠️ Missing ID/Username", true);
+            if(!isSilent && btn) {
+                flashButton(btn, "⚠️ Missing Data", true);
+                alert("Please enter both your Sleeper Username and Draft ID.");
+            }
             return;
         }
         
@@ -656,14 +676,19 @@
         
         try {
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+            if(!userRes.ok) throw new Error("Could not find that Sleeper Username.");
             const userData = await userRes.json();
             const userId = userData.user_id;
 
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
+            if(!picksRes.ok) throw new Error("Could not find that Draft ID.");
             const picksData = await picksRes.json();
             
             if(!picksData || picksData.length === 0) {
-                if(!isSilent && btn) flashButton(btn, "⚠️ No Picks Found", true);
+                if(!isSilent && btn) {
+                    flashButton(btn, "⚠️ No Picks Found", true);
+                    alert("No picks have been made in this draft yet.");
+                }
                 return;
             }
 
@@ -702,8 +727,11 @@
             if(!isSilent && btn) flashButton(btn, "✅ Sync Complete!");
 
         } catch(err) {
-            if(!isSilent && btn) flashButton(btn, "⚠️ Sync Error", true);
             console.error(err);
+            if(!isSilent && btn) {
+                flashButton(btn, "⚠️ Sync Error", true);
+                alert(`Sleeper Sync Error:\n${err.message}`);
+            }
         }
     }
 
