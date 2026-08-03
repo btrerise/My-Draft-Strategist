@@ -36,7 +36,7 @@
         .header-logo { height: 32px; width: 32px; border-radius: 6px; object-fit: cover; border: 1px solid var(--primary-green); }
         .header-controls { display: flex; align-items: center; gap: 0.5rem; }
         
-        .btn-header { background-color: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border); padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; min-width: 40px; text-align: center; transition: all 0.2s;}
+        .btn-header { background-color: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border); padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; min-width: 40px; text-align: center; transition: all 0.2s; display: flex; align-items: center; gap: 4px;}
         .btn-header:active { background-color: rgba(255,255,255,0.3); }
 
         .container { max-width: 800px; margin: 0 auto; padding: 1rem; }
@@ -106,13 +106,18 @@
 
 <div class="header">
     <div class="header-title">
-        <!-- Logo Image with graceful alt fallback -->
         <img src="logo.png" alt="🏈" class="header-logo" onerror="this.style.display='none'">
         My Draft Strategist
         <span id="pickTracker" class="badge" style="background: var(--primary-green); color: white;">Pick: 1.01</span>
     </div>
     <div class="header-controls">
         <span id="liveIndicator" style="display: none; font-size: 0.8rem; font-weight: bold; color: #86efac;">🔴 LIVE</span>
+        
+        <!-- Ko-fi Tip Button -->
+        <a href="https://ko-fi.com/btrerise" target="_blank" class="btn-header" style="background-color: #FF5E5B; border-color: #FF5E5B; text-decoration: none;">
+            ☕ Tip
+        </a>
+
         <button id="headerSyncBtn" class="btn-header" onclick="syncSleeper()">⚡ Sync</button>
     </div>
 </div>
@@ -133,9 +138,9 @@
         </div>
 
         <div class="settings-card">
-            <h3>2. Live Rotowire ADP 📈</h3>
+            <h3>2. Live ADP 📈</h3>
             <div id="adpStatusDisplay" class="status-badge"></div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Auto-fetch via Netlify Serverless, or paste manual numbers below.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Auto-fetch, or paste manual numbers below.</p>
             
             <label style="font-size: 0.9rem; font-weight: bold;">Select Platform & Format</label>
             <select id="adpFormatSelect">
@@ -151,7 +156,7 @@
                 <option value="mflaavppr">MFL - Auction Values (AAV)</option>
                 <option value="nffc12ppr">NFFC - Redraft (1QB)</option>
             </select>
-            <button id="fetchAdpBtn" class="btn-primary" style="background-color: #8b5cf6;" onclick="fetchAutoADP()">Fetch Netlify Live ADP</button>
+            <button id="fetchAdpBtn" class="btn-primary" style="background-color: #8b5cf6;" onclick="fetchAutoADP()">Fetch Live ADP</button>
             
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem; margin-bottom: 0.2rem;">Manual Paste Fallback:</p>
             <textarea id="adpPasteArea" rows="2" placeholder="e.g. Christian McCaffrey, 1.01"></textarea>
@@ -210,7 +215,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.8.0
+            Draft Strategist v0.8.1
         </div>
     </div>
 
@@ -520,10 +525,10 @@
         const formatKey = formatSelect.value;
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
         
-        btn.innerText = "Fetching via Netlify...";
+        btn.innerText = "Fetching...";
 
         try {
-            // Serverless endpoint execution
+            // Ping the backend Netlify Serverless function
             const response = await fetch('/.netlify/functions/getAdp');
             if (!response.ok) throw new Error("Netlify endpoint unreachable");
             
@@ -560,9 +565,9 @@
 
         } catch(err) {
             console.warn("Netlify function offline or testing locally. Please use manual paste.");
-            alert("Could not connect to Netlify Function. Ensure `netlify/functions/getAdp.js` is committed to Netlify, or use manual paste below.");
+            alert("Could not connect to the API. Ensure your backend function is deployed correctly, or paste values manually.");
         }
-        btn.innerText = "Fetch Netlify Live ADP";
+        btn.innerText = "Fetch Live ADP";
     }
 
     function processManualADP() {
