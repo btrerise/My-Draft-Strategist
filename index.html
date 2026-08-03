@@ -252,7 +252,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.9.0 (Beta)
+            Draft Strategist v0.9.1 (Beta)
         </div>
     </div>
 
@@ -554,7 +554,7 @@
     async function processData(data, btn = null) {
         const metaEl = document.getElementById('metaDisplay');
         metaEl.style.display = 'block';
-        metaEl.innerText = "⏳ Mapping players to Sleeper database...";
+        metaEl.innerText = "⏳ Processing players and building database...";
 
         let newPlayers = [];
         let posCounters = {}; 
@@ -598,7 +598,6 @@
             let tier = getVal(['tier', '#', 'tier #']) || "-";
             let adp = getVal(['adp', 'auction', 'value', 'auction value', 'rank/auction value']) || "-";
 
-            // Find absolute master Sleeper ID
             let masterId = null;
             for (let [sId, sp] of Object.entries(sleeperMap)) {
                 if (sp.first_name && sp.last_name) {
@@ -668,7 +667,6 @@
             const adpMap = {};
             llMarket.data.forEach(item => { adpMap[item.sleeperPlayerId] = item.overallRank; });
 
-            // Also fetch player meta for rookie flags
             let playerMetaMap = {};
             let pRes = await fetch(`https://developer.leaguelogs.com/v1/players`);
             if (pRes.ok) {
@@ -848,7 +846,7 @@
         return trackers;
     }
 
-    // --- DYNAMIC DRAFT BOARD MATRIX RENDERER ---
+    // --- DYNAMIC SNAKE DRAFT BOARD MATRIX RENDERER ---
     function renderDraftMatrix() {
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
@@ -863,15 +861,18 @@
             gridHTML += `<div class="draft-col-header">T${t}</div>`;
         }
 
-        // Render Snake Draft Grid Cells
+        // Render Snake Draft Grid Cells with Correct Reversing Visual Number Labels
         for (let r = 1; r <= totalRounds; r++) {
             for (let t = 1; t <= totalTeams; t++) {
-                // Calculate overall pick number for snake layout
+                // Calculate underlying overall pick number (Snake pattern)
                 let pickNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
                 
+                // Calculate visual display team index for this column depending on snake direction
+                let displayTeamNum = (r % 2 !== 0) ? t : (totalTeams - t + 1);
+
                 let matchedPick = rawDraftPicks.find(p => p.pick_no === pickNum);
                 let cellClass = "draft-cell";
-                let cellContent = `<span style="opacity:0.4; font-size:0.65rem;">${r}.${t < 10 ? '0'+t : t}</span>`;
+                let cellContent = `<span style="opacity:0.4; font-size:0.65rem;">${r}.${displayTeamNum < 10 ? '0'+displayTeamNum : displayTeamNum}</span>`;
 
                 if (matchedPick) {
                     let pObj = players.find(pl => pl.sleeperId === matchedPick.player_id);
