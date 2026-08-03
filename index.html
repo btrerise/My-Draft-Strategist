@@ -30,11 +30,18 @@
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; }
         
-        /* Sticky Header */
-        .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); color: white; padding: 0.6rem 1rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .header-title { font-weight: bold; font-size: 1rem; display: flex; align-items: center; gap: 0.6rem; letter-spacing: 0.5px;}
-        .header-controls { display: flex; align-items: center; gap: 0.5rem; }
+        /* Sticky Header - Mobile Optimized */
+        .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); color: white; padding: 0.6rem 0.8rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .header-title { font-weight: bold; font-size: 1rem; display: flex; align-items: center; gap: 0.4rem; letter-spacing: 0.5px; white-space: nowrap;}
+        .header-controls { display: flex; align-items: center; gap: 0.6rem; }
         
+        /* Mobile Specific Display Rules */
+        @media (max-width: 480px) {
+            .hide-mobile { display: none; }
+            .header-title { font-size: 0.9rem; gap: 0.3rem;}
+            .badge { padding: 2px 4px; font-size: 0.75rem; }
+        }
+
         .btn-header { background-color: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border); padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; min-width: 40px; text-align: center; transition: all 0.2s; display: flex; align-items: center; gap: 4px;}
         .btn-header:active { background-color: rgba(255,255,255,0.3); }
 
@@ -105,7 +112,7 @@
 
 <div class="header">
     <div class="header-title">
-        ⚡ My Draft Strategist
+        <span class="hide-mobile">My </span>Draft Strategist
         <span id="pickTracker" class="badge" style="background: var(--primary-green); color: white;">Pick: 1.01</span>
     </div>
     <div class="header-controls">
@@ -217,7 +224,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.8.4
+            Draft Strategist v0.8.5
         </div>
     </div>
 
@@ -532,7 +539,7 @@
         }
     }
     
-    // --- CLIENT-SIDE ALLORIGINS AUTOMATED ADP FETCH (ZERO NETLIFY COMPUTE) ---
+    // --- REDDIT SUGGESTED CORS BYPASS (CORSPROXY.IO) ---
     async function fetchAutoADP(btn) {
         if (players.length === 0) {
             flashButton(btn, "⚠️ Load Rankings First", true);
@@ -548,14 +555,13 @@
         btn.innerText = "⏳ Fetching...";
 
         try {
-            // Using a free CORS proxy to bypass Netlify completely. Zero server cost!
+            // Re-routing through CorsProxy.io which mimics browser environments to bypass Cloudflare Blocks
             const targetUrl = encodeURIComponent("https://www.rotowire.com/football/tables/adp.php?pos=ALL&scoring=PPR");
-            const response = await fetch(`https://api.allorigins.win/get?url=${targetUrl}`);
+            const response = await fetch(`https://corsproxy.io/?url=${targetUrl}`);
             
-            if (!response.ok) throw new Error("Network response was not ok.");
+            if (!response.ok) throw new Error(`Network response failed with status: ${response.status}`);
             
-            const proxyData = await response.json();
-            const rotoData = JSON.parse(proxyData.contents);
+            const rotoData = await response.json();
             
             if(!Array.isArray(rotoData) || rotoData.length === 0) {
                  throw new Error("Received empty or invalid data from ADP source.");
