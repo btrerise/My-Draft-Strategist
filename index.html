@@ -118,11 +118,11 @@
         
         .status-badge { font-size: 0.85rem; color: #86efac; font-weight: bold; background: #102a1e; border: 1px solid var(--primary-green); padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; text-align: center;}
 
-        /* Draft Board Grid View */
-        .draft-board-container { overflow-x: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
-        .draft-grid { display: grid; gap: 4px; min-width: max-content; }
-        .draft-col-header { background: #0b132b; border: 1px solid var(--border); padding: 0.5rem; text-align: center; font-weight: bold; font-size: 0.85rem; border-radius: 4px; }
-        .draft-cell { background: rgba(255,255,255,0.02); border: 1px solid var(--border); padding: 0.4rem; min-height: 55px; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; font-size: 0.75rem; text-align: center; }
+        /* Compact Draft Board Grid View (Matrix) */
+        .draft-board-container { overflow-x: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; }
+        .draft-grid { display: grid; gap: 3px; min-width: max-content; }
+        .draft-col-header { background: #0b132b; border: 1px solid var(--border); padding: 0.4rem 0.2rem; text-align: center; font-weight: bold; font-size: 0.8rem; border-radius: 4px; }
+        .draft-cell { background: rgba(255,255,255,0.02); border: 1px solid var(--border); padding: 0.3rem; min-height: 42px; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; font-size: 0.7rem; text-align: center; }
         .draft-cell.picked { background: #112233; border-color: var(--border); }
         .draft-cell.mine { background: #102a1e; border-color: var(--primary-green); }
     </style>
@@ -156,7 +156,7 @@
         <div class="settings-card">
             <h3>1. Load Rankings</h3>
             <div id="metaDisplay" class="status-badge"></div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Upload your CSV or Excel (.xlsx) file. Teams & IDs auto-map via Sleeper database.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Upload your CSV or Excel (.xlsx) file. Compatible with manual tracking and sync.</p>
             <input type="file" id="fileInput">
             <p style="text-align: center; font-size: 0.8rem; margin: 0.2rem 0;">— OR —</p>
             <textarea id="csvPasteArea" rows="2" placeholder="Paste raw CSV text here..."></textarea>
@@ -252,7 +252,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.9.1 (Beta)
+            Draft Strategist v0.9.2 (Beta)
         </div>
     </div>
 
@@ -267,19 +267,6 @@
 
         <div id="playerPool">
             <!-- Board generates here -->
-        </div>
-    </div>
-
-    <!-- DRAFT BOARD TAB (DYNAMIC MATRIX) -->
-    <div id="draftboardTab" class="tab-content">
-        <div class="settings-card">
-            <h3 style="margin-bottom: 0.5rem;">Sleeper Live Draft Board Matrix</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Dynamically scales to your league size (10, 12, 14, 18 teams) based on your synced Draft ID.</p>
-            <div id="draftMatrixContainer" class="draft-board-container">
-                <div style="text-align: center; color: var(--text-muted); padding: 2rem; font-style: italic;">
-                    Sync your Sleeper Draft ID in the Setup tab to generate the live draft board.
-                </div>
-            </div>
         </div>
     </div>
 
@@ -314,14 +301,27 @@
         </div>
     </div>
 
+    <!-- DRAFT BOARD TAB (DYNAMIC MATRIX) -->
+    <div id="matrixTab" class="tab-content">
+        <div class="settings-card">
+            <h3 style="margin-bottom: 0.5rem;">Sleeper Live Draft Board Matrix</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Dynamically scales to your league size (10, 12, 14, 18 teams) based on your synced Draft ID.</p>
+            <div id="draftMatrixContainer" class="draft-board-container">
+                <div style="text-align: center; color: var(--text-muted); padding: 2rem; font-style: italic;">
+                    Sync your Sleeper Draft ID in the Setup tab to generate the live draft board.
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- BOTTOM NAVIGATION -->
 <div class="nav-bar">
     <button class="nav-btn active" onclick="showTab('setup', this)">⚙️ Setup</button>
     <button class="nav-btn" onclick="showTab('board', this)">📋 Board</button>
-    <button class="nav-btn" onclick="showTab('draftboard', this)">📊 Matrix</button>
     <button class="nav-btn" onclick="showTab('team', this)">🏈 Team</button>
+    <button class="nav-btn" onclick="showTab('matrix', this)">📊 Matrix</button>
 </div>
 
 <script>
@@ -366,7 +366,6 @@
         }, 2500);
     }
 
-    // --- ID-FIRST NORMALIZATION ENGINE ---
     function normalizeName(name) {
         if (!name) return "";
         return String(name)
@@ -487,7 +486,7 @@
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         if(btnElement) btnElement.classList.add('active');
         
-        if(tabId === 'board' || tabId === 'team' || tabId === 'draftboard') renderBoard();
+        if(tabId === 'board' || tabId === 'team' || tabId === 'matrix') renderBoard();
     }
 
     function setPosFilter(pos) {
@@ -495,7 +494,7 @@
         renderBoard();
     }
     
-    // --- INLINE EDITOR ---
+    // --- INLINE EDITOR (Includes manual Team & Bye overrides) ---
     function toggleEditBar(id) {
         let bar = document.getElementById(`inline-edit-${id}`);
         if(bar) bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex';
@@ -507,6 +506,8 @@
         
         let newRank = parseInt(document.getElementById(`edit-rank-val-${id}`).value);
         let newTier = document.getElementById(`edit-tier-val-${id}`).value.trim() || "-";
+        let newTeam = document.getElementById(`edit-team-val-${id}`).value.trim().toUpperCase();
+        let newBye = document.getElementById(`edit-bye-val-${id}`).value.trim();
         
         if (!isNaN(newRank) && newRank !== p.rank) {
             let oldRank = p.rank;
@@ -519,6 +520,9 @@
             p.rank = newRank;
         }
         p.tier = newTier;
+        if(newTeam) p.team = newTeam;
+        if(newBye) p.bye = newBye;
+
         players.sort((a,b) => a.rank - b.rank);
         localStorage.setItem('ds_players', JSON.stringify(players));
         renderBoard();
@@ -846,7 +850,7 @@
         return trackers;
     }
 
-    // --- DYNAMIC SNAKE DRAFT BOARD MATRIX RENDERER ---
+    // --- COMPACT SNAKE DRAFT MATRIX RENDERER ---
     function renderDraftMatrix() {
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
@@ -854,25 +858,20 @@
         let totalTeams = leagueDraftSettings.teams || 12;
         let totalRounds = leagueDraftSettings.rounds || 15;
 
-        let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(90px, 1fr));">`;
+        let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(85px, 1fr));">`;
         
-        // Render Column Headers (Team 1 to Team N)
         for (let t = 1; t <= totalTeams; t++) {
             gridHTML += `<div class="draft-col-header">T${t}</div>`;
         }
 
-        // Render Snake Draft Grid Cells with Correct Reversing Visual Number Labels
         for (let r = 1; r <= totalRounds; r++) {
             for (let t = 1; t <= totalTeams; t++) {
-                // Calculate underlying overall pick number (Snake pattern)
                 let pickNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
-                
-                // Calculate visual display team index for this column depending on snake direction
                 let displayTeamNum = (r % 2 !== 0) ? t : (totalTeams - t + 1);
 
                 let matchedPick = rawDraftPicks.find(p => p.pick_no === pickNum);
                 let cellClass = "draft-cell";
-                let cellContent = `<span style="opacity:0.4; font-size:0.65rem;">${r}.${displayTeamNum < 10 ? '0'+displayTeamNum : displayTeamNum}</span>`;
+                let cellContent = `<span style="opacity:0.4; font-size:0.6rem;">${r}.${displayTeamNum < 10 ? '0'+displayTeamNum : displayTeamNum}</span>`;
 
                 if (matchedPick) {
                     let pObj = players.find(pl => pl.sleeperId === matchedPick.player_id);
@@ -881,8 +880,8 @@
                     
                     cellClass += " picked";
                     cellContent = `
-                        <div style="font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${pName}">${pName}</div>
-                        <div style="opacity:0.8;"><span class="badge" style="font-size:0.6rem; padding:1px 3px;">${pPos}</span></div>
+                        <div style="font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.7rem;" title="${pName}">${pName}</div>
+                        <div style="opacity:0.8;"><span class="badge" style="font-size:0.55rem; padding:1px 2px;">${pPos}</span></div>
                     `;
                 }
 
@@ -1037,7 +1036,7 @@
                                         <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                                         ${rookieBadge}
                                         ${stackBadge}
-                                        <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.7; margin-left: 2px;" onclick="toggleEditBar(${p.id})" title="Edit Rank/Tier">✏️</span>
+                                        <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.7; margin-left: 2px;" onclick="toggleEditBar(${p.id})" title="Edit Player Details">✏️</span>
                                     </h4>
                                     <div class="player-stats">${p.team} | Bye: ${p.bye}${adpText}</div>
                                 </div>
@@ -1047,15 +1046,30 @@
                                 </div>
                             </div>
                             
+                            <!-- INLINE EDITOR BAR (Includes manual Team & Bye overrides) -->
                             <div class="inline-editor" id="inline-edit-${p.id}">
-                                <label style="font-size:0.8rem; font-weight:bold;">Rank:</label>
-                                <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:65px;">
-                                
-                                <label style="font-size:0.8rem; font-weight:bold; margin-left:4px;">Tier:</label>
-                                <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:50px;">
-                                
-                                <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem; margin-left:auto;" onclick="saveInlineEdit(${p.id})">Save</button>
-                                <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
+                                <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
+                                    <div>
+                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
+                                        <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
+                                        <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
+                                        <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
+                                        <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
+                                    </div>
+                                    <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
+                                        <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
+                                        <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>`;
                 }
