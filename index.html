@@ -58,8 +58,8 @@
         
         .toggle-container { display: flex; align-items: center; justify-content: space-between; background: #0b132b; padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; margin-bottom: 1rem; border: 1px solid var(--border);}
         
-        .btn-primary { background: var(--primary-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem;}
-        .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem;}
+        .btn-primary { background: var(--primary-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
+        .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
         .btn-warning { background-color: #fbbc04; color: #0b132b; border: none; padding: 0.8rem; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 0.5rem; }
         .btn-danger { background-color: #ea4335; color: white; border: none; padding: 0.8rem; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
         
@@ -113,9 +113,9 @@
     <div class="header-controls">
         <span id="liveIndicator" style="display: none; font-size: 0.8rem; font-weight: bold; color: #86efac;">🔴 LIVE</span>
         
-        <!-- Ko-fi Tip Button -->
-        <a href="https://ko-fi.com/btrerise" target="_blank" class="btn-header" style="background-color: #FF5E5B; border-color: #FF5E5B; text-decoration: none;">
-            ☕ Tip
+        <!-- Official Ko-fi Tip Button -->
+        <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center;">
+            <img height="32" style="border:0px; height:32px;" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" border="0" alt="Buy Me a Coffee at ko-fi.com" />
         </a>
 
         <button id="headerSyncBtn" class="btn-header" onclick="syncSleeper()">⚡ Sync</button>
@@ -134,13 +134,12 @@
             <input type="file" id="fileInput">
             <p style="text-align: center; font-size: 0.8rem; margin: 0.2rem 0;">— OR —</p>
             <textarea id="csvPasteArea" rows="2" placeholder="Paste raw CSV text here..."></textarea>
-            <button class="btn-primary" onclick="processPaste()">Process Pasted Data</button>
+            <button class="btn-primary" onclick="processPaste(this)">Process Pasted Data</button>
         </div>
 
         <div class="settings-card">
             <h3>2. Live ADP 📈</h3>
             <div id="adpStatusDisplay" class="status-badge"></div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Auto-fetch, or paste manual numbers below.</p>
             
             <label style="font-size: 0.9rem; font-weight: bold;">Select Platform & Format</label>
             <select id="adpFormatSelect">
@@ -156,11 +155,11 @@
                 <option value="mflaavppr">MFL - Auction Values (AAV)</option>
                 <option value="nffc12ppr">NFFC - Redraft (1QB)</option>
             </select>
-            <button id="fetchAdpBtn" class="btn-primary" style="background-color: #8b5cf6;" onclick="fetchAutoADP()">Fetch Live ADP</button>
+            <button id="fetchAdpBtn" class="btn-primary" style="background-color: #8b5cf6;" onclick="fetchAutoADP(this)">Fetch Live ADP</button>
             
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem; margin-bottom: 0.2rem;">Manual Paste Fallback:</p>
             <textarea id="adpPasteArea" rows="2" placeholder="e.g. Christian McCaffrey, 1.01"></textarea>
-            <button class="btn-primary" style="background-color: #4b5563;" onclick="processManualADP()">Apply Manual ADP Paste</button>
+            <button class="btn-primary" style="background-color: #4b5563;" onclick="processManualADP(this)">Apply Manual ADP Paste</button>
         </div>
 
         <div class="settings-card">
@@ -175,7 +174,7 @@
                 <input type="checkbox" id="autoSyncToggle" style="width:20px; height:20px;" onchange="toggleAutoSync(this.checked)">
             </div>
             
-            <button id="syncBtn" class="btn-secondary" onclick="syncSleeper()">Sync Sleeper Now</button>
+            <button id="syncBtn" class="btn-secondary" onclick="syncSleeper(false, this)">Sync Sleeper Now</button>
         </div>
 
         <div class="settings-card">
@@ -189,7 +188,7 @@
                 <div><label style="font-size: 0.8rem; font-weight: bold;">SFLEX</label><input type="number" id="limitSFLEX" min="0" value="0"></div>
                 <div><label style="font-size: 0.8rem; font-weight: bold;">BENCH</label><input type="number" id="limitBENCH" min="0" value="6"></div>
             </div>
-            <button class="btn-primary" onclick="saveSettings(true)">Save Limits</button>
+            <button class="btn-primary" onclick="saveSettings(this)">Save Limits</button>
         </div>
 
         <div class="settings-card">
@@ -205,7 +204,7 @@
             <label style="font-size: 0.85rem; font-weight: bold;">🔵 Dart Throws</label>
             <textarea id="dartList" rows="2" placeholder="e.g. Ashton Jeanty"></textarea>
             
-            <button class="btn-primary" onclick="saveSettings(true)">Save Call Outs</button>
+            <button class="btn-primary" onclick="saveSettings(this)">Save Call Outs</button>
         </div>
 
         <div class="settings-card">
@@ -215,7 +214,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.8.1
+            Draft Strategist v0.8.2
         </div>
     </div>
 
@@ -296,6 +295,23 @@
         "ARI": 14, "DAL": 14
     };
     
+    // --- UI HELPER ---
+    function flashButton(btn, text, isError = false) {
+        if (!btn) return;
+        const originalText = btn.innerText;
+        const originalBg = btn.style.backgroundColor;
+        
+        btn.innerText = text;
+        btn.style.backgroundColor = isError ? "#ea4335" : "#4ade80";
+        btn.style.color = isError ? "white" : "#0b132b";
+        
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.backgroundColor = originalBg;
+            btn.style.color = "";
+        }, 2500);
+    }
+
     // Load Settings
     document.getElementById('sleeperUsername').value = localStorage.getItem('ds_username') || "";
     document.getElementById('sleeperDraftId').value = localStorage.getItem('ds_draftId') || "";
@@ -330,7 +346,7 @@
     }
     updateMetaDisplay();
 
-    function saveSettings(showAlert = false) {
+    function saveSettings(btnElement) {
         localStorage.setItem('ds_username', document.getElementById('sleeperUsername').value.trim());
         localStorage.setItem('ds_draftId', document.getElementById('sleeperDraftId').value.trim());
         localStorage.setItem('ds_targets', document.getElementById('targetList').value);
@@ -350,7 +366,7 @@
         localStorage.setItem('ds_limits', JSON.stringify(dsLimits));
         
         renderBoard();
-        if(showAlert) alert("Settings Saved!");
+        if(btnElement) flashButton(btnElement, "✅ Saved!");
     }
 
     function saveDraftState() {
@@ -365,7 +381,6 @@
             myTeam = [];
             localStorage.setItem('ds_total_picks', 0);
             saveDraftState();
-            alert("Draft board cleared!");
         }
     }
 
@@ -416,12 +431,12 @@
         }
     });
 
-    function processPaste() {
+    function processPaste(btn) {
         const text = document.getElementById('csvPasteArea').value;
-        if(text) Papa.parse(text, { header: true, skipEmptyLines: true, complete: function(results) { processData(results.data); } });
+        if(text) Papa.parse(text, { header: true, skipEmptyLines: true, complete: function(results) { processData(results.data, btn); } });
     }
 
-    async function processData(data) {
+    async function processData(data, btn = null) {
         const metaEl = document.getElementById('metaDisplay');
         metaEl.style.display = 'block';
         metaEl.innerText = "⏳ Processing players...";
@@ -506,29 +521,28 @@
             updateMetaDisplay();
             saveDraftState();
             
-            metaEl.innerText = `✅ Success! Loaded ${players.length} players.`;
+            if(btn) flashButton(btn, "✅ Loaded Successfully");
         } else {
             metaEl.style.display = 'none';
-            alert("Could not detect player names. Ensure your file has a 'Player' or 'Name' header.");
+            if(btn) flashButton(btn, "⚠️ Error Parsing Data", true);
         }
     }
     
     // --- NETLIFY AUTOMATED ADP FETCH ---
-    async function fetchAutoADP() {
+    async function fetchAutoADP(btn) {
         if (players.length === 0) {
-            alert("Please load your player rankings first.");
+            flashButton(btn, "⚠️ Load Rankings First", true);
             return;
         }
 
-        const btn = document.getElementById('fetchAdpBtn');
         const formatSelect = document.getElementById('adpFormatSelect');
         const formatKey = formatSelect.value;
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
         
-        btn.innerText = "Fetching...";
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Fetching...";
 
         try {
-            // Ping the backend Netlify Serverless function
             const response = await fetch('/.netlify/functions/getAdp');
             if (!response.ok) throw new Error("Netlify endpoint unreachable");
             
@@ -561,19 +575,18 @@
             localStorage.setItem('ds_adp_meta', JSON.stringify(adpMeta));
             updateMetaDisplay();
 
-            alert(`ADP Update Complete! Successfully updated ${matchedCount} players using ${formatText}.`);
+            flashButton(btn, `✅ Complete!`);
 
         } catch(err) {
-            console.warn("Netlify function offline or testing locally. Please use manual paste.");
-            alert("Could not connect to the API. Ensure your backend function is deployed correctly, or paste values manually.");
+            console.warn(err);
+            flashButton(btn, "⚠️ Network Error", true);
         }
-        btn.innerText = "Fetch Live ADP";
     }
 
-    function processManualADP() {
+    function processManualADP(btn) {
         const text = document.getElementById('adpPasteArea').value;
         if (!text) {
-            alert("Please paste your ADP data first.");
+            flashButton(btn, "⚠️ Paste ADP First", true);
             return;
         }
         
@@ -606,10 +619,10 @@
             localStorage.setItem('ds_adp_meta', JSON.stringify(adpMeta));
             updateMetaDisplay();
             
-            alert(`ADP Update Complete! Successfully updated ${matchedCount} players.`);
             document.getElementById('adpPasteArea').value = ""; 
+            flashButton(btn, `✅ Updated!`);
         } else {
-            alert("Could not find matching players. Ensure you pasted a list with Names and Numbers.");
+            flashButton(btn, "⚠️ No Matches Found", true);
         }
     }
 
@@ -622,28 +635,24 @@
         const liveInd = document.getElementById('liveIndicator');
         if(isLive) {
             liveInd.style.display = 'inline-block';
-            syncSleeper(true);
-            autoSyncTimer = setInterval(() => syncSleeper(true), 5000);
+            syncSleeper(true, null);
+            autoSyncTimer = setInterval(() => syncSleeper(true, null), 5000);
         } else {
             liveInd.style.display = 'none';
             if(autoSyncTimer) clearInterval(autoSyncTimer);
         }
     }
 
-    async function syncSleeper(isSilent = false) {
+    async function syncSleeper(isSilent = false, btn = null) {
         const username = document.getElementById('sleeperUsername').value.trim();
         const draftId = document.getElementById('sleeperDraftId').value.trim();
-        const syncBtn = document.getElementById('syncBtn');
-        const headerBtn = document.getElementById('headerSyncBtn');
         
         if(!username || !draftId) {
-            if(!isSilent) alert("Please enter both Username and Draft ID in Setup.");
+            if(!isSilent && btn) flashButton(btn, "⚠️ Missing ID/Username", true);
             return;
         }
         
-        saveSettings(false);
-        if(!isSilent) syncBtn.innerText = "Syncing...";
-        headerBtn.innerText = "🔄...";
+        saveSettings(null); // Save without visual popup
         
         try {
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
@@ -654,9 +663,7 @@
             const picksData = await picksRes.json();
             
             if(!picksData || picksData.length === 0) {
-                if(!isSilent) alert("No picks found for this draft ID yet.");
-                if(!isSilent) syncBtn.innerText = "Sync Sleeper Now";
-                headerBtn.innerText = "⚡ Sync";
+                if(!isSilent && btn) flashButton(btn, "⚠️ No Picks Found", true);
                 return;
             }
 
@@ -692,15 +699,12 @@
             localStorage.setItem('ds_total_picks', picksData.length);
             saveDraftState();
             
-            if(!isSilent) alert(`Sleeper Sync Complete! (${picksData.length} total picks recorded)`);
+            if(!isSilent && btn) flashButton(btn, "✅ Sync Complete!");
 
         } catch(err) {
-            if(!isSilent) alert("Error syncing. Ensure your Draft ID is correct.");
+            if(!isSilent && btn) flashButton(btn, "⚠️ Sync Error", true);
             console.error(err);
         }
-        
-        if(!isSilent) syncBtn.innerText = "Sync Sleeper Now";
-        headerBtn.innerText = "⚡ Sync";
     }
 
     function draftPlayer(id, isMine) {
