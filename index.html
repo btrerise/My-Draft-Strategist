@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>My Draft Strategist</title>
+    
+    <!-- Browser Tab Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏈</text></svg>">
+
     <!-- PapaParse for CSV reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- SheetJS for Excel (.xlsx) reading -->
@@ -71,11 +75,13 @@
         .btn-danger { background-color: #ea4335; color: white; border: none; padding: 0.8rem; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
         
         /* Player Board */
-        .player-card { background: var(--card-bg); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .player-card { background: var(--card-bg); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .player-card-main { display: flex; justify-content: space-between; align-items: center; }
         .player-info h4 { margin: 0 0 0.25rem 0; font-size: 1.05rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; color: #f8fafc;}
         .player-stats { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;}
         
         .badge { background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.80rem; color: #f1f5f9; }
+        .badge-rookie { background-color: #8b5cf6; color: white; border: 1px solid #a78bfa; }
         
         /* Positional Badges */
         .pos-badge.QB { background-color: var(--pos-qb); color: #fca5a5; border: 1px solid var(--pos-qb-border); }
@@ -85,6 +91,10 @@
         
         .tier-divider { background: linear-gradient(90deg, #102a1e, #1c2541); color: #4ade80; font-weight: bold; padding: 0.4rem 1rem; border-radius: 4px; margin: 1rem 0 0.5rem 0; font-size: 0.9rem; text-align: center; border: 1px solid var(--primary-green); }
         
+        /* Inline Editor Bar */
+        .inline-editor { display: none; background: #0b132b; padding: 0.6rem; margin-top: 0.6rem; border-radius: 6px; border: 1px solid var(--primary-green); gap: 0.5rem; align-items: center; flex-wrap: wrap;}
+        .inline-editor input { margin: 0; padding: 0.4rem; font-size: 0.9rem;}
+
         /* Board Filters */
         #tierTracker { display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.2rem 0.2rem 0.8rem 0.2rem; margin-bottom: 0.5rem; white-space: nowrap; -ms-overflow-style: none; scrollbar-width: none; }
         #tierTracker::-webkit-scrollbar { display: none; }
@@ -234,7 +244,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.8.7
+            Draft Strategist v0.8.8
         </div>
     </div>
 
@@ -331,6 +341,36 @@
             btn.style.backgroundColor = originalBg;
             btn.style.color = "";
         }, 2500);
+    }
+
+    // --- ROBUST NAME NORMALIZATION ENGINE ---
+    function cleanNameStr(str) {
+        if (!str) return "";
+        return String(str)
+            .toLowerCase()
+            .replace(/\b(jr|sr|iii|ii|iv|v)\b/gi, '')
+            .replace(/[^a-z]/g, '');
+    }
+
+    function isNameMatch(name1, name2) {
+        if (!name1 || !name2) return false;
+        let c1 = cleanNameStr(name1);
+        let c2 = cleanNameStr(name2);
+        if (c1 === c2) return true;
+        
+        // Secondary Fuzzy Fallback (Same last name & same first character)
+        if (c1.length > 3 && c2.length > 3) {
+            let parts1 = String(name1).toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/);
+            let parts2 = String(name2).toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/);
+            if (parts1.length >= 2 && parts2.length >= 2) {
+                let last1 = parts1[parts1.length - 1].replace(/(jr|sr|iii|ii|iv|v)$/, '');
+                let last2 = parts2[parts2.length - 1].replace(/(jr|sr|iii|ii|iv|v)$/, '');
+                if (last1 === last2 && parts1[0].charAt(0) === parts2[0].charAt(0)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     // Load Settings
@@ -430,47 +470,48 @@
         renderBoard();
     }
     
-    // --- ON-THE-FLY RANKING/TIER EDITS ---
-    function editPlayer(id) {
+    // --- INLINE EDITOR TOGGLE & RIPPLE RE-RANKING LOGIC ---
+    function toggleEditBar(id) {
+        let bar = document.getElementById(`inline-edit-${id}`);
+        if(bar) bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    function saveInlineEdit(id) {
         let p = players.find(x => x.id === id);
         if(!p) return;
         
-        let newRank = prompt(`Edit Overall Rank for ${p.name}:`, p.rank);
-        if (newRank !== null && !isNaN(parseInt(newRank))) {
-            p.rank = parseInt(newRank);
+        let rankInput = document.getElementById(`edit-rank-val-${id}`);
+        let tierInput = document.getElementById(`edit-tier-val-${id}`);
+        
+        let newRank = parseInt(rankInput.value);
+        let newTier = tierInput.value.trim() || "-";
+        
+        if (!isNaN(newRank) && newRank !== p.rank) {
+            let oldRank = p.rank;
+            
+            // Ripple adjustment across all other players
+            players.forEach(other => {
+                if (other.id !== id) {
+                    if (newRank < oldRank) {
+                        // Player was PROMOTED (e.g., 10 -> 5) -> Push intermediate players DOWN by 1
+                        if (other.rank >= newRank && other.rank < oldRank) {
+                            other.rank += 1;
+                        }
+                    } else if (newRank > oldRank) {
+                        // Player was DEMOTED (e.g., 5 -> 10) -> Shift intermediate players UP by 1
+                        if (other.rank > oldRank && other.rank <= newRank) {
+                            other.rank -= 1;
+                        }
+                    }
+                }
+            });
+            p.rank = newRank;
         }
         
-        let newTier = prompt(`Edit Tier for ${p.name}:`, p.tier);
-        if (newTier !== null) {
-            p.tier = newTier.trim() || "-";
-        }
-        
+        p.tier = newTier;
         players.sort((a,b) => a.rank - b.rank);
         localStorage.setItem('ds_players', JSON.stringify(players));
         renderBoard();
-    }
-
-    // --- NAME MATCHING LOGIC ---
-    function isNameMatch(name1, name2) {
-        if (!name1 || !name2) return false;
-        
-        // 1. Strict formatting match
-        let n1 = String(name1).toLowerCase().replace(/[^a-z]/g, '').replace(/(jr|sr|iii|ii)$/, '');
-        let n2 = String(name2).toLowerCase().replace(/[^a-z]/g, '').replace(/(jr|sr|iii|ii)$/, '');
-        if(n1 === n2) return true;
-        
-        // 2. Fuzzy match (Same last name, same first initial)
-        let clean1 = String(name1).toLowerCase().replace(/[^a-z\s]/g, '').replace(/( jr| sr| iii| ii)$/, '').trim().split(/\s+/);
-        let clean2 = String(name2).toLowerCase().replace(/[^a-z\s]/g, '').replace(/( jr| sr| iii| ii)$/, '').trim().split(/\s+/);
-        
-        if (clean1.length > 0 && clean2.length > 0) {
-            let last1 = clean1[clean1.length-1];
-            let last2 = clean2[clean2.length-1];
-            if (last1 === last2 && clean1[0].charAt(0) === clean2[0].charAt(0)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     // --- CSV & EXCEL PARSING ---
@@ -568,7 +609,8 @@
             newPlayers.push({ 
                 id: index + 1, rank: index + 1, name: cleanName, 
                 posGroup: posGroup, posDisplay: posDisplay, tier: tier, 
-                team: (team ? String(team).toUpperCase() : "FA"), bye: (bye || "-"), adp: adp 
+                team: (team ? String(team).toUpperCase() : "FA"), bye: (bye || "-"), adp: adp,
+                isRookie: false
             });
         });
         
@@ -622,13 +664,15 @@
                 adpMap[item.sleeperPlayerId] = item.overallRank;
             });
 
-            let matchedCount = 0;
-
             players.forEach(p => {
                 let matchedLLPlayer = llPlayers.data.find(llP => isNameMatch(p.name, llP.firstName + " " + llP.lastName));
-                if (matchedLLPlayer && adpMap[matchedLLPlayer.sleeperPlayerId]) {
-                    p.adp = adpMap[matchedLLPlayer.sleeperPlayerId];
-                    matchedCount++;
+                if (matchedLLPlayer) {
+                    if (adpMap[matchedLLPlayer.sleeperPlayerId]) {
+                        p.adp = adpMap[matchedLLPlayer.sleeperPlayerId];
+                    }
+                    if (matchedLLPlayer.yearsExp === 0) {
+                        p.isRookie = true;
+                    }
                 }
             });
 
@@ -829,12 +873,13 @@
         
         const buildSlotHTML = (label, color, p) => {
             if (p) {
+                let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
                 return `
                 <div class="roster-slot">
                     <div style="display:flex; align-items:center; gap: 0.5rem;">
                         <span class="roster-label" style="color:${color}">${label}</span>
                         <div>
-                            <div style="font-weight: bold;">${p.name}</div>
+                            <div style="font-weight: bold;">${p.name} ${rookieBadge}</div>
                             <div style="margin-top: 2px;">
                                 <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span>
                                 <span class="badge">${p.team}</span>
@@ -954,21 +999,37 @@
                     }
                     
                     let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">🔥 Stack</span>` : "";
-                    
+                    let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
+
                     newPoolHTML += `
                         <div class="player-card" style="${customStyle}">
-                            <div class="player-info">
-                                <h4>
-                                    ${p.rank}. ${p.name} 
-                                    <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
-                                    ${stackBadge}
-                                    <span style="cursor:pointer; font-size: 0.8rem; opacity: 0.7; margin-left: 2px;" onclick="editPlayer(${p.id})" title="Edit Rank/Tier">✏️</span>
-                                </h4>
-                                <div class="player-stats">${p.team} | Bye: ${p.bye}${adpText}</div>
+                            <div class="player-card-main">
+                                <div class="player-info">
+                                    <h4>
+                                        ${p.rank}. ${p.name} 
+                                        <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
+                                        ${rookieBadge}
+                                        ${stackBadge}
+                                        <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.7; margin-left: 2px;" onclick="toggleEditBar(${p.id})" title="Edit Rank/Tier">✏️</span>
+                                    </h4>
+                                    <div class="player-stats">${p.team} | Bye: ${p.bye}${adpText}</div>
+                                </div>
+                                <div class="actions">
+                                    <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
+                                    <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">My Pick</button>
+                                </div>
                             </div>
-                            <div class="actions">
-                                <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
-                                <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">My Pick</button>
+                            
+                            <!-- INLINE EDITOR BAR -->
+                            <div class="inline-editor" id="inline-edit-${p.id}">
+                                <label style="font-size:0.8rem; font-weight:bold;">Rank:</label>
+                                <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:65px;">
+                                
+                                <label style="font-size:0.8rem; font-weight:bold; margin-left:4px;">Tier:</label>
+                                <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:50px;">
+                                
+                                <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem; margin-left:auto;" onclick="saveInlineEdit(${p.id})">Save</button>
+                                <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
                             </div>
                         </div>`;
                 }
