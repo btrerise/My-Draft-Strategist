@@ -111,10 +111,9 @@
         .inline-editor { display: none; background: #0b132b; padding: 0.6rem; margin-top: 0.6rem; border-radius: 6px; border: 1px solid var(--primary-green); gap: 0.5rem; align-items: center; flex-wrap: wrap;}
         .inline-editor input { margin: 0; padding: 0.4rem; font-size: 0.9rem;}
 
-        /* Tracker Filters */
-        #tierTracker { display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.2rem 0.2rem 0.8rem 0.2rem; margin-bottom: 0.5rem; white-space: nowrap; -ms-overflow-style: none; scrollbar-width: none; }
-        #tierTracker::-webkit-scrollbar { display: none; }
-        .pos-filter { cursor: pointer; padding: 0.5rem 0.8rem; font-size: 0.95rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s; opacity: 0.6; }
+        /* Tracker Position Filters Grid (Optimized for Mobile) */
+        #tierTracker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; margin-bottom: 0.8rem; }
+        .pos-filter { cursor: pointer; padding: 0.5rem 0.2rem; font-size: 0.8rem; border-radius: 6px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s; opacity: 0.6; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         .pos-filter.active-filter { opacity: 1; border: 2px solid #ffffff; font-weight: 900; box-shadow: 0 4px 8px rgba(0,0,0,0.4); transform: translateY(-1px); }
         .badge-all { background: #3a506b; color: #ffffff; border: 1px solid var(--border); }
 
@@ -150,7 +149,7 @@
         .draft-cell.WR { background-color: var(--pos-wr); border-color: var(--pos-wr-border); }
         .draft-cell.TE { background-color: var(--pos-te); border-color: var(--pos-te-border); }
         
-        /* User Team Column White Border Highlighting (Thinner) */
+        /* User Team Column White Border Highlighting */
         .draft-col-header.mine { border: 2px solid #ffffff !important; font-weight: 900; font-size: 0.85rem; color: #ffffff; }
         .draft-cell.mine { border: 2px solid #ffffff !important; font-weight: bold; }
 
@@ -202,9 +201,9 @@
 
     <!-- SETUP TAB -->
     <div id="setupTab" class="tab-content active">
-        <!-- LARGE HERO LOGO -->
+        <!-- LARGE HERO LOGO (Original logo.png restored) -->
         <div style="text-align: center; margin-bottom: 1.5rem;">
-            <img src="5775.png" alt="My Draft Strategist" onerror="this.style.display='none'" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            <img src="logo.png" alt="My Draft Strategist" onerror="this.style.display='none'" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
             <div style="margin-top: 1rem; display: flex; justify-content: center;">
                 <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center;">
                     <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
@@ -333,17 +332,19 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v1.0 (RC)
+            Draft Strategist v1.0.1 (RC)
         </div>
     </div>
 
     <!-- TRACKER TAB -->
     <div id="trackerTab" class="tab-content">
-        <div class="settings-card" style="padding: 0.5rem; margin-bottom: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
+        <div class="settings-card" style="padding: 0.6rem; margin-bottom: 0.6rem; display: flex; gap: 0.6rem; align-items: center;">
             <div id="pickTracker" class="badge" style="background: var(--primary-green); color: white; font-size: 0.95rem; padding: 0.5rem; white-space: nowrap;">Pick: 1.01</div>
             <input type="text" id="searchBar" placeholder="Search player..." style="margin: 0; padding: 0.5rem; flex-grow: 1;" onkeyup="renderBoard()">
+            <button class="btn-sm btn-warning" style="margin:0; padding: 0.5rem 0.6rem; white-space: nowrap; font-size: 0.8rem;" onclick="resetPicksOnly()" title="Reset Draft Picks">🧹 Reset</button>
         </div>
 
+        <!-- Optimized 5-Column Position Grid -->
         <div id="tierTracker"></div>
 
         <div id="playerPool">
@@ -414,7 +415,7 @@
             <h4>4. The Tracker</h4>
             <p>This is your primary view for drafting. It dynamically crosses off drafted players and leaves only the available pool. 
             <br><br>
-            <strong>Tier Trackers (e.g., 'QB T2: 3'):</strong> The buttons at the top of the Tracker filter by position. The text <strong>'T2: 3'</strong> means that the highest available Tier for that position is currently Tier 2, and there are exactly 3 players remaining in that tier. Use this to quickly identify positional runs and drop-offs.
+            <strong>Position Grid & Tiers (e.g., 'QB T2 (3)'):</strong> Use the top 5-column button grid to instantly filter by position. The text <strong>'T2 (3)'</strong> means that the highest available Tier for that position is currently Tier 2, and there are exactly 3 players remaining in that tier. Use this to quickly identify positional runs and drop-offs.
             <br><br>
             <strong>Value / Reach Badge:</strong> On each player card, you'll see a dynamic value badge based on your rankings. If a player's <strong>Custom Rank</strong> is lower (better) than the current overall pick number, it shows a green value badge (e.g., <code>+12 Value</code>). If they are ranked much higher than the current pick, it shows a red reach indicator (e.g., <code>-8 Reach</code>).
             <br><br>
@@ -493,7 +494,6 @@
     // --- SWIPE GESTURES FOR TABS & MENU ---
     let touchstartX = 0;
     let touchendX = 0;
-    // Only allow swipe navigation between the core drafting tabs
     const tabOrder = ['tracker', 'team', 'board'];
 
     function handleGesture() {
@@ -502,7 +502,6 @@
         
         let diffX = touchendX - touchstartX;
 
-        // Menu swipe controls
         if (diffX > 50 && touchstartX < 40 && !isOpen) {
             toggleMenu();
             return;
@@ -512,7 +511,6 @@
             return;
         }
 
-        // Tab swipe navigation (Only if menu is closed)
         if (!isOpen && Math.abs(diffX) > 80) {
             let activeTabEl = document.querySelector('.tab-content.active');
             if (!activeTabEl) return;
@@ -521,10 +519,8 @@
 
             if (currentIndex !== -1) {
                 if (diffX < 0 && currentIndex < tabOrder.length - 1) {
-                    // Swipe Left -> Next Tab
                     showTab(tabOrder[currentIndex + 1]);
                 } else if (diffX > 0 && currentIndex > 0) {
-                    // Swipe Right -> Previous Tab
                     showTab(tabOrder[currentIndex - 1]);
                 }
             }
@@ -832,19 +828,16 @@
         btn.innerText = "⏳ Building Quick-Start...";
 
         try {
-            // 1. Fetch Sleeper DB
             let sleeperMap = {};
             try {
                 let res = await fetch('https://api.sleeper.app/v1/players/nfl');
                 if (res.ok) sleeperMap = await res.json();
             } catch(e) { console.warn("Sleeper DB fetch failed", e); }
 
-            // 2. Fetch LeagueLogs Market
             const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
             if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
             const llMarket = await marketRes.json();
 
-            // 3. Fetch LeagueLogs Player Meta
             let playerMetaMap = {};
             try {
                 let pRes = await fetch(`https://developer.leaguelogs.com/v1/players`);
@@ -854,24 +847,21 @@
                 }
             } catch(e) { console.warn("LeagueLogs Meta fetch failed", e); }
 
-            // 4. Build Players Array
             let newPlayers = [];
             let posCounters = {};
-            
-            // Sort market data by overall rank to assign sequential Custom Rank
             let sortedMarket = llMarket.data.sort((a,b) => parseFloat(a.overallRank) - parseFloat(b.overallRank));
 
             sortedMarket.forEach((item) => {
                 let sId = item.sleeperPlayerId;
                 let sp = sleeperMap[sId];
-                if (!sp || !sp.first_name) return; // Skip invalid or defense if not handled
+                if (!sp || !sp.first_name) return;
 
                 let cleanName = sp.first_name + " " + sp.last_name;
                 let team = sp.team || "FA";
                 let bye = BYE_WEEKS_2026[team] || "-";
                 
                 let posGroup = (sp.position || "FLEX").toUpperCase();
-                if (!['QB', 'RB', 'WR', 'TE'].includes(posGroup)) return; // Filter to standard offensive positions
+                if (!['QB', 'RB', 'WR', 'TE'].includes(posGroup)) return;
 
                 if (!posCounters[posGroup]) posCounters[posGroup] = 1;
                 let posDisplay = posGroup + posCounters[posGroup];
@@ -889,7 +879,7 @@
                     name: cleanName,
                     posGroup: posGroup,
                     posDisplay: posDisplay,
-                    tier: "-", // Default no tier for quick start
+                    tier: "-", 
                     team: team,
                     bye: bye,
                     adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1),
@@ -1136,7 +1126,6 @@
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
 
-        // Column Headers (Highlight user's team column headers with white border)
         for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
@@ -1253,13 +1242,11 @@
             availablePool.forEach(p => { rosterSlotsHTML += buildSlotHTML('BN', 'var(--text-muted)', p); });
         }
 
-        // --- BYE WEEK COLLISION WARNING CHECK ---
         const bannerContainer = document.getElementById('byeWarningContainer');
         const showByeWarnings = localStorage.getItem('ds_bye_warnings') === 'true';
         
         if (showByeWarnings && myPlayersObjects.length > 0) {
             let byeCounts = {};
-            // Evaluate Starters + Flex (exclude Bench)
             let starterPool = [...myTeam.map(id => players.find(p => p.id === id)).filter(p => p)];
             let starterSlotsCount = (dsLimits.QB||0) + (dsLimits.RB||0) + (dsLimits.WR||0) + (dsLimits.TE||0) + (dsLimits.FLEX||0) + (dsLimits.SFLEX||0);
             let activeStarters = starterPool.slice(0, starterSlotsCount);
@@ -1305,13 +1292,14 @@
         document.getElementById('pickTracker').innerText = `Pick: ${round}.${pickInRound.toString().padStart(2, '0')}`;
 
         const trackers = getTierTrackerData();
-        let trackerHTML = `<button class="badge badge-all pos-filter ${activePosFilter === 'ALL' ? 'active-filter' : ''}" onclick="setPosFilter('ALL')">ALL</button>`;
+        
+        // Render 5-Column Grid Position Filters
+        let trackerHTML = `<div class="badge badge-all pos-filter ${activePosFilter === 'ALL' ? 'active-filter' : ''}" onclick="setPosFilter('ALL')"><span>ALL</span></div>`;
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            if(trackers[pos]) {
-                let isActive = activePosFilter === pos ? 'active-filter' : '';
-                trackerHTML += `<button class="badge pos-badge ${pos} pos-filter ${isActive}" onclick="setPosFilter('${pos}')">${pos} T${trackers[pos].tier}: ${trackers[pos].count}</button>`;
-            }
+            let isActive = activePosFilter === pos ? 'active-filter' : '';
+            let tText = trackers[pos] ? `T${trackers[pos].tier} (${trackers[pos].count})` : "—";
+            trackerHTML += `<div class="badge pos-badge ${pos} pos-filter ${isActive}" onclick="setPosFilter('${pos}')"><span>${pos}</span><span style="font-size:0.65rem; opacity:0.9;">${tText}</span></div>`;
         });
         document.getElementById('tierTracker').innerHTML = trackerHTML;
 
@@ -1339,7 +1327,6 @@
 
                     let customStyle = getCallOutStyle(p.name);
                     
-                    // Dynamic Value / Reach Badge Calculation based on User Rank
                     let valueBadgeHTML = "";
                     let diff = currentOverallPick - p.rank;
                     if (diff > 0) {
