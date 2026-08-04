@@ -1,6 +1,6 @@
 {
   "name": "My Draft Strategist",
-  "short_name": "Strategist",
+  "short_name": "Draft Strategist",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b132b",
