@@ -111,7 +111,7 @@
         .inline-editor { display: none; background: #0b132b; padding: 0.6rem; margin-top: 0.6rem; border-radius: 6px; border: 1px solid var(--primary-green); gap: 0.5rem; align-items: center; flex-wrap: wrap;}
         .inline-editor input { margin: 0; padding: 0.4rem; font-size: 0.9rem;}
 
-        /* Tracker Position Filters Grid (Optimized for Mobile) */
+        /* Tracker Position Filters Grid */
         #tierTracker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; margin-bottom: 0.8rem; }
         .pos-filter { cursor: pointer; padding: 0.5rem 0.2rem; font-size: 0.8rem; border-radius: 6px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s; opacity: 0.6; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         .pos-filter.active-filter { opacity: 1; border: 2px solid #ffffff; font-weight: 900; box-shadow: 0 4px 8px rgba(0,0,0,0.4); transform: translateY(-1px); }
@@ -201,7 +201,7 @@
 
     <!-- SETUP TAB -->
     <div id="setupTab" class="tab-content active">
-        <!-- LARGE HERO LOGO (Original logo.png restored) -->
+        <!-- LARGE HERO LOGO -->
         <div style="text-align: center; margin-bottom: 1.5rem;">
             <img src="logo.png" alt="My Draft Strategist" onerror="this.style.display='none'" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
             <div style="margin-top: 1rem; display: flex; justify-content: center;">
@@ -332,19 +332,22 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v1.0.1 (RC)
+            Draft Strategist v1.0.2 (RC)
         </div>
     </div>
 
     <!-- TRACKER TAB -->
     <div id="trackerTab" class="tab-content">
-        <div class="settings-card" style="padding: 0.6rem; margin-bottom: 0.6rem; display: flex; gap: 0.6rem; align-items: center;">
-            <div id="pickTracker" class="badge" style="background: var(--primary-green); color: white; font-size: 0.95rem; padding: 0.5rem; white-space: nowrap;">Pick: 1.01</div>
-            <input type="text" id="searchBar" placeholder="Search player..." style="margin: 0; padding: 0.5rem; flex-grow: 1;" onkeyup="renderBoard()">
-            <button class="btn-sm btn-warning" style="margin:0; padding: 0.5rem 0.6rem; white-space: nowrap; font-size: 0.8rem;" onclick="resetPicksOnly()" title="Reset Draft Picks">🧹 Reset</button>
+        <!-- Clean Stacked Row Layout for Tracker Control Card -->
+        <div class="settings-card" style="padding: 0.8rem; margin-bottom: 0.6rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                <div id="pickTracker" class="badge" style="background: var(--primary-green); color: white; font-size: 0.95rem; padding: 0.4rem 0.7rem; white-space: nowrap;">Pick: 1.01</div>
+                <button class="btn-sm btn-warning" style="margin:0; padding: 0.35rem 0.7rem; font-size: 0.8rem;" onclick="resetPicksOnly()" title="Reset Draft Picks">🧹 Reset Picks</button>
+            </div>
+            <input type="text" id="searchBar" placeholder="Search player..." style="margin: 0; padding: 0.5rem; width: 100%;" onkeyup="renderBoard()">
         </div>
 
-        <!-- Optimized 5-Column Position Grid -->
+        <!-- 5-Column Position Grid -->
         <div id="tierTracker"></div>
 
         <div id="playerPool">
@@ -388,12 +391,12 @@
     <!-- DRAFT BOARD TAB (Grid View) -->
     <div id="boardTab" class="tab-content">
         <div class="board-header-group">
-            <h3>Sleeper Live Draft Board</h3>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.8rem 0;">Dynamically scaled grid view based on your synced Draft ID.</p>
+            <h3>Draft Board Grid</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.8rem 0;">Dynamically updates via Sleeper Auto-Sync or manual Tracker picks.</p>
         </div>
         <div id="draftMatrixContainer" class="draft-board-container">
             <div style="text-align: center; color: var(--text-muted); padding: 2rem; font-style: italic; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border);">
-                Sync your Sleeper Draft ID in the Setup tab to generate the live draft board.
+                Load rankings or sync Sleeper to generate the live draft board.
             </div>
         </div>
     </div>
@@ -422,7 +425,7 @@
             <strong>Inline Editor:</strong> Tap the pencil icon (✏️) on any player card to quickly adjust their Rank, Tier, Team, or Bye Week without leaving the Tracker.</p>
 
             <h4>5. The Draft Board</h4>
-            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Positional colors are preserved across cells, and your team's entire column is clearly highlighted with a solid white border.</p>
+            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Supports both live Sleeper sync and manual offline pick tracking automatically!</p>
 
             <h4>6. Roster Limits & Bye Weeks</h4>
             <p>Set your starting lineup requirements in the Setup tab. The <strong>Team</strong> tab will automatically slot your drafted players into their correct positions and calculate your roster limits. Toggle on Bye Week warnings to get instant alerts if 3 or more of your starters share a bye.</p>
@@ -511,10 +514,15 @@
             return;
         }
 
+        // Tab swipe navigation (Only if menu is closed)
         if (!isOpen && Math.abs(diffX) > 80) {
             let activeTabEl = document.querySelector('.tab-content.active');
             if (!activeTabEl) return;
             let currentId = activeTabEl.id.replace('Tab', '');
+            
+            // Disable tab-swipe gesture when on the Board tab to preserve grid horizontal scrolling
+            if (currentId === 'board') return;
+
             let currentIndex = tabOrder.indexOf(currentId);
 
             if (currentIndex !== -1) {
@@ -1116,7 +1124,7 @@
         return trackers;
     }
 
-    // --- FULL BLEED DRAFT BOARD RENDERER ---
+    // --- DRAFT BOARD RENDERER (Sleeper Sync + Manual Fallback) ---
     function renderDraftMatrix() {
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
@@ -1130,10 +1138,16 @@
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
                 let pNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
-                let matched = rawDraftPicks.find(p => p.pick_no === pNum);
-                if (matched) {
-                    let pl = players.find(x => x.sleeperId === matched.player_id);
-                    if (pl && myTeam.includes(pl.id)) { isMyCol = true; break; }
+                
+                if (rawDraftPicks && rawDraftPicks.length > 0) {
+                    let matched = rawDraftPicks.find(p => p.pick_no === pNum);
+                    if (matched) {
+                        let pl = players.find(x => x.sleeperId === matched.player_id);
+                        if (pl && myTeam.includes(pl.id)) { isMyCol = true; break; }
+                    }
+                } else {
+                    let manualPId = draftedPlayers[pNum - 1];
+                    if (manualPId && myTeam.includes(manualPId)) { isMyCol = true; break; }
                 }
             }
             gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}">T${t}</div>`;
@@ -1144,21 +1158,38 @@
                 let pickNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
                 let displayTeamNum = (r % 2 !== 0) ? t : (totalTeams - t + 1);
 
-                let matchedPick = rawDraftPicks.find(p => p.pick_no === pickNum);
+                let pObj = null;
+                let pName = "";
+                let pPos = "";
+
+                if (rawDraftPicks && rawDraftPicks.length > 0) {
+                    let matchedPick = rawDraftPicks.find(p => p.pick_no === pickNum);
+                    if (matchedPick) {
+                        pObj = players.find(pl => pl.sleeperId === matchedPick.player_id);
+                        pName = pObj ? pObj.name : (matchedPick.metadata.first_name?.[0] + ". " + matchedPick.metadata.last_name) || "Player";
+                        pPos = pObj ? pObj.posGroup : matchedPick.metadata.position || "";
+                    }
+                } else {
+                    let manualPlayerId = draftedPlayers[pickNum - 1];
+                    if (manualPlayerId) {
+                        pObj = players.find(pl => pl.id === manualPlayerId);
+                        if (pObj) {
+                            pName = pObj.name;
+                            pPos = pObj.posGroup;
+                        }
+                    }
+                }
+
                 let cellClass = "draft-cell";
                 let cellContent = `<span style="opacity:0.35; font-size:0.58rem;">${r}.${displayTeamNum < 10 ? '0'+displayTeamNum : displayTeamNum}</span>`;
 
-                if (matchedPick) {
-                    let pObj = players.find(pl => pl.sleeperId === matchedPick.player_id);
-                    let pName = pObj ? pObj.name : (matchedPick.metadata.first_name?.[0] + ". " + matchedPick.metadata.last_name) || "Player";
-                    let pPos = pObj ? pObj.posGroup : matchedPick.metadata.position || "";
-
+                if (pName) {
                     let nameParts = pName.split(' ');
                     let firstName = nameParts[0];
                     let lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : "";
 
                     cellClass += ` picked ${pPos}`;
-                    if(pObj && myTeam.includes(pObj.id)) cellClass += " mine";
+                    if (pObj && myTeam.includes(pObj.id)) cellClass += " mine";
 
                     cellContent = `
                         <div class="draft-cell-first" title="${pName}">${firstName}</div>
@@ -1293,7 +1324,6 @@
 
         const trackers = getTierTrackerData();
         
-        // Render 5-Column Grid Position Filters
         let trackerHTML = `<div class="badge badge-all pos-filter ${activePosFilter === 'ALL' ? 'active-filter' : ''}" onclick="setPosFilter('ALL')"><span>ALL</span></div>`;
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
