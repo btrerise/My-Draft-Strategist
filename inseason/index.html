@@ -32,7 +32,8 @@
 
         /* Header */
         .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); padding: 0.8rem 1rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .header-title { font-weight: bold; display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; }
+        .header-title { font-weight: bold; display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; }
+        .header-controls { display: flex; align-items: center; gap: 0.5rem; }
 
         .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
         .tab-content { display: none; }
@@ -42,12 +43,13 @@
         .settings-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; display: flex; justify-content: space-between; align-items: center;}
         
-        input[type="text"], input[type="file"] { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
+        input[type="text"], input[type="file"], select { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
         input[type="file"] { cursor: pointer; }
 
         .btn-primary { background: var(--primary-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
         .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
         .btn-sm { padding: 0.4rem 0.6rem; border: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem; cursor: pointer; }
+        .btn-danger { background-color: #ea4335; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.75rem; }
 
         /* Roster & Lineup Displays */
         .roster-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid var(--border); background: #0b132b; margin-bottom: 4px; border-radius: 4px; }
@@ -76,9 +78,14 @@
 <div id="mainApp">
     <div class="header">
         <div class="header-title">
-            <span style="font-size: 1.4rem;">🏈</span> My Lineup Strategist
+            <span style="font-size: 1.2rem;">🏈</span> Lineup Strategist
         </div>
-        <div style="font-size: 0.8rem; color: #86efac; font-weight: bold;">v0.2.2</div>
+        <div class="header-controls">
+            <!-- Global League Selector Dropdown -->
+            <select id="headerLeagueSelect" style="margin: 0; padding: 0.3rem 0.5rem; font-size: 0.85rem; width: auto;" onchange="switchActiveLeague(this.value)">
+                <option value="">No Leagues Added</option>
+            </select>
+        </div>
     </div>
 
     <div class="container">
@@ -86,18 +93,21 @@
         <!-- SETUP TAB -->
         <div id="setupTab" class="tab-content active">
             <div class="settings-card">
-                <h3>1. League Settings</h3>
+                <h3>1. Add & Manage Leagues</h3>
+                <label style="font-size: 0.9rem; font-weight: bold;">League Name / Nickname</label>
+                <input type="text" id="newLeagueName" placeholder="e.g., Dynasty Money League">
+
                 <label style="font-size: 0.9rem; font-weight: bold;">Sleeper Username</label>
                 <input type="text" id="sleeperUsername" placeholder="e.g., fantasy_guru">
                 
-                <label style="font-size: 0.9rem; font-weight: bold;">League ID</label>
+                <label style="font-size: 0.9rem; font-weight: bold;">League ID (Pulls Auto Roster Requirements)</label>
                 <input type="text" id="sleeperLeagueId" placeholder="e.g., 912345678901234567">
                 
-                <button id="syncBtn" class="btn-secondary" onclick="syncSleeperRoster(this)">Sync Roster</button>
+                <button class="btn-secondary" onclick="addAndSyncLeague(this)">➕ Add & Sync League</button>
             </div>
 
             <div class="settings-card">
-                <h3>2. Starting Lineup Requirements</h3>
+                <h3>2. Starting Lineup Requirements <span id="activeLeagueReqTitle" style="font-size:0.75rem; color:var(--primary-green);"></span></h3>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
                     <div><label style="font-size: 0.8rem; font-weight: bold;">QB</label><input type="number" id="reqQB" value="1" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
                     <div><label style="font-size: 0.8rem; font-weight: bold;">RB</label><input type="number" id="reqRB" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
@@ -106,18 +116,18 @@
                     <div><label style="font-size: 0.8rem; font-weight: bold;">FLEX</label><input type="number" id="reqFLEX" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
                     <div><label style="font-size: 0.8rem; font-weight: bold;">SFLEX</label><input type="number" id="reqSFLEX" value="0" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
                 </div>
-                <button class="btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
+                <button class="btn-primary" onclick="saveRequirements(this)">Save Requirements for Active League</button>
             </div>
 
             <div class="settings-card">
-                <h3>Your Roster <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(Sorted by ROS Rank)</span></h3>
+                <h3>Your Active Roster <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(Sorted by ROS Rank)</span></h3>
                 <div id="rosterList" style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
-                    Sync your Sleeper account to view your roster.
+                    Select or sync a league above to view your roster.
                 </div>
             </div>
             
             <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-                My Lineup Strategist v0.2.2
+                My Lineup Strategist v0.3.0
             </div>
         </div>
 
@@ -131,7 +141,7 @@
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: -0.4rem;">Tap the lock toggle (🔒) to lock players into your lineup. Ranked using your Weekly Matchup Rankings.</p>
                 <div id="optimalLineupContainer">
                     <div style="text-align:center; color: var(--text-muted); padding: 2rem; font-style: italic;">
-                        Sync roster and load rankings to generate your optimal lineup.
+                        Select a league and load rankings to generate your optimal lineup.
                     </div>
                 </div>
             </div>
@@ -148,7 +158,7 @@
         <div id="rankingsTab" class="tab-content">
             <div class="settings-card">
                 <h3>1. Rest-of-Season (ROS) Rankings</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; line-height: 1.4;">Used to evaluate your long-term team value and waiver targets.</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; line-height: 1.4;">Used globally across all your leagues for long-term value and waivers.</p>
                 <div id="rosMetaDisplay" style="font-size: 0.85rem; color: #86efac; font-weight: bold; background: #102a1e; border: 1px solid var(--primary-green); padding: 0.6rem; border-radius: 4px; margin-bottom: 0.5rem; display: none;"></div>
                 
                 <input type="file" id="rosFileInput" accept=".csv">
@@ -157,7 +167,7 @@
 
             <div class="settings-card">
                 <h3>2. Weekly Matchup Rankings</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; line-height: 1.4;">Used on the Lineup tab to optimize your Start/Sit decisions. Supports side-by-side positional formats.</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; line-height: 1.4;">Used globally for Start/Sit decisions. Supports side-by-side positional formats.</p>
                 <div id="weeklyMetaDisplay" style="font-size: 0.85rem; color: #93c5fd; font-weight: bold; background: #112233; border: 1px solid #4285f4; padding: 0.6rem; border-radius: 4px; margin-bottom: 0.5rem; display: none;"></div>
                 
                 <input type="file" id="weeklyFileInput" accept=".csv">
@@ -176,19 +186,17 @@
 </div>
 
 <script>
-    // --- STATE MANAGEMENT ---
-    let myRoster = JSON.parse(localStorage.getItem('mds_season_roster')) || [];
+    // --- STATE MANAGEMENT (Multi-League Support) ---
+    let leagues = JSON.parse(localStorage.getItem('mds_season_leagues')) || [];
+    let activeLeagueId = localStorage.getItem('mds_season_active_league') || null;
+    
     let rosRankings = JSON.parse(localStorage.getItem('mds_season_ros')) || [];
     let weeklyRankings = JSON.parse(localStorage.getItem('mds_season_weekly')) || [];
-    let lockedPlayerIds = JSON.parse(localStorage.getItem('mds_season_locks')) || [];
-    let lineupReqs = JSON.parse(localStorage.getItem('mds_season_reqs')) || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+    let lockedPlayersMap = JSON.parse(localStorage.getItem('mds_season_locks_map')) || {}; // { leagueId: [playerId, ...] }
 
-    // Clean names to fix sleeper matching and alias handling
     function normalizeName(name) {
         if (!name) return "";
         let n = String(name).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, '').replace(/(jr|sr|iii|ii|iv|v)$/, ''); 
-        
-        // Custom Alias Mapper for common discrepancies
         const aliasMap = {
             'kennygainwell': 'kennethgainwell', 'gabedavis': 'gabrieldavis', 'joshpalmer': 'joshuapalmer', 
             'mitchtrubisky': 'mitchelltrubisky', 'tankdell': 'nathanieldell', 'hollywoodbrown': 'marquisebrown',
@@ -206,28 +214,82 @@
         document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`).classList.add('active');
         
         if (tabId === 'lineup') optimizeLineup();
-        if (tabId === 'setup' && myRoster.length > 0) renderRoster(myRoster);
+        if (tabId === 'setup') refreshLeagueDropdown();
         window.scrollTo(0, 0);
     }
 
-    // --- UI/API INITIALIZATION ---
+    // --- MULTI-LEAGUE MANAGEMENT ---
     function loadSettings() {
-        document.getElementById('sleeperUsername').value = localStorage.getItem('mds_season_user') || "";
-        document.getElementById('sleeperLeagueId').value = localStorage.getItem('mds_season_league') || "";
-        
-        document.getElementById('reqQB').value = lineupReqs.QB;
-        document.getElementById('reqRB').value = lineupReqs.RB;
-        document.getElementById('reqWR').value = lineupReqs.WR;
-        document.getElementById('reqTE').value = lineupReqs.TE;
-        document.getElementById('reqFLEX').value = lineupReqs.FLEX;
-        document.getElementById('reqSFLEX').value = lineupReqs.SFLEX;
-
-        if (myRoster.length > 0) renderRoster(myRoster);
+        refreshLeagueDropdown();
         updateRankingsMetaDisplay();
+        if (leagues.length > 0 && !activeLeagueId) {
+            activeLeagueId = leagues[0].leagueId;
+        }
+        if (activeLeagueId) {
+            document.getElementById('headerLeagueSelect').value = activeLeagueId;
+            loadActiveLeagueData();
+        }
+    }
+
+    function refreshLeagueDropdown() {
+        const select = document.getElementById('headerLeagueSelect');
+        if (leagues.length === 0) {
+            select.innerHTML = `<option value="">No Leagues Added</option>`;
+            return;
+        }
+
+        let html = "";
+        leagues.forEach(l => {
+            let sel = l.leagueId === activeLeagueId ? "selected" : "";
+            html += `<option value="${l.leagueId}" ${sel}>${l.name}</option>`;
+        });
+        select.innerHTML = html;
+    }
+
+    function switchActiveLeague(leagueId) {
+        if (!leagueId) return;
+        activeLeagueId = leagueId;
+        localStorage.setItem('mds_season_active_league', activeLeagueId);
+        loadActiveLeagueData();
+    }
+
+    function getActiveLeague() {
+        return leagues.find(l => l.leagueId === activeLeagueId) || null;
+    }
+
+    function loadActiveLeagueData() {
+        let league = getActiveLeague();
+        if (!league) return;
+
+        document.getElementById('sleeperUsername').value = league.username || "";
+        document.getElementById('sleeperLeagueId').value = league.leagueId || "";
+        document.getElementById('newLeagueName').value = league.name || "";
+        
+        let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+        document.getElementById('reqQB').value = reqs.QB;
+        document.getElementById('reqRB').value = reqs.RB;
+        document.getElementById('reqWR').value = reqs.WR;
+        document.getElementById('reqTE').value = reqs.TE;
+        document.getElementById('reqFLEX').value = reqs.FLEX;
+        document.getElementById('reqSFLEX').value = reqs.SFLEX;
+
+        document.getElementById('activeLeagueReqTitle').innerText = `(${league.name})`;
+
+        if (league.roster && league.roster.length > 0) {
+            renderRoster(league.roster);
+        } else {
+            document.getElementById('rosterList').innerHTML = "No players synced for this league yet.";
+        }
     }
 
     function saveRequirements(btn) {
-        lineupReqs = {
+        let league = getActiveLeague();
+        if (!league) {
+            alert("Please select or add a league first.");
+            return;
+        }
+
+        league.reqs = {
             QB: parseInt(document.getElementById('reqQB').value) || 0,
             RB: parseInt(document.getElementById('reqRB').value) || 0,
             WR: parseInt(document.getElementById('reqWR').value) || 0,
@@ -235,33 +297,52 @@
             FLEX: parseInt(document.getElementById('reqFLEX').value) || 0,
             SFLEX: parseInt(document.getElementById('reqSFLEX').value) || 0
         };
-        localStorage.setItem('mds_season_reqs', JSON.stringify(lineupReqs));
+
+        localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
         if (btn) {
             btn.innerText = "✅ Saved!";
-            setTimeout(() => btn.innerText = "Save Requirements", 2000);
+            setTimeout(() => btn.innerText = "Save Requirements for Active League", 2000);
         }
     }
 
-    async function syncSleeperRoster(btn) {
+    // --- SLEEPER SYNC WITH AUTO-ROSTER REQUIREMENTS ---
+    async function addAndSyncLeague(btn) {
+        const leagueName = document.getElementById('newLeagueName').value.trim() || "My League";
         const username = document.getElementById('sleeperUsername').value.trim();
         const leagueId = document.getElementById('sleeperLeagueId').value.trim();
 
         if (!username || !leagueId) {
-            alert("Please enter both Username and League ID.");
+            alert("Please enter both Sleeper Username and League ID.");
             return;
         }
 
         const originalText = btn.innerText;
-        btn.innerText = "⏳ Syncing...";
+        btn.innerText = "⏳ Syncing League...";
         btn.style.backgroundColor = "#8b5cf6";
 
         try {
+            // 1. Get User ID
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
             if (!userRes.ok) throw new Error("User not found.");
             const userId = (await userRes.json()).user_id;
 
+            // 2. Get League Settings (for automatic requirements parsing)
+            const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
+            if (!leagueRes.ok) throw new Error("League ID not found.");
+            const leagueData = await leagueRes.json();
+            
+            // Parse roster_positions array from Sleeper
+            let autoReqs = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+            if (leagueData.roster_positions) {
+                autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0 };
+                leagueData.roster_positions.forEach(pos => {
+                    if (autoReqs[pos] !== undefined) autoReqs[pos]++;
+                });
+            }
+
+            // 3. Get All Rosters
             const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
-            if (!rosterRes.ok) throw new Error("League not found.");
+            if (!rosterRes.ok) throw new Error("Could not fetch rosters.");
             const rosters = await rosterRes.json();
             
             const myTeam = rosters.find(r => r.owner_id === userId);
@@ -287,14 +368,30 @@
                 }
             });
 
-            myRoster = rosterDetails;
-            localStorage.setItem('mds_season_user', username);
-            localStorage.setItem('mds_season_league', leagueId);
-            localStorage.setItem('mds_season_roster', JSON.stringify(myRoster));
+            // Save or Update League in Array
+            let existingIdx = leagues.findIndex(l => l.leagueId === leagueId);
+            let leagueObj = {
+                leagueId: leagueId,
+                name: leagueName,
+                username: username,
+                reqs: autoReqs,
+                roster: rosterDetails
+            };
+
+            if (existingIdx !== -1) {
+                leagues[existingIdx] = leagueObj;
+            } else {
+                leagues.push(leagueObj);
+            }
+
+            activeLeagueId = leagueId;
+            localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
+            localStorage.setItem('mds_season_active_league', activeLeagueId);
+
+            refreshLeagueDropdown();
+            loadActiveLeagueData();
             
-            renderRoster(myRoster);
-            
-            btn.innerText = "✅ Synced Successfully!";
+            btn.innerText = "✅ League Synced!";
             btn.style.backgroundColor = "#4ade80";
             btn.style.color = "#0b132b";
             
@@ -312,10 +409,10 @@
         }
     }
 
-    // Sort Setup Roster specifically by ROS Rankings
+    // Sort Setup Roster by ROS Rankings with Positional Badge on the LEFT
     function renderRoster(rosterArray) {
         const container = document.getElementById('rosterList');
-        if (rosterArray.length === 0) {
+        if (!rosterArray || rosterArray.length === 0) {
             container.innerHTML = "No players found.";
             return;
         }
@@ -336,10 +433,12 @@
             let rankBadge = p.rosRank !== 999 ? `ROS Rank: ${p.rosRank}` : "Unranked";
             html += `
             <div class="roster-item">
-                <div style="font-weight: bold; color: #f8fafc;">${p.name}</div>
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span class="badge pos-badge ${p.pos}">${p.pos}</span>
+                    <div style="font-weight: bold; color: #f8fafc;">${p.name}</div>
+                </div>
                 <div>
                     <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
-                    <span class="badge pos-badge ${p.pos}">${p.pos}</span>
                     <span class="badge">${p.team}</span>
                 </div>
             </div>`;
@@ -366,7 +465,6 @@
         }
     }
 
-    // Generic Smart Parser for Both File Inputs
     function handleRankingsUpload(fileInputId, isWeekly, successMsgId) {
         const file = document.getElementById(fileInputId).files[0];
         if (!file) return;
@@ -382,7 +480,6 @@
                 let isHorizontal = headers.includes('quarterback') || headers.includes('running back');
 
                 if (isHorizontal) {
-                    // HORIZONTAL (SIDE-BY-SIDE) PARSER
                     let playerRanks = {};
                     headers.forEach((h, idx) => {
                         let isFlex = (h === 'flex');
@@ -391,7 +488,7 @@
                         if (isFlex || isPos) {
                             for (let r = 1; r < rows.length; r++) {
                                 let pName = rows[r][idx];
-                                let pRank = rows[r][idx - 1]; // Rank is typically the column right before
+                                let pRank = rows[r][idx - 1];
                                 
                                 if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
                                     let clean = normalizeName(pName.trim());
@@ -400,7 +497,7 @@
                                     }
                                     if (isFlex) {
                                         playerRanks[clean].flexRank = parseInt(pRank);
-                                        playerRanks[clean].rank = parseInt(pRank); // Backup sort
+                                        playerRanks[clean].rank = parseInt(pRank);
                                     } else {
                                         playerRanks[clean].posRank = parseInt(pRank);
                                         playerRanks[clean].rank = parseInt(pRank);
@@ -411,7 +508,6 @@
                     });
                     parsed = Object.values(playerRanks);
                 } else {
-                    // VERTICAL (STANDARD) PARSER
                     let nameColIdx = -1;
                     let rankColIdx = -1;
                     
@@ -420,7 +516,6 @@
                         nameColIdx = headers.findIndex(h => h === 'player' || h === 'name' || h === 'player name');
                         rankColIdx = headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'pos rank' || h === 'tier');
                     } else {
-                        // Guess columns if no explicit headers
                         let col0IsNum = !isNaN(parseInt(rows[0][0]));
                         nameColIdx = col0IsNum ? 1 : 0;
                         rankColIdx = col0IsNum ? 0 : -1;
@@ -444,7 +539,6 @@
                     }
                 }
 
-                // Save State
                 if (isWeekly) {
                     weeklyRankings = parsed;
                     localStorage.setItem('mds_season_weekly', JSON.stringify(weeklyRankings));
@@ -454,9 +548,9 @@
                 }
                 
                 updateRankingsMetaDisplay();
-                if (myRoster.length > 0) renderRoster(myRoster);
+                let league = getActiveLeague();
+                if (league && league.roster) renderRoster(league.roster);
                 
-                // Show Inline Success Message
                 let msgEl = document.getElementById(successMsgId);
                 msgEl.style.display = 'block';
                 setTimeout(() => msgEl.style.display = 'none', 2500);
@@ -469,12 +563,15 @@
 
     // --- LINEUP OPTIMIZER ENGINE ---
     function toggleLock(playerId) {
-        if (lockedPlayerIds.includes(playerId)) {
-            lockedPlayerIds = lockedPlayerIds.filter(id => id !== playerId);
+        if (!activeLeagueId) return;
+        let locks = lockedPlayersMap[activeLeagueId] || [];
+        if (locks.includes(playerId)) {
+            locks = locks.filter(id => id !== playerId);
         } else {
-            lockedPlayerIds.push(playerId);
+            locks.push(playerId);
         }
-        localStorage.setItem('mds_season_locks', JSON.stringify(lockedPlayerIds));
+        lockedPlayersMap[activeLeagueId] = locks;
+        localStorage.setItem('mds_season_locks_map', JSON.stringify(lockedPlayersMap));
         optimizeLineup();
     }
 
@@ -482,20 +579,24 @@
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
 
-        if (myRoster.length === 0) {
-            container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Please sync your Sleeper roster first.</div>`;
+        let league = getActiveLeague();
+        if (!league || !league.roster || league.roster.length === 0) {
+            container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Please select and sync a league first.</div>`;
+            benchContainer.innerHTML = "No bench data.";
             return;
         }
 
         let activeDataSet = weeklyRankings.length > 0 ? weeklyRankings : rosRankings;
+        let locks = lockedPlayersMap[activeLeagueId] || [];
+        let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
 
-        let scoredRoster = myRoster.map(p => {
+        let scoredRoster = league.roster.map(p => {
             let rObj = activeDataSet.find(rk => rk.cleanName === p.cleanName);
             return {
                 ...p,
                 posRank: rObj ? rObj.posRank : 999,
                 flexRank: rObj ? rObj.flexRank : 999,
-                isLocked: lockedPlayerIds.includes(p.id)
+                isLocked: locks.includes(p.id)
             };
         });
 
@@ -503,7 +604,6 @@
         let starters = [];
 
         const fillSlot = (slotLabel, posFilter, useFlexRank) => {
-            // Sort pool based on the specific slot type needs
             pool.sort((a, b) => {
                 let rankA = useFlexRank ? (a.flexRank !== 999 ? a.flexRank : a.posRank) : a.posRank;
                 let rankB = useFlexRank ? (b.flexRank !== 999 ? b.flexRank : b.posRank) : b.posRank;
@@ -526,13 +626,13 @@
             }
         };
 
-        for (let i = 0; i < lineupReqs.QB; i++) fillSlot(`QB${i+1}`, pos => pos === 'QB', false);
-        for (let i = 0; i < lineupReqs.RB; i++) fillSlot(`RB${i+1}`, pos => pos === 'RB', false);
-        for (let i = 0; i < lineupReqs.WR; i++) fillSlot(`WR${i+1}`, pos => pos === 'WR', false);
-        for (let i = 0; i < lineupReqs.TE; i++) fillSlot(`TE${i+1}`, pos => pos === 'TE', false);
+        for (let i = 0; i < reqs.QB; i++) fillSlot(`QB${i+1}`, pos => pos === 'QB', false);
+        for (let i = 0; i < reqs.RB; i++) fillSlot(`RB${i+1}`, pos => pos === 'RB', false);
+        for (let i = 0; i < reqs.WR; i++) fillSlot(`WR${i+1}`, pos => pos === 'WR', false);
+        for (let i = 0; i < reqs.TE; i++) fillSlot(`TE${i+1}`, pos => pos === 'TE', false);
 
-        for (let i = 0; i < lineupReqs.FLEX; i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos), true);
-        for (let i = 0; i < lineupReqs.SFLEX; i++) fillSlot(`SFLEX${i+1}`, pos => ['QB', 'RB', 'WR', 'TE'].includes(pos), true);
+        for (let i = 0; i < reqs.FLEX; i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos), true);
+        for (let i = 0; i < reqs.SFLEX; i++) fillSlot(`SFLEX${i+1}`, pos => ['QB', 'RB', 'WR', 'TE'].includes(pos), true);
 
         // Render Starters
         let html = "";
@@ -550,12 +650,14 @@
                 <div class="lineup-slot ${lockClass}">
                     <div style="display:flex; align-items:center; gap:0.6rem;">
                         <span style="font-weight:bold; font-size:0.8rem; width:45px; color:var(--text-muted);">${s.slot}</span>
-                        <div>
-                            <div style="font-weight:bold; color:#f8fafc;">${p.name}</div>
-                            <div style="margin-top:2px;">
-                                <span class="badge pos-badge ${p.pos}">${p.pos}</span>
-                                <span class="badge">${p.team}</span>
-                                <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span class="badge pos-badge ${p.pos}">${p.pos}</span>
+                            <div>
+                                <div style="font-weight:bold; color:#f8fafc;">${p.name}</div>
+                                <div style="margin-top:2px;">
+                                    <span class="badge">${p.team}</span>
+                                    <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -571,7 +673,7 @@
         });
         container.innerHTML = html;
 
-        // Render Bench (Sorted by overall Flex utility)
+        // Render Bench
         let benchHTML = "";
         if (pool.length > 0) {
             pool.sort((a, b) => {
@@ -587,9 +689,11 @@
                 
                 benchHTML += `
                 <div class="roster-item">
-                    <div style="font-weight:bold; color:#f8fafc;">${p.name}</div>
-                    <div>
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
                         <span class="badge pos-badge ${p.pos}">${p.pos}</span>
+                        <div style="font-weight:bold; color:#f8fafc;">${p.name}</div>
+                    </div>
+                    <div>
                         <span class="badge">${p.team}</span>
                         <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
                     </div>
