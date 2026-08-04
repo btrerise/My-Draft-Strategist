@@ -6,7 +6,7 @@
     <title>My Draft Strategist</title>
 
     <!-- Browser Tab Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏈</text></svg>">
+    <link rel="icon" href="5775.png">
 
     <!-- PapaParse for CSV reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -111,10 +111,9 @@
         .inline-editor { display: none; background: #0b132b; padding: 0.6rem; margin-top: 0.6rem; border-radius: 6px; border: 1px solid var(--primary-green); gap: 0.5rem; align-items: center; flex-wrap: wrap;}
         .inline-editor input { margin: 0; padding: 0.4rem; font-size: 0.9rem;}
 
-        /* Tracker Filters */
-        #tierTracker { display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.2rem 0.2rem 0.8rem 0.2rem; margin-bottom: 0.5rem; white-space: nowrap; -ms-overflow-style: none; scrollbar-width: none; }
-        #tierTracker::-webkit-scrollbar { display: none; }
-        .pos-filter { cursor: pointer; padding: 0.5rem 0.8rem; font-size: 0.95rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s; opacity: 0.6; }
+        /* Tracker Position Filters Grid */
+        #tierTracker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; margin-bottom: 0.8rem; }
+        .pos-filter { cursor: pointer; padding: 0.5rem 0.2rem; font-size: 0.8rem; border-radius: 6px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s; opacity: 0.6; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         .pos-filter.active-filter { opacity: 1; border: 2px solid #ffffff; font-weight: 900; box-shadow: 0 4px 8px rgba(0,0,0,0.4); transform: translateY(-1px); }
         .badge-all { background: #3a506b; color: #ffffff; border: 1px solid var(--border); }
 
@@ -150,7 +149,7 @@
         .draft-cell.WR { background-color: var(--pos-wr); border-color: var(--pos-wr-border); }
         .draft-cell.TE { background-color: var(--pos-te); border-color: var(--pos-te-border); }
         
-        /* User Team Column White Border Highlighting (Thinner) */
+        /* User Team Column White Border Highlighting */
         .draft-col-header.mine { border: 2px solid #ffffff !important; font-weight: 900; font-size: 0.85rem; color: #ffffff; }
         .draft-cell.mine { border: 2px solid #ffffff !important; font-weight: bold; }
 
@@ -166,6 +165,7 @@
 <div class="header">
     <div class="header-title">
         <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
+        <img src="5775.png" alt="Logo" style="height: 28px; border-radius: 4px; box-shadow: 0 0 5px rgba(52, 168, 83, 0.4);">
         <div>My Draft<br>Strategist</div>
     </div>
     <div class="header-controls">
@@ -179,8 +179,9 @@
 <div class="hamburger-menu" id="hamburgerMenu">
     <button class="close-menu-btn" onclick="toggleMenu()">✖</button>
     
-    <div style="padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-green); margin-bottom: 0.5rem;">
-        <h3 style="margin: 0 1.5rem; color: #f1f5f9;">Menu</h3>
+    <div style="padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-green); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.8rem;">
+        <img src="5775.png" alt="Logo" style="height: 28px; border-radius: 4px; margin-left: 1.5rem;">
+        <h3 style="margin: 0; color: #f1f5f9;">Menu</h3>
     </div>
 
     <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">⚙️ Setup</button>
@@ -213,9 +214,16 @@
         <div class="settings-card">
             <h3>1. Load Rankings</h3>
             <div id="metaDisplay" class="status-badge"></div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Upload your CSV or Excel (.xlsx) file. Compatible with manual tracking and sync.</p>
-            <input type="file" id="fileInput">
-            <p style="text-align: center; font-size: 0.8rem; margin: 0.2rem 0;">— OR —</p>
+            
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; margin-bottom: 0.8rem;">
+                Want to skip the spreadsheet? Quick-start using live Market Value rankings (Select your league format below in Step 2).
+            </p>
+            <button class="btn-primary" style="background-color: #8b5cf6; margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.3);" onclick="quickStartLeagueLogs(this)">🚀 Quick-Start: LeagueLogs Market</button>
+            
+            <p style="text-align: center; font-size: 0.8rem; margin: 0.2rem 0; color: var(--text-muted);">— OR UPLOAD CUSTOM —</p>
+            
+            <input type="file" id="fileInput" style="margin-top: 0.5rem;">
+            <p style="text-align: center; font-size: 0.8rem; margin: 0.2rem 0; color: var(--text-muted);">— OR PASTE —</p>
             <textarea id="csvPasteArea" rows="2" placeholder="Paste raw CSV text here..."></textarea>
             <button class="btn-primary" onclick="processPaste(this)">Process Pasted Data</button>
         </div>
@@ -265,6 +273,14 @@
 
         <div class="settings-card">
             <h3>4. Roster Limits & Settings 📊</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div><label style="font-size: 0.8rem; font-weight: bold;">Teams in League</label><input type="number" id="leagueTeams" min="2" value="12"></div>
+                <div><label style="font-size: 0.8rem; font-weight: bold;">Total Rounds</label><input type="number" id="leagueRounds" min="1" value="15"></div>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;">
+            
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
                 <div><label style="font-size: 0.8rem; font-weight: bold;">QB</label><input type="number" id="limitQB" min="0" value="1"></div>
                 <div><label style="font-size: 0.8rem; font-weight: bold;">RB</label><input type="number" id="limitRB" min="0" value="2"></div>
@@ -324,17 +340,22 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.9.9 (Beta)
+            Draft Strategist v1.0.3 (RC)
         </div>
     </div>
 
     <!-- TRACKER TAB -->
     <div id="trackerTab" class="tab-content">
-        <div class="settings-card" style="padding: 0.5rem; margin-bottom: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
-            <div id="pickTracker" class="badge" style="background: var(--primary-green); color: white; font-size: 0.95rem; padding: 0.5rem; white-space: nowrap;">Pick: 1.01</div>
-            <input type="text" id="searchBar" placeholder="Search player..." style="margin: 0; padding: 0.5rem; flex-grow: 1;" onkeyup="renderBoard()">
+        <!-- Clean Stacked Row Layout for Tracker Control Card with Correct Spacing -->
+        <div class="settings-card" style="padding: 0.8rem; margin-bottom: 0.6rem;">
+            <div style="display: flex; justify-content: space-between; align-items: stretch; gap: 0.8rem; margin-bottom: 0.6rem;">
+                <div id="pickTracker" class="badge" style="background: var(--primary-green); color: white; font-size: 0.95rem; padding: 0.4rem 0.7rem; white-space: nowrap; display: flex; align-items: center; justify-content: center;">Pick: 1.01</div>
+                <button class="btn-sm btn-warning" style="margin: 0; width: auto; flex-grow: 1; padding: 0.4rem 0.7rem; font-size: 0.85rem;" onclick="resetPicksOnly()" title="Reset Draft Picks">🧹 Reset Picks</button>
+            </div>
+            <input type="text" id="searchBar" placeholder="Search player..." style="margin: 0; padding: 0.5rem; width: 100%;" onkeyup="renderBoard()">
         </div>
 
+        <!-- 5-Column Position Grid -->
         <div id="tierTracker"></div>
 
         <div id="playerPool">
@@ -378,12 +399,12 @@
     <!-- DRAFT BOARD TAB (Grid View) -->
     <div id="boardTab" class="tab-content">
         <div class="board-header-group">
-            <h3>Sleeper Live Draft Board</h3>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.8rem 0;">Dynamically scaled grid view based on your synced Draft ID.</p>
+            <h3>Draft Board Grid</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.8rem 0;">Dynamically updates via Sleeper Auto-Sync or manual Tracker picks.</p>
         </div>
         <div id="draftMatrixContainer" class="draft-board-container">
             <div style="text-align: center; color: var(--text-muted); padding: 2rem; font-style: italic; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border);">
-                Sync your Sleeper Draft ID in the Setup tab to generate the live draft board.
+                Load rankings or sync Sleeper to generate the live draft board.
             </div>
         </div>
     </div>
@@ -394,10 +415,10 @@
             <h3 style="border-bottom: 2px solid var(--primary-green);">How to Use My Draft Strategist</h3>
             
             <h4>1. Load Rankings</h4>
-            <p>Upload your custom rankings via CSV or Excel. Ensure your file has a 'Name' column.</p>
+            <p>Upload your custom rankings via CSV or Excel. Ensure your file has a 'Name' column. Or, use the <strong>Quick-Start</strong> option to automatically load live Market Value rankings from LeagueLogs.</p>
 
             <h4>2. Live Market Value (ADP)</h4>
-            <p>Once rankings are loaded, click "Fetch Market Value" to pull live market data from LeagueLogs (incorporating ADP and platform-wide market trends) based on your specific league settings. The app will automatically assign Rookie badges (purple 'R') to first-year players in this process.</p>
+            <p>Once custom rankings are loaded, click "Fetch Market Value" to pull live market data from LeagueLogs (incorporating ADP and platform-wide market trends) based on your specific league settings. The app will automatically assign Rookie badges (purple 'R') to first-year players in this process.</p>
 
             <h4>3. Sleeper Sync</h4>
             <p>Enter your Sleeper Username and Draft ID to sync live draft picks. You can hit the Sync button manually, or toggle "Live Auto-Sync" to have the board update automatically every 5 seconds.</p>
@@ -405,14 +426,14 @@
             <h4>4. The Tracker</h4>
             <p>This is your primary view for drafting. It dynamically crosses off drafted players and leaves only the available pool. 
             <br><br>
-            <strong>Tier Trackers (e.g., 'QB T2: 3'):</strong> The buttons at the top of the Tracker filter by position. The text <strong>'T2: 3'</strong> means that the highest available Tier for that position is currently Tier 2, and there are exactly 3 players remaining in that tier. Use this to quickly identify positional runs and drop-offs.
+            <strong>Position Grid & Tiers (e.g., 'QB T2 (3)'):</strong> Use the top 5-column button grid to instantly filter by position. The text <strong>'T2 (3)'</strong> means that the highest available Tier for that position is currently Tier 2, and there are exactly 3 players remaining in that tier. Use this to quickly identify positional runs and drop-offs.
             <br><br>
             <strong>Value / Reach Badge:</strong> On each player card, you'll see a dynamic value badge based on your rankings. If a player's <strong>Custom Rank</strong> is lower (better) than the current overall pick number, it shows a green value badge (e.g., <code>+12 Value</code>). If they are ranked much higher than the current pick, it shows a red reach indicator (e.g., <code>-8 Reach</code>).
             <br><br>
             <strong>Inline Editor:</strong> Tap the pencil icon (✏️) on any player card to quickly adjust their Rank, Tier, Team, or Bye Week without leaving the Tracker.</p>
 
             <h4>5. The Draft Board</h4>
-            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Positional colors are preserved across cells, and your team's entire column is clearly highlighted with a solid white border.</p>
+            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Supports both live Sleeper sync and manual offline pick tracking automatically!</p>
 
             <h4>6. Roster Limits & Bye Weeks</h4>
             <p>Set your starting lineup requirements in the Setup tab. The <strong>Team</strong> tab will automatically slot your drafted players into their correct positions and calculate your roster limits. Toggle on Bye Week warnings to get instant alerts if 3 or more of your starters share a bye.</p>
@@ -484,7 +505,6 @@
     // --- SWIPE GESTURES FOR TABS & MENU ---
     let touchstartX = 0;
     let touchendX = 0;
-    // Only allow swipe navigation between the core drafting tabs
     const tabOrder = ['tracker', 'team', 'board'];
 
     function handleGesture() {
@@ -493,7 +513,6 @@
         
         let diffX = touchendX - touchstartX;
 
-        // Menu swipe controls
         if (diffX > 50 && touchstartX < 40 && !isOpen) {
             toggleMenu();
             return;
@@ -508,14 +527,16 @@
             let activeTabEl = document.querySelector('.tab-content.active');
             if (!activeTabEl) return;
             let currentId = activeTabEl.id.replace('Tab', '');
+            
+            // Disable tab-swipe gesture when on the Board tab to preserve grid horizontal scrolling
+            if (currentId === 'board') return;
+
             let currentIndex = tabOrder.indexOf(currentId);
 
             if (currentIndex !== -1) {
                 if (diffX < 0 && currentIndex < tabOrder.length - 1) {
-                    // Swipe Left -> Next Tab
                     showTab(tabOrder[currentIndex + 1]);
                 } else if (diffX > 0 && currentIndex > 0) {
-                    // Swipe Right -> Previous Tab
                     showTab(tabOrder[currentIndex - 1]);
                 }
             }
@@ -531,7 +552,7 @@
         handleGesture();
     }, {passive: true});
 
-    // --- BULLETPROOF NAME MATCHING ---
+    // --- BULLETPROOF NAME MATCHING WITH ALIASES ---
     function normalizeName(name) {
         if (!name) return "";
         return String(name)
@@ -543,7 +564,31 @@
 
     function isNameMatch(name1, name2) {
         if (!name1 || !name2) return false;
-        return normalizeName(name1) === normalizeName(name2);
+        let n1 = normalizeName(name1);
+        let n2 = normalizeName(name2);
+        
+        if (n1 === n2) return true;
+
+        // Custom Alias Mapper to prevent classic mismatch errors (e.g., Kenny vs Kenneth)
+        const aliasMap = {
+            'kennygainwell': 'kennethgainwell',
+            'gabedavis': 'gabrieldavis',
+            'joshpalmer': 'joshuapalmer',
+            'mitchtrubisky': 'mitchelltrubisky',
+            'tankdell': 'nathanieldell',
+            'hollywoodbrown': 'marquisebrown',
+            'scottymiller': 'scottmiller',
+            'djchark': 'djcharkjr',
+            'jeffwilson': 'jefferywilson'
+        };
+
+        // Two-way match check
+        if (aliasMap[n1] === n2 || aliasMap[n2] === n1) return true;
+        
+        // Handle scenario where both names map to the exact same root base
+        if (aliasMap[n1] && aliasMap[n1] === aliasMap[n2]) return true;
+
+        return false;
     }
 
     // Load Settings
@@ -554,7 +599,10 @@
     document.getElementById('dartList').value = localStorage.getItem('ds_darts') || "";
     document.getElementById('stackToggle').checked = localStorage.getItem('ds_stacks') === 'true';
     document.getElementById('byeWarningToggle').checked = localStorage.getItem('ds_bye_warnings') === 'true';
-
+    
+    // Load Roster & League Settings
+    document.getElementById('leagueTeams').value = leagueDraftSettings.teams || 12;
+    document.getElementById('leagueRounds').value = leagueDraftSettings.rounds || 15;
     document.getElementById('limitQB').value = dsLimits.QB;
     document.getElementById('limitRB').value = dsLimits.RB;
     document.getElementById('limitWR').value = dsLimits.WR;
@@ -590,6 +638,10 @@
         localStorage.setItem('ds_darts', document.getElementById('dartList').value);
         localStorage.setItem('ds_stacks', document.getElementById('stackToggle').checked);
         localStorage.setItem('ds_bye_warnings', document.getElementById('byeWarningToggle').checked);
+        
+        leagueDraftSettings.teams = parseInt(document.getElementById('leagueTeams').value) || 12;
+        leagueDraftSettings.rounds = parseInt(document.getElementById('leagueRounds').value) || 15;
+        localStorage.setItem('ds_draft_settings', JSON.stringify(leagueDraftSettings));
 
         dsLimits = {
             QB: parseInt(document.getElementById('limitQB').value) || 0,
@@ -814,6 +866,102 @@
         }
     }
 
+    async function quickStartLeagueLogs(btn) {
+        const formatSelect = document.getElementById('adpFormatSelect');
+        const profileKey = formatSelect.value;
+        const formatText = formatSelect.options[formatSelect.selectedIndex].text;
+
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Building Quick-Start...";
+
+        try {
+            let sleeperMap = {};
+            try {
+                let res = await fetch('https://api.sleeper.app/v1/players/nfl');
+                if (res.ok) sleeperMap = await res.json();
+            } catch(e) { console.warn("Sleeper DB fetch failed", e); }
+
+            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+            if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
+            const llMarket = await marketRes.json();
+
+            let playerMetaMap = {};
+            try {
+                let pRes = await fetch(`https://developer.leaguelogs.com/v1/players`);
+                if (pRes.ok) {
+                    let pData = await pRes.json();
+                    pData.data.forEach(lp => { playerMetaMap[lp.sleeperPlayerId] = lp; });
+                }
+            } catch(e) { console.warn("LeagueLogs Meta fetch failed", e); }
+
+            let newPlayers = [];
+            let posCounters = {};
+            let sortedMarket = llMarket.data.sort((a,b) => parseFloat(a.overallRank) - parseFloat(b.overallRank));
+
+            sortedMarket.forEach((item) => {
+                let sId = item.sleeperPlayerId;
+                let sp = sleeperMap[sId];
+                if (!sp || !sp.first_name) return;
+
+                let cleanName = sp.first_name + " " + sp.last_name;
+                let team = sp.team || "FA";
+                let bye = BYE_WEEKS_2026[team] || "-";
+                
+                let posGroup = (sp.position || "FLEX").toUpperCase();
+                if (!['QB', 'RB', 'WR', 'TE'].includes(posGroup)) return;
+
+                if (!posCounters[posGroup]) posCounters[posGroup] = 1;
+                let posDisplay = posGroup + posCounters[posGroup];
+                posCounters[posGroup]++;
+
+                let lp = playerMetaMap[sId];
+                let isRookie = lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false;
+                
+                let adpNum = parseFloat(item.overallRank);
+
+                newPlayers.push({
+                    id: newPlayers.length + 1,
+                    sleeperId: sId,
+                    rank: newPlayers.length + 1,
+                    name: cleanName,
+                    posGroup: posGroup,
+                    posDisplay: posDisplay,
+                    tier: "-", 
+                    team: team,
+                    bye: bye,
+                    adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1),
+                    isRookie: isRookie
+                });
+            });
+
+            if(newPlayers.length > 0) {
+                players = newPlayers;
+                draftedPlayers = []; myTeam = []; rawDraftPicks = [];
+
+                let now = new Date();
+                let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                rankingsMeta = { count: players.length, date: dateString };
+                adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
+
+                localStorage.setItem('ds_meta', JSON.stringify(rankingsMeta));
+                localStorage.setItem('ds_adp_meta', JSON.stringify(adpMeta));
+                localStorage.setItem('ds_players', JSON.stringify(players));
+                
+                updateMetaDisplay();
+                saveDraftState();
+
+                flashButton(btn, "✅ Quick-Start Loaded!", false, originalText);
+            } else {
+                throw new Error("No players generated.");
+            }
+
+        } catch(err) {
+            console.error(err);
+            flashButton(btn, "⚠️ Fetch Error", true, originalText);
+            alert(`Failed to load Quick-Start.\n\n${err.message}`);
+        }
+    }
+
     async function fetchLeagueLogsADP(btn) {
         if (players.length === 0) {
             flashButton(btn, "⚠️ Load Rankings First", true);
@@ -936,6 +1084,9 @@
                 let numTeams = dInfo.settings?.teams || 12;
                 let numRounds = dInfo.settings?.rounds || 15;
                 leagueDraftSettings = { teams: numTeams, rounds: numRounds };
+                
+                document.getElementById('leagueTeams').value = numTeams;
+                document.getElementById('leagueRounds').value = numRounds;
             }
 
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
@@ -1015,7 +1166,7 @@
         return trackers;
     }
 
-    // --- FULL BLEED DRAFT BOARD RENDERER ---
+    // --- DRAFT BOARD RENDERER (Sleeper Sync + Manual Fallback) ---
     function renderDraftMatrix() {
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
@@ -1025,15 +1176,20 @@
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
 
-        // Column Headers (Highlight user's team column headers with white border)
         for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
                 let pNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
-                let matched = rawDraftPicks.find(p => p.pick_no === pNum);
-                if (matched) {
-                    let pl = players.find(x => x.sleeperId === matched.player_id);
-                    if (pl && myTeam.includes(pl.id)) { isMyCol = true; break; }
+                
+                if (rawDraftPicks && rawDraftPicks.length > 0) {
+                    let matched = rawDraftPicks.find(p => p.pick_no === pNum);
+                    if (matched) {
+                        let pl = players.find(x => x.sleeperId === matched.player_id);
+                        if (pl && myTeam.includes(pl.id)) { isMyCol = true; break; }
+                    }
+                } else {
+                    let manualPId = draftedPlayers[pNum - 1];
+                    if (manualPId && myTeam.includes(manualPId)) { isMyCol = true; break; }
                 }
             }
             gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}">T${t}</div>`;
@@ -1044,21 +1200,38 @@
                 let pickNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
                 let displayTeamNum = (r % 2 !== 0) ? t : (totalTeams - t + 1);
 
-                let matchedPick = rawDraftPicks.find(p => p.pick_no === pickNum);
+                let pObj = null;
+                let pName = "";
+                let pPos = "";
+
+                if (rawDraftPicks && rawDraftPicks.length > 0) {
+                    let matchedPick = rawDraftPicks.find(p => p.pick_no === pickNum);
+                    if (matchedPick) {
+                        pObj = players.find(pl => pl.sleeperId === matchedPick.player_id);
+                        pName = pObj ? pObj.name : (matchedPick.metadata.first_name?.[0] + ". " + matchedPick.metadata.last_name) || "Player";
+                        pPos = pObj ? pObj.posGroup : matchedPick.metadata.position || "";
+                    }
+                } else {
+                    let manualPlayerId = draftedPlayers[pickNum - 1];
+                    if (manualPlayerId) {
+                        pObj = players.find(pl => pl.id === manualPlayerId);
+                        if (pObj) {
+                            pName = pObj.name;
+                            pPos = pObj.posGroup;
+                        }
+                    }
+                }
+
                 let cellClass = "draft-cell";
                 let cellContent = `<span style="opacity:0.35; font-size:0.58rem;">${r}.${displayTeamNum < 10 ? '0'+displayTeamNum : displayTeamNum}</span>`;
 
-                if (matchedPick) {
-                    let pObj = players.find(pl => pl.sleeperId === matchedPick.player_id);
-                    let pName = pObj ? pObj.name : (matchedPick.metadata.first_name?.[0] + ". " + matchedPick.metadata.last_name) || "Player";
-                    let pPos = pObj ? pObj.posGroup : matchedPick.metadata.position || "";
-
+                if (pName) {
                     let nameParts = pName.split(' ');
                     let firstName = nameParts[0];
                     let lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : "";
 
                     cellClass += ` picked ${pPos}`;
-                    if(pObj && myTeam.includes(pObj.id)) cellClass += " mine";
+                    if (pObj && myTeam.includes(pObj.id)) cellClass += " mine";
 
                     cellContent = `
                         <div class="draft-cell-first" title="${pName}">${firstName}</div>
@@ -1142,13 +1315,11 @@
             availablePool.forEach(p => { rosterSlotsHTML += buildSlotHTML('BN', 'var(--text-muted)', p); });
         }
 
-        // --- BYE WEEK COLLISION WARNING CHECK ---
         const bannerContainer = document.getElementById('byeWarningContainer');
         const showByeWarnings = localStorage.getItem('ds_bye_warnings') === 'true';
         
         if (showByeWarnings && myPlayersObjects.length > 0) {
             let byeCounts = {};
-            // Evaluate Starters + Flex (exclude Bench)
             let starterPool = [...myTeam.map(id => players.find(p => p.id === id)).filter(p => p)];
             let starterSlotsCount = (dsLimits.QB||0) + (dsLimits.RB||0) + (dsLimits.WR||0) + (dsLimits.TE||0) + (dsLimits.FLEX||0) + (dsLimits.SFLEX||0);
             let activeStarters = starterPool.slice(0, starterSlotsCount);
@@ -1189,18 +1360,20 @@
         let totalPicksDone = Math.max(draftedPlayers.length, syncedPicks);
         let currentOverallPick = totalPicksDone + 1;
         
-        let round = Math.ceil(currentOverallPick / 12);
-        let pickInRound = currentOverallPick - ((round - 1) * 12);
+        // Dynamically use the saved league settings for the Pick counter
+        let teamsInLeague = leagueDraftSettings.teams || 12;
+        let round = Math.ceil(currentOverallPick / teamsInLeague);
+        let pickInRound = currentOverallPick - ((round - 1) * teamsInLeague);
         document.getElementById('pickTracker').innerText = `Pick: ${round}.${pickInRound.toString().padStart(2, '0')}`;
 
         const trackers = getTierTrackerData();
-        let trackerHTML = `<button class="badge badge-all pos-filter ${activePosFilter === 'ALL' ? 'active-filter' : ''}" onclick="setPosFilter('ALL')">ALL</button>`;
+        
+        let trackerHTML = `<div class="badge badge-all pos-filter ${activePosFilter === 'ALL' ? 'active-filter' : ''}" onclick="setPosFilter('ALL')"><span>ALL</span></div>`;
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            if(trackers[pos]) {
-                let isActive = activePosFilter === pos ? 'active-filter' : '';
-                trackerHTML += `<button class="badge pos-badge ${pos} pos-filter ${isActive}" onclick="setPosFilter('${pos}')">${pos} T${trackers[pos].tier}: ${trackers[pos].count}</button>`;
-            }
+            let isActive = activePosFilter === pos ? 'active-filter' : '';
+            let tText = trackers[pos] ? `T${trackers[pos].tier} (${trackers[pos].count})` : "—";
+            trackerHTML += `<div class="badge pos-badge ${pos} pos-filter ${isActive}" onclick="setPosFilter('${pos}')"><span>${pos}</span><span style="font-size:0.65rem; opacity:0.9;">${tText}</span></div>`;
         });
         document.getElementById('tierTracker').innerHTML = trackerHTML;
 
@@ -1228,7 +1401,6 @@
 
                     let customStyle = getCallOutStyle(p.name);
                     
-                    // Dynamic Value / Reach Badge Calculation based on User Rank
                     let valueBadgeHTML = "";
                     let diff = currentOverallPick - p.rank;
                     if (diff > 0) {
