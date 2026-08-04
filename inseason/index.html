@@ -38,16 +38,20 @@
 
         /* Cards & Inputs */
         .settings-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-        .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; }
+        .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; display: flex; justify-content: space-between; align-items: center;}
         
-        input[type="text"] { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
+        input[type="text"], textarea, select { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
         
         .btn-primary { background: var(--primary-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
         .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
+        .btn-sm { padding: 0.4rem 0.6rem; border: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem; cursor: pointer; }
 
-        /* Roster Display */
+        /* Roster & Lineup Displays */
         .roster-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid var(--border); background: #0b132b; margin-bottom: 4px; border-radius: 4px; }
-        
+        .lineup-slot { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0.8rem; border: 1px solid var(--border); background: #0b132b; margin-bottom: 6px; border-radius: 6px; }
+        .lineup-slot.locked { border-color: var(--primary-green); background: #102a1e; }
+        .lineup-slot.empty { border: 1px dashed var(--border); background: rgba(255,255,255,0.02); }
+
         /* Badges & Color Coding */
         .badge { background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.80rem; color: #f1f5f9; display: inline-block;}
         
@@ -71,6 +75,7 @@
         <div class="header-title">
             <span style="font-size: 1.4rem;">🏈</span> My Lineup Strategist
         </div>
+        <div style="font-size: 0.8rem; color: #86efac; font-weight: bold;">v0.2.0</div>
     </div>
 
     <div class="container">
@@ -89,6 +94,19 @@
             </div>
 
             <div class="settings-card">
+                <h3>2. Starting Lineup Requirements</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">QB</label><input type="number" id="reqQB" value="1" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">RB</label><input type="number" id="reqRB" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">WR</label><input type="number" id="reqWR" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">TE</label><input type="number" id="reqTE" value="1" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">FLEX</label><input type="number" id="reqFLEX" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">SFLEX</label><input type="number" id="reqSFLEX" value="0" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                </div>
+                <button class="btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
+            </div>
+
+            <div class="settings-card">
                 <h3>Your Roster</h3>
                 <div id="rosterList" style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
                     Sync your Sleeper account to view your roster.
@@ -96,23 +114,44 @@
             </div>
             
             <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-                My Lineup Strategist v0.1
+                My Lineup Strategist v0.2.0
             </div>
         </div>
 
         <!-- LINEUP TAB -->
         <div id="lineupTab" class="tab-content">
-            <div class="settings-card" style="text-align: center; padding: 3rem 1rem;">
-                <h3 style="border: none; color: #4ade80;">Lineup Optimizer</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Start/Sit optimization coming in v0.2!</p>
+            <div class="settings-card">
+                <h3>
+                    <span>Optimal Starting Lineup</span>
+                    <button class="btn-sm btn-primary" onclick="optimizeLineup()">⚡ Optimize</button>
+                </h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: -0.4rem;">Tap the lock toggle (🔒) next to any player to lock them into your starting lineup.</p>
+                <div id="optimalLineupContainer">
+                    <div style="text-align:center; color: var(--text-muted); padding: 2rem; font-style: italic;">
+                        Sync roster and load rankings to generate your optimal lineup.
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3>Bench Priorities</h3>
+                <div id="benchContainer" style="font-size: 0.85rem; color: var(--text-muted);">
+                    No bench data yet.
+                </div>
             </div>
         </div>
 
         <!-- RANKINGS TAB -->
         <div id="rankingsTab" class="tab-content">
-            <div class="settings-card" style="text-align: center; padding: 3rem 1rem;">
-                <h3 style="border: none; color: #93c5fd;">Custom Rankings</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">ROS and Weekly ranking uploads coming in v0.2.</p>
+            <div class="settings-card">
+                <h3>1. Active Rankings Source</h3>
+                <div id="rankingsMetaDisplay" style="font-size: 0.85rem; color: #86efac; font-weight: bold; background: #102a1e; border: 1px solid var(--primary-green); padding: 0.6rem; border-radius: 4px; margin-bottom: 1rem; display: none;"></div>
+                
+                <button class="btn-primary" style="background-color: #8b5cf6;" onclick="loadQuickRankings(this)">🚀 Load Sample Weekly Rankings</button>
+                
+                <p style="text-align: center; font-size: 0.8rem; margin: 1rem 0 0.5rem 0; color: var(--text-muted);">— OR PASTE CUSTOM RANKINGS —</p>
+                <textarea id="rankingsPasteArea" rows="4" placeholder="Paste custom CSV/Text rankings here... (e.g., Player Name, Pos Rank)"></textarea>
+                <button class="btn-primary" onclick="processCustomRankings(this)">Apply Custom Rankings</button>
             </div>
         </div>
 
@@ -127,22 +166,53 @@
 </div>
 
 <script>
+    // --- STATE MANAGEMENT ---
+    let myRoster = JSON.parse(localStorage.getItem('mds_season_roster')) || [];
+    let activeRankings = JSON.parse(localStorage.getItem('mds_season_rankings')) || [];
+    let lockedPlayerIds = JSON.parse(localStorage.getItem('mds_season_locks')) || [];
+    let lineupReqs = JSON.parse(localStorage.getItem('mds_season_reqs')) || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+
     // --- NAVIGATION LOGIC ---
     function showTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.getElementById(tabId + 'Tab').classList.add('active');
         document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
         document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`).classList.add('active');
+        
+        if (tabId === 'lineup') optimizeLineup();
         window.scrollTo(0, 0);
     }
 
     // --- SLEEPER API LOGIC ---
-    let myRoster = JSON.parse(localStorage.getItem('mds_season_roster')) || [];
-
     function loadSettings() {
         document.getElementById('sleeperUsername').value = localStorage.getItem('mds_season_user') || "";
         document.getElementById('sleeperLeagueId').value = localStorage.getItem('mds_season_league') || "";
+        
+        document.getElementById('reqQB').value = lineupReqs.QB;
+        document.getElementById('reqRB').value = lineupReqs.RB;
+        document.getElementById('reqWR').value = lineupReqs.WR;
+        document.getElementById('reqTE').value = lineupReqs.TE;
+        document.getElementById('reqFLEX').value = lineupReqs.FLEX;
+        document.getElementById('reqSFLEX').value = lineupReqs.SFLEX;
+
         if (myRoster.length > 0) renderRoster(myRoster);
+        updateRankingsMetaDisplay();
+    }
+
+    function saveRequirements(btn) {
+        lineupReqs = {
+            QB: parseInt(document.getElementById('reqQB').value) || 0,
+            RB: parseInt(document.getElementById('reqRB').value) || 0,
+            WR: parseInt(document.getElementById('reqWR').value) || 0,
+            TE: parseInt(document.getElementById('reqTE').value) || 0,
+            FLEX: parseInt(document.getElementById('reqFLEX').value) || 0,
+            SFLEX: parseInt(document.getElementById('reqSFLEX').value) || 0
+        };
+        localStorage.setItem('mds_season_reqs', JSON.stringify(lineupReqs));
+        if (btn) {
+            btn.innerText = "✅ Saved!";
+            setTimeout(() => btn.innerText = "Save Requirements", 2000);
+        }
     }
 
     async function syncSleeperRoster(btn) {
@@ -159,24 +229,19 @@
         btn.style.backgroundColor = "#8b5cf6";
 
         try {
-            // 1. Get User ID
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
             if (!userRes.ok) throw new Error("User not found.");
-            const userData = await userRes.json();
-            const userId = userData.user_id;
+            const userId = (await userRes.json()).user_id;
 
-            // 2. Get All Rosters in League
             const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
             if (!rosterRes.ok) throw new Error("League not found.");
             const rosters = await rosterRes.json();
             
-            // 3. Find My Specific Roster
             const myTeam = rosters.find(r => r.owner_id === userId);
             if (!myTeam) throw new Error("Could not find your team in this league.");
             
             const playerIds = myTeam.players || [];
 
-            // 4. Get Player Map to translate IDs to Names
             btn.innerText = "⏳ Loading Players...";
             const mapRes = await fetch(`https://api.sleeper.app/v1/players/nfl`);
             const playerMap = await mapRes.json();
@@ -194,11 +259,9 @@
                 }
             });
 
-            // Sort by Position
             const posOrder = { "QB": 1, "RB": 2, "WR": 3, "TE": 4, "K": 5, "DEF": 6 };
             rosterDetails.sort((a, b) => (posOrder[a.pos] || 99) - (posOrder[b.pos] || 99));
 
-            // Save and Render
             myRoster = rosterDetails;
             localStorage.setItem('mds_season_user', username);
             localStorage.setItem('mds_season_league', leagueId);
@@ -243,6 +306,189 @@
             </div>`;
         });
         container.innerHTML = html;
+    }
+
+    // --- RANKINGS ENGINE ---
+    function updateRankingsMetaDisplay() {
+        const metaEl = document.getElementById('rankingsMetaDisplay');
+        if (activeRankings.length > 0) {
+            metaEl.style.display = 'block';
+            metaEl.innerText = `✅ Active Rankings Loaded (${activeRankings.length} players)`;
+        } else {
+            metaEl.style.display = 'none';
+        }
+    }
+
+    function loadQuickRankings(btn) {
+        // Sample test rankings for verification
+        let sampleData = [
+            { name: "Lamar Jackson", pos: "QB", rank: 1 },
+            { name: "Josh Allen", pos: "QB", rank: 2 },
+            { name: "Christian McCaffrey", pos: "RB", rank: 1 },
+            { name: "Breece Hall", pos: "RB", rank: 2 },
+            { name: "Bijan Robinson", pos: "RB", rank: 3 },
+            { name: "Justin Jefferson", pos: "WR", rank: 1 },
+            { name: "Amon-Ra St. Brown", pos: "WR", rank: 2 },
+            { name: "Ja'Marr Chase", pos: "WR", rank: 3 },
+            { name: "Travis Kelce", pos: "TE", rank: 1 },
+            { name: "Sam LaPorta", pos: "TE", rank: 2 }
+        ];
+
+        activeRankings = sampleData;
+        localStorage.setItem('mds_season_rankings', JSON.stringify(activeRankings));
+        updateRankingsMetaDisplay();
+        
+        btn.innerText = "✅ Sample Rankings Loaded!";
+        setTimeout(() => btn.innerText = "🚀 Load Sample Weekly Rankings", 2000);
+    }
+
+    function processCustomRankings(btn) {
+        const text = document.getElementById('rankingsPasteArea').value;
+        if (!text) return;
+
+        let rows = text.split('\n');
+        let parsed = [];
+        rows.forEach((r, idx) => {
+            let parts = r.split(',');
+            if (parts.length >= 1 && parts[0].trim()) {
+                parsed.push({
+                    name: parts[0].trim(),
+                    pos: parts[1] ? parts[1].trim().toUpperCase() : "FLEX",
+                    rank: idx + 1
+                });
+            }
+        });
+
+        if (parsed.length > 0) {
+            activeRankings = parsed;
+            localStorage.setItem('mds_season_rankings', JSON.stringify(activeRankings));
+            updateRankingsMetaDisplay();
+            btn.innerText = "✅ Custom Rankings Applied!";
+            setTimeout(() => btn.innerText = "Apply Custom Rankings", 2000);
+        }
+    }
+
+    // --- LINEUP OPTIMIZER ENGINE ---
+    function toggleLock(playerId) {
+        if (lockedPlayerIds.includes(playerId)) {
+            lockedPlayerIds = lockedPlayerIds.filter(id => id !== playerId);
+        } else {
+            lockedPlayerIds.push(playerId);
+        }
+        localStorage.setItem('mds_season_locks', JSON.stringify(lockedPlayerIds));
+        optimizeLineup();
+    }
+
+    function optimizeLineup() {
+        const container = document.getElementById('optimalLineupContainer');
+        const benchContainer = document.getElementById('benchContainer');
+
+        if (myRoster.length === 0) {
+            container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Please sync your Sleeper roster first.</div>`;
+            return;
+        }
+
+        // Map roster players to their active ranking score
+        let scoredRoster = myRoster.map(p => {
+            let rObj = activeRankings.find(rk => rk.name.toLowerCase() === p.name.toLowerCase());
+            return {
+                ...p,
+                rank: rObj ? rObj.rank : 999,
+                isLocked: lockedPlayerIds.includes(p.id)
+            };
+        });
+
+        // Sort by Rank score (lower is better)
+        scoredRoster.sort((a, b) => a.rank - b.rank);
+
+        let pool = [...scoredRoster];
+        let starters = [];
+
+        // Helper to pull best available player for a slot
+        const fillSlot = (slotLabel, posFilter) => {
+            // First check if a locked player matches this slot requirement
+            let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
+            if (lockedIndex !== -1) {
+                let p = pool.splice(lockedIndex, 1)[0];
+                starters.push({ slot: slotLabel, player: p });
+                return;
+            }
+
+            // Otherwise pick best ranked player
+            let bestIndex = pool.findIndex(p => posFilter(p.pos));
+            if (bestIndex !== -1) {
+                let p = pool.splice(bestIndex, 1)[0];
+                starters.push({ slot: slotLabel, player: p });
+            } else {
+                starters.push({ slot: slotLabel, player: null });
+            }
+        };
+
+        // Fill Positional Slots
+        for (let i = 0; i < lineupReqs.QB; i++) fillSlot(`QB${i+1}`, pos => pos === 'QB');
+        for (let i = 0; i < lineupReqs.RB; i++) fillSlot(`RB${i+1}`, pos => pos === 'RB');
+        for (let i = 0; i < lineupReqs.WR; i++) fillSlot(`WR${i+1}`, pos => pos === 'WR');
+        for (let i = 0; i < lineupReqs.TE; i++) fillSlot(`TE${i+1}`, pos => pos === 'TE');
+
+        // Fill FLEX Slots
+        for (let i = 0; i < lineupReqs.FLEX; i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos));
+        
+        // Fill SFLEX Slots
+        for (let i = 0; i < lineupReqs.SFLEX; i++) fillSlot(`SFLEX${i+1}`, pos => ['QB', 'RB', 'WR', 'TE'].includes(pos));
+
+        // Render Starters
+        let html = "";
+        starters.forEach(s => {
+            if (s.player) {
+                let p = s.player;
+                let lockIcon = p.isLocked ? "🔒" : "🔓";
+                let lockClass = p.isLocked ? "locked" : "";
+                let rankBadge = p.rank !== 999 ? `Rk: ${p.rank}` : "Unranked";
+
+                html += `
+                <div class="lineup-slot ${lockClass}">
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <span style="font-weight:bold; font-size:0.8rem; width:45px; color:var(--text-muted);">${s.slot}</span>
+                        <div>
+                            <div style="font-weight:bold; color:#f8fafc;">${p.name}</div>
+                            <div style="margin-top:2px;">
+                                <span class="badge pos-badge ${p.pos}">${p.pos}</span>
+                                <span class="badge">${p.team}</span>
+                                <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-sm" style="background:none; font-size:1.2rem; cursor:pointer;" onclick="toggleLock('${p.id}')">${lockIcon}</button>
+                </div>`;
+            } else {
+                html += `
+                <div class="lineup-slot empty">
+                    <span style="font-weight:bold; font-size:0.8rem; width:45px; color:var(--text-muted);">${s.slot}</span>
+                    <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
+                </div>`;
+            }
+        });
+        container.innerHTML = html;
+
+        // Render Remaining Bench
+        let benchHTML = "";
+        if (pool.length > 0) {
+            pool.forEach(p => {
+                let rankBadge = p.rank !== 999 ? `Rk: ${p.rank}` : "Unranked";
+                benchHTML += `
+                <div class="roster-item">
+                    <div style="font-weight:bold; color:#f8fafc;">${p.name}</div>
+                    <div>
+                        <span class="badge pos-badge ${p.pos}">${p.pos}</span>
+                        <span class="badge">${p.team}</span>
+                        <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                    </div>
+                </div>`;
+            });
+        } else {
+            benchHTML = "No bench players.";
+        }
+        benchContainer.innerHTML = benchHTML;
     }
 
     // Initialize on load
