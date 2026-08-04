@@ -15,15 +15,18 @@
             --text-main: #ffffff;
             --text-muted: #8d99ae;
             --border: #3a506b;
+
+            /* Positional Colors from Draft Strategist */
+            --pos-qb: #3a1515; --pos-qb-border: #ea4335;
+            --pos-rb: #102a1e; --pos-rb-border: #34A853;
+            --pos-wr: #112233; --pos-wr-border: #4285f4;
+            --pos-te: #332b11; --pos-te-border: #fbbc04;
+            --pos-k: #2d3748; --pos-k-border: #a0aec0;
+            --pos-def: #281442; --pos-def-border: #9f7aea;
         }
 
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; }
-
-        /* Gatekeeper Overlay */
-        #gatekeeper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; text-align: center; }
-        .gate-card { background: var(--card-bg); padding: 2rem; border-radius: 8px; border: 1px solid var(--primary-green); max-width: 400px; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .gate-card input { text-align: center; font-size: 1.2rem; letter-spacing: 2px; text-transform: uppercase; }
 
         /* Header */
         .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); padding: 0.8rem 1rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
@@ -37,36 +40,33 @@
         .settings-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; }
         
-        input[type="text"], input[type="password"] { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
+        input[type="text"] { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
         
         .btn-primary { background: var(--primary-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
-        .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; }
+        .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
 
         /* Roster Display */
         .roster-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid var(--border); background: #0b132b; margin-bottom: 4px; border-radius: 4px; }
-        .badge { background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.80rem; color: #f1f5f9; }
+        
+        /* Badges & Color Coding */
+        .badge { background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.80rem; color: #f1f5f9; display: inline-block;}
+        
+        .pos-badge.QB { background-color: var(--pos-qb); color: #fca5a5; border: 1px solid var(--pos-qb-border); }
+        .pos-badge.RB { background-color: var(--pos-rb); color: #86efac; border: 1px solid var(--pos-rb-border); }
+        .pos-badge.WR { background-color: var(--pos-wr); color: #93c5fd; border: 1px solid var(--pos-wr-border); }
+        .pos-badge.TE { background-color: var(--pos-te); color: #fde047; border: 1px solid var(--pos-te-border); }
+        .pos-badge.K { background-color: var(--pos-k); color: #e2e8f0; border: 1px solid var(--pos-k-border); }
+        .pos-badge.DEF { background-color: var(--pos-def); color: #e9d8fd; border: 1px solid var(--pos-def-border); }
 
         /* Bottom Tab Navigation */
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 2px solid var(--border); display: flex; justify-content: space-around; padding: 0.5rem; z-index: 98; }
-        .nav-bar .nav-btn { background: none; border: none; font-size: 0.95rem; color: var(--text-muted); font-weight: bold; padding: 0.5rem; cursor: pointer; flex: 1; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 2px solid var(--border); display: flex; justify-content: space-around; padding: 0.5rem; z-index: 98; box-shadow: 0 -2px 10px rgba(0,0,0,0.3); }
+        .nav-bar .nav-btn { background: none; border: none; font-size: 0.95rem; color: var(--text-muted); font-weight: bold; padding: 0.5rem; cursor: pointer; flex: 1; text-align: center;}
         .nav-bar .nav-btn.active { color: var(--primary-green); border-bottom: 3px solid var(--primary-green); }
     </style>
 </head>
 <body>
 
-<!-- GATEKEEPER OVERLAY -->
-<div id="gatekeeper">
-    <div class="gate-card">
-        <h2 style="margin-top:0; color: #4ade80;">MDS: In-Season</h2>
-        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">Enter your Ko-fi access code to unlock the Lineup Optimizer.</p>
-        <input type="password" id="passcodeInput" placeholder="PASSCODE" onkeypress="if(event.key === 'Enter') checkPasscode()">
-        <button class="btn-primary" onclick="checkPasscode()">Unlock Tool</button>
-        <p id="gateError" style="color: #ea4335; font-size: 0.85rem; display: none; margin-top: 1rem; font-weight: bold;">Incorrect passcode.</p>
-    </div>
-</div>
-
-<!-- MAIN APP (Hidden until unlocked) -->
-<div id="mainApp" style="display: none;">
+<div id="mainApp">
     <div class="header">
         <div class="header-title">
             <span style="font-size: 1.4rem;">🏈</span> My Lineup Strategist
@@ -94,13 +94,17 @@
                     Sync your Sleeper account to view your roster.
                 </div>
             </div>
+            
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
+                My Lineup Strategist v0.1
+            </div>
         </div>
 
         <!-- LINEUP TAB -->
         <div id="lineupTab" class="tab-content">
             <div class="settings-card" style="text-align: center; padding: 3rem 1rem;">
                 <h3 style="border: none; color: #4ade80;">Lineup Optimizer</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Start/Sit optimization coming in Version 2!</p>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Start/Sit optimization coming in v0.2!</p>
             </div>
         </div>
 
@@ -108,7 +112,7 @@
         <div id="rankingsTab" class="tab-content">
             <div class="settings-card" style="text-align: center; padding: 3rem 1rem;">
                 <h3 style="border: none; color: #93c5fd;">Custom Rankings</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">ROS and Weekly ranking uploads coming soon.</p>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">ROS and Weekly ranking uploads coming in v0.2.</p>
             </div>
         </div>
 
@@ -123,30 +127,6 @@
 </div>
 
 <script>
-    // --- GATEKEEPER LOGIC ---
-    const SECRET_CODE = "SUNDAY2026"; // Change this to your preferred Ko-fi passcode
-
-    // Check if previously unlocked
-    if (localStorage.getItem('mds_season_unlocked') === 'true') {
-        unlockApp();
-    }
-
-    function checkPasscode() {
-        const input = document.getElementById('passcodeInput').value.trim().toUpperCase();
-        if (input === SECRET_CODE) {
-            localStorage.setItem('mds_season_unlocked', 'true');
-            unlockApp();
-        } else {
-            document.getElementById('gateError').style.display = 'block';
-        }
-    }
-
-    function unlockApp() {
-        document.getElementById('gatekeeper').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        loadSettings();
-    }
-
     // --- NAVIGATION LOGIC ---
     function showTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -157,7 +137,7 @@
     }
 
     // --- SLEEPER API LOGIC ---
-    let myRoster = JSON.parse(localStorage.getItem('mds_my_roster')) || [];
+    let myRoster = JSON.parse(localStorage.getItem('mds_season_roster')) || [];
 
     function loadSettings() {
         document.getElementById('sleeperUsername').value = localStorage.getItem('mds_season_user') || "";
@@ -222,7 +202,7 @@
             myRoster = rosterDetails;
             localStorage.setItem('mds_season_user', username);
             localStorage.setItem('mds_season_league', leagueId);
-            localStorage.setItem('mds_my_roster', JSON.stringify(myRoster));
+            localStorage.setItem('mds_season_roster', JSON.stringify(myRoster));
             
             renderRoster(myRoster);
             
@@ -257,13 +237,16 @@
             <div class="roster-item">
                 <div style="font-weight: bold; color: #f8fafc;">${p.name}</div>
                 <div>
-                    <span class="badge" style="background: var(--primary-green);">${p.pos}</span>
+                    <span class="badge pos-badge ${p.pos}">${p.pos}</span>
                     <span class="badge">${p.team}</span>
                 </div>
             </div>`;
         });
         container.innerHTML = html;
     }
+
+    // Initialize on load
+    window.onload = loadSettings;
 </script>
 
 </body>
