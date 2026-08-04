@@ -150,9 +150,9 @@
         .draft-cell.WR { background-color: var(--pos-wr); border-color: var(--pos-wr-border); }
         .draft-cell.TE { background-color: var(--pos-te); border-color: var(--pos-te-border); }
         
-        /* User Team Column Border Highlighting (Instead of background masking) */
-        .draft-col-header.mine { border: 2px solid #00e5ff !important; box-shadow: 0 0 8px rgba(0, 229, 255, 0.4); color: #00e5ff; }
-        .draft-cell.mine { border: 2px solid #00e5ff !important; box-shadow: inset 0 0 6px rgba(0, 229, 255, 0.3); }
+        /* User Team Column Bold Border Highlighting (Replaced Cyan with White Thick Border) */
+        .draft-col-header.mine { border: 3px solid #ffffff !important; font-weight: 900; font-size: 0.85rem; color: #ffffff; }
+        .draft-cell.mine { border: 3px solid #ffffff !important; font-weight: bold; }
 
         .draft-cell-first { font-weight: 500; font-size: 0.65rem; line-height: 1.1; color: #e2e8f0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
         .draft-cell-last { font-weight: 800; font-size: 0.75rem; line-height: 1.1; color: #ffffff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: 1px; }
@@ -324,7 +324,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.9.7 (Beta)
+            Draft Strategist v0.9.8 (Beta)
         </div>
     </div>
 
@@ -407,12 +407,12 @@
             <br><br>
             <strong>Tier Trackers (e.g., 'QB T2: 3'):</strong> The buttons at the top of the Tracker filter by position. The text <strong>'T2: 3'</strong> means that the highest available Tier for that position is currently Tier 2, and there are exactly 3 players remaining in that tier. Use this to quickly identify positional runs and drop-offs.
             <br><br>
-            <strong>ADP Value / Reach Badge:</strong> On each player card, you'll see a dynamic market badge. If a player's Market Value is lower (better) than the current overall pick number, it shows green value (e.g., <code>+12 Value</code>). If they are being drafted well ahead of market value, it shows a red reach indicator (e.g., <code>-8 Reach</code>).
+            <strong>Value / Reach Badge:</strong> On each player card, you'll see a dynamic value badge based on your rankings. If a player's <strong>Custom Rank</strong> is lower (better) than the current overall pick number, it shows a green value badge (e.g., <code>+12 Value</code>). If they are ranked much higher than the current pick, it shows a red reach indicator (e.g., <code>-8 Reach</code>).
             <br><br>
             <strong>Inline Editor:</strong> Tap the pencil icon (✏️) on any player card to quickly adjust their Rank, Tier, Team, or Bye Week without leaving the Tracker.</p>
 
             <h4>5. The Draft Board</h4>
-            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Positional colors are preserved across cells, and your team's entire column is clearly highlighted with an Electric Cyan border.</p>
+            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Positional colors are preserved across cells, and your team's entire column is clearly highlighted with a bold white border.</p>
 
             <h4>6. Roster Limits & Bye Weeks</h4>
             <p>Set your starting lineup requirements in the Setup tab. The <strong>Team</strong> tab will automatically slot your drafted players into their correct positions and calculate your roster limits. Toggle on Bye Week warnings to get instant alerts if 3 or more of your starters share a bye.</p>
@@ -484,7 +484,8 @@
     // --- SWIPE GESTURES FOR TABS & MENU ---
     let touchstartX = 0;
     let touchendX = 0;
-    const tabOrder = ['setup', 'tracker', 'team', 'board', 'guide'];
+    // Only allow swipe navigation between the core drafting tabs
+    const tabOrder = ['tracker', 'team', 'board'];
 
     function handleGesture() {
         const menu = document.getElementById('hamburgerMenu');
@@ -509,12 +510,14 @@
             let currentId = activeTabEl.id.replace('Tab', '');
             let currentIndex = tabOrder.indexOf(currentId);
 
-            if (diffX < 0 && currentIndex < tabOrder.length - 1) {
-                // Swipe Left -> Next Tab
-                showTab(tabOrder[currentIndex + 1]);
-            } else if (diffX > 0 && currentIndex > 0) {
-                // Swipe Right -> Previous Tab
-                showTab(tabOrder[currentIndex - 1]);
+            if (currentIndex !== -1) {
+                if (diffX < 0 && currentIndex < tabOrder.length - 1) {
+                    // Swipe Left -> Next Tab
+                    showTab(tabOrder[currentIndex + 1]);
+                } else if (diffX > 0 && currentIndex > 0) {
+                    // Swipe Right -> Previous Tab
+                    showTab(tabOrder[currentIndex - 1]);
+                }
             }
         }
     }
@@ -1022,7 +1025,7 @@
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
 
-        // Column Headers (Highlight user's team column headers with cyan border)
+        // Column Headers (Highlight user's team column headers with bold white border)
         for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
@@ -1185,9 +1188,9 @@
         let syncedPicks = parseInt(localStorage.getItem('ds_total_picks')) || 0;
         let totalPicksDone = Math.max(draftedPlayers.length, syncedPicks);
         let currentOverallPick = totalPicksDone + 1;
-        let pickNum = currentOverallPick;
-        let round = Math.ceil(pickNum / 12);
-        let pickInRound = pickNum - ((round - 1) * 12);
+        
+        let round = Math.ceil(currentOverallPick / 12);
+        let pickInRound = currentOverallPick - ((round - 1) * 12);
         document.getElementById('pickTracker').innerText = `Pick: ${round}.${pickInRound.toString().padStart(2, '0')}`;
 
         const trackers = getTierTrackerData();
@@ -1225,19 +1228,18 @@
 
                     let customStyle = getCallOutStyle(p.name);
                     
-                    // Dynamic ADP Value / Reach Badge Calculation
-                    let adpBadgeHTML = "";
-                    if (p.adp && p.adp !== "-" && !isNaN(parseFloat(p.adp))) {
-                        let adpNum = parseFloat(p.adp);
-                        let diff = Math.round(adpNum - currentOverallPick);
-                        if (diff > 0) {
-                            adpBadgeHTML = ` | <span class="badge badge-value">+${diff} Value (ADP: ${p.adp})</span>`;
-                        } else if (diff < 0) {
-                            adpBadgeHTML = ` | <span class="badge badge-reach">${diff} Reach (ADP: ${p.adp})</span>`;
-                        } else {
-                            adpBadgeHTML = ` | <span class="badge" style="background:#3a506b;">Market: ${p.adp}</span>`;
-                        }
+                    // Dynamic Value / Reach Badge Calculation based on User Rank
+                    let valueBadgeHTML = "";
+                    let diff = currentOverallPick - p.rank;
+                    if (diff > 0) {
+                        valueBadgeHTML = ` | <span class="badge badge-value">+${diff} Value</span>`;
+                    } else if (diff < 0) {
+                        valueBadgeHTML = ` | <span class="badge badge-reach">${diff} Reach</span>`;
+                    } else {
+                        valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
                     }
+                    
+                    let adpText = (p.adp && p.adp !== "-") ? ` | Market: ${p.adp}` : "";
 
                     let isStack = false;
                     if (showStacks && p.team !== "FA") {
@@ -1259,7 +1261,7 @@
                                         ${stackBadge}
                                         <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.7; margin-left: 2px;" onclick="toggleEditBar(${p.id})" title="Edit Player Details">✏️</span>
                                     </h4>
-                                    <div class="player-stats">${p.team} | Bye: ${p.bye}${adpBadgeHTML}</div>
+                                    <div class="player-stats">${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</div>
                                 </div>
                                 <div class="actions">
                                     <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
