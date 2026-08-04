@@ -74,7 +74,7 @@
 
         /* Cards & Inputs */
         .settings-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-        .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; }
+        .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; display: flex; align-items: center;}
         .guide-section h4 { color: #f1f5f9; margin-bottom: 0.2rem; margin-top: 1.5rem; }
         .guide-section p { font-size: 0.9rem; color: var(--text-muted); margin-top: 0; line-height: 1.4; }
         
@@ -87,6 +87,13 @@
         .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
         .btn-warning { background-color: #fbbc04; color: #0b132b; border: none; padding: 0.8rem; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 0.5rem; }
         .btn-danger { background-color: #ea4335; color: white; border: none; padding: 0.8rem; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+
+        /* Custom Tooltip Styles */
+        .tooltip { position: relative; display: inline-block; cursor: help; margin-left: 0.5rem; font-size: 0.9rem; opacity: 0.8; }
+        .tooltip:hover { opacity: 1; }
+        .tooltip .tooltip-text { visibility: hidden; width: 240px; background-color: #112233; color: #f1f5f9; text-align: left; border-radius: 6px; padding: 0.75rem; position: absolute; z-index: 101; bottom: 135%; left: 50%; margin-left: -120px; opacity: 0; transition: opacity 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.6); border: 1px solid var(--primary-green); font-size: 0.8rem; font-weight: normal; line-height: 1.4;}
+        .tooltip .tooltip-text::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: var(--primary-green) transparent transparent transparent; }
+        .tooltip:hover .tooltip-text, .tooltip:active .tooltip-text { visibility: visible; opacity: 1; }
 
         /* Player Tracker Styles */
         .player-card { background: var(--card-bg); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
@@ -137,7 +144,7 @@
         .board-header-group { margin-bottom: 0.6rem; padding: 0 0.2rem; }
         .board-header-group h3 { margin: 0 0 0.2rem 0; font-size: 1.1rem; color: #f1f5f9; }
         .draft-board-container { overflow-x: auto; width: 100%; background: transparent; padding: 0; }
-        .draft-grid { display: grid; gap: 2px; min-width: max-content; }
+        .draft-grid { display: grid; gap: 2px; } 
         
         /* Column Header & Cell Styles */
         .draft-col-header { background: #1c2541; border: 1px solid var(--border); padding: 0.35rem 0.15rem; text-align: center; font-weight: bold; font-size: 0.75rem; border-radius: 3px; color: #f8fafc; }
@@ -165,11 +172,15 @@
 <div class="header">
     <div class="header-title">
         <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
-        <img src="5775.png" alt="Logo" style="height: 28px; border-radius: 4px; box-shadow: 0 0 5px rgba(52, 168, 83, 0.4);">
-        <div>My Draft<br>Strategist</div>
+        <!-- Clickable Hero Logo / Title -->
+        <div style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;" onclick="showTab('setup')">
+            <img src="5775.png" alt="Logo" style="height: 28px; border-radius: 4px; box-shadow: 0 0 5px rgba(52, 168, 83, 0.4);">
+            <div>My Draft<br>Strategist</div>
+        </div>
     </div>
     <div class="header-controls">
-        <span id="liveIndicator" style="display: none; font-size: 0.75rem; font-weight: bold; color: #86efac;">🔴 LIVE</span>
+        <!-- Clickable Live Indicator -->
+        <span id="liveIndicator" style="display: none; font-size: 0.75rem; font-weight: bold; color: #86efac; cursor: pointer; background: rgba(0,0,0,0.2); padding: 0.25rem 0.4rem; border-radius: 4px; border: 1px solid #34A853;" onclick="toggleAutoSync(false); document.getElementById('autoSyncToggle').checked = false;" title="Click to Stop Live Sync">🔴 LIVE</span>
         <button id="headerSyncBtn" class="btn-header" onclick="syncSleeper()">⚡ Sync</button>
     </div>
 </div>
@@ -211,8 +222,19 @@
             </div>
         </div>
 
+        <!-- Info & Guide Banner Shortcut -->
+        <div style="background: linear-gradient(90deg, #102a1e, #1c2541); border: 1px solid var(--primary-green); border-radius: 6px; padding: 0.8rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);" onclick="showTab('guide')">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.2rem;">💡</span>
+                <span style="font-size: 0.9rem; font-weight: bold; color: #4ade80;">New here? Read the Info & Guide</span>
+            </div>
+            <span style="color: #4ade80; font-weight: bold; font-size: 1.1rem;">➔</span>
+        </div>
+
         <div class="settings-card">
-            <h3>1. Load Rankings</h3>
+            <h3>1. Load Rankings
+                <span class="tooltip">ℹ️<span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span></span>
+            </h3>
             <div id="metaDisplay" class="status-badge"></div>
             
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; margin-bottom: 0.8rem;">
@@ -229,7 +251,9 @@
         </div>
 
         <div class="settings-card">
-            <h3>2. Live Market Value (ADP) 📈</h3>
+            <h3>2. Live Market Value (ADP) 📈
+                <span class="tooltip">ℹ️<span class="tooltip-text">If you uploaded custom rankings above, click here to pull in the live ADP market value so you know when players are actually being drafted.</span></span>
+            </h3>
             <div id="adpStatusDisplay" class="status-badge"></div>
 
             <label style="font-size: 0.9rem; font-weight: bold;">Select LeagueLogs Profile</label>
@@ -257,7 +281,9 @@
         </div>
 
         <div class="settings-card">
-            <h3>3. Sleeper Integration 🏈</h3>
+            <h3>3. Sleeper Integration (Optional) 🏈
+                <span class="tooltip">ℹ️<span class="tooltip-text">Drafting on Sleeper? Enter your info here to auto-cross players off your tracker as they get drafted! If playing elsewhere, leave this blank and track manually.</span></span>
+            </h3>
             <label style="font-size: 0.9rem; font-weight: bold;">Sleeper Username</label>
             <input type="text" id="sleeperUsername" placeholder="e.g., fantasy_guru">
             <label style="font-size: 0.9rem; font-weight: bold;">Draft ID</label>
@@ -272,14 +298,9 @@
         </div>
 
         <div class="settings-card">
-            <h3>4. Roster Limits & Settings 📊</h3>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                <div><label style="font-size: 0.8rem; font-weight: bold;">Teams in League</label><input type="number" id="leagueTeams" min="2" value="12"></div>
-                <div><label style="font-size: 0.8rem; font-weight: bold;">Total Rounds</label><input type="number" id="leagueRounds" min="1" value="15"></div>
-            </div>
-            
-            <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;">
+            <h3>4. Roster Limits & Settings 📊
+                <span class="tooltip">ℹ️<span class="tooltip-text">Set your starting lineup slots to let the app automatically track your roster and bye weeks on the Team Tab.</span></span>
+            </h3>
             
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
                 <div><label style="font-size: 0.8rem; font-weight: bold;">QB</label><input type="number" id="limitQB" min="0" value="1"></div>
@@ -289,6 +310,13 @@
                 <div><label style="font-size: 0.8rem; font-weight: bold;">FLEX</label><input type="number" id="limitFLEX" min="0" value="1"></div>
                 <div><label style="font-size: 0.8rem; font-weight: bold;">SFLEX</label><input type="number" id="limitSFLEX" min="0" value="0"></div>
                 <div><label style="font-size: 0.8rem; font-weight: bold;">BENCH</label><input type="number" id="limitBENCH" min="0" value="6"></div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div><label style="font-size: 0.8rem; font-weight: bold;">Teams in League</label><input type="number" id="leagueTeams" min="2" value="12"></div>
+                <div><label style="font-size: 0.8rem; font-weight: bold;">Total Rounds</label><input type="number" id="leagueRounds" min="1" value="15"></div>
             </div>
 
             <div class="toggle-container" style="background: var(--card-bg);">
@@ -311,7 +339,9 @@
         </div>
 
         <div class="settings-card">
-            <h3>5. Call Outs 🎯</h3>
+            <h3>5. Call Outs 🎯
+                <span class="tooltip">ℹ️<span class="tooltip-text">Paste names of players you want to remember. The app will permanently color-code them in the Tracker so you never miss them.</span></span>
+            </h3>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Paste names below (separated by commas or new lines)</p>
 
             <label style="font-size: 0.85rem; font-weight: bold;">🟢 Targets</label>
@@ -321,9 +351,16 @@
             <textarea id="avoidList" rows="2" placeholder="e.g. Jonathan Taylor"></textarea>
 
             <label style="font-size: 0.85rem; font-weight: bold;">🔵 Dart Throws</label>
-            <textarea id="dartList" rows="2" placeholder="e.g. Ashton Jeanty"></textarea>
+            <textarea id="dartList" rows="2" placeholder="e.g. Keaton Mitchell, Wan'Dale Robinson"></textarea>
 
             <button class="btn-primary" onclick="saveSettings(this)">Save Call Outs</button>
+        </div>
+
+        <!-- SETUP FOOTER PROMPT TO TRACKER -->
+        <div class="settings-card" style="text-align: center; background: linear-gradient(135deg, #102a1e, #1c2541); border: 1px solid var(--primary-green);">
+            <h3 style="margin-bottom: 0.4rem; color: #4ade80; justify-content: center;">Ready to Draft? 🚀</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Head over to the Tracker tab to view your player pool and start making picks.</p>
+            <button class="btn-primary" onclick="showTab('tracker')">Go to Tracker 📋</button>
         </div>
 
         <div class="settings-card">
@@ -332,15 +369,8 @@
             <button class="btn-danger" onclick="hardReset()">⚠️ Reset Everything (Full Wipe)</button>
         </div>
 
-        <!-- SETUP FOOTER PROMPT TO TRACKER -->
-        <div class="settings-card" style="text-align: center; background: linear-gradient(135deg, #102a1e, #1c2541); border: 1px solid var(--primary-green);">
-            <h3 style="margin-bottom: 0.4rem; color: #4ade80;">Ready to Draft? 🚀</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Head over to the Tracker tab to view your player pool and start making picks.</p>
-            <button class="btn-primary" onclick="showTab('tracker')">Go to Tracker 📋</button>
-        </div>
-
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v1.0.3 (RC)
+            Draft Strategist v1.2
         </div>
     </div>
 
@@ -420,20 +450,20 @@
             <h4>2. Live Market Value (ADP)</h4>
             <p>Once custom rankings are loaded, click "Fetch Market Value" to pull live market data from LeagueLogs (incorporating ADP and platform-wide market trends) based on your specific league settings. The app will automatically assign Rookie badges (purple 'R') to first-year players in this process.</p>
 
-            <h4>3. Sleeper Sync</h4>
-            <p>Enter your Sleeper Username and Draft ID to sync live draft picks. You can hit the Sync button manually, or toggle "Live Auto-Sync" to have the board update automatically every 5 seconds.</p>
+            <h4>3. Sleeper Integration (Optional)</h4>
+            <p>Users of other platforms can disregard this step and manually input draft pick selections on the Tracker tab. Enter your Sleeper Username and Draft ID to sync live draft picks. You can hit the Sync button manually, or toggle "Live Auto-Sync" to have the board update automatically every 3 seconds.</p>
 
             <h4>4. The Tracker</h4>
             <p>This is your primary view for drafting. It dynamically crosses off drafted players and leaves only the available pool. 
             <br><br>
-            <strong>Position Grid & Tiers (e.g., 'QB T2 (3)'):</strong> Use the top 5-column button grid to instantly filter by position. The text <strong>'T2 (3)'</strong> means that the highest available Tier for that position is currently Tier 2, and there are exactly 3 players remaining in that tier. Use this to quickly identify positional runs and drop-offs.
+            <strong>Position Grid & Tiers (e.g., 'QB T2 (3)'):</strong> Use the position buttons to filter by position. The text <strong>'T2 (3)'</strong> means that the highest available Tier for that position is currently Tier 2, and there are exactly 3 players remaining in that tier. Use this to quickly identify positional runs and drop-offs.
             <br><br>
             <strong>Value / Reach Badge:</strong> On each player card, you'll see a dynamic value badge based on your rankings. If a player's <strong>Custom Rank</strong> is lower (better) than the current overall pick number, it shows a green value badge (e.g., <code>+12 Value</code>). If they are ranked much higher than the current pick, it shows a red reach indicator (e.g., <code>-8 Reach</code>).
             <br><br>
             <strong>Inline Editor:</strong> Tap the pencil icon (✏️) on any player card to quickly adjust their Rank, Tier, Team, or Bye Week without leaving the Tracker.</p>
 
             <h4>5. The Draft Board</h4>
-            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Supports both live Sleeper sync and manual offline pick tracking automatically!</p>
+            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Supports both live Sleeper sync and manual offline pick tracking!</p>
 
             <h4>6. Roster Limits & Bye Weeks</h4>
             <p>Set your starting lineup requirements in the Setup tab. The <strong>Team</strong> tab will automatically slot your drafted players into their correct positions and calculate your roster limits. Toggle on Bye Week warnings to get instant alerts if 3 or more of your starters share a bye.</p>
@@ -569,7 +599,7 @@
         
         if (n1 === n2) return true;
 
-        // Custom Alias Mapper to prevent classic mismatch errors (e.g., Kenny vs Kenneth)
+        // Custom Alias Mapper to prevent classic mismatch errors
         const aliasMap = {
             'kennygainwell': 'kennethgainwell',
             'gabedavis': 'gabrieldavis',
@@ -579,7 +609,8 @@
             'hollywoodbrown': 'marquisebrown',
             'scottymiller': 'scottmiller',
             'djchark': 'djcharkjr',
-            'jeffwilson': 'jefferywilson'
+            'jeffwilson': 'jefferywilson',
+            'nicholassingleton': 'nicksingleton'
         };
 
         // Two-way match check
@@ -610,6 +641,22 @@
     document.getElementById('limitFLEX').value = dsLimits.FLEX;
     document.getElementById('limitSFLEX').value = dsLimits.SFLEX;
     document.getElementById('limitBENCH').value = dsLimits.BENCH;
+
+    // Auto-calculate total rounds based on roster inputs
+    function updateTotalRounds() {
+        const qb = parseInt(document.getElementById('limitQB').value) || 0;
+        const rb = parseInt(document.getElementById('limitRB').value) || 0;
+        const wr = parseInt(document.getElementById('limitWR').value) || 0;
+        const te = parseInt(document.getElementById('limitTE').value) || 0;
+        const flex = parseInt(document.getElementById('limitFLEX').value) || 0;
+        const sflex = parseInt(document.getElementById('limitSFLEX').value) || 0;
+        const bench = parseInt(document.getElementById('limitBENCH').value) || 0;
+        document.getElementById('leagueRounds').value = qb + rb + wr + te + flex + sflex + bench;
+    }
+
+    ['limitQB', 'limitRB', 'limitWR', 'limitTE', 'limitFLEX', 'limitSFLEX', 'limitBENCH'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updateTotalRounds);
+    });
 
     function updateMetaDisplay() {
         const metaEl = document.getElementById('metaDisplay');
@@ -820,17 +867,35 @@
             let tier = getVal(['tier', '#', 'tier #']) || "-";
             let adp = getVal(['adp', 'auction', 'value', 'auction value', 'rank/auction value']) || "-";
 
-            let masterId = null;
+            let bestMatchId = null;
+            let fallbackId = null;
+            
+            // Loop through Sleeper DB to find best match
             for (let [sId, sp] of Object.entries(sleeperMap)) {
                 if (sp.first_name && sp.last_name) {
                     let isName = isNameMatch(cleanName, sp.first_name + " " + sp.last_name);
                     let isPos = posGroup === "FLEX" || (sp.position || "").toUpperCase() === posGroup;
+                    
                     if (isName && isPos) {
-                        masterId = sId;
-                        if (!team || team === "FA") team = sp.team || "FA";
-                        break;
+                        fallbackId = sId; // Save first match found as a backup
+                        
+                        // Prioritize active players or exact team matches (fixes duplicate names like Kyle Williams)
+                        if (team && team !== "FA" && sp.team && sp.team.toUpperCase() === team) {
+                            bestMatchId = sId;
+                            break;
+                        } else if (sp.team) {
+                            bestMatchId = sId; // They have a valid team in sleeper, prioritize them over retired FAs
+                        }
                     }
                 }
+            }
+            
+            let masterId = bestMatchId || fallbackId || null;
+            
+            // Apply proper team formatting from Sleeper if found
+            if (masterId) {
+                let sp = sleeperMap[masterId];
+                if (!team || team === "FA") team = sp.team || "FA";
             }
 
             if (team && team !== "FA" && (!bye || bye === "-" || String(bye).trim() === "")) {
@@ -1055,7 +1120,7 @@
         if(isLive) {
             liveInd.style.display = 'inline-block';
             syncSleeper(true, null);
-            autoSyncTimer = setInterval(() => syncSleeper(true, null), 5000);
+            autoSyncTimer = setInterval(() => syncSleeper(true, null), 3000);
         } else {
             liveInd.style.display = 'none';
             if(autoSyncTimer) clearInterval(autoSyncTimer);
