@@ -43,7 +43,8 @@
         .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; display: flex; justify-content: space-between; align-items: center;}
         
         input[type="text"], input[type="file"] { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
-        
+        input[type="file"] { cursor: pointer; }
+
         .btn-primary { background: var(--primary-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
         .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
         .btn-sm { padding: 0.4rem 0.6rem; border: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem; cursor: pointer; }
@@ -77,7 +78,7 @@
         <div class="header-title">
             <span style="font-size: 1.4rem;">🏈</span> My Lineup Strategist
         </div>
-        <div style="font-size: 0.8rem; color: #86efac; font-weight: bold;">v0.2.1</div>
+        <div style="font-size: 0.8rem; color: #86efac; font-weight: bold;">v0.2.2</div>
     </div>
 
     <div class="container">
@@ -116,7 +117,7 @@
             </div>
             
             <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-                My Lineup Strategist v0.2.1
+                My Lineup Strategist v0.2.2
             </div>
         </div>
 
@@ -149,14 +150,18 @@
                 <h3>1. Rest-of-Season (ROS) Rankings</h3>
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; line-height: 1.4;">Used to evaluate your long-term team value and waiver targets.</p>
                 <div id="rosMetaDisplay" style="font-size: 0.85rem; color: #86efac; font-weight: bold; background: #102a1e; border: 1px solid var(--primary-green); padding: 0.6rem; border-radius: 4px; margin-bottom: 0.5rem; display: none;"></div>
+                
                 <input type="file" id="rosFileInput" accept=".csv">
+                <div id="rosSuccessMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
             </div>
 
             <div class="settings-card">
                 <h3>2. Weekly Matchup Rankings</h3>
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; line-height: 1.4;">Used on the Lineup tab to optimize your Start/Sit decisions. Supports side-by-side positional formats.</p>
                 <div id="weeklyMetaDisplay" style="font-size: 0.85rem; color: #93c5fd; font-weight: bold; background: #112233; border: 1px solid #4285f4; padding: 0.6rem; border-radius: 4px; margin-bottom: 0.5rem; display: none;"></div>
+                
                 <input type="file" id="weeklyFileInput" accept=".csv">
+                <div id="weeklySuccessMsg" style="color: #93c5fd; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
             </div>
         </div>
 
@@ -178,10 +183,19 @@
     let lockedPlayerIds = JSON.parse(localStorage.getItem('mds_season_locks')) || [];
     let lineupReqs = JSON.parse(localStorage.getItem('mds_season_reqs')) || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
 
-    // Clean names to fix sleeper matching
+    // Clean names to fix sleeper matching and alias handling
     function normalizeName(name) {
         if (!name) return "";
-        return String(name).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, '').replace(/(jr|sr|iii|ii|iv|v)$/, ''); 
+        let n = String(name).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, '').replace(/(jr|sr|iii|ii|iv|v)$/, ''); 
+        
+        // Custom Alias Mapper for common discrepancies
+        const aliasMap = {
+            'kennygainwell': 'kennethgainwell', 'gabedavis': 'gabrieldavis', 'joshpalmer': 'joshuapalmer', 
+            'mitchtrubisky': 'mitchelltrubisky', 'tankdell': 'nathanieldell', 'hollywoodbrown': 'marquisebrown',
+            'scottymiller': 'scottmiller', 'djchark': 'djcharkjr', 'jeffwilson': 'jefferywilson',
+            'nicholassingleton': 'nicksingleton', 'kennethwalker': 'kenwalker'
+        };
+        return aliasMap[n] || n;
     }
 
     // --- NAVIGATION LOGIC ---
@@ -306,13 +320,11 @@
             return;
         }
 
-        // Apply ROS Ranks
         let displayRoster = rosterArray.map(p => {
             let rObj = rosRankings.find(rk => rk.cleanName === p.cleanName);
             return { ...p, rosRank: rObj ? rObj.rank : 999 };
         });
 
-        // Sort by ROS Rank (lowest number is better). If unranked, fall back to pos grouping.
         const posOrder = { "QB": 1, "RB": 2, "WR": 3, "TE": 4, "K": 5, "DEF": 6 };
         displayRoster.sort((a, b) => {
             if (a.rosRank !== 999 || b.rosRank !== 999) return a.rosRank - b.rosRank;
@@ -354,95 +366,106 @@
         }
     }
 
-    // ROS Upload (Standard Vertical format)
-    document.getElementById('rosFileInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
+    // Generic Smart Parser for Both File Inputs
+    function handleRankingsUpload(fileInputId, isWeekly, successMsgId) {
+        const file = document.getElementById(fileInputId).files[0];
         if (!file) return;
-        Papa.parse(file, { 
-            header: false, skipEmptyLines: true, 
-            complete: function(results) { 
-                let parsed = [];
-                results.data.forEach((row, idx) => {
-                    // Assuming a format where Name is found in early columns. Let's do a basic parse.
-                    // This can be expanded later for headers, but this handles basic pasted CSVs.
-                    let nameStr = row[0] || row[1];
-                    if (nameStr && nameStr.trim().toLowerCase() !== 'player' && nameStr.trim().toLowerCase() !== 'name') {
-                        parsed.push({
-                            name: nameStr.trim(),
-                            cleanName: normalizeName(nameStr.trim()),
-                            rank: idx + 1
-                        });
-                    }
-                });
-                rosRankings = parsed;
-                localStorage.setItem('mds_season_ros', JSON.stringify(rosRankings));
-                updateRankingsMetaDisplay();
-                if (myRoster.length > 0) renderRoster(myRoster);
-                alert("ROS Rankings Loaded Successfully!");
-            }
-        });
-    });
-
-    // Weekly Upload (Horizontal Positional Parser)
-    document.getElementById('weeklyFileInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        Papa.parse(file, { 
-            header: false, skipEmptyLines: true, 
-            complete: function(results) { 
+        
+        Papa.parse(file, {
+            header: false, skipEmptyLines: true,
+            complete: function(results) {
                 let parsed = [];
                 let rows = results.data;
-                if (rows.length < 2) return;
+                if (rows.length < 1) return;
 
-                let headers = rows[0].map(h => h.trim().toLowerCase());
-                
-                // Detect Horizontal Format vs Standard
-                if (headers.includes('quarterback') || headers.includes('running back')) {
-                    // HORIZONTAL PARSER
-                    // Find column indexes for each position name
-                    let posIndexes = [];
+                let headers = rows[0].map(h => String(h).trim().toLowerCase());
+                let isHorizontal = headers.includes('quarterback') || headers.includes('running back');
+
+                if (isHorizontal) {
+                    // HORIZONTAL (SIDE-BY-SIDE) PARSER
+                    let playerRanks = {};
                     headers.forEach((h, idx) => {
-                        if (['quarterback', 'running back', 'wide receiver', 'tight end', 'flex'].includes(h)) {
-                            posIndexes.push(idx);
+                        let isFlex = (h === 'flex');
+                        let isPos = ['quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense'].includes(h);
+                        
+                        if (isFlex || isPos) {
+                            for (let r = 1; r < rows.length; r++) {
+                                let pName = rows[r][idx];
+                                let pRank = rows[r][idx - 1]; // Rank is typically the column right before
+                                
+                                if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
+                                    let clean = normalizeName(pName.trim());
+                                    if (!playerRanks[clean]) {
+                                        playerRanks[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
+                                    }
+                                    if (isFlex) {
+                                        playerRanks[clean].flexRank = parseInt(pRank);
+                                        playerRanks[clean].rank = parseInt(pRank); // Backup sort
+                                    } else {
+                                        playerRanks[clean].posRank = parseInt(pRank);
+                                        playerRanks[clean].rank = parseInt(pRank);
+                                    }
+                                }
+                            }
                         }
                     });
-
-                    // Loop through data rows and extract from those indexes
-                    for (let r = 1; r < rows.length; r++) {
-                        let rowData = rows[r];
-                        posIndexes.forEach(colIdx => {
-                            let pName = rowData[colIdx];
-                            let pRank = rowData[colIdx - 1]; // Rank is usually the column right before the name in this format
-                            if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
-                                parsed.push({
-                                    name: pName.trim(),
-                                    cleanName: normalizeName(pName.trim()),
-                                    rank: parseInt(pRank)
-                                });
-                            }
-                        });
-                    }
+                    parsed = Object.values(playerRanks);
                 } else {
-                    // STANDARD VERTICAL FALLBACK
-                    rows.forEach((row, idx) => {
-                        let nameStr = row[0] || row[1];
-                        if (nameStr && nameStr.trim().toLowerCase() !== 'player') {
+                    // VERTICAL (STANDARD) PARSER
+                    let nameColIdx = -1;
+                    let rankColIdx = -1;
+                    
+                    let hasHeaders = headers.some(h => h === 'player' || h === 'name' || h === 'player name');
+                    if (hasHeaders) {
+                        nameColIdx = headers.findIndex(h => h === 'player' || h === 'name' || h === 'player name');
+                        rankColIdx = headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'pos rank' || h === 'tier');
+                    } else {
+                        // Guess columns if no explicit headers
+                        let col0IsNum = !isNaN(parseInt(rows[0][0]));
+                        nameColIdx = col0IsNum ? 1 : 0;
+                        rankColIdx = col0IsNum ? 0 : -1;
+                    }
+
+                    let startIndex = hasHeaders ? 1 : 0;
+                    for (let i = startIndex; i < rows.length; i++) {
+                        let nameStr = rows[i][nameColIdx];
+                        if (nameStr && nameStr.trim()) {
+                            let rankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
+                            if (isNaN(rankVal)) rankVal = i + 1 - startIndex;
+                            
                             parsed.push({
                                 name: nameStr.trim(),
                                 cleanName: normalizeName(nameStr.trim()),
-                                rank: idx + 1
+                                rank: rankVal,
+                                posRank: rankVal,
+                                flexRank: rankVal
                             });
                         }
-                    });
+                    }
                 }
 
-                weeklyRankings = parsed;
-                localStorage.setItem('mds_season_weekly', JSON.stringify(weeklyRankings));
+                // Save State
+                if (isWeekly) {
+                    weeklyRankings = parsed;
+                    localStorage.setItem('mds_season_weekly', JSON.stringify(weeklyRankings));
+                } else {
+                    rosRankings = parsed;
+                    localStorage.setItem('mds_season_ros', JSON.stringify(rosRankings));
+                }
+                
                 updateRankingsMetaDisplay();
-                alert("Weekly Rankings Loaded Successfully!");
+                if (myRoster.length > 0) renderRoster(myRoster);
+                
+                // Show Inline Success Message
+                let msgEl = document.getElementById(successMsgId);
+                msgEl.style.display = 'block';
+                setTimeout(() => msgEl.style.display = 'none', 2500);
             }
         });
-    });
+    }
+
+    document.getElementById('rosFileInput').addEventListener('change', () => handleRankingsUpload('rosFileInput', false, 'rosSuccessMsg'));
+    document.getElementById('weeklyFileInput').addEventListener('change', () => handleRankingsUpload('weeklyFileInput', true, 'weeklySuccessMsg'));
 
     // --- LINEUP OPTIMIZER ENGINE ---
     function toggleLock(playerId) {
@@ -464,56 +487,52 @@
             return;
         }
 
-        // Use Weekly Rankings primarily, fallback to ROS if empty
         let activeDataSet = weeklyRankings.length > 0 ? weeklyRankings : rosRankings;
 
-        // Map roster players to their active ranking score
         let scoredRoster = myRoster.map(p => {
             let rObj = activeDataSet.find(rk => rk.cleanName === p.cleanName);
             return {
                 ...p,
-                rank: rObj ? rObj.rank : 999,
+                posRank: rObj ? rObj.posRank : 999,
+                flexRank: rObj ? rObj.flexRank : 999,
                 isLocked: lockedPlayerIds.includes(p.id)
             };
         });
 
-        // Sort by Rank score (lower is better)
-        scoredRoster.sort((a, b) => a.rank - b.rank);
-
         let pool = [...scoredRoster];
         let starters = [];
 
-        // Helper to pull best available player for a slot
-        const fillSlot = (slotLabel, posFilter) => {
-            // First check if a locked player matches this slot requirement
+        const fillSlot = (slotLabel, posFilter, useFlexRank) => {
+            // Sort pool based on the specific slot type needs
+            pool.sort((a, b) => {
+                let rankA = useFlexRank ? (a.flexRank !== 999 ? a.flexRank : a.posRank) : a.posRank;
+                let rankB = useFlexRank ? (b.flexRank !== 999 ? b.flexRank : b.posRank) : b.posRank;
+                return rankA - rankB;
+            });
+
             let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
             if (lockedIndex !== -1) {
                 let p = pool.splice(lockedIndex, 1)[0];
-                starters.push({ slot: slotLabel, player: p });
+                starters.push({ slot: slotLabel, player: p, usedFlex: useFlexRank });
                 return;
             }
 
-            // Otherwise pick best ranked player
             let bestIndex = pool.findIndex(p => posFilter(p.pos));
             if (bestIndex !== -1) {
                 let p = pool.splice(bestIndex, 1)[0];
-                starters.push({ slot: slotLabel, player: p });
+                starters.push({ slot: slotLabel, player: p, usedFlex: useFlexRank });
             } else {
                 starters.push({ slot: slotLabel, player: null });
             }
         };
 
-        // Fill Positional Slots
-        for (let i = 0; i < lineupReqs.QB; i++) fillSlot(`QB${i+1}`, pos => pos === 'QB');
-        for (let i = 0; i < lineupReqs.RB; i++) fillSlot(`RB${i+1}`, pos => pos === 'RB');
-        for (let i = 0; i < lineupReqs.WR; i++) fillSlot(`WR${i+1}`, pos => pos === 'WR');
-        for (let i = 0; i < lineupReqs.TE; i++) fillSlot(`TE${i+1}`, pos => pos === 'TE');
+        for (let i = 0; i < lineupReqs.QB; i++) fillSlot(`QB${i+1}`, pos => pos === 'QB', false);
+        for (let i = 0; i < lineupReqs.RB; i++) fillSlot(`RB${i+1}`, pos => pos === 'RB', false);
+        for (let i = 0; i < lineupReqs.WR; i++) fillSlot(`WR${i+1}`, pos => pos === 'WR', false);
+        for (let i = 0; i < lineupReqs.TE; i++) fillSlot(`TE${i+1}`, pos => pos === 'TE', false);
 
-        // Fill FLEX Slots
-        for (let i = 0; i < lineupReqs.FLEX; i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos));
-        
-        // Fill SFLEX Slots
-        for (let i = 0; i < lineupReqs.SFLEX; i++) fillSlot(`SFLEX${i+1}`, pos => ['QB', 'RB', 'WR', 'TE'].includes(pos));
+        for (let i = 0; i < lineupReqs.FLEX; i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos), true);
+        for (let i = 0; i < lineupReqs.SFLEX; i++) fillSlot(`SFLEX${i+1}`, pos => ['QB', 'RB', 'WR', 'TE'].includes(pos), true);
 
         // Render Starters
         let html = "";
@@ -522,7 +541,10 @@
                 let p = s.player;
                 let lockIcon = p.isLocked ? "🔒" : "🔓";
                 let lockClass = p.isLocked ? "locked" : "";
-                let rankBadge = p.rank !== 999 ? `Wk Rk: ${p.rank}` : "Unranked";
+                
+                let displayRank = s.usedFlex ? (p.flexRank !== 999 ? p.flexRank : p.posRank) : p.posRank;
+                let rankLabel = s.usedFlex && p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
+                let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
@@ -549,11 +571,20 @@
         });
         container.innerHTML = html;
 
-        // Render Remaining Bench
+        // Render Bench (Sorted by overall Flex utility)
         let benchHTML = "";
         if (pool.length > 0) {
+            pool.sort((a, b) => {
+                let rankA = a.flexRank !== 999 ? a.flexRank : a.posRank;
+                let rankB = b.flexRank !== 999 ? b.flexRank : b.posRank;
+                return rankA - rankB;
+            });
+
             pool.forEach(p => {
-                let rankBadge = p.rank !== 999 ? `Wk Rk: ${p.rank}` : "Unranked";
+                let displayRank = p.flexRank !== 999 ? p.flexRank : p.posRank;
+                let rankLabel = p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
+                let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
+                
                 benchHTML += `
                 <div class="roster-item">
                     <div style="font-weight:bold; color:#f8fafc;">${p.name}</div>
