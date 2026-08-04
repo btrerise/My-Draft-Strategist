@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Lineup Strategist</title>
+    
+    <link rel="icon" href="../5775.png"> <!-- Inherits icon from main folder -->
+
+    <style>
+        :root {
+            --primary-green: #34A853;
+            --bg-color: #0b132b;
+            --card-bg: #1c2541;
+            --text-main: #ffffff;
+            --text-muted: #8d99ae;
+            --border: #3a506b;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; }
+
+        /* Gatekeeper Overlay */
+        #gatekeeper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; text-align: center; }
+        .gate-card { background: var(--card-bg); padding: 2rem; border-radius: 8px; border: 1px solid var(--primary-green); max-width: 400px; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .gate-card input { text-align: center; font-size: 1.2rem; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* Header */
+        .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); padding: 0.8rem 1rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .header-title { font-weight: bold; display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Cards & Inputs */
+        .settings-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; }
+        
+        input[type="text"], input[type="password"] { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
+        
+        .btn-primary { background: var(--primary-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
+        .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; }
+
+        /* Roster Display */
+        .roster-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid var(--border); background: #0b132b; margin-bottom: 4px; border-radius: 4px; }
+        .badge { background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.80rem; color: #f1f5f9; }
+
+        /* Bottom Tab Navigation */
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 2px solid var(--border); display: flex; justify-content: space-around; padding: 0.5rem; z-index: 98; }
+        .nav-bar .nav-btn { background: none; border: none; font-size: 0.95rem; color: var(--text-muted); font-weight: bold; padding: 0.5rem; cursor: pointer; flex: 1; }
+        .nav-bar .nav-btn.active { color: var(--primary-green); border-bottom: 3px solid var(--primary-green); }
+    </style>
+</head>
+<body>
+
+<!-- GATEKEEPER OVERLAY -->
+<div id="gatekeeper">
+    <div class="gate-card">
+        <h2 style="margin-top:0; color: #4ade80;">MDS: In-Season</h2>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">Enter your Ko-fi access code to unlock the Lineup Optimizer.</p>
+        <input type="password" id="passcodeInput" placeholder="PASSCODE" onkeypress="if(event.key === 'Enter') checkPasscode()">
+        <button class="btn-primary" onclick="checkPasscode()">Unlock Tool</button>
+        <p id="gateError" style="color: #ea4335; font-size: 0.85rem; display: none; margin-top: 1rem; font-weight: bold;">Incorrect passcode.</p>
+    </div>
+</div>
+
+<!-- MAIN APP (Hidden until unlocked) -->
+<div id="mainApp" style="display: none;">
+    <div class="header">
+        <div class="header-title">
+            <span style="font-size: 1.4rem;">🏈</span> My Lineup Strategist
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <!-- SETUP TAB -->
+        <div id="setupTab" class="tab-content active">
+            <div class="settings-card">
+                <h3>1. League Settings</h3>
+                <label style="font-size: 0.9rem; font-weight: bold;">Sleeper Username</label>
+                <input type="text" id="sleeperUsername" placeholder="e.g., fantasy_guru">
+                
+                <label style="font-size: 0.9rem; font-weight: bold;">League ID</label>
+                <input type="text" id="sleeperLeagueId" placeholder="e.g., 912345678901234567">
+                
+                <button id="syncBtn" class="btn-secondary" onclick="syncSleeperRoster(this)">Sync Roster</button>
+            </div>
+
+            <div class="settings-card">
+                <h3>Your Roster</h3>
+                <div id="rosterList" style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+                    Sync your Sleeper account to view your roster.
+                </div>
+            </div>
+        </div>
+
+        <!-- LINEUP TAB -->
+        <div id="lineupTab" class="tab-content">
+            <div class="settings-card" style="text-align: center; padding: 3rem 1rem;">
+                <h3 style="border: none; color: #4ade80;">Lineup Optimizer</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Start/Sit optimization coming in Version 2!</p>
+            </div>
+        </div>
+
+        <!-- RANKINGS TAB -->
+        <div id="rankingsTab" class="tab-content">
+            <div class="settings-card" style="text-align: center; padding: 3rem 1rem;">
+                <h3 style="border: none; color: #93c5fd;">Custom Rankings</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">ROS and Weekly ranking uploads coming soon.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- BOTTOM HYBRID NAVIGATION -->
+    <div class="nav-bar">
+        <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">⚙️ Setup</button>
+        <button class="nav-btn" data-target="lineup" onclick="showTab('lineup')">🏈 Lineup</button>
+        <button class="nav-btn" data-target="rankings" onclick="showTab('rankings')">📈 Rankings</button>
+    </div>
+</div>
+
+<script>
+    // --- GATEKEEPER LOGIC ---
+    const SECRET_CODE = "SUNDAY2026"; // Change this to your preferred Ko-fi passcode
+
+    // Check if previously unlocked
+    if (localStorage.getItem('mds_season_unlocked') === 'true') {
+        unlockApp();
+    }
+
+    function checkPasscode() {
+        const input = document.getElementById('passcodeInput').value.trim().toUpperCase();
+        if (input === SECRET_CODE) {
+            localStorage.setItem('mds_season_unlocked', 'true');
+            unlockApp();
+        } else {
+            document.getElementById('gateError').style.display = 'block';
+        }
+    }
+
+    function unlockApp() {
+        document.getElementById('gatekeeper').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        loadSettings();
+    }
+
+    // --- NAVIGATION LOGIC ---
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById(tabId + 'Tab').classList.add('active');
+        document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`).classList.add('active');
+        window.scrollTo(0, 0);
+    }
+
+    // --- SLEEPER API LOGIC ---
+    let myRoster = JSON.parse(localStorage.getItem('mds_my_roster')) || [];
+
+    function loadSettings() {
+        document.getElementById('sleeperUsername').value = localStorage.getItem('mds_season_user') || "";
+        document.getElementById('sleeperLeagueId').value = localStorage.getItem('mds_season_league') || "";
+        if (myRoster.length > 0) renderRoster(myRoster);
+    }
+
+    async function syncSleeperRoster(btn) {
+        const username = document.getElementById('sleeperUsername').value.trim();
+        const leagueId = document.getElementById('sleeperLeagueId').value.trim();
+
+        if (!username || !leagueId) {
+            alert("Please enter both Username and League ID.");
+            return;
+        }
+
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Syncing...";
+        btn.style.backgroundColor = "#8b5cf6";
+
+        try {
+            // 1. Get User ID
+            const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+            if (!userRes.ok) throw new Error("User not found.");
+            const userData = await userRes.json();
+            const userId = userData.user_id;
+
+            // 2. Get All Rosters in League
+            const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+            if (!rosterRes.ok) throw new Error("League not found.");
+            const rosters = await rosterRes.json();
+            
+            // 3. Find My Specific Roster
+            const myTeam = rosters.find(r => r.owner_id === userId);
+            if (!myTeam) throw new Error("Could not find your team in this league.");
+            
+            const playerIds = myTeam.players || [];
+
+            // 4. Get Player Map to translate IDs to Names
+            btn.innerText = "⏳ Loading Players...";
+            const mapRes = await fetch(`https://api.sleeper.app/v1/players/nfl`);
+            const playerMap = await mapRes.json();
+
+            let rosterDetails = [];
+            playerIds.forEach(id => {
+                let p = playerMap[id];
+                if (p) {
+                    rosterDetails.push({
+                        id: id,
+                        name: `${p.first_name} ${p.last_name}`,
+                        pos: p.position || "FLEX",
+                        team: p.team || "FA"
+                    });
+                }
+            });
+
+            // Sort by Position
+            const posOrder = { "QB": 1, "RB": 2, "WR": 3, "TE": 4, "K": 5, "DEF": 6 };
+            rosterDetails.sort((a, b) => (posOrder[a.pos] || 99) - (posOrder[b.pos] || 99));
+
+            // Save and Render
+            myRoster = rosterDetails;
+            localStorage.setItem('mds_season_user', username);
+            localStorage.setItem('mds_season_league', leagueId);
+            localStorage.setItem('mds_my_roster', JSON.stringify(myRoster));
+            
+            renderRoster(myRoster);
+            
+            btn.innerText = "✅ Synced Successfully!";
+            btn.style.backgroundColor = "#4ade80";
+            btn.style.color = "#0b132b";
+            
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.backgroundColor = "#4285f4";
+                btn.style.color = "white";
+            }, 2500);
+
+        } catch(err) {
+            console.error(err);
+            btn.innerText = "⚠️ Error";
+            btn.style.backgroundColor = "#ea4335";
+            alert(`Sync Error:\n${err.message}`);
+        }
+    }
+
+    function renderRoster(rosterArray) {
+        const container = document.getElementById('rosterList');
+        if (rosterArray.length === 0) {
+            container.innerHTML = "No players found.";
+            return;
+        }
+
+        let html = "";
+        rosterArray.forEach(p => {
+            html += `
+            <div class="roster-item">
+                <div style="font-weight: bold; color: #f8fafc;">${p.name}</div>
+                <div>
+                    <span class="badge" style="background: var(--primary-green);">${p.pos}</span>
+                    <span class="badge">${p.team}</span>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
+</script>
+
+</body>
+</html>
