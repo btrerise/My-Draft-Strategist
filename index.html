@@ -273,6 +273,14 @@
 
         <div class="settings-card">
             <h3>4. Roster Limits & Settings 📊</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div><label style="font-size: 0.8rem; font-weight: bold;">Teams in League</label><input type="number" id="leagueTeams" min="2" value="12"></div>
+                <div><label style="font-size: 0.8rem; font-weight: bold;">Total Rounds</label><input type="number" id="leagueRounds" min="1" value="15"></div>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;">
+            
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
                 <div><label style="font-size: 0.8rem; font-weight: bold;">QB</label><input type="number" id="limitQB" min="0" value="1"></div>
                 <div><label style="font-size: 0.8rem; font-weight: bold;">RB</label><input type="number" id="limitRB" min="0" value="2"></div>
@@ -332,17 +340,17 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v1.0.2 (RC)
+            Draft Strategist v1.0.3 (RC)
         </div>
     </div>
 
     <!-- TRACKER TAB -->
     <div id="trackerTab" class="tab-content">
-        <!-- Clean Stacked Row Layout for Tracker Control Card -->
+        <!-- Clean Stacked Row Layout for Tracker Control Card with Correct Spacing -->
         <div class="settings-card" style="padding: 0.8rem; margin-bottom: 0.6rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
-                <div id="pickTracker" class="badge" style="background: var(--primary-green); color: white; font-size: 0.95rem; padding: 0.4rem 0.7rem; white-space: nowrap;">Pick: 1.01</div>
-                <button class="btn-sm btn-warning" style="margin:0; padding: 0.35rem 0.7rem; font-size: 0.8rem;" onclick="resetPicksOnly()" title="Reset Draft Picks">🧹 Reset Picks</button>
+            <div style="display: flex; justify-content: space-between; align-items: stretch; gap: 0.8rem; margin-bottom: 0.6rem;">
+                <div id="pickTracker" class="badge" style="background: var(--primary-green); color: white; font-size: 0.95rem; padding: 0.4rem 0.7rem; white-space: nowrap; display: flex; align-items: center; justify-content: center;">Pick: 1.01</div>
+                <button class="btn-sm btn-warning" style="margin: 0; width: auto; flex-grow: 1; padding: 0.4rem 0.7rem; font-size: 0.85rem;" onclick="resetPicksOnly()" title="Reset Draft Picks">🧹 Reset Picks</button>
             </div>
             <input type="text" id="searchBar" placeholder="Search player..." style="margin: 0; padding: 0.5rem; width: 100%;" onkeyup="renderBoard()">
         </div>
@@ -544,7 +552,7 @@
         handleGesture();
     }, {passive: true});
 
-    // --- BULLETPROOF NAME MATCHING ---
+    // --- BULLETPROOF NAME MATCHING WITH ALIASES ---
     function normalizeName(name) {
         if (!name) return "";
         return String(name)
@@ -556,7 +564,31 @@
 
     function isNameMatch(name1, name2) {
         if (!name1 || !name2) return false;
-        return normalizeName(name1) === normalizeName(name2);
+        let n1 = normalizeName(name1);
+        let n2 = normalizeName(name2);
+        
+        if (n1 === n2) return true;
+
+        // Custom Alias Mapper to prevent classic mismatch errors (e.g., Kenny vs Kenneth)
+        const aliasMap = {
+            'kennygainwell': 'kennethgainwell',
+            'gabedavis': 'gabrieldavis',
+            'joshpalmer': 'joshuapalmer',
+            'mitchtrubisky': 'mitchelltrubisky',
+            'tankdell': 'nathanieldell',
+            'hollywoodbrown': 'marquisebrown',
+            'scottymiller': 'scottmiller',
+            'djchark': 'djcharkjr',
+            'jeffwilson': 'jefferywilson'
+        };
+
+        // Two-way match check
+        if (aliasMap[n1] === n2 || aliasMap[n2] === n1) return true;
+        
+        // Handle scenario where both names map to the exact same root base
+        if (aliasMap[n1] && aliasMap[n1] === aliasMap[n2]) return true;
+
+        return false;
     }
 
     // Load Settings
@@ -567,7 +599,10 @@
     document.getElementById('dartList').value = localStorage.getItem('ds_darts') || "";
     document.getElementById('stackToggle').checked = localStorage.getItem('ds_stacks') === 'true';
     document.getElementById('byeWarningToggle').checked = localStorage.getItem('ds_bye_warnings') === 'true';
-
+    
+    // Load Roster & League Settings
+    document.getElementById('leagueTeams').value = leagueDraftSettings.teams || 12;
+    document.getElementById('leagueRounds').value = leagueDraftSettings.rounds || 15;
     document.getElementById('limitQB').value = dsLimits.QB;
     document.getElementById('limitRB').value = dsLimits.RB;
     document.getElementById('limitWR').value = dsLimits.WR;
@@ -603,6 +638,10 @@
         localStorage.setItem('ds_darts', document.getElementById('dartList').value);
         localStorage.setItem('ds_stacks', document.getElementById('stackToggle').checked);
         localStorage.setItem('ds_bye_warnings', document.getElementById('byeWarningToggle').checked);
+        
+        leagueDraftSettings.teams = parseInt(document.getElementById('leagueTeams').value) || 12;
+        leagueDraftSettings.rounds = parseInt(document.getElementById('leagueRounds').value) || 15;
+        localStorage.setItem('ds_draft_settings', JSON.stringify(leagueDraftSettings));
 
         dsLimits = {
             QB: parseInt(document.getElementById('limitQB').value) || 0,
@@ -1045,6 +1084,9 @@
                 let numTeams = dInfo.settings?.teams || 12;
                 let numRounds = dInfo.settings?.rounds || 15;
                 leagueDraftSettings = { teams: numTeams, rounds: numRounds };
+                
+                document.getElementById('leagueTeams').value = numTeams;
+                document.getElementById('leagueRounds').value = numRounds;
             }
 
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
@@ -1318,8 +1360,10 @@
         let totalPicksDone = Math.max(draftedPlayers.length, syncedPicks);
         let currentOverallPick = totalPicksDone + 1;
         
-        let round = Math.ceil(currentOverallPick / 12);
-        let pickInRound = currentOverallPick - ((round - 1) * 12);
+        // Dynamically use the saved league settings for the Pick counter
+        let teamsInLeague = leagueDraftSettings.teams || 12;
+        let round = Math.ceil(currentOverallPick / teamsInLeague);
+        let pickInRound = currentOverallPick - ((round - 1) * teamsInLeague);
         document.getElementById('pickTracker').innerText = `Pick: ${round}.${pickInRound.toString().padStart(2, '0')}`;
 
         const trackers = getTierTrackerData();
