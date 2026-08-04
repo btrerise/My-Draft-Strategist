@@ -6,7 +6,7 @@
     <title>My Draft Strategist</title>
 
     <!-- Browser Tab Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏈</text></svg>">
+    <link rel="icon" href="5775.png">
 
     <!-- PapaParse for CSV reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -166,6 +166,7 @@
 <div class="header">
     <div class="header-title">
         <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
+        <img src="5775.png" alt="Logo" style="height: 28px; border-radius: 4px; box-shadow: 0 0 5px rgba(52, 168, 83, 0.4);">
         <div>My Draft<br>Strategist</div>
     </div>
     <div class="header-controls">
@@ -179,8 +180,9 @@
 <div class="hamburger-menu" id="hamburgerMenu">
     <button class="close-menu-btn" onclick="toggleMenu()">✖</button>
     
-    <div style="padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-green); margin-bottom: 0.5rem;">
-        <h3 style="margin: 0 1.5rem; color: #f1f5f9;">Menu</h3>
+    <div style="padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-green); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.8rem;">
+        <img src="5775.png" alt="Logo" style="height: 28px; border-radius: 4px; margin-left: 1.5rem;">
+        <h3 style="margin: 0; color: #f1f5f9;">Menu</h3>
     </div>
 
     <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">⚙️ Setup</button>
@@ -202,7 +204,7 @@
     <div id="setupTab" class="tab-content active">
         <!-- LARGE HERO LOGO -->
         <div style="text-align: center; margin-bottom: 1.5rem;">
-            <img src="logo.png" alt="My Draft Strategist" onerror="this.style.display='none'" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            <img src="5775.png" alt="My Draft Strategist" onerror="this.style.display='none'" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
             <div style="margin-top: 1rem; display: flex; justify-content: center;">
                 <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center;">
                     <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
@@ -213,9 +215,16 @@
         <div class="settings-card">
             <h3>1. Load Rankings</h3>
             <div id="metaDisplay" class="status-badge"></div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Upload your CSV or Excel (.xlsx) file. Compatible with manual tracking and sync.</p>
-            <input type="file" id="fileInput">
-            <p style="text-align: center; font-size: 0.8rem; margin: 0.2rem 0;">— OR —</p>
+            
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; margin-bottom: 0.8rem;">
+                Want to skip the spreadsheet? Quick-start using live Market Value rankings (Select your league format below in Step 2).
+            </p>
+            <button class="btn-primary" style="background-color: #8b5cf6; margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.3);" onclick="quickStartLeagueLogs(this)">🚀 Quick-Start: LeagueLogs Market</button>
+            
+            <p style="text-align: center; font-size: 0.8rem; margin: 0.2rem 0; color: var(--text-muted);">— OR UPLOAD CUSTOM —</p>
+            
+            <input type="file" id="fileInput" style="margin-top: 0.5rem;">
+            <p style="text-align: center; font-size: 0.8rem; margin: 0.2rem 0; color: var(--text-muted);">— OR PASTE —</p>
             <textarea id="csvPasteArea" rows="2" placeholder="Paste raw CSV text here..."></textarea>
             <button class="btn-primary" onclick="processPaste(this)">Process Pasted Data</button>
         </div>
@@ -324,7 +333,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.9.9 (Beta)
+            Draft Strategist v1.0 (RC)
         </div>
     </div>
 
@@ -394,10 +403,10 @@
             <h3 style="border-bottom: 2px solid var(--primary-green);">How to Use My Draft Strategist</h3>
             
             <h4>1. Load Rankings</h4>
-            <p>Upload your custom rankings via CSV or Excel. Ensure your file has a 'Name' column.</p>
+            <p>Upload your custom rankings via CSV or Excel. Ensure your file has a 'Name' column. Or, use the <strong>Quick-Start</strong> option to automatically load live Market Value rankings from LeagueLogs.</p>
 
             <h4>2. Live Market Value (ADP)</h4>
-            <p>Once rankings are loaded, click "Fetch Market Value" to pull live market data from LeagueLogs (incorporating ADP and platform-wide market trends) based on your specific league settings. The app will automatically assign Rookie badges (purple 'R') to first-year players in this process.</p>
+            <p>Once custom rankings are loaded, click "Fetch Market Value" to pull live market data from LeagueLogs (incorporating ADP and platform-wide market trends) based on your specific league settings. The app will automatically assign Rookie badges (purple 'R') to first-year players in this process.</p>
 
             <h4>3. Sleeper Sync</h4>
             <p>Enter your Sleeper Username and Draft ID to sync live draft picks. You can hit the Sync button manually, or toggle "Live Auto-Sync" to have the board update automatically every 5 seconds.</p>
@@ -811,6 +820,108 @@
             metaEl.style.display = 'none';
             if(btn) flashButton(btn, "⚠️ Error Parsing Data", true);
             alert("Error: Could not detect player names.");
+        }
+    }
+
+    async function quickStartLeagueLogs(btn) {
+        const formatSelect = document.getElementById('adpFormatSelect');
+        const profileKey = formatSelect.value;
+        const formatText = formatSelect.options[formatSelect.selectedIndex].text;
+
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Building Quick-Start...";
+
+        try {
+            // 1. Fetch Sleeper DB
+            let sleeperMap = {};
+            try {
+                let res = await fetch('https://api.sleeper.app/v1/players/nfl');
+                if (res.ok) sleeperMap = await res.json();
+            } catch(e) { console.warn("Sleeper DB fetch failed", e); }
+
+            // 2. Fetch LeagueLogs Market
+            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+            if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
+            const llMarket = await marketRes.json();
+
+            // 3. Fetch LeagueLogs Player Meta
+            let playerMetaMap = {};
+            try {
+                let pRes = await fetch(`https://developer.leaguelogs.com/v1/players`);
+                if (pRes.ok) {
+                    let pData = await pRes.json();
+                    pData.data.forEach(lp => { playerMetaMap[lp.sleeperPlayerId] = lp; });
+                }
+            } catch(e) { console.warn("LeagueLogs Meta fetch failed", e); }
+
+            // 4. Build Players Array
+            let newPlayers = [];
+            let posCounters = {};
+            
+            // Sort market data by overall rank to assign sequential Custom Rank
+            let sortedMarket = llMarket.data.sort((a,b) => parseFloat(a.overallRank) - parseFloat(b.overallRank));
+
+            sortedMarket.forEach((item) => {
+                let sId = item.sleeperPlayerId;
+                let sp = sleeperMap[sId];
+                if (!sp || !sp.first_name) return; // Skip invalid or defense if not handled
+
+                let cleanName = sp.first_name + " " + sp.last_name;
+                let team = sp.team || "FA";
+                let bye = BYE_WEEKS_2026[team] || "-";
+                
+                let posGroup = (sp.position || "FLEX").toUpperCase();
+                if (!['QB', 'RB', 'WR', 'TE'].includes(posGroup)) return; // Filter to standard offensive positions
+
+                if (!posCounters[posGroup]) posCounters[posGroup] = 1;
+                let posDisplay = posGroup + posCounters[posGroup];
+                posCounters[posGroup]++;
+
+                let lp = playerMetaMap[sId];
+                let isRookie = lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false;
+                
+                let adpNum = parseFloat(item.overallRank);
+
+                newPlayers.push({
+                    id: newPlayers.length + 1,
+                    sleeperId: sId,
+                    rank: newPlayers.length + 1,
+                    name: cleanName,
+                    posGroup: posGroup,
+                    posDisplay: posDisplay,
+                    tier: "-", // Default no tier for quick start
+                    team: team,
+                    bye: bye,
+                    adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1),
+                    isRookie: isRookie
+                });
+            });
+
+            if(newPlayers.length > 0) {
+                players = newPlayers;
+                draftedPlayers = []; myTeam = []; rawDraftPicks = [];
+
+                let now = new Date();
+                let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                rankingsMeta = { count: players.length, date: dateString };
+                adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
+
+                localStorage.setItem('ds_meta', JSON.stringify(rankingsMeta));
+                localStorage.setItem('ds_adp_meta', JSON.stringify(adpMeta));
+                localStorage.setItem('ds_players', JSON.stringify(players));
+                
+                updateMetaDisplay();
+                saveDraftState();
+
+                flashButton(btn, "✅ Quick-Start Loaded!", false, originalText);
+            } else {
+                throw new Error("No players generated.");
+            }
+
+        } catch(err) {
+            console.error(err);
+            flashButton(btn, "⚠️ Fetch Error", true, originalText);
+            alert(`Failed to load Quick-Start.\n\n${err.message}`);
         }
     }
 
