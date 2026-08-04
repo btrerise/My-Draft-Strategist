@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>My Draft Strategist</title>
-    
+
     <!-- Browser Tab Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏈</text></svg>">
 
@@ -24,7 +24,7 @@
             --avoid-bg: #3a1515; --avoid-border: #ea4335;
             --dart-bg: #112233; --dart-border: #4285f4;
             --stack-color: #ea580c;
-            
+
             /* Positional Colors */
             --pos-qb: #3a1515; --pos-qb-border: #ea4335;
             --pos-rb: #102a1e; --pos-rb-border: #34A853;
@@ -33,13 +33,13 @@
         }
 
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; }
-        
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); padding-bottom: 20px; }
+
         /* Sticky Header - Mobile Optimized */
         .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); color: white; padding: 0.6rem 0.8rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .header-title { font-weight: bold; display: flex; align-items: center; gap: 0.4rem; letter-spacing: 0.5px; line-height: 1.1; font-size: 0.95rem;}
         .header-controls { display: flex; align-items: center; gap: 0.6rem; }
-        
+
         .kofi-img { height: 32px; border: 0px; }
         @media (max-width: 480px) {
             .kofi-img { height: 26px; }
@@ -47,50 +47,56 @@
             .header-controls { gap: 0.4rem; }
         }
 
+        /* Hamburger Menu Styles */
+        .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99; display: none; }
+        .hamburger-menu { position: fixed; top: 0; left: -260px; width: 260px; height: 100%; background: var(--card-bg); z-index: 100; transition: 0.3s; border-right: 2px solid var(--primary-green); box-shadow: 2px 0 10px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 1rem 0; }
+        .hamburger-menu.open { left: 0; }
+        .hamburger-menu .nav-btn { background: none; border: none; padding: 1rem 1.5rem; text-align: left; font-size: 1.05rem; color: var(--text-main); font-weight: bold; cursor: pointer; border-bottom: 1px solid var(--border); width: 100%; transition: background 0.2s;}
+        .hamburger-menu .nav-btn:hover, .hamburger-menu .nav-btn.active { background: #0b132b; color: var(--primary-green); border-left: 5px solid var(--primary-green); padding-left: calc(1.5rem - 5px); }
+        .hamburger-btn { background: none; border: none; color: white; font-size: 1.6rem; cursor: pointer; padding: 0 0.6rem 0 0; display: flex; align-items: center; transition: opacity 0.2s;}
+        .hamburger-btn:active { opacity: 0.5; }
+        .close-menu-btn { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; text-align: right; padding: 0 1rem 0.5rem 1rem; }
+        .menu-kofi { margin: auto auto 1.5rem auto; text-align: center; }
+
         .btn-header { background-color: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border); padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; min-width: 40px; text-align: center; transition: all 0.2s; display: flex; align-items: center; gap: 4px;}
         .btn-header:active { background-color: rgba(255,255,255,0.3); }
 
         .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
-        
-        /* Tab Navigation */
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 2px solid var(--border); display: flex; justify-content: space-around; padding: 0.5rem; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.3); }
-        .nav-btn { background: none; border: none; font-size: 0.9rem; color: var(--text-muted); font-weight: bold; padding: 0.5rem; cursor: pointer; flex: 1; }
-        .nav-btn.active { color: var(--primary-green); border-bottom: 3px solid var(--primary-green); }
-        
+
         /* Sections */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        
+
         /* Cards & Inputs */
         .settings-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; }
         input[type="text"], input[type="file"], input[type="number"], textarea, select { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
         input[type="number"] { padding: 0.5rem; margin-bottom: 0.2rem; font-weight: bold;}
-        
+
         .toggle-container { display: flex; align-items: center; justify-content: space-between; background: #0b132b; padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; margin-bottom: 1rem; border: 1px solid var(--border);}
-        
+
         .btn-primary { background: var(--primary-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
         .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
         .btn-warning { background-color: #fbbc04; color: #0b132b; border: none; padding: 0.8rem; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 0.5rem; }
         .btn-danger { background-color: #ea4335; color: white; border: none; padding: 0.8rem; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
-        
+
         /* Player Board */
         .player-card { background: var(--card-bg); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .player-card-main { display: flex; justify-content: space-between; align-items: center; }
         .player-info h4 { margin: 0 0 0.25rem 0; font-size: 1.05rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; color: #f8fafc;}
         .player-stats { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;}
-        
+
         .badge { background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.80rem; color: #f1f5f9; }
         .badge-rookie { background-color: #8b5cf6; color: white; border: 1px solid #a78bfa; }
-        
+
         /* Positional Badges */
         .pos-badge.QB { background-color: var(--pos-qb); color: #fca5a5; border: 1px solid var(--pos-qb-border); }
         .pos-badge.RB { background-color: var(--pos-rb); color: #86efac; border: 1px solid var(--pos-rb-border); }
         .pos-badge.WR { background-color: var(--pos-wr); color: #93c5fd; border: 1px solid var(--pos-wr-border); }
         .pos-badge.TE { background-color: var(--pos-te); color: #fde047; border: 1px solid var(--pos-te-border); }
-        
+
         .tier-divider { background: linear-gradient(90deg, #102a1e, #1c2541); color: #4ade80; font-weight: bold; padding: 0.4rem 1rem; border-radius: 4px; margin: 1rem 0 0.5rem 0; font-size: 0.9rem; text-align: center; border: 1px solid var(--primary-green); }
-        
+
         /* Inline Editor Bar */
         .inline-editor { display: none; background: #0b132b; padding: 0.6rem; margin-top: 0.6rem; border-radius: 6px; border: 1px solid var(--primary-green); gap: 0.5rem; align-items: center; flex-wrap: wrap;}
         .inline-editor input { margin: 0; padding: 0.4rem; font-size: 0.9rem;}
@@ -106,7 +112,7 @@
         .btn-sm { padding: 0.4rem 0.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
         .btn-draft { background-color: #0b132b; color: var(--text-main); border: 1px solid var(--border); }
         .btn-mine { background-color: var(--primary-green); color: white; }
-        
+
         /* Roster Layout Styling */
         .roster-slot { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); background: var(--card-bg); margin-bottom: 2px; border-radius: 4px;}
         .roster-slot.empty { background: rgba(255,255,255,0.03); border: 1px dashed var(--border); }
@@ -115,45 +121,77 @@
         .limits-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; background: var(--card-bg); font-size: 0.85rem;}
         .limits-table th, .limits-table td { border: 1px solid var(--border); padding: 0.5rem; text-align: center; }
         .limits-table th { font-weight: bold; background-color: #0b132b; }
-        
+
         .status-badge { font-size: 0.85rem; color: #86efac; font-weight: bold; background: #102a1e; border: 1px solid var(--primary-green); padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; text-align: center;}
 
-        /* Ultra-Wide Full-Bleed Matrix Board View (No Cards, Two-Line Text Wrap) */
+        /* Ultra-Wide Full-Bleed Matrix Board View (Position Color Background & Stacked Text) */
         .matrix-header-group { margin-bottom: 0.6rem; padding: 0 0.2rem; }
         .matrix-header-group h3 { margin: 0 0 0.2rem 0; font-size: 1.1rem; color: #f1f5f9; }
         .draft-board-container { overflow-x: auto; width: 100%; background: transparent; padding: 0; }
         .draft-grid { display: grid; gap: 2px; min-width: max-content; }
         .draft-col-header { background: #1c2541; border: 1px solid var(--border); padding: 0.35rem 0.15rem; text-align: center; font-weight: bold; font-size: 0.75rem; border-radius: 3px; color: #f8fafc; }
-        .draft-cell { background: #1c2541; border: 1px solid var(--border); padding: 0.25rem 0.2rem; min-height: 44px; border-radius: 3px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .draft-cell.picked { background: #112233; border-color: var(--border); }
-        .draft-cell.mine { background: #102a1e; border-color: var(--primary-green); }
-        .draft-cell-name { font-weight: 600; font-size: 0.68rem; line-height: 1.15; color: #ffffff; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        
+        .draft-cell { background: #1c2541; border: 1px solid var(--border); padding: 0.25rem 0.2rem; min-height: 48px; border-radius: 3px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        
+        /* Positional Coordination for Cells */
+        .draft-cell.QB { background-color: var(--pos-qb); border-color: var(--pos-qb-border); }
+        .draft-cell.RB { background-color: var(--pos-rb); border-color: var(--pos-rb-border); }
+        .draft-cell.WR { background-color: var(--pos-wr); border-color: var(--pos-wr-border); }
+        .draft-cell.TE { background-color: var(--pos-te); border-color: var(--pos-te-border); }
+        .draft-cell.mine { border: 2px solid var(--primary-green) !important; box-shadow: inset 0 0 6px rgba(52, 168, 83, 0.6); }
+
+        .draft-cell-first { font-weight: 500; font-size: 0.65rem; line-height: 1.1; color: #e2e8f0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+        .draft-cell-last { font-weight: 800; font-size: 0.75rem; line-height: 1.1; color: #ffffff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: 1px; }
     </style>
 </head>
 <body>
 
 <div class="header">
     <div class="header-title">
+        <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
         <div>My Draft<br>Strategist</div>
     </div>
     <div class="header-controls">
-        <!-- Official Ko-fi Tip Button -->
-        <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center;">
-            <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
-        </a>
         <span id="liveIndicator" style="display: none; font-size: 0.75rem; font-weight: bold; color: #86efac;">🔴 LIVE</span>
         <button id="headerSyncBtn" class="btn-header" onclick="syncSleeper()">⚡ Sync</button>
     </div>
 </div>
 
-<div class="container">
+<!-- HAMBURGER MENU OVERLAY & DRAWER -->
+<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+<div class="hamburger-menu" id="hamburgerMenu">
+    <button class="close-menu-btn" onclick="toggleMenu()">✖</button>
     
+    <div style="padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-green); margin-bottom: 0.5rem;">
+        <h3 style="margin: 0 1.5rem; color: #f1f5f9;">Menu</h3>
+    </div>
+
+    <button class="nav-btn active" onclick="showTab('setup', this); toggleMenu()">⚙️ Setup</button>
+    <button class="nav-btn" onclick="showTab('board', this); toggleMenu()">📋 Board</button>
+    <button class="nav-btn" onclick="showTab('team', this); toggleMenu()">🏈 Team</button>
+    <button class="nav-btn" onclick="showTab('matrix', this); toggleMenu()">📊 Matrix</button>
+    <button class="nav-btn" onclick="showTab('guide', this); toggleMenu()">ℹ️ Guide</button>
+
+    <div class="menu-kofi">
+        <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center; justify-content: center;">
+            <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
+        </a>
+    </div>
+</div>
+
+<div class="container">
+
     <!-- SETUP TAB -->
     <div id="setupTab" class="tab-content active">
-        
+
         <!-- LARGE HERO LOGO -->
         <div style="text-align: center; margin-bottom: 1.5rem;">
             <img src="logo.png" alt="My Draft Strategist" onerror="this.style.display='none'" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            <div style="margin-top: 1rem; display: flex; justify-content: center;">
+                <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center;">
+                    <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
+                </a>
+            </div>
         </div>
 
         <div class="settings-card">
@@ -169,7 +207,7 @@
         <div class="settings-card">
             <h3>2. Live Market Rank 📈</h3>
             <div id="adpStatusDisplay" class="status-badge"></div>
-            
+
             <label style="font-size: 0.9rem; font-weight: bold;">Select LeagueLogs Profile</label>
             <select id="adpFormatSelect">
                 <option value="redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
@@ -179,7 +217,7 @@
                 <option value="dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
             </select>
             <button id="fetchAdpBtn" class="btn-primary" style="background-color: #8b5cf6;" onclick="fetchLeagueLogsADP(this)">Fetch Market Rank</button>
-            
+
             <!-- LeagueLogs Official Attribution -->
             <div style="margin-top: 1rem; text-align: center;">
                 <a href="https://leaguelogs.com" target="_blank" rel="noopener" style="display:inline-flex;align-items:baseline;gap:6px;font-family:Georgia,'Times New Roman',serif;font-size:14px;line-height:1;color:currentColor;text-decoration:none;">
@@ -188,7 +226,7 @@
                   <span aria-hidden="true" style="width:5px;height:5px;border-radius:50%;background:#ffe24c;display:inline-block;"></span>
                 </a>
             </div>
-            
+
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem; margin-bottom: 0.2rem;">Manual Paste Fallback:</p>
             <textarea id="adpPasteArea" rows="2" placeholder="e.g. Christian McCaffrey, 1.01"></textarea>
             <button class="btn-primary" style="background-color: #4b5563;" onclick="processManualADP(this)">Apply Manual Rank Paste</button>
@@ -200,12 +238,12 @@
             <input type="text" id="sleeperUsername" placeholder="e.g., fantasy_guru">
             <label style="font-size: 0.9rem; font-weight: bold;">Draft ID</label>
             <input type="text" id="sleeperDraftId" placeholder="e.g., 912345678901234567">
-            
+
             <div class="toggle-container">
                 <span style="font-weight: bold; font-size: 0.9rem;">🔴 Live Auto-Sync</span>
                 <input type="checkbox" id="autoSyncToggle" style="width:20px; height:20px;" onchange="toggleAutoSync(this.checked)">
             </div>
-            
+
             <button id="syncBtn" class="btn-secondary" onclick="syncSleeper(false, this)">Sync Sleeper Now</button>
         </div>
 
@@ -220,7 +258,7 @@
                 <div><label style="font-size: 0.8rem; font-weight: bold;">SFLEX</label><input type="number" id="limitSFLEX" min="0" value="0"></div>
                 <div><label style="font-size: 0.8rem; font-weight: bold;">BENCH</label><input type="number" id="limitBENCH" min="0" value="6"></div>
             </div>
-            
+
             <div class="toggle-container" style="background: var(--card-bg);">
                 <div style="display: flex; flex-direction: column;">
                     <span style="font-weight: bold; font-size: 0.9rem;">🔥 Highlight Stacks</span>
@@ -235,16 +273,16 @@
         <div class="settings-card">
             <h3>5. Call Outs 🎯</h3>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Paste names below (separated by commas or new lines)</p>
-            
+
             <label style="font-size: 0.85rem; font-weight: bold;">🟢 Targets</label>
             <textarea id="targetList" rows="2" placeholder="e.g. Bijan Robinson, Puka Nacua"></textarea>
-            
+
             <label style="font-size: 0.85rem; font-weight: bold;">🔴 Avoids</label>
             <textarea id="avoidList" rows="2" placeholder="e.g. Jonathan Taylor"></textarea>
-            
+
             <label style="font-size: 0.85rem; font-weight: bold;">🔵 Dart Throws</label>
             <textarea id="dartList" rows="2" placeholder="e.g. Ashton Jeanty"></textarea>
-            
+
             <button class="btn-primary" onclick="saveSettings(this)">Save Call Outs</button>
         </div>
 
@@ -255,7 +293,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.9.3 (Beta)
+            Draft Strategist v0.9.4 (Beta)
         </div>
     </div>
 
@@ -265,7 +303,7 @@
             <div id="pickTracker" class="badge" style="background: var(--primary-green); color: white; font-size: 0.95rem; padding: 0.5rem; white-space: nowrap;">Pick: 1.01</div>
             <input type="text" id="searchBar" placeholder="Search player..." style="margin: 0; padding: 0.5rem; flex-grow: 1;" onkeyup="renderBoard()">
         </div>
-        
+
         <div id="tierTracker"></div>
 
         <div id="playerPool">
@@ -304,7 +342,7 @@
         </div>
     </div>
 
-    <!-- MATRIX TAB (FULL BLEED, NO CARDS, TWO-LINE WRAP) -->
+    <!-- MATRIX TAB (FULL BLEED, COLOR BG, TWO-LINE WRAP) -->
     <div id="matrixTab" class="tab-content">
         <div class="matrix-header-group">
             <h3>Sleeper Live Draft Board</h3>
@@ -316,15 +354,29 @@
             </div>
         </div>
     </div>
+    
+    <!-- GUIDE TAB -->
+    <div id="guideTab" class="tab-content">
+        <div class="settings-card">
+            <h3 style="border-bottom: 2px solid var(--primary-green);">How to Use My Draft Strategist</h3>
+            
+            <h4 style="color: #f1f5f9; margin-bottom: 0.2rem;">1. Load Rankings</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0;">Upload your custom rankings via CSV or Excel. The app maps these names to Sleeper's internal Player IDs behind the scenes for 100% accurate syncing. Ensure your file has a 'Name' column.</p>
 
-</div>
+            <h4 style="color: #f1f5f9; margin-bottom: 0.2rem;">2. Live Market Rank (ADP)</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0;">Once rankings are loaded, click "Fetch Market Rank" to pull live ADP data from LeagueLogs based on your specific league settings. The app will automatically tag Rookies in the process.</p>
 
-<!-- BOTTOM NAVIGATION -->
-<div class="nav-bar">
-    <button class="nav-btn active" onclick="showTab('setup', this)">⚙️ Setup</button>
-    <button class="nav-btn" onclick="showTab('board', this)">📋 Board</button>
-    <button class="nav-btn" onclick="showTab('team', this)">🏈 Team</button>
-    <button class="nav-btn" onclick="showTab('matrix', this)">📊 Matrix</button>
+            <h4 style="color: #f1f5f9; margin-bottom: 0.2rem;">3. Sleeper Sync</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0;">Enter your Sleeper Username and Draft ID to sync live draft picks. The app will automatically cross off taken players and build your roster under the <strong>Team</strong> tab.</p>
+
+            <h4 style="color: #f1f5f9; margin-bottom: 0.2rem;">4. Matrix Board</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0;">A full-bleed draft board that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show who drafted whom round-by-round.</p>
+
+            <h4 style="color: #f1f5f9; margin-bottom: 0.2rem;">5. Call Outs & Stacks</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0;">On the Setup tab, list names to highlight as Targets (🟢), Avoids (🔴), or Dart Throws (🔵). Turn on "Highlight Stacks" to identify WR/TEs that stack with a QB you've already drafted.</p>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -338,9 +390,9 @@
     let adpMeta = JSON.parse(localStorage.getItem('ds_adp_meta')) || null;
     let dsLimits = JSON.parse(localStorage.getItem('ds_limits')) || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6, TOTAL: 14 };
     let autoSyncTimer = null;
-    
+
     let activePosFilter = 'ALL';
-    
+
     const BYE_WEEKS_2026 = {
         "CAR": 5, "KC": 5,
         "CIN": 6, "DET": 6, "MIA": 6, "MIN": 6,
@@ -352,48 +404,45 @@
         "BAL": 13, "IND": 13, "LV": 13, "NYJ": 13,
         "ARI": 14, "DAL": 14
     };
-    
+
+    // --- UI HELPERS ---
     function flashButton(btn, text, isError = false, fallbackText = null) {
         if (!btn) return;
         const originalText = fallbackText || btn.innerText;
         const originalBg = btn.style.backgroundColor;
-        
+
         btn.innerText = text;
         btn.style.backgroundColor = isError ? "#ea4335" : "#4ade80";
         btn.style.color = isError ? "white" : "#0b132b";
-        
+
         setTimeout(() => {
             btn.innerText = originalText;
             btn.style.backgroundColor = originalBg;
             btn.style.color = "";
         }, 2500);
     }
+    
+    function toggleMenu() {
+        const menu = document.getElementById('hamburgerMenu');
+        const overlay = document.getElementById('menuOverlay');
+        menu.classList.toggle('open');
+        overlay.style.display = menu.classList.contains('open') ? 'block' : 'none';
+    }
 
+    // --- BULLETPROOF NAME MATCHING ---
     function normalizeName(name) {
         if (!name) return "";
         return String(name)
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
             .toLowerCase()
-            .replace(/[^a-z]/g, '')
-            .replace(/(jr|sr|iii|ii|iv|v)$/, '');
+            .replace(/[^a-z]/g, '') // Strip spaces/punctuation strictly
+            .replace(/(jr|sr|iii|ii|iv|v)$/, ''); // Drop suffixes at end
     }
 
     function isNameMatch(name1, name2) {
         if (!name1 || !name2) return false;
-        let n1 = normalizeName(name1);
-        let n2 = normalizeName(name2);
-        if (n1 === n2) return true;
-        
-        let parts1 = String(name1).toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/);
-        let parts2 = String(name2).toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/);
-        if (parts1.length >= 2 && parts2.length >= 2) {
-            let last1 = parts1[parts1.length - 1].replace(/(jr|sr|iii|ii|iv|v)$/, '');
-            let last2 = parts2[parts2.length - 1].replace(/(jr|sr|iii|ii|iv|v)$/, '');
-            if (last1 === last2 && parts1[0].charAt(0) === parts2[0].charAt(0)) {
-                return true;
-            }
-        }
-        return false;
+        // Strictly use exact matching after normalization to prevent fuzzy collisions (e.g., A.J. Brown & Amon-Ra St. Brown)
+        return normalizeName(name1) === normalizeName(name2);
     }
 
     // Load Settings
@@ -403,7 +452,7 @@
     document.getElementById('avoidList').value = localStorage.getItem('ds_avoids') || "";
     document.getElementById('dartList').value = localStorage.getItem('ds_darts') || "";
     document.getElementById('stackToggle').checked = localStorage.getItem('ds_stacks') === 'true';
-    
+
     document.getElementById('limitQB').value = dsLimits.QB;
     document.getElementById('limitRB').value = dsLimits.RB;
     document.getElementById('limitWR').value = dsLimits.WR;
@@ -438,7 +487,7 @@
         localStorage.setItem('ds_avoids', document.getElementById('avoidList').value);
         localStorage.setItem('ds_darts', document.getElementById('dartList').value);
         localStorage.setItem('ds_stacks', document.getElementById('stackToggle').checked);
-        
+
         dsLimits = {
             QB: parseInt(document.getElementById('limitQB').value) || 0,
             RB: parseInt(document.getElementById('limitRB').value) || 0,
@@ -450,7 +499,7 @@
         };
         dsLimits.TOTAL = dsLimits.QB + dsLimits.RB + dsLimits.WR + dsLimits.TE + dsLimits.FLEX + dsLimits.SFLEX + dsLimits.BENCH;
         localStorage.setItem('ds_limits', JSON.stringify(dsLimits));
-        
+
         renderBoard();
         if(btnElement) flashButton(btnElement, "✅ Saved!");
     }
@@ -485,18 +534,19 @@
     function showTab(tabId, btnElement) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.getElementById(tabId + 'Tab').classList.add('active');
-        
+
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         if(btnElement) btnElement.classList.add('active');
-        
+
         if(tabId === 'board' || tabId === 'team' || tabId === 'matrix') renderBoard();
+        window.scrollTo(0, 0);
     }
 
     function setPosFilter(pos) {
         activePosFilter = pos;
         renderBoard();
     }
-    
+
     function toggleEditBar(id) {
         let bar = document.getElementById(`inline-edit-${id}`);
         if(bar) bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex';
@@ -505,12 +555,12 @@
     function saveInlineEdit(id) {
         let p = players.find(x => x.id === id);
         if(!p) return;
-        
+
         let newRank = parseInt(document.getElementById(`edit-rank-val-${id}`).value);
         let newTier = document.getElementById(`edit-tier-val-${id}`).value.trim() || "-";
         let newTeam = document.getElementById(`edit-team-val-${id}`).value.trim().toUpperCase();
         let newBye = document.getElementById(`edit-bye-val-${id}`).value.trim();
-        
+
         if (!isNaN(newRank) && newRank !== p.rank) {
             let oldRank = p.rank;
             players.forEach(other => {
@@ -564,7 +614,7 @@
         let newPlayers = [];
         let posCounters = {}; 
         let sleeperMap = {};
-        
+
         try {
             let res = await fetch('https://api.sleeper.app/v1/players/nfl');
             if (res.ok) sleeperMap = await res.json();
@@ -595,11 +645,11 @@
             let posRaw = getVal(['position', 'pos', 'pos rank', 'posn']);
             let posGroup = posRaw ? String(posRaw).replace(/[0-9]/g, '').toUpperCase().trim() : "FLEX";
             let posDisplay = posRaw ? String(posRaw).toUpperCase().trim() : posGroup;
-            
+
             if (!posCounters[posGroup]) posCounters[posGroup] = 1;
             if (!/\d/.test(posDisplay)) posDisplay = posGroup + posCounters[posGroup];
             posCounters[posGroup]++;
-            
+
             let tier = getVal(['tier', '#', 'tier #']) || "-";
             let adp = getVal(['adp', 'auction', 'value', 'auction value', 'rank/auction value']) || "-";
 
@@ -619,7 +669,7 @@
             if (team && team !== "FA" && (!bye || bye === "-" || String(bye).trim() === "")) {
                 bye = BYE_WEEKS_2026[team.toUpperCase()] || "-";
             }
-            
+
             newPlayers.push({ 
                 id: index + 1, sleeperId: masterId || `custom_${index}`, rank: index + 1, name: cleanName, 
                 posGroup: posGroup, posDisplay: posDisplay, tier: tier, 
@@ -627,20 +677,20 @@
                 isRookie: false
             });
         });
-        
+
         if(newPlayers.length > 0) {
             players = newPlayers;
             draftedPlayers = []; myTeam = []; rawDraftPicks = [];
-            
+
             let now = new Date();
             let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             rankingsMeta = { count: players.length, date: dateString };
-            
+
             localStorage.setItem('ds_meta', JSON.stringify(rankingsMeta));
             localStorage.setItem('ds_players', JSON.stringify(players));
             updateMetaDisplay();
             saveDraftState();
-            
+
             if(btn) flashButton(btn, "✅ Loaded Successfully");
         } else {
             metaEl.style.display = 'none';
@@ -648,7 +698,7 @@
             alert("Error: Could not detect player names.");
         }
     }
-    
+
     async function fetchLeagueLogsADP(btn) {
         if (players.length === 0) {
             flashButton(btn, "⚠️ Load Rankings First", true);
@@ -659,7 +709,7 @@
         const formatSelect = document.getElementById('adpFormatSelect');
         const profileKey = formatSelect.value;
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
-        
+
         const originalText = btn.innerText;
         btn.innerText = "⏳ Fetching...";
 
@@ -680,7 +730,7 @@
 
             players.forEach(p => {
                 if (adpMap[p.sleeperId] !== undefined) p.adp = adpMap[p.sleeperId];
-                
+
                 let meta = playerMetaMap[p.sleeperId];
                 if (meta) {
                     let exp = meta.yearsExp;
@@ -714,7 +764,7 @@
             flashButton(btn, "⚠️ Paste Rank First", true);
             return;
         }
-        
+
         let matchedCount = 0;
         text.split('\n').forEach(row => {
             let parts = row.split(/\t|,/); 
@@ -752,14 +802,14 @@
     async function syncSleeper(isSilent = false, btn = null) {
         const username = document.getElementById('sleeperUsername').value.trim();
         const draftId = document.getElementById('sleeperDraftId').value.trim();
-        
+
         if(!username || !draftId) {
             if(!isSilent && btn) alert("Please enter both Username and Draft ID.");
             return;
         }
-        
+
         saveSettings(null); 
-        
+
         try {
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
             if(!userRes.ok) throw new Error("Could not find Sleeper User.");
@@ -776,7 +826,7 @@
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
             if(!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
             const picksData = await picksRes.json();
-            
+
             if(!picksData || picksData.length === 0) return;
 
             rawDraftPicks = picksData;
@@ -788,7 +838,7 @@
                 if (!matchedPlayer) {
                     matchedPlayer = players.find(p => isNameMatch(p.name, pick.metadata.first_name + " " + pick.metadata.last_name));
                 }
-                
+
                 if(matchedPlayer) {
                     sleeperDrafted.push(matchedPlayer.id);
                     if(pick.picked_by === userId) sleeperMyTeam.push(matchedPlayer.id);
@@ -797,10 +847,10 @@
 
             draftedPlayers = Array.from(new Set([...draftedPlayers, ...sleeperDrafted]));
             myTeam = Array.from(new Set([...myTeam, ...sleeperMyTeam]));
-            
+
             localStorage.setItem('ds_total_picks', picksData.length);
             saveDraftState();
-            
+
             if(!isSilent && btn) flashButton(btn, "✅ Sync Complete!");
 
         } catch(err) {
@@ -828,7 +878,7 @@
         let targets = (localStorage.getItem('ds_targets')||"").split(/[\n,]+/).map(s=>s.trim().toLowerCase()).filter(s=>s);
         let avoids = (localStorage.getItem('ds_avoids')||"").split(/[\n,]+/).map(s=>s.trim().toLowerCase()).filter(s=>s);
         let darts = (localStorage.getItem('ds_darts')||"").split(/[\n,]+/).map(s=>s.trim().toLowerCase()).filter(s=>s);
-        
+
         if(targets.some(t => n.includes(t))) return `border-left: 5px solid var(--target-border); background-color: var(--target-bg);`;
         if(avoids.some(a => n.includes(a))) return `border-left: 5px solid var(--avoid-border); background-color: var(--avoid-bg);`;
         if(darts.some(d => n.includes(d))) return `border-left: 5px solid var(--dart-border); background-color: var(--dart-bg);`;
@@ -838,7 +888,7 @@
     function getTierTrackerData() {
         let trackers = { QB: null, RB: null, WR: null, TE: null };
         let available = players.filter(p => !draftedPlayers.includes(p.id));
-        
+
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             let posPlayers = available.filter(p => p.posGroup === pos && p.tier !== "-");
             if (posPlayers.length > 0) {
@@ -850,7 +900,7 @@
         return trackers;
     }
 
-    // --- FULL BLEED MATRIX RENDERER (Two-Line Name Wrapping) ---
+    // --- FULL BLEED MATRIX RENDERER (Color Coordination & Two-Line Wrapping) ---
     function renderDraftMatrix() {
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
@@ -859,7 +909,7 @@
         let totalRounds = leagueDraftSettings.rounds || 15;
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
-        
+
         for (let t = 1; t <= totalTeams; t++) {
             gridHTML += `<div class="draft-col-header">T${t}</div>`;
         }
@@ -877,11 +927,18 @@
                     let pObj = players.find(pl => pl.sleeperId === matchedPick.player_id);
                     let pName = pObj ? pObj.name : (matchedPick.metadata.first_name?.[0] + ". " + matchedPick.metadata.last_name) || "Player";
                     let pPos = pObj ? pObj.posGroup : matchedPick.metadata.position || "";
-                    
-                    cellClass += " picked";
+
+                    let nameParts = pName.split(' ');
+                    let firstName = nameParts[0];
+                    let lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : "";
+
+                    // Assign CSS classes for position color backgrounds and ownership highlighting
+                    cellClass += ` picked ${pPos}`;
+                    if(pObj && myTeam.includes(pObj.id)) cellClass += " mine";
+
                     cellContent = `
-                        <div class="draft-cell-name" title="${pName}">${pName}</div>
-                        <div style="opacity:0.85; margin-top:1px;"><span class="badge" style="font-size:0.52rem; padding:1px 2px;">${pPos}</span></div>
+                        <div class="draft-cell-first" title="${pName}">${firstName}</div>
+                        <div class="draft-cell-last" title="${pName}">${lastName}</div>
                     `;
                 }
 
@@ -903,7 +960,7 @@
             if (idx !== -1) return availablePool.splice(idx, 1)[0];
             return null;
         };
-        
+
         const buildSlotHTML = (label, color, p) => {
             if (p) {
                 let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
@@ -970,10 +1027,10 @@
         const otherEl = document.getElementById('otherDraftedList');
         const searchEl = document.getElementById('searchBar');
         const searchTerm = searchEl ? searchEl.value.toLowerCase() : "";
-        
+
         let newPoolHTML = '';
         let posCounts = { "QB": 0, "RB": 0, "WR": 0, "TE": 0 };
-        
+
         let syncedPicks = parseInt(localStorage.getItem('ds_total_picks')) || 0;
         let totalPicksDone = Math.max(draftedPlayers.length, syncedPicks);
         let pickNum = totalPicksDone + 1;
@@ -983,7 +1040,7 @@
 
         const trackers = getTierTrackerData();
         let trackerHTML = `<button class="badge badge-all pos-filter ${activePosFilter === 'ALL' ? 'active-filter' : ''}" onclick="setPosFilter('ALL')">ALL</button>`;
-        
+
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             if(trackers[pos]) {
                 let isActive = activePosFilter === pos ? 'active-filter' : '';
@@ -997,7 +1054,7 @@
         let myPassCatchers = myTeam.map(id => players.find(p => p.id === id)).filter(p => p && ['WR', 'TE'].includes(p.posGroup)).map(p => p.team).filter(t => t !== "FA");
 
         let lastTier = null;
-        
+
         players.forEach(p => {
             const isDrafted = draftedPlayers.includes(p.id);
             const isMine = myTeam.includes(p.id);
@@ -1008,7 +1065,7 @@
                 if (activePosFilter !== 'ALL' && p.posGroup !== activePosFilter) return;
 
                 if(p.name.toLowerCase().includes(searchTerm)) {
-                    
+
                     if(searchTerm === "" && p.tier !== lastTier && p.tier !== "-") {
                         newPoolHTML += `<div class="tier-divider">Tier ${p.tier}</div>`;
                         lastTier = p.tier;
@@ -1016,13 +1073,13 @@
 
                     let customStyle = getCallOutStyle(p.name);
                     let adpText = (p.adp && p.adp !== "-") ? ` | Market: ${p.adp}` : "";
-                    
+
                     let isStack = false;
                     if (showStacks && p.team !== "FA") {
                         if (['WR', 'TE'].includes(p.posGroup) && myQbs.includes(p.team)) isStack = true;
                         if (p.posGroup === 'QB' && myPassCatchers.includes(p.team)) isStack = true;
                     }
-                    
+
                     let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">🔥 Stack</span>` : "";
                     let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
 
@@ -1106,10 +1163,10 @@
                 <td>${sflexUsed} / ${dsLimits.SFLEX}</td>
                 <td><strong>${myTeam.length} / ${dsLimits.TOTAL}</strong></td>
             </tr>`;
-        
+
         renderDraftMatrix();
     }
-    
+
     if(players.length > 0) renderBoard();
 </script>
 
