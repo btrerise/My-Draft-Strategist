@@ -13,8 +13,8 @@
     <meta name="theme-color" content="#0b132b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Strategist">
-    
+    <meta name="apple-mobile-web-app-title" content="Draft Strategist">
+
     <!-- PapaParse for CSV reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- SheetJS for Excel (.xlsx) reading -->
@@ -237,6 +237,13 @@
             </div>
             <span style="color: #4ade80; font-weight: bold; font-size: 1.1rem;">➔</span>
         </div>
+        
+        <!-- DYNAMIC INSTALL APP PROMPT -->
+        <div id="installCard" class="settings-card" style="display: none; background: linear-gradient(135deg, #112233, #1c2541); border: 1px solid #4285f4; text-align: center;">
+            <h3 style="margin-bottom: 0.4rem; color: #93c5fd; justify-content: center; border-bottom: none;">📱 Install the App</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Add My Draft Strategist to your home screen for a full-screen, native app experience!</p>
+            <button id="installAppBtn" class="btn-primary" style="background-color: #4285f4;">Install App</button>
+        </div>
 
         <div class="settings-card">
             <h3>1. Load Rankings
@@ -365,7 +372,7 @@
 
         <!-- SETUP FOOTER PROMPT TO TRACKER -->
         <div class="settings-card" style="text-align: center; background: linear-gradient(135deg, #102a1e, #1c2541); border: 1px solid var(--primary-green);">
-            <h3 style="margin-bottom: 0.4rem; color: #4ade80; justify-content: center;">Ready to Draft? 🚀</h3>
+            <h3 style="margin-bottom: 0.4rem; color: #4ade80; justify-content: center; border-bottom: none;">Ready to Draft? 🚀</h3>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Head over to the Tracker tab to view your player pool and start making picks.</p>
             <button class="btn-primary" onclick="showTab('tracker')">Go to Tracker 📋</button>
         </div>
@@ -377,7 +384,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v1.2
+            Draft Strategist v1.3
         </div>
     </div>
 
@@ -477,6 +484,9 @@
 
             <h4>7. Call Outs & Stacks</h4>
             <p>On the Setup tab, paste lists of names to highlight them throughout the app as Targets (🟢), Avoids (🔴), or Dart Throws (🔵). Turn on "Highlight Stacks" to automatically place a "🔥 Stack" badge on available WRs or TEs if you have already drafted their Quarterback.</p>
+            
+            <h4>8. Install the App (Optional)</h4>
+            <p>For the best experience, you can install this app directly to your home screen! If your browser supports it, tap the "Install App" button on the Setup screen or use your browser's menu options (like "Add to Home Screen"). This will give you a full-screen, native app experience.</p>
         </div>
     </div>
 
@@ -490,6 +500,44 @@
 </div>
 
 <script>
+    // --- PWA INSTALLATION PROMPT HANDLING ---
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome from automatically showing the generic prompt
+        e.preventDefault();
+        // Stash the event so it can be triggered later via our custom button
+        deferredPrompt = e;
+        // Show the install card on the setup page
+        document.getElementById('installCard').style.display = 'block';
+    });
+
+    document.getElementById('installAppBtn').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('installCard').style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
+    });
+
+    window.addEventListener('appinstalled', () => {
+        // Hide the install button if installed successfully
+        document.getElementById('installCard').style.display = 'none';
+    });
+
+    // --- REGISTER SERVICE WORKER ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker registered!'))
+                .catch(err => console.log('Service Worker registration failed: ', err));
+        });
+    }
+
     // --- STATE MANAGEMENT ---
     let players = JSON.parse(localStorage.getItem('ds_players')) || [];
     let draftedPlayers = JSON.parse(localStorage.getItem('ds_drafted')) || [];
@@ -1580,17 +1628,6 @@
 
     if(players.length > 0) renderBoard();
 </script>
-    
-<script>
-    // Register PWA Service Worker
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('Service Worker registered!'))
-                .catch(err => console.log('Service Worker registration failed: ', err));
-        });
-    }
-</script>
-    
+
 </body>
 </html>
