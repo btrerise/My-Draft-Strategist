@@ -33,7 +33,7 @@
         }
 
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); padding-bottom: 20px; }
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; }
 
         /* Sticky Header - Mobile Optimized */
         .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); color: white; padding: 0.6rem 0.8rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
@@ -49,7 +49,7 @@
 
         /* Hamburger Menu Styles */
         .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99; display: none; }
-        .hamburger-menu { position: fixed; top: 0; left: -260px; width: 260px; height: 100%; background: var(--card-bg); z-index: 100; transition: 0.3s; border-right: 2px solid var(--primary-green); box-shadow: 2px 0 10px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 1rem 0; }
+        .hamburger-menu { position: fixed; top: 0; left: -260px; width: 260px; height: 100%; background: var(--card-bg); z-index: 100; transition: left 0.3s ease; border-right: 2px solid var(--primary-green); box-shadow: 2px 0 10px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 1rem 0; }
         .hamburger-menu.open { left: 0; }
         .hamburger-menu .nav-btn { background: none; border: none; padding: 1rem 1.5rem; text-align: left; font-size: 1.05rem; color: var(--text-main); font-weight: bold; cursor: pointer; border-bottom: 1px solid var(--border); width: 100%; transition: background 0.2s;}
         .hamburger-menu .nav-btn:hover, .hamburger-menu .nav-btn.active { background: #0b132b; color: var(--primary-green); border-left: 5px solid var(--primary-green); padding-left: calc(1.5rem - 5px); }
@@ -62,6 +62,11 @@
         .btn-header:active { background-color: rgba(255,255,255,0.3); }
 
         .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+
+        /* Bottom Tab Navigation */
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 2px solid var(--border); display: flex; justify-content: space-around; padding: 0.5rem; z-index: 98; box-shadow: 0 -2px 10px rgba(0,0,0,0.3); }
+        .nav-bar .nav-btn { background: none; border: none; font-size: 0.95rem; color: var(--text-muted); font-weight: bold; padding: 0.5rem; cursor: pointer; flex: 1; text-align: center;}
+        .nav-bar .nav-btn.active { color: var(--primary-green); border-bottom: 3px solid var(--primary-green); }
 
         /* Sections */
         .tab-content { display: none; }
@@ -124,7 +129,7 @@
 
         .status-badge { font-size: 0.85rem; color: #86efac; font-weight: bold; background: #102a1e; border: 1px solid var(--primary-green); padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; text-align: center;}
 
-        /* Ultra-Wide Full-Bleed Matrix Board View (Position Color Background & Stacked Text) */
+        /* Ultra-Wide Full-Bleed Matrix Board View */
         .matrix-header-group { margin-bottom: 0.6rem; padding: 0 0.2rem; }
         .matrix-header-group h3 { margin: 0 0 0.2rem 0; font-size: 1.1rem; color: #f1f5f9; }
         .draft-board-container { overflow-x: auto; width: 100%; background: transparent; padding: 0; }
@@ -138,7 +143,9 @@
         .draft-cell.RB { background-color: var(--pos-rb); border-color: var(--pos-rb-border); }
         .draft-cell.WR { background-color: var(--pos-wr); border-color: var(--pos-wr-border); }
         .draft-cell.TE { background-color: var(--pos-te); border-color: var(--pos-te-border); }
-        .draft-cell.mine { border: 2px solid var(--primary-green) !important; box-shadow: inset 0 0 6px rgba(52, 168, 83, 0.6); }
+        
+        /* Updated My Team Matrix Highlight - Electric Cyan */
+        .draft-cell.mine { border: 2px solid #00e5ff !important; box-shadow: inset 0 0 8px rgba(0, 229, 255, 0.6); }
 
         .draft-cell-first { font-weight: 500; font-size: 0.65rem; line-height: 1.1; color: #e2e8f0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
         .draft-cell-last { font-weight: 800; font-size: 0.75rem; line-height: 1.1; color: #ffffff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: 1px; }
@@ -166,11 +173,12 @@
         <h3 style="margin: 0 1.5rem; color: #f1f5f9;">Menu</h3>
     </div>
 
-    <button class="nav-btn active" onclick="showTab('setup', this); toggleMenu()">⚙️ Setup</button>
-    <button class="nav-btn" onclick="showTab('board', this); toggleMenu()">📋 Board</button>
-    <button class="nav-btn" onclick="showTab('team', this); toggleMenu()">🏈 Team</button>
-    <button class="nav-btn" onclick="showTab('matrix', this); toggleMenu()">📊 Matrix</button>
-    <button class="nav-btn" onclick="showTab('guide', this); toggleMenu()">ℹ️ Guide</button>
+    <!-- Note: Using data-target attributes to sync active states with the bottom nav -->
+    <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">⚙️ Setup</button>
+    <button class="nav-btn" data-target="board" onclick="showTab('board')">📋 Board</button>
+    <button class="nav-btn" data-target="team" onclick="showTab('team')">🏈 Team</button>
+    <button class="nav-btn" data-target="matrix" onclick="showTab('matrix')">📊 Matrix</button>
+    <button class="nav-btn" data-target="guide" onclick="showTab('guide')">ℹ️ Guide</button>
 
     <div class="menu-kofi">
         <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center; justify-content: center;">
@@ -183,7 +191,6 @@
 
     <!-- SETUP TAB -->
     <div id="setupTab" class="tab-content active">
-
         <!-- LARGE HERO LOGO -->
         <div style="text-align: center; margin-bottom: 1.5rem;">
             <img src="logo.png" alt="My Draft Strategist" onerror="this.style.display='none'" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
@@ -293,7 +300,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.9.4 (Beta)
+            Draft Strategist v0.9.5 (Beta)
         </div>
     </div>
 
@@ -342,7 +349,7 @@
         </div>
     </div>
 
-    <!-- MATRIX TAB (FULL BLEED, COLOR BG, TWO-LINE WRAP) -->
+    <!-- MATRIX TAB -->
     <div id="matrixTab" class="tab-content">
         <div class="matrix-header-group">
             <h3>Sleeper Live Draft Board</h3>
@@ -377,6 +384,13 @@
         </div>
     </div>
 
+</div>
+
+<!-- BOTTOM HYBRID NAVIGATION -->
+<div class="nav-bar">
+    <button class="nav-btn" data-target="board" onclick="showTab('board')">📋 Board</button>
+    <button class="nav-btn" data-target="team" onclick="showTab('team')">🏈 Team</button>
+    <button class="nav-btn" data-target="matrix" onclick="showTab('matrix')">📊 Matrix</button>
 </div>
 
 <script>
@@ -429,19 +443,51 @@
         overlay.style.display = menu.classList.contains('open') ? 'block' : 'none';
     }
 
+    // --- SWIPE TO OPEN/CLOSE MENU LOGIC ---
+    let touchstartX = 0;
+    let touchendX = 0;
+
+    function handleGesture() {
+        const menu = document.getElementById('hamburgerMenu');
+        const isOpen = menu.classList.contains('open');
+        
+        // Swipe Right (Open)
+        if (touchendX > touchstartX && (touchendX - touchstartX > 50)) {
+            // Only open if the swipe started near the left edge to avoid conflict with matrix scrolling
+            if (touchstartX < 40 && !isOpen) {
+                toggleMenu();
+            }
+        }
+        // Swipe Left (Close)
+        if (touchendX < touchstartX && (touchstartX - touchendX > 50)) {
+            // Allow swiping left anywhere on the screen to close the menu
+            if (isOpen) {
+                toggleMenu();
+            }
+        }
+    }
+
+    document.addEventListener('touchstart', e => {
+        touchstartX = e.changedTouches[0].screenX;
+    }, {passive: true});
+
+    document.addEventListener('touchend', e => {
+        touchendX = e.changedTouches[0].screenX;
+        handleGesture();
+    }, {passive: true});
+
     // --- BULLETPROOF NAME MATCHING ---
     function normalizeName(name) {
         if (!name) return "";
         return String(name)
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
             .toLowerCase()
-            .replace(/[^a-z]/g, '') // Strip spaces/punctuation strictly
-            .replace(/(jr|sr|iii|ii|iv|v)$/, ''); // Drop suffixes at end
+            .replace(/[^a-z]/g, '')
+            .replace(/(jr|sr|iii|ii|iv|v)$/, ''); 
     }
 
     function isNameMatch(name1, name2) {
         if (!name1 || !name2) return false;
-        // Strictly use exact matching after normalization to prevent fuzzy collisions (e.g., A.J. Brown & Amon-Ra St. Brown)
         return normalizeName(name1) === normalizeName(name2);
     }
 
@@ -531,12 +577,30 @@
         }
     }
 
-    function showTab(tabId, btnElement) {
+    function showTab(tabId) {
+        // Hide all tabs
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        document.getElementById(tabId + 'Tab').classList.add('active');
+        
+        // Show target tab
+        const targetTab = document.getElementById(tabId + 'Tab');
+        if(targetTab) targetTab.classList.add('active');
 
+        // Reset all navigation buttons (both menus)
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        if(btnElement) btnElement.classList.add('active');
+        
+        // Activate matching buttons in Hamburger Menu
+        const menuBtn = document.querySelector(`.hamburger-menu .nav-btn[data-target="${tabId}"]`);
+        if(menuBtn) menuBtn.classList.add('active');
+
+        // Activate matching buttons in Bottom Bar
+        const bottomBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
+        if(bottomBtn) bottomBtn.classList.add('active');
+
+        // Close menu if clicking from within the hamburger menu
+        const menu = document.getElementById('hamburgerMenu');
+        if(menu.classList.contains('open')) {
+            toggleMenu();
+        }
 
         if(tabId === 'board' || tabId === 'team' || tabId === 'matrix') renderBoard();
         window.scrollTo(0, 0);
@@ -900,7 +964,7 @@
         return trackers;
     }
 
-    // --- FULL BLEED MATRIX RENDERER (Color Coordination & Two-Line Wrapping) ---
+    // --- FULL BLEED MATRIX RENDERER (Cyan Coordination & Two-Line Wrapping) ---
     function renderDraftMatrix() {
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
