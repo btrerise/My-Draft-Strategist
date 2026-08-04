@@ -150,9 +150,9 @@
         .draft-cell.WR { background-color: var(--pos-wr); border-color: var(--pos-wr-border); }
         .draft-cell.TE { background-color: var(--pos-te); border-color: var(--pos-te-border); }
         
-        /* User Team Column Bold Border Highlighting (Replaced Cyan with White Thick Border) */
-        .draft-col-header.mine { border: 3px solid #ffffff !important; font-weight: 900; font-size: 0.85rem; color: #ffffff; }
-        .draft-cell.mine { border: 3px solid #ffffff !important; font-weight: bold; }
+        /* User Team Column White Border Highlighting (Thinner) */
+        .draft-col-header.mine { border: 2px solid #ffffff !important; font-weight: 900; font-size: 0.85rem; color: #ffffff; }
+        .draft-cell.mine { border: 2px solid #ffffff !important; font-weight: bold; }
 
         .draft-cell-first { font-weight: 500; font-size: 0.65rem; line-height: 1.1; color: #e2e8f0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
         .draft-cell-last { font-weight: 800; font-size: 0.75rem; line-height: 1.1; color: #ffffff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: 1px; }
@@ -324,7 +324,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v0.9.8 (Beta)
+            Draft Strategist v0.9.9 (Beta)
         </div>
     </div>
 
@@ -394,7 +394,7 @@
             <h3 style="border-bottom: 2px solid var(--primary-green);">How to Use My Draft Strategist</h3>
             
             <h4>1. Load Rankings</h4>
-            <p>Upload your custom rankings via CSV or Excel. The app maps these names to Sleeper's internal Player IDs behind the scenes for 100% accurate syncing. Ensure your file has a 'Name' column.</p>
+            <p>Upload your custom rankings via CSV or Excel. Ensure your file has a 'Name' column.</p>
 
             <h4>2. Live Market Value (ADP)</h4>
             <p>Once rankings are loaded, click "Fetch Market Value" to pull live market data from LeagueLogs (incorporating ADP and platform-wide market trends) based on your specific league settings. The app will automatically assign Rookie badges (purple 'R') to first-year players in this process.</p>
@@ -412,7 +412,7 @@
             <strong>Inline Editor:</strong> Tap the pencil icon (✏️) on any player card to quickly adjust their Rank, Tier, Team, or Bye Week without leaving the Tracker.</p>
 
             <h4>5. The Draft Board</h4>
-            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Positional colors are preserved across cells, and your team's entire column is clearly highlighted with a bold white border.</p>
+            <p>A full-bleed grid that scales dynamically to your league size (e.g., 10-team, 12-team, 14-team) to show exactly who drafted whom, round-by-round. Positional colors are preserved across cells, and your team's entire column is clearly highlighted with a solid white border.</p>
 
             <h4>6. Roster Limits & Bye Weeks</h4>
             <p>Set your starting lineup requirements in the Setup tab. The <strong>Team</strong> tab will automatically slot your drafted players into their correct positions and calculate your roster limits. Toggle on Bye Week warnings to get instant alerts if 3 or more of your starters share a bye.</p>
@@ -1025,7 +1025,7 @@
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
 
-        // Column Headers (Highlight user's team column headers with bold white border)
+        // Column Headers (Highlight user's team column headers with white border)
         for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
