@@ -9,6 +9,9 @@
 
     <!-- PapaParse for CSV reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- SheetJS for XLSX reading support on mobile -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
         :root {
             --primary-green: #34A853;
@@ -92,22 +95,38 @@
         
         <!-- SETUP TAB -->
         <div id="setupTab" class="tab-content active">
+            
             <div class="settings-card">
-                <h3>1. Add & Manage Leagues</h3>
+                <h3>1. Rankings Upload (Global)</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top:-0.5rem;">Rankings are shared across all your leagues. Upload .csv or .xlsx</p>
+                
+                <label style="font-size: 0.9rem; font-weight: bold;">Rest-of-Season (ROS)</label>
+                <div id="rosMetaDisplay" style="font-size: 0.75rem; color: #86efac; font-weight: bold; display: none; margin-bottom: 0.2rem;"></div>
+                <input type="file" id="rosFileInput" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                <div id="rosSuccessMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem; margin-bottom: 1rem;">✅ Uploaded Successfully!</div>
+
+                <label style="font-size: 0.9rem; font-weight: bold;">Weekly Matchup Rankings</label>
+                <div id="weeklyMetaDisplay" style="font-size: 0.75rem; color: #93c5fd; font-weight: bold; display: none; margin-bottom: 0.2rem;"></div>
+                <input type="file" id="weeklyFileInput" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                <div id="weeklySuccessMsg" style="color: #93c5fd; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
+            </div>
+            
+            <div class="settings-card">
+                <h3>2. Add New Sleeper League</h3>
                 <label style="font-size: 0.9rem; font-weight: bold;">League Name / Nickname</label>
                 <input type="text" id="newLeagueName" placeholder="e.g., Dynasty Money League">
 
                 <label style="font-size: 0.9rem; font-weight: bold;">Sleeper Username</label>
                 <input type="text" id="sleeperUsername" placeholder="e.g., fantasy_guru">
                 
-                <label style="font-size: 0.9rem; font-weight: bold;">League ID (Pulls Auto Roster Requirements)</label>
+                <label style="font-size: 0.9rem; font-weight: bold;">League ID (Pulls Auto Roster Reqs)</label>
                 <input type="text" id="sleeperLeagueId" placeholder="e.g., 912345678901234567">
                 
                 <button class="btn-secondary" onclick="addAndSyncLeague(this)">➕ Add & Sync League</button>
             </div>
 
             <div class="settings-card">
-                <h3>2. Starting Lineup Requirements <span id="activeLeagueReqTitle" style="font-size:0.75rem; color:var(--primary-green);"></span></h3>
+                <h3>3. Active League Requirements <span id="activeLeagueReqTitle" style="font-size:0.75rem; color:var(--primary-green);"></span></h3>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
                     <div><label style="font-size: 0.8rem; font-weight: bold;">QB</label><input type="number" id="reqQB" value="1" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
                     <div><label style="font-size: 0.8rem; font-weight: bold;">RB</label><input type="number" id="reqRB" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
@@ -116,18 +135,21 @@
                     <div><label style="font-size: 0.8rem; font-weight: bold;">FLEX</label><input type="number" id="reqFLEX" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
                     <div><label style="font-size: 0.8rem; font-weight: bold;">SFLEX</label><input type="number" id="reqSFLEX" value="0" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
                 </div>
-                <button class="btn-primary" onclick="saveRequirements(this)">Save Requirements for Active League</button>
-            </div>
-
-            <div class="settings-card">
-                <h3>Your Active Roster <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(Sorted by ROS Rank)</span></h3>
-                <div id="rosterList" style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
-                    Select or sync a league above to view your roster.
-                </div>
+                <button class="btn-primary" onclick="saveRequirements(this)">Save Modifications</button>
             </div>
             
             <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-                My Lineup Strategist v0.3.0
+                My Lineup Strategist v0.4.0
+            </div>
+        </div>
+
+        <!-- ROSTER TAB -->
+        <div id="rosterTab" class="tab-content">
+            <div class="settings-card">
+                <h3>Your Active Roster <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(Sorted by ROS Rank)</span></h3>
+                <div id="rosterList" style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+                    Select or sync a league on the Setup tab to view your roster.
+                </div>
             </div>
         </div>
 
@@ -154,34 +176,13 @@
             </div>
         </div>
 
-        <!-- RANKINGS TAB -->
-        <div id="rankingsTab" class="tab-content">
-            <div class="settings-card">
-                <h3>1. Rest-of-Season (ROS) Rankings</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; line-height: 1.4;">Used globally across all your leagues for long-term value and waivers.</p>
-                <div id="rosMetaDisplay" style="font-size: 0.85rem; color: #86efac; font-weight: bold; background: #102a1e; border: 1px solid var(--primary-green); padding: 0.6rem; border-radius: 4px; margin-bottom: 0.5rem; display: none;"></div>
-                
-                <input type="file" id="rosFileInput" accept=".csv">
-                <div id="rosSuccessMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
-            </div>
-
-            <div class="settings-card">
-                <h3>2. Weekly Matchup Rankings</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; line-height: 1.4;">Used globally for Start/Sit decisions. Supports side-by-side positional formats.</p>
-                <div id="weeklyMetaDisplay" style="font-size: 0.85rem; color: #93c5fd; font-weight: bold; background: #112233; border: 1px solid #4285f4; padding: 0.6rem; border-radius: 4px; margin-bottom: 0.5rem; display: none;"></div>
-                
-                <input type="file" id="weeklyFileInput" accept=".csv">
-                <div id="weeklySuccessMsg" style="color: #93c5fd; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
-            </div>
-        </div>
-
     </div>
 
     <!-- BOTTOM HYBRID NAVIGATION -->
     <div class="nav-bar">
         <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">⚙️ Setup</button>
+        <button class="nav-btn" data-target="roster" onclick="showTab('roster')">📋 Roster</button>
         <button class="nav-btn" data-target="lineup" onclick="showTab('lineup')">🏈 Lineup</button>
-        <button class="nav-btn" data-target="rankings" onclick="showTab('rankings')">📈 Rankings</button>
     </div>
 </div>
 
@@ -214,6 +215,7 @@
         document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`).classList.add('active');
         
         if (tabId === 'lineup') optimizeLineup();
+        if (tabId === 'roster') loadRosterTab();
         if (tabId === 'setup') refreshLeagueDropdown();
         window.scrollTo(0, 0);
     }
@@ -251,6 +253,11 @@
         activeLeagueId = leagueId;
         localStorage.setItem('mds_season_active_league', activeLeagueId);
         loadActiveLeagueData();
+
+        // Refresh Current Tab intelligently
+        const activeTab = document.querySelector('.nav-btn.active').getAttribute('data-target');
+        if (activeTab === 'lineup') optimizeLineup();
+        if (activeTab === 'roster') loadRosterTab();
     }
 
     function getActiveLeague() {
@@ -260,10 +267,6 @@
     function loadActiveLeagueData() {
         let league = getActiveLeague();
         if (!league) return;
-
-        document.getElementById('sleeperUsername').value = league.username || "";
-        document.getElementById('sleeperLeagueId').value = league.leagueId || "";
-        document.getElementById('newLeagueName').value = league.name || "";
         
         let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
         document.getElementById('reqQB').value = reqs.QB;
@@ -272,14 +275,7 @@
         document.getElementById('reqTE').value = reqs.TE;
         document.getElementById('reqFLEX').value = reqs.FLEX;
         document.getElementById('reqSFLEX').value = reqs.SFLEX;
-
         document.getElementById('activeLeagueReqTitle').innerText = `(${league.name})`;
-
-        if (league.roster && league.roster.length > 0) {
-            renderRoster(league.roster);
-        } else {
-            document.getElementById('rosterList').innerHTML = "No players synced for this league yet.";
-        }
     }
 
     function saveRequirements(btn) {
@@ -301,11 +297,11 @@
         localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
         if (btn) {
             btn.innerText = "✅ Saved!";
-            setTimeout(() => btn.innerText = "Save Requirements for Active League", 2000);
+            setTimeout(() => btn.innerText = "Save Modifications", 2000);
         }
     }
 
-    // --- SLEEPER SYNC WITH AUTO-ROSTER REQUIREMENTS ---
+    // --- SLEEPER SYNC WITH INTELLIGENT AUTO-ROSTER REQS ---
     async function addAndSyncLeague(btn) {
         const leagueName = document.getElementById('newLeagueName').value.trim() || "My League";
         const username = document.getElementById('sleeperUsername').value.trim();
@@ -331,12 +327,22 @@
             if (!leagueRes.ok) throw new Error("League ID not found.");
             const leagueData = await leagueRes.json();
             
-            // Parse roster_positions array from Sleeper
+            // Parse roster_positions array from Sleeper intelligently
             let autoReqs = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
             if (leagueData.roster_positions) {
                 autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0 };
                 leagueData.roster_positions.forEach(pos => {
-                    if (autoReqs[pos] !== undefined) autoReqs[pos]++;
+                    let mappedPos = null;
+                    if (pos === 'QB') mappedPos = 'QB';
+                    else if (pos === 'RB') mappedPos = 'RB';
+                    else if (pos === 'WR') mappedPos = 'WR';
+                    else if (pos === 'TE') mappedPos = 'TE';
+                    else if (pos === 'FLEX' || pos === 'REC_FLEX' || pos === 'WRRB_FLEX') mappedPos = 'FLEX';
+                    else if (pos === 'SUPER_FLEX') mappedPos = 'SFLEX'; // Fix for Sleeper's internal SFLEX name
+
+                    if (mappedPos && autoReqs[mappedPos] !== undefined) {
+                        autoReqs[mappedPos]++;
+                    }
                 });
             }
 
@@ -388,6 +394,10 @@
             localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
             localStorage.setItem('mds_season_active_league', activeLeagueId);
 
+            document.getElementById('newLeagueName').value = "";
+            document.getElementById('sleeperUsername').value = "";
+            document.getElementById('sleeperLeagueId').value = "";
+
             refreshLeagueDropdown();
             loadActiveLeagueData();
             
@@ -396,7 +406,7 @@
             btn.style.color = "#0b132b";
             
             setTimeout(() => {
-                btn.innerText = originalText;
+                btn.innerText = "➕ Add & Sync League";
                 btn.style.backgroundColor = "#4285f4";
                 btn.style.color = "white";
             }, 2500);
@@ -409,15 +419,15 @@
         }
     }
 
-    // Sort Setup Roster by ROS Rankings with Positional Badge on the LEFT
-    function renderRoster(rosterArray) {
-        const container = document.getElementById('rosterList');
-        if (!rosterArray || rosterArray.length === 0) {
-            container.innerHTML = "No players found.";
+    // --- ROSTER TAB ---
+    function loadRosterTab() {
+        let league = getActiveLeague();
+        if (!league || !league.roster || league.roster.length === 0) {
+            document.getElementById('rosterList').innerHTML = "Select or sync a league on the Setup tab to view your roster.";
             return;
         }
-
-        let displayRoster = rosterArray.map(p => {
+        
+        let displayRoster = league.roster.map(p => {
             let rObj = rosRankings.find(rk => rk.cleanName === p.cleanName);
             return { ...p, rosRank: rObj ? rObj.rank : 999 };
         });
@@ -443,10 +453,10 @@
                 </div>
             </div>`;
         });
-        container.innerHTML = html;
+        document.getElementById('rosterList').innerHTML = html;
     }
 
-    // --- RANKINGS ENGINE ---
+    // --- RANKINGS ENGINE (CSV + XLSX Support) ---
     function updateRankingsMetaDisplay() {
         const rosMetaEl = document.getElementById('rosMetaDisplay');
         if (rosRankings.length > 0) {
@@ -465,101 +475,124 @@
         }
     }
 
-    function handleRankingsUpload(fileInputId, isWeekly, successMsgId) {
+    function processRankingsUpload(fileInputId, isWeekly, successMsgId) {
         const file = document.getElementById(fileInputId).files[0];
         if (!file) return;
-        
-        Papa.parse(file, {
-            header: false, skipEmptyLines: true,
-            complete: function(results) {
-                let parsed = [];
-                let rows = results.data;
-                if (rows.length < 1) return;
 
-                let headers = rows[0].map(h => String(h).trim().toLowerCase());
-                let isHorizontal = headers.includes('quarterback') || headers.includes('running back');
+        const filename = file.name.toLowerCase();
 
-                if (isHorizontal) {
-                    let playerRanks = {};
-                    headers.forEach((h, idx) => {
-                        let isFlex = (h === 'flex');
-                        let isPos = ['quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense'].includes(h);
-                        
-                        if (isFlex || isPos) {
-                            for (let r = 1; r < rows.length; r++) {
-                                let pName = rows[r][idx];
-                                let pRank = rows[r][idx - 1];
-                                
-                                if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
-                                    let clean = normalizeName(pName.trim());
-                                    if (!playerRanks[clean]) {
-                                        playerRanks[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
-                                    }
-                                    if (isFlex) {
-                                        playerRanks[clean].flexRank = parseInt(pRank);
-                                        playerRanks[clean].rank = parseInt(pRank);
-                                    } else {
-                                        playerRanks[clean].posRank = parseInt(pRank);
-                                        playerRanks[clean].rank = parseInt(pRank);
-                                    }
-                                }
-                            }
-                        }
-                    });
-                    parsed = Object.values(playerRanks);
-                } else {
-                    let nameColIdx = -1;
-                    let rankColIdx = -1;
-                    
-                    let hasHeaders = headers.some(h => h === 'player' || h === 'name' || h === 'player name');
-                    if (hasHeaders) {
-                        nameColIdx = headers.findIndex(h => h === 'player' || h === 'name' || h === 'player name');
-                        rankColIdx = headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'pos rank' || h === 'tier');
-                    } else {
-                        let col0IsNum = !isNaN(parseInt(rows[0][0]));
-                        nameColIdx = col0IsNum ? 1 : 0;
-                        rankColIdx = col0IsNum ? 0 : -1;
-                    }
-
-                    let startIndex = hasHeaders ? 1 : 0;
-                    for (let i = startIndex; i < rows.length; i++) {
-                        let nameStr = rows[i][nameColIdx];
-                        if (nameStr && nameStr.trim()) {
-                            let rankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
-                            if (isNaN(rankVal)) rankVal = i + 1 - startIndex;
-                            
-                            parsed.push({
-                                name: nameStr.trim(),
-                                cleanName: normalizeName(nameStr.trim()),
-                                rank: rankVal,
-                                posRank: rankVal,
-                                flexRank: rankVal
-                            });
-                        }
-                    }
-                }
-
-                if (isWeekly) {
-                    weeklyRankings = parsed;
-                    localStorage.setItem('mds_season_weekly', JSON.stringify(weeklyRankings));
-                } else {
-                    rosRankings = parsed;
-                    localStorage.setItem('mds_season_ros', JSON.stringify(rosRankings));
-                }
+        if (filename.endsWith('.csv')) {
+            Papa.parse(file, {
+                header: false, skipEmptyLines: true,
+                complete: (results) => parseRankingsData(results.data, isWeekly, successMsgId)
+            });
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheetName = workbook.SheetNames[0];
+                const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[firstSheetName]);
                 
-                updateRankingsMetaDisplay();
-                let league = getActiveLeague();
-                if (league && league.roster) renderRoster(league.roster);
-                
-                let msgEl = document.getElementById(successMsgId);
-                msgEl.style.display = 'block';
-                setTimeout(() => msgEl.style.display = 'none', 2500);
-            }
-        });
+                Papa.parse(csvStr, {
+                    header: false, skipEmptyLines: true,
+                    complete: (results) => parseRankingsData(results.data, isWeekly, successMsgId)
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            alert("Unsupported file format. Please upload a .csv or .xlsx file.");
+        }
     }
 
-    document.getElementById('rosFileInput').addEventListener('change', () => handleRankingsUpload('rosFileInput', false, 'rosSuccessMsg'));
-    document.getElementById('weeklyFileInput').addEventListener('change', () => handleRankingsUpload('weeklyFileInput', true, 'weeklySuccessMsg'));
+    function parseRankingsData(rows, isWeekly, successMsgId) {
+        let parsed = [];
+        if (rows.length < 1) return;
+
+        let headers = rows[0].map(h => String(h).trim().toLowerCase());
+        let isHorizontal = headers.includes('quarterback') || headers.includes('running back');
+
+        if (isHorizontal) {
+            let playerRanks = {};
+            headers.forEach((h, idx) => {
+                let isFlex = (h === 'flex');
+                let isPos = ['quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense'].includes(h);
+                
+                if (isFlex || isPos) {
+                    for (let r = 1; r < rows.length; r++) {
+                        let pName = rows[r][idx];
+                        let pRank = rows[r][idx - 1];
+                        
+                        if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
+                            let clean = normalizeName(pName.trim());
+                            if (!playerRanks[clean]) {
+                                playerRanks[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
+                            }
+                            if (isFlex) {
+                                playerRanks[clean].flexRank = parseInt(pRank);
+                                playerRanks[clean].rank = parseInt(pRank);
+                            } else {
+                                playerRanks[clean].posRank = parseInt(pRank);
+                                playerRanks[clean].rank = parseInt(pRank);
+                            }
+                        }
+                    }
+                }
+            });
+            parsed = Object.values(playerRanks);
+        } else {
+            let nameColIdx = -1;
+            let rankColIdx = -1;
+            
+            let hasHeaders = headers.some(h => h === 'player' || h === 'name' || h === 'player name');
+            if (hasHeaders) {
+                nameColIdx = headers.findIndex(h => h === 'player' || h === 'name' || h === 'player name');
+                rankColIdx = headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'pos rank' || h === 'tier');
+            } else {
+                let col0IsNum = !isNaN(parseInt(rows[0][0]));
+                nameColIdx = col0IsNum ? 1 : 0;
+                rankColIdx = col0IsNum ? 0 : -1;
+            }
+
+            let startIndex = hasHeaders ? 1 : 0;
+            for (let i = startIndex; i < rows.length; i++) {
+                let nameStr = rows[i][nameColIdx];
+                if (nameStr && nameStr.trim()) {
+                    let rankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
+                    if (isNaN(rankVal)) rankVal = i + 1 - startIndex;
+                    
+                    parsed.push({
+                        name: nameStr.trim(),
+                        cleanName: normalizeName(nameStr.trim()),
+                        rank: rankVal,
+                        posRank: rankVal,
+                        flexRank: rankVal
+                    });
+                }
+            }
+        }
+
+        if (isWeekly) {
+            weeklyRankings = parsed;
+            localStorage.setItem('mds_season_weekly', JSON.stringify(weeklyRankings));
+        } else {
+            rosRankings = parsed;
+            localStorage.setItem('mds_season_ros', JSON.stringify(rosRankings));
+        }
+        
+        updateRankingsMetaDisplay();
+        
+        const activeTab = document.querySelector('.nav-btn.active').getAttribute('data-target');
+        if (activeTab === 'lineup') optimizeLineup();
+        if (activeTab === 'roster') loadRosterTab();
+        
+        let msgEl = document.getElementById(successMsgId);
+        msgEl.style.display = 'block';
+        setTimeout(() => msgEl.style.display = 'none', 2500);
+    }
+
+    document.getElementById('rosFileInput').addEventListener('change', () => processRankingsUpload('rosFileInput', false, 'rosSuccessMsg'));
+    document.getElementById('weeklyFileInput').addEventListener('change', () => processRankingsUpload('weeklyFileInput', true, 'weeklySuccessMsg'));
 
     // --- LINEUP OPTIMIZER ENGINE ---
     function toggleLock(playerId) {
@@ -605,9 +638,15 @@
 
         const fillSlot = (slotLabel, posFilter, useFlexRank) => {
             pool.sort((a, b) => {
-                let rankA = useFlexRank ? (a.flexRank !== 999 ? a.flexRank : a.posRank) : a.posRank;
-                let rankB = useFlexRank ? (b.flexRank !== 999 ? b.flexRank : b.posRank) : b.posRank;
-                return rankA - rankB;
+                if (useFlexRank) {
+                    // Smart Flex Priority Logic: Ranked Flex > Positional Fallback
+                    if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
+                    if (a.flexRank !== 999 && b.flexRank === 999) return -1;
+                    if (a.flexRank === 999 && b.flexRank !== 999) return 1;
+                    return a.posRank - b.posRank;
+                } else {
+                    return a.posRank - b.posRank;
+                }
             });
 
             let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
@@ -642,7 +681,7 @@
                 let lockIcon = p.isLocked ? "🔒" : "🔓";
                 let lockClass = p.isLocked ? "locked" : "";
                 
-                let displayRank = s.usedFlex ? (p.flexRank !== 999 ? p.flexRank : p.posRank) : p.posRank;
+                let displayRank = s.usedFlex && p.flexRank !== 999 ? p.flexRank : p.posRank;
                 let rankLabel = s.usedFlex && p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
                 let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
 
@@ -677,9 +716,11 @@
         let benchHTML = "";
         if (pool.length > 0) {
             pool.sort((a, b) => {
-                let rankA = a.flexRank !== 999 ? a.flexRank : a.posRank;
-                let rankB = b.flexRank !== 999 ? b.flexRank : b.posRank;
-                return rankA - rankB;
+                // Keep bench sorted intelligently for Flex utility
+                if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
+                if (a.flexRank !== 999 && b.flexRank === 999) return -1;
+                if (a.flexRank === 999 && b.flexRank !== 999) return 1;
+                return a.posRank - b.posRank;
             });
 
             pool.forEach(p => {
