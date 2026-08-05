@@ -95,7 +95,7 @@
 
         /* Badges & Color Coding */
         .badge { background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; color: #f1f5f9; display: inline-block; white-space: nowrap;}
-        .tnf-badge { background: #fbbc04; color: #0b132b; font-weight: bold; border: 1px solid #f59e0b; padding: 1px 4px; font-size: 0.70rem; margin-left: 4px;}
+        .early-badge { background: #fbbc04; color: #0b132b; font-weight: bold; border: 1px solid #f59e0b; padding: 1px 4px; font-size: 0.70rem; margin-left: 4px;}
         
         .pos-badge.QB { background-color: var(--pos-qb); color: #fca5a5; border: 1px solid var(--pos-qb-border); }
         .pos-badge.RB { background-color: var(--pos-rb); color: #86efac; border: 1px solid var(--pos-rb-border); }
@@ -103,6 +103,11 @@
         .pos-badge.TE { background-color: var(--pos-te); color: #fde047; border: 1px solid var(--pos-te-border); }
         .pos-badge.K { background-color: var(--pos-k); color: #e2e8f0; border: 1px solid var(--pos-k-border); }
         .pos-badge.DEF { background-color: var(--pos-def); color: #e9d8fd; border: 1px solid var(--pos-def-border); }
+
+        /* Team Selection Chips */
+        .team-chip { background: #102a1e; padding: 4px 10px; border-radius: 16px; font-size: 0.8rem; font-weight: bold; color: #86efac; display: flex; align-items: center; gap: 6px; border: 1px solid #34A853; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .team-chip .close-chip { cursor: pointer; color: #fca5a5; font-size: 0.9rem; line-height: 1; margin-top: -1px; transition: opacity 0.2s; }
+        .team-chip .close-chip:active { opacity: 0.5; }
 
         /* Tooltips (Anchored Right) */
         .tooltip-container { position: relative; display: inline-flex; align-items: center; margin-left: 5px; cursor: help; }
@@ -259,7 +264,7 @@
             </div>
 
             <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem; margin-bottom: 2rem;">
-                My Lineup Strategist v0.9.2
+                My Lineup Strategist v0.9.3
             </div>
         </div>
 
@@ -318,21 +323,19 @@
 
             <div class="settings-card">
                 <h3>
-                    <span>Thursday Night Football
+                    <span>Early Games <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(TNF, London, etc.)</span>
                         <div class="tooltip-container">
                             <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Select the two NFL teams playing in TNF this week. Players on these teams will be flagged with a TNF badge across your Lineup screen so you can make informed slot decisions.</span>
+                            <span class="tooltip-text">Select teams playing before Sunday's main slate. Players on these teams will be flagged with an EARLY badge across your Lineup screen so you can make informed slot decisions.</span>
                         </div>
                     </span>
                 </h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                    <div>
-                        <label style="font-size: 0.8rem; font-weight: bold;">Away Team</label>
-                        <select id="tnfAwaySelect" onchange="saveTNFSetting()"></select>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; font-weight: bold;">Home Team</label>
-                        <select id="tnfHomeSelect" onchange="saveTNFSetting()"></select>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                    <select id="earlyTeamSelect" onchange="addEarlyTeam(this.value)" style="margin: 0;">
+                        <!-- Populated by JS -->
+                    </select>
+                    <div id="earlyTeamChips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem;">
+                        <!-- Chips inject here -->
                     </div>
                 </div>
             </div>
@@ -358,9 +361,9 @@
 
             <div class="settings-card">
                 <h3>Bench Priorities</h3>
-                <!-- TNF Strategy Banner -->
-                <div id="tnfBanner" style="background: rgba(251, 188, 4, 0.15); border: 1px solid #fbbc04; color: #fde047; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; display: none; line-height: 1.4;">
-                    <strong>TNF Strategy Reminder:</strong> Move Thursday Night Football starters into primary position slots (QB/RB/WR/TE) rather than FLEX slots! Use the <strong>⇄ Swap</strong> button below to adjust.
+                <!-- Early Games Strategy Banner -->
+                <div id="earlyBanner" style="background: rgba(251, 188, 4, 0.15); border: 1px solid #fbbc04; color: #fde047; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; display: none; line-height: 1.4;">
+                    <strong>Early Game Reminder:</strong> Move starters playing before Sunday into primary position slots (QB/RB/WR/TE) rather than FLEX slots! Use the <strong>⇄ Swap</strong> button below to adjust.
                 </div>
                 <div id="benchContainer" style="font-size: 0.85rem; color: var(--text-muted);">
                     No bench data yet.
@@ -405,13 +408,13 @@
 </div>
 
 <script>
-    // NFL Teams List for TNF Dropdowns
-    const nflTeams = ["None", "ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
+    // NFL Teams List
+    const nflTeams = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
 
     // --- STATE MANAGEMENT ---
     let leagues = JSON.parse(localStorage.getItem('mds_season_leagues')) || [];
     let activeLeagueId = localStorage.getItem('mds_season_active_league') || null;
-    let tnfTeams = JSON.parse(localStorage.getItem('mds_season_tnf')) || { away: "None", home: "None" };
+    let earlyTeams = JSON.parse(localStorage.getItem('mds_season_early_teams')) || [];
     
     let rosRankings = JSON.parse(localStorage.getItem('mds_season_ros')) || [];
     let weeklyRankings = JSON.parse(localStorage.getItem('mds_season_weekly')) || [];
@@ -505,9 +508,9 @@
         window.scrollTo(0, 0);
     }
 
-    // --- SETUP & TNF LOGIC ---
+    // --- SETUP & EARLY GAMES LOGIC ---
     function loadSettings() {
-        populateTNFDropdowns();
+        populateEarlyGameDropdown();
         refreshLeagueDropdown();
         updateRankingsMetaDisplay();
 
@@ -520,44 +523,65 @@
         }
     }
 
-    function populateTNFDropdowns() {
-        const awaySel = document.getElementById('tnfAwaySelect');
-        const homeSel = document.getElementById('tnfHomeSelect');
-        let html = "";
+    function populateEarlyGameDropdown() {
+        const sel = document.getElementById('earlyTeamSelect');
+        let html = `<option value="">-- Add an Early Team --</option>`;
         nflTeams.forEach(t => { html += `<option value="${t}">${t}</option>`; });
-        awaySel.innerHTML = html;
-        homeSel.innerHTML = html;
-
-        awaySel.value = tnfTeams.away || "None";
-        homeSel.value = tnfTeams.home || "None";
-        checkTNFBannerVisibility();
+        sel.innerHTML = html;
+        renderEarlyChips();
+        checkEarlyBannerVisibility();
     }
 
-    function saveTNFSetting() {
-        tnfTeams = {
-            away: document.getElementById('tnfAwaySelect').value,
-            home: document.getElementById('tnfHomeSelect').value
-        };
-        localStorage.setItem('mds_season_tnf', JSON.stringify(tnfTeams));
-        checkTNFBannerVisibility();
+    function addEarlyTeam(team) {
+        if (!team) return;
+        if (!earlyTeams.includes(team)) {
+            earlyTeams.push(team);
+            localStorage.setItem('mds_season_early_teams', JSON.stringify(earlyTeams));
+            renderEarlyChips();
+        }
+        document.getElementById('earlyTeamSelect').value = "";
+        checkEarlyBannerVisibility();
         
         const activeTab = document.querySelector('.tab-content.active').id;
         if (activeTab === 'lineupTab') renderLineupUI();
     }
 
-    function checkTNFBannerVisibility() {
-        const banner = document.getElementById('tnfBanner');
-        if (tnfTeams.away !== "None" || tnfTeams.home !== "None") {
+    function removeEarlyTeam(team) {
+        earlyTeams = earlyTeams.filter(t => t !== team);
+        localStorage.setItem('mds_season_early_teams', JSON.stringify(earlyTeams));
+        renderEarlyChips();
+        checkEarlyBannerVisibility();
+        
+        const activeTab = document.querySelector('.tab-content.active').id;
+        if (activeTab === 'lineupTab') renderLineupUI();
+    }
+
+    function renderEarlyChips() {
+        const container = document.getElementById('earlyTeamChips');
+        if (earlyTeams.length === 0) {
+            container.innerHTML = `<span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No teams selected.</span>`;
+            return;
+        }
+        let html = "";
+        earlyTeams.forEach(t => {
+            html += `<div class="team-chip">${t} <span class="close-chip" onclick="removeEarlyTeam('${t}')">✖</span></div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function checkEarlyBannerVisibility() {
+        const banner = document.getElementById('earlyBanner');
+        if (earlyTeams.length > 0) {
             banner.style.display = 'block';
         } else {
             banner.style.display = 'none';
         }
     }
 
-    function isTNFPlayer(teamStr) {
+    function isEarlyPlayer(teamStr) {
         if (!teamStr || teamStr === "FA") return false;
         let t = teamStr.toUpperCase();
-        return (tnfTeams.away !== "None" && t === tnfTeams.away) || (tnfTeams.home !== "None" && t === tnfTeams.home);
+        return earlyTeams.includes(t);
     }
 
     function refreshLeagueDropdown() {
@@ -1303,7 +1327,7 @@
                 let displayRank = s.usedFlex && p.flexRank !== 999 ? p.flexRank : p.posRank;
                 let rankLabel = s.usedFlex && p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
                 let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
-                let tnfTag = isTNFPlayer(p.team) ? `<span class="badge tnf-badge">TNF</span>` : "";
+                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
@@ -1311,7 +1335,7 @@
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name} ${tnfTag}</div>
+                            <div class="player-name-wrap">${p.name} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
@@ -1341,7 +1365,7 @@
                 let displayRank = p.flexRank !== 999 ? p.flexRank : p.posRank;
                 let rankLabel = p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
                 let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
-                let tnfTag = isTNFPlayer(p.team) ? `<span class="badge tnf-badge">TNF</span>` : "";
+                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">
@@ -1349,7 +1373,7 @@
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name} ${tnfTag}</div>
+                            <div class="player-name-wrap">${p.name} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
