@@ -56,10 +56,13 @@
     <button class="nav-btn" data-target="guide" onclick="showTab('guide')">ℹ️ Info & Guide</button>
 
     <a href="./inseason/" style="text-decoration: none;"><button class="nav-btn" style="color: #4ade80; border-top: 1px dashed var(--primary-green);">My Lineup Strategist ➔</button></a>
-    <div class="menu-kofi">
-        <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center; justify-content: center;">
-            <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
-        </a>
+    
+    <div style="margin-top: auto; display: flex; flex-direction: column; align-items: center;">
+        <div class="menu-kofi" style="margin-bottom: 1.5rem; width: 100%;">
+            <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center; justify-content: center;">
+                <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
+            </a>
+        </div>
     </div>
 </div>
 
@@ -94,9 +97,14 @@
         </div>
 
         <div class="settings-card">
-            <h3>1. Load Rankings
-                <span class="tooltip">ℹ️<span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span></span>
-            </h3>
+            <h3>
+    <span>1. Load Rankings
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span>
+        </div>
+    </span>
+</h3>
             <div id="metaDisplay" class="status-badge"></div>
             
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; margin-bottom: 0.8rem;">
@@ -113,9 +121,14 @@
         </div>
 
         <div class="settings-card">
-            <h3>2. Live Market Value (ADP) 📈
-                <span class="tooltip">ℹ️<span class="tooltip-text">If you uploaded custom rankings above, click here to pull in the live ADP market value so you know when players are actually being drafted.</span></span>
-            </h3>
+            <h3>
+    <span>2. Live Market Value (ADP) 📈
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">If you uploaded custom rankings above, click here to pull in the live ADP market value so you know when players are actually being drafted.</span>
+        </div>
+    </span>
+</h3>
             <div id="adpStatusDisplay" class="status-badge"></div>
 
             <label style="font-size: 0.9rem; font-weight: bold;">Select LeagueLogs Profile</label>
@@ -143,9 +156,14 @@
         </div>
 
         <div class="settings-card">
-            <h3>3. Sleeper Integration (Optional) 🏈
-                <span class="tooltip">ℹ️<span class="tooltip-text">Drafting on Sleeper? Enter your info here to auto-cross players off your tracker as they get drafted! If playing elsewhere, leave this blank and track manually.</span></span>
-            </h3>
+            <h3>
+    <span>3. Sleeper Integration (Optional) 🏈
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Drafting on Sleeper? Enter your info here to auto-cross players off your tracker as they get drafted! If playing elsewhere, leave this blank and track manually.</span>
+        </div>
+    </span>
+</h3>
             <label style="font-size: 0.9rem; font-weight: bold;">Sleeper Username</label>
             <input type="text" id="sleeperUsername" placeholder="e.g., fantasy_guru">
             <label style="font-size: 0.9rem; font-weight: bold;">Draft ID</label>
@@ -160,9 +178,14 @@
         </div>
 
         <div class="settings-card">
-            <h3>4. Roster Limits & Settings 📊
-                <span class="tooltip">ℹ️<span class="tooltip-text">Set your starting lineup slots to let the app automatically track your roster and bye weeks on the Team Tab.</span></span>
-            </h3>
+            <h3>
+    <span>4. Roster Limits & Settings 📊
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Set your starting lineup slots to let the app automatically track your roster and bye weeks on the Team Tab.</span>
+        </div>
+    </span>
+</h3>
             
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
                 <div><label style="font-size: 0.8rem; font-weight: bold;">QB</label><input type="number" id="limitQB" min="0" value="1"></div>
@@ -201,9 +224,14 @@
         </div>
 
         <div class="settings-card">
-            <h3>5. Call Outs 🎯
-                <span class="tooltip">ℹ️<span class="tooltip-text">Paste names of players you want to remember. The app will permanently color-code them in the Tracker so you never miss them.</span></span>
-            </h3>
+            <h3>
+    <span>5. Call Outs 🎯
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Paste names of players you want to remember. The app will permanently color-code them in the Tracker so you never miss them.</span>
+        </div>
+    </span>
+</h3>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Paste names below (separated by commas or new lines)</p>
 
             <label style="font-size: 0.85rem; font-weight: bold;">🟢 Targets</label>
