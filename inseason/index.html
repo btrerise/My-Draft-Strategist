@@ -11,6 +11,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- SheetJS for XLSX reading support on mobile -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2canvas for Screenshot Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root {
@@ -89,13 +91,14 @@
         .slot-BN { color: var(--text-muted) !important; }
         .slot-ROS { color: var(--text-muted) !important; }
 
-        .player-name-wrap { font-weight: bold; color: #f8fafc; line-height: 1.15; font-size: 0.95rem; }
+        .player-name-wrap { font-weight: bold; color: #f8fafc; line-height: 1.25; font-size: 0.95rem; }
         .swap-btn { padding: 4px 8px; }
         .lock-btn { font-size: 1.2rem; }
 
         /* Badges & Color Coding */
         .badge { background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; color: #f1f5f9; display: inline-block; white-space: nowrap;}
         .early-badge { background: #fbbc04; color: #0b132b; font-weight: bold; border: 1px solid #f59e0b; padding: 1px 4px; font-size: 0.70rem; margin-left: 4px;}
+        .inj-badge { background: #ea4335; color: white; border: none; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
         
         .pos-badge.QB { background-color: var(--pos-qb); color: #fca5a5; border: 1px solid var(--pos-qb-border); }
         .pos-badge.RB { background-color: var(--pos-rb); color: #86efac; border: 1px solid var(--pos-rb-border); }
@@ -264,7 +267,7 @@
             </div>
 
             <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem; margin-bottom: 2rem;">
-                My Lineup Strategist v0.9.3
+                My Lineup Strategist v0.9.4
             </div>
         </div>
 
@@ -349,7 +352,10 @@
                         </div>
                     </span>
                 </h3>
-                <button class="btn-primary" style="margin-top: 0; margin-bottom: 1rem;" onclick="optimizeLineup(true)">⚡ Optimize Lineup</button>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0; margin-bottom: 1rem;">
+                    <button class="btn-primary" style="margin-top: 0; flex: 2;" onclick="optimizeLineup(true)">⚡ Optimize Lineup</button>
+                    <button id="exportBtn" class="btn-primary" style="margin-top: 0; flex: 1; background: #8b5cf6;" onclick="exportLineup()">📸 Export</button>
+                </div>
                 <div style="border-top: 2px solid var(--border); padding-top: 1rem;">
                     <div id="optimalLineupContainer">
                         <div style="text-align:center; color: var(--text-muted); padding: 1.5rem; font-style: italic;">
@@ -394,6 +400,11 @@
                 <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-top:0;">
                     The Lineup Optimizer will do the heavy lifting for you based on the Weekly Rankings you provide. However, you can manually override it by tapping <strong>⇄ Swap</strong> on any player to switch them with someone else (even players on the bench!). Tap <strong>⚡ Optimize Lineup</strong> to revert back to the algorithmic ideal.
                 </p>
+                
+                <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">Exporting & Sharing</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-top:0;">
+                    Once your lineup is set, tap the <strong>📸 Export</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media!
+                </p>
             </div>
         </div>
 
@@ -408,8 +419,16 @@
 </div>
 
 <script>
-    // NFL Teams List
+    // NFL Teams List & Bye Week Dictionary
     const nflTeams = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
+    
+    // Users can easily update this mapping each season
+    const teamByes = {
+        "ARI": 11, "ATL": 12, "BAL": 14, "BUF": 12, "CAR": 11, "CHI": 7, "CIN": 12, "CLE": 10,
+        "DAL": 7, "DEN": 14, "DET": 5, "GB": 10, "HOU": 14, "IND": 14, "JAX": 12, "KC": 6,
+        "LAC": 5, "LAR": 6, "LV": 10, "MIA": 6, "MIN": 6, "NE": 14, "NO": 12, "NYG": 11,
+        "NYJ": 12, "PHI": 5, "PIT": 9, "SEA": 10, "SF": 9, "TB": 11, "TEN": 5, "WAS": 14
+    };
 
     // --- STATE MANAGEMENT ---
     let leagues = JSON.parse(localStorage.getItem('mds_season_leagues')) || [];
@@ -736,7 +755,7 @@
         }
     }
 
-    // --- SLEEPER SYNC WITH AUTO LEAGUE NAME PULLING ---
+    // --- SLEEPER SYNC (INJURIES & BYE WEEKS INCLUDED) ---
     async function addAndSyncLeague(btn) {
         let leagueName = document.getElementById('newLeagueName').value.trim();
         const username = document.getElementById('sleeperUsername').value.trim();
@@ -801,12 +820,33 @@
             playerIds.forEach(id => {
                 let p = playerMap[id];
                 if (p) {
+                    let inj = null;
+                    if (p.injury_status && p.injury_status !== "None" && p.injury_status !== "Active") {
+                        inj = p.injury_status;
+                    } else if (p.status && ['Suspended', 'PUP', 'IR', 'NFI'].includes(p.status)) {
+                        inj = p.status;
+                    }
+                    
+                    let shortInj = null;
+                    if (inj) {
+                        let iUpper = inj.toUpperCase();
+                        if (iUpper.includes('QUESTIONABLE')) shortInj = 'Q';
+                        else if (iUpper.includes('DOUBTFUL')) shortInj = 'D';
+                        else if (iUpper.includes('OUT')) shortInj = 'OUT';
+                        else if (iUpper.includes('SUSPENDED')) shortInj = 'SUS';
+                        else if (iUpper.includes('IR') || iUpper.includes('INJURED RESERVE')) shortInj = 'IR';
+                        else if (iUpper.includes('PUP')) shortInj = 'PUP';
+                        else if (iUpper.includes('NFI')) shortInj = 'NFI';
+                        else shortInj = inj;
+                    }
+
                     rosterDetails.push({
                         id: id,
                         name: `${p.first_name} ${p.last_name}`,
                         cleanName: normalizeName(`${p.first_name} ${p.last_name}`),
                         pos: p.position || "FLEX",
-                        team: p.team || "FA"
+                        team: p.team || "FA",
+                        inj: shortInj
                     });
                 }
             });
@@ -886,12 +926,33 @@
             playerIds.forEach(id => {
                 let p = playerMap[id];
                 if (p) {
+                    let inj = null;
+                    if (p.injury_status && p.injury_status !== "None" && p.injury_status !== "Active") {
+                        inj = p.injury_status;
+                    } else if (p.status && ['Suspended', 'PUP', 'IR', 'NFI'].includes(p.status)) {
+                        inj = p.status;
+                    }
+                    
+                    let shortInj = null;
+                    if (inj) {
+                        let iUpper = inj.toUpperCase();
+                        if (iUpper.includes('QUESTIONABLE')) shortInj = 'Q';
+                        else if (iUpper.includes('DOUBTFUL')) shortInj = 'D';
+                        else if (iUpper.includes('OUT')) shortInj = 'OUT';
+                        else if (iUpper.includes('SUSPENDED')) shortInj = 'SUS';
+                        else if (iUpper.includes('IR') || iUpper.includes('INJURED RESERVE')) shortInj = 'IR';
+                        else if (iUpper.includes('PUP')) shortInj = 'PUP';
+                        else if (iUpper.includes('NFI')) shortInj = 'NFI';
+                        else shortInj = inj;
+                    }
+
                     rosterDetails.push({
                         id: id,
                         name: `${p.first_name} ${p.last_name}`,
                         cleanName: normalizeName(`${p.first_name} ${p.last_name}`),
                         pos: p.position || "FLEX",
-                        team: p.team || "FA"
+                        team: p.team || "FA",
+                        inj: shortInj
                     });
                 }
             });
@@ -921,6 +982,50 @@
                 btn.innerText = "🔄 Sync Sleeper Waivers & Trades";
                 btn.style.backgroundColor = "#34A853";
             }, 2500);
+        }
+    }
+
+    // --- SCREENSHOT EXPORT ---
+    async function exportLineup() {
+        if (typeof html2canvas === 'undefined') {
+            alert("Screenshot library loading. Please try again in a second.");
+            return;
+        }
+        
+        const container = document.getElementById('optimalLineupContainer');
+        const exportBtn = document.getElementById('exportBtn');
+        const origText = exportBtn.innerText;
+        exportBtn.innerText = "📸 Capturing...";
+        
+        // Hide interactive buttons temporarily
+        const buttons = container.querySelectorAll('.swap-btn, .lock-btn');
+        buttons.forEach(b => b.style.display = 'none');
+        
+        // Ensure background is solid for the image output
+        const originalBg = container.style.background;
+        container.style.background = '#1c2541'; 
+        container.style.padding = '1rem';
+        container.style.borderRadius = '8px';
+        
+        try {
+            const canvas = await html2canvas(container, {
+                backgroundColor: '#1c2541',
+                scale: 2 // Higher resolution for crisp text
+            });
+            
+            const link = document.createElement('a');
+            link.download = `My_Lineup_Strategist.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (err) {
+            console.error("Export failed:", err);
+            alert("Sorry, export failed. Please try again.");
+        } finally {
+            // Restore UI Elements instantly
+            buttons.forEach(b => b.style.display = 'inline-block');
+            container.style.background = originalBg;
+            container.style.padding = '0';
+            exportBtn.innerText = origText;
         }
     }
 
@@ -954,6 +1059,8 @@
         let html = "";
         displayRoster.forEach(p => {
             let rankBadge = p.rosRank !== 999 ? `ROS Rank: ${p.rosRank}` : "Unranked";
+            let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
+            let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
             
             html += `
             <div class="roster-item">
@@ -961,7 +1068,7 @@
                     <span class="slot-label slot-ROS">ROS</span>
                     <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                     <div style="display:flex; flex-direction:column; justify-content:center;">
-                        <div class="player-name-wrap">${p.name}</div>
+                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge}</div>
                         <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                             <span class="badge">${p.team}</span>
                             <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
@@ -1327,7 +1434,10 @@
                 let displayRank = s.usedFlex && p.flexRank !== 999 ? p.flexRank : p.posRank;
                 let rankLabel = s.usedFlex && p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
                 let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
+                
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
+                let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
+                let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
@@ -1335,7 +1445,7 @@
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
@@ -1365,7 +1475,10 @@
                 let displayRank = p.flexRank !== 999 ? p.flexRank : p.posRank;
                 let rankLabel = p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
                 let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
+                
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
+                let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
+                let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">
@@ -1373,7 +1486,7 @@
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
