@@ -35,9 +35,7 @@
     <button class="nav-btn" data-drawer-target="lineup" onclick="navigateFromDrawer('lineup')">🏈 Lineup Optimizer</button>
     <button class="nav-btn" data-drawer-target="guide" onclick="navigateFromDrawer('guide')">ℹ️ Info & Guide</button>
     
-    <div style="border-top: 2px dashed var(--primary-green); margin: 0.5rem 1.5rem 0.5rem 1.5rem;"></div>
-    
-    <button class="nav-btn" style="color: #4ade80; border-bottom: none; padding-top: 0.5rem;" onclick="window.location.href='../index.html'">Back to My Draft Strategist</button>
+    <button class="nav-btn" style="color: #4ade80; border-top: 1px dashed var(--primary-green); border-bottom: none;" onclick="window.location.href='../index.html'">⬅ Back to My Draft Strategist</button>
     
     <div style="margin-top: auto; display: flex; flex-direction: column; align-items: center;">
         <div class="menu-kofi" style="margin-bottom: 1.5rem; width: 100%;">
@@ -336,8 +334,10 @@
 
     // --- DRAWER LOGIC ---
     function toggleDrawer() {
-        document.getElementById('drawer').classList.toggle('open');
-        document.getElementById('drawerOverlay').classList.toggle('open');
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('drawerOverlay');
+        drawer.classList.toggle('open');
+        overlay.style.display = drawer.classList.contains('open') ? 'block' : 'none';
     }
 
     function navigateFromDrawer(tabId) {
