@@ -35,7 +35,7 @@
 
         /* Header */
         .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); padding: 0.6rem 0.8rem; position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .header-title { font-weight: bold; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; font-size: clamp(0.9rem, 4vw, 1.1rem); }
+        .header-title { font-weight: bold; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; font-size: clamp(0.9rem, 4vw, 1.1rem); cursor: pointer; }
         .header-controls { display: flex; align-items: center; justify-content: flex-end; }
         
         #headerLeagueSelect { text-overflow: ellipsis; }
@@ -77,7 +77,17 @@
         .lineup-slot.swapping, .roster-item.swapping { border-color: #fbbc04; background: #332b11; border: 1px solid #fbbc04;}
         .lineup-slot.empty { border: 1px dashed var(--border); background: rgba(255,255,255,0.02); }
 
-        .slot-label { font-size: 0.8rem; width: 40px; min-width: 40px; text-align: center; color: var(--text-muted); font-weight: bold; }
+        .slot-label { font-size: 0.8rem; width: 40px; min-width: 40px; text-align: center; font-weight: bold; }
+        
+        /* Slot Colors */
+        .slot-QB { color: #fca5a5 !important; }
+        .slot-RB { color: #86efac !important; }
+        .slot-WR { color: #93c5fd !important; }
+        .slot-TE { color: #fde047 !important; }
+        .slot-FLEX, .slot-SFLEX { color: #e9d8fd !important; }
+        .slot-BN { color: var(--text-muted) !important; }
+        .slot-ROS { color: var(--text-muted) !important; }
+
         .player-name-wrap { font-weight: bold; color: #f8fafc; line-height: 1.15; font-size: 0.95rem; }
         .swap-btn { padding: 4px 8px; }
         .lock-btn { font-size: 1.2rem; }
@@ -93,12 +103,12 @@
         .pos-badge.K { background-color: var(--pos-k); color: #e2e8f0; border: 1px solid var(--pos-k-border); }
         .pos-badge.DEF { background-color: var(--pos-def); color: #e9d8fd; border: 1px solid var(--pos-def-border); }
 
-        /* Tooltips (Fixed drop-down direction) */
+        /* Tooltips (Anchored Right) */
         .tooltip-container { position: relative; display: inline-flex; align-items: center; margin-left: 5px; cursor: help; }
         .tooltip-icon { background: #4285F4; color: white; border-radius: 50%; width: 16px; height: 16px; display: inline-flex; justify-content: center; align-items: center; font-size: 11px; font-weight: bold; line-height: 1; }
-        .tooltip-text { visibility: hidden; width: 240px; background-color: #1a202c; color: #e2e8f0; text-align: left; border-radius: 6px; padding: 10px; position: absolute; z-index: 1001; top: 125%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 0.8rem; font-weight: normal; border: 1px solid #4a5568; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: none; line-height: 1.4; }
+        .tooltip-text { visibility: hidden; width: 240px; background-color: #1a202c; color: #e2e8f0; text-align: left; border-radius: 6px; padding: 10px; position: absolute; z-index: 1001; top: 125%; right: -10px; transform: none; left: auto; opacity: 0; transition: opacity 0.3s; font-size: 0.8rem; font-weight: normal; border: 1px solid #4a5568; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: none; line-height: 1.4; }
         .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
-        .tooltip-text::after { content: ""; position: absolute; bottom: 100%; top: auto; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: transparent transparent #4a5568 transparent; }
+        .tooltip-text::after { content: ""; position: absolute; bottom: 100%; top: auto; right: 13px; left: auto; border-width: 5px; border-style: solid; border-color: transparent transparent #4a5568 transparent; }
 
         /* Bottom Tab Navigation */
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 2px solid var(--border); display: flex; justify-content: space-around; padding: 0.5rem; z-index: 98; box-shadow: 0 -2px 10px rgba(0,0,0,0.3); }
@@ -133,8 +143,11 @@
     <button class="nav-btn" data-drawer-target="lineup" onclick="navigateFromDrawer('lineup')">🏈 Lineup Optimizer</button>
     <button class="nav-btn" data-drawer-target="guide" onclick="navigateFromDrawer('guide')">ℹ️ Info & Guide</button>
     
-    <div style="margin-top: auto;">
-        <button class="nav-btn" style="color: #4ade80; border-bottom: none;" onclick="window.location.href='../index.html'">⚡ Back to Draft Strategist</button>
+    <div style="margin-top: auto; display: flex; flex-direction: column; align-items: center;">
+        <div class="menu-kofi" style="margin-bottom: 1.5rem;">
+            <a href='https://ko-fi.com/B0B7Z58I7' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi2.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+        </div>
+        <button class="nav-btn" style="color: #4ade80; border-bottom: none; text-align: left;" onclick="window.location.href='../index.html'">Back to My Draft Strategist</button>
     </div>
 </div>
 
@@ -142,7 +155,7 @@
     <div class="header">
         <div style="display: flex; align-items: center; gap: 0.3rem; overflow: hidden;">
             <button class="hamburger-btn" onclick="toggleDrawer()">☰</button>
-            <div class="header-title">
+            <div class="header-title" onclick="showTab('setup')">
                 <img src="../5775.png" alt="MLS Logo" style="width: 24px; height: 24px; border-radius: 4px; flex-shrink: 0;">
                 <span style="overflow: hidden; text-overflow: ellipsis;">My Lineup Strategist</span>
             </div>
@@ -206,7 +219,7 @@
                     <span>3. Add/Sync League
                         <div class="tooltip-container">
                             <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Sync with Sleeper via Username and League ID, OR create a manual league by leaving the Sleeper info blank and clicking 'Create Manual League'.</span>
+                            <span class="tooltip-text">Sync with Sleeper via Username and League ID, OR create a manual league by leaving the Sleeper info blank and clicking 'Create Manual'.</span>
                         </div>
                     </span>
                 </h3>
@@ -220,8 +233,8 @@
                 <input type="text" id="sleeperLeagueId" placeholder="e.g., 912345678901234567">
                 
                 <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn-secondary" onclick="addAndSyncLeague(this)">➕ Sync Sleeper</button>
-                    <button class="btn-primary" style="background:#3b82f6;" onclick="createManualLeague()">➕ Create Manual</button>
+                    <button class="btn-secondary" onclick="addAndSyncLeague(this)">Sync Sleeper</button>
+                    <button class="btn-primary" style="background:#3b82f6;" onclick="createManualLeague()">Create Manual</button>
                 </div>
             </div>
 
@@ -263,24 +276,32 @@
                     </select>
                     <input type="text" id="manualTeam" placeholder="Team" style="margin-bottom:0;">
                 </div>
-                <button class="btn-primary" style="margin-top:0.8rem;" onclick="addManualPlayer()">➕ Add Player to Active Roster</button>
+                <button class="btn-primary" style="margin-top:0.8rem;" onclick="addManualPlayer()">Add Player to Active Roster</button>
                 <div id="manualAddMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; margin-top: 0.5rem; text-align: center;"></div>
             </div>
             
-            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-                My Lineup Strategist v0.8.0
+            <!-- Ko-Fi Button Support -->
+            <div style="text-align: center; margin-top: 2rem;">
+                <a href='https://ko-fi.com/B0B7Z58I7' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi2.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+            </div>
+
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem; margin-bottom: 2rem;">
+                My Lineup Strategist v0.9.0
             </div>
         </div>
 
         <!-- ROSTER TAB -->
         <div id="rosterTab" class="tab-content">
             <div class="settings-card">
-                <h3>
-                    <span>Active League Roster <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(Sorted by ROS)</span></span>
-                    <div class="tooltip-container">
-                        <div class="tooltip-icon">i</div>
-                        <span class="tooltip-text">Displays all players currently rostered in your active league. Players are organized by Rest-of-Season (ROS) rank to help you gauge overall roster value.</span>
+                <h3 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-top: 0;">
+                    <div style="display: flex; align-items: center;">
+                        <span>Active Roster <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted); margin-left: 4px;">(Sorted by ROS)</span></span>
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Displays all players currently rostered in your active league. Players are organized by Rest-of-Season (ROS) rank to help you gauge overall roster value.</span>
+                        </div>
                     </div>
+                    <button id="rosterSyncBtn" class="btn-sm btn-secondary" style="margin: 0; padding: 4px 10px; display: none;" onclick="syncActiveLeague()">Sync</button>
                 </h3>
                 <div id="rosterList" style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
                     Select or create a league on the Setup tab to view your roster.
@@ -290,10 +311,6 @@
 
         <!-- LINEUP TAB -->
         <div id="lineupTab" class="tab-content">
-            <!-- TNF Strategy Banner -->
-            <div id="tnfBanner" style="background: rgba(251, 188, 4, 0.15); border: 1px solid #fbbc04; color: #fde047; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; display: none; line-height: 1.4;">
-                ⚡ <strong>TNF Strategy Reminder:</strong> Move Thursday Night Football starters into primary position slots (QB/RB/WR/TE) rather than FLEX slots! Use the <strong>⇄ Swap</strong> button below to adjust.
-            </div>
 
             <div class="settings-card">
                 <h3>
@@ -314,6 +331,10 @@
 
             <div class="settings-card">
                 <h3>Bench Priorities</h3>
+                <!-- TNF Strategy Banner -->
+                <div id="tnfBanner" style="background: rgba(251, 188, 4, 0.15); border: 1px solid #fbbc04; color: #fde047; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; display: none; line-height: 1.4;">
+                    <strong>TNF Strategy Reminder:</strong> Move Thursday Night Football starters into primary position slots (QB/RB/WR/TE) rather than FLEX slots! Use the <strong>⇄ Swap</strong> button below to adjust.
+                </div>
                 <div id="benchContainer" style="font-size: 0.85rem; color: var(--text-muted);">
                     No bench data yet.
                 </div>
@@ -328,14 +349,14 @@
                     Welcome to <strong>My Lineup Strategist</strong>! This tool is designed to eliminate start/sit headaches and bring clarity to your weekly fantasy football lineup decisions.
                 </p>
                 
-                <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">1. Syncing & Adding Leagues</h4>
-                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-top:0;">
-                    Navigate to the <strong>Setup</strong> tab and enter your Sleeper Username and League ID to sync your roster automatically. If you don't use Sleeper, tap "Create Manual League" and add your players one-by-one.
-                </p>
-
-                <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">2. Uploading Custom Rankings</h4>
+                <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">1. Uploading Custom Rankings</h4>
                 <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-top:0;">
                     Upload custom rankings from your favorite analyst in either <strong>.CSV</strong> or native <strong>.XLSX Excel</strong> format. Both top-to-bottom standard formats and side-by-side positional formats are supported automatically!
+                </p>
+
+                <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">2. Syncing & Adding Leagues</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-top:0;">
+                    Navigate to the <strong>Setup</strong> tab and enter your Sleeper Username and League ID to sync your roster automatically. If you don't use Sleeper, tap "Create Manual League" and add your players one-by-one.
                 </p>
 
                 <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">3. Swapping & Optimizing</h4>
@@ -414,7 +435,7 @@
     }, {passive: true});
 
     function handleSwipe() {
-        const swipeThreshold = 60; 
+        const swipeThreshold = 120; // Increased threshold to prevent accidental swipes
         const activeTabBtn = document.querySelector('.nav-bar .nav-btn.active');
         if (!activeTabBtn) return;
         
@@ -554,6 +575,9 @@
         document.getElementById('reqFLEX').value = reqs.FLEX;
         document.getElementById('reqSFLEX').value = reqs.SFLEX;
         document.getElementById('activeLeagueReqTitle').innerText = `(${league.name})`;
+
+        // Populate saved sleeper username but clear IDs
+        document.getElementById('sleeperUsername').value = league.username !== "Manual" ? league.username : "";
     }
 
     function saveRequirements(btn) {
@@ -755,9 +779,8 @@
             localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
             localStorage.setItem('mds_season_active_league', activeLeagueId);
 
-            // Clear League ID and Name, but retain Username
             document.getElementById('newLeagueName').value = "";
-            document.getElementById('sleeperLeagueId').value = "";
+            document.getElementById('sleeperLeagueId').value = ""; // Clear league ID but leave username for quick future inputs
 
             refreshLeagueDropdown();
             loadActiveLeagueData();
@@ -768,7 +791,7 @@
             btn.style.color = "#0b132b";
             
             setTimeout(() => {
-                btn.innerText = "➕ Sync Sleeper";
+                btn.innerText = "Sync Sleeper";
                 btn.style.backgroundColor = "#4285f4";
                 btn.style.color = "white";
             }, 2500);
@@ -781,9 +804,86 @@
         }
     }
 
+    // --- REFRESH ACTIVE SLEEPER LEAGUE (ROSTER TAB) ---
+    async function syncActiveLeague() {
+        let league = getActiveLeague();
+        if (!league || !league.leagueId || league.leagueId.startsWith('manual_') || !league.username) {
+            alert("Only Sleeper-synced leagues can be refreshed via this button.");
+            return;
+        }
+        const btn = document.getElementById('rosterSyncBtn');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Syncing...";
+        
+        try {
+            const userRes = await fetch(`https://api.sleeper.app/v1/user/${league.username}`);
+            if (!userRes.ok) throw new Error("User not found.");
+            const userId = (await userRes.json()).user_id;
+
+            const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${league.leagueId}/rosters`);
+            if (!rosterRes.ok) throw new Error("Could not fetch rosters.");
+            const rosters = await rosterRes.json();
+            
+            const myTeam = rosters.find(r => r.owner_id === userId);
+            if (!myTeam) throw new Error("Could not find your team.");
+            
+            const playerIds = myTeam.players || [];
+            const mapRes = await fetch(`https://api.sleeper.app/v1/players/nfl`);
+            const playerMap = await mapRes.json();
+
+            let rosterDetails = [];
+            playerIds.forEach(id => {
+                let p = playerMap[id];
+                if (p) {
+                    rosterDetails.push({
+                        id: id,
+                        name: `${p.first_name} ${p.last_name}`,
+                        cleanName: normalizeName(`${p.first_name} ${p.last_name}`),
+                        pos: p.position || "FLEX",
+                        team: p.team || "FA"
+                    });
+                }
+            });
+
+            league.roster = rosterDetails;
+            localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
+            
+            optimizeLineup(true); 
+            loadRosterTab();
+            
+            btn.innerText = "✅ Synced!";
+            btn.style.backgroundColor = "#4ade80";
+            btn.style.color = "#0b132b";
+            
+            setTimeout(() => {
+                btn.innerText = "Sync";
+                btn.style.backgroundColor = "#4285f4";
+                btn.style.color = "white";
+            }, 2500);
+
+        } catch(err) {
+            console.error(err);
+            btn.innerText = "⚠️ Error";
+            btn.style.backgroundColor = "#ea4335";
+            alert(`Sync Error:\n${err.message}`);
+            setTimeout(() => {
+                btn.innerText = "Sync";
+                btn.style.backgroundColor = "#4285f4";
+            }, 2500);
+        }
+    }
+
     // --- ROSTER TAB ---
     function loadRosterTab() {
         let league = getActiveLeague();
+        
+        const syncBtn = document.getElementById('rosterSyncBtn');
+        if (league && league.leagueId && !league.leagueId.startsWith('manual_') && league.username) {
+            syncBtn.style.display = 'block';
+        } else {
+            syncBtn.style.display = 'none';
+        }
+
         if (!league || !league.roster || league.roster.length === 0) {
             document.getElementById('rosterList').innerHTML = "Select or create a league on the Setup tab to view your roster.";
             return;
@@ -807,7 +907,7 @@
             html += `
             <div class="roster-item">
                 <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
-                    <span class="slot-label">ROS</span>
+                    <span class="slot-label slot-ROS">ROS</span>
                     <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                     <div style="display:flex; flex-direction:column; justify-content:center;">
                         <div class="player-name-wrap">${p.name}</div>
@@ -1098,7 +1198,6 @@
         for (let i = 0; i < reqs.SFLEX; i++) {
             let slotLabel = `SFLEX${i+1}`;
             
-            // Allow locks to override this specialized rule
             let lockedIndex = pool.findIndex(p => p.isLocked && ['QB', 'RB', 'WR', 'TE'].includes(p.pos));
             if (lockedIndex !== -1) {
                 let p = pool.splice(lockedIndex, 1)[0];
@@ -1116,7 +1215,6 @@
                 let p = pool.splice(highest, 1)[0];
                 starters.push({ slot: slotLabel, player: p, usedFlex: false });
             } else {
-                // Fallback to highest Flex
                 let bestFlexIdx = -1; let maxFlexRk = 9999;
                 pool.forEach((p, idx) => {
                     if (['RB', 'WR', 'TE'].includes(p.pos) && p.flexRank < maxFlexRk) { maxFlexRk = p.flexRank; bestFlexIdx = idx; }
@@ -1126,7 +1224,6 @@
                     let p = pool.splice(bestFlexIdx, 1)[0];
                     starters.push({ slot: slotLabel, player: p, usedFlex: true });
                 } else {
-                    // Just take best pos rank among RB/WR/TE if no flex ranks exist
                     let bestPosIdx = -1; let maxPosRk = 9999;
                     pool.forEach((p, idx) => {
                         if (['RB', 'WR', 'TE'].includes(p.pos) && p.posRank < maxPosRk) { maxPosRk = p.posRank; bestPosIdx = idx; }
@@ -1168,6 +1265,8 @@
         // Render Starters
         let html = "";
         starters.forEach(s => {
+            let slotType = s.slot.replace(/[0-9]/g, '');
+
             if (s.player) {
                 let p = s.player;
                 let lockIcon = p.isLocked ? "🔒" : "🔓";
@@ -1182,7 +1281,7 @@
                 html += `
                 <div class="lineup-slot ${lockClass}">
                     <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
-                        <span class="slot-label">${s.slot}</span>
+                        <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
                             <div class="player-name-wrap">${p.name} ${tnfTag}</div>
@@ -1200,14 +1299,14 @@
             } else {
                 html += `
                 <div class="lineup-slot empty">
-                    <span class="slot-label">${s.slot}</span>
+                    <span class="slot-label slot-${slotType}">${s.slot}</span>
                     <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
                 </div>`;
             }
         });
         container.innerHTML = html;
 
-        // Render Bench
+        // Render Bench using identical layout
         let benchHTML = "";
         if (benchPool.length > 0) {
             benchPool.forEach(p => {
@@ -1220,7 +1319,7 @@
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">
                     <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
-                        <span class="slot-label">BN</span>
+                        <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
                             <div class="player-name-wrap">${p.name} ${tnfTag}</div>
