@@ -206,7 +206,7 @@ body {
     color: #f1f5f9; 
     display: flex; 
     align-items: center; 
-    justify-content: space-between; 
+    gap: 0.5rem; /* Keeps the title and info icon neatly grouped */
 }
 
 input[type="text"], input[type="file"], input[type="number"], textarea, select { 
@@ -259,7 +259,10 @@ input[type="text"], input[type="file"], input[type="number"], textarea, select {
     cursor: pointer; 
     width: 100%; 
 }
-
+.kofi-img { 
+    height: 32px; 
+    border: 0px; 
+}
 /* --- BADGES & POSITIONAL STYLING --- */
 .badge { 
     background: #3a506b; 
