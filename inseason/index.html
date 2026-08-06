@@ -19,7 +19,7 @@
         /* Scout Tab Specific Styles */
         .scout-textarea { width: 100%; min-height: 80px; background: #0b132b; color: white; border: 1px solid var(--border); border-radius: 4px; padding: 0.8rem; margin-bottom: 0.5rem; font-family: inherit; resize: vertical; }
         .scout-result-card { background: #1c2541; border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
-        .scout-status { font-size: 0.8rem; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+        .scout-status { font-size: 0.8rem; font-weight: bold; padding: 4px 8px; border-radius: 4px; display: inline-block; text-align: center; line-height: 1.3; }
         .status-avail { background: #102a1e; color: #4ade80; border: 1px solid #34A853; }
         .status-owned { background: #3a1515; color: #fca5a5; border: 1px solid #ea4335; }
         .status-mine { background: #112233; color: #93c5fd; border: 1px solid #4285f4; }
@@ -292,8 +292,9 @@
         <!-- SCOUT TAB -->
         <div id="scoutTab" class="tab-content">
             
-            <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; color: #93c5fd; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.4;">
-                <strong>ℹ️ Sleeper Sync Required:</strong> To see exactly which team owns a player or if they are a Free Agent, you must sync a Sleeper league on the Setup tab. Otherwise, this tool will only display the player's Weekly/ROS ranks.
+            <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; color: #93c5fd; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.4; display: flex; gap: 0.6rem; align-items: flex-start;">
+                <div style="background: #3b82f6; color: white; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; font-family: serif; flex-shrink: 0; margin-top: 1px;">i</div>
+                <div><strong>Sleeper Sync Required:</strong> To see exactly which team owns a player or if they are a Free Agent, you must sync a Sleeper league on the Setup tab. Otherwise, this tool will only display the player's Weekly/ROS ranks.</div>
             </div>
 
             <div class="settings-card">
@@ -871,20 +872,39 @@
             header: true, skipEmptyLines: true,
             complete: function(results) {
                 results.data.forEach(row => {
-                    let team = null;
-                    for(let key in row) {
-                        let k = key.toLowerCase();
-                        if(k.includes('team') || k.includes('tm')) team = row[key].trim().toUpperCase();
-                    }
+                    let teamKey = Object.keys(row).find(k => k.toLowerCase().includes('team') || k.toLowerCase().includes('tm'));
+                    let team = teamKey ? row[teamKey].trim().toUpperCase() : null;
+
                     if(team && nflTeams.includes(team)) {
                         if(!sosMap[team]) sosMap[team] = {};
-                        for(let key in row) {
-                            let k = key.toLowerCase();
-                            let val = row[key].replace(/[^0-9]/g, '');
-                            if(k === 'qb') sosMap[team].QB = val;
-                            if(k === 'rb') sosMap[team].RB = val;
-                            if(k === 'wr') sosMap[team].WR = val;
-                            if(k === 'te') sosMap[team].TE = val;
+                        
+                        let isMatrix = Object.keys(row).some(k => ['qb','rb','wr','te'].includes(k.toLowerCase()));
+                        
+                        if (isMatrix) {
+                            for(let key in row) {
+                                let k = key.toLowerCase();
+                                if (['qb', 'rb', 'wr', 'te'].includes(k)) {
+                                    sosMap[team][k.toUpperCase()] = row[key].replace(/[^0-9]/g, '');
+                                }
+                            }
+                        } else {
+                            let posKey = Object.keys(row).find(k => k.toLowerCase() === 'pos' || k.toLowerCase() === 'position');
+                            let sosKey = Object.keys(row).find(k => k.toLowerCase() === 'sos' || k.toLowerCase() === 'schedule' || k.toLowerCase() === 'matchup');
+                            
+                            if (posKey && sosKey) {
+                                let posStr = row[posKey].toUpperCase();
+                                let sosVal = row[sosKey].replace(/[^0-9]/g, '');
+                                
+                                let posGroup = null;
+                                if(posStr.includes('QB')) posGroup = 'QB';
+                                else if(posStr.includes('RB')) posGroup = 'RB';
+                                else if(posStr.includes('WR')) posGroup = 'WR';
+                                else if(posStr.includes('TE')) posGroup = 'TE';
+
+                                if (posGroup && sosVal) {
+                                    sosMap[team][posGroup] = sosVal;
+                                }
+                            }
                         }
                     }
                 });
@@ -910,9 +930,10 @@
         if (isNaN(rank) || rank < 1 || rank > 32) return "";
         
         let hue = Math.max(0, 120 - ((rank - 1) * 3.87));
-        let bgColor = `hsl(${hue}, 70%, 30%)`;
+        let color = `hsl(${hue}, 80%, 65%)`; // Bright text/border
+        let bg = `hsl(${hue}, 80%, 15%)`;    // Dark background
         
-        return `<span class="badge" style="background:${bgColor}; border:1px solid rgba(255,255,255,0.2); color:#fff; font-size:0.65rem; margin-left:4px;">SoS: ${rank}</span>`;
+        return `<span class="badge" style="background:${bg}; border:1px solid ${color}; color:${color}; font-size:0.65rem; margin-left:4px;">SoS: ${rank}</span>`;
     }
 
     // --- SCOUT TAB ENGINE ---
@@ -946,13 +967,13 @@
             let statusHTML = "";
             
             if (roleLabel === "SELL") {
-                if (owner === "You") statusHTML = `<span class="scout-status status-owned">On Your Roster (Ready to Sell)</span>`;
-                else if (owner) statusHTML = `<span class="scout-status status-avail">Already Dropped / Traded</span>`;
-                else statusHTML = `<span class="scout-status status-avail">Not on your roster</span>`;
+                if (owner === "You") statusHTML = `<div class="scout-status status-owned">On Your Roster<br>(Ready to Sell)</div>`;
+                else if (owner) statusHTML = `<div class="scout-status status-avail">Already Dropped<br>/ Traded</div>`;
+                else statusHTML = `<div class="scout-status status-avail">Not on your<br>roster</div>`;
             } else {
-                if (!owner) statusHTML = `<span class="scout-status status-avail">Free Agent (Available)</span>`;
-                else if (owner === "You") statusHTML = `<span class="scout-status status-mine">On Your Roster</span>`;
-                else statusHTML = `<span class="scout-status status-owned">Rostered by: ${owner}</span>`;
+                if (!owner) statusHTML = `<div class="scout-status status-avail">Free Agent<br>(Available)</div>`;
+                else if (owner === "You") statusHTML = `<div class="scout-status status-mine">On Your<br>Roster</div>`;
+                else statusHTML = `<div class="scout-status status-owned">Rostered by:<br>${owner}</div>`;
             }
 
             let roleTag = roleLabel ? `<span class="badge" style="background:#112233;">${roleLabel} Target</span>` : "";
@@ -1053,7 +1074,6 @@
         } else {
             let nameColIdx = -1; let rankColIdx = -1;
             
-            // Dynamic SoS Auto-Extraction Variables
             let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
             let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
             let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
@@ -1075,7 +1095,6 @@
                     if (isNaN(rankVal)) rankVal = i + 1 - startIndex;
                     parsed.push({ name: nameStr.trim(), cleanName: normalizeName(nameStr.trim()), rank: rankVal, posRank: rankVal, flexRank: rankVal });
                     
-                    // Secretly build the SoS Matrix if columns exist
                     if (sosColIdx !== -1 && teamColIdx !== -1 && posColIdx !== -1) {
                         let teamStr = rows[i][teamColIdx] ? rows[i][teamColIdx].toString().trim().toUpperCase() : "";
                         let posStr = rows[i][posColIdx] ? rows[i][posColIdx].toString().trim().toUpperCase() : "";
@@ -1104,7 +1123,6 @@
         
         updateRankingsMetaDisplay();
         
-        // Save Auto-Extracted SoS Data
         if (hasNewSos) {
             localStorage.setItem('mds_season_sos', JSON.stringify(sosMap));
             generateSoSGrid();
@@ -1353,7 +1371,6 @@
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
-                let sosBadge = getSoSBadgeHTML(p.team, p.pos);
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
@@ -1361,7 +1378,7 @@
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sosBadge}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
@@ -1394,7 +1411,6 @@
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
-                let sosBadge = getSoSBadgeHTML(p.team, p.pos);
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">
@@ -1402,7 +1418,7 @@
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sosBadge}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
