@@ -815,27 +815,71 @@ body {
 .inj-badge { background: #ea4335; color: white; border: none; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
 .status-badge { font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; background-color: #102a1e; color: #4ade80; border: 1px solid #34A853; }
 
-/* --- TOOLTIPS (Refined for Dark Mode) --- */
-.tooltip, .tooltip-container { position: relative; display: inline-flex; align-items: center; cursor: help; }
+/* --- TOOLTIPS (Dynamic Edge-Bleed Prevention) --- */
+.tooltip, .tooltip-container { 
+    position: relative; 
+    display: inline-flex; 
+    align-items: center; 
+    cursor: help; 
+}
+
 .tooltip-icon { 
-    background: rgba(255,255,255,0.1); color: var(--text-muted); border: 1px solid var(--border);
-    border-radius: 50%; width: 18px; height: 18px; display: inline-flex; justify-content: center; 
-    align-items: center; font-size: 11px; font-weight: bold; line-height: 1; font-family: monospace;
+    background: rgba(255, 255, 255, 0.1); 
+    color: var(--text-muted); 
+    border: 1px solid var(--border);
+    border-radius: 50%; 
+    width: 18px; 
+    height: 18px; 
+    display: inline-flex; 
+    justify-content: center; 
+    align-items: center; 
+    font-size: 11px; 
+    font-weight: bold; 
+    line-height: 1; 
+    font-family: monospace;
     transition: all 0.2s ease;
 }
-.tooltip-container:hover .tooltip-icon { background: var(--border); color: var(--text-main); }
-.tooltip .tooltip-text, .tooltip-container .tooltip-text { 
-    visibility: hidden; width: 260px; 
-    background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
-    color: #f1f5f9; text-align: left; border-radius: 8px; padding: 12px; 
-    position: absolute; z-index: 1001; top: calc(100% + 8px); right: -10px; 
-    opacity: 0; transition: all 0.2s ease; font-size: 0.85rem; font-weight: 400; 
-    border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
-    pointer-events: none; line-height: 1.5;
-    transform: translateY(-4px);
+
+.tooltip-container:hover .tooltip-icon { 
+    background: var(--border); 
+    color: var(--text-main); 
 }
+
+/* Tooltip Text */
+.tooltip .tooltip-text, .tooltip-container .tooltip-text { 
+    visibility: hidden; 
+    width: max-content;
+    max-width: 260px; 
+    background: rgba(15, 23, 42, 0.95); 
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #f1f5f9; 
+    text-align: left; 
+    border-radius: 8px; 
+    padding: 12px; 
+    position: absolute; 
+    z-index: 1001; 
+    top: calc(100% + 8px); 
+    opacity: 0; 
+    font-size: 0.85rem; 
+    font-weight: 400; 
+    border: 1px solid var(--border); 
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); 
+    pointer-events: none; 
+    line-height: 1.5;
+    
+    /* Dynamic Positioning Variables set by JS (Defaults to Center) */
+    left: var(--tt-left, 50%);
+    right: var(--tt-right, auto);
+    transform: translate(var(--tt-x, -50%), -4px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease; 
+}
+
 .tooltip:hover .tooltip-text, .tooltip-container:hover .tooltip-text { 
-    visibility: visible; opacity: 1; transform: translateY(0);
+    visibility: visible; 
+    opacity: 1; 
+    /* The Y-axis animates to 0, while the X-axis respects the JS variable */
+    transform: translate(var(--tt-x, -50%), 0);
 }
 
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
