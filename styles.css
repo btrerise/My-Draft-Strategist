@@ -340,17 +340,18 @@ body {
     position: fixed; 
     bottom: 0; 
     left: 0; 
-    right: 0; 
-    /* Glassmorphism to match the top header */
+    right: 0;
+    width: 100%; /* Strictly lock the width to the viewport */
+    box-sizing: border-box; /* Ensures padding doesn't stretch the bar */
+    
     background: rgba(19, 27, 44, 0.85); 
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    
     border-top: 1px solid var(--border); 
-    display: flex; 
-    justify-content: space-around; 
     
-    /* CRITICAL: env() adds padding for the iPhone/Android home swipe bar */
+    display: flex; 
+    justify-content: space-between; /* Swapped from space-around for edge-to-edge locking */
+    
     padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom)); 
     z-index: 98; 
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4); 
@@ -360,18 +361,34 @@ body {
     background: transparent; 
     border: none; 
     display: flex;
-    flex-direction: column; /* Stacks the icon above the text */
+    flex-direction: column; 
     align-items: center;
+    justify-content: center;
     gap: 0.3rem;
-    font-size: 0.75rem; /* Smaller text for mobile tabs */
+    font-size: 0.75rem; 
     color: var(--text-muted); 
     font-weight: 600; 
     padding: 0.5rem; 
     cursor: pointer; 
-    flex: 1; 
+    
+    /* THE FIX: Strict Flex Constraints */
+    flex: 1 1 0px; /* Forces equal width distribution regardless of content */
+    min-width: 0; /* Prevents text/icons from forcing the button wider */
+    max-width: 100%;
+    overflow: hidden; /* Clips anything that tries to bleed out */
+    
     border-radius: 8px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-    -webkit-tap-highlight-color: transparent; /* Removes blue flash on mobile tap */
+    -webkit-tap-highlight-color: transparent; 
+}
+
+/* Ensure the text inside doesn't wrap and break the layout */
+.nav-bar .nav-btn span {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    width: 100%;
+    text-align: center;
 }
 
 /* Tab Icon Animation */
