@@ -305,14 +305,17 @@
             </div>
 
             <div class="settings-card">
-                <h3>
-                    <span>Waiver Wire Assistant
-                        <div class="tooltip-container">
-                            <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Paste a list of recommended waiver targets. The app will cross-reference the Global Sleeper Roster to tell you if they are available, and display their Weekly/ROS ranks.</span>
-                        </div>
-                    </span>
-                </h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h3>
+                        <span>Waiver Wire Assistant
+                            <div class="tooltip-container">
+                                <div class="tooltip-icon">i</div>
+                                <span class="tooltip-text">Paste a list of recommended waiver targets. The app will cross-reference the Global Sleeper Roster to tell you if they are available, and display their Weekly/ROS ranks.</span>
+                            </div>
+                        </span>
+                    </h3>
+                    <button class="btn-sm btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML='';">Clear</button>
+                </div>
                 <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
                 <button class="btn-primary" onclick="runScout('waiver')">Scan Waivers</button>
                 
@@ -328,10 +331,17 @@
                         </div>
                     </span>
                 </h3>
-                <label style="font-size: 0.85rem; font-weight: bold; color: #4ade80;">🎯 Players to Buy</label>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                    <label style="font-size: 0.85rem; font-weight: bold; color: #4ade80;">🎯 Players to Buy</label>
+                    <button class="btn-sm btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="document.getElementById('buyInput').value='';">Clear</button>
+                </div>
                 <textarea id="buyInput" class="scout-textarea" placeholder="Players to target in trades..."></textarea>
                 
-                <label style="font-size: 0.85rem; font-weight: bold; color: #fca5a5;">📉 Players to Sell / Drop</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; margin-bottom: 0.3rem;">
+                    <label style="font-size: 0.85rem; font-weight: bold; color: #fca5a5;">📉 Players to Sell / Drop</label>
+                    <button class="btn-sm btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="document.getElementById('sellInput').value='';">Clear</button>
+                </div>
                 <textarea id="sellInput" class="scout-textarea" placeholder="Players to offload..."></textarea>
                 
                 <button class="btn-primary" style="background-color: #8b5cf6;" onclick="runScout('trade')">Analyze Trade Market</button>
@@ -591,6 +601,13 @@
         const activeTab = document.querySelector('.tab-content.active').id;
         if (activeTab === 'lineupTab') optimizeLineup(false);
         if (activeTab === 'rosterTab') loadRosterTab();
+        
+        // Auto-refresh Scout tab data on league switch to prevent displaying stale ownership info
+        if (document.getElementById('waiverInput').value.trim() !== '') runScout('waiver');
+        else document.getElementById('waiverOutput').innerHTML = '';
+        
+        if (document.getElementById('buyInput').value.trim() !== '' || document.getElementById('sellInput').value.trim() !== '') runScout('trade');
+        else document.getElementById('tradeOutput').innerHTML = '';
     }
 
     function getActiveLeague() {
@@ -1204,20 +1221,18 @@
         let html = "";
         displayRoster.forEach(p => {
             let rankBadge = p.rosRank !== 999 ? `ROS Rank: ${p.rosRank}` : "Unranked";
-            let byeBadge = teamByes[p.team] ? `<span class="badge" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:var(--text-muted); font-size:0.65rem;">Bye: ${teamByes[p.team]}</span>` : "";
+            let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
             let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
             
             html += `
             <div class="roster-item">
                 <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
-                    <span class="slot-label slot-ROS">ROS</span>
                     <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                     <div style="display:flex; flex-direction:column; justify-content:center;">
-                        <div class="player-name-wrap">${p.name} ${injBadge}</div>
+                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge}</div>
                         <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                             <span class="badge">${p.team}</span>
-                            ${byeBadge}
                             <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
                             ${sosBadge}
                         </div>
@@ -1385,7 +1400,7 @@
                 let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
-                let byeBadge = teamByes[p.team] ? `<span class="badge" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:var(--text-muted); font-size:0.65rem;">Bye: ${teamByes[p.team]}</span>` : "";
+                let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
 
                 html += `
@@ -1394,10 +1409,9 @@
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name} ${injBadge} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
-                                ${byeBadge}
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
                             </div>
                         </div>
@@ -1426,7 +1440,7 @@
                 let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
-                let byeBadge = teamByes[p.team] ? `<span class="badge" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:var(--text-muted); font-size:0.65rem;">Bye: ${teamByes[p.team]}</span>` : "";
+                let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
 
                 benchHTML += `
@@ -1435,10 +1449,9 @@
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name} ${injBadge} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
-                                ${byeBadge}
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
                             </div>
                         </div>
