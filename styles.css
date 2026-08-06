@@ -341,8 +341,8 @@ body {
     bottom: 0; 
     left: 0; 
     right: 0;
-    width: 100%; /* Strictly lock the width to the viewport */
-    box-sizing: border-box; /* Ensures padding doesn't stretch the bar */
+    width: 100%; 
+    box-sizing: border-box; 
     
     background: rgba(19, 27, 44, 0.85); 
     backdrop-filter: blur(12px);
@@ -350,14 +350,15 @@ body {
     border-top: 1px solid var(--border); 
     
     display: flex; 
-    justify-content: space-between; /* Swapped from space-around for edge-to-edge locking */
+    justify-content: space-between; 
     
     padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom)); 
     z-index: 98; 
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4); 
 }
 
-.nav-bar .nav-btn { 
+/* Renamed to .bottom-nav-btn to avoid Hamburger Menu collisions */
+.nav-bar .bottom-nav-btn { 
     background: transparent; 
     border: none; 
     display: flex;
@@ -371,19 +372,18 @@ body {
     padding: 0.5rem; 
     cursor: pointer; 
     
-    /* THE FIX: Strict Flex Constraints */
-    flex: 1 1 0px; /* Forces equal width distribution regardless of content */
-    min-width: 0; /* Prevents text/icons from forcing the button wider */
+    /* Strict Flex Constraints */
+    flex: 1 1 0px; 
+    min-width: 0; 
     max-width: 100%;
-    overflow: hidden; /* Clips anything that tries to bleed out */
+    overflow: hidden; 
     
     border-radius: 8px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
     -webkit-tap-highlight-color: transparent; 
 }
 
-/* Ensure the text inside doesn't wrap and break the layout */
-.nav-bar .nav-btn span {
+.nav-bar .bottom-nav-btn span {
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -392,26 +392,26 @@ body {
 }
 
 /* Tab Icon Animation */
-.nav-bar .nav-btn svg {
+.nav-bar .bottom-nav-btn svg {
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s;
 }
 
 /* Hover & Active States */
-.nav-bar .nav-btn:hover { 
+.nav-bar .bottom-nav-btn:hover { 
     color: var(--text-main); 
     background: rgba(255, 255, 255, 0.05);
 }
 
-.nav-bar .nav-btn:active {
-    transform: scale(0.92); /* Satisfying spring compression when tapped */
+.nav-bar .bottom-nav-btn:active {
+    transform: scale(0.92); 
 }
 
-.nav-bar .nav-btn.active { 
+.nav-bar .bottom-nav-btn.active { 
     color: var(--primary-green); 
 }
 
-.nav-bar .nav-btn.active svg {
-    transform: translateY(-2px); /* Lifts the icon slightly instead of using a hard border */
+.nav-bar .bottom-nav-btn.active svg {
+    transform: translateY(-2px); 
     filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
 }
 
