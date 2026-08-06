@@ -882,14 +882,15 @@ body {
 /* --- Lineup Slots & Roster Rows --- */
 .lineup-slot, .roster-item { 
     display: flex; 
-    align-items: center; /* Vertical alignment */
+    justify-content: space-between; /* Pushes the delete button back to the far right */
+    align-items: center; 
     padding: 0.8rem 1rem; 
     border: 1px solid var(--border); 
     background: rgba(0, 0, 0, 0.2); 
     margin-bottom: 0.5rem; 
     border-radius: 8px; 
     transition: border-color 0.2s, background-color 0.2s;
-    gap: 1rem; /* Consistent spacing between badge, name, and actions */
+    gap: 1rem;
 }
 
 /* 1. FORCE THE BADGE TO BE FIXED WIDTH */
@@ -1147,13 +1148,16 @@ body {
 /* Header League Select (MLS) */
 #headerLeagueSelect { 
     text-overflow: ellipsis;
-    background: rgba(0, 0, 0, 0.2);
+    background-color: rgba(0, 0, 0, 0.2);
     color: var(--text-main);
     border: 1px solid var(--border);
-    padding: 0.4rem 0.6rem;
+    padding: 0.4rem 2rem 0.4rem 0.6rem; /* Extra right padding for the arrow */
     border-radius: 6px;
     font-family: inherit;
     font-size: 0.85rem;
+    appearance: auto;                 /* Restores native OS dropdown arrow */
+    -webkit-appearance: menulist;     /* Safari support */
+    -moz-appearance: menulist;        /* Firefox support */
 }
 
 @media (max-width: 600px) {
