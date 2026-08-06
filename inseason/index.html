@@ -134,6 +134,67 @@
                 </div>
                 <button class="btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
             </div>
+
+            <div class="settings-card">
+                <h3>Add Player Manually</h3>
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.4rem;">
+                    <input type="text" id="manualName" placeholder="Player Name" style="margin-bottom:0;">
+                    <select id="manualPos" style="margin-bottom:0;">
+                        <option value="QB">QB</option><option value="RB">RB</option>
+                        <option value="WR">WR</option><option value="TE">TE</option>
+                        <option value="K">K</option><option value="DEF">DEF</option>
+                    </select>
+                    <input type="text" id="manualTeam" placeholder="Team" style="margin-bottom:0;">
+                </div>
+                <button class="btn-primary" style="margin-top:0.8rem;" onclick="addManualPlayer()">Add Player to Active Roster</button>
+                <div id="manualAddMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; margin-top: 0.5rem; text-align: center;"></div>
+            </div>
+            
+            <div class="settings-card" style="border: 1px dashed #ea4335;">
+                <h3 style="color: #ea4335;">Danger Zone</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem;">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
+                <button class="btn-danger" style="width: 100%;" onclick="factoryReset()">⚠️ Factory Reset App Data</button>
+            </div>
+            
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem; margin-bottom: 2rem;">
+                My Lineup Strategist v2.0
+            </div>
+        </div>
+
+        <!-- ROSTER TAB -->
+        <div id="rosterTab" class="tab-content">
+            
+            <div class="settings-card">
+                <h3 style="border-bottom: none; padding-bottom: 0; margin-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center;">
+                        <span>Active Roster <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted); margin-left: 4px;">(Sorted by ROS)</span></span>
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Displays all players currently rostered in your active league. Scroll down to upload Rest of Season (ROS) Rankings or a Strength of Schedule (SoS) matrix.</span>
+                        </div>
+                    </div>
+                </h3>
+                <button id="rosterSyncBtn" class="btn-primary" style="margin-top: 0; margin-bottom: 1rem; display: none;" onclick="syncActiveLeague()">🔄 Sync Sleeper Waivers & Trades</button>
+                <div style="border-top: 2px solid var(--border); padding-top: 1rem;">
+                    <div id="rosterList" style="font-size: 0.9rem; color: var(--text-muted);">
+                        Select or create a league on the Setup tab to view your roster.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-card">
+                <h3>
+                    <span>Rest-of-Season (ROS) Rankings
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Upload .csv or .xlsx Rest-of-Season rankings here to dictate the long-term value of your roster. This helps you evaluate trades and overall team strength.</span>
+                        </div>
+                    </span>
+                </h3>
+                <div id="rosMetaDisplay" style="font-size: 0.75rem; color: #86efac; font-weight: bold; display: none; margin-bottom: 0.2rem;"></div>
+                <input type="file" id="rosFileInput" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                <div id="rosSuccessMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
+            </div>
             
             <div class="settings-card">
                 <h3>
@@ -162,105 +223,17 @@
                     <button class="btn-primary" style="margin-top: 0.8rem;" onclick="saveManualSoS(this)">Save Manual SoS</button>
                 </details>
             </div>
-
-            <div class="settings-card">
-                <h3>Add Player Manually</h3>
-                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.4rem;">
-                    <input type="text" id="manualName" placeholder="Player Name" style="margin-bottom:0;">
-                    <select id="manualPos" style="margin-bottom:0;">
-                        <option value="QB">QB</option><option value="RB">RB</option>
-                        <option value="WR">WR</option><option value="TE">TE</option>
-                        <option value="K">K</option><option value="DEF">DEF</option>
-                    </select>
-                    <input type="text" id="manualTeam" placeholder="Team" style="margin-bottom:0;">
-                </div>
-                <button class="btn-primary" style="margin-top:0.8rem;" onclick="addManualPlayer()">Add Player to Active Roster</button>
-                <div id="manualAddMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; margin-top: 0.5rem; text-align: center;"></div>
-            </div>
-            
-            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem; margin-bottom: 2rem;">
-                My Lineup Strategist v2.0
-            </div>
-        </div>
-
-        <!-- ROSTER TAB -->
-        <div id="rosterTab" class="tab-content">
-            
-            <div class="settings-card">
-                <h3>
-                    <span>Rest-of-Season (ROS) Rankings
-                        <div class="tooltip-container">
-                            <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Upload .csv or .xlsx Rest-of-Season rankings here to dictate the long-term value of your roster. This helps you evaluate trades and overall team strength.</span>
-                        </div>
-                    </span>
-                </h3>
-                <div id="rosMetaDisplay" style="font-size: 0.75rem; color: #86efac; font-weight: bold; display: none; margin-bottom: 0.2rem;"></div>
-                <input type="file" id="rosFileInput" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
-                <div id="rosSuccessMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
-            </div>
-
-            <div class="settings-card">
-                <h3 style="border-bottom: none; padding-bottom: 0; margin-bottom: 0.5rem;">
-                    <div style="display: flex; align-items: center;">
-                        <span>Active Roster <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted); margin-left: 4px;">(Sorted by ROS)</span></span>
-                        <div class="tooltip-container">
-                            <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Displays all players currently rostered in your active league. Players are organized by Rest-of-Season (ROS) rank to help you gauge overall roster value.</span>
-                        </div>
-                    </div>
-                </h3>
-                <button id="rosterSyncBtn" class="btn-primary" style="margin-top: 0; margin-bottom: 1rem; display: none;" onclick="syncActiveLeague()">🔄 Sync Sleeper Waivers & Trades</button>
-                <div style="border-top: 2px solid var(--border); padding-top: 1rem;">
-                    <div id="rosterList" style="font-size: 0.9rem; color: var(--text-muted);">
-                        Select or create a league on the Setup tab to view your roster.
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- LINEUP TAB -->
         <div id="lineupTab" class="tab-content">
             
             <div class="settings-card">
-                <h3>
-                    <span>Weekly Matchup Rankings
-                        <div class="tooltip-container">
-                            <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Upload .csv or .xlsx Weekly Matchup Rankings to optimize your Start/Sit decisions for the current week.</span>
-                        </div>
-                    </span>
-                </h3>
-                <div id="weeklyMetaDisplay" style="font-size: 0.75rem; color: #93c5fd; font-weight: bold; display: none; margin-bottom: 0.2rem;"></div>
-                <input type="file" id="weeklyFileInput" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
-                <div id="weeklySuccessMsg" style="color: #93c5fd; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
-            </div>
-
-            <div class="settings-card">
-                <h3>
-                    <span>Early Games <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(TNF, London, etc.)</span>
-                        <div class="tooltip-container">
-                            <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Select teams playing before Sunday's main slate. Players on these teams will be flagged with an EARLY badge across your Lineup screen so you can make informed slot decisions.</span>
-                        </div>
-                    </span>
-                </h3>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
-                    <select id="earlyTeamSelect" onchange="addEarlyTeam(this.value)" style="margin: 0;">
-                        <!-- Populated by JS -->
-                    </select>
-                    <div id="earlyTeamChips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem;">
-                        <!-- Chips inject here -->
-                    </div>
-                </div>
-            </div>
-
-            <div class="settings-card">
                 <h3 style="border-bottom: none; padding-bottom: 0; margin-bottom: 0.5rem;">
                     <span>Optimal Lineup 
                         <div class="tooltip-container">
                             <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Generates your highest-projected starting lineup based on Weekly Matchup Rankings. Lock starters with 🔒 or tap ⇄ Swap to manually move players between slots and the bench.</span>
+                            <span class="tooltip-text">Generates your highest-projected starting lineup. Lock starters with 🔒 or tap ⇄ Swap to manually move players. Scroll down to upload Weekly Rankings or flag Early Games.</span>
                         </div>
                     </span>
                 </h3>
@@ -287,6 +260,40 @@
                     No bench data yet.
                 </div>
             </div>
+            
+            <div class="settings-card">
+                <h3>
+                    <span>Early Games <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(TNF, London, etc.)</span>
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Select teams playing before Sunday's main slate. Players on these teams will be flagged with an EARLY badge across your Lineup screen so you can make informed slot decisions.</span>
+                        </div>
+                    </span>
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                    <select id="earlyTeamSelect" onchange="addEarlyTeam(this.value)" style="margin: 0;">
+                        <!-- Populated by JS -->
+                    </select>
+                    <div id="earlyTeamChips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem;">
+                        <!-- Chips inject here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-card">
+                <h3>
+                    <span>Weekly Matchup Rankings
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Upload .csv or .xlsx Weekly Matchup Rankings to optimize your Start/Sit decisions for the current week.</span>
+                        </div>
+                    </span>
+                </h3>
+                <div id="weeklyMetaDisplay" style="font-size: 0.75rem; color: #93c5fd; font-weight: bold; display: none; margin-bottom: 0.2rem;"></div>
+                <input type="file" id="weeklyFileInput" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                <div id="weeklySuccessMsg" style="color: #93c5fd; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
+            </div>
+
         </div>
         
         <!-- SCOUT TAB -->
@@ -349,7 +356,7 @@
                 <h4>Uploading Custom Rankings & SoS</h4>
                 <p>
                     Upload custom rankings from your favorite analyst in either <strong>.CSV</strong> or native <strong>.XLSX Excel</strong> format. 
-                    <br><br>Upload Rest-of-Season (ROS) rankings on the <strong>Roster</strong> tab, and Weekly Matchup rankings on the <strong>Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Setup Menu to instantly generate visual matchup gradients on player cards! Note: If you upload a generic rankings CSV that already contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.
+                    <br><br>Upload Rest-of-Season (ROS) rankings on the <strong>Roster</strong> tab, and Weekly Matchup rankings on the <strong>Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Roster tab to instantly generate visual matchup gradients on player cards! Note: If you upload a generic rankings CSV that already contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.
                 </p>
 
                 <h4>Scout & Waivers</h4>
@@ -480,6 +487,13 @@
         if (tabId === 'roster') loadRosterTab();
         if (tabId === 'setup') refreshLeagueDropdown();
         window.scrollTo(0, 0);
+    }
+    
+    function factoryReset() {
+        if (confirm("⚠️ DANGER ZONE ⚠️\n\nAre you absolutely sure you want to clear ALL leagues, cached rankings, custom SoS data, and settings?\n\nThis cannot be undone.")) {
+            localStorage.clear();
+            location.reload();
+        }
     }
 
     // --- INITIALIZATION ---
@@ -1190,7 +1204,7 @@
         let html = "";
         displayRoster.forEach(p => {
             let rankBadge = p.rosRank !== 999 ? `ROS Rank: ${p.rosRank}` : "Unranked";
-            let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
+            let byeBadge = teamByes[p.team] ? `<span class="badge" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:var(--text-muted); font-size:0.65rem;">Bye: ${teamByes[p.team]}</span>` : "";
             let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
             
@@ -1200,10 +1214,12 @@
                     <span class="slot-label slot-ROS">ROS</span>
                     <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                     <div style="display:flex; flex-direction:column; justify-content:center;">
-                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${sosBadge}</div>
+                        <div class="player-name-wrap">${p.name} ${injBadge}</div>
                         <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                             <span class="badge">${p.team}</span>
+                            ${byeBadge}
                             <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                            ${sosBadge}
                         </div>
                     </div>
                 </div>
@@ -1369,7 +1385,7 @@
                 let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
-                let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
+                let byeBadge = teamByes[p.team] ? `<span class="badge" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:var(--text-muted); font-size:0.65rem;">Bye: ${teamByes[p.team]}</span>` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
 
                 html += `
@@ -1378,9 +1394,10 @@
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name} ${injBadge} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
+                                ${byeBadge}
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
                             </div>
                         </div>
@@ -1409,7 +1426,7 @@
                 let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
-                let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
+                let byeBadge = teamByes[p.team] ? `<span class="badge" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:var(--text-muted); font-size:0.65rem;">Bye: ${teamByes[p.team]}</span>` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
 
                 benchHTML += `
@@ -1418,9 +1435,10 @@
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
                         <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name} ${injBadge} ${earlyTag}</div>
                             <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
                                 <span class="badge">${p.team}</span>
+                                ${byeBadge}
                                 <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
                             </div>
                         </div>
