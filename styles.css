@@ -786,10 +786,21 @@ body {
 
 /* --- BADGES & POSITIONAL STYLING --- */
 .badge { 
-    background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; 
-    font-size: 0.75rem; color: #f1f5f9; display: inline-block; white-space: nowrap; 
+    background: #3a506b; padding: 2px 5px; border-radius: 4px; font-weight: bold; 
+    font-size: 0.7rem; color: #f1f5f9; display: inline-block; white-space: nowrap; 
+}
+/* 1. Structural geometry for ALL position badges */
+.pos-badge {
+    width: 32px;
+    min-width: 32px !important;
+    max-width: 32px;
+    padding: 2px 0 !important;
+    text-align: center !important;
+    display: inline-block;
+    box-sizing: border-box;
 }
 
+/* 2. Position-specific colors (KEEP THESE AS-IS) */
 .pos-badge.QB { background-color: var(--pos-qb); color: #fca5a5; border: 1px solid var(--pos-qb-border); }
 .pos-badge.RB { background-color: var(--pos-rb); color: #86efac; border: 1px solid var(--pos-rb-border); }
 .pos-badge.WR { background-color: var(--pos-wr); color: #93c5fd; border: 1px solid var(--pos-wr-border); }
