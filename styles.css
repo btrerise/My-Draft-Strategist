@@ -363,6 +363,7 @@ body {
 }
 
 .nav-bar .bottom-nav-btn { 
+    box-sizing: border-box !important;
     background: transparent; 
     border: none; 
     display: flex;
