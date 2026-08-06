@@ -19,160 +19,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- SheetJS for Excel (.xlsx) reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        :root {
-            --primary-green: #34A853;
-            --bg-color: #0b132b;
-            --card-bg: #1c2541;
-            --text-main: #ffffff;
-            --text-muted: #8d99ae;
-            --border: #3a506b;
-            --target-bg: #102a1e; --target-border: #34A853;
-            --avoid-bg: #3a1515; --avoid-border: #ea4335;
-            --dart-bg: #112233; --dart-border: #4285f4;
-            --stack-color: #ea580c;
-
-            /* Positional Colors */
-            --pos-qb: #3a1515; --pos-qb-border: #ea4335;
-            --pos-rb: #102a1e; --pos-rb-border: #34A853;
-            --pos-wr: #112233; --pos-wr-border: #4285f4;
-            --pos-te: #332b11; --pos-te-border: #fbbc04;
-        }
-
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; }
-
-        /* Sticky Header - Mobile Optimized */
-        .header { background: linear-gradient(135deg, #0b132b, #1c2541); border-bottom: 2px solid var(--primary-green); color: white; padding: 0.6rem 0.8rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .header-title { font-weight: bold; display: flex; align-items: center; gap: 0.4rem; letter-spacing: 0.5px; line-height: 1.1; font-size: 0.95rem;}
-        .header-controls { display: flex; align-items: center; gap: 0.6rem; }
-
-        .kofi-img { height: 32px; border: 0px; }
-        @media (max-width: 480px) {
-            .kofi-img { height: 26px; }
-            .badge { padding: 2px 4px; font-size: 0.75rem; }
-            .header-controls { gap: 0.4rem; }
-        }
-
-        /* Hamburger Menu Styles */
-        .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99; display: none; }
-        .hamburger-menu { position: fixed; top: 0; left: -260px; width: 260px; height: 100%; background: var(--card-bg); z-index: 100; transition: left 0.3s ease; border-right: 2px solid var(--primary-green); box-shadow: 2px 0 10px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 1rem 0; }
-        .hamburger-menu.open { left: 0; }
-        .hamburger-menu .nav-btn { background: none; border: none; padding: 1rem 1.5rem; text-align: left; font-size: 1.05rem; color: var(--text-main); font-weight: bold; cursor: pointer; border-bottom: 1px solid var(--border); width: 100%; transition: background 0.2s;}
-        .hamburger-menu .nav-btn:hover, .hamburger-menu .nav-btn.active { background: #0b132b; color: var(--primary-green); border-left: 5px solid var(--primary-green); padding-left: calc(1.5rem - 5px); }
-        .hamburger-btn { background: none; border: none; color: white; font-size: 1.6rem; cursor: pointer; padding: 0 0.6rem 0 0; display: flex; align-items: center; transition: opacity 0.2s;}
-        .hamburger-btn:active { opacity: 0.5; }
-        .close-menu-btn { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; text-align: right; padding: 0 1rem 0.5rem 1rem; }
-        .menu-kofi { margin: auto auto 1.5rem auto; text-align: center; }
-
-        .btn-header { background-color: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border); padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; min-width: 40px; text-align: center; transition: all 0.2s; display: flex; align-items: center; gap: 4px;}
-        .btn-header:active { background-color: rgba(255,255,255,0.3); }
-
-        .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
-
-        /* Bottom Tab Navigation */
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 2px solid var(--border); display: flex; justify-content: space-around; padding: 0.5rem; z-index: 98; box-shadow: 0 -2px 10px rgba(0,0,0,0.3); }
-        .nav-bar .nav-btn { background: none; border: none; font-size: 0.95rem; color: var(--text-muted); font-weight: bold; padding: 0.5rem; cursor: pointer; flex: 1; text-align: center;}
-        .nav-bar .nav-btn.active { color: var(--primary-green); border-bottom: 3px solid var(--primary-green); }
-
-        /* Sections */
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        /* Cards & Inputs */
-        .settings-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-        .settings-card h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #f1f5f9; display: flex; align-items: center;}
-        .guide-section h4 { color: #f1f5f9; margin-bottom: 0.2rem; margin-top: 1.5rem; }
-        .guide-section p { font-size: 0.9rem; color: var(--text-muted); margin-top: 0; line-height: 1.4; }
-        
-        input[type="text"], input[type="file"], input[type="number"], textarea, select { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem 0; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; background: #0b132b; color: var(--text-main); }
-        input[type="number"] { padding: 0.5rem; margin-bottom: 0.2rem; font-weight: bold;}
-
-        .toggle-container { display: flex; align-items: center; justify-content: space-between; background: #0b132b; padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; margin-bottom: 1rem; border: 1px solid var(--border);}
-
-        .btn-primary { background: var(--primary-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
-        .btn-secondary { background: #4285f4; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: background-color 0.3s;}
-        .btn-warning { background-color: #fbbc04; color: #0b132b; border: none; padding: 0.8rem; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 0.5rem; }
-        .btn-danger { background-color: #ea4335; color: white; border: none; padding: 0.8rem; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
-
-        /* Custom Tooltip Styles */
-        .tooltip { position: relative; display: inline-block; cursor: help; margin-left: 0.5rem; font-size: 0.9rem; opacity: 0.8; }
-        .tooltip:hover { opacity: 1; }
-        .tooltip .tooltip-text { visibility: hidden; width: 240px; background-color: #112233; color: #f1f5f9; text-align: left; border-radius: 6px; padding: 0.75rem; position: absolute; z-index: 101; bottom: 135%; left: 50%; margin-left: -120px; opacity: 0; transition: opacity 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.6); border: 1px solid var(--primary-green); font-size: 0.8rem; font-weight: normal; line-height: 1.4;}
-        .tooltip .tooltip-text::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: var(--primary-green) transparent transparent transparent; }
-        .tooltip:hover .tooltip-text, .tooltip:active .tooltip-text { visibility: visible; opacity: 1; }
-
-        /* Player Tracker Styles */
-        .player-card { background: var(--card-bg); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .player-card-main { display: flex; justify-content: space-between; align-items: center; }
-        .player-info h4 { margin: 0 0 0.25rem 0; font-size: 1.05rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; color: #f8fafc;}
-        .player-stats { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;}
-
-        .badge { background: #3a506b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.80rem; color: #f1f5f9; }
-        .badge-rookie { background-color: #8b5cf6; color: white; border: 1px solid #a78bfa; }
-        .badge-value { background-color: #102a1e; color: #4ade80; border: 1px solid #34A853; font-size: 0.75rem; }
-        .badge-reach { background-color: #3a1515; color: #fca5a5; border: 1px solid #ea4335; font-size: 0.75rem; }
-
-        /* Positional Badges */
-        .pos-badge.QB { background-color: var(--pos-qb); color: #fca5a5; border: 1px solid var(--pos-qb-border); }
-        .pos-badge.RB { background-color: var(--pos-rb); color: #86efac; border: 1px solid var(--pos-rb-border); }
-        .pos-badge.WR { background-color: var(--pos-wr); color: #93c5fd; border: 1px solid var(--pos-wr-border); }
-        .pos-badge.TE { background-color: var(--pos-te); color: #fde047; border: 1px solid var(--pos-te-border); }
-
-        .tier-divider { background: linear-gradient(90deg, #102a1e, #1c2541); color: #4ade80; font-weight: bold; padding: 0.4rem 1rem; border-radius: 4px; margin: 1rem 0 0.5rem 0; font-size: 0.9rem; text-align: center; border: 1px solid var(--primary-green); }
-
-        /* Inline Editor Bar */
-        .inline-editor { display: none; background: #0b132b; padding: 0.6rem; margin-top: 0.6rem; border-radius: 6px; border: 1px solid var(--primary-green); gap: 0.5rem; align-items: center; flex-wrap: wrap;}
-        .inline-editor input { margin: 0; padding: 0.4rem; font-size: 0.9rem;}
-
-        /* Tracker Position Filters Grid */
-        #tierTracker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; margin-bottom: 0.8rem; }
-        .pos-filter { cursor: pointer; padding: 0.5rem 0.2rem; font-size: 0.8rem; border-radius: 6px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s; opacity: 0.6; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-        .pos-filter.active-filter { opacity: 1; border: 2px solid #ffffff; font-weight: 900; box-shadow: 0 4px 8px rgba(0,0,0,0.4); transform: translateY(-1px); }
-        .badge-all { background: #3a506b; color: #ffffff; border: 1px solid var(--border); }
-
-        .actions { display: flex; flex-direction: column; gap: 0.4rem; min-width: 80px; }
-        .btn-sm { padding: 0.4rem 0.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
-        .btn-draft { background-color: #0b132b; color: var(--text-main); border: 1px solid var(--border); }
-        .btn-mine { background-color: var(--primary-green); color: white; }
-
-        /* Roster Layout Styling */
-        .roster-slot { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); background: var(--card-bg); margin-bottom: 2px; border-radius: 4px;}
-        .roster-slot.empty { background: rgba(255,255,255,0.03); border: 1px dashed var(--border); }
-        .roster-label { font-weight: bold; font-size: 0.85rem; min-width: 45px; }
-
-        .limits-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; background: var(--card-bg); font-size: 0.85rem;}
-        .limits-table th, .limits-table td { border: 1px solid var(--border); padding: 0.5rem; text-align: center; }
-        .limits-table th { font-weight: bold; background-color: #0b132b; }
-
-        .status-badge { font-size: 0.85rem; color: #86efac; font-weight: bold; background: #102a1e; border: 1px solid var(--primary-green); padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; text-align: center;}
-
-        /* Ultra-Wide Full-Bleed Draft Board View */
-        .board-header-group { margin-bottom: 0.6rem; padding: 0 0.2rem; }
-        .board-header-group h3 { margin: 0 0 0.2rem 0; font-size: 1.1rem; color: #f1f5f9; }
-        .draft-board-container { overflow-x: auto; width: 100%; background: transparent; padding: 0; }
-        .draft-grid { display: grid; gap: 2px; } 
-        
-        /* Column Header & Cell Styles */
-        .draft-col-header { background: #1c2541; border: 1px solid var(--border); padding: 0.35rem 0.15rem; text-align: center; font-weight: bold; font-size: 0.75rem; border-radius: 3px; color: #f8fafc; }
-        .draft-cell { background: #1c2541; border: 1px solid var(--border); padding: 0.25rem 0.2rem; min-height: 48px; border-radius: 3px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        
-        /* Positional Coordination for Cells */
-        .draft-cell.QB { background-color: var(--pos-qb); border-color: var(--pos-qb-border); }
-        .draft-cell.RB { background-color: var(--pos-rb); border-color: var(--pos-rb-border); }
-        .draft-cell.WR { background-color: var(--pos-wr); border-color: var(--pos-wr-border); }
-        .draft-cell.TE { background-color: var(--pos-te); border-color: var(--pos-te-border); }
-        
-        /* User Team Column White Border Highlighting */
-        .draft-col-header.mine { border: 2px solid #ffffff !important; font-weight: 900; font-size: 0.85rem; color: #ffffff; }
-        .draft-cell.mine { border: 2px solid #ffffff !important; font-weight: bold; }
-
-        .draft-cell-first { font-weight: 500; font-size: 0.65rem; line-height: 1.1; color: #e2e8f0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
-        .draft-cell-last { font-weight: 800; font-size: 0.75rem; line-height: 1.1; color: #ffffff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: 1px; }
-        
-        /* Bye Week Warning Alert Banner */
-        .bye-warning-banner { background-color: #3a1515; border: 1px solid #ea4335; color: #fca5a5; padding: 0.8rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -197,9 +44,9 @@
 <div class="hamburger-menu" id="hamburgerMenu">
     <button class="close-menu-btn" onclick="toggleMenu()">✖</button>
     
-    <div style="padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-green); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.8rem;">
+    <div class="menu-logo-section">
         <img src="5775.png" alt="Logo" style="height: 28px; border-radius: 4px; margin-left: 1.5rem;">
-        <h3 style="margin: 0; color: #f1f5f9;">Menu</h3>
+        <span>Menu</span>
     </div>
 
     <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">⚙️ Setup</button>
@@ -208,10 +55,14 @@
     <button class="nav-btn" data-target="board" onclick="showTab('board')">📊 Draft Board</button>
     <button class="nav-btn" data-target="guide" onclick="showTab('guide')">ℹ️ Info & Guide</button>
 
-    <div class="menu-kofi">
-        <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center; justify-content: center;">
-            <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
-        </a>
+    <button class="nav-btn" style="color: #4ade80; border-top: 1px dashed var(--primary-green); border-bottom: none;" onclick="window.location.href='./inseason/'">My Lineup Strategist ➔</button>
+    
+    <div style="margin-top: auto; display: flex; flex-direction: column; align-items: center;">
+        <div class="menu-kofi" style="margin-bottom: 1.5rem; width: 100%;">
+            <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center; justify-content: center;">
+                <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
+            </a>
+        </div>
     </div>
 </div>
 
@@ -246,9 +97,14 @@
         </div>
 
         <div class="settings-card">
-            <h3>1. Load Rankings
-                <span class="tooltip">ℹ️<span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span></span>
-            </h3>
+            <h3>
+    <span>1. Load Rankings
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span>
+        </div>
+    </span>
+</h3>
             <div id="metaDisplay" class="status-badge"></div>
             
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem; margin-bottom: 0.8rem;">
@@ -265,9 +121,14 @@
         </div>
 
         <div class="settings-card">
-            <h3>2. Live Market Value (ADP) 📈
-                <span class="tooltip">ℹ️<span class="tooltip-text">If you uploaded custom rankings above, click here to pull in the live ADP market value so you know when players are actually being drafted.</span></span>
-            </h3>
+            <h3>
+    <span>2. Live Market Value (ADP) 📈
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">If you uploaded custom rankings above, click here to pull in the live ADP market value so you know when players are actually being drafted.</span>
+        </div>
+    </span>
+</h3>
             <div id="adpStatusDisplay" class="status-badge"></div>
 
             <label style="font-size: 0.9rem; font-weight: bold;">Select LeagueLogs Profile</label>
@@ -295,12 +156,24 @@
         </div>
 
         <div class="settings-card">
-            <h3>3. Sleeper Integration (Optional) 🏈
-                <span class="tooltip">ℹ️<span class="tooltip-text">Drafting on Sleeper? Enter your info here to auto-cross players off your tracker as they get drafted! If playing elsewhere, leave this blank and track manually.</span></span>
-            </h3>
+            <h3>
+    <span>3. Sleeper Integration (Optional) 🏈
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Drafting on Sleeper? Enter your info here to auto-cross players off your tracker as they get drafted! If playing elsewhere, leave this blank and track manually.</span>
+        </div>
+    </span>
+</h3>
             <label style="font-size: 0.9rem; font-weight: bold;">Sleeper Username</label>
             <input type="text" id="sleeperUsername" placeholder="e.g., fantasy_guru">
-            <label style="font-size: 0.9rem; font-weight: bold;">Draft ID</label>
+            <label style="font-size: 0.9rem; font-weight: bold; display: flex; align-items: center;">
+    Draft ID
+    <div class="tooltip-container">
+        <div class="tooltip-icon">i</div>
+        <span class="tooltip-text"><strong>Mobile App:</strong> League Settings > General > scroll to bottom.<br><br><strong>Desktop:</strong> The string of numbers in your draft's URL.</span>
+    </div>
+</label>
+
             <input type="text" id="sleeperDraftId" placeholder="e.g., 912345678901234567">
 
             <div class="toggle-container">
@@ -312,9 +185,14 @@
         </div>
 
         <div class="settings-card">
-            <h3>4. Roster Limits & Settings 📊
-                <span class="tooltip">ℹ️<span class="tooltip-text">Set your starting lineup slots to let the app automatically track your roster and bye weeks on the Team Tab.</span></span>
-            </h3>
+            <h3>
+    <span>4. Roster Limits & Settings 📊
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Set your starting lineup slots to let the app automatically track your roster and bye weeks on the Team Tab.</span>
+        </div>
+    </span>
+</h3>
             
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
                 <div><label style="font-size: 0.8rem; font-weight: bold;">QB</label><input type="number" id="limitQB" min="0" value="1"></div>
@@ -353,9 +231,14 @@
         </div>
 
         <div class="settings-card">
-            <h3>5. Call Outs 🎯
-                <span class="tooltip">ℹ️<span class="tooltip-text">Paste names of players you want to remember. The app will permanently color-code them in the Tracker so you never miss them.</span></span>
-            </h3>
+            <h3>
+    <span>5. Call Outs 🎯
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Paste names of players you want to remember. The app will permanently color-code them in the Tracker so you never miss them.</span>
+        </div>
+    </span>
+</h3>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:-0.5rem;">Paste names below (separated by commas or new lines)</p>
 
             <label style="font-size: 0.85rem; font-weight: bold;">🟢 Targets</label>
@@ -384,7 +267,7 @@
         </div>
 
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-            Draft Strategist v1.3
+            Draft Strategist v1.4
         </div>
     </div>
 
@@ -456,7 +339,7 @@
     <!-- GUIDE TAB -->
     <div id="guideTab" class="tab-content">
         <div class="settings-card guide-section">
-            <h3 style="border-bottom: 2px solid var(--primary-green);">How to Use My Draft Strategist</h3>
+            <h3>How to Use My Draft Strategist</h3>
             
             <h4>1. Load Rankings</h4>
             <p>Upload your custom rankings via CSV or Excel. Ensure your file has a 'Name' column. Or, use the <strong>Quick-Start</strong> option to automatically load live Market Value rankings from LeagueLogs.</p>

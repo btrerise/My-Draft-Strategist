@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Lineup Strategist</title>
+    
+    <link rel="icon" href="../5775.png"> <!-- Inherits icon from main folder -->
+
+    <!-- PapaParse for CSV reading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- SheetJS for XLSX reading support on mobile -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2canvas for Screenshot Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+
+<!-- DRAWER OVERLAY -->
+<div class="menu-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+
+<!-- HAMBURGER DRAWER (MDS Style) -->
+<div class="hamburger-menu" id="drawer">
+    <button class="close-menu-btn" onclick="toggleDrawer()">✖</button>
+    
+    <div class="menu-logo-section">
+        <img src="../5775.png" alt="Logo" style="height: 28px; border-radius: 4px; margin-left: 1.5rem;">
+        <span>Menu</span>
+    </div>
+    
+    <button class="nav-btn active-link" data-drawer-target="setup" onclick="navigateFromDrawer('setup')">⚙️ Setup</button>
+    <button class="nav-btn" data-drawer-target="roster" onclick="navigateFromDrawer('roster')">📋 Active Roster</button>
+    <button class="nav-btn" data-drawer-target="lineup" onclick="navigateFromDrawer('lineup')">🏈 Lineup Optimizer</button>
+    <button class="nav-btn" data-drawer-target="guide" onclick="navigateFromDrawer('guide')">ℹ️ Info & Guide</button>
+    
+    <button class="nav-btn" style="color: #4ade80; border-top: 1px dashed var(--primary-green); border-bottom: none;" onclick="window.location.href='../index.html'">⬅ Back to My Draft Strategist</button>
+    
+    <div style="margin-top: auto; display: flex; flex-direction: column; align-items: center;">
+        <div class="menu-kofi" style="margin-bottom: 1.5rem; width: 100%;">
+            <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center; justify-content: center;">
+                <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
+            </a>
+        </div>
+    </div>
+</div>
+
+<div id="mainApp">
+    <div class="header">
+        <div style="display: flex; align-items: center; gap: 0.3rem; overflow: hidden;">
+            <button class="hamburger-btn" onclick="toggleDrawer()">☰</button>
+            <div class="header-title" style="display: flex; align-items: center; gap: 0.4rem;" onclick="showTab('setup')">
+                <img src="../5775.png" alt="Logo" style="height: 28px; border-radius: 4px; box-shadow: 0 0 5px rgba(52, 168, 83, 0.4);">
+                <div>My Lineup<br>Strategist</div>
+            </div>
+        </div>
+        <div class="header-controls">
+            <select id="headerLeagueSelect" style="margin: 0; padding: 0.3rem 0.5rem; font-size: 0.85rem;" onchange="switchActiveLeague(this.value)">
+                <option value="">No Leagues</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <!-- SETUP TAB -->
+        <div id="setupTab" class="tab-content active">
+            
+            <div class="settings-card">
+                <h3>
+                    <span>Add/Sync League
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Sync with Sleeper via Username and League ID, OR create a manual league by leaving the Sleeper info blank and clicking 'Create Manual'.</span>
+                        </div>
+                    </span>
+                </h3>
+                <label style="font-size: 0.85rem; font-weight: bold;">League Name / Nickname</label>
+                <input type="text" id="newLeagueName" placeholder="Auto-fills from Sleeper if blank">
+
+                <label style="font-size: 0.85rem; font-weight: bold;">Sleeper Username (Optional)</label>
+                <input type="text" id="sleeperUsername" placeholder="e.g., fantasy_guru">
+                
+                <label style="font-size: 0.85rem; font-weight: bold; display: flex; align-items: center;">
+    Sleeper League ID (Optional)
+    <div class="tooltip-container">
+        <div class="tooltip-icon">i</div>
+        <span class="tooltip-text"><strong>Mobile App:</strong> League Settings > General > scroll to bottom.<br><br><strong>Desktop:</strong> The string of numbers in your league's URL.</span>
+    </div>
+</label>
+
+                <input type="text" id="sleeperLeagueId" placeholder="e.g., 912345678901234567">
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn-secondary" onclick="addAndSyncLeague(this)">Sync Sleeper</button>
+                    <button class="btn-primary" style="background:#3b82f6;" onclick="createManualLeague()">Create Manual</button>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3 style="border-bottom: none; padding-bottom: 0;">
+                    <span>Active League Requirements
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">These numbers dictate how many players are assigned to each starting slot on the Lineup page. They auto-populate during Sleeper sync, but you can manually adjust them here anytime.</span>
+                        </div>
+                    </span>
+                </h3>
+                <div id="activeLeagueReqTitle" style="font-size: 0.85rem; color: var(--primary-green); margin-bottom: 1rem; font-weight: bold;">(Select a League)</div>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">QB</label><input type="number" id="reqQB" value="1" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">RB</label><input type="number" id="reqRB" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">WR</label><input type="number" id="reqWR" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">TE</label><input type="number" id="reqTE" value="1" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">FLEX</label><input type="number" id="reqFLEX" value="2" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                    <div><label style="font-size: 0.8rem; font-weight: bold;">SFLEX</label><input type="number" id="reqSFLEX" value="0" style="width:100%; padding:0.4rem; background:#0b132b; color:white; border:1px solid var(--border); border-radius:4px;"></div>
+                </div>
+                <button class="btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
+            </div>
+
+            <div class="settings-card">
+                <h3>
+                    <span>Add Player Manually
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Use this form to manually add players directly to your active league roster. Good for non-Sleeper leagues or mid-week waiver pick-ups before a sync.</span>
+                        </div>
+                    </span>
+                </h3>
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.4rem;">
+                    <input type="text" id="manualName" placeholder="Player Name" style="margin-bottom:0;">
+                    <select id="manualPos" style="margin-bottom:0;">
+                        <option value="QB">QB</option><option value="RB">RB</option>
+                        <option value="WR">WR</option><option value="TE">TE</option>
+                        <option value="K">K</option><option value="DEF">DEF</option>
+                    </select>
+                    <input type="text" id="manualTeam" placeholder="Team" style="margin-bottom:0;">
+                </div>
+                <button class="btn-primary" style="margin-top:0.8rem;" onclick="addManualPlayer()">Add Player to Active Roster</button>
+                <div id="manualAddMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; margin-top: 0.5rem; text-align: center;"></div>
+            </div>
+            
+            <!-- Ko-Fi Button Support -->
+            <div class="menu-kofi" style="margin-top: 2rem;">
+                <a href="https://ko-fi.com/btrerise" target="_blank" style="display: flex; align-items: center; justify-content: center;">
+                    <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
+                </a>
+            </div>
+
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem; margin-bottom: 2rem;">
+                My Lineup Strategist v1.0
+            </div>
+        </div>
+
+        <!-- ROSTER TAB -->
+        <div id="rosterTab" class="tab-content">
+            
+            <div class="settings-card">
+                <h3>
+                    <span>Rest-of-Season (ROS) Rankings
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Upload .csv or .xlsx Rest-of-Season rankings here to dictate the long-term value of your roster. This helps you evaluate trades and overall team strength.</span>
+                        </div>
+                    </span>
+                </h3>
+                <div id="rosMetaDisplay" style="font-size: 0.75rem; color: #86efac; font-weight: bold; display: none; margin-bottom: 0.2rem;"></div>
+                <input type="file" id="rosFileInput" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                <div id="rosSuccessMsg" style="color: #4ade80; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
+            </div>
+
+            <div class="settings-card">
+                <h3 style="border-bottom: none; padding-bottom: 0; margin-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center;">
+                        <span>Active Roster <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted); margin-left: 4px;">(Sorted by ROS)</span></span>
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Displays all players currently rostered in your active league. Players are organized by Rest-of-Season (ROS) rank to help you gauge overall roster value.</span>
+                        </div>
+                    </div>
+                </h3>
+                <button id="rosterSyncBtn" class="btn-primary" style="margin-top: 0; margin-bottom: 1rem; display: none;" onclick="syncActiveLeague()">🔄 Sync Sleeper Waivers & Trades</button>
+                <div style="border-top: 2px solid var(--border); padding-top: 1rem;">
+                    <div id="rosterList" style="font-size: 0.9rem; color: var(--text-muted);">
+                        Select or create a league on the Setup tab to view your roster.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LINEUP TAB -->
+        <div id="lineupTab" class="tab-content">
+            
+            <div class="settings-card">
+                <h3>
+                    <span>Weekly Matchup Rankings
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Upload .csv or .xlsx Weekly Matchup Rankings to optimize your Start/Sit decisions for the current week.</span>
+                        </div>
+                    </span>
+                </h3>
+                <div id="weeklyMetaDisplay" style="font-size: 0.75rem; color: #93c5fd; font-weight: bold; display: none; margin-bottom: 0.2rem;"></div>
+                <input type="file" id="weeklyFileInput" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                <div id="weeklySuccessMsg" style="color: #93c5fd; font-size: 0.85rem; font-weight: bold; display: none; text-align: center; margin-top: -0.2rem;">✅ Uploaded Successfully!</div>
+            </div>
+
+            <div class="settings-card">
+                <h3>
+                    <span>Early Games <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(TNF, London, etc.)</span>
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Select teams playing before Sunday's main slate. Players on these teams will be flagged with an EARLY badge across your Lineup screen so you can make informed slot decisions.</span>
+                        </div>
+                    </span>
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                    <select id="earlyTeamSelect" onchange="addEarlyTeam(this.value)" style="margin: 0;">
+                        <!-- Populated by JS -->
+                    </select>
+                    <div id="earlyTeamChips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem;">
+                        <!-- Chips inject here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3 style="border-bottom: none; padding-bottom: 0; margin-bottom: 0.5rem;">
+                    <span>Optimal Lineup 
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Generates your highest-projected starting lineup based on Weekly Matchup Rankings. Lock starters with 🔒 or tap ⇄ Swap to manually move players between slots and the bench.</span>
+                        </div>
+                    </span>
+                </h3>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0; margin-bottom: 1rem;">
+                    <button class="btn-primary" style="margin-top: 0; flex: 2;" onclick="optimizeLineup(true)">⚡ Optimize Lineup</button>
+                    <button id="exportBtn" class="btn-primary" style="margin-top: 0; flex: 1; background: #8b5cf6;" onclick="exportLineup()">📸 Export</button>
+                </div>
+                <div style="border-top: 2px solid var(--border); padding-top: 1rem;">
+                    <div id="optimalLineupContainer">
+                        <div style="text-align:center; color: var(--text-muted); padding: 1.5rem; font-style: italic;">
+                            Select a league and load rankings to generate your optimal lineup.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3>Bench Priorities</h3>
+                <!-- Early Games Strategy Banner -->
+                <div id="earlyBanner" style="background: rgba(251, 188, 4, 0.15); border: 1px solid #fbbc04; color: #fde047; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; display: none; line-height: 1.4;">
+                    <strong>Early Game Reminder:</strong> Move starters playing before Sunday into primary position slots (QB/RB/WR/TE) rather than FLEX slots! Use the <strong>⇄ Swap</strong> button below to adjust.
+                </div>
+                <div id="benchContainer" style="font-size: 0.85rem; color: var(--text-muted);">
+                    No bench data yet.
+                </div>
+            </div>
+        </div>
+
+        <!-- INFO & GUIDE TAB -->
+        <div id="guideTab" class="tab-content">
+            <div class="settings-card guide-section">
+                <h3>My Lineup Strategist Guide</h3>
+                <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.6;">
+                    Welcome to <strong>My Lineup Strategist</strong>! This tool is designed to eliminate start/sit headaches and bring clarity to your weekly fantasy football lineup decisions.
+                </p>
+                
+                <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">Syncing & Adding Leagues</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-top:0;">
+                    Navigate to the <strong>Setup</strong> tab and enter your Sleeper Username and League ID to sync your roster automatically. If you don't use Sleeper, tap "Create Manual League" and add your players one-by-one.
+                </p>
+
+                <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">Uploading Custom Rankings</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-top:0;">
+                    Upload custom rankings from your favorite analyst in either <strong>.CSV</strong> or native <strong>.XLSX Excel</strong> format. Both top-to-bottom standard formats and side-by-side positional formats are supported automatically! 
+                    <br><br>Upload Rest-of-Season (ROS) rankings on the <strong>Roster</strong> tab, and Weekly Matchup rankings on the <strong>Lineup</strong> tab.
+                </p>
+
+                <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">Swapping & Optimizing</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-top:0;">
+                    The Lineup Optimizer will do the heavy lifting for you based on the Weekly Rankings you provide. However, you can manually override it by tapping <strong>⇄ Swap</strong> on any player to switch them with someone else (even players on the bench!). Tap <strong>⚡ Optimize Lineup</strong> to revert back to the algorithmic ideal.
+                </p>
+                
+                <h4 style="color: #93c5fd; margin-top:1.2rem; margin-bottom:0.4rem;">Exporting & Sharing</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-top:0;">
+                    Once your lineup is set, tap the <strong>📸 Export</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media!
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- BOTTOM HYBRID NAVIGATION -->
+    <div class="nav-bar">
+        <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">⚙️ Setup</button>
+        <button class="nav-btn" data-target="roster" onclick="showTab('roster')">📋 Roster</button>
+        <button class="nav-btn" data-target="lineup" onclick="showTab('lineup')">🏈 Lineup</button>
+    </div>
+</div>
+
+<script>
+    // NFL Teams List & Bye Week Dictionary
+    const nflTeams = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
+    
+    // Users can easily update this mapping each season
+    const teamByes = {
+        "ARI": 11, "ATL": 12, "BAL": 14, "BUF": 12, "CAR": 11, "CHI": 7, "CIN": 12, "CLE": 10,
+        "DAL": 7, "DEN": 14, "DET": 5, "GB": 10, "HOU": 14, "IND": 14, "JAX": 12, "KC": 6,
+        "LAC": 5, "LAR": 6, "LV": 10, "MIA": 6, "MIN": 6, "NE": 14, "NO": 12, "NYG": 11,
+        "NYJ": 12, "PHI": 5, "PIT": 9, "SEA": 10, "SF": 9, "TB": 11, "TEN": 5, "WAS": 14
+    };
+
+    // --- STATE MANAGEMENT ---
+    let leagues = JSON.parse(localStorage.getItem('mds_season_leagues')) || [];
+    let activeLeagueId = localStorage.getItem('mds_season_active_league') || null;
+    let earlyTeams = JSON.parse(localStorage.getItem('mds_season_early_teams')) || [];
+    
+    let rosRankings = JSON.parse(localStorage.getItem('mds_season_ros')) || [];
+    let weeklyRankings = JSON.parse(localStorage.getItem('mds_season_weekly')) || [];
+    let lockedPlayersMap = JSON.parse(localStorage.getItem('mds_season_locks_map')) || {};
+    
+    // Manual Lineup Layout Override State
+    let manualStartersMap = JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {};
+    let manualBenchMap = JSON.parse(localStorage.getItem('mds_season_manual_bench')) || {};
+    let swapSourceId = null;
+
+    function normalizeName(name) {
+        if (!name) return "";
+        let n = String(name).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, '').replace(/(jr|sr|iii|ii|iv|v)$/, ''); 
+        const aliasMap = {
+            'kennygainwell': 'kennethgainwell', 'gabedavis': 'gabrieldavis', 'joshpalmer': 'joshuapalmer', 
+            'mitchtrubisky': 'mitchelltrubisky', 'tankdell': 'nathanieldell', 'hollywoodbrown': 'marquisebrown',
+            'scottymiller': 'scottmiller', 'djchark': 'djcharkjr', 'jeffwilson': 'jefferywilson',
+            'nicholassingleton': 'nicksingleton', 'kennethwalker': 'kenwalker'
+        };
+        return aliasMap[n] || n;
+    }
+
+    // --- DRAWER LOGIC ---
+    function toggleDrawer() {
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('drawerOverlay');
+        drawer.classList.toggle('open');
+        overlay.style.display = drawer.classList.contains('open') ? 'block' : 'none';
+    }
+
+    function navigateFromDrawer(tabId) {
+        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
+        const targetBtn = document.querySelector(`.hamburger-menu .nav-btn[data-drawer-target="${tabId}"]`);
+        if (targetBtn) targetBtn.classList.add('active-link');
+        
+        toggleDrawer();
+        showTab(tabId);
+    }
+
+    // --- SWIPE NAVIGATION LOGIC ---
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    document.getElementById('mainApp').addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, {passive: true});
+
+    document.getElementById('mainApp').addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, {passive: true});
+
+    function handleSwipe() {
+        const swipeThreshold = 120; 
+        const activeTabBtn = document.querySelector('.nav-bar .nav-btn.active');
+        if (!activeTabBtn) return;
+        
+        const tabs = ['setup', 'roster', 'lineup'];
+        const currentIdx = tabs.indexOf(activeTabBtn.getAttribute('data-target'));
+        
+        if (touchEndX < touchStartX - swipeThreshold) {
+            if (currentIdx < tabs.length - 1) {
+                showTab(tabs[currentIdx + 1]);
+                updateDrawerActiveState(tabs[currentIdx + 1]);
+            }
+        }
+        if (touchEndX > touchStartX + swipeThreshold) {
+            if (currentIdx > 0) {
+                showTab(tabs[currentIdx - 1]);
+                updateDrawerActiveState(tabs[currentIdx - 1]);
+            }
+        }
+    }
+
+    function updateDrawerActiveState(tabId) {
+        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
+        const targetBtn = document.querySelector(`.hamburger-menu .nav-btn[data-drawer-target="${tabId}"]`);
+        if (targetBtn) targetBtn.classList.add('active-link');
+    }
+
+    // --- NAVIGATION LOGIC ---
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById(tabId + 'Tab').classList.add('active');
+        document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
+        
+        const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
+        if (activeNavBtn) activeNavBtn.classList.add('active');
+        
+        if (tabId === 'lineup') optimizeLineup(false);
+        if (tabId === 'roster') loadRosterTab();
+        if (tabId === 'setup') refreshLeagueDropdown();
+        window.scrollTo(0, 0);
+    }
+
+    // --- SETUP & EARLY GAMES LOGIC ---
+    function loadSettings() {
+        populateEarlyGameDropdown();
+        refreshLeagueDropdown();
+        updateRankingsMetaDisplay();
+
+        if (leagues.length > 0 && !activeLeagueId) {
+            activeLeagueId = leagues[0].leagueId;
+        }
+        if (activeLeagueId) {
+            document.getElementById('headerLeagueSelect').value = activeLeagueId;
+            loadActiveLeagueData();
+        }
+    }
+
+    function populateEarlyGameDropdown() {
+        const sel = document.getElementById('earlyTeamSelect');
+        let html = `<option value="">-- Add an Early Team --</option>`;
+        nflTeams.forEach(t => { html += `<option value="${t}">${t}</option>`; });
+        sel.innerHTML = html;
+        renderEarlyChips();
+        checkEarlyBannerVisibility();
+    }
+
+    function addEarlyTeam(team) {
+        if (!team) return;
+        if (!earlyTeams.includes(team)) {
+            earlyTeams.push(team);
+            localStorage.setItem('mds_season_early_teams', JSON.stringify(earlyTeams));
+            renderEarlyChips();
+        }
+        document.getElementById('earlyTeamSelect').value = "";
+        checkEarlyBannerVisibility();
+        
+        const activeTab = document.querySelector('.tab-content.active').id;
+        if (activeTab === 'lineupTab') renderLineupUI();
+    }
+
+    function removeEarlyTeam(team) {
+        earlyTeams = earlyTeams.filter(t => t !== team);
+        localStorage.setItem('mds_season_early_teams', JSON.stringify(earlyTeams));
+        renderEarlyChips();
+        checkEarlyBannerVisibility();
+        
+        const activeTab = document.querySelector('.tab-content.active').id;
+        if (activeTab === 'lineupTab') renderLineupUI();
+    }
+
+    function renderEarlyChips() {
+        const container = document.getElementById('earlyTeamChips');
+        if (earlyTeams.length === 0) {
+            container.innerHTML = `<span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No teams selected.</span>`;
+            return;
+        }
+        let html = "";
+        earlyTeams.forEach(t => {
+            html += `<div class="team-chip">${t} <span class="close-chip" onclick="removeEarlyTeam('${t}')">✖</span></div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function checkEarlyBannerVisibility() {
+        const banner = document.getElementById('earlyBanner');
+        if (earlyTeams.length > 0) {
+            banner.style.display = 'block';
+        } else {
+            banner.style.display = 'none';
+        }
+    }
+
+    function isEarlyPlayer(teamStr) {
+        if (!teamStr || teamStr === "FA") return false;
+        let t = teamStr.toUpperCase();
+        return earlyTeams.includes(t);
+    }
+
+    function refreshLeagueDropdown() {
+        const select = document.getElementById('headerLeagueSelect');
+        if (leagues.length === 0) {
+            select.innerHTML = `<option value="">No Leagues</option>`;
+            return;
+        }
+
+        let html = "";
+        leagues.forEach(l => {
+            let sel = l.leagueId === activeLeagueId ? "selected" : "";
+            html += `<option value="${l.leagueId}" ${sel}>${l.name}</option>`;
+        });
+        select.innerHTML = html;
+    }
+
+    function switchActiveLeague(leagueId) {
+        if (!leagueId) return;
+        activeLeagueId = leagueId;
+        localStorage.setItem('mds_season_active_league', activeLeagueId);
+        loadActiveLeagueData();
+        swapSourceId = null;
+
+        const activeTab = document.querySelector('.tab-content.active').id;
+        if (activeTab === 'lineupTab') optimizeLineup(false);
+        if (activeTab === 'rosterTab') loadRosterTab();
+    }
+
+    function getActiveLeague() {
+        return leagues.find(l => l.leagueId === activeLeagueId) || null;
+    }
+
+    function loadActiveLeagueData() {
+        let league = getActiveLeague();
+        if (!league) return;
+        
+        let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+        document.getElementById('reqQB').value = reqs.QB;
+        document.getElementById('reqRB').value = reqs.RB;
+        document.getElementById('reqWR').value = reqs.WR;
+        document.getElementById('reqTE').value = reqs.TE;
+        document.getElementById('reqFLEX').value = reqs.FLEX;
+        document.getElementById('reqSFLEX').value = reqs.SFLEX;
+        document.getElementById('activeLeagueReqTitle').innerText = `(${league.name})`;
+
+        document.getElementById('sleeperUsername').value = league.username !== "Manual" ? league.username : "";
+    }
+
+    function saveRequirements(btn) {
+        let league = getActiveLeague();
+        if (!league) {
+            alert("Please select or add a league first.");
+            return;
+        }
+
+        league.reqs = {
+            QB: parseInt(document.getElementById('reqQB').value) || 0,
+            RB: parseInt(document.getElementById('reqRB').value) || 0,
+            WR: parseInt(document.getElementById('reqWR').value) || 0,
+            TE: parseInt(document.getElementById('reqTE').value) || 0,
+            FLEX: parseInt(document.getElementById('reqFLEX').value) || 0,
+            SFLEX: parseInt(document.getElementById('reqSFLEX').value) || 0
+        };
+
+        localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
+        if (btn) {
+            btn.innerText = "✅ Saved!";
+            setTimeout(() => btn.innerText = "Save Requirements", 2000);
+        }
+        optimizeLineup(true);
+    }
+
+    // --- LEAGUE CREATION & MANUAL INPUT ---
+    function createManualLeague() {
+        const name = document.getElementById('newLeagueName').value.trim();
+        if (!name) {
+            alert("Please enter a League Name to create a manual league.");
+            return;
+        }
+
+        let newId = 'manual_' + Date.now();
+        let leagueObj = {
+            leagueId: newId,
+            name: name,
+            username: "Manual",
+            reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 },
+            roster: []
+        };
+
+        leagues.push(leagueObj);
+        activeLeagueId = newId;
+        localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
+        localStorage.setItem('mds_season_active_league', activeLeagueId);
+
+        document.getElementById('newLeagueName').value = "";
+        refreshLeagueDropdown();
+        loadActiveLeagueData();
+        
+        let msgEl = document.getElementById('manualAddMsg');
+        msgEl.innerText = `✅ Manual League '${name}' Created!`;
+        setTimeout(() => msgEl.innerText = "", 3000);
+    }
+
+    function addManualPlayer() {
+        let league = getActiveLeague();
+        if (!league) {
+            alert("Please add or select a league first.");
+            return;
+        }
+
+        const name = document.getElementById('manualName').value.trim();
+        const pos = document.getElementById('manualPos').value;
+        const team = document.getElementById('manualTeam').value.trim().toUpperCase() || "FA";
+
+        if (!name) {
+            alert("Please enter a player name.");
+            return;
+        }
+
+        let newP = {
+            id: 'p_' + Date.now(),
+            name: name,
+            cleanName: normalizeName(name),
+            pos: pos,
+            team: team
+        };
+
+        league.roster = league.roster || [];
+        league.roster.push(newP);
+        localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
+
+        document.getElementById('manualName').value = "";
+        document.getElementById('manualTeam').value = "";
+        
+        optimizeLineup(true); 
+        loadRosterTab();
+        
+        let msgEl = document.getElementById('manualAddMsg');
+        msgEl.innerText = `✅ Added ${name}!`;
+        setTimeout(() => msgEl.innerText = "", 3000);
+    }
+
+    function deletePlayer(playerId) {
+        let league = getActiveLeague();
+        if (!league) return;
+        if (confirm("Remove player from active roster?")) {
+            league.roster = league.roster.filter(p => p.id !== playerId);
+            localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
+            optimizeLineup(true);
+            loadRosterTab();
+        }
+    }
+
+    // --- SLEEPER SYNC (INJURIES & BYE WEEKS INCLUDED) ---
+    async function addAndSyncLeague(btn) {
+        let leagueName = document.getElementById('newLeagueName').value.trim();
+        const username = document.getElementById('sleeperUsername').value.trim();
+        const leagueId = document.getElementById('sleeperLeagueId').value.trim();
+
+        if (!username || !leagueId) {
+            alert("Please enter both Sleeper Username and League ID to sync.");
+            return;
+        }
+
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Syncing...";
+        btn.style.backgroundColor = "#8b5cf6";
+
+        try {
+            const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+            if (!userRes.ok) throw new Error("User not found.");
+            const userId = (await userRes.json()).user_id;
+
+            const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
+            if (!leagueRes.ok) throw new Error("League ID not found.");
+            const leagueData = await leagueRes.json();
+            
+            if (!leagueName && leagueData.name) {
+                leagueName = leagueData.name;
+            } else if (!leagueName) {
+                leagueName = "My League";
+            }
+
+            let autoReqs = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+            if (leagueData.roster_positions) {
+                autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0 };
+                leagueData.roster_positions.forEach(pos => {
+                    let mappedPos = null;
+                    if (pos === 'QB') mappedPos = 'QB';
+                    else if (pos === 'RB') mappedPos = 'RB';
+                    else if (pos === 'WR') mappedPos = 'WR';
+                    else if (pos === 'TE') mappedPos = 'TE';
+                    else if (pos === 'FLEX' || pos === 'REC_FLEX' || pos === 'WRRB_FLEX') mappedPos = 'FLEX';
+                    else if (pos === 'SUPER_FLEX') mappedPos = 'SFLEX';
+
+                    if (mappedPos && autoReqs[mappedPos] !== undefined) {
+                        autoReqs[mappedPos]++;
+                    }
+                });
+            }
+
+            const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+            if (!rosterRes.ok) throw new Error("Could not fetch rosters.");
+            const rosters = await rosterRes.json();
+            
+            const myTeam = rosters.find(r => r.owner_id === userId);
+            if (!myTeam) throw new Error("Could not find your team in this league.");
+            
+            const playerIds = myTeam.players || [];
+
+            btn.innerText = "⏳ Loading Players...";
+            const mapRes = await fetch(`https://api.sleeper.app/v1/players/nfl`);
+            const playerMap = await mapRes.json();
+
+            let rosterDetails = [];
+            playerIds.forEach(id => {
+                let p = playerMap[id];
+                if (p) {
+                    let inj = null;
+                    if (p.injury_status && p.injury_status !== "None" && p.injury_status !== "Active") {
+                        inj = p.injury_status;
+                    } else if (p.status && ['Suspended', 'PUP', 'IR', 'NFI'].includes(p.status)) {
+                        inj = p.status;
+                    }
+                    
+                    let shortInj = null;
+                    if (inj) {
+                        let iUpper = inj.toUpperCase();
+                        if (iUpper.includes('QUESTIONABLE')) shortInj = 'Q';
+                        else if (iUpper.includes('DOUBTFUL')) shortInj = 'D';
+                        else if (iUpper.includes('OUT')) shortInj = 'OUT';
+                        else if (iUpper.includes('SUSPENDED')) shortInj = 'SUS';
+                        else if (iUpper.includes('IR') || iUpper.includes('INJURED RESERVE')) shortInj = 'IR';
+                        else if (iUpper.includes('PUP')) shortInj = 'PUP';
+                        else if (iUpper.includes('NFI')) shortInj = 'NFI';
+                        else shortInj = inj;
+                    }
+
+                    rosterDetails.push({
+                        id: id,
+                        name: `${p.first_name} ${p.last_name}`,
+                        cleanName: normalizeName(`${p.first_name} ${p.last_name}`),
+                        pos: p.position || "FLEX",
+                        team: p.team || "FA",
+                        inj: shortInj
+                    });
+                }
+            });
+
+            let existingIdx = leagues.findIndex(l => l.leagueId === leagueId);
+            let leagueObj = {
+                leagueId: leagueId,
+                name: leagueName,
+                username: username,
+                reqs: autoReqs,
+                roster: rosterDetails
+            };
+
+            if (existingIdx !== -1) {
+                leagues[existingIdx] = leagueObj;
+            } else {
+                leagues.push(leagueObj);
+            }
+
+            activeLeagueId = leagueId;
+            localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
+            localStorage.setItem('mds_season_active_league', activeLeagueId);
+
+            document.getElementById('newLeagueName').value = "";
+            document.getElementById('sleeperLeagueId').value = "";
+
+            refreshLeagueDropdown();
+            loadActiveLeagueData();
+            optimizeLineup(true);
+            
+            btn.innerText = "✅ Synced!";
+            btn.style.backgroundColor = "#4ade80";
+            btn.style.color = "#0b132b";
+            
+            setTimeout(() => {
+                btn.innerText = "Sync Sleeper";
+                btn.style.backgroundColor = "#4285f4";
+                btn.style.color = "white";
+            }, 2500);
+
+        } catch(err) {
+            console.error(err);
+            btn.innerText = "⚠️ Error";
+            btn.style.backgroundColor = "#ea4335";
+            alert(`Sync Error:\n${err.message}`);
+        }
+    }
+
+    // --- REFRESH ACTIVE SLEEPER LEAGUE (ROSTER TAB) ---
+    async function syncActiveLeague() {
+        let league = getActiveLeague();
+        if (!league || !league.leagueId || league.leagueId.startsWith('manual_') || !league.username) {
+            alert("Only Sleeper-synced leagues can be refreshed via this button.");
+            return;
+        }
+        const btn = document.getElementById('rosterSyncBtn');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Syncing...";
+        
+        try {
+            const userRes = await fetch(`https://api.sleeper.app/v1/user/${league.username}`);
+            if (!userRes.ok) throw new Error("User not found.");
+            const userId = (await userRes.json()).user_id;
+
+            const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${league.leagueId}/rosters`);
+            if (!rosterRes.ok) throw new Error("Could not fetch rosters.");
+            const rosters = await rosterRes.json();
+            
+            const myTeam = rosters.find(r => r.owner_id === userId);
+            if (!myTeam) throw new Error("Could not find your team.");
+            
+            const playerIds = myTeam.players || [];
+            const mapRes = await fetch(`https://api.sleeper.app/v1/players/nfl`);
+            const playerMap = await mapRes.json();
+
+            let rosterDetails = [];
+            playerIds.forEach(id => {
+                let p = playerMap[id];
+                if (p) {
+                    let inj = null;
+                    if (p.injury_status && p.injury_status !== "None" && p.injury_status !== "Active") {
+                        inj = p.injury_status;
+                    } else if (p.status && ['Suspended', 'PUP', 'IR', 'NFI'].includes(p.status)) {
+                        inj = p.status;
+                    }
+                    
+                    let shortInj = null;
+                    if (inj) {
+                        let iUpper = inj.toUpperCase();
+                        if (iUpper.includes('QUESTIONABLE')) shortInj = 'Q';
+                        else if (iUpper.includes('DOUBTFUL')) shortInj = 'D';
+                        else if (iUpper.includes('OUT')) shortInj = 'OUT';
+                        else if (iUpper.includes('SUSPENDED')) shortInj = 'SUS';
+                        else if (iUpper.includes('IR') || iUpper.includes('INJURED RESERVE')) shortInj = 'IR';
+                        else if (iUpper.includes('PUP')) shortInj = 'PUP';
+                        else if (iUpper.includes('NFI')) shortInj = 'NFI';
+                        else shortInj = inj;
+                    }
+
+                    rosterDetails.push({
+                        id: id,
+                        name: `${p.first_name} ${p.last_name}`,
+                        cleanName: normalizeName(`${p.first_name} ${p.last_name}`),
+                        pos: p.position || "FLEX",
+                        team: p.team || "FA",
+                        inj: shortInj
+                    });
+                }
+            });
+
+            league.roster = rosterDetails;
+            localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
+            
+            optimizeLineup(true); 
+            loadRosterTab();
+            
+            btn.innerText = "✅ Synced!";
+            btn.style.backgroundColor = "#4ade80";
+            btn.style.color = "#0b132b";
+            
+            setTimeout(() => {
+                btn.innerText = "🔄 Sync Sleeper Waivers & Trades";
+                btn.style.backgroundColor = "#34A853";
+                btn.style.color = "white";
+            }, 2500);
+
+        } catch(err) {
+            console.error(err);
+            btn.innerText = "⚠️ Error";
+            btn.style.backgroundColor = "#ea4335";
+            alert(`Sync Error:\n${err.message}`);
+            setTimeout(() => {
+                btn.innerText = "🔄 Sync Sleeper Waivers & Trades";
+                btn.style.backgroundColor = "#34A853";
+            }, 2500);
+        }
+    }
+
+    // --- SCREENSHOT EXPORT ---
+    async function exportLineup() {
+        if (typeof html2canvas === 'undefined') {
+            alert("Screenshot library loading. Please try again in a second.");
+            return;
+        }
+        
+        const container = document.getElementById('optimalLineupContainer');
+        const exportBtn = document.getElementById('exportBtn');
+        const origText = exportBtn.innerText;
+        exportBtn.innerText = "📸 Capturing...";
+        
+        // Hide interactive buttons temporarily
+        const buttons = container.querySelectorAll('.swap-btn, .lock-btn');
+        buttons.forEach(b => b.style.display = 'none');
+        
+        // Ensure background is solid for the image output
+        const originalBg = container.style.background;
+        container.style.background = '#1c2541'; 
+        container.style.padding = '1rem';
+        container.style.borderRadius = '8px';
+        
+        try {
+            const canvas = await html2canvas(container, {
+                backgroundColor: '#1c2541',
+                scale: 2 // Higher resolution for crisp text
+            });
+            
+            const link = document.createElement('a');
+            link.download = `My_Lineup_Strategist.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (err) {
+            console.error("Export failed:", err);
+            alert("Sorry, export failed. Please try again.");
+        } finally {
+            // Restore UI Elements instantly
+            buttons.forEach(b => b.style.display = 'inline-block');
+            container.style.background = originalBg;
+            container.style.padding = '0';
+            exportBtn.innerText = origText;
+        }
+    }
+
+    // --- ROSTER TAB ---
+    function loadRosterTab() {
+        let league = getActiveLeague();
+        
+        const syncBtn = document.getElementById('rosterSyncBtn');
+        if (league && league.leagueId && !league.leagueId.startsWith('manual_') && league.username) {
+            syncBtn.style.display = 'block';
+        } else {
+            syncBtn.style.display = 'none';
+        }
+
+        if (!league || !league.roster || league.roster.length === 0) {
+            document.getElementById('rosterList').innerHTML = "Select or create a league on the Setup tab to view your roster.";
+            return;
+        }
+        
+        let displayRoster = league.roster.map(p => {
+            let rObj = rosRankings.find(rk => rk.cleanName === p.cleanName);
+            return { ...p, rosRank: rObj ? rObj.rank : 999 };
+        });
+
+        const posOrder = { "QB": 1, "RB": 2, "WR": 3, "TE": 4, "K": 5, "DEF": 6 };
+        displayRoster.sort((a, b) => {
+            if (a.rosRank !== 999 || b.rosRank !== 999) return a.rosRank - b.rosRank;
+            return (posOrder[a.pos] || 99) - (posOrder[b.pos] || 99);
+        });
+
+        let html = "";
+        displayRoster.forEach(p => {
+            let rankBadge = p.rosRank !== 999 ? `ROS Rank: ${p.rosRank}` : "Unranked";
+            let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
+            let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+            
+            html += `
+            <div class="roster-item">
+                <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
+                    <span class="slot-label slot-ROS">ROS</span>
+                    <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
+                    <div style="display:flex; flex-direction:column; justify-content:center;">
+                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge}</div>
+                        <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
+                            <span class="badge">${p.team}</span>
+                            <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                    <button class="btn-danger" style="padding:4px 8px; border-radius:4px;" onclick="deletePlayer('${p.id}')">✕</button>
+                </div>
+            </div>`;
+        });
+        document.getElementById('rosterList').innerHTML = html;
+    }
+
+    // --- RANKINGS ENGINE ---
+    function updateRankingsMetaDisplay() {
+        const rosMetaEl = document.getElementById('rosMetaDisplay');
+        if (rosRankings.length > 0) {
+            rosMetaEl.style.display = 'block';
+            rosMetaEl.innerText = `✅ Loaded: ${rosRankings.length} players`;
+        } else {
+            rosMetaEl.style.display = 'none';
+        }
+
+        const weeklyMetaEl = document.getElementById('weeklyMetaDisplay');
+        if (weeklyRankings.length > 0) {
+            weeklyMetaEl.style.display = 'block';
+            weeklyMetaEl.innerText = `✅ Loaded: ${weeklyRankings.length} players`;
+        } else {
+            weeklyMetaEl.style.display = 'none';
+        }
+    }
+
+    function processRankingsUpload(fileInputId, isWeekly, successMsgId) {
+        const file = document.getElementById(fileInputId).files[0];
+        if (!file) return;
+
+        const filename = file.name.toLowerCase();
+
+        if (filename.endsWith('.csv')) {
+            Papa.parse(file, {
+                header: false, skipEmptyLines: true,
+                complete: (results) => parseRankingsData(results.data, isWeekly, successMsgId)
+            });
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheetName = workbook.SheetNames[0];
+                const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[firstSheetName]);
+                
+                Papa.parse(csvStr, {
+                    header: false, skipEmptyLines: true,
+                    complete: (results) => parseRankingsData(results.data, isWeekly, successMsgId)
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            alert("Unsupported file format. Please upload a .csv or .xlsx file.");
+        }
+    }
+
+    function parseRankingsData(rows, isWeekly, successMsgId) {
+        let parsed = [];
+        if (rows.length < 1) return;
+
+        let headers = rows[0].map(h => String(h).trim().toLowerCase());
+        let isHorizontal = headers.includes('quarterback') || headers.includes('running back');
+
+        if (isHorizontal) {
+            let playerRanks = {};
+            headers.forEach((h, idx) => {
+                let isFlex = (h === 'flex');
+                let isPos = ['quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense'].includes(h);
+                
+                if (isFlex || isPos) {
+                    for (let r = 1; r < rows.length; r++) {
+                        let pName = rows[r][idx];
+                        let pRank = rows[r][idx - 1];
+                        
+                        if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
+                            let clean = normalizeName(pName.trim());
+                            if (!playerRanks[clean]) {
+                                playerRanks[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
+                            }
+                            if (isFlex) {
+                                playerRanks[clean].flexRank = parseInt(pRank);
+                                playerRanks[clean].rank = parseInt(pRank);
+                            } else {
+                                playerRanks[clean].posRank = parseInt(pRank);
+                                playerRanks[clean].rank = parseInt(pRank);
+                            }
+                        }
+                    }
+                }
+            });
+            parsed = Object.values(playerRanks);
+        } else {
+            let nameColIdx = -1;
+            let rankColIdx = -1;
+            
+            let hasHeaders = headers.some(h => h === 'player' || h === 'name' || h === 'player name');
+            if (hasHeaders) {
+                nameColIdx = headers.findIndex(h => h === 'player' || h === 'name' || h === 'player name');
+                rankColIdx = headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'pos rank' || h === 'tier');
+            } else {
+                let col0IsNum = !isNaN(parseInt(rows[0][0]));
+                nameColIdx = col0IsNum ? 1 : 0;
+                rankColIdx = col0IsNum ? 0 : -1;
+            }
+
+            let startIndex = hasHeaders ? 1 : 0;
+            for (let i = startIndex; i < rows.length; i++) {
+                let nameStr = rows[i][nameColIdx];
+                if (nameStr && nameStr.trim()) {
+                    let rankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
+                    if (isNaN(rankVal)) rankVal = i + 1 - startIndex;
+                    
+                    parsed.push({
+                        name: nameStr.trim(),
+                        cleanName: normalizeName(nameStr.trim()),
+                        rank: rankVal,
+                        posRank: rankVal,
+                        flexRank: rankVal
+                    });
+                }
+            }
+        }
+
+        if (isWeekly) {
+            weeklyRankings = parsed;
+            localStorage.setItem('mds_season_weekly', JSON.stringify(weeklyRankings));
+        } else {
+            rosRankings = parsed;
+            localStorage.setItem('mds_season_ros', JSON.stringify(rosRankings));
+        }
+        
+        updateRankingsMetaDisplay();
+        
+        const activeTab = document.querySelector('.tab-content.active').id;
+        if (activeTab === 'lineupTab') optimizeLineup(true);
+        if (activeTab === 'rosterTab') loadRosterTab();
+        
+        let msgEl = document.getElementById(successMsgId);
+        msgEl.style.display = 'block';
+        setTimeout(() => msgEl.style.display = 'none', 2500);
+    }
+
+    document.getElementById('rosFileInput').addEventListener('change', () => processRankingsUpload('rosFileInput', false, 'rosSuccessMsg'));
+    document.getElementById('weeklyFileInput').addEventListener('change', () => processRankingsUpload('weeklyFileInput', true, 'weeklySuccessMsg'));
+
+    // --- LINEUP OPTIMIZER & UNIVERSAL SWAP ENGINE ---
+    function toggleLock(playerId) {
+        if (!activeLeagueId) return;
+        let locks = lockedPlayersMap[activeLeagueId] || [];
+        if (locks.includes(playerId)) {
+            locks = locks.filter(id => id !== playerId);
+        } else {
+            locks.push(playerId);
+        }
+        lockedPlayersMap[activeLeagueId] = locks;
+        localStorage.setItem('mds_season_locks_map', JSON.stringify(lockedPlayersMap));
+        
+        let starters = manualStartersMap[activeLeagueId] || [];
+        let bench = manualBenchMap[activeLeagueId] || [];
+        starters.forEach(s => { if(s.player && s.player.id === playerId) s.player.isLocked = locks.includes(playerId); });
+        bench.forEach(p => { if(p.id === playerId) p.isLocked = locks.includes(playerId); });
+        
+        manualStartersMap[activeLeagueId] = starters;
+        manualBenchMap[activeLeagueId] = bench;
+        renderLineupUI();
+    }
+
+    function initiateSwap(playerId) {
+        if (swapSourceId === null) {
+            swapSourceId = playerId;
+        } else if (swapSourceId === playerId) {
+            swapSourceId = null;
+        } else {
+            let starters = manualStartersMap[activeLeagueId] || [];
+            let bench = manualBenchMap[activeLeagueId] || [];
+
+            let p1StarterIdx = starters.findIndex(s => s.player && s.player.id === swapSourceId);
+            let p1BenchIdx = bench.findIndex(p => p.id === swapSourceId);
+            
+            let p2StarterIdx = starters.findIndex(s => s.player && s.player.id === playerId);
+            let p2BenchIdx = bench.findIndex(p => p.id === playerId);
+
+            let p1Obj = (p1StarterIdx !== -1) ? starters[p1StarterIdx].player : bench[p1BenchIdx];
+            let p2Obj = (p2StarterIdx !== -1) ? starters[p2StarterIdx].player : bench[p2BenchIdx];
+
+            if (p1StarterIdx !== -1 && p2StarterIdx !== -1) {
+                starters[p1StarterIdx].player = p2Obj;
+                starters[p2StarterIdx].player = p1Obj;
+            } 
+            else if (p1StarterIdx !== -1 && p2BenchIdx !== -1) {
+                starters[p1StarterIdx].player = p2Obj;
+                bench[p2BenchIdx] = p1Obj;
+            }
+            else if (p1BenchIdx !== -1 && p2StarterIdx !== -1) {
+                starters[p2StarterIdx].player = p1Obj;
+                bench[p1BenchIdx] = p2Obj;
+            }
+            else if (p1BenchIdx !== -1 && p2BenchIdx !== -1) {
+                bench[p1BenchIdx] = p2Obj;
+                bench[p2BenchIdx] = p1Obj;
+            }
+
+            manualStartersMap[activeLeagueId] = starters;
+            manualBenchMap[activeLeagueId] = bench;
+            
+            localStorage.setItem('mds_season_manual_starters', JSON.stringify(manualStartersMap));
+            localStorage.setItem('mds_season_manual_bench', JSON.stringify(manualBenchMap));
+            swapSourceId = null;
+        }
+        renderLineupUI();
+    }
+
+    function optimizeLineup(forceReset = true) {
+        let league = getActiveLeague();
+        if (!league || !league.roster || league.roster.length === 0) {
+            document.getElementById('optimalLineupContainer').innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Please select and sync a league first.</div>`;
+            document.getElementById('benchContainer').innerHTML = "No bench data.";
+            return;
+        }
+
+        if (!forceReset && manualStartersMap[activeLeagueId] && manualBenchMap[activeLeagueId]) {
+            renderLineupUI();
+            return;
+        }
+
+        let activeDataSet = weeklyRankings.length > 0 ? weeklyRankings : rosRankings;
+        let locks = lockedPlayersMap[activeLeagueId] || [];
+        let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+
+        let scoredRoster = league.roster.map(p => {
+            let rObj = activeDataSet.find(rk => rk.cleanName === p.cleanName);
+            return {
+                ...p,
+                posRank: rObj ? rObj.posRank : 999,
+                flexRank: rObj ? rObj.flexRank : 999,
+                isLocked: locks.includes(p.id)
+            };
+        });
+
+        let pool = [...scoredRoster];
+        let starters = [];
+
+        const fillSlot = (slotLabel, posFilter, useFlexRank) => {
+            pool.sort((a, b) => {
+                if (useFlexRank) {
+                    if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
+                    if (a.flexRank !== 999 && b.flexRank === 999) return -1;
+                    if (a.flexRank === 999 && b.flexRank !== 999) return 1;
+                    return a.posRank - b.posRank;
+                } else {
+                    return a.posRank - b.posRank;
+                }
+            });
+
+            let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
+            if (lockedIndex !== -1) {
+                let p = pool.splice(lockedIndex, 1)[0];
+                starters.push({ slot: slotLabel, player: p, usedFlex: useFlexRank });
+                return;
+            }
+
+            let bestIndex = pool.findIndex(p => posFilter(p.pos));
+            if (bestIndex !== -1) {
+                let p = pool.splice(bestIndex, 1)[0];
+                starters.push({ slot: slotLabel, player: p, usedFlex: useFlexRank });
+            } else {
+                starters.push({ slot: slotLabel, player: null, usedFlex: useFlexRank });
+            }
+        };
+
+        for (let i = 0; i < reqs.QB; i++) fillSlot(`QB${i+1}`, pos => pos === 'QB', false);
+        for (let i = 0; i < reqs.RB; i++) fillSlot(`RB${i+1}`, pos => pos === 'RB', false);
+        for (let i = 0; i < reqs.WR; i++) fillSlot(`WR${i+1}`, pos => pos === 'WR', false);
+        for (let i = 0; i < reqs.TE; i++) fillSlot(`TE${i+1}`, pos => pos === 'TE', false);
+        for (let i = 0; i < reqs.FLEX; i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos), true);
+        
+        // Superflex Priority Override logic
+        for (let i = 0; i < reqs.SFLEX; i++) {
+            let slotLabel = `SFLEX${i+1}`;
+            
+            let lockedIndex = pool.findIndex(p => p.isLocked && ['QB', 'RB', 'WR', 'TE'].includes(p.pos));
+            if (lockedIndex !== -1) {
+                let p = pool.splice(lockedIndex, 1)[0];
+                starters.push({ slot: slotLabel, player: p, usedFlex: !['QB'].includes(p.pos) });
+                continue;
+            }
+
+            // Always prioritize ranked QBs over flex players
+            let bestQBIdx = pool.findIndex(p => p.pos === 'QB' && p.posRank !== 999);
+            if (bestQBIdx !== -1) {
+                let highest = -1; let maxRk = 9999;
+                pool.forEach((p, idx) => {
+                    if (p.pos === 'QB' && p.posRank < maxRk) { maxRk = p.posRank; highest = idx; }
+                });
+                let p = pool.splice(highest, 1)[0];
+                starters.push({ slot: slotLabel, player: p, usedFlex: false });
+            } else {
+                let bestFlexIdx = -1; let maxFlexRk = 9999;
+                pool.forEach((p, idx) => {
+                    if (['RB', 'WR', 'TE'].includes(p.pos) && p.flexRank < maxFlexRk) { maxFlexRk = p.flexRank; bestFlexIdx = idx; }
+                });
+                
+                if (bestFlexIdx !== -1 && maxFlexRk !== 999) {
+                    let p = pool.splice(bestFlexIdx, 1)[0];
+                    starters.push({ slot: slotLabel, player: p, usedFlex: true });
+                } else {
+                    let bestPosIdx = -1; let maxPosRk = 9999;
+                    pool.forEach((p, idx) => {
+                        if (['RB', 'WR', 'TE'].includes(p.pos) && p.posRank < maxPosRk) { maxPosRk = p.posRank; bestPosIdx = idx; }
+                    });
+                    if (bestPosIdx !== -1) {
+                        let p = pool.splice(bestPosIdx, 1)[0];
+                        starters.push({ slot: slotLabel, player: p, usedFlex: false });
+                    } else {
+                        starters.push({ slot: slotLabel, player: null, usedFlex: false });
+                    }
+                }
+            }
+        }
+
+        // Sort bench by flex utility 
+        pool.sort((a, b) => {
+            if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
+            if (a.flexRank !== 999 && b.flexRank === 999) return -1;
+            if (a.flexRank === 999 && b.flexRank !== 999) return 1;
+            return a.posRank - b.posRank;
+        });
+
+        manualStartersMap[activeLeagueId] = starters;
+        manualBenchMap[activeLeagueId] = pool;
+        
+        localStorage.setItem('mds_season_manual_starters', JSON.stringify(manualStartersMap));
+        localStorage.setItem('mds_season_manual_bench', JSON.stringify(manualBenchMap));
+        
+        renderLineupUI();
+    }
+
+    function renderLineupUI() {
+        const container = document.getElementById('optimalLineupContainer');
+        const benchContainer = document.getElementById('benchContainer');
+        
+        let starters = manualStartersMap[activeLeagueId] || [];
+        let benchPool = manualBenchMap[activeLeagueId] || [];
+
+        // Render Starters
+        let html = "";
+        starters.forEach(s => {
+            let slotType = s.slot.replace(/[0-9]/g, '');
+
+            if (s.player) {
+                let p = s.player;
+                let lockIcon = p.isLocked ? "🔒" : "🔓";
+                let lockClass = p.isLocked ? "locked" : "";
+                if (swapSourceId === p.id) lockClass += " swapping";
+
+                let displayRank = s.usedFlex && p.flexRank !== 999 ? p.flexRank : p.posRank;
+                let rankLabel = s.usedFlex && p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
+                let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
+                
+                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
+                let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
+                let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+
+                html += `
+                <div class="lineup-slot ${lockClass}">
+                    <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
+                        <span class="slot-label slot-${slotType}">${s.slot}</span>
+                        <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
+                        <div style="display:flex; flex-direction:column; justify-content:center;">
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                            <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
+                                <span class="badge">${p.team}</span>
+                                <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                        <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                        <button class="btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>
+                    </div>
+                </div>`;
+            } else {
+                html += `
+                <div class="lineup-slot empty">
+                    <span class="slot-label slot-${slotType}">${s.slot}</span>
+                    <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
+                </div>`;
+            }
+        });
+        container.innerHTML = html;
+
+        // Render Bench using identical layout
+        let benchHTML = "";
+        if (benchPool.length > 0) {
+            benchPool.forEach(p => {
+                let lockClass = swapSourceId === p.id ? "swapping" : "";
+                let displayRank = p.flexRank !== 999 ? p.flexRank : p.posRank;
+                let rankLabel = p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
+                let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
+                
+                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
+                let byeStr = teamByes[p.team] ? ` (${teamByes[p.team]})` : "";
+                let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+
+                benchHTML += `
+                <div class="lineup-slot ${lockClass}">
+                    <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
+                        <span class="slot-label slot-BN">BN</span>
+                        <span class="badge pos-badge ${p.pos}" style="min-width:35px; text-align:center;">${p.pos}</span>
+                        <div style="display:flex; flex-direction:column; justify-content:center;">
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                            <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
+                                <span class="badge">${p.team}</span>
+                                <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                        <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                    </div>
+                </div>`;
+            });
+        } else {
+            benchHTML = "No bench players.";
+        }
+        benchContainer.innerHTML = benchHTML;
+    }
+
+    // Initialize on load
+    window.onload = loadSettings;
+</script>
+
+</body>
+</html>
