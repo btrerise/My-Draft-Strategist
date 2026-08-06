@@ -354,9 +354,14 @@ body {
     padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom)) 0.5rem; 
     z-index: 98; 
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4); 
+
+    /* NEW: Prevents mobile layout thrashing during DOM reflows */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+    contain: layout style;
 }
 
-/* Renamed to .bottom-nav-btn to avoid Hamburger Menu collisions */
 .nav-bar .bottom-nav-btn { 
     background: transparent; 
     border: none; 
@@ -371,10 +376,10 @@ body {
     padding: 0.5rem; 
     cursor: pointer; 
     
-    /* Strict Flex Constraints */
-    flex: 1 1 0px; 
+    /* Strict Flex Constraints + Hard max-width cap so they can never overflow */
+    flex: 1 1 0; 
     min-width: 0; 
-    max-width: 100%;
+    max-width: 33.333%; 
     overflow: hidden; 
     
     border-radius: 8px;
