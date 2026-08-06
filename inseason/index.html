@@ -74,7 +74,6 @@
     </div>
 </nav>
 
-<div id="mainApp">
     <header class="header">
         <div class="header-left">
             <button class="hamburger-btn" onclick="toggleDrawer()" aria-label="Toggle Menu">
@@ -479,7 +478,6 @@
     </section>
 </div>
     </div>
-</div> <!-- Closes #mainApp -->
     <!-- BOTTOM HYBRID NAVIGATION -->
 <nav class="nav-bar" aria-label="Lineup Bottom Navigation">
     <button class="bottom-nav-btn" data-target="roster" onclick="showTab('roster')">
@@ -553,8 +551,8 @@
     }
 
     let touchStartX = 0; let touchEndX = 0;
-    document.getElementById('mainApp').addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
-    document.getElementById('mainApp').addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, {passive: true});
+    document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+    document.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, {passive: true});
 
     function handleSwipe() {
         const swipeThreshold = 120; 
