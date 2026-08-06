@@ -807,23 +807,6 @@ body {
     visibility: visible; opacity: 1; transform: translateY(0);
 }
 
-/* --- MLS SPECIFIC STYLES (Lineup & Roster) --- */
-.lineup-slot, .roster-item { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0.6rem; border: 1px solid var(--border); background: #0b132b; margin-bottom: 6px; border-radius: 6px; }
-.lineup-slot.locked { border-color: var(--primary-green); background: #102a1e; }
-.lineup-slot.swapping, .roster-item.swapping { border-color: #fbbc04; background: #332b11; border: 1px solid #fbbc04;}
-.lineup-slot.empty { border: 1px dashed var(--border); background: rgba(255,255,255,0.02); }
-
-.slot-label { font-size: 0.8rem; width: 40px; min-width: 40px; text-align: center; font-weight: bold; }
-.slot-QB { color: #fca5a5 !important; }
-.slot-RB { color: #86efac !important; }
-.slot-WR { color: #93c5fd !important; }
-.slot-TE { color: #fde047 !important; }
-.slot-FLEX, .slot-SFLEX { color: #e9d8fd !important; }
-.slot-BN, .slot-ROS { color: var(--text-muted) !important; }
-
-.player-name-wrap { font-weight: bold; color: #f8fafc; line-height: 1.25; font-size: 0.95rem; }
-.team-chip { background: #102a1e; padding: 4px 10px; border-radius: 16px; font-size: 0.8rem; font-weight: bold; color: #86efac; display: flex; align-items: center; gap: 6px; border: 1px solid #34A853; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-.team-chip .close-chip { cursor: pointer; color: #fca5a5; font-size: 0.9rem; line-height: 1; margin-top: -1px; transition: opacity 0.2s; }
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
 
 .lineup-action-row {
@@ -896,48 +879,46 @@ body {
     margin-top: 0.75rem;
 }
 
-/* Lineup Slots & Roster Rows */
+/* --- Lineup Slots & Roster Rows --- */
 .lineup-slot, .roster-item { 
     display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
+    align-items: center; /* Vertical alignment */
     padding: 0.8rem 1rem; 
     border: 1px solid var(--border); 
     background: rgba(0, 0, 0, 0.2); 
     margin-bottom: 0.5rem; 
     border-radius: 8px; 
     transition: border-color 0.2s, background-color 0.2s;
+    gap: 1rem; /* Consistent spacing between badge, name, and actions */
 }
 
-.lineup-slot:hover, .roster-item:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-}
-
-.lineup-slot.locked { 
-    border-color: var(--primary-green); 
-    background: var(--target-bg); 
-}
-
-.lineup-slot.swapping, .roster-item.swapping { 
-    border-color: #f59e0b; 
-    background: rgba(245, 158, 11, 0.1); 
-}
-
-.lineup-slot.empty { 
-    border: 1px dashed var(--border); 
-    background: rgba(255, 255, 255, 0.01); 
-}
-
+/* 1. FORCE THE BADGE TO BE FIXED WIDTH */
 .slot-label { 
     font-size: 0.75rem; 
     width: 45px; 
-    min-width: 45px; 
+    min-width: 45px; /* Ensures all badges are exactly 45px wide */
+    flex-shrink: 0;  /* Prevents badge from squishing */
     text-align: center; 
     font-weight: 700; 
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
+/* 2. FORCE NAME CONTAINER TO GROW TO FILL SPACE */
+.player-name-wrap { 
+    flex-grow: 1;    /* Takes up all remaining space */
+    font-weight: 600; 
+    color: var(--text-main); 
+    line-height: 1.3; 
+    font-size: 0.95rem; 
+}
+
+/* 3. FORCE ACTIONS TO THE RIGHT (Shrink prevented) */
+.actions { 
+    display: flex; 
+    gap: 0.5rem; 
+    flex-shrink: 0; /* Prevents buttons from squishing */
+}
 .slot-QB { color: var(--pos-qb-border) !important; }
 .slot-RB { color: var(--pos-rb-border) !important; }
 .slot-WR { color: var(--pos-wr-border) !important; }
@@ -1622,12 +1603,9 @@ body {
     background-color: var(--border); 
     border: 2px solid var(--border); 
     border-radius: 6px; 
-    
-    /* Ensures it stays wide enough for columns, but lets the container handle the scroll box */
-    width: max-content; 
-    min-width: 100%; 
-    
-    overflow: hidden; 
+    width: 100%; /* Replaced rigid min-width with full container width */
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .draft-col-header { 
@@ -1792,13 +1770,38 @@ body {
     color: var(--text-main);
     font-weight: 600;
 }
+/* --- DARK MODE SELECT DROPDOWNS --- */
+select.form-input, 
+select {
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    /* Custom sleek dropdown arrow */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+}
 
-/* --- MOBILE TIGHTENING --- */
-@media (max-width: 450px) {
-    .lineup-slot, .roster-item { padding: 0.6rem 0.4rem; gap: 0.4rem; }
-    .slot-label { width: 32px; min-width: 32px; font-size: 0.75rem; }
-    .player-name-wrap { font-size: 0.85rem; }
-    .badge { padding: 1px 4px; font-size: 0.70rem; }
-    .swap-btn { padding: 4px 6px; font-size: 0.75rem; }
-    .lock-btn { font-size: 1.0rem; padding: 0 2px !important; }
+select.form-input:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* Forces dropdown option lists to respect dark theme where supported */
+select option {
+    background-color: var(--card-bg);
+    color: var(--text-main);
+    padding: 0.75rem;
 }
