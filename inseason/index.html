@@ -1564,6 +1564,31 @@
         } else { benchHTML = "No bench players."; }
         benchContainer.innerHTML = benchHTML;
     }
+    // Dynamic Tooltip Edge-Collision Detection
+    document.addEventListener('mouseover', (e) => {
+        const container = e.target.closest('.tooltip-container');
+        if (!container) return;
+
+        const text = container.querySelector('.tooltip-text');
+        if (!text) return;
+
+        container.style.setProperty('--tt-left', '50%');
+        container.style.setProperty('--tt-right', 'auto');
+        container.style.setProperty('--tt-x', '-50%');
+
+        const rect = text.getBoundingClientRect();
+        const padding = 12; 
+
+        if (rect.right > (window.innerWidth - padding)) {
+            container.style.setProperty('--tt-left', 'auto');
+            container.style.setProperty('--tt-right', '0');
+            container.style.setProperty('--tt-x', '0');
+        } else if (rect.left < padding) {
+            container.style.setProperty('--tt-left', '0');
+            container.style.setProperty('--tt-right', 'auto');
+            container.style.setProperty('--tt-x', '0');
+        }
+    });
 </script>
 
 </body>
