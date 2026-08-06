@@ -839,12 +839,12 @@
         const targetTab = document.getElementById(tabId + 'Tab');
         if(targetTab) targetTab.classList.add('active');
 
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.nav-bar .bottom-nav-btn').forEach(b => b.classList.remove('active'));
         
         const menuBtn = document.querySelector(`.hamburger-menu .nav-btn[data-target="${tabId}"]`);
         if(menuBtn) menuBtn.classList.add('active');
 
-        const bottomBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
+        const bottomBtn = document.querySelector(`.nav-bar .bottom-nav-btn[data-target="${tabId}"]`);
         if(bottomBtn) bottomBtn.classList.add('active');
 
         const menu = document.getElementById('hamburgerMenu');
