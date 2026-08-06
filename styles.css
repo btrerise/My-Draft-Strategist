@@ -1116,9 +1116,14 @@ body {
 .draft-board-container { 
     width: 100%; 
     overflow-x: auto; 
-    padding-bottom: 1rem;
-    /* Smooth scrolling on touch devices */
     -webkit-overflow-scrolling: touch; 
+    padding-bottom: 1.5rem;
+    
+    /* Adds explicit padding space on the right edge so the last column can fully scroll into view */
+    padding-right: 1.5rem; 
+    
+    /* Ensures the container respects the screen width properly */
+    max-width: 100%;
 }
 
 /* Premium Empty State */
@@ -1151,8 +1156,12 @@ body {
     background-color: var(--border); 
     border: 2px solid var(--border); 
     border-radius: 6px; 
-    min-width: 900px; /* Slightly wider to prevent name cramping */
-    overflow: hidden; /* Clips the inner corners to match the border-radius */
+    
+    /* Ensures it stays wide enough for columns, but lets the container handle the scroll box */
+    width: max-content; 
+    min-width: 100%; 
+    
+    overflow: hidden; 
 }
 
 .draft-col-header { 
