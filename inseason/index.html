@@ -46,7 +46,7 @@
     </div>
     
     <button class="nav-btn" data-drawer-target="setup" onclick="navigateFromDrawer('setup')">⚙️ Setup</button>
-    <button class="nav-btn active-link" data-drawer-target="roster" onclick="navigateFromDrawer('roster')">📋 Active Roster</button>
+    <button class="nav-btn" data-drawer-target="roster" onclick="navigateFromDrawer('roster')">📋 Active Roster</button>
     <button class="nav-btn" data-drawer-target="lineup" onclick="navigateFromDrawer('lineup')">🏈 Lineup Optimizer</button>
     <button class="nav-btn" data-drawer-target="scout" onclick="navigateFromDrawer('scout')">🔭 Scout & Waivers</button>
     <button class="nav-btn" data-drawer-target="guide" onclick="navigateFromDrawer('guide')">ℹ️ Info & Guide</button>
@@ -80,8 +80,8 @@
 
     <div class="container">
         
-        <!-- SETUP TAB (Hidden from bottom nav) -->
-        <div id="setupTab" class="tab-content">
+        <!-- SETUP TAB -->
+        <div id="setupTab" class="tab-content active">
             
             <div class="settings-card">
                 <h3>
@@ -183,8 +183,8 @@
             </div>
         </div>
 
-        <!-- ROSTER TAB (Now default active) -->
-        <div id="rosterTab" class="tab-content active">
+        <!-- ROSTER TAB -->
+        <div id="rosterTab" class="tab-content">
             
             <div class="settings-card">
                 <h3>
@@ -291,6 +291,11 @@
         
         <!-- SCOUT TAB -->
         <div id="scoutTab" class="tab-content">
+            
+            <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; color: #93c5fd; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.4;">
+                <strong>ℹ️ Sleeper Sync Required:</strong> To see exactly which team owns a player or if they are a Free Agent, you must sync a Sleeper league on the Setup tab. Otherwise, this tool will only display the player's Weekly/ROS ranks.
+            </div>
+
             <div class="settings-card">
                 <h3>
                     <span>Waiver Wire Assistant
@@ -343,7 +348,12 @@
                 <h4>Uploading Custom Rankings & SoS</h4>
                 <p>
                     Upload custom rankings from your favorite analyst in either <strong>.CSV</strong> or native <strong>.XLSX Excel</strong> format. 
-                    <br><br>Upload Rest-of-Season (ROS) rankings on the <strong>Roster</strong> tab, and Weekly Matchup rankings on the <strong>Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Setup Menu to instantly generate visual matchup gradients on player cards!
+                    <br><br>Upload Rest-of-Season (ROS) rankings on the <strong>Roster</strong> tab, and Weekly Matchup rankings on the <strong>Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Setup Menu to instantly generate visual matchup gradients on player cards! Note: If you upload a generic rankings CSV that already contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.
+                </p>
+
+                <h4>Scout & Waivers</h4>
+                <p>
+                    The <strong>Scout</strong> tab is your interactive transaction hub. Paste a list of recommended waiver wire pickups or trade targets. The app will cross-reference your <strong>Sleeper Sync</strong> data to tell you immediately if they are available on waivers, on your roster, or owned by a specific opponent. It will also display their Weekly and ROS ranks side-by-side to help you weigh short-term vs. long-term value.
                 </p>
 
                 <h4>Swapping & Optimizing</h4>
@@ -360,9 +370,9 @@
 
     </div>
 
-    <!-- BOTTOM HYBRID NAVIGATION (Setup removed, Scout added) -->
+    <!-- BOTTOM HYBRID NAVIGATION -->
     <div class="nav-bar">
-        <button class="nav-btn active" data-target="roster" onclick="showTab('roster')">📋 Roster</button>
+        <button class="nav-btn" data-target="roster" onclick="showTab('roster')">📋 Roster</button>
         <button class="nav-btn" data-target="lineup" onclick="showTab('lineup')">🏈 Lineup</button>
         <button class="nav-btn" data-target="scout" onclick="showTab('scout')">🔭 Scout</button>
     </div>
@@ -485,7 +495,7 @@
             document.getElementById('headerLeagueSelect').value = activeLeagueId;
             loadActiveLeagueData();
         }
-        loadRosterTab(); // Initialize default tab
+        showTab('setup'); // Force default load to setup screen
     };
 
     // --- EARLY GAMES LOGIC ---
@@ -541,7 +551,7 @@
         return earlyTeams.includes(teamStr.toUpperCase());
     }
 
-    // --- LEAGUE & SYNC LOGIC (Upgraded for Global Rosters) ---
+    // --- LEAGUE & SYNC LOGIC ---
     function refreshLeagueDropdown() {
         const select = document.getElementById('headerLeagueSelect');
         if (leagues.length === 0) {
@@ -637,7 +647,6 @@
         league.roster = league.roster || [];
         league.roster.push(newP);
         
-        // Add to manual global map
         league.globalRosterMap = league.globalRosterMap || {};
         league.globalRosterMap[newP.cleanName] = "You";
         
@@ -655,9 +664,7 @@
         if (!league) return;
         if (confirm("Remove player from active roster?")) {
             let pToRemove = league.roster.find(p => p.id === playerId);
-            if(pToRemove && league.globalRosterMap) {
-                delete league.globalRosterMap[pToRemove.cleanName];
-            }
+            if(pToRemove && league.globalRosterMap) { delete league.globalRosterMap[pToRemove.cleanName]; }
             league.roster = league.roster.filter(p => p.id !== playerId);
             localStorage.setItem('mds_season_leagues', JSON.stringify(leagues));
             optimizeLineup(true); loadRosterTab();
@@ -675,7 +682,6 @@
             const leagueData = await leagueRes.json();
             let leagueName = leagueData.name || "My League";
 
-            // Map Roster Requirements
             let autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0 };
             if (leagueData.roster_positions) {
                 leagueData.roster_positions.forEach(pos => {
@@ -690,14 +696,12 @@
                 autoReqs = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
             }
 
-            // Fetch League Users to build Global Map
             btn.innerText = "⏳ Mapping League...";
             const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
             const usersData = await usersRes.json();
             let userMap = {};
             usersData.forEach(u => userMap[u.user_id] = u.display_name);
 
-            // Fetch Rosters
             const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
             const rosters = await rosterRes.json();
             
@@ -708,7 +712,7 @@
             let myTeam = rosters.find(r => r.owner_id === userId);
             if (!myTeam && !isRefresh) throw new Error("Could not find your team in this league.");
             
-            let globalRosterMap = {}; // Maps CleanName -> Owner Display Name
+            let globalRosterMap = {}; 
             
             rosters.forEach(r => {
                 let ownerName = userMap[r.owner_id] || "Unknown Team";
@@ -822,7 +826,7 @@
         processSleeperData(league.username, league.leagueId, btn, true);
     }
 
-    // --- SOS ENGINE (Positional Gradient) ---
+    // --- SOS ENGINE ---
     function generateSoSGrid() {
         const tbody = document.getElementById('sosGridBody');
         let html = '';
@@ -868,14 +872,12 @@
             complete: function(results) {
                 results.data.forEach(row => {
                     let team = null;
-                    // Try to find the team column
                     for(let key in row) {
                         let k = key.toLowerCase();
                         if(k.includes('team') || k.includes('tm')) team = row[key].trim().toUpperCase();
                     }
                     if(team && nflTeams.includes(team)) {
                         if(!sosMap[team]) sosMap[team] = {};
-                        // Safely extract positions
                         for(let key in row) {
                             let k = key.toLowerCase();
                             let val = row[key].replace(/[^0-9]/g, '');
@@ -901,14 +903,12 @@
         let teamData = sosMap[team];
         if (!teamData) return "";
         
-        // If FLEX, we just use their real positional SoS
         let rankStr = teamData[pos];
         if (!rankStr || rankStr === "") return "";
         
         let rank = parseInt(rankStr);
         if (isNaN(rank) || rank < 1 || rank > 32) return "";
         
-        // Hue mapping: 1 = 120 (Green), 32 = 0 (Red)
         let hue = Math.max(0, 120 - ((rank - 1) * 3.87));
         let bgColor = `hsl(${hue}, 70%, 30%)`;
         
@@ -918,7 +918,7 @@
     // --- SCOUT TAB ENGINE ---
     function runScout(type) {
         const inputEl = document.getElementById(type === 'waiver' ? 'waiverInput' : 'buyInput');
-        const sellEl = document.getElementById('sellInput'); // Only used for Trade
+        const sellEl = document.getElementById('sellInput');
         const outputEl = document.getElementById(type === 'waiver' ? 'waiverOutput' : 'tradeOutput');
         
         let targetNames = inputEl.value.split(/[\n,]+/).map(s => s.trim()).filter(s => s);
@@ -937,7 +937,6 @@
             let rosObj = rosRankings.find(r => r.cleanName === clean);
             let weekObj = weeklyRankings.find(r => r.cleanName === clean);
             
-            // Format name nicely if we found them in rankings, else use user input
             let displayName = (rosObj && rosObj.name) ? rosObj.name : ((weekObj && weekObj.name) ? weekObj.name : name);
             
             let wRank = weekObj ? weekObj.rank : "UR";
@@ -1028,6 +1027,8 @@
 
         let headers = rows[0].map(h => String(h).trim().toLowerCase());
         let isHorizontal = headers.includes('quarterback') || headers.includes('running back');
+        
+        let hasNewSos = false;
 
         if (isHorizontal) {
             let playerRanks = {};
@@ -1051,6 +1052,12 @@
             parsed = Object.values(playerRanks);
         } else {
             let nameColIdx = -1; let rankColIdx = -1;
+            
+            // Dynamic SoS Auto-Extraction Variables
+            let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
+            let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
+            let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
+            
             let hasHeaders = headers.some(h => h === 'player' || h === 'name' || h === 'player name');
             if (hasHeaders) {
                 nameColIdx = headers.findIndex(h => h === 'player' || h === 'name' || h === 'player name');
@@ -1067,6 +1074,27 @@
                     let rankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
                     if (isNaN(rankVal)) rankVal = i + 1 - startIndex;
                     parsed.push({ name: nameStr.trim(), cleanName: normalizeName(nameStr.trim()), rank: rankVal, posRank: rankVal, flexRank: rankVal });
+                    
+                    // Secretly build the SoS Matrix if columns exist
+                    if (sosColIdx !== -1 && teamColIdx !== -1 && posColIdx !== -1) {
+                        let teamStr = rows[i][teamColIdx] ? rows[i][teamColIdx].toString().trim().toUpperCase() : "";
+                        let posStr = rows[i][posColIdx] ? rows[i][posColIdx].toString().trim().toUpperCase() : "";
+                        let sosVal = rows[i][sosColIdx] ? rows[i][sosColIdx].toString().replace(/[^0-9]/g, '') : "";
+
+                        if (teamStr && posStr && sosVal && nflTeams.includes(teamStr)) {
+                            let posGroup = "FLEX";
+                            if(posStr.includes('QB')) posGroup = 'QB';
+                            else if(posStr.includes('RB')) posGroup = 'RB';
+                            else if(posStr.includes('WR')) posGroup = 'WR';
+                            else if(posStr.includes('TE')) posGroup = 'TE';
+
+                            if (posGroup !== "FLEX") {
+                                if (!sosMap[teamStr]) sosMap[teamStr] = {};
+                                sosMap[teamStr][posGroup] = sosVal;
+                                hasNewSos = true;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1075,6 +1103,12 @@
         else { rosRankings = parsed; localStorage.setItem('mds_season_ros', JSON.stringify(rosRankings)); }
         
         updateRankingsMetaDisplay();
+        
+        // Save Auto-Extracted SoS Data
+        if (hasNewSos) {
+            localStorage.setItem('mds_season_sos', JSON.stringify(sosMap));
+            generateSoSGrid();
+        }
         
         const activeTab = document.querySelector('.tab-content.active').id;
         if (activeTab === 'lineupTab') optimizeLineup(true);
