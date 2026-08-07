@@ -135,46 +135,6 @@
         handleGesture();
     }, {passive: true});
 
-    // --- BULLETPROOF NAME MATCHING WITH ALIASES ---
-    function normalizeName(name) {
-        if (!name) return "";
-        return String(name)
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase()
-            .replace(/[^a-z]/g, '')
-            .replace(/(jr|sr|iii|ii|iv|v)$/, ''); 
-    }
-
-    function isNameMatch(name1, name2) {
-        if (!name1 || !name2) return false;
-        let n1 = normalizeName(name1);
-        let n2 = normalizeName(name2);
-        
-        if (n1 === n2) return true;
-
-        // Custom Alias Mapper to prevent classic mismatch errors
-        const aliasMap = {
-            'kennygainwell': 'kennethgainwell',
-            'gabedavis': 'gabrieldavis',
-            'joshpalmer': 'joshuapalmer',
-            'mitchtrubisky': 'mitchelltrubisky',
-            'tankdell': 'nathanieldell',
-            'hollywoodbrown': 'marquisebrown',
-            'scottymiller': 'scottmiller',
-            'djchark': 'djcharkjr',
-            'jeffwilson': 'jefferywilson',
-            'nicholassingleton': 'nicksingleton'
-        };
-
-        // Two-way match check
-        if (aliasMap[n1] === n2 || aliasMap[n2] === n1) return true;
-        
-        // Handle scenario where both names map to the exact same root base
-        if (aliasMap[n1] && aliasMap[n1] === aliasMap[n2]) return true;
-
-        return false;
-    }
-
     // Load Settings
     document.getElementById('sleeperUsername').value = localStorage.getItem('ds_username') || "";
     document.getElementById('sleeperDraftId').value = localStorage.getItem('ds_draftId') || "";
