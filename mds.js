@@ -698,7 +698,6 @@
                     }
                 }
             }
-            }
 
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
             if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
