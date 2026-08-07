@@ -193,7 +193,7 @@
     }
     updateMetaDisplay();
 
-  window.saveSettings = function(btnElement, skipRender = false) {
+    window.saveSettings = function(btnElement, skipRender = false) {
         const getVal = id => document.getElementById(id)?.value.trim() || "";
         const getCheck = id => document.getElementById(id)?.checked || false;
 
@@ -225,23 +225,6 @@
             renderBoard();
         }
         
-        if (btnElement) flashButton(btnElement, "Settings Saved");
-    };
-       State.dsLimits = {
-            QB: parseInt(getVal('limitQB')) || 0,
-            RB: parseInt(getVal('limitRB')) || 0,
-            WR: parseInt(getVal('limitWR')) || 0,
-            TE: parseInt(getVal('limitTE')) || 0,
-            FLEX: parseInt(getVal('limitFLEX')) || 0,
-            SFLEX: parseInt(getVal('limitSFLEX')) || 0,
-            BENCH: parseInt(getVal('limitBENCH')) || 0,
-        };
-        State.dsLimits.TOTAL = Object.values(State.dsLimits).reduce((a, b) => a + b, 0) - State.dsLimits.TOTAL; // re-sum properly
-        // Recalculate total correctly
-        State.dsLimits.TOTAL = State.dsLimits.QB + State.dsLimits.RB + State.dsLimits.WR + State.dsLimits.TE + State.dsLimits.FLEX + State.dsLimits.SFLEX + State.dsLimits.BENCH;
-        localStorage.setItem('ds_limits', JSON.stringify(State.dsLimits));
-
-        renderBoard();
         if (btnElement) flashButton(btnElement, "Settings Saved");
     };
 
@@ -660,7 +643,7 @@
             return;
         }
         
-        // NEW: Pass isSilent so background syncs don't force a re-render
+        // Pass isSilent so background syncs don't force a re-render
         window.saveSettings(null, isSilent); 
 
         try {
@@ -687,7 +670,7 @@
 
             if (!picksData || picksData.length === 0) return;
 
-            // NEW: Check if the number of picks has actually changed before doing heavy processing
+            // Check if the number of picks has actually changed before doing heavy processing
             let previousTotal = parseInt(localStorage.getItem('ds_total_picks')) || 0;
             if (picksData.length === previousTotal) {
                 return; // Board is up to date, do nothing.
@@ -722,6 +705,7 @@
             if (!isSilent && btn) window.alert(`Sleeper Sync Error:\n${err.message}`);
         }
     };
+
     window.draftPlayer = function(id, isMine) {
         if (!State.draftedPlayers.includes(id)) {
             State.draftedPlayers.push(id);
@@ -1115,7 +1099,6 @@
 
     if (State.players.length > 0) renderBoard();
 
-    // Expose search bar event listener helper if needed
     const searchBarEl = document.getElementById('searchBar');
     if (searchBarEl) {
         searchBarEl.addEventListener('input', renderBoard);
