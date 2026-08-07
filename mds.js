@@ -634,7 +634,7 @@
         }
     };
 
-    window.syncSleeper = async function(isSilent = false, btn = null) {
+        window.syncSleeper = async function(isSilent = false, btn = null) {
         const username = document.getElementById('sleeperUsername')?.value.trim();
         const draftId = document.getElementById('sleeperDraftId')?.value.trim();
 
@@ -663,8 +663,9 @@
                 if (lTeamsEl) lTeamsEl.value = numTeams;
                 if (lRoundsEl) lRoundsEl.value = numRounds;
 
-                // NEW: Fetch league details to get positional roster limits
-                if (dInfo.league_id) {
+                // NEW: Fetch league details ONLY once per draft ID to save API calls
+                if (dInfo.league_id && window.lastFetchedLeagueId !== dInfo.league_id) {
+                    window.lastFetchedLeagueId = dInfo.league_id;
                     try {
                         const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}`);
                         if (leagueRes.ok) {
@@ -689,8 +690,11 @@
                                 setVal('limitSFLEX', posCounts.SUPER_FLEX);
                                 setVal('limitBENCH', posCounts.BENCH);
 
-                                // Save these newly fetched limits to state quietly
-                                window.saveSettings(null, true);
+                                // Update the total rounds input
+                                updateTotalRounds();
+
+                                // Force a re-render here so the Team tab immediately updates the visual roster slots
+                                window.saveSettings(null, false);
                             }
                         }
                     } catch(err) {
@@ -740,6 +744,7 @@
             if (!isSilent && btn) window.alert(`Sleeper Sync Error:\n${err.message}`);
         }
     };
+
 
     window.draftPlayer = function(id, isMine) {
         if (!State.draftedPlayers.includes(id)) {
