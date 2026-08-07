@@ -677,16 +677,12 @@
         setVal('limitSFLEX', dInfo.settings.slots_super_flex || 0);
         setVal('limitBENCH', dInfo.settings.slots_bn || 0);
 
-        // Save and force re-render
+       // Save and force re-render
         window.saveSettings(null, false);
-    }
-                    } catch(err) {
-                        console.warn("Could not fetch Sleeper league roster positions.", err);
-                    }
-                }
-            }
+    } // closes if (dInfo.settings)
+} // closes if (draftRes.ok)
 
-            const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
+const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
             if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
             const picksData = await picksRes.json();
 
