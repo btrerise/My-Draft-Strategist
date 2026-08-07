@@ -1026,94 +1026,97 @@
         renderLineupUI();
     };
 
-    function renderLineupUI() {
-        const container = document.getElementById('optimalLineupContainer');
-        const benchContainer = document.getElementById('benchContainer');
-        if (!container || !benchContainer) return;
-        
-        let starters = State.manualStartersMap[State.activeLeagueId] || [];
-        let benchPool = State.manualBenchMap[State.activeLeagueId] || [];
+    // Define clean SVG constants for lock and unlock states
+const LOCK_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+const UNLOCK_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
 
-        let html = "";
-        starters.forEach(s => {
-            let slotType = s.slot.replace(/[0-9]/g, '');
+function renderLineupUI() {
+    const container = document.getElementById('optimalLineupContainer');
+    const benchContainer = document.getElementById('benchContainer');
+    if (!container || !benchContainer) return;
+    
+    let starters = State.manualStartersMap[State.activeLeagueId] || [];[cite: 2]
+    let benchPool = State.manualBenchMap[State.activeLeagueId] || [];[cite: 2]
 
-            if (s.player) {
-                let p = s.player;
-                let lockIcon = p.isLocked ? "🔒" : "🔓";
-                let lockClass = p.isLocked ? "locked" : "";
-                if (State.swapSourceId === p.id) lockClass += " swapping";
+    let html = "";
+    starters.forEach(s => {
+        let slotType = s.slot.replace(/[0-9]/g, '');[cite: 2]
 
-                let displayRank = s.usedFlex && p.flexRank !== 999 ? p.flexRank : p.posRank;
-                let rankLabel = s.usedFlex && p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
-                let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
-                
-                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
-                let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
-                let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+        if (s.player) {
+            let p = s.player;[cite: 2]
+            let lockIcon = p.isLocked ? LOCK_ICON_SVG : UNLOCK_ICON_SVG;[cite: 2]
+            let lockClass = p.isLocked ? "locked" : "";[cite: 2]
+            if (State.swapSourceId === p.id) lockClass += " swapping";[cite: 2]
 
-                html += `
-                <div class="lineup-slot ${lockClass}">
-                    <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
-                        <span class="slot-label slot-${slotType}">${s.slot}</span>
-                        <span class="badge pos-badge ${p.pos}" style="min-width:26px; padding:2px 4px; text-align:center;">${p.pos}</span>
-                        <div style="display:flex; flex-direction:column; align-items:flex-start; text-align:left;">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
-                            <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
-                                <span class="badge">${p.team}</span>
-                                <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
-                        <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
-                        <button class="btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>
-                    </div>
-                </div>`;
-            } else {
-                html += `
-                <div class="lineup-slot empty">
+            let displayRank = s.usedFlex && p.flexRank !== 999 ? p.flexRank : p.posRank;[cite: 2]
+            let rankLabel = s.usedFlex && p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";[cite: 2]
+            let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";[cite: 2]
+            
+            let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";[cite: 2]
+            let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";[cite: 2]
+            let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";[cite: 2]
+
+            html += `
+            <div class="lineup-slot ${lockClass}">
+                <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
                     <span class="slot-label slot-${slotType}">${s.slot}</span>
-                    <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
-                </div>`;
-            }
-        });
-        container.innerHTML = html;
-
-        let benchHTML = "";
-        if (benchPool.length > 0) {
-            benchPool.forEach(p => {
-                let lockClass = State.swapSourceId === p.id ? "swapping" : "";
-                let displayRank = p.flexRank !== 999 ? p.flexRank : p.posRank;
-                let rankLabel = p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
-                let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
-                
-                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
-                let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
-                let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
-
-                benchHTML += `
-                <div class="lineup-slot ${lockClass}">
-                    <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
-                        <span class="slot-label slot-BN">BN</span>
-                        <span class="badge pos-badge ${p.pos}" style="min-width:26px; padding:2px 4px; text-align:center;">${p.pos}</span>
-                        <div style="display:flex; flex-direction:column; align-items:flex-start; text-align:left;">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
-                            <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
-                                <span class="badge">${p.team}</span>
-                                <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
-                            </div>
+                    <span class="badge pos-badge ${p.pos}" style="min-width:26px; padding:2px 4px; text-align:center;">${p.pos}</span>
+                    <div style="display:flex; flex-direction:column; align-items:flex-start; text-align:left;">
+                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                        <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
+                            <span class="badge">${p.team}</span>
+                            <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
-                        <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
-                    </div>
-                </div>`;
-            });
-        } else { 
-            benchHTML = "No bench players."; 
+                </div>
+                <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                    <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                    <button class="btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px; display:inline-flex; align-items:center;" onclick="toggleLock('${p.id}')">${lockIcon}</button>
+                </div>
+            </div>`;
+        } else {
+            html += `
+            <div class="lineup-slot empty">
+                <span class="slot-label slot-${slotType}">${s.slot}</span>
+                <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
+            </div>`;
         }
-        benchContainer.innerHTML = benchHTML;
-    }
+    });
+    container.innerHTML = html;[cite: 2]
 
+    let benchHTML = "";
+    if (benchPool.length > 0) {
+        benchPool.forEach(p => {
+            let lockClass = State.swapSourceId === p.id ? "swapping" : "";[cite: 2]
+            let displayRank = p.flexRank !== 999 ? p.flexRank : p.posRank;[cite: 2]
+            let rankLabel = p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";[cite: 2]
+            let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";[cite: 2]
+            
+            let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";[cite: 2]
+            let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";[cite: 2]
+            let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";[cite: 2]
+
+            benchHTML += `
+            <div class="lineup-slot ${lockClass}">
+                <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
+                    <span class="slot-label slot-BN">BN</span>
+                    <span class="badge pos-badge ${p.pos}" style="min-width:26px; padding:2px 4px; text-align:center;">${p.pos}</span>
+                    <div style="display:flex; flex-direction:column; align-items:flex-start; text-align:left;">
+                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                        <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
+                            <span class="badge">${p.team}</span>
+                            <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                    <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                </div>
+            </div>`;
+        });
+    } else { 
+        benchHTML = "No bench players.";[cite: 2]
+    }
+    benchContainer.innerHTML = benchHTML;[cite: 2]
+}
 })();
