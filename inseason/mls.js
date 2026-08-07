@@ -23,19 +23,7 @@
     let manualStartersMap = JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {};
     let manualBenchMap = JSON.parse(localStorage.getItem('mds_season_manual_bench')) || {};
     let swapSourceId = null;
-
-    function normalizeName(name) {
-        if (!name) return "";
-        let n = String(name).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, '').replace(/(jr|sr|iii|ii|iv|v)$/, ''); 
-        const aliasMap = {
-            'kennygainwell': 'kennethgainwell', 'gabedavis': 'gabrieldavis', 'joshpalmer': 'joshuapalmer', 
-            'mitchtrubisky': 'mitchelltrubisky', 'tankdell': 'nathanieldell', 'hollywoodbrown': 'marquisebrown',
-            'scottymiller': 'scottmiller', 'djchark': 'djcharkjr', 'jeffwilson': 'jefferywilson',
-            'nicholassingleton': 'nicksingleton', 'kennethwalker': 'kenwalker'
-        };
-        return aliasMap[n] || n;
-    }
-
+    
     // --- DRAWER & SWIPE LOGIC ---
     function toggleDrawer() {
         const drawer = document.getElementById('drawer');
