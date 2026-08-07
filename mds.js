@@ -662,6 +662,42 @@
                 const lRoundsEl = document.getElementById('leagueRounds');
                 if (lTeamsEl) lTeamsEl.value = numTeams;
                 if (lRoundsEl) lRoundsEl.value = numRounds;
+
+                // NEW: Fetch league details to get positional roster limits
+                if (dInfo.league_id) {
+                    try {
+                        const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}`);
+                        if (leagueRes.ok) {
+                            let lInfo = await leagueRes.json();
+                            if (lInfo.roster_positions) {
+                                let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SUPER_FLEX: 0, BENCH: 0 };
+                                
+                                // Count how many of each slot the league uses
+                                lInfo.roster_positions.forEach(pos => {
+                                    if (pos === 'FLEX' || pos === 'W/R/T') posCounts.FLEX++;
+                                    else if (pos === 'SUPER_FLEX' || pos === 'Q/W/R/T') posCounts.SUPER_FLEX++;
+                                    else if (posCounts[pos] !== undefined) posCounts[pos]++;
+                                });
+                                
+                                // Apply the counts to the UI inputs
+                                const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+                                setVal('limitQB', posCounts.QB);
+                                setVal('limitRB', posCounts.RB);
+                                setVal('limitWR', posCounts.WR);
+                                setVal('limitTE', posCounts.TE);
+                                setVal('limitFLEX', posCounts.FLEX);
+                                setVal('limitSFLEX', posCounts.SUPER_FLEX);
+                                setVal('limitBENCH', posCounts.BENCH);
+
+                                // Save these newly fetched limits to state quietly
+                                window.saveSettings(null, true);
+                            }
+                        }
+                    } catch(err) {
+                        console.warn("Could not fetch Sleeper league roster positions.", err);
+                    }
+                }
+            }
             }
 
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
