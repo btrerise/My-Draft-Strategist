@@ -675,24 +675,22 @@
                                 
                                 // Count how many of each slot the league uses
                                 lInfo.roster_positions.forEach(pos => {
-                                    if (pos === 'FLEX' || pos === 'W/R/T') posCounts.FLEX++;
-                                    else if (pos === 'SUPER_FLEX' || pos === 'Q/W/R/T') posCounts.SUPER_FLEX++;
-                                    else if (posCounts[pos] !== undefined) posCounts[pos]++;
-                                });
-                                
-                                // Apply the counts to the UI inputs
-                                const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-                                setVal('limitQB', posCounts.QB);
-                                setVal('limitRB', posCounts.RB);
-                                setVal('limitWR', posCounts.WR);
-                                setVal('limitTE', posCounts.TE);
-                                setVal('limitFLEX', posCounts.FLEX);
-                                setVal('limitSFLEX', posCounts.SUPER_FLEX);
-                                setVal('limitBENCH', posCounts.BENCH);
+    if (pos === 'FLEX' || pos === 'W/R/T') posCounts.FLEX++;
+    else if (pos === 'SUPER_FLEX' || pos === 'Q/W/R/T') posCounts.SUPER_FLEX++;
+    else if (pos === 'BN' || pos === 'BENCH') posCounts.BENCH++; // Added this line to catch Sleeper's string
+    else if (posCounts[pos] !== undefined) posCounts[pos]++;
+});
 
-                                // Update the total rounds input
-                                updateTotalRounds();
-
+// Apply the counts to the UI inputs
+const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+setVal('limitQB', posCounts.QB);
+setVal('limitRB', posCounts.RB);
+setVal('limitWR', posCounts.WR);
+setVal('limitTE', posCounts.TE);
+setVal('limitFLEX', posCounts.FLEX);
+setVal('limitSFLEX', posCounts.SUPER_FLEX);
+setVal('limitBENCH', posCounts.BENCH);
+                               
                                 // Force a re-render here so the Team tab immediately updates the visual roster slots
                                 window.saveSettings(null, false);
                             }
