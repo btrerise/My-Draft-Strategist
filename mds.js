@@ -1,53 +1,28 @@
-    // --- PWA INSTALLATION PROMPT HANDLING ---
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevent Chrome from automatically showing the generic prompt
-        e.preventDefault();
-        // Stash the event so it can be triggered later via our custom button
-        deferredPrompt = e;
-        // Show the install card on the setup page
-        document.getElementById('installCard').style.display = 'block';
-    });
+/**
+ * Fantasy Football Draft Strategist - Core Logic & State Management
+ * Refactored for clean architecture, performance, and maintainability.
+ */
 
-    document.getElementById('installAppBtn').addEventListener('click', async () => {
-        if (deferredPrompt) {
-            // Show the install prompt
-            deferredPrompt.prompt();
-            // Wait for the user to respond to the prompt
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                document.getElementById('installCard').style.display = 'none';
-            }
-            deferredPrompt = null;
-        }
-    });
-
-    window.addEventListener('appinstalled', () => {
-        // Hide the install button if installed successfully
-        document.getElementById('installCard').style.display = 'none';
-    });
-
-    // --- REGISTER SERVICE WORKER ---
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('Service Worker registered!'))
-                .catch(err => console.log('Service Worker registration failed: ', err));
-        });
-    }
+(function () {
+    'use strict';
 
     // --- STATE MANAGEMENT ---
-    let players = JSON.parse(localStorage.getItem('ds_players')) || [];
-    let draftedPlayers = JSON.parse(localStorage.getItem('ds_drafted')) || [];
-    let myTeam = JSON.parse(localStorage.getItem('ds_myTeam')) || [];
-    let rawDraftPicks = JSON.parse(localStorage.getItem('ds_raw_picks')) || [];
-    let leagueDraftSettings = JSON.parse(localStorage.getItem('ds_draft_settings')) || { teams: 12, rounds: 15 };
-    let rankingsMeta = JSON.parse(localStorage.getItem('ds_meta')) || null;
-    let adpMeta = JSON.parse(localStorage.getItem('ds_adp_meta')) || null;
-    let dsLimits = JSON.parse(localStorage.getItem('ds_limits')) || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6, TOTAL: 14 };
-    let autoSyncTimer = null;
-
-    let activePosFilter = 'ALL';
+    const State = {
+        players: JSON.parse(localStorage.getItem('ds_players')) || [],
+        draftedPlayers: JSON.parse(localStorage.getItem('ds_drafted')) || [],
+        myTeam: JSON.parse(localStorage.getItem('ds_myTeam')) || [],
+        rawDraftPicks: JSON.parse(localStorage.getItem('ds_raw_picks')) || [],
+        leagueDraftSettings: JSON.parse(localStorage.getItem('ds_draft_settings')) || { teams: 12, rounds: 15 },
+        rankingsMeta: JSON.parse(localStorage.getItem('ds_meta')) || null,
+        adpMeta: JSON.parse(localStorage.getItem('ds_adp_meta')) || null,
+        dsLimits: JSON.parse(localStorage.getItem('ds_limits')) || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6, TOTAL: 14 },
+        activePosFilter: 'ALL',
+        autoSyncTimer: null,
+        deferredPrompt: null,
+        touchstartX: 0,
+        touchendX: 0,
+        tabOrder: ['tracker', 'team', 'board']
+    };
 
     const BYE_WEEKS_2026 = {
         "CAR": 5, "KC": 5,
@@ -61,6 +36,42 @@
         "ARI": 14, "DAL": 14
     };
 
+    // --- PWA INSTALLATION ---
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        State.deferredPrompt = e;
+        const installCard = document.getElementById('installCard');
+        if (installCard) installCard.style.display = 'block';
+    });
+
+    const installAppBtn = document.getElementById('installAppBtn');
+    if (installAppBtn) {
+        installAppBtn.addEventListener('click', async () => {
+            if (State.deferredPrompt) {
+                State.deferredPrompt.prompt();
+                const { outcome } = await State.deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    const installCard = document.getElementById('installCard');
+                    if (installCard) installCard.style.display = 'none';
+                }
+                State.deferredPrompt = null;
+            }
+        });
+    }
+
+    window.addEventListener('appinstalled', () => {
+        const installCard = document.getElementById('installCard');
+        if (installCard) installCard.style.display = 'none';
+    });
+
+    // --- SERVICE WORKER REGISTRATION ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .catch(err => console.warn('Service Worker registration failed: ', err));
+        });
+    }
+
     // --- UI HELPERS ---
     function flashButton(btn, text, isError = false, fallbackText = null) {
         if (!btn) return;
@@ -68,8 +79,8 @@
         const originalBg = btn.style.backgroundColor;
 
         btn.innerText = text;
-        btn.style.backgroundColor = isError ? "#ea4335" : "#4ade80";
-        btn.style.color = isError ? "white" : "#0b132b";
+        btn.style.backgroundColor = isError ? "var(--error-color, #ea4335)" : "var(--success-color, #4ade80)";
+        btn.style.color = isError ? "white" : "var(--bg-main, #0b132b)";
 
         setTimeout(() => {
             btn.innerText = originalText;
@@ -78,219 +89,212 @@
         }, 2500);
     }
     
-    function toggleMenu() {
+    window.toggleMenu = function() {
         const menu = document.getElementById('hamburgerMenu');
         const overlay = document.getElementById('menuOverlay');
+        if (!menu || !overlay) return;
         menu.classList.toggle('open');
         overlay.style.display = menu.classList.contains('open') ? 'block' : 'none';
-    }
+    };
 
-    // --- SWIPE GESTURES FOR TABS & MENU ---
-    let touchstartX = 0;
-    let touchendX = 0;
-    const tabOrder = ['tracker', 'team', 'board'];
-
+    // --- GESTURE HANDLING ---
     function handleGesture() {
         const menu = document.getElementById('hamburgerMenu');
+        if (!menu) return;
         const isOpen = menu.classList.contains('open');
-        
-        let diffX = touchendX - touchstartX;
+        let diffX = State.touchendX - State.touchstartX;
 
-        if (diffX > 50 && touchstartX < 40 && !isOpen) {
-            toggleMenu();
+        if (diffX > 50 && State.touchstartX < 40 && !isOpen) {
+            window.toggleMenu();
             return;
         }
         if (diffX < -50 && isOpen) {
-            toggleMenu();
+            window.toggleMenu();
             return;
         }
 
-        // Tab swipe navigation (Only if menu is closed)
         if (!isOpen && Math.abs(diffX) > 80) {
             let activeTabEl = document.querySelector('.tab-content.active');
             if (!activeTabEl) return;
             let currentId = activeTabEl.id.replace('Tab', '');
-            
-            // Disable tab-swipe gesture when on the Board tab to preserve grid horizontal scrolling
             if (currentId === 'board') return;
 
-            let currentIndex = tabOrder.indexOf(currentId);
-
+            let currentIndex = State.tabOrder.indexOf(currentId);
             if (currentIndex !== -1) {
-                if (diffX < 0 && currentIndex < tabOrder.length - 1) {
-                    showTab(tabOrder[currentIndex + 1]);
+                if (diffX < 0 && currentIndex < State.tabOrder.length - 1) {
+                    window.showTab(State.tabOrder[currentIndex + 1]);
                 } else if (diffX > 0 && currentIndex > 0) {
-                    showTab(tabOrder[currentIndex - 1]);
+                    window.showTab(State.tabOrder[currentIndex - 1]);
                 }
             }
         }
     }
 
-    document.addEventListener('touchstart', e => {
-        touchstartX = e.changedTouches[0].screenX;
-    }, {passive: true});
+    document.addEventListener('touchstart', e => { State.touchstartX = e.changedTouches[0].screenX; }, {passive: true});
+    document.addEventListener('touchend', e => { State.touchendX = e.changedTouches[0].screenX; handleGesture(); }, {passive: true});
 
-    document.addEventListener('touchend', e => {
-        touchendX = e.changedTouches[0].screenX;
-        handleGesture();
-    }, {passive: true});
+    // --- INITIALIZE SETTINGS INPUTS ---
+    function initSettingsUI() {
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
 
-    // Load Settings
-    document.getElementById('sleeperUsername').value = localStorage.getItem('ds_username') || "";
-    document.getElementById('sleeperDraftId').value = localStorage.getItem('ds_draftId') || "";
-    document.getElementById('targetList').value = localStorage.getItem('ds_targets') || "";
-    document.getElementById('avoidList').value = localStorage.getItem('ds_avoids') || "";
-    document.getElementById('dartList').value = localStorage.getItem('ds_darts') || "";
-    document.getElementById('stackToggle').checked = localStorage.getItem('ds_stacks') === 'true';
-    document.getElementById('byeWarningToggle').checked = localStorage.getItem('ds_bye_warnings') === 'true';
-    
-    // Load Roster & League Settings
-    document.getElementById('leagueTeams').value = leagueDraftSettings.teams || 12;
-    document.getElementById('leagueRounds').value = leagueDraftSettings.rounds || 15;
-    document.getElementById('limitQB').value = dsLimits.QB;
-    document.getElementById('limitRB').value = dsLimits.RB;
-    document.getElementById('limitWR').value = dsLimits.WR;
-    document.getElementById('limitTE').value = dsLimits.TE;
-    document.getElementById('limitFLEX').value = dsLimits.FLEX;
-    document.getElementById('limitSFLEX').value = dsLimits.SFLEX;
-    document.getElementById('limitBENCH').value = dsLimits.BENCH;
+        setVal('sleeperUsername', localStorage.getItem('ds_username') || "");
+        setVal('sleeperDraftId', localStorage.getItem('ds_draftId') || "");
+        setVal('targetList', localStorage.getItem('ds_targets') || "");
+        setVal('avoidList', localStorage.getItem('ds_avoids') || "");
+        setVal('dartList', localStorage.getItem('ds_darts') || "");
+        setCheck('stackToggle', localStorage.getItem('ds_stacks') === 'true');
+        setCheck('byeWarningToggle', localStorage.getItem('ds_bye_warnings') === 'true');
+        
+        setVal('leagueTeams', State.leagueDraftSettings.teams || 12);
+        setVal('leagueRounds', State.leagueDraftSettings.rounds || 15);
+        setVal('limitQB', State.dsLimits.QB);
+        setVal('limitRB', State.dsLimits.RB);
+        setVal('limitWR', State.dsLimits.WR);
+        setVal('limitTE', State.dsLimits.TE);
+        setVal('limitFLEX', State.dsLimits.FLEX);
+        setVal('limitSFLEX', State.dsLimits.SFLEX);
+        setVal('limitBENCH', State.dsLimits.BENCH);
+    }
+    initSettingsUI();
 
-    // Auto-calculate total rounds based on roster inputs
     function updateTotalRounds() {
-        const qb = parseInt(document.getElementById('limitQB').value) || 0;
-        const rb = parseInt(document.getElementById('limitRB').value) || 0;
-        const wr = parseInt(document.getElementById('limitWR').value) || 0;
-        const te = parseInt(document.getElementById('limitTE').value) || 0;
-        const flex = parseInt(document.getElementById('limitFLEX').value) || 0;
-        const sflex = parseInt(document.getElementById('limitSFLEX').value) || 0;
-        const bench = parseInt(document.getElementById('limitBENCH').value) || 0;
-        document.getElementById('leagueRounds').value = qb + rb + wr + te + flex + sflex + bench;
+        const getNum = id => parseInt(document.getElementById(id)?.value) || 0;
+        const total = getNum('limitQB') + getNum('limitRB') + getNum('limitWR') + getNum('limitTE') + getNum('limitFLEX') + getNum('limitSFLEX') + getNum('limitBENCH');
+        const roundsEl = document.getElementById('leagueRounds');
+        if (roundsEl) roundsEl.value = total;
     }
 
     ['limitQB', 'limitRB', 'limitWR', 'limitTE', 'limitFLEX', 'limitSFLEX', 'limitBENCH'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updateTotalRounds);
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateTotalRounds);
     });
 
     function updateMetaDisplay() {
         const metaEl = document.getElementById('metaDisplay');
-        if(rankingsMeta) {
-            metaEl.style.display = 'block';
-            metaEl.innerText = `✅ Loaded: ${rankingsMeta.count} players on ${rankingsMeta.date}`;
-        } else {
-            metaEl.style.display = 'none';
+        if (metaEl) {
+            if (State.rankingsMeta) {
+                metaEl.style.display = 'block';
+                metaEl.innerText = `Loaded: ${State.rankingsMeta.count} players on ${State.rankingsMeta.date}`;
+            } else {
+                metaEl.style.display = 'none';
+            }
         }
 
         const adpEl = document.getElementById('adpStatusDisplay');
-        if(adpMeta) {
-            adpEl.style.display = 'block';
-            adpEl.innerText = `✅ Fetched: ${adpMeta.format} on ${adpMeta.date}`;
-        } else {
-            adpEl.style.display = 'none';
+        if (adpEl) {
+            if (State.adpMeta) {
+                adpEl.style.display = 'block';
+                adpEl.innerText = `Fetched: ${State.adpMeta.format} on ${State.adpMeta.date}`;
+            } else {
+                adpEl.style.display = 'none';
+            }
         }
     }
     updateMetaDisplay();
 
-    function saveSettings(btnElement) {
-        localStorage.setItem('ds_username', document.getElementById('sleeperUsername').value.trim());
-        localStorage.setItem('ds_draftId', document.getElementById('sleeperDraftId').value.trim());
-        localStorage.setItem('ds_targets', document.getElementById('targetList').value);
-        localStorage.setItem('ds_avoids', document.getElementById('avoidList').value);
-        localStorage.setItem('ds_darts', document.getElementById('dartList').value);
-        localStorage.setItem('ds_stacks', document.getElementById('stackToggle').checked);
-        localStorage.setItem('ds_bye_warnings', document.getElementById('byeWarningToggle').checked);
-        
-        leagueDraftSettings.teams = parseInt(document.getElementById('leagueTeams').value) || 12;
-        leagueDraftSettings.rounds = parseInt(document.getElementById('leagueRounds').value) || 15;
-        localStorage.setItem('ds_draft_settings', JSON.stringify(leagueDraftSettings));
+    window.saveSettings = function(btnElement) {
+        const getVal = id => document.getElementById(id)?.value.trim() || "";
+        const getCheck = id => document.getElementById(id)?.checked || false;
 
-        dsLimits = {
-            QB: parseInt(document.getElementById('limitQB').value) || 0,
-            RB: parseInt(document.getElementById('limitRB').value) || 0,
-            WR: parseInt(document.getElementById('limitWR').value) || 0,
-            TE: parseInt(document.getElementById('limitTE').value) || 0,
-            FLEX: parseInt(document.getElementById('limitFLEX').value) || 0,
-            SFLEX: parseInt(document.getElementById('limitSFLEX').value) || 0,
-            BENCH: parseInt(document.getElementById('limitBENCH').value) || 0,
+        localStorage.setItem('ds_username', getVal('sleeperUsername'));
+        localStorage.setItem('ds_draftId', getVal('sleeperDraftId'));
+        localStorage.setItem('ds_targets', document.getElementById('targetList')?.value || "");
+        localStorage.setItem('ds_avoids', document.getElementById('avoidList')?.value || "");
+        localStorage.setItem('ds_darts', document.getElementById('dartList')?.value || "");
+        localStorage.setItem('ds_stacks', getCheck('stackToggle'));
+        localStorage.setItem('ds_bye_warnings', getCheck('byeWarningToggle'));
+        
+        State.leagueDraftSettings.teams = parseInt(getVal('leagueTeams')) || 12;
+        State.leagueDraftSettings.rounds = parseInt(getVal('leagueRounds')) || 15;
+        localStorage.setItem('ds_draft_settings', JSON.stringify(State.leagueDraftSettings));
+
+        State.dsLimits = {
+            QB: parseInt(getVal('limitQB')) || 0,
+            RB: parseInt(getVal('limitRB')) || 0,
+            WR: parseInt(getVal('limitWR')) || 0,
+            TE: parseInt(getVal('limitTE')) || 0,
+            FLEX: parseInt(getVal('limitFLEX')) || 0,
+            SFLEX: parseInt(getVal('limitSFLEX')) || 0,
+            BENCH: parseInt(getVal('limitBENCH')) || 0,
         };
-        dsLimits.TOTAL = dsLimits.QB + dsLimits.RB + dsLimits.WR + dsLimits.TE + dsLimits.FLEX + dsLimits.SFLEX + dsLimits.BENCH;
-        localStorage.setItem('ds_limits', JSON.stringify(dsLimits));
+        State.dsLimits.TOTAL = Object.values(State.dsLimits).reduce((a, b) => a + b, 0) - State.dsLimits.TOTAL; // re-sum properly
+        // Recalculate total correctly
+        State.dsLimits.TOTAL = State.dsLimits.QB + State.dsLimits.RB + State.dsLimits.WR + State.dsLimits.TE + State.dsLimits.FLEX + State.dsLimits.SFLEX + State.dsLimits.BENCH;
+        localStorage.setItem('ds_limits', JSON.stringify(State.dsLimits));
 
         renderBoard();
-        if(btnElement) flashButton(btnElement, "✅ Saved!");
-    }
+        if (btnElement) flashButton(btnElement, "Settings Saved");
+    };
 
     function saveDraftState() {
-        localStorage.setItem('ds_drafted', JSON.stringify(draftedPlayers));
-        localStorage.setItem('ds_myTeam', JSON.stringify(myTeam));
-        localStorage.setItem('ds_raw_picks', JSON.stringify(rawDraftPicks));
-        localStorage.setItem('ds_draft_settings', JSON.stringify(leagueDraftSettings));
+        localStorage.setItem('ds_drafted', JSON.stringify(State.draftedPlayers));
+        localStorage.setItem('ds_myTeam', JSON.stringify(State.myTeam));
+        localStorage.setItem('ds_raw_picks', JSON.stringify(State.rawDraftPicks));
+        localStorage.setItem('ds_draft_settings', JSON.stringify(State.leagueDraftSettings));
         renderBoard();
         renderDraftMatrix();
     }
 
-    function resetPicksOnly() {
-        if(confirm("Reset all draft picks back to pick 1.01? (Your rankings will remain loaded).")) {
-            draftedPlayers = [];
-            myTeam = [];
-            rawDraftPicks = [];
+    window.resetPicksOnly = function() {
+        if (window.confirm("Reset all draft picks back to pick 1.01? (Your rankings will remain loaded).")) {
+            State.draftedPlayers = [];
+            State.myTeam = [];
+            State.rawDraftPicks = [];
             localStorage.setItem('ds_total_picks', 0);
             saveDraftState();
         }
-    }
+    };
 
-    function hardReset() {
-        if(confirm("WARNING: This will delete ALL data including your uploaded rankings and settings.")) {
-            if(autoSyncTimer) clearInterval(autoSyncTimer);
+    window.hardReset = function() {
+        if (window.confirm("WARNING: This will delete ALL data including your uploaded rankings and settings.")) {
+            if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
             localStorage.clear();
-            location.reload();
+            window.location.reload();
         }
-    }
+    };
 
-    function showTab(tabId) {
+    window.showTab = function(tabId) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        
         const targetTab = document.getElementById(tabId + 'Tab');
-        if(targetTab) targetTab.classList.add('active');
+        if (targetTab) targetTab.classList.add('active');
 
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        
-        const menuBtn = document.querySelector(`.hamburger-menu .nav-btn[data-target="${tabId}"]`);
-        if(menuBtn) menuBtn.classList.add('active');
-
-        const bottomBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
-        if(bottomBtn) bottomBtn.classList.add('active');
+        document.querySelectorAll(`.hamburger-menu .nav-btn[data-target="${tabId}"], .nav-bar .nav-btn[data-target="${tabId}"]`)
+            .forEach(btn => btn.classList.add('active'));
 
         const menu = document.getElementById('hamburgerMenu');
-        if(menu.classList.contains('open')) {
-            toggleMenu();
+        if (menu && menu.classList.contains('open')) {
+            window.toggleMenu();
         }
 
-        if(tabId === 'tracker' || tabId === 'team' || tabId === 'board') renderBoard();
+        if (['tracker', 'team', 'board'].includes(tabId)) renderBoard();
         window.scrollTo(0, 0);
-    }
+    };
 
-    function setPosFilter(pos) {
-        activePosFilter = pos;
+    window.setPosFilter = function(pos) {
+        State.activePosFilter = pos;
         renderBoard();
-    }
+    };
 
-    function toggleEditBar(id) {
-        let bar = document.getElementById(`inline-edit-${id}`);
-        if(bar) bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex';
-    }
+    window.toggleEditBar = function(id) {
+        const bar = document.getElementById(`inline-edit-${id}`);
+        if (bar) bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex';
+    };
 
-    function saveInlineEdit(id) {
-        let p = players.find(x => x.id === id);
-        if(!p) return;
+    window.saveInlineEdit = function(id) {
+        let p = State.players.find(x => x.id === id);
+        if (!p) return;
 
-        let newRank = parseInt(document.getElementById(`edit-rank-val-${id}`).value);
-        let newTier = document.getElementById(`edit-tier-val-${id}`).value.trim() || "-";
-        let newTeam = document.getElementById(`edit-team-val-${id}`).value.trim().toUpperCase();
-        let newBye = document.getElementById(`edit-bye-val-${id}`).value.trim();
+        const getVal = elId => document.getElementById(elId)?.value;
+        let newRank = parseInt(getVal(`edit-rank-val-${id}`));
+        let newTier = getVal(`edit-tier-val-${id}`)?.trim() || "-";
+        let newTeam = getVal(`edit-team-val-${id}`)?.trim().toUpperCase();
+        let newBye = getVal(`edit-bye-val-${id}`)?.trim();
 
         if (!isNaN(newRank) && newRank !== p.rank) {
             let oldRank = p.rank;
-            players.forEach(other => {
+            State.players.forEach(other => {
                 if (other.id !== id) {
                     if (newRank < oldRank && other.rank >= newRank && other.rank < oldRank) other.rank += 1;
                     else if (newRank > oldRank && other.rank > oldRank && other.rank <= newRank) other.rank -= 1;
@@ -299,44 +303,50 @@
             p.rank = newRank;
         }
         p.tier = newTier;
-        if(newTeam) p.team = newTeam;
-        if(newBye) p.bye = newBye;
+        if (newTeam) p.team = newTeam;
+        if (newBye) p.bye = newBye;
 
-        players.sort((a,b) => a.rank - b.rank);
-        localStorage.setItem('ds_players', JSON.stringify(players));
+        State.players.sort((a, b) => a.rank - b.rank);
+        localStorage.setItem('ds_players', JSON.stringify(State.players));
         renderBoard();
+    };
+
+    // --- FILE PARSING & DATA IMPORT ---
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'csv') {
+                Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
+            } else if (ext === 'xlsx' || ext === 'xls') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                window.alert("Please upload a .csv, .xlsx, or .xls file");
+            }
+        });
     }
 
-    document.getElementById('fileInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (ext === 'csv') {
-            Papa.parse(file, { header: true, skipEmptyLines: true, complete: function(results) { processData(results.data); } });
-        } else if (ext === 'xlsx' || ext === 'xls') {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            alert("Please upload a .csv, .xlsx, or .xls file");
-        }
-    });
-
-    function processPaste(btn) {
-        const text = document.getElementById('csvPasteArea').value;
-        if(text) Papa.parse(text, { header: true, skipEmptyLines: true, complete: function(results) { processData(results.data, btn); } });
-    }
+    window.processPaste = function(btn) {
+        const text = document.getElementById('csvPasteArea')?.value;
+        if (text) Papa.parse(text, { header: true, skipEmptyLines: true, complete: results => processData(results.data, btn) });
+    };
 
     async function processData(data, btn = null) {
         const metaEl = document.getElementById('metaDisplay');
-        metaEl.style.display = 'block';
-        metaEl.innerText = "⏳ Processing players and building database...";
+        if (metaEl) {
+            metaEl.style.display = 'block';
+            metaEl.innerText = "Processing players and building database...";
+        }
 
         let newPlayers = [];
         let posCounters = {}; 
@@ -351,7 +361,7 @@
 
         data.forEach((row, index) => {
             let keys = Object.keys(row);
-            let getVal = (possibleNames) => {
+            let getVal = possibleNames => {
                 let key = keys.find(k => possibleNames.includes(k.toLowerCase().trim().replace(/['"]/g, '')));
                 return key ? row[key] : "";
             };
@@ -383,30 +393,26 @@
             let bestMatchId = null;
             let fallbackId = null;
             
-            // Loop through Sleeper DB to find best match
             for (let [sId, sp] of Object.entries(sleeperMap)) {
                 if (sp.first_name && sp.last_name) {
-                    let isName = isNameMatch(cleanName, sp.first_name + " " + sp.last_name);
+                    let fullName = `${sp.first_name} ${sp.last_name}`;
+                    let isName = typeof isNameMatch === 'function' ? isNameMatch(cleanName, fullName) : cleanName.toLowerCase() === fullName.toLowerCase();
                     let isPos = posGroup === "FLEX" || (sp.position || "").toUpperCase() === posGroup;
                     
                     if (isName && isPos) {
-                        fallbackId = sId; // Save first match found as a backup
-                        
-                        // Prioritize active players or exact team matches (fixes duplicate names like Kyle Williams)
+                        fallbackId = sId;
                         if (team && team !== "FA" && sp.team && sp.team.toUpperCase() === team) {
                             bestMatchId = sId;
                             break;
                         } else if (sp.team) {
-                            bestMatchId = sId; // They have a valid team in sleeper, prioritize them over retired FAs
+                            bestMatchId = sId;
                         }
                     }
                 }
             }
             
             let masterId = bestMatchId || fallbackId || null;
-            
-            // Apply proper team formatting from Sleeper if found
-            if (masterId) {
+            if (masterId && sleeperMap[masterId]) {
                 let sp = sleeperMap[masterId];
                 if (!team || team === "FA") team = sp.team || "FA";
             }
@@ -423,34 +429,38 @@
             });
         });
 
-        if(newPlayers.length > 0) {
-            players = newPlayers;
-            draftedPlayers = []; myTeam = []; rawDraftPicks = [];
+        if (newPlayers.length > 0) {
+            State.players = newPlayers;
+            State.draftedPlayers = []; 
+            State.myTeam = []; 
+            State.rawDraftPicks = [];
 
             let now = new Date();
             let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            rankingsMeta = { count: players.length, date: dateString };
+            State.rankingsMeta = { count: State.players.length, date: dateString };
 
-            localStorage.setItem('ds_meta', JSON.stringify(rankingsMeta));
-            localStorage.setItem('ds_players', JSON.stringify(players));
+            localStorage.setItem('ds_meta', JSON.stringify(State.rankingsMeta));
+            localStorage.setItem('ds_players', JSON.stringify(State.players));
             updateMetaDisplay();
             saveDraftState();
 
-            if(btn) flashButton(btn, "✅ Loaded Successfully");
+            if (btn) flashButton(btn, "Loaded Successfully");
         } else {
-            metaEl.style.display = 'none';
-            if(btn) flashButton(btn, "⚠️ Error Parsing Data", true);
-            alert("Error: Could not detect player names.");
+            if (metaEl) metaEl.style.display = 'none';
+            if (btn) flashButton(btn, "Error Parsing Data", true);
+            window.alert("Error: Could not detect player names.");
         }
     }
 
-    async function quickStartLeagueLogs(btn) {
+    // --- LEAGUE LOGS INTEGRATION ---
+    window.quickStartLeagueLogs = async function(btn) {
         const formatSelect = document.getElementById('adpFormatSelect');
+        if (!formatSelect) return;
         const profileKey = formatSelect.value;
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
         const originalText = btn.innerText;
-        btn.innerText = "⏳ Building Quick-Start...";
+        btn.innerText = "Building Quick-Start...";
 
         try {
             let sleeperMap = {};
@@ -474,14 +484,14 @@
 
             let newPlayers = [];
             let posCounters = {};
-            let sortedMarket = llMarket.data.sort((a,b) => parseFloat(a.overallRank) - parseFloat(b.overallRank));
+            let sortedMarket = llMarket.data.sort((a, b) => parseFloat(a.overallRank) - parseFloat(b.overallRank));
 
-            sortedMarket.forEach((item) => {
+            sortedMarket.forEach(item => {
                 let sId = item.sleeperPlayerId;
                 let sp = sleeperMap[sId];
                 if (!sp || !sp.first_name) return;
 
-                let cleanName = sp.first_name + " " + sp.last_name;
+                let cleanName = `${sp.first_name} ${sp.last_name}`;
                 let team = sp.team || "FA";
                 let bye = BYE_WEEKS_2026[team] || "-";
                 
@@ -494,65 +504,55 @@
 
                 let lp = playerMetaMap[sId];
                 let isRookie = lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false;
-                
                 let adpNum = parseFloat(item.overallRank);
 
                 newPlayers.push({
-                    id: newPlayers.length + 1,
-                    sleeperId: sId,
-                    rank: newPlayers.length + 1,
-                    name: cleanName,
-                    posGroup: posGroup,
-                    posDisplay: posDisplay,
-                    tier: "-", 
-                    team: team,
-                    bye: bye,
-                    adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1),
-                    isRookie: isRookie
+                    id: newPlayers.length + 1, sleeperId: sId, rank: newPlayers.length + 1,
+                    name: cleanName, posGroup: posGroup, posDisplay: posDisplay, tier: "-", 
+                    team: team, bye: bye, adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1), isRookie: isRookie
                 });
             });
 
-            if(newPlayers.length > 0) {
-                players = newPlayers;
-                draftedPlayers = []; myTeam = []; rawDraftPicks = [];
+            if (newPlayers.length > 0) {
+                State.players = newPlayers;
+                State.draftedPlayers = []; State.myTeam = []; State.rawDraftPicks = [];
 
                 let now = new Date();
                 let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                rankingsMeta = { count: players.length, date: dateString };
-                adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
+                State.rankingsMeta = { count: State.players.length, date: dateString };
+                State.adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
 
-                localStorage.setItem('ds_meta', JSON.stringify(rankingsMeta));
-                localStorage.setItem('ds_adp_meta', JSON.stringify(adpMeta));
-                localStorage.setItem('ds_players', JSON.stringify(players));
+                localStorage.setItem('ds_meta', JSON.stringify(State.rankingsMeta));
+                localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
+                localStorage.setItem('ds_players', JSON.stringify(State.players));
                 
                 updateMetaDisplay();
                 saveDraftState();
-
-                flashButton(btn, "✅ Quick-Start Loaded!", false, originalText);
+                flashButton(btn, "Quick-Start Loaded!", false, originalText);
             } else {
                 throw new Error("No players generated.");
             }
-
         } catch(err) {
             console.error(err);
-            flashButton(btn, "⚠️ Fetch Error", true, originalText);
-            alert(`Failed to load Quick-Start.\n\n${err.message}`);
+            flashButton(btn, "Fetch Error", true, originalText);
+            window.alert(`Failed to load Quick-Start.\n\n${err.message}`);
         }
-    }
+    };
 
-    async function fetchLeagueLogsADP(btn) {
-        if (players.length === 0) {
-            flashButton(btn, "⚠️ Load Rankings First", true);
-            alert("You must load a set of player rankings before fetching Market Value.");
+    window.fetchLeagueLogsADP = async function(btn) {
+        if (State.players.length === 0) {
+            flashButton(btn, "Load Rankings First", true);
+            window.alert("You must load a set of player rankings before fetching Market Value.");
             return;
         }
 
         const formatSelect = document.getElementById('adpFormatSelect');
+        if (!formatSelect) return;
         const profileKey = formatSelect.value;
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
         const originalText = btn.innerText;
-        btn.innerText = "⏳ Fetching...";
+        btn.innerText = "Fetching...";
 
         try {
             const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
@@ -569,40 +569,33 @@
                 pData.data.forEach(lp => { playerMetaMap[lp.sleeperPlayerId] = lp; });
             }
 
-            players.forEach(p => {
+            State.players.forEach(p => {
                 if (adpMap[p.sleeperId] !== undefined) p.adp = adpMap[p.sleeperId];
-
                 let meta = playerMetaMap[p.sleeperId];
-                if (meta) {
-                    let exp = meta.yearsExp;
-                    p.isRookie = (exp === 0 || exp === "0" || exp === null);
-                } else {
-                    p.isRookie = false;
-                }
+                p.isRookie = meta ? (meta.yearsExp === 0 || meta.yearsExp === "0" || meta.yearsExp === null) : false;
             });
 
-            localStorage.setItem('ds_players', JSON.stringify(players));
+            localStorage.setItem('ds_players', JSON.stringify(State.players));
             renderBoard();
 
             let now = new Date();
             let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
-            localStorage.setItem('ds_adp_meta', JSON.stringify(adpMeta));
+            State.adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
+            localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
             updateMetaDisplay();
 
-            flashButton(btn, `✅ Complete!`, false, originalText);
-
+            flashButton(btn, "Complete!", false, originalText);
         } catch(err) {
             console.error(err);
-            flashButton(btn, "⚠️ Fetch Error", true, originalText);
-            alert(`Failed to fetch live Market Value.\n\n${err.message}`);
+            flashButton(btn, "Fetch Error", true, originalText);
+            window.alert(`Failed to fetch live Market Value.\n\n${err.message}`);
         }
-    }
+    };
 
-    function processManualADP(btn) {
-        const text = document.getElementById('adpPasteArea').value;
+    window.processManualADP = function(btn) {
+        const text = document.getElementById('adpPasteArea')?.value;
         if (!text) {
-            flashButton(btn, "⚠️ Paste Rank First", true);
+            flashButton(btn, "Paste Rank First", true);
             return;
         }
 
@@ -613,125 +606,127 @@
                 let pName = parts[0];
                 let newAdp = parts[parts.length - 1].trim(); 
                 if (pName && newAdp && !isNaN(parseFloat(newAdp))) {
-                    let matchedPlayer = players.find(p => isNameMatch(p.name, pName));
+                    let matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, pName) : p.name.toLowerCase() === pName.toLowerCase());
                     if (matchedPlayer) { matchedPlayer.adp = parseFloat(newAdp).toFixed(1); matchedCount++; }
                 }
             }
         });
 
         if (matchedCount > 0) {
-            localStorage.setItem('ds_players', JSON.stringify(players));
+            localStorage.setItem('ds_players', JSON.stringify(State.players));
             renderBoard();
-            flashButton(btn, `✅ Updated!`);
+            flashButton(btn, "Updated!");
         } else {
-            flashButton(btn, "⚠️ No Matches", true);
+            flashButton(btn, "No Matches", true);
         }
-    }
+    };
 
-    function toggleAutoSync(isLive) {
+    window.toggleAutoSync = function(isLive) {
         const liveInd = document.getElementById('liveIndicator');
-        if(isLive) {
-            liveInd.style.display = 'inline-block';
-            syncSleeper(true, null);
-            autoSyncTimer = setInterval(() => syncSleeper(true, null), 3000);
+        if (isLive) {
+            if (liveInd) liveInd.style.display = 'inline-block';
+            window.syncSleeper(true, null);
+            State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 3000);
         } else {
-            liveInd.style.display = 'none';
-            if(autoSyncTimer) clearInterval(autoSyncTimer);
+            if (liveInd) liveInd.style.display = 'none';
+            if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
         }
-    }
+    };
 
-    async function syncSleeper(isSilent = false, btn = null) {
-        const username = document.getElementById('sleeperUsername').value.trim();
-        const draftId = document.getElementById('sleeperDraftId').value.trim();
+    window.syncSleeper = async function(isSilent = false, btn = null) {
+        const username = document.getElementById('sleeperUsername')?.value.trim();
+        const draftId = document.getElementById('sleeperDraftId')?.value.trim();
 
-        if(!username || !draftId) {
-            if(!isSilent && btn) alert("Please enter both Username and Draft ID.");
+        if (!username || !draftId) {
+            if (!isSilent && btn) window.alert("Please enter both Username and Draft ID.");
             return;
         }
 
-        saveSettings(null); 
+        window.saveSettings(null); 
 
         try {
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
-            if(!userRes.ok) throw new Error("Could not find Sleeper User.");
+            if (!userRes.ok) throw new Error("Could not find Sleeper User.");
             const userId = (await userRes.json()).user_id;
 
             const draftRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`);
-            if(draftRes.ok) {
+            if (draftRes.ok) {
                 let dInfo = await draftRes.json();
                 let numTeams = dInfo.settings?.teams || 12;
                 let numRounds = dInfo.settings?.rounds || 15;
-                leagueDraftSettings = { teams: numTeams, rounds: numRounds };
+                State.leagueDraftSettings = { teams: numTeams, rounds: numRounds };
                 
-                document.getElementById('leagueTeams').value = numTeams;
-                document.getElementById('leagueRounds').value = numRounds;
+                const lTeamsEl = document.getElementById('leagueTeams');
+                const lRoundsEl = document.getElementById('leagueRounds');
+                if (lTeamsEl) lTeamsEl.value = numTeams;
+                if (lRoundsEl) lRoundsEl.value = numRounds;
             }
 
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
-            if(!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
+            if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
             const picksData = await picksRes.json();
 
-            if(!picksData || picksData.length === 0) return;
+            if (!picksData || picksData.length === 0) return;
 
-            rawDraftPicks = picksData;
+            State.rawDraftPicks = picksData;
             let sleeperDrafted = [];
             let sleeperMyTeam = [];
 
             picksData.forEach(pick => {
-                let matchedPlayer = players.find(p => p.sleeperId === pick.player_id);
-                if (!matchedPlayer) {
-                    matchedPlayer = players.find(p => isNameMatch(p.name, pick.metadata.first_name + " " + pick.metadata.last_name));
+                let matchedPlayer = State.players.find(p => p.sleeperId === pick.player_id);
+                if (!matchedPlayer && pick.metadata) {
+                    let fullName = `${pick.metadata.first_name} ${pick.metadata.last_name}`;
+                    matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, fullName) : p.name.toLowerCase() === fullName.toLowerCase());
                 }
 
-                if(matchedPlayer) {
+                if (matchedPlayer) {
                     sleeperDrafted.push(matchedPlayer.id);
-                    if(pick.picked_by === userId) sleeperMyTeam.push(matchedPlayer.id);
+                    if (pick.picked_by === userId) sleeperMyTeam.push(matchedPlayer.id);
                 }
             });
 
-            draftedPlayers = Array.from(new Set([...draftedPlayers, ...sleeperDrafted]));
-            myTeam = Array.from(new Set([...myTeam, ...sleeperMyTeam]));
+            State.draftedPlayers = Array.from(new Set([...State.draftedPlayers, ...sleeperDrafted]));
+            State.myTeam = Array.from(new Set([...State.myTeam, ...sleeperMyTeam]));
 
             localStorage.setItem('ds_total_picks', picksData.length);
             saveDraftState();
 
-            if(!isSilent && btn) flashButton(btn, "✅ Sync Complete!");
-
+            if (!isSilent && btn) flashButton(btn, "Sync Complete!");
         } catch(err) {
             console.error(err);
-            if(!isSilent && btn) alert(`Sleeper Sync Error:\n${err.message}`);
+            if (!isSilent && btn) window.alert(`Sleeper Sync Error:\n${err.message}`);
         }
-    }
+    };
 
-    function draftPlayer(id, isMine) {
-        if (!draftedPlayers.includes(id)) {
-            draftedPlayers.push(id);
-            if (isMine) myTeam.push(id);
+    window.draftPlayer = function(id, isMine) {
+        if (!State.draftedPlayers.includes(id)) {
+            State.draftedPlayers.push(id);
+            if (isMine) State.myTeam.push(id);
             saveDraftState();
         }
-    }
+    };
 
-    function undoDraft(id) {
-        draftedPlayers = draftedPlayers.filter(pId => pId !== id);
-        myTeam = myTeam.filter(pId => pId !== id);
+    window.undoDraft = function(id) {
+        State.draftedPlayers = State.draftedPlayers.filter(pId => pId !== id);
+        State.myTeam = State.myTeam.filter(pId => pId !== id);
         saveDraftState();
-    }
+    };
 
     function getCallOutStyle(playerName) {
         let n = playerName.toLowerCase();
-        let targets = (localStorage.getItem('ds_targets')||"").split(/[\n,]+/).map(s=>s.trim().toLowerCase()).filter(s=>s);
-        let avoids = (localStorage.getItem('ds_avoids')||"").split(/[\n,]+/).map(s=>s.trim().toLowerCase()).filter(s=>s);
-        let darts = (localStorage.getItem('ds_darts')||"").split(/[\n,]+/).map(s=>s.trim().toLowerCase()).filter(s=>s);
+        let targets = (localStorage.getItem('ds_targets') || "").split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+        let avoids = (localStorage.getItem('ds_avoids') || "").split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+        let darts = (localStorage.getItem('ds_darts') || "").split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
 
-        if(targets.some(t => n.includes(t))) return `border-left: 5px solid var(--target-border); background-color: var(--target-bg);`;
-        if(avoids.some(a => n.includes(a))) return `border-left: 5px solid var(--avoid-border); background-color: var(--avoid-bg);`;
-        if(darts.some(d => n.includes(d))) return `border-left: 5px solid var(--dart-border); background-color: var(--dart-bg);`;
+        if (targets.some(t => n.includes(t))) return `border-left: 5px solid var(--target-border); background-color: var(--target-bg);`;
+        if (avoids.some(a => n.includes(a))) return `border-left: 5px solid var(--avoid-border); background-color: var(--avoid-bg);`;
+        if (darts.some(d => n.includes(d))) return `border-left: 5px solid var(--dart-border); background-color: var(--dart-bg);`;
         return '';
     }
 
     function getTierTrackerData() {
         let trackers = { QB: null, RB: null, WR: null, TE: null };
-        let available = players.filter(p => !draftedPlayers.includes(p.id));
+        let available = State.players.filter(p => !State.draftedPlayers.includes(p.id));
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             let posPlayers = available.filter(p => p.posGroup === pos && p.tier !== "-");
@@ -744,13 +739,13 @@
         return trackers;
     }
 
-    // --- DRAFT BOARD RENDERER (Sleeper Sync + Manual Fallback) ---
+    // --- RENDER DRAFT MATRIX ---
     function renderDraftMatrix() {
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
 
-        let totalTeams = leagueDraftSettings.teams || 12;
-        let totalRounds = leagueDraftSettings.rounds || 15;
+        let totalTeams = State.leagueDraftSettings.teams || 12;
+        let totalRounds = State.leagueDraftSettings.rounds || 15;
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
 
@@ -759,15 +754,15 @@
             for (let r = 1; r <= totalRounds; r++) {
                 let pNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
                 
-                if (rawDraftPicks && rawDraftPicks.length > 0) {
-                    let matched = rawDraftPicks.find(p => p.pick_no === pNum);
+                if (State.rawDraftPicks && State.rawDraftPicks.length > 0) {
+                    let matched = State.rawDraftPicks.find(p => p.pick_no === pNum);
                     if (matched) {
-                        let pl = players.find(x => x.sleeperId === matched.player_id);
-                        if (pl && myTeam.includes(pl.id)) { isMyCol = true; break; }
+                        let pl = State.players.find(x => x.sleeperId === matched.player_id);
+                        if (pl && State.myTeam.includes(pl.id)) { isMyCol = true; break; }
                     }
                 } else {
-                    let manualPId = draftedPlayers[pNum - 1];
-                    if (manualPId && myTeam.includes(manualPId)) { isMyCol = true; break; }
+                    let manualPId = State.draftedPlayers[pNum - 1];
+                    if (manualPId && State.myTeam.includes(manualPId)) { isMyCol = true; break; }
                 }
             }
             gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}">T${t}</div>`;
@@ -782,21 +777,18 @@
                 let pName = "";
                 let pPos = "";
 
-                if (rawDraftPicks && rawDraftPicks.length > 0) {
-                    let matchedPick = rawDraftPicks.find(p => p.pick_no === pickNum);
+                if (State.rawDraftPicks && State.rawDraftPicks.length > 0) {
+                    let matchedPick = State.rawDraftPicks.find(p => p.pick_no === pickNum);
                     if (matchedPick) {
-                        pObj = players.find(pl => pl.sleeperId === matchedPick.player_id);
-                        pName = pObj ? pObj.name : (matchedPick.metadata.first_name?.[0] + ". " + matchedPick.metadata.last_name) || "Player";
-                        pPos = pObj ? pObj.posGroup : matchedPick.metadata.position || "";
+                        pObj = State.players.find(pl => pl.sleeperId === matchedPick.player_id);
+                        pName = pObj ? pObj.name : (matchedPick.metadata?.first_name?.[0] + ". " + matchedPick.metadata?.last_name) || "Player";
+                        pPos = pObj ? pObj.posGroup : matchedPick.metadata?.position || "";
                     }
                 } else {
-                    let manualPlayerId = draftedPlayers[pickNum - 1];
+                    let manualPlayerId = State.draftedPlayers[pickNum - 1];
                     if (manualPlayerId) {
-                        pObj = players.find(pl => pl.id === manualPlayerId);
-                        if (pObj) {
-                            pName = pObj.name;
-                            pPos = pObj.posGroup;
-                        }
+                        pObj = State.players.find(pl => pl.id === manualPlayerId);
+                        if (pObj) { pName = pObj.name; pPos = pObj.posGroup; }
                     }
                 }
 
@@ -809,7 +801,7 @@
                     let lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : "";
 
                     cellClass += ` picked ${pPos}`;
-                    if (pObj && myTeam.includes(pObj.id)) cellClass += " mine";
+                    if (pObj && State.myTeam.includes(pObj.id)) cellClass += " mine";
 
                     cellContent = `
                         <div class="draft-cell-first" title="${pName}">${firstName}</div>
@@ -826,15 +818,9 @@
     }
 
     function renderFantasyRoster() {
-        let myPlayersObjects = myTeam.map(id => players.find(p => p.id === id)).filter(p => p);
+        let myPlayersObjects = State.myTeam.map(id => State.players.find(p => p.id === id)).filter(Boolean);
         let availablePool = [...myPlayersObjects];
         let rosterSlotsHTML = '';
-
-        let extractNextPos = (posGroup) => {
-            let idx = availablePool.findIndex(p => p.posGroup === posGroup);
-            if (idx !== -1) return availablePool.splice(idx, 1)[0];
-            return null;
-        };
 
         const buildSlotHTML = (label, color, p) => {
             if (p) {
@@ -869,20 +855,22 @@
         };
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let count = dsLimits[pos] || 0;
+            let count = State.dsLimits[pos] || 0;
             let color = `var(--pos-${pos.toLowerCase()}-border)`;
             for (let i = 0; i < count; i++) {
-                rosterSlotsHTML += buildSlotHTML(`${pos}${i+1}`, color, extractNextPos(pos));
+                let idx = availablePool.findIndex(p => p.posGroup === pos);
+                let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
+                rosterSlotsHTML += buildSlotHTML(`${pos}${i+1}`, color, p);
             }
         });
 
-        for (let i = 0; i < (dsLimits.FLEX || 0); i++) {
+        for (let i = 0; i < (State.dsLimits.FLEX || 0); i++) {
             let idx = availablePool.findIndex(p => ['RB', 'WR', 'TE'].includes(p.posGroup));
             let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
             rosterSlotsHTML += buildSlotHTML('FLX', '#86efac', p);
         }
 
-        for (let i = 0; i < (dsLimits.SFLEX || 0); i++) {
+        for (let i = 0; i < (State.dsLimits.SFLEX || 0); i++) {
             let idx = availablePool.findIndex(p => ['QB', 'RB', 'WR', 'TE'].includes(p.posGroup));
             let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
             rosterSlotsHTML += buildSlotHTML('SFLX', '#fca5a5', p);
@@ -896,28 +884,22 @@
         const bannerContainer = document.getElementById('byeWarningContainer');
         const showByeWarnings = localStorage.getItem('ds_bye_warnings') === 'true';
         
-        if (showByeWarnings && myPlayersObjects.length > 0) {
+        if (bannerContainer && showByeWarnings && myPlayersObjects.length > 0) {
             let byeCounts = {};
-            let starterPool = [...myTeam.map(id => players.find(p => p.id === id)).filter(p => p)];
-            let starterSlotsCount = (dsLimits.QB||0) + (dsLimits.RB||0) + (dsLimits.WR||0) + (dsLimits.TE||0) + (dsLimits.FLEX||0) + (dsLimits.SFLEX||0);
-            let activeStarters = starterPool.slice(0, starterSlotsCount);
+            let starterSlotsCount = (State.dsLimits.QB||0) + (State.dsLimits.RB||0) + (State.dsLimits.WR||0) + (State.dsLimits.TE||0) + (State.dsLimits.FLEX||0) + (State.dsLimits.SFLEX||0);
+            let activeStarters = myPlayersObjects.slice(0, starterSlotsCount);
 
             activeStarters.forEach(sp => {
-                if (sp.bye && sp.bye !== "-") {
-                    byeCounts[sp.bye] = (byeCounts[sp.bye] || 0) + 1;
-                }
+                if (sp.bye && sp.bye !== "-") byeCounts[sp.bye] = (byeCounts[sp.bye] || 0) + 1;
             });
 
             let heavyByes = Object.keys(byeCounts).filter(bye => byeCounts[bye] >= 3);
             if (heavyByes.length > 0) {
-                bannerContainer.innerHTML = `
-                    <div class="bye-warning-banner">
-                        <span>⚠️ WARNING: You have ${byeCounts[heavyByes[0]]} starting players on Bye in Week ${heavyByes[0]}!</span>
-                    </div>`;
+                bannerContainer.innerHTML = `<div class="bye-warning-banner"><span>⚠️ WARNING: You have ${byeCounts[heavyByes[0]]} starting players on Bye in Week ${heavyByes[0]}!</span></div>`;
             } else {
                 bannerContainer.innerHTML = '';
             }
-        } else {
+        } else if (bannerContainer) {
             bannerContainer.innerHTML = '';
         }
 
@@ -935,50 +917,49 @@
         let posCounts = { "QB": 0, "RB": 0, "WR": 0, "TE": 0 };
 
         let syncedPicks = parseInt(localStorage.getItem('ds_total_picks')) || 0;
-        let totalPicksDone = Math.max(draftedPlayers.length, syncedPicks);
+        let totalPicksDone = Math.max(State.draftedPlayers.length, syncedPicks);
         let currentOverallPick = totalPicksDone + 1;
         
-        // Dynamically use the saved league settings for the Pick counter
-        let teamsInLeague = leagueDraftSettings.teams || 12;
+        let teamsInLeague = State.leagueDraftSettings.teams || 12;
         let round = Math.ceil(currentOverallPick / teamsInLeague);
         let pickInRound = currentOverallPick - ((round - 1) * teamsInLeague);
-        document.getElementById('pickTracker').innerText = `Pick: ${round}.${pickInRound.toString().padStart(2, '0')}`;
+        
+        const pickTrackerEl = document.getElementById('pickTracker');
+        if (pickTrackerEl) pickTrackerEl.innerText = `Pick: ${round}.${pickInRound.toString().padStart(2, '0')}`;
 
         const trackers = getTierTrackerData();
-        
-        let trackerHTML = `<div class="badge badge-all pos-filter ${activePosFilter === 'ALL' ? 'active-filter' : ''}" onclick="setPosFilter('ALL')"><span>ALL</span></div>`;
+        let trackerHTML = `<div class="badge badge-all pos-filter ${State.activePosFilter === 'ALL' ? 'active-filter' : ''}" onclick="setPosFilter('ALL')"><span>ALL</span></div>`;
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let isActive = activePosFilter === pos ? 'active-filter' : '';
+            let isActive = State.activePosFilter === pos ? 'active-filter' : '';
             let tText = trackers[pos] ? `T${trackers[pos].tier} (${trackers[pos].count})` : "—";
             trackerHTML += `<div class="badge pos-badge ${pos} pos-filter ${isActive}" onclick="setPosFilter('${pos}')"><span>${pos}</span><span style="font-size:0.65rem; opacity:0.9;">${tText}</span></div>`;
         });
-        document.getElementById('tierTracker').innerHTML = trackerHTML;
+        const tierTrackerEl = document.getElementById('tierTracker');
+        if (tierTrackerEl) tierTrackerEl.innerHTML = trackerHTML;
 
         let showStacks = localStorage.getItem('ds_stacks') === 'true';
-        let myQbs = myTeam.map(id => players.find(p => p.id === id)).filter(p => p && p.posGroup === 'QB').map(p => p.team).filter(t => t !== "FA");
-        let myPassCatchers = myTeam.map(id => players.find(p => p.id === id)).filter(p => p && ['WR', 'TE'].includes(p.posGroup)).map(p => p.team).filter(t => t !== "FA");
+        let myQbs = State.myTeam.map(id => State.players.find(p => p.id === id)).filter(p => p && p.posGroup === 'QB').map(p => p.team).filter(t => t !== "FA");
+        let myPassCatchers = State.myTeam.map(id => State.players.find(p => p.id === id)).filter(p => p && ['WR', 'TE'].includes(p.posGroup)).map(p => p.team).filter(t => t !== "FA");
 
         let lastTier = null;
 
-        players.forEach(p => {
-            const isDrafted = draftedPlayers.includes(p.id);
-            const isMine = myTeam.includes(p.id);
+        State.players.forEach(p => {
+            const isDrafted = State.draftedPlayers.includes(p.id);
+            const isMine = State.myTeam.includes(p.id);
 
             if (isMine && posCounts[p.posGroup] !== undefined) posCounts[p.posGroup]++;
 
             if (!isDrafted) {
-                if (activePosFilter !== 'ALL' && p.posGroup !== activePosFilter) return;
+                if (State.activePosFilter !== 'ALL' && p.posGroup !== State.activePosFilter) return;
 
-                if(p.name.toLowerCase().includes(searchTerm)) {
-
-                    if(searchTerm === "" && p.tier !== lastTier && p.tier !== "-") {
+                if (p.name.toLowerCase().includes(searchTerm)) {
+                    if (searchTerm === "" && p.tier !== lastTier && p.tier !== "-") {
                         newPoolHTML += `<div class="tier-divider">Tier ${p.tier}</div>`;
                         lastTier = p.tier;
                     }
 
                     let customStyle = getCallOutStyle(p.name);
-                    
                     let valueBadgeHTML = "";
                     let diff = currentOverallPick - p.rank;
                     if (diff > 0) {
@@ -990,14 +971,13 @@
                     }
                     
                     let adpText = (p.adp && p.adp !== "-") ? ` | Market: ${p.adp}` : "";
-
                     let isStack = false;
                     if (showStacks && p.team !== "FA") {
                         if (['WR', 'TE'].includes(p.posGroup) && myQbs.includes(p.team)) isStack = true;
                         if (p.posGroup === 'QB' && myPassCatchers.includes(p.team)) isStack = true;
                     }
 
-                    let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">🔥 Stack</span>` : "";
+                    let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">Stack</span>` : "";
                     let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
 
                     newPoolHTML += `
@@ -1009,7 +989,7 @@
                                         <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                                         ${rookieBadge}
                                         ${stackBadge}
-                                        <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.7; margin-left: 2px;" onclick="toggleEditBar(${p.id})" title="Edit Player Details">✏️</span>
+                                        <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.7; margin-left: 2px;" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
                                     </h4>
                                     <div class="player-stats">${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</div>
                                 </div>
@@ -1048,13 +1028,13 @@
             }
         });
 
-        poolEl.innerHTML = newPoolHTML;
-        myTeamEl.innerHTML = renderFantasyRoster();
+        if (poolEl) poolEl.innerHTML = newPoolHTML;
+        if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster();
 
-        let otherDraftedIds = draftedPlayers.filter(id => !myTeam.includes(id)).slice().reverse();
+        let otherDraftedIds = State.draftedPlayers.filter(id => !State.myTeam.includes(id)).slice().reverse();
         let newOtherHTML = '';
         otherDraftedIds.forEach(id => {
-            let p = players.find(player => player.id === id);
+            let p = State.players.find(player => player.id === id);
             if (p) {
                 newOtherHTML += `
                     <div class="roster-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border);">
@@ -1063,25 +1043,36 @@
                     </div>`;
             }
         });
-        otherEl.innerHTML = newOtherHTML;
+        if (otherEl) otherEl.innerHTML = newOtherHTML;
 
-        let flexOverflow = Math.max(0, posCounts['RB'] - dsLimits.RB) + Math.max(0, posCounts['WR'] - dsLimits.WR) + Math.max(0, posCounts['TE'] - dsLimits.TE);
-        let flexUsed = Math.min(flexOverflow, dsLimits.FLEX);
-        let sflexOverflow = Math.max(0, posCounts['QB'] - dsLimits.QB) + Math.max(0, flexOverflow - dsLimits.FLEX);
-        let sflexUsed = Math.min(sflexOverflow, dsLimits.SFLEX);
+        let flexOverflow = Math.max(0, posCounts['RB'] - State.dsLimits.RB) + Math.max(0, posCounts['WR'] - State.dsLimits.WR) + Math.max(0, posCounts['TE'] - State.dsLimits.TE);
+        let flexUsed = Math.min(flexOverflow, State.dsLimits.FLEX);
+        let sflexOverflow = Math.max(0, posCounts['QB'] - State.dsLimits.QB) + Math.max(0, flexOverflow - State.dsLimits.FLEX);
+        let sflexUsed = Math.min(sflexOverflow, State.dsLimits.SFLEX);
 
-        document.getElementById('limitsBody').innerHTML = `
-            <tr>
-                <td>${posCounts['QB']} / ${dsLimits.QB}</td>
-                <td>${posCounts['RB']} / ${dsLimits.RB}</td>
-                <td>${posCounts['WR']} / ${dsLimits.WR}</td>
-                <td>${posCounts['TE']} / ${dsLimits.TE}</td>
-                <td>${flexUsed} / ${dsLimits.FLEX}</td>
-                <td>${sflexUsed} / ${dsLimits.SFLEX}</td>
-                <td><strong>${myTeam.length} / ${dsLimits.TOTAL}</strong></td>
-            </tr>`;
+        const limitsBodyEl = document.getElementById('limitsBody');
+        if (limitsBodyEl) {
+            limitsBodyEl.innerHTML = `
+                <tr>
+                    <td>${posCounts['QB']} / ${State.dsLimits.QB}</td>
+                    <td>${posCounts['RB']} / ${State.dsLimits.RB}</td>
+                    <td>${posCounts['WR']} / ${State.dsLimits.WR}</td>
+                    <td>${posCounts['TE']} / ${State.dsLimits.TE}</td>
+                    <td>${flexUsed} / ${State.dsLimits.FLEX}</td>
+                    <td>${sflexUsed} / ${State.dsLimits.SFLEX}</td>
+                    <td><strong>${State.myTeam.length} / ${State.dsLimits.TOTAL}</strong></td>
+                </tr>`;
+        }
 
         renderDraftMatrix();
     }
 
-    if(players.length > 0) renderBoard();
+    if (State.players.length > 0) renderBoard();
+
+    // Expose search bar event listener helper if needed
+    const searchBarEl = document.getElementById('searchBar');
+    if (searchBarEl) {
+        searchBarEl.addEventListener('input', renderBoard);
+    }
+
+})();
