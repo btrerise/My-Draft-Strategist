@@ -680,7 +680,6 @@
         // Save and force re-render
         window.saveSettings(null, false);
     }
-}
                     } catch(err) {
                         console.warn("Could not fetch Sleeper league roster positions.", err);
                     }
