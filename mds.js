@@ -193,9 +193,9 @@
     }
     updateMetaDisplay();
 
-   window.saveSettings = function(btnElement, skipRender = false) {
-    const getVal = id => document.getElementById(id)?.value.trim() || "";
-    const getCheck = id => document.getElementById(id)?.checked || false;
+  window.saveSettings = function(btnElement, skipRender = false) {
+        const getVal = id => document.getElementById(id)?.value.trim() || "";
+        const getCheck = id => document.getElementById(id)?.checked || false;
 
         localStorage.setItem('ds_username', getVal('sleeperUsername'));
         localStorage.setItem('ds_draftId', getVal('sleeperDraftId'));
@@ -209,12 +209,24 @@
         State.leagueDraftSettings.rounds = parseInt(getVal('leagueRounds')) || 15;
         localStorage.setItem('ds_draft_settings', JSON.stringify(State.leagueDraftSettings));
 
-       if (!skipRender) {
-        renderBoard();
-    }
-    
-    if (btnElement) flashButton(btnElement, "Settings Saved");
-}; 
+        State.dsLimits = {
+            QB: parseInt(getVal('limitQB')) || 0,
+            RB: parseInt(getVal('limitRB')) || 0,
+            WR: parseInt(getVal('limitWR')) || 0,
+            TE: parseInt(getVal('limitTE')) || 0,
+            FLEX: parseInt(getVal('limitFLEX')) || 0,
+            SFLEX: parseInt(getVal('limitSFLEX')) || 0,
+            BENCH: parseInt(getVal('limitBENCH')) || 0,
+        };
+        State.dsLimits.TOTAL = State.dsLimits.QB + State.dsLimits.RB + State.dsLimits.WR + State.dsLimits.TE + State.dsLimits.FLEX + State.dsLimits.SFLEX + State.dsLimits.BENCH;
+        localStorage.setItem('ds_limits', JSON.stringify(State.dsLimits));
+
+        if (!skipRender) {
+            renderBoard();
+        }
+        
+        if (btnElement) flashButton(btnElement, "Settings Saved");
+    };
        State.dsLimits = {
             QB: parseInt(getVal('limitQB')) || 0,
             RB: parseInt(getVal('limitRB')) || 0,
@@ -640,18 +652,16 @@
     };
 
     window.syncSleeper = async function(isSilent = false, btn = null) {
-    const username = document.getElementById('sleeperUsername')?.value.trim();
-    const draftId = document.getElementById('sleeperDraftId')?.value.trim();
+        const username = document.getElementById('sleeperUsername')?.value.trim();
+        const draftId = document.getElementById('sleeperDraftId')?.value.trim();
 
-    if (!username || !draftId) {
-        if (!isSilent && btn) window.alert("Please enter both Username and Draft ID.");
-        return;
-    }
-// NEW: Pass isSilent so background syncs don't force a re-render
-    window.saveSettings(null, isSilent); 
-
-    try {
-        window.saveSettings(null); 
+        if (!username || !draftId) {
+            if (!isSilent && btn) window.alert("Please enter both Username and Draft ID.");
+            return;
+        }
+        
+        // NEW: Pass isSilent so background syncs don't force a re-render
+        window.saveSettings(null, isSilent); 
 
         try {
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
@@ -712,7 +722,6 @@
             if (!isSilent && btn) window.alert(`Sleeper Sync Error:\n${err.message}`);
         }
     };
-
     window.draftPlayer = function(id, isMine) {
         if (!State.draftedPlayers.includes(id)) {
             State.draftedPlayers.push(id);
