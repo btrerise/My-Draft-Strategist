@@ -626,7 +626,7 @@
         if (isLive) {
             if (liveInd) liveInd.style.display = 'inline-block';
             window.syncSleeper(true, null);
-            State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 3000);
+            State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 1000);
         } else {
             if (liveInd) liveInd.style.display = 'none';
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
@@ -667,6 +667,12 @@
             const picksData = await picksRes.json();
 
             if (!picksData || picksData.length === 0) return;
+
+            // NEW: Check if the number of picks has actually changed before doing heavy processing
+            let previousTotal = parseInt(localStorage.getItem('ds_total_picks')) || 0;
+            if (picksData.length === previousTotal) {
+                return; // Board is up to date, do nothing.
+            }
 
             State.rawDraftPicks = picksData;
             let sleeperDrafted = [];
