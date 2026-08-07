@@ -653,48 +653,34 @@
 
             const draftRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`);
             if (draftRes.ok) {
-                let dInfo = await draftRes.json();
-                let numTeams = dInfo.settings?.teams || 12;
-                let numRounds = dInfo.settings?.rounds || 15;
-                State.leagueDraftSettings = { teams: numTeams, rounds: numRounds };
-                
-                const lTeamsEl = document.getElementById('leagueTeams');
-                const lRoundsEl = document.getElementById('leagueRounds');
-                if (lTeamsEl) lTeamsEl.value = numTeams;
-                if (lRoundsEl) lRoundsEl.value = numRounds;
+    let dInfo = await draftRes.json();
+    
+    if (dInfo.settings) {
+        // Update State
+        State.leagueDraftSettings = { 
+            teams: dInfo.settings.teams || 12, 
+            rounds: dInfo.settings.rounds || 15 
+        };
+        
+        // Helper to update UI Inputs
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        
+        setVal('leagueTeams', State.leagueDraftSettings.teams);
+        setVal('leagueRounds', State.leagueDraftSettings.rounds);
+        
+        // Pull roster slots directly from draft settings (works universally for Mocks and Leagues)
+        setVal('limitQB', dInfo.settings.slots_qb || 0);
+        setVal('limitRB', dInfo.settings.slots_rb || 0);
+        setVal('limitWR', dInfo.settings.slots_wr || 0);
+        setVal('limitTE', dInfo.settings.slots_te || 0);
+        setVal('limitFLEX', dInfo.settings.slots_flex || 0);
+        setVal('limitSFLEX', dInfo.settings.slots_super_flex || 0);
+        setVal('limitBENCH', dInfo.settings.slots_bn || 0);
 
-                // NEW: Fetch league details ONLY once per draft ID to save API calls
-                if (dInfo.league_id && window.lastFetchedLeagueId !== dInfo.league_id) {
-                    window.lastFetchedLeagueId = dInfo.league_id;
-                    try {
-                        const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}`);
-                        if (leagueRes.ok) {
-                            let lInfo = await leagueRes.json();
-                            if (lInfo.roster_positions) {
-                                let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SUPER_FLEX: 0, BENCH: 0 };
-                                
-                                // Count how many of each slot the league uses
-                                lInfo.roster_positions.forEach(pos => {
-    if (pos === 'FLEX' || pos === 'W/R/T') posCounts.FLEX++;
-    else if (pos === 'SUPER_FLEX' || pos === 'Q/W/R/T') posCounts.SUPER_FLEX++;
-    else if (pos === 'BN' || pos === 'BENCH') posCounts.BENCH++; // Added this line to catch Sleeper's string
-    else if (posCounts[pos] !== undefined) posCounts[pos]++;
-});
-
-// Apply the counts to the UI inputs
-const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-setVal('limitQB', posCounts.QB);
-setVal('limitRB', posCounts.RB);
-setVal('limitWR', posCounts.WR);
-setVal('limitTE', posCounts.TE);
-setVal('limitFLEX', posCounts.FLEX);
-setVal('limitSFLEX', posCounts.SUPER_FLEX);
-setVal('limitBENCH', posCounts.BENCH);
-                               
-                                // Force a re-render here so the Team tab immediately updates the visual roster slots
-                                window.saveSettings(null, false);
-                            }
-                        }
+        // Save and force re-render
+        window.saveSettings(null, false);
+    }
+}
                     } catch(err) {
                         console.warn("Could not fetch Sleeper league roster positions.", err);
                     }
