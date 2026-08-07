@@ -193,9 +193,9 @@
     }
     updateMetaDisplay();
 
-    window.saveSettings = function(btnElement) {
-        const getVal = id => document.getElementById(id)?.value.trim() || "";
-        const getCheck = id => document.getElementById(id)?.checked || false;
+   window.saveSettings = function(btnElement, skipRender = false) {
+    const getVal = id => document.getElementById(id)?.value.trim() || "";
+    const getCheck = id => document.getElementById(id)?.checked || false;
 
         localStorage.setItem('ds_username', getVal('sleeperUsername'));
         localStorage.setItem('ds_draftId', getVal('sleeperDraftId'));
@@ -209,7 +209,13 @@
         State.leagueDraftSettings.rounds = parseInt(getVal('leagueRounds')) || 15;
         localStorage.setItem('ds_draft_settings', JSON.stringify(State.leagueDraftSettings));
 
-        State.dsLimits = {
+       if (!skipRender) {
+        renderBoard();
+    }
+    
+    if (btnElement) flashButton(btnElement, "Settings Saved");
+}; 
+       State.dsLimits = {
             QB: parseInt(getVal('limitQB')) || 0,
             RB: parseInt(getVal('limitRB')) || 0,
             WR: parseInt(getVal('limitWR')) || 0,
@@ -634,14 +640,17 @@
     };
 
     window.syncSleeper = async function(isSilent = false, btn = null) {
-        const username = document.getElementById('sleeperUsername')?.value.trim();
-        const draftId = document.getElementById('sleeperDraftId')?.value.trim();
+    const username = document.getElementById('sleeperUsername')?.value.trim();
+    const draftId = document.getElementById('sleeperDraftId')?.value.trim();
 
-        if (!username || !draftId) {
-            if (!isSilent && btn) window.alert("Please enter both Username and Draft ID.");
-            return;
-        }
+    if (!username || !draftId) {
+        if (!isSilent && btn) window.alert("Please enter both Username and Draft ID.");
+        return;
+    }
+// NEW: Pass isSilent so background syncs don't force a re-render
+    window.saveSettings(null, isSilent); 
 
+    try {
         window.saveSettings(null); 
 
         try {
@@ -750,11 +759,21 @@
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
 
+        // 1. Capture the current scroll position
+        let currentScroll = 0;
+        const existingGrid = container.querySelector('.draft-grid');
+        if (existingGrid) {
+            currentScroll = existingGrid.scrollLeft;
+        } else {
+            currentScroll = container.scrollLeft; 
+        }
+
         let totalTeams = State.leagueDraftSettings.teams || 12;
         let totalRounds = State.leagueDraftSettings.rounds || 15;
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
 
+        // BUILD HEADERS
         for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
@@ -774,6 +793,7 @@
             gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}">T${t}</div>`;
         }
 
+        // BUILD CELLS
         for (let r = 1; r <= totalRounds; r++) {
             for (let t = 1; t <= totalTeams; t++) {
                 let pickNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
@@ -819,8 +839,19 @@
             }
         }
 
+        // Close the .draft-grid wrapper
         gridHTML += `</div>`;
+        
+        // 2. Inject the new HTML
         container.innerHTML = gridHTML;
+
+        // 3. Immediately restore the scroll position
+        const newGrid = container.querySelector('.draft-grid');
+        if (newGrid && currentScroll > 0) {
+            newGrid.scrollLeft = currentScroll;
+        } else if (currentScroll > 0) {
+            container.scrollLeft = currentScroll;
+        }
     }
 
     function renderFantasyRoster() {
