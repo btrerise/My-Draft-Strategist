@@ -1141,11 +1141,11 @@
         if (breakdown.style.display === 'none') {
             breakdown.style.display = 'block';
             if (arrow) arrow.style.transform = 'rotate(180deg)';
-            if (btnText) btnText.innerText = 'Hide Starter Value Breakdown';
+            if (btnText) btnText.innerText = 'Hide Value Breakdown';
         } else {
             breakdown.style.display = 'none';
             if (arrow) arrow.style.transform = 'rotate(0deg)';
-            if (btnText) btnText.innerText = 'Show Starter Value Breakdown';
+            if (btnText) btnText.innerText = 'Show Value Breakdown';
         }
     };
 
