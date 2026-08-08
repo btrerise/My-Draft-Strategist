@@ -1003,37 +1003,50 @@
         else if (firstPosRound.TE <= 4) archetype = "Elite TE Build";
 
         // Position Grades
-        let starterCounts = { QB: State.dsLimits.QB || 1, RB: State.dsLimits.RB || 2, WR: State.dsLimits.WR || 3, TE: State.dsLimits.TE || 1 };
+        // Position Grades evaluated across ALL drafted players using Median Value
         let gradesHTML = "";
         let totalValSum = 0;
         let gradeCount = 0;
 
-        const getLetterGrade = (avgVal) => {
-            if (avgVal >= 10) return { grade: "A+", color: "#4ade80" };
-            if (avgVal >= 4) return { grade: "A", color: "#4ade80" };
-            if (avgVal >= 0) return { grade: "B", color: "#60a5fa" };
-            if (avgVal >= -5) return { grade: "C", color: "#fde047" };
-            if (avgVal >= -15) return { grade: "D", color: "#f97316" };
+        const getLetterGrade = (val) => {
+            if (val >= 10) return { grade: "A+", color: "#4ade80" };
+            if (val >= 4) return { grade: "A", color: "#4ade80" };
+            if (val >= 0) return { grade: "B", color: "#60a5fa" };
+            if (val >= -5) return { grade: "C", color: "#fde047" };
+            if (val >= -15) return { grade: "D", color: "#f97316" };
             return { grade: "F", color: "#ef4444" };
         };
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let posPlayers = myPlayers.filter(p => p.posGroup === pos).sort((a, b) => a.rank - b.rank);
-            let needed = starterCounts[pos] || 1;
-            let starters = posPlayers.slice(0, needed);
+            let posPlayers = myPlayers.filter(p => p.posGroup === pos);
+            
+            // If you didn't draft any at this position, skip or assign neutral
+            if (posPlayers.length === 0) {
+                gradesHTML += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); text-align: center;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
+                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-muted);">—</div>
+                </div>`;
+                return;
+            }
 
-            let posValSum = 0;
-            starters.forEach(sp => {
+            // Calculate value efficiency for ALL players drafted at this position
+            let efficiencies = posPlayers.map(sp => {
                 let pPick = 50; 
-                if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === sp.sleeperId); if (m) pPick = m.pick_no; }
-                let valueDiff = pPick - sp.rank; 
-                posValSum += valueDiff;
+                if (State.rawDraftPicks) { 
+                    let m = State.rawDraftPicks.find(r => r.player_id === sp.sleeperId); 
+                    if (m) pPick = m.pick_no; 
+                }
+                return pPick - sp.rank; // Pick minus Custom Rank
             });
 
-            let posAvg = starters.length > 0 ? (posValSum / starters.length) : 0;
-            let gInfo = getLetterGrade(posAvg);
+            // Sort to find the median value
+            efficiencies.sort((a, b) => a - b);
+            let mid = Math.floor(efficiencies.length / 2);
+            let medianVal = efficiencies.length % 2 !== 0 ? efficiencies[mid] : (efficiencies[mid - 1] + efficiencies[mid]) / 2;
+
+            let gInfo = getLetterGrade(medianVal);
             
-            totalValSum += posAvg;
+            totalValSum += medianVal;
             gradeCount++;
 
             gradesHTML += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); text-align: center;">
