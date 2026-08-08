@@ -628,14 +628,14 @@
         if (isLive) {
             if (liveInd) liveInd.style.display = 'inline-block';
             window.syncSleeper(true, null);
-            State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 500);
+            State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 1000);
         } else {
             if (liveInd) liveInd.style.display = 'none';
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
         }
     };
 
-        window.syncSleeper = async function(isSilent = false, btn = null) {
+    window.syncSleeper = async function(isSilent = false, btn = null) {
         const username = document.getElementById('sleeperUsername')?.value.trim();
         const draftId = document.getElementById('sleeperDraftId')?.value.trim();
 
@@ -644,7 +644,6 @@
             return;
         }
         
-        // Pass isSilent so background syncs don't force a re-render
         window.saveSettings(null, isSilent); 
 
         try {
@@ -654,45 +653,40 @@
 
             const draftRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`);
             if (draftRes.ok) {
-    let dInfo = await draftRes.json();
-    
-    if (dInfo.settings) {
-        // Update State
-        State.leagueDraftSettings = { 
-            teams: dInfo.settings.teams || 12, 
-            rounds: dInfo.settings.rounds || 15 
-        };
-        
-        // Helper to update UI Inputs
-        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-        
-        setVal('leagueTeams', State.leagueDraftSettings.teams);
-        setVal('leagueRounds', State.leagueDraftSettings.rounds);
-        
-        // Pull roster slots directly from draft settings (works universally for Mocks and Leagues)
-        setVal('limitQB', dInfo.settings.slots_qb || 0);
-        setVal('limitRB', dInfo.settings.slots_rb || 0);
-        setVal('limitWR', dInfo.settings.slots_wr || 0);
-        setVal('limitTE', dInfo.settings.slots_te || 0);
-        setVal('limitFLEX', dInfo.settings.slots_flex || 0);
-        setVal('limitSFLEX', dInfo.settings.slots_super_flex || 0);
-        setVal('limitBENCH', dInfo.settings.slots_bn || 0);
+                let dInfo = await draftRes.json();
+                
+                if (dInfo.settings) {
+                    State.leagueDraftSettings = { 
+                        teams: dInfo.settings.teams || 12, 
+                        rounds: dInfo.settings.rounds || 15 
+                    };
+                    
+                    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+                    
+                    setVal('leagueTeams', State.leagueDraftSettings.teams);
+                    setVal('leagueRounds', State.leagueDraftSettings.rounds);
+                    
+                    setVal('limitQB', dInfo.settings.slots_qb || 0);
+                    setVal('limitRB', dInfo.settings.slots_rb || 0);
+                    setVal('limitWR', dInfo.settings.slots_wr || 0);
+                    setVal('limitTE', dInfo.settings.slots_te || 0);
+                    setVal('limitFLEX', dInfo.settings.slots_flex || 0);
+                    setVal('limitSFLEX', dInfo.settings.slots_super_flex || 0);
+                    setVal('limitBENCH', dInfo.settings.slots_bn || 0);
 
-       // Save and force re-render
-        window.saveSettings(null, false);
-    } // closes if (dInfo.settings)
-} // closes if (draftRes.ok)
+                    window.saveSettings(null, false);
+                }
+            }
 
-const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
+            const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
             if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
             const picksData = await picksRes.json();
 
             if (!picksData || picksData.length === 0) return;
 
-            // Check if the number of picks has actually changed before doing heavy processing
             let previousTotal = parseInt(localStorage.getItem('ds_total_picks')) || 0;
             if (picksData.length === previousTotal) {
-                return; // Board is up to date, do nothing.
+                return;
             }
 
             State.rawDraftPicks = picksData;
@@ -724,7 +718,6 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
             if (!isSilent && btn) window.alert(`Sleeper Sync Error:\n${err.message}`);
         }
     };
-
 
     window.draftPlayer = function(id, isMine) {
         if (!State.draftedPlayers.includes(id)) {
@@ -772,7 +765,6 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
 
-        // 1. Capture the current scroll position
         let currentScroll = 0;
         const existingGrid = container.querySelector('.draft-grid');
         if (existingGrid) {
@@ -786,7 +778,6 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
 
-        // BUILD HEADERS
         for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
@@ -806,7 +797,6 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
             gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}">T${t}</div>`;
         }
 
-        // BUILD CELLS
         for (let r = 1; r <= totalRounds; r++) {
             for (let t = 1; t <= totalTeams; t++) {
                 let pickNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
@@ -852,13 +842,9 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
             }
         }
 
-        // Close the .draft-grid wrapper
         gridHTML += `</div>`;
-        
-        // 2. Inject the new HTML
         container.innerHTML = gridHTML;
 
-        // 3. Immediately restore the scroll position
         const newGrid = container.querySelector('.draft-grid');
         if (newGrid && currentScroll > 0) {
             newGrid.scrollLeft = currentScroll;
@@ -955,6 +941,241 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
 
         return rosterSlotsHTML;
     }
+
+    // --- DRAFT RECAP & ANALYSIS RENDERER ---
+    function renderDraftRecap() {
+        const recapCard = document.getElementById('draftRecapCard');
+        const recapContent = document.getElementById('draftRecapContent');
+        if (!recapCard || !recapContent) return;
+
+        let totalRequired = State.dsLimits.TOTAL || 15;
+        let teams = State.leagueDraftSettings.teams || 12;
+
+        if (!State.myTeam || State.myTeam.length < totalRequired) {
+            recapCard.style.display = 'none';
+            return;
+        }
+
+        recapCard.style.display = 'block';
+
+        let myPlayers = State.myTeam.map(id => State.players.find(p => p.id === id)).filter(Boolean);
+        
+        let bestSteal = null;
+        let worstReach = null;
+        let maxDiff = -999;
+        let minDiff = 999;
+
+        myPlayers.forEach((p, index) => {
+            let pickNum = index + 1;
+            if (State.rawDraftPicks && State.rawDraftPicks.length > 0) {
+                let match = State.rawDraftPicks.find(r => r.player_id === p.sleeperId);
+                if (match) pickNum = match.pick_no;
+            }
+
+            let valueDiff = pickNum - p.rank;
+            if (valueDiff > maxDiff) { maxDiff = valueDiff; bestSteal = { player: p, diff: valueDiff }; }
+            if (valueDiff < minDiff) { minDiff = valueDiff; worstReach = { player: p, diff: valueDiff }; }
+        });
+
+        // Archetype Detection
+        let firstPosRound = { QB: 99, RB: 99, WR: 99, TE: 99 };
+        myPlayers.forEach(p => {
+            let pickNum = p.id;
+            if (State.rawDraftPicks) {
+                let m = State.rawDraftPicks.find(r => r.player_id === p.sleeperId);
+                if (m) pickNum = m.pick_no;
+            }
+            let rd = Math.ceil(pickNum / teams);
+            if (rd < firstPosRound[p.posGroup]) firstPosRound[p.posGroup] = rd;
+        });
+
+        let archetype = "Balanced Build";
+        let rbCountRds12 = myPlayers.filter(p => {
+            let pNum = p.id;
+            if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === p.sleeperId); if (m) pNum = m.pick_no; }
+            return p.posGroup === 'RB' && Math.ceil(pNum / teams) <= 2;
+        }).length;
+
+        if (rbCountRds12 >= 2) archetype = "Robust / Heavy RB";
+        else if (rbCountRds12 === 1) archetype = "Hero RB Strategy";
+        else if (firstPosRound.RB >= 5) archetype = "Zero RB Build";
+        else if (firstPosRound.QB <= 3) archetype = "Early QB Build";
+        else if (firstPosRound.TE <= 4) archetype = "Elite TE Build";
+
+        // Position Grades
+        let starterCounts = { QB: State.dsLimits.QB || 1, RB: State.dsLimits.RB || 2, WR: State.dsLimits.WR || 3, TE: State.dsLimits.TE || 1 };
+        let gradesHTML = "";
+        let totalValSum = 0;
+        let gradeCount = 0;
+
+        const getLetterGrade = (avgVal) => {
+            if (avgVal >= 10) return { grade: "A+", color: "#4ade80" };
+            if (avgVal >= 4) return { grade: "A", color: "#4ade80" };
+            if (avgVal >= 0) return { grade: "B", color: "#60a5fa" };
+            if (avgVal >= -5) return { grade: "C", color: "#fde047" };
+            if (avgVal >= -15) return { grade: "D", color: "#f97316" };
+            return { grade: "F", color: "#ef4444" };
+        };
+
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+            let posPlayers = myPlayers.filter(p => p.posGroup === pos).sort((a, b) => a.rank - b.rank);
+            let needed = starterCounts[pos] || 1;
+            let starters = posPlayers.slice(0, needed);
+
+            let posValSum = 0;
+            starters.forEach(sp => {
+                let pPick = 50; 
+                if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === sp.sleeperId); if (m) pPick = m.pick_no; }
+                let valueDiff = pPick - sp.rank; 
+                posValSum += valueDiff;
+            });
+
+            let posAvg = starters.length > 0 ? (posValSum / starters.length) : 0;
+            let gInfo = getLetterGrade(posAvg);
+            
+            totalValSum += posAvg;
+            gradeCount++;
+
+            gradesHTML += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); text-align: center;">
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
+                <div style="font-size: 1.25rem; font-weight: bold; color: ${gInfo.color};">${gInfo.grade}</div>
+            </div>`;
+        });
+
+        let overallAvg = gradeCount > 0 ? (totalValSum / gradeCount) : 0;
+        let overallG = getLetterGrade(overallAvg);
+
+        let html = `
+            <div style="display:flex; justify-content:space-between; align-items:center; background: rgba(59, 130, 246, 0.1); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                <div>
+                    <div style="font-size: 0.75rem; color: #93c5fd; text-transform: uppercase; font-weight: 700;">Draft Archetype</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; color: var(--text-main);">${archetype}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.75rem; color: #93c5fd; text-transform: uppercase; font-weight: 700;">Overall Grade</div>
+                    <div style="font-size: 1.4rem; font-weight: bold; color: ${overallG.color};">${overallG.grade}</div>
+                </div>
+            </div>
+        `;
+
+        if (bestSteal && bestSteal.diff > 2) {
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border);">
+                <span style="display:flex; align-items:center; gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary-green);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                    <strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})
+                </span>
+                <span class="badge badge-value">+${Math.abs(bestSteal.diff)} Value</span>
+            </div>`;
+        }
+
+        if (worstReach && worstReach.diff < -5) {
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border);">
+                <span style="display:flex; align-items:center; gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--avoid-border);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})
+                </span>
+                <span class="badge badge-reach">${worstReach.diff} Reach</span>
+            </div>`;
+        }
+
+        html += `<div style="margin-top: 0.25rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Positional Grades (Draft Value Efficiency)</div>`;
+        html += `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.25rem;">`;
+        html += gradesHTML;
+        html += `</div>`;
+
+        recapContent.innerHTML = html;
+
+        // Build itemized math breakdown for starting players
+        let mathHTML = `<div style="display:flex; flex-direction:column; gap:0.4rem;">`;
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+            let posPlayers = myPlayers.filter(p => p.posGroup === pos).sort((a, b) => a.rank - b.rank);
+            let needed = starterCounts[pos] || 1;
+            let starters = posPlayers.slice(0, needed);
+
+            starters.forEach(sp => {
+                let pPick = 0; 
+                if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === sp.sleeperId); if (m) pPick = m.pick_no; }
+                let diff = pPick - sp.rank;
+                let valColor = diff >= 0 ? "var(--primary-green)" : "var(--avoid-border)";
+                let sign = diff >= 0 ? "+" : "";
+
+                mathHTML += `
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px;">
+                        <span><strong>${sp.posDisplay}:</strong> ${sp.name} (Rank: ${sp.rank} | Pick: ${pPick})</span>
+                        <span style="color:${valColor}; font-weight:bold;">${sign}${diff} Value</span>
+                    </div>`;
+            });
+        });
+        mathHTML += `</div>`;
+
+        const mathContainer = document.getElementById('recapMathBreakdown');
+        if (mathContainer) mathContainer.innerHTML = mathHTML;
+    }
+
+    // --- RECAP MATH TOGGLE HELPER ---
+    window.toggleRecapMath = function() {
+        const breakdown = document.getElementById('recapMathBreakdown');
+        const arrow = document.getElementById('recapMathArrow');
+        const btnText = document.querySelector('#toggleRecapMathBtn span');
+        if (!breakdown) return;
+
+        if (breakdown.style.display === 'none') {
+            breakdown.style.display = 'block';
+            if (arrow) arrow.style.transform = 'rotate(180deg)';
+            if (btnText) btnText.innerText = 'Hide Starter Value Breakdown';
+        } else {
+            breakdown.style.display = 'none';
+            if (arrow) arrow.style.transform = 'rotate(0deg)';
+            if (btnText) btnText.innerText = 'Show Starter Value Breakdown';
+        }
+    };
+
+    // --- TEAM EXPORT LOGIC ---
+    window.exportTeam = async function() {
+        if (typeof html2canvas === 'undefined') { 
+            window.alert("Screenshot library loading. Please try again in a moment."); 
+            return; 
+        }
+        
+        const container = document.getElementById('exportableTeamContainer'); 
+        const exportBtn = document.getElementById('exportTeamBtn');
+        
+        if (!container) return;
+
+        const origText = exportBtn ? exportBtn.innerText : "Export";
+        if (exportBtn) exportBtn.innerText = "Capturing...";
+        
+        const buttons = container.querySelectorAll('.btn-draft, #toggleRecapMathBtn');
+        buttons.forEach(b => b.style.display = 'none');
+        
+        try {
+            const canvas = await html2canvas(container, { 
+                backgroundColor: '#131b2c', 
+                scale: 2,
+                onclone: (clonedDoc) => {
+                    const clonedContainer = clonedDoc.getElementById('exportableTeamContainer');
+                    if (clonedContainer) {
+                        clonedContainer.style.width = '480px';
+                        clonedContainer.style.maxWidth = '100%';
+                        clonedContainer.style.margin = '0 auto';
+                        clonedContainer.style.padding = '1rem';
+                        clonedContainer.style.boxSizing = 'border-box';
+                    }
+                }
+            });
+
+            const link = document.createElement('a');
+            link.download = `My_Draft_Strategist_Team.png`; 
+            link.href = canvas.toDataURL('image/png'); 
+            link.click();
+        } catch (err) {
+            console.error("Export failed:", err); 
+            window.alert("Export failed. Please try again.");
+        } finally {
+            buttons.forEach(b => b.style.display = '');
+            if (exportBtn) exportBtn.innerText = origText;
+        }
+    };
 
     function renderBoard() {
         const poolEl = document.getElementById('playerPool');
@@ -1115,6 +1336,7 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
         }
 
         renderDraftMatrix();
+        renderDraftRecap();
     }
 
     if (State.players.length > 0) renderBoard();
@@ -1123,188 +1345,5 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
     if (searchBarEl) {
         searchBarEl.addEventListener('input', renderBoard);
     }
-function renderDraftRecap() {
-        const recapCard = document.getElementById('draftRecapCard');
-        const recapContent = document.getElementById('draftRecapContent');
-        if (!recapCard || !recapContent) return;
 
-        let totalRequired = State.dsLimits.TOTAL || 15;
-        let teams = State.leagueDraftSettings.teams || 12;
-
-        if (!State.myTeam || State.myTeam.length < totalRequired) {
-            recapCard.style.display = 'none';
-            return;
-        }
-
-        recapCard.style.display = 'block';
-
-        let myPlayers = State.myTeam.map(id => State.players.find(p => p.id === id)).filter(Boolean);
-        
-        let bestSteal = null;
-        let worstReach = null;
-        let maxDiff = -999;
-        let minDiff = 999;
-
-        myPlayers.forEach((p, index) => {
-            let pickNum = index + 1;
-            if (State.rawDraftPicks && State.rawDraftPicks.length > 0) {
-                let match = State.rawDraftPicks.find(r => r.player_id === p.sleeperId);
-                if (match) pickNum = match.pick_no;
-            }
-
-            let valueDiff = pickNum - p.rank;
-            if (valueDiff > maxDiff) { maxDiff = valueDiff; bestSteal = { player: p, diff: valueDiff }; }
-            if (valueDiff < minDiff) { minDiff = valueDiff; worstReach = { player: p, diff: valueDiff }; }
-        });
-
-        // --- 1. ARCHETYPE DETECTION ---
-        let firstPosRound = { QB: 99, RB: 99, WR: 99, TE: 99 };
-        myPlayers.forEach(p => {
-            let pickNum = p.id;
-            if (State.rawDraftPicks) {
-                let m = State.rawDraftPicks.find(r => r.player_id === p.sleeperId);
-                if (m) pickNum = m.pick_no;
-            }
-            let rd = Math.ceil(pickNum / teams);
-            if (rd < firstPosRound[p.posGroup]) firstPosRound[p.posGroup] = rd;
-        });
-
-        let archetype = "Balanced Build";
-        let rbCountRds12 = myPlayers.filter(p => {
-            let pNum = p.id;
-            if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === p.sleeperId); if (m) pNum = m.pick_no; }
-            return p.posGroup === 'RB' && Math.ceil(pNum / teams) <= 2;
-        }).length;
-
-        if (rbCountRds12 >= 2) archetype = "Robust / Heavy RB";
-        else if (rbCountRds12 === 1) archetype = "Hero RB Strategy";
-        else if (firstPosRound.RB >= 5) archetype = "Zero RB Build";
-        else if (firstPosRound.QB <= 3) archetype = "Early QB Build";
-        else if (firstPosRound.TE <= 4) archetype = "Elite TE Build";
-
-        // --- 2. POSITION GRADES BASED ON DRAFT VALUE (PICK - RANK) ---
-        let starterCounts = { QB: State.dsLimits.QB || 1, RB: State.dsLimits.RB || 2, WR: State.dsLimits.WR || 3, TE: State.dsLimits.TE || 1 };
-        let gradesHTML = "";
-        let totalValSum = 0;
-        let gradeCount = 0;
-
-        const getLetterGrade = (avgVal) => {
-            if (avgVal >= 10) return { grade: "A+", color: "#4ade80" };
-            if (avgVal >= 4) return { grade: "A", color: "#4ade80" };
-            if (avgVal >= 0) return { grade: "B", color: "#60a5fa" };
-            if (avgVal >= -5) return { grade: "C", color: "#fde047" };
-            if (avgVal >= -15) return { grade: "D", color: "#f97316" };
-            return { grade: "F", color: "#ef4444" };
-        };
-
-        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let posPlayers = myPlayers.filter(p => p.posGroup === pos).sort((a, b) => a.rank - b.rank);
-            let needed = starterCounts[pos] || 1;
-            let starters = posPlayers.slice(0, needed);
-
-            let posValSum = 0;
-            starters.forEach(sp => {
-                let pPick = 50; 
-                if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === sp.sleeperId); if (m) pPick = m.pick_no; }
-                let valueDiff = pPick - sp.rank; // Positive = Steal, Negative = Reach
-                posValSum += valueDiff;
-            });
-
-            let posAvg = starters.length > 0 ? (posValSum / starters.length) : 0;
-            let gInfo = getLetterGrade(posAvg);
-            
-            totalValSum += posAvg;
-            gradeCount++;
-
-            gradesHTML += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); text-align: center;">
-                <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
-                <div style="font-size: 1.25rem; font-weight: bold; color: ${gInfo.color};">${gInfo.grade}</div>
-            </div>`;
-        });
-
-        let overallAvg = gradeCount > 0 ? (totalValSum / gradeCount) : 0;
-        let overallG = getLetterGrade(overallAvg);
-
-        // --- 3. RENDER HTML (Clean SVGs, No Emojis) ---
-        let html = `
-            <div style="display:flex; justify-content:space-between; align-items:center; background: rgba(59, 130, 246, 0.1); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3);">
-                <div>
-                    <div style="font-size: 0.75rem; color: #93c5fd; text-transform: uppercase; font-weight: 700;">Draft Archetype</div>
-                    <div style="font-size: 1.05rem; font-weight: bold; color: var(--text-main);">${archetype}</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 0.75rem; color: #93c5fd; text-transform: uppercase; font-weight: 700;">Overall Grade</div>
-                    <div style="font-size: 1.4rem; font-weight: bold; color: ${overallG.color};">${overallG.grade}</div>
-                </div>
-            </div>
-        `;
-
-        if (bestSteal && bestSteal.diff > 2) {
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border);">
-                <span style="display:flex; align-items:center; gap:6px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary-green);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                    <strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})
-                </span>
-                <span class="badge badge-value">+${Math.abs(bestSteal.diff)} Value</span>
-            </div>`;
-        }
-
-        if (worstReach && worstReach.diff < -5) {
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border);">
-                <span style="display:flex; align-items:center; gap:6px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--avoid-border);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    <strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})
-                </span>
-                <span class="badge badge-reach">${worstReach.diff} Reach</span>
-            </div>`;
-        }
-
-        html += `<div style="margin-top: 0.25rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Positional Grades (Draft Value Efficiency)</div>`;
-        html += `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.25rem;">`;
-        html += gradesHTML;
-        html += `</div>`;
-
-        recapContent.innerHTML = html;
-    }
 })();
-// Export Team
-window.exportTeam = async function() {
-    if (typeof html2canvas === 'undefined') { 
-        window.alert("Screenshot library loading. Please try again in a moment."); 
-        return; 
-    }
-    
-    // Target the Starting Lineup section on the Team tab
-    const container = document.getElementById('myTeamList'); 
-    const exportBtn = document.getElementById('exportTeamBtn');
-    
-    if (!container) return;
-
-    const origText = exportBtn ? exportBtn.innerText : "Export";
-    if (exportBtn) exportBtn.innerText = "Capturing...";
-    
-    // Hide the Undo buttons during the screenshot
-    const buttons = container.querySelectorAll('.btn-draft');
-    buttons.forEach(b => b.style.display = 'none');
-    
-    const originalBg = container.style.background;
-    container.style.background = '#131b2c'; // Using your --card-bg hex
-    container.style.padding = '1rem'; 
-    container.style.borderRadius = '8px';
-    
-    try {
-        const canvas = await html2canvas(container, { backgroundColor: '#131b2c', scale: 2 });
-        const link = document.createElement('a');
-        link.download = `My_Draft_Strategist_Team.png`; 
-        link.href = canvas.toDataURL('image/png'); 
-        link.click();
-    } catch (err) {
-        console.error("Export failed:", err); 
-        window.alert("Export failed. Please try again.");
-    } finally {
-        buttons.forEach(b => b.style.display = 'inline-block');
-        container.style.background = originalBg; 
-        container.style.padding = '0'; 
-        if (exportBtn) exportBtn.innerText = origText;
-    }
-};
