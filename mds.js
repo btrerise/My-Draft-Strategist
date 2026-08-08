@@ -1124,91 +1124,88 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
         searchBarEl.addEventListener('input', renderBoard);
     }
 function renderDraftRecap() {
-    const recapCard = document.getElementById('draftRecapCard');
-    const recapContent = document.getElementById('draftRecapContent');
-    if (!recapCard || !recapContent) return;
+        const recapCard = document.getElementById('draftRecapCard');
+        const recapContent = document.getElementById('draftRecapContent');
+        if (!recapCard || !recapContent) return;
 
-    // Only show if you have actually drafted players
-    if (!State.myTeam || State.myTeam.length === 0) {
-        recapCard.style.display = 'none';
-        return;
+        // Get the total required roster size from settings (default to 14/15 if not set)
+        let totalRequired = State.dsLimits.TOTAL || 15;
+
+        // Only display the recap if your draft team is completely full
+        if (!State.myTeam || State.myTeam.length < totalRequired) {
+            recapCard.style.display = 'none';
+            return;
+        }
+
+        recapCard.style.display = 'block';
+
+        let myPlayers = State.myTeam.map(id => State.players.find(p => p.id === id)).filter(Boolean);
+        
+        let bestSteal = null;
+        let worstReach = null;
+        let maxDiff = -999;
+        let minDiff = 999;
+
+        myPlayers.forEach((p, index) => {
+            let pickNum = index + 1;
+            if (State.rawDraftPicks && State.rawDraftPicks.length > 0) {
+                let match = State.rawDraftPicks.find(r => r.player_id === p.sleeperId);
+                if (match) pickNum = match.pick_no;
+            }
+
+            // Corrected Math: Draft Pick minus Custom Rank (Positive = Steal, Negative = Reach)
+            let valueDiff = pickNum - p.rank;
+
+            if (valueDiff > maxDiff) {
+                maxDiff = valueDiff;
+                bestSteal = { player: p, diff: valueDiff, pick: pickNum };
+            }
+            if (valueDiff < minDiff) {
+                minDiff = valueDiff;
+                worstReach = { player: p, diff: valueDiff, pick: pickNum };
+            }
+        });
+
+        let posAverages = { QB: 0, RB: 0, WR: 0, TE: 0 };
+        let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 };
+
+        myPlayers.forEach(p => {
+            if (posAverages[p.posGroup] !== undefined) {
+                posAverages[p.posGroup] += p.rank;
+                posCounts[p.posGroup]++;
+            }
+        });
+
+        let html = "";
+
+        if (bestSteal && bestSteal.diff > 2) {
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border); margin-bottom: 0.5rem;">
+                <span>🔥 <strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})</span>
+                <span class="badge badge-value">+${Math.abs(bestSteal.diff)} Value</span>
+            </div>`;
+        }
+
+        if (worstReach && worstReach.diff < -5) {
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border); margin-bottom: 0.5rem;">
+                <span>⚠️ <strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})</span>
+                <span class="badge badge-reach">${worstReach.diff} Reach</span>
+            </div>`;
+        }
+
+        html += `<div style="margin-top: 0.5rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Custom Rank Strength Score</div>`;
+        html += `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; text-align: center; margin-top: 0.25rem;">`;
+        
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+            let avg = posCounts[pos] > 0 ? (posAverages[pos] / posCounts[pos]).toFixed(1) : "—";
+            html += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border);">
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
+                <div style="font-size: 1rem; font-weight: bold; color: var(--text-main);">${avg}</div>
+            </div>`;
+        });
+        html += `</div>`;
+
+        recapContent.innerHTML = html;
     }
-
-    recapCard.style.display = 'block';
-
-    let myPlayers = State.myTeam.map(id => State.players.find(p => p.id === id)).filter(Boolean);
-    
-    let bestSteal = null;
-    let worstReach = null;
-    let maxDiff = -999;
-    let minDiff = 999;
-
-    // Find Steals and Reaches based on custom ranks vs pick numbers
-    // Note: State.rawDraftPicks maps pick numbers if using Sleeper, otherwise we estimate position in myTeam order
-    myPlayers.forEach((p, index) => {
-        let pickNum = index + 1; // Fallback positional draft order index
-        if (State.rawDraftPicks && State.rawDraftPicks.length > 0) {
-            let match = State.rawDraftPicks.find(r => r.player_id === p.sleeperId);
-            if (match) pickNum = match.pick_no;
-        }
-
-        // Value = Custom Rank minus Draft Pick (positive means you got them later than their rank)
-        // Alternatively, using your existing app logic: diff = pickNum - p.rank (positive value = steal)
-        let valueDiff = p.rank - pickNum; // e.g. Ranked 10th, drafted at 25 = +15 value (Steal)
-
-        if (valueDiff > maxDiff) {
-            maxDiff = valueDiff;
-            bestSteal = { player: p, diff: valueDiff, pick: pickNum };
-        }
-        if (valueDiff < minDiff) {
-            minDiff = valueDiff;
-            worstReach = { player: p, diff: valueDiff, pick: pickNum };
-        }
-    });
-
-    // Compute Position Strength Score based on Custom Ranks
-    let posAverages = { QB: 0, RB: 0, WR: 0, TE: 0 };
-    let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 };
-
-    myPlayers.forEach(p => {
-        if (posAverages[p.posGroup] !== undefined) {
-            posAverages[p.posGroup] += p.rank;
-            posCounts[p.posGroup]++;
-        }
-    });
-
-    let html = "";
-
-    // Steal & Reach Callouts
-    if (bestSteal && bestSteal.diff > 2) {
-        html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border);">
-            <span><strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})</span>
-            <span class="badge badge-value">+${Math.abs(bestSteal.diff)} Value</span>
-        </div>`;
-    }
-
-    if (worstReach && worstReach.diff < -5) {
-        html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border);">
-            <span><strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})</span>
-            <span class="badge badge-reach">${worstReach.diff} Reach</span>
-        </div>`;
-    }
-
-    // Position Strength Scorecard (Lower average custom rank = stronger position group)
-    html += `<div style="margin-top: 0.5rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Custom Rank Strength Score</div>`;
-    html += `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; text-align: center;">`;
-    
-    ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-        let avg = posCounts[pos] > 0 ? (posAverages[pos] / posCounts[pos]).toFixed(1) : "—";
-        html += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border);">
-            <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
-            <div style="font-size: 1rem; font-weight: bold; color: var(--text-main);">${avg}</div>
-        </div>`;
-    });
-    html += `</div>`;
-
-    recapContent.innerHTML = html;
-}
 })();
 // Export Team
 window.exportTeam = async function() {
