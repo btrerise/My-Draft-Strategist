@@ -1504,6 +1504,7 @@ body {
     font-weight: 600; 
     font-size: 1rem; 
     color: var(--text-main);
+    white-space: nowrap;
 }
 
 /* Roster Slots (Team Tab) */
