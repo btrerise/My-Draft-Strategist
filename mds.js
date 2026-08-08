@@ -1172,15 +1172,22 @@
                 backgroundColor: '#131b2c', 
                 scale: 2,
                 onclone: (clonedDoc) => {
-                    const clonedContainer = clonedDoc.getElementById('exportableTeamContainer');
-                    if (clonedContainer) {
-                        clonedContainer.style.width = '480px';
-                        clonedContainer.style.maxWidth = '100%';
-                        clonedContainer.style.margin = '0 auto';
-                        clonedContainer.style.padding = '1rem';
-                        clonedContainer.style.boxSizing = 'border-box';
-                    }
-                }
+    const clonedContainer = clonedDoc.getElementById('exportableTeamContainer');
+    const includeRecap = clonedDoc.getElementById('includeRecapInExport')?.checked;
+    
+    if (!includeRecap) {
+        const clonedRecap = clonedDoc.getElementById('draftRecapCard');
+        if (clonedRecap) clonedRecap.style.display = 'none';
+    }
+
+    if (clonedContainer) {
+        clonedContainer.style.width = '480px';
+        clonedContainer.style.maxWidth = '100%';
+        clonedContainer.style.margin = '0 auto';
+        clonedContainer.style.padding = '1rem';
+        clonedContainer.style.boxSizing = 'border-box';
+    }
+}
             });
 
             const link = document.createElement('a');
