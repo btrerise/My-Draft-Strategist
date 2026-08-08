@@ -131,33 +131,26 @@
             </a>
         </div>
     </div>
+
     <!-- Cross-App Navigation Banner -->
-<div class="guide-banner" id="mlsBanner" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(139, 92, 246, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(139, 92, 246, 0.4); padding: 0.75rem 1rem;">
-    
-    <!-- Group 1: The Clickable Content -->
-    <div onclick="window.location.href='./inseason/'" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer; color: #a78bfa;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-        <span style="font-size: 0.9rem;">In-Season Mode: Switch to <strong>My Lineup Strategist</strong></span>
-        <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+    <div class="guide-banner" id="mlsBanner" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(139, 92, 246, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(139, 92, 246, 0.4); padding: 0.75rem 1rem;">
+        <div onclick="window.location.href='./inseason/'" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer; color: #a78bfa;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span style="font-size: 0.9rem;">In-Season Mode: Switch to <strong>My Lineup Strategist</strong></span>
+            <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+        </div>
+        <button class="close-banner-btn" onclick="dismissBanner('mlsBanner', 'ds_hide_mls_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
     </div>
 
-    <!-- Group 2: The Dismiss Button -->
-    <button class="close-banner-btn" onclick="dismissBanner('mlsBanner', 'ds_hide_mls_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
-</div>
-
-<!-- Info & Guide Banner Shortcut -->
-<div class="guide-banner" id="guideBanner" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem;">
-    
-    <!-- Group 1: The Clickable Content -->
-    <div onclick="showTab('guide')" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
-        <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
-        <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+    <!-- Info & Guide Banner Shortcut -->
+    <div class="guide-banner" id="guideBanner" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem;">
+        <div onclick="showTab('guide')" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
+            <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
+            <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+        </div>
+        <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'ds_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
     </div>
-
-    <!-- Group 2: The Dismiss Button -->
-    <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'ds_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
-</div>
     
     <!-- DYNAMIC INSTALL APP PROMPT -->
     <section id="installCard" class="settings-card highlight-card" style="display: none;">
@@ -172,11 +165,13 @@
     <!-- 1. LOAD RANKINGS -->
     <section class="settings-card">
         <header class="card-header">
-            <h3><span class="step-num">1</span> Load Rankings</h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span>
-            </div>
+            <h3>
+                <span><span class="step-num">1</span> Load Rankings</span>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span>
+                </div>
+            </h3>
         </header>
         
         <div id="metaDisplay" class="status-badge"></div>
@@ -187,7 +182,7 @@
         </button>
         
         <div class="divider-text">OR UPLOAD CUSTOM</div>
-        <input type="file" id="fileInput" class="form-input">
+        <input type="file" id="fileInput" class="form-input" accept=".csv, .xlsx, .xls">
         
         <div class="divider-text">OR PASTE</div>
         <textarea id="csvPasteArea" class="form-input" rows="2" placeholder="Paste raw CSV text here..."></textarea>
@@ -197,11 +192,13 @@
     <!-- 2. LIVE MARKET VALUE -->
     <section class="settings-card">
         <header class="card-header">
-            <h3><span class="step-num">2</span> Live Market Value (ADP)</h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">If you uploaded custom rankings above, click here to pull in the live ADP market value so you know when players are actually being drafted.</span>
-            </div>
+            <h3>
+                <span><span class="step-num">2</span> Live Market Value (ADP)</span>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">If you uploaded custom rankings above, click here to pull in live ADP market value so you know when players are actually being drafted.</span>
+                </div>
+            </h3>
         </header>
 
         <div id="adpStatusDisplay" class="status-badge"></div>
@@ -234,64 +231,65 @@
         </div>
     </section>
 
-    <!-- 3. SLEEPER INTEGRATION -->
-    <!-- SETUP TAB SECTION 3: ADD / SYNC DRAFT -->
-<section class="settings-card">
-    <header class="card-header">
-        <h3>
-            <span class="step-num">3</span> Add / Sync Draft
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Sync with Sleeper via Username and Draft ID, OR create a manual draft for Yahoo/ESPN by clicking 'Create Manual Draft'.</span>
-            </div>
-        </h3>
-    </header>
-
-    <div class="input-group">
-        <label>Draft / League Nickname (Optional)</label>
-        <input type="text" id="newDraftName" class="form-input" placeholder="Auto-fills from Sleeper League if blank">
-    </div>
-
-    <div class="input-group">
-        <label>Sleeper Username (Optional)</label>
-        <input type="text" id="sleeperUsername" class="form-input" placeholder="e.g., fantasy_guru">
-    </div>
-
-    <div class="input-group">
-        <label class="flex-label">
-            Sleeper Draft ID (Optional)
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text"><strong>Mobile App:</strong> Draft Settings > scroll to bottom.<br><br><strong>Desktop:</strong> The string of numbers in your draft's URL.</span>
-            </div>
-        </label>
-        <input type="text" id="sleeperDraftId" class="form-input" placeholder="e.g., 912345678901234567">
-    </div>
-
-    <div class="toggle-row">
-        <div class="toggle-info">
-            <span class="toggle-title">
-                <span class="pulse-dot" style="position:static; margin-right:4px;"></span> Live Auto-Sync
-            </span>
-            <span class="toggle-desc">Automatically polls Sleeper every second for new picks in the active draft.</span>
-        </div>
-        <input type="checkbox" id="autoSyncToggle" class="toggle-switch" onchange="toggleAutoSync(this.checked)">
-    </div>
-
-    <div class="button-row-dual mt-2" style="display: flex; gap: 0.5rem;">
-        <button id="syncBtn" class="btn btn-blue" style="flex: 1;" onclick="addAndSyncSleeperDraft(this)">Sync Sleeper Draft</button>
-        <button class="btn btn-purple" style="flex: 1;" onclick="createManualDraft()">Create Manual Draft</button>
-    </div>
-</section>
-
-    <!-- 4. ROSTER LIMITS -->
+    <!-- 3. ADD / SYNC DRAFT -->
     <section class="settings-card">
         <header class="card-header">
-            <h3><span class="step-num">4</span> Roster Limits & Settings</h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Set your starting lineup slots to let the app automatically track your roster and bye weeks on the Team Tab.</span>
+            <h3>
+                <span><span class="step-num">3</span> Add / Sync Draft</span>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Sync with Sleeper via Username and Draft ID, OR create a manual draft for offline/other platforms by leaving Sleeper details blank and clicking 'Create Manual Draft'.</span>
+                </div>
+            </h3>
+        </header>
+
+        <div class="input-group">
+            <label>Draft / League Nickname (Optional)</label>
+            <input type="text" id="newDraftName" class="form-input" placeholder="Auto-fills from Sleeper League if blank">
+        </div>
+
+        <div class="input-group">
+            <label>Sleeper Username (Optional)</label>
+            <input type="text" id="sleeperUsername" class="form-input" placeholder="e.g., fantasy_guru">
+        </div>
+
+        <div class="input-group">
+            <label class="flex-label">
+                Sleeper Draft ID (Optional)
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text"><strong>Mobile App:</strong> Open Draft > tap Gear icon (Settings) > scroll to bottom.<br><br><strong>Desktop:</strong> Copy the numbers from your draft URL (e.g. sleeper.com/draft/nfl/<strong>123456789</strong>).</span>
+                </div>
+            </label>
+            <input type="text" id="sleeperDraftId" class="form-input" placeholder="e.g., 912345678901234567">
+        </div>
+
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-title">
+                    <span class="pulse-dot" style="position:static; margin-right:4px;"></span> Live Auto-Sync
+                </span>
+                <span class="toggle-desc">Automatically polls Sleeper for new picks in your active draft.</span>
             </div>
+            <input type="checkbox" id="autoSyncToggle" class="toggle-switch" onchange="toggleAutoSync(this.checked)">
+        </div>
+
+        <div class="button-row-dual mt-2" style="display: flex; gap: 0.5rem;">
+            <button id="syncBtn" class="btn btn-blue" style="flex: 1;" onclick="addAndSyncSleeperDraft(this)">Sync Sleeper Draft</button>
+            <button class="btn btn-purple" style="flex: 1;" onclick="createManualDraft()">Create Manual Draft</button>
+        </div>
+    </section>
+
+    <!-- 4. ROSTER LIMITS & SETTINGS -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3>
+                <span><span class="step-num">4</span> Roster Limits & Settings</span>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Set your starting lineup slots to let the app automatically track your roster and bye weeks on the Team Tab.</span>
+                </div>
+            </h3>
         </header>
         
         <div class="roster-grid">
@@ -332,16 +330,17 @@
             </div>
             <input type="checkbox" id="byeWarningToggle" class="toggle-switch">
         </div>
-               <div class="toggle-row">
-    <div class="toggle-info">
-        <span class="toggle-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-            Enable T-Score Analytics
-        </span>
-        <span class="toggle-desc">Overlay predictive WR scoring models. <a href="t-score.html" target="_blank" style="color: #a855f7; text-decoration: none; margin-left: 4px; font-weight: 500;">Read Methodology →</a></span>
-    </div>
-    <input type="checkbox" id="tscoreToggle" class="toggle-switch" onchange="saveSettings()">
-</div>
+
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                    Enable T-Score Analytics
+                </span>
+                <span class="toggle-desc">Overlay predictive WR scoring models. <a href="t-score.html" target="_blank" style="color: #a855f7; text-decoration: none; margin-left: 4px; font-weight: 500;">Read Methodology →</a></span>
+            </div>
+            <input type="checkbox" id="tscoreToggle" class="toggle-switch" onchange="saveSettings()">
+        </div>
 
         <button class="btn btn-primary mt-2" onclick="saveSettings(this)">Save Settings</button>
     </section>
@@ -349,11 +348,13 @@
     <!-- 5. CALL OUTS -->
     <section class="settings-card">
         <header class="card-header">
-            <h3><span class="step-num">5</span> Call Outs</h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Paste names of players you want to remember. The app will permanently color-code them in the Tracker so you never miss them.</span>
-            </div>
+            <h3>
+                <span><span class="step-num">5</span> Call Outs</span>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Paste names of players you want to remember. The app will permanently color-code them in the Tracker so you never miss them.</span>
+                </div>
+            </h3>
         </header>
         <p class="card-desc">Paste names below (separated by commas or new lines)</p>
 
@@ -395,7 +396,6 @@
 
     <div class="app-version">Draft Strategist v1.5</div>
 </div>
-
    <!-- TRACKER TAB -->
 <div id="trackerTab" class="tab-content">
     
