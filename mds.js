@@ -1390,7 +1390,12 @@
                     <td><strong>${State.myTeam.length} / ${State.dsLimits.TOTAL}</strong></td>
                 </tr>`;
         }
-
+        // --- NEW: Toggle Visibility Logic ---
+        const exportRecapContainer = document.getElementById('exportRecapContainer');
+        if (exportRecapContainer) {
+            // Only show the toggle if the user's team is completely full
+            exportRecapContainer.style.display = (State.myTeam.length >= State.dsLimits.TOTAL) ? 'flex' : 'none';
+        }
         renderDraftMatrix();
         renderDraftRecap();
     }
