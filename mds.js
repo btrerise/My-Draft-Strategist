@@ -1124,3 +1124,44 @@ const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`
     }
 
 })();
+// Export Team
+window.exportTeam = async function() {
+    if (typeof html2canvas === 'undefined') { 
+        window.alert("Screenshot library loading. Please try again in a moment."); 
+        return; 
+    }
+    
+    // Target the Starting Lineup section on the Team tab
+    const container = document.getElementById('myTeamList'); 
+    const exportBtn = document.getElementById('exportTeamBtn');
+    
+    if (!container) return;
+
+    const origText = exportBtn ? exportBtn.innerText : "Export";
+    if (exportBtn) exportBtn.innerText = "Capturing...";
+    
+    // Hide the Undo buttons during the screenshot
+    const buttons = container.querySelectorAll('.btn-draft');
+    buttons.forEach(b => b.style.display = 'none');
+    
+    const originalBg = container.style.background;
+    container.style.background = '#131b2c'; // Using your --card-bg hex
+    container.style.padding = '1rem'; 
+    container.style.borderRadius = '8px';
+    
+    try {
+        const canvas = await html2canvas(container, { backgroundColor: '#131b2c', scale: 2 });
+        const link = document.createElement('a');
+        link.download = `My_Draft_Strategist_Team.png`; 
+        link.href = canvas.toDataURL('image/png'); 
+        link.click();
+    } catch (err) {
+        console.error("Export failed:", err); 
+        window.alert("Export failed. Please try again.");
+    } finally {
+        buttons.forEach(b => b.style.display = 'inline-block');
+        container.style.background = originalBg; 
+        container.style.padding = '0'; 
+        if (exportBtn) exportBtn.innerText = origText;
+    }
+};
