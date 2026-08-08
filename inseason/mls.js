@@ -808,30 +808,51 @@
 
     // --- SCREENSHOT EXPORT ---
     window.exportLineup = async function() {
-        if (typeof html2canvas === 'undefined') { window.alert("Screenshot library loading. Please try again in a moment."); return; }
-        const container = document.getElementById('optimalLineupContainer');
-        const exportBtn = document.getElementById('exportBtn');
-        if (!container || !exportBtn) return;
+    if (typeof html2canvas === 'undefined') { 
+        window.alert("Screenshot library loading. Please try again in a moment."); 
+        return; 
+    }
+    
+    const container = document.getElementById('optimalLineupContainer');
+    const exportBtn = document.getElementById('exportBtn');
+    if (!container || !exportBtn) return;
 
-        const origText = exportBtn.innerText;
-        exportBtn.innerText = "Capturing...";
-        
-        const buttons = container.querySelectorAll('.swap-btn, .lock-btn');
-        buttons.forEach(b => b.style.display = 'none');
-        const originalBg = container.style.background;
-        container.style.background = '#1c2541'; container.style.padding = '1rem'; container.style.borderRadius = '8px';
-        
-        try {
-            const canvas = await html2canvas(container, { backgroundColor: '#1c2541', scale: 2 });
-            const link = document.createElement('a');
-            link.download = `My_Lineup_Strategist.png`; link.href = canvas.toDataURL('image/png'); link.click();
-        } catch (err) {
-            console.error("Export failed:", err); window.alert("Export failed. Please try again.");
-        } finally {
-            buttons.forEach(b => b.style.display = 'inline-block');
-            container.style.background = originalBg; container.style.padding = '0'; exportBtn.innerText = origText;
-        }
-    };
+    const origText = exportBtn.innerText;
+    exportBtn.innerText = "Capturing...";
+    
+    const buttons = container.querySelectorAll('.swap-btn, .lock-btn');
+    buttons.forEach(b => b.style.display = 'none');
+    
+    try {
+        const canvas = await html2canvas(container, { 
+            backgroundColor: '#1c2541', 
+            scale: 2,
+            onclone: (clonedDoc) => {
+                const clonedContainer = clonedDoc.getElementById('optimalLineupContainer');
+                if (clonedContainer) {
+                    clonedContainer.style.width = '480px';
+                    clonedContainer.style.maxWidth = '100%';
+                    clonedContainer.style.margin = '0 auto';
+                    clonedContainer.style.padding = '1rem';
+                    clonedContainer.style.borderRadius = '8px';
+                    clonedContainer.style.background = '#1c2541';
+                    clonedContainer.style.boxSizing = 'border-box';
+                }
+            }
+        });
+
+        const link = document.createElement('a');
+        link.download = `My_Lineup_Strategist.png`; 
+        link.href = canvas.toDataURL('image/png'); 
+        link.click();
+    } catch (err) {
+        console.error("Export failed:", err); 
+        window.alert("Export failed. Please try again.");
+    } finally {
+        buttons.forEach(b => b.style.display = 'inline-block');
+        exportBtn.innerText = origText;
+    }
+};
 
     // --- RENDERERS ---
     function loadRosterTab() {
