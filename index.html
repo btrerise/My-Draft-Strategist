@@ -50,28 +50,22 @@
 </div>
     </div>
     
-    <div class="header-controls" style="display: flex; align-items: center; gap: 0.5rem;">
-        
-        <!-- League Selector -->
-        <select id="draftProfileSelect" class="form-input" style="font-weight: 600; font-size: 0.85rem; padding: 4px 8px; height: 32px; width: auto; max-width: 100px;" onchange="switchDraftProfile()" aria-label="Select Draft Profile">
-            <option value="default">League 1</option>
-            <option value="league2">League 2</option>
-            <option value="league3">League 3</option>
-            <option value="league4">League 4</option>
-        </select>
+    <!-- HEADER CONTROL DROPDOWN -->
+<div class="header-controls" style="display: flex; align-items: center; gap: 0.5rem;">
+    <select id="draftProfileSelect" class="form-input" style="font-weight: 600; font-size: 0.85rem; padding: 4px 8px; height: 32px; width: auto; max-width: 140px;" onchange="switchDraftProfile(this.value)" aria-label="Select Active Draft">
+        <option value="">No Drafts</option>
+    </select>
 
-        <!-- Unified Smart Sync Button -->
-        <button id="headerSyncBtn" class="btn-header" onclick="handleSmartSync()" title="Manual Sync (or click to stop Live Sync)" style="padding: 0 8px; height: 32px; display: flex; align-items: center; justify-content: center;">
-            <span id="syncIconWrap" style="display: flex; align-items: center; gap: 4px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                <span class="hide-on-mobile">Sync</span>
-            </span>
-            <span id="liveIconWrap" style="display: none; align-items: center; gap: 4px; color: #ef4444; font-weight: bold;">
-                <span class="pulse-dot"></span> LIVE
-            </span>
-        </button>
-        
-    </div>
+    <button id="headerSyncBtn" class="btn-header" onclick="handleSmartSync()" title="Manual Sync (or click to stop Live Sync)" style="padding: 0 8px; height: 32px; display: flex; align-items: center; justify-content: center;">
+        <span id="syncIconWrap" style="display: flex; align-items: center; gap: 4px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <span class="hide-on-mobile">Sync</span>
+        </span>
+        <span id="liveIconWrap" style="display: none; align-items: center; gap: 4px; color: #ef4444; font-weight: bold;">
+            <span class="pulse-dot"></span> LIVE
+        </span>
+    </button>
+</div>
 </header>
 
 <!-- HAMBURGER MENU OVERLAY & DRAWER -->
@@ -241,42 +235,54 @@
     </section>
 
     <!-- 3. SLEEPER INTEGRATION -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3><span class="step-num">3</span> Sleeper Integration (Optional)</h3>
+    <!-- SETUP TAB SECTION 3: ADD / SYNC DRAFT -->
+<section class="settings-card">
+    <header class="card-header">
+        <h3>
+            <span class="step-num">3</span> Add / Sync Draft
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Drafting on Sleeper? Enter your info here to auto-cross players off your tracker as they get drafted! If playing elsewhere, leave this blank.</span>
+                <span class="tooltip-text">Sync with Sleeper via Username and Draft ID, OR create a manual draft for Yahoo/ESPN by clicking 'Create Manual Draft'.</span>
             </div>
-        </header>
+        </h3>
+    </header>
 
-        <div class="input-group">
-            <label>Sleeper Username</label>
-            <input type="text" id="sleeperUsername" class="form-input" placeholder="e.g., fantasy_guru">
-        </div>
+    <div class="input-group">
+        <label>Draft / League Nickname (Optional)</label>
+        <input type="text" id="newDraftName" class="form-input" placeholder="Auto-fills from Sleeper League if blank">
+    </div>
 
-        <div class="input-group">
-            <label class="flex-label">
-                Draft ID
-                <div class="tooltip-container">
-                    <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text"><strong>Mobile App:</strong> League Settings > General > scroll to bottom.<br><br><strong>Desktop:</strong> The string of numbers in your draft's URL.</span>
-                </div>
-            </label>
-            <input type="text" id="sleeperDraftId" class="form-input" placeholder="e.g., 912345678901234567">
-        </div>
+    <div class="input-group">
+        <label>Sleeper Username (Optional)</label>
+        <input type="text" id="sleeperUsername" class="form-input" placeholder="e.g., fantasy_guru">
+    </div>
 
-        <div class="toggle-row">
-            <div class="toggle-info">
-                <span class="toggle-title">
-                    <span class="pulse-dot" style="position:static; margin-right:4px;"></span> Live Auto-Sync
-                </span>
+    <div class="input-group">
+        <label class="flex-label">
+            Sleeper Draft ID (Optional)
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text"><strong>Mobile App:</strong> Draft Settings > scroll to bottom.<br><br><strong>Desktop:</strong> The string of numbers in your draft's URL.</span>
             </div>
-            <input type="checkbox" id="autoSyncToggle" class="toggle-switch" onchange="toggleAutoSync(this.checked)">
-        </div>
+        </label>
+        <input type="text" id="sleeperDraftId" class="form-input" placeholder="e.g., 912345678901234567">
+    </div>
 
-        <button id="syncBtn" class="btn btn-blue" onclick="syncSleeper(false, this)">Sync Sleeper Now</button>
-    </section>
+    <div class="toggle-row">
+        <div class="toggle-info">
+            <span class="toggle-title">
+                <span class="pulse-dot" style="position:static; margin-right:4px;"></span> Live Auto-Sync
+            </span>
+            <span class="toggle-desc">Automatically polls Sleeper every second for new picks in the active draft.</span>
+        </div>
+        <input type="checkbox" id="autoSyncToggle" class="toggle-switch" onchange="toggleAutoSync(this.checked)">
+    </div>
+
+    <div class="button-row-dual mt-2" style="display: flex; gap: 0.5rem;">
+        <button id="syncBtn" class="btn btn-blue" style="flex: 1;" onclick="addAndSyncSleeperDraft(this)">Sync Sleeper Draft</button>
+        <button class="btn btn-purple" style="flex: 1;" onclick="createManualDraft()">Create Manual Draft</button>
+    </div>
+</section>
 
     <!-- 4. ROSTER LIMITS -->
     <section class="settings-card">
