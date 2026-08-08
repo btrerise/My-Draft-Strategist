@@ -430,11 +430,17 @@
     </section>
 
     <!-- EXPORT BUTTON (Stays outside export) -->
-    <button id="exportTeamBtn" class="btn btn-purple mb-4" onclick="exportTeam()">
+    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+    <button id="exportTeamBtn" class="btn btn-purple" onclick="exportTeam()" style="margin-bottom: 0;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Export
     </button>
-
+    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+        <input type="checkbox" id="includeRecapInExport" checked style="accent-color: var(--primary-purple);">
+        Include Draft Recap in Export
+    </label>
+</div>
+    
     <!-- ========================================== -->
     <!-- START OF EXPORT WRAPPER (Captured in PNG)  -->
     <!-- ========================================== -->
