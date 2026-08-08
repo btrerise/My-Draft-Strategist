@@ -29,9 +29,33 @@
         "ARI": 14, "DAL": 14
     };
 
-    // --- DRAFT STATE HELPERS ---
+    // --- INITIALIZE DEFAULT DRAFT FALLBACK ---
+    function ensureDefaultDraft() {
+        if (State.drafts.length === 0) {
+            const defaultDraft = {
+                draftId: 'draft_default',
+                name: 'Main Draft',
+                username: localStorage.getItem('ds_username') || '',
+                settings: JSON.parse(localStorage.getItem('ds_draft_settings')) || { teams: 12, rounds: 15 },
+                limits: JSON.parse(localStorage.getItem('ds_limits')) || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6, TOTAL: 14 },
+                draftedPlayers: JSON.parse(localStorage.getItem('ds_drafted')) || [],
+                myTeam: JSON.parse(localStorage.getItem('ds_myTeam')) || [],
+                rawDraftPicks: JSON.parse(localStorage.getItem('ds_raw_picks')) || [],
+                totalPicks: parseInt(localStorage.getItem('ds_total_picks')) || 0
+            };
+            State.drafts = [defaultDraft];
+            State.activeDraftId = 'draft_default';
+            localStorage.setItem('ds_drafts', JSON.stringify(State.drafts));
+            localStorage.setItem('ds_active_draft_id', 'draft_default');
+        } else if (!State.activeDraftId || !State.drafts.some(d => d.draftId === State.activeDraftId)) {
+            State.activeDraftId = State.drafts[0].draftId;
+            localStorage.setItem('ds_active_draft_id', State.activeDraftId);
+        }
+    }
+
     function getActiveDraft() {
-        return State.drafts.find(d => d.draftId === State.activeDraftId) || null;
+        ensureDefaultDraft();
+        return State.drafts.find(d => d.draftId === State.activeDraftId) || State.drafts[0];
     }
 
     function saveActiveDraftState() {
@@ -45,10 +69,6 @@
     function refreshDraftDropdown() {
         const select = document.getElementById('draftProfileSelect');
         if (!select) return;
-        if (State.drafts.length === 0) {
-            select.innerHTML = `<option value="">No Drafts</option>`;
-            return;
-        }
         let html = "";
         State.drafts.forEach(d => {
             let sel = d.draftId === State.activeDraftId ? "selected" : "";
@@ -65,8 +85,6 @@
         let draft = getActiveDraft();
         if (draft) {
             initSettingsUI();
-            
-            // If active draft is manual, stop auto-sync
             if (draft.username === "Manual" && State.autoSyncTimer) {
                 window.toggleAutoSync(false);
                 const toggleEl = document.getElementById('autoSyncToggle');
@@ -140,7 +158,7 @@
         let draft = getActiveDraft();
 
         setVal('sleeperUsername', draft && draft.username !== "Manual" ? draft.username : (localStorage.getItem('ds_username') || ""));
-        setVal('sleeperDraftId', draft && !draft.draftId.startsWith('manual_') ? draft.draftId : (localStorage.getItem('ds_draftId') || ""));
+        setVal('sleeperDraftId', draft && !draft.draftId.startsWith('manual_') && !draft.draftId.startsWith('draft_') ? draft.draftId : (localStorage.getItem('ds_draftId') || ""));
         setVal('targetList', localStorage.getItem('ds_targets') || "");
         setVal('avoidList', localStorage.getItem('ds_avoids') || "");
         setVal('dartList', localStorage.getItem('ds_darts') || "");
@@ -211,6 +229,7 @@
         
         let draft = getActiveDraft();
         if (draft) {
+            if (getVal('sleeperUsername')) draft.username = getVal('sleeperUsername');
             draft.settings = {
                 teams: parseInt(getVal('leagueTeams')) || 12,
                 rounds: parseInt(getVal('leagueRounds')) || 15
@@ -327,7 +346,6 @@
             if (!draftRes.ok) throw new Error("Could not fetch Draft ID details.");
             const dInfo = await draftRes.json();
 
-            // Fetch official League Name if linked
             let draftName = document.getElementById('newDraftName')?.value.trim() || "";
             if (!draftName && dInfo.league_id) {
                 try {
@@ -463,7 +481,7 @@
 
     window.draftPlayer = function(id, isMine) {
         let draft = getActiveDraft();
-        if (!draft) { window.alert("Please add or select a draft profile first."); return; }
+        if (!draft) return;
         if (!draft.draftedPlayers.includes(id)) {
             draft.draftedPlayers.push(id);
             if (isMine) draft.myTeam.push(id);
@@ -479,20 +497,317 @@
         saveActiveDraftState();
     };
 
+    // --- FILE PARSING & DATA IMPORT ---
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'csv') {
+                Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
+            } else if (ext === 'xlsx' || ext === 'xls') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                window.alert("Please upload a .csv, .xlsx, or .xls file");
+            }
+        });
+    }
+
+    window.processPaste = function(btn) {
+        const text = document.getElementById('csvPasteArea')?.value;
+        if (text) Papa.parse(text, { header: true, skipEmptyLines: true, complete: results => processData(results.data, btn) });
+    };
+
+    async function processData(data, btn = null) {
+        const metaEl = document.getElementById('metaDisplay');
+        if (metaEl) {
+            metaEl.style.display = 'block';
+            metaEl.innerText = "Processing players and building database...";
+        }
+
+        let newPlayers = [];
+        let posCounters = {}; 
+        let sleeperMap = {};
+
+        try {
+            let res = await fetch('https://api.sleeper.app/v1/players/nfl');
+            if (res.ok) sleeperMap = await res.json();
+        } catch(err) {
+            console.warn("Could not fetch Sleeper database.");
+        }
+
+        data.forEach((row, index) => {
+            let keys = Object.keys(row);
+            let getVal = possibleNames => {
+                let key = keys.find(k => possibleNames.includes(k.toLowerCase().trim().replace(/['"]/g, '')));
+                return key ? row[key] : "";
+            };
+
+            let name = getVal(['player', 'name', 'player name']);
+            if (!name) return;
+
+            let cleanName = String(name).trim();
+            let team = getVal(['team', 'tm', 'franchise']);
+            let bye = getVal(['bye', 'bye week']);
+
+            let nameMatch = cleanName.match(/(.+)\s+\(([A-Z]{2,3})\)/i);
+            if (nameMatch) {
+                cleanName = nameMatch[1].trim();
+                if (!team) team = nameMatch[2].toUpperCase();
+            }
+
+            let posRaw = getVal(['position', 'pos', 'pos rank', 'posn']);
+            let posGroup = posRaw ? String(posRaw).replace(/[0-9]/g, '').toUpperCase().trim() : "FLEX";
+            let posDisplay = posRaw ? String(posRaw).toUpperCase().trim() : posGroup;
+
+            if (!posCounters[posGroup]) posCounters[posGroup] = 1;
+            if (!/\d/.test(posDisplay)) posDisplay = posGroup + posCounters[posGroup];
+            posCounters[posGroup]++;
+
+            let tier = getVal(['tier', '#', 'tier #']) || "-";
+            let adp = getVal(['adp', 'auction', 'value', 'auction value', 'rank/auction value']) || "-";
+
+            let bestMatchId = null;
+            let fallbackId = null;
+            
+            for (let [sId, sp] of Object.entries(sleeperMap)) {
+                if (sp.first_name && sp.last_name) {
+                    let fullName = `${sp.first_name} ${sp.last_name}`;
+                    let isName = cleanName.toLowerCase() === fullName.toLowerCase();
+                    let isPos = posGroup === "FLEX" || (sp.position || "").toUpperCase() === posGroup;
+                    
+                    if (isName && isPos) {
+                        fallbackId = sId;
+                        if (team && team !== "FA" && sp.team && sp.team.toUpperCase() === team) {
+                            bestMatchId = sId;
+                            break;
+                        } else if (sp.team) {
+                            bestMatchId = sId;
+                        }
+                    }
+                }
+            }
+            
+            let masterId = bestMatchId || fallbackId || null;
+            if (masterId && sleeperMap[masterId]) {
+                let sp = sleeperMap[masterId];
+                if (!team || team === "FA") team = sp.team || "FA";
+            }
+
+            if (team && team !== "FA" && (!bye || bye === "-" || String(bye).trim() === "")) {
+                bye = BYE_WEEKS_2026[team.toUpperCase()] || "-";
+            }
+
+            newPlayers.push({ 
+                id: index + 1, sleeperId: masterId || `custom_${index}`, rank: index + 1, name: cleanName, 
+                posGroup: posGroup, posDisplay: posDisplay, tier: tier, 
+                team: (team ? String(team).toUpperCase() : "FA"), bye: (bye || "-"), adp: adp,
+                isRookie: false
+            });
+        });
+
+        if (newPlayers.length > 0) {
+            State.players = newPlayers;
+            let now = new Date();
+            let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            State.rankingsMeta = { count: State.players.length, date: dateString };
+
+            localStorage.setItem('ds_meta', JSON.stringify(State.rankingsMeta));
+            localStorage.setItem('ds_players', JSON.stringify(State.players));
+            updateMetaDisplay();
+            saveActiveDraftState();
+
+            if (btn) flashButton(btn, "Loaded Successfully");
+        } else {
+            if (metaEl) metaEl.style.display = 'none';
+            if (btn) flashButton(btn, "Error Parsing Data", true);
+            window.alert("Error: Could not detect player names.");
+        }
+    }
+
+    // --- LEAGUE LOGS INTEGRATION ---
+    window.quickStartLeagueLogs = async function(btn) {
+        const formatSelect = document.getElementById('adpFormatSelect');
+        if (!formatSelect) return;
+        const profileKey = formatSelect.value;
+        const formatText = formatSelect.options[formatSelect.selectedIndex].text;
+
+        const originalText = btn.innerText;
+        btn.innerText = "Building Quick-Start...";
+
+        try {
+            let sleeperMap = {};
+            try {
+                let res = await fetch('https://api.sleeper.app/v1/players/nfl');
+                if (res.ok) sleeperMap = await res.json();
+            } catch(e) { console.warn("Sleeper DB fetch failed", e); }
+
+            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+            if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
+            const llMarket = await marketRes.json();
+
+            let playerMetaMap = {};
+            try {
+                let pRes = await fetch(`https://developer.leaguelogs.com/v1/players`);
+                if (pRes.ok) {
+                    let pData = await pRes.json();
+                    pData.data.forEach(lp => { playerMetaMap[lp.sleeperPlayerId] = lp; });
+                }
+            } catch(e) { console.warn("LeagueLogs Meta fetch failed", e); }
+
+            let newPlayers = [];
+            let posCounters = {};
+            let sortedMarket = llMarket.data.sort((a, b) => parseFloat(a.overallRank) - parseFloat(b.overallRank));
+
+            sortedMarket.forEach(item => {
+                let sId = item.sleeperPlayerId;
+                let sp = sleeperMap[sId];
+                if (!sp || !sp.first_name) return;
+
+                let cleanName = `${sp.first_name} ${sp.last_name}`;
+                let team = sp.team || "FA";
+                let bye = BYE_WEEKS_2026[team] || "-";
+                
+                let posGroup = (sp.position || "FLEX").toUpperCase();
+                if (!['QB', 'RB', 'WR', 'TE'].includes(posGroup)) return;
+
+                if (!posCounters[posGroup]) posCounters[posGroup] = 1;
+                let posDisplay = posGroup + posCounters[posGroup];
+                posCounters[posGroup]++;
+
+                let lp = playerMetaMap[sId];
+                let isRookie = lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false;
+                let adpNum = parseFloat(item.overallRank);
+
+                newPlayers.push({
+                    id: newPlayers.length + 1, sleeperId: sId, rank: newPlayers.length + 1,
+                    name: cleanName, posGroup: posGroup, posDisplay: posDisplay, tier: "-", 
+                    team: team, bye: bye, adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1), isRookie: isRookie
+                });
+            });
+
+            if (newPlayers.length > 0) {
+                State.players = newPlayers;
+                let now = new Date();
+                let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                State.rankingsMeta = { count: State.players.length, date: dateString };
+                State.adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
+
+                localStorage.setItem('ds_meta', JSON.stringify(State.rankingsMeta));
+                localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
+                localStorage.setItem('ds_players', JSON.stringify(State.players));
+                
+                updateMetaDisplay();
+                saveActiveDraftState();
+                flashButton(btn, "Quick-Start Loaded!", false, originalText);
+            } else {
+                throw new Error("No players generated.");
+            }
+        } catch(err) {
+            console.error(err);
+            flashButton(btn, "Fetch Error", true, originalText);
+            window.alert(`Failed to load Quick-Start.\n\n${err.message}`);
+        }
+    };
+
+    window.fetchLeagueLogsADP = async function(btn) {
+        if (State.players.length === 0) {
+            flashButton(btn, "Load Rankings First", true);
+            window.alert("You must load a set of player rankings before fetching Market Value.");
+            return;
+        }
+
+        const formatSelect = document.getElementById('adpFormatSelect');
+        if (!formatSelect) return;
+        const profileKey = formatSelect.value;
+        const formatText = formatSelect.options[formatSelect.selectedIndex].text;
+
+        const originalText = btn.innerText;
+        btn.innerText = "Fetching...";
+
+        try {
+            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+            if (!marketRes.ok) throw new Error(`LeagueLogs Market Error: ${marketRes.status}`);
+            const llMarket = await marketRes.json();
+
+            const adpMap = {};
+            llMarket.data.forEach(item => { adpMap[item.sleeperPlayerId] = item.overallRank; });
+
+            let playerMetaMap = {};
+            let pRes = await fetch(`https://developer.leaguelogs.com/v1/players`);
+            if (pRes.ok) {
+                let pData = await pRes.json();
+                pData.data.forEach(lp => { playerMetaMap[lp.sleeperPlayerId] = lp; });
+            }
+
+            State.players.forEach(p => {
+                if (adpMap[p.sleeperId] !== undefined) p.adp = adpMap[p.sleeperId];
+                let meta = playerMetaMap[p.sleeperId];
+                p.isRookie = meta ? (meta.yearsExp === 0 || meta.yearsExp === "0" || meta.yearsExp === null) : false;
+            });
+
+            localStorage.setItem('ds_players', JSON.stringify(State.players));
+            renderBoard();
+
+            let now = new Date();
+            let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            State.adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
+            localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
+            updateMetaDisplay();
+
+            flashButton(btn, "Complete!", false, originalText);
+        } catch(err) {
+            console.error(err);
+            flashButton(btn, "Fetch Error", true, originalText);
+            window.alert(`Failed to fetch live Market Value.\n\n${err.message}`);
+        }
+    };
+
+    window.processManualADP = function(btn) {
+        const text = document.getElementById('adpPasteArea')?.value;
+        if (!text) {
+            flashButton(btn, "Paste Rank First", true);
+            return;
+        }
+
+        let matchedCount = 0;
+        text.split('\n').forEach(row => {
+            let parts = row.split(/\t|,/); 
+            if (parts.length >= 2) {
+                let pName = parts[0];
+                let newAdp = parts[parts.length - 1].trim(); 
+                if (pName && newAdp && !isNaN(parseFloat(newAdp))) {
+                    let matchedPlayer = State.players.find(p => p.name.toLowerCase() === pName.toLowerCase());
+                    if (matchedPlayer) { matchedPlayer.adp = parseFloat(newAdp).toFixed(1); matchedCount++; }
+                }
+            }
+        });
+
+        if (matchedCount > 0) {
+            localStorage.setItem('ds_players', JSON.stringify(State.players));
+            renderBoard();
+            flashButton(btn, "Updated!");
+        } else {
+            flashButton(btn, "No Matches", true);
+        }
+    };
+
     // --- INITIALIZATION ---
     window.onload = function() {
+        ensureDefaultDraft();
+        refreshDraftDropdown();
         initSettingsUI();
         updateMetaDisplay();
-        refreshDraftDropdown();
 
-        if (State.drafts.length > 0 && !State.activeDraftId) {
-            State.activeDraftId = State.drafts[0].draftId;
-        }
-        if (State.activeDraftId) {
-            const select = document.getElementById('draftProfileSelect');
-            if (select) select.value = State.activeDraftId;
-            initSettingsUI();
-        }
         if (State.players.length > 0) renderBoard();
         window.showTab('setup');
     };
@@ -661,8 +976,6 @@
         if (!draft) { recapCard.style.display = 'none'; return; }
 
         let totalRequired = draft.limits?.TOTAL || 14;
-        let teams = draft.settings?.teams || 12;
-
         if (!draft.myTeam || draft.myTeam.length < totalRequired) {
             recapCard.style.display = 'none';
             return;
