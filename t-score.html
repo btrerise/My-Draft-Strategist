@@ -379,9 +379,18 @@
     <div id="top50Tab" class="tab-content">
         <div class="settings-card highlight-card">
         <h3>2026 Top-50 T-Score Rankings</h3>
-        <div class="table-responsive">
-            <table>
-                <thead><tr><th>Player</th><th>T-Score</th><th>Rank</th><th>Label</th></tr></thead>
+        <p class="card-desc">T-Score is a combination of a player’s previous season Yds/G, Yds/Tm PA/G, and RZ Tgt, each weighted based on their coefficient to the following season using historical data. <em>Note: Rookies are not included since there is no previous NFL data to utilize.</em></p>
+            
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>T-Score (U-S)</th>
+                            <th>Label</th>
+                        </tr>
+                    </thead>
                 <tbody>
                     <tr><td>Jaxon Smith-Njigba</td><td>98.2</td><td>1</td><td><span class="label-badge l-elite">Elite</span></td></tr>
                     <tr><td>Puka Nacua</td><td>88.5</td><td>2</td><td><span class="label-badge l-elite">Elite</span></td></tr>
@@ -441,10 +450,20 @@
     <div id="valuesTab" class="tab-content">
         <div class="settings-card">
         <h3>2026 Values at ADP</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Players with an ADP > 100 outperforming their expected cost.</p>
-        <div class="table-responsive">
-            <table>
-                <thead><tr><th>Player</th><th>T-Score</th><th>Rank</th><th>Label</th><th>ADP</th><th>Exp Score</th><th>Value Diff</th></tr></thead>
+        <p class="card-desc">Players with an ADP above 100 that the model has identified as a value. This compares the expected T-Score (based on an ADP trendline) to the actual T-Score.</p>
+            
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>ADP</th>
+                            <th>Actual Score</th>
+                            <th>Exp Score</th>
+                            <th>Diff</th>
+                        </tr>
+                    </thead>
                 <tbody>
                     <tr><td><strong>Zay Flowers</strong></td><td>68.5</td><td>7</td><td><span class="label-badge l-high">High-End Starter</span></td><td>42.5</td><td>39.2</td><td><span class="val-badge val-fire">+29.3</span></td></tr>
                     <tr><td><strong>Michael Wilson</strong></td><td>56.7</td><td>15</td><td><span class="label-badge l-strong">Strong Starter</span></td><td>96.0</td><td>31.3</td><td><span class="val-badge val-fire">+25.4</span></td></tr>
@@ -457,9 +476,20 @@
     <div id="sleepersTab" class="tab-content">
         <div class="settings-card">
         <h3>2026 Sleepers at ADP</h3>
-        <div class="table-responsive">
-            <table>
-                <thead><tr><th>Player</th><th>T-Score</th><th>Rank</th><th>Label</th><th>ADP</th><th>Exp Score</th><th>Value Diff</th></tr></thead>
+        <p class="card-desc">Players drafted outside the top 100 overall (ADP > 100) that present massive upside compared to their cost.</p>
+            
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>ADP</th>
+                            <th>Actual Score</th>
+                            <th>Exp Score</th>
+                            <th>Diff</th>
+                        </tr>
+                    </thead>
                 <tbody>
                     <tr><td><strong>Wan'Dale Robinson</strong></td><td>55.9</td><td>16</td><td><span class="label-badge l-strong">Strong Starter</span></td><td>114.2</td><td>40.6</td><td><span class="val-badge val-fire">+15.3</span></td></tr>
                 </tbody>
@@ -471,9 +501,20 @@
     <div id="avoidsTab" class="tab-content">
         <div class="settings-card">
         <h3>2026 Avoids at ADP</h3>
-        <div class="table-responsive">
-            <table>
-                <thead><tr><th>Player</th><th>T-Score</th><th>Label</th><th>ADP</th><th>Exp Score</th><th>Value Diff</th></tr></thead>
+        <p class="card-desc">Players the T-Score model suggests fading based on their market price versus historical production metrics.</p>
+            
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>ADP</th>
+                            <th>Actual Score</th>
+                            <th>Exp Score</th>
+                            <th>Diff</th>
+                        </tr>
+                    </thead>
                 <tbody>
                     <tr><td><strong>Xavier Worthy</strong></td><td>36.0</td><td><span class="label-badge l-quality">Quality Contributor</span></td><td>51.8</td><td>48.0</td><td><span class="val-badge val-warn">-12.0</span></td></tr>
                     <tr><td><strong>Jaylen Waddle</strong></td><td>40.3</td><td><span class="label-badge l-quality">Quality Contributor</span></td><td>68.6</td><td>46.6</td><td><span class="val-badge val-warn">-6.3</span></td></tr>
