@@ -37,29 +37,40 @@
 <header class="header">
     <div class="header-left">
         <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu">
-            <!-- Premium SVG Hamburger Icon -->
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
         </button>
         
-        <!-- Logo / Title -->
-        <div class="logo-container" onclick="showTab('setup')">
+        <div class="logo-container" onclick="showTab('tracker')">
             <img src="5775.png" alt="Draft Strategist Logo" class="logo-img">
             <div class="logo-text">My Draft <span>Strategist</span></div>
         </div>
     </div>
+    
+    <div class="header-controls" style="display: flex; align-items: center; gap: 0.5rem;">
+        
+        <!-- League Selector -->
+        <select id="draftProfileSelect" class="form-input" style="font-weight: 600; font-size: 0.85rem; padding: 4px 8px; height: 32px; width: auto; max-width: 100px;" onchange="switchDraftProfile()" aria-label="Select Draft Profile">
+            <option value="default">League 1</option>
+            <option value="league2">League 2</option>
+            <option value="league3">League 3</option>
+            <option value="league4">League 4</option>
+        </select>
 
-    <div class="header-controls">
-        <!-- Live Indicator (Now a proper button with a pulsating dot) -->
-        <button id="liveIndicator" class="live-indicator" style="display: none;" onclick="toggleAutoSync(false); document.getElementById('autoSyncToggle').checked = false;" title="Click to Stop Live Sync">
-            <span class="pulse-dot"></span> LIVE
+        <!-- Unified Smart Sync Button -->
+        <button id="headerSyncBtn" class="btn-header" onclick="handleSmartSync()" title="Manual Sync (or click to stop Live Sync)" style="padding: 0 8px; height: 32px; display: flex; align-items: center; justify-content: center;">
+            <span id="syncIconWrap" style="display: flex; align-items: center; gap: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <span class="hide-on-mobile">Sync</span>
+            </span>
+            <span id="liveIconWrap" style="display: none; align-items: center; gap: 4px; color: #ef4444; font-weight: bold;">
+                <span class="pulse-dot"></span> LIVE
+            </span>
         </button>
         
-        <!-- Sync Button -->
-        <button id="headerSyncBtn" class="btn-header" onclick="syncSleeper()">
-            <!-- Premium SVG Lightning Icon -->
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            Sync
-        </button>
     </div>
 </header>
 
