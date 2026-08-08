@@ -3,78 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>T-Score WR Model</title>
-    
-    <link rel="icon" href="5775.png">
-    <link rel="stylesheet" href="styles.css">
-    
+    <meta name="description" content="T-Score Methodology and Rankings for Wide Receivers">
+    <title>T-Score Methodology | My Draft Strategist</title>
+
+    <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     
+    <link rel="icon" href="5775.png">
+    <link rel="stylesheet" href="styles.css">
+
     <style>
-        .tscore-container { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; }
-        .tscore-header { text-align: center; margin-bottom: 2rem; }
-        .tscore-header h1 { font-size: 2.2rem; color: var(--text-main); margin-bottom: 0.5rem; }
-        
-        /* Tab Navigation */
-        .tab-nav { display: flex; gap: 0.5rem; overflow-x: auto; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
-        .tab-btn { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid transparent; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
-        .tab-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
-        .tab-btn.active { background: var(--primary-green); color: var(--bg-main); border-color: var(--primary-green); }
-        
-        /* Content Sections */
-        .t-section { display: none; animation: fadeIn 0.3s ease; }
-        .t-section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Typography for Research */
-        .research-content h3 { color: var(--primary-green); margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
-        .research-content p, .research-content li { color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem; }
-        .research-content ul { padding-left: 1.5rem; margin-bottom: 1rem; }
-        .research-content strong { color: var(--text-main); }
-        .research-content blockquote { background: rgba(255,255,255,0.05); border-left: 4px solid var(--primary-green); padding: 0.75rem 1rem; margin: 1rem 0; font-style: italic; color: #a1a1aa; }
-        
-        /* Tables */
-        .tscore-card { background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 2rem; }
-        .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; margin-bottom: 1rem; }
-        th, td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
-        th { background: rgba(0,0,0,0.2); font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
-        tr:hover { background: rgba(255,255,255,0.03); }
-        
-        /* Badges */
-        .val-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
-        .val-fire { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .val-warn { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .label-badge { font-weight: 600; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; }
-        .l-elite { background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }
-        .l-high { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .l-strong { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .l-quality { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .l-boom { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .l-depth { background: rgba(255, 255, 255, 0.1); color: #9ca3af; border: 1px solid var(--border); }
+        /* T-Score Specific Styles */
+        .tscore-hero {
+            padding: 3rem 1.5rem;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, var(--bg-color) 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tscore-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .tscore-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Sticky Sub-Nav for Tabs */
+        .tscore-nav-wrapper {
+            position: sticky;
+            top: 60px; /* Sits right below the main header */
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tscore-nav-btn {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .tscore-nav-btn:hover {
+            color: var(--text-main);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .tscore-nav-btn.active {
+            background: var(--target-bg);
+            color: var(--primary-green);
+            border-color: var(--primary-green);
+        }
+
+        /* Editorial Reading Typography */
+        .article-content {
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: #d1d5db;
+        }
+
+        .article-content h2 {
+            font-size: 1.75rem;
+            color: var(--text-main);
+            margin: 2.5rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .article-content h3 {
+            font-size: 1.25rem;
+            color: var(--text-main);
+            margin: 1.5rem 0 0.75rem 0;
+        }
+
+        .article-content p {
+            margin-bottom: 1.25rem;
+            text-wrap: pretty;
+        }
+
+        .article-content ul {
+            margin: 0 0 1.5rem 1.5rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .math-block {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid #60a5fa;
+            padding: 1rem 1.5rem;
+            border-radius: 0 8px 8px 0;
+            font-family: monospace;
+            font-size: 1.1rem;
+            margin: 1.5rem 0;
+            color: #93c5fd;
+            overflow-x: auto;
+        }
+
+        /* Premium Data Tables */
+        .data-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            margin-bottom: 2rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .data-table th {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .data-table td {
+            padding: 1rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Label Badges */
+        .label-elite { color: #a855f7; background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+        .label-high { color: #3b82f6; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+        .label-strong { color: #10b981; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+        .label-quality { color: #f59e0b; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+        .label-boom { color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+        .label-depth { color: var(--text-muted); background: rgba(255, 255, 255, 0.1); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
     </style>
+    
+    <!-- MathJax for rendering LaTeX equations -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 
-<div class="tscore-container">
-    <div class="tscore-header">
-        <h1>T-Score WR Model</h1>
+<header class="header">
+    <div class="header-left">
+        <div class="logo-container" onclick="window.location.href='index.html'">
+            <img src="5775.png" alt="Draft Strategist Logo" class="logo-img">
+            <div class="logo-text">My Draft <span>Strategist</span></div>
+        </div>
     </div>
-
-    <!-- Tab Navigation -->
-    <div class="tab-nav">
-        <button class="tab-btn active" onclick="openTab('tab-research', this)">The Research</button>
-        <button class="tab-btn" onclick="openTab('tab-2024', this)">2024 Analysis</button>
-        <button class="tab-btn" onclick="openTab('tab-top50', this)">2026 Top 50</button>
-        <button class="tab-btn" onclick="openTab('tab-values', this)">Values @ ADP</button>
-        <button class="tab-btn" onclick="openTab('tab-sleepers', this)">Sleepers</button>
-        <button class="tab-btn" onclick="openTab('tab-avoids', this)">Avoids</button>
+    <div class="header-controls">
+        <button class="btn-secondary btn-sm" onclick="window.location.href='index.html'">
+            ← Back to Draft
+        </button>
     </div>
+</header>
 
+<div class="tscore-hero">
+    <h1 class="tscore-title">The T-Score Model</h1>
+    <p class="tscore-subtitle">A predictive statistical model for evaluating Wide Receiver fantasy production based on multiple linear regression analysis.</p>
+</div>
+
+<div class="tscore-nav-wrapper">
+    <button class="tscore-nav-btn active" onclick="switchTab('research')">The Research</button>
+    <button class="tscore-nav-btn" onclick="switchTab('top50')">2025 Top-50</button>
+    <button class="tscore-nav-btn" onclick="switchTab('values')">Values at ADP</button>
+    <button class="tscore-nav-btn" onclick="switchTab('avoids')">Avoids at ADP</button>
+    <button class="tscore-nav-btn" onclick="switchTab('sleepers')">Sleepers at ADP</button>
+</div>
+
+<div class="container" style="padding-top: 1rem;">
+    
     <!-- TAB: THE RESEARCH -->
-    <div id="tab-research" class="t-section active research-content">
+    <div id="researchTab" class="tab-content active">
+        <div class="article-content">
         <h3>Introduction</h3>
         <p>I stumbled upon a <a href="https://fantasyclassroom.org/Blogs/sticky-stats/wr-metrics" style="color:var(--primary-green);">random article</a> on Reddit, where the author was using WR stats from a previous season to try and predict fantasy success for Wide Receivers (WR) the following season. He had created his own “trinity” score utilizing Target (Tgt) Share, Air Yards (AY) Share, and Yards After Catch (YAC) per reception, and normalized them. Normalizing means taking the stats of a particular metric, and putting it all on a 0-100 (or 0-1) scale, in order to make more fair comparisons. He also looked into alternative combinations of metrics, and the one where he had found the most correlation used total receiving yards, YAC, AY Share, and Yards per Team Pass Attempt, and normalized each stat.</p>
         <p>At the time I read this particular article, he didn’t have anything using the stats from 2024 to try and predict 2025 fantasy success, so I decided to take it on myself. I then decided to adjust it, because some of those stats hurt WRs who got injured. I know that decreases sample sizes in some cases, but I decided nonetheless to adjust each stat for "per game". I then combined those normalized stats into a sum to give each WR a score, sorted the data by that score, and ranked them. I found the results for the top-12 interesting.</p>
@@ -86,13 +223,16 @@
             <li>Yards per Team Pass Attempts/game</li>
             <li>Air Yards Share/game</li>
         </ul>
-        <blockquote>Note: Coincidentally, I found out that “t-scoring” is a common method used in data analytics to standardize raw data points. It is completely by accident that I decided to call my model “T-Score” based on my last name. Fun accident, though.</blockquote>
+        <p><em>Note: Coincidentally, I found out that “t-scoring” is a common method used in data analytics to standardize raw data points. It is completely by accident that I decided to call my model “T-Score” based on my last name. Fun accident, though.</em></p>
         <p>Since then, though, I’ve done a ton of learning and reading on data analysis, and have greatly adjusted my model. I also learned that I needed to apply qualifications in order for WR to be ranked; I eventually landed on a minimum of both 8 games played in a season, and 15 receptions in a season (this might seem low, but if a WR played only 8 games, that comes out to just under 2 receptions a game; surprisingly, if I raised the minimum much more, I was missing what I felt to be somewhat relevant players in deep leagues).</p>
 
         <h3>The Goal: Predicting N+1 PPG</h3>
         <p>My primary objective has been to build a robust predictive model for wide receiver performance in the subsequent season (N+1), measured by Points Per Game (PPG). I utilized <strong>T-scoring</strong> (the data analytics method) to standardize different metrics, allowing for fair comparison and combination, and <strong>Multiple Linear Regression (MLR)</strong> to determine the optimal weights for each metric in predicting N+1 PPG.</p>
         <p>MLR is a statistical technique used to model the relationship between a <strong>single dependent variable</strong> and <strong>two or more independent variables</strong>. The core idea of MLR is to find a linear equation that best describes how the independent variables influence or predict the value of the dependent variable. For my math nerds out there, the general form of a Multiple Linear Regression equation is:</p>
-        <p style="text-align:center; font-weight:bold; color:var(--text-main); font-size:1.1rem; letter-spacing:2px; margin:1rem 0;">Y = β₀ + β₁X₁ + β₂X₂ + ⋯ + βₙXₙ + ϵ</p>
+        <div class="math-block">
+                $$Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + \dots + \beta_nX_n + \epsilon$$
+            </div>
+
         <p>Now, the problem with MLR and football stats is that MLR makes the assumption that the relationship between the dependent variable and each independent variable (and their combination) is linear. Well, we all know that’s just not the case. Too many things such as QB play, offensive scheme, O-Line strength, and so much more causes football to be a highly variable sport. The good news is, of the main offensive positions used in fantasy football, WR is probably the closest to have a more linear relationship than the other positions.</p>
         <p>This makes some sense; for example, while a WR <em>is</em> impacted by a poor O-Line, WRs are not as <em>directly</em> impacted as a Running Back. Once the ball is in a WR’s hands, they are more than likely well beyond the O-Line. That’s just one example, but the point I’m trying to make is that the variables that impact a WR’s play tend to be more straightforward than the other positions. If a WR is targeted a lot, more than likely they will produce a lot.</p>
         <p>So, while MLR is <em>not</em> the end-all be-all in figuring out how closely particular metrics relate to PPG, it is helpful (and interesting) for WR data. Once I started applying Multiple Linear Regression analysis with the metrics I had landed on, I learned some <em>very</em> interesting information. Reminder, I first standardized the metrics before evaluating them with N+1 PPG.</p>
@@ -153,12 +293,33 @@
 
         <h3>Conclusion:</h3>
         <p>My analysis strongly supports the <strong>3-metric T-Score model (using Yds/G, Y/Tm PA/G, and RZ Tgt), v2.1</strong> as the most effective and balanced approach for predicting N+1 PPG for WRs. Each of these three metrics has a statistically significant and positive relationship with future PPG, and their combination provides robust predictive power, particularly for identifying high-value players.</p>
-        <p>Once I found the metrics I liked, I placed the results on a 0-100 scale for easier cross-season comparison (ya’ll, 2021 Cooper Kupp was <em>insane</em>). I then grouped scores together into buckets based on percentile. And thus, the T-Score WR Model v2.1 was complete.</p>
+        <p>Once I found the metrics I liked, I placed the results on a 0-100 scale for easier cross-season comparison (ya’ll, 2021 Cooper Kupp was <em>insane</em>). I then grouped scores together into buckets based on percentile:</p>
+        <div class="data-table-wrapper" style="margin-top: 1rem;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Label</th>
+                            <th>Percentile</th>
+                            <th>Score Cutoff</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><span class="label-elite">Elite</span></td><td>95th</td><td>65.5</td></tr>
+                        <tr><td><span class="label-high">High-End Starter</span></td><td>90th</td><td>57.4</td></tr>
+                        <tr><td><span class="label-strong">Strong Starter</span></td><td>80th</td><td>48.4</td></tr>
+                        <tr><td><span class="label-quality">Quality Contributor</span></td><td>65th</td><td>36.0</td></tr>
+                        <tr><td><span class="label-boom">Boom/Bust</span></td><td>50th</td><td>27.5</td></tr>
+                        <tr><td><span class="label-depth">Depth Player</span></td><td>< 50th</td><td>< 27.5</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>And thus, the T-Score WR Model v2.1 was complete.</p>
         <p>Thanks for reading!</p>
     </div>
-
+</div>
     <!-- TAB: 2024 ANALYSIS -->
-    <div id="tab-2024" class="t-section research-content">
+    <div id="tab-2024" class="tab-content">
+        <div class="settings-card highlight-card">
         <h3>Was 2024 a 'down year' for WRs?</h3>
         <p><strong>Average T-Scores, Standard Deviations, and Coefficient of Variation by Season</strong></p>
         <div class="table-responsive">
@@ -214,9 +375,10 @@
         </ul>
         <p>So, while the <strong>average</strong> WR might have performed slightly better in 2024 than 2023, the <strong>lack of extreme, game-changing outlier performances</strong> that defined 2022 and 2023 at the very top is what likely contributed to the perception of a "down year."</p>
     </div>
-
+</div>
     <!-- TAB: TOP 50 -->
-    <div id="tab-top50" class="t-section tscore-card">
+    <div id="top50Tab" class="tab-content">
+        <div class="settings-card highlight-card">
         <h3>2026 Top-50 T-Score Rankings</h3>
         <div class="table-responsive">
             <table>
@@ -225,15 +387,15 @@
                     <tr><td>Jaxon Smith-Njigba</td><td>98.2</td><td>1</td><td><span class="label-badge l-elite">Elite</span></td></tr>
                     <tr><td>Puka Nacua</td><td>88.5</td><td>2</td><td><span class="label-badge l-elite">Elite</span></td></tr>
                     <tr><td>Amon-Ra St. Brown</td><td>81.2</td><td>3</td><td><span class="label-badge l-elite">Elite</span></td></tr>
-                    <tr><td>Ja'Marr Chase</td><td>75.9</td><td>4</td><td><span class="label-badge l-high">High-End Starter</span></td></tr>
-                    <tr><td>George Pickens</td><td>74.7</td><td>5</td><td><span class="label-badge l-high">High-End Starter</span></td></tr>
-                    <tr><td>Zay Flowers</td><td>68.5</td><td>7</td><td><span class="label-badge l-high">High-End Starter</span></td></tr>
+                    <tr><td>Ja'Marr Chase</td><td>75.9</td><td>4</td><td><span class="label-badge l-elite">Elite</span></td></tr>
+                    <tr><td>George Pickens</td><td>74.7</td><td>5</td><td><span class="label-badge l-elite">Elite</span></td></tr>
+                    <tr><td>Zay Flowers</td><td>68.5</td><td>7</td><td><span class="label-badge l-elite">Elite</span></td></tr>
                     <tr><td>Nico Collins</td><td>64.3</td><td>8</td><td><span class="label-badge l-high">High-End Starter</span></td></tr>
                     <tr><td>CeeDee Lamb</td><td>63.0</td><td>9</td><td><span class="label-badge l-high">High-End Starter</span></td></tr>
-                    <tr><td>Chris Olave</td><td>62.2</td><td>10</td><td><span class="label-badge l-strong">Strong Starter</span></td></tr>
-                    <tr><td>Drake London</td><td>60.1</td><td>11</td><td><span class="label-badge l-strong">Strong Starter</span></td></tr>
-                    <tr><td>Justin Jefferson</td><td>59.7</td><td>12</td><td><span class="label-badge l-strong">Strong Starter</span></td></tr>
-                    <tr><td>A.J. Brown</td><td>58.6</td><td>13</td><td><span class="label-badge l-strong">Strong Starter</span></td></tr>
+                    <tr><td>Chris Olave</td><td>62.2</td><td>10</td><td><span class="label-badge l-high">High-End Starter</span></td></tr>
+                    <tr><td>Drake London</td><td>60.1</td><td>11</td><td><span class="label-badge l-high">High-End Starter</span></td></tr>
+                    <tr><td>Justin Jefferson</td><td>59.7</td><td>12</td><td><span class="label-badge l-high">High-End Starter</span></td></tr>
+                    <tr><td>A.J. Brown</td><td>58.6</td><td>13</td><td><span class="label-badge l-high">High-End Starter</span></td></tr>
                     <tr><td>Michael Wilson</td><td>56.7</td><td>15</td><td><span class="label-badge l-strong">Strong Starter</span></td></tr>
                     <tr><td>Davante Adams</td><td>56.6</td><td>14</td><td><span class="label-badge l-strong">Strong Starter</span></td></tr>
                     <tr><td>Wan'Dale Robinson</td><td>55.9</td><td>16</td><td><span class="label-badge l-strong">Strong Starter</span></td></tr>
@@ -275,10 +437,11 @@
             </table>
         </div>
     </div>
-
+</div>
     <!-- TAB: VALUES -->
-    <div id="tab-values" class="t-section tscore-card">
-        <h3>🔥 2026 Values at ADP</h3>
+    <div id="valuesTab" class="tab-content">
+        <div class="settings-card">
+        <h3>2026 Values at ADP</h3>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Players with an ADP > 100 outperforming their expected cost.</p>
         <div class="table-responsive">
             <table>
@@ -290,10 +453,11 @@
             </table>
         </div>
     </div>
-
+</div>
     <!-- TAB: SLEEPERS -->
-    <div id="tab-sleepers" class="t-section tscore-card">
-        <h3>🚀 2026 Sleepers at ADP</h3>
+    <div id="sleepersTab" class="tab-content">
+        <div class="settings-card">
+        <h3>2026 Sleepers at ADP</h3>
         <div class="table-responsive">
             <table>
                 <thead><tr><th>Player</th><th>T-Score</th><th>Rank</th><th>Label</th><th>ADP</th><th>Exp Score</th><th>Value Diff</th></tr></thead>
@@ -303,10 +467,11 @@
             </table>
         </div>
     </div>
-
+</div>
     <!-- TAB: AVOIDS -->
-    <div id="tab-avoids" class="t-section tscore-card">
-        <h3>⚠️ 2026 Avoids at ADP</h3>
+    <div id="avoidsTab" class="tab-content">
+        <div class="settings-card">
+        <h3>2026 Avoids at ADP</h3>
         <div class="table-responsive">
             <table>
                 <thead><tr><th>Player</th><th>T-Score</th><th>Label</th><th>ADP</th><th>Exp Score</th><th>Value Diff</th></tr></thead>
@@ -324,7 +489,7 @@
         </div>
     </div>
 </div>
-
+</div>
 <script>
     function openTab(tabId, btnElement) {
         document.querySelectorAll('.t-section').forEach(el => el.classList.remove('active'));
