@@ -1160,7 +1160,7 @@ function renderDraftRecap() {
         // --- 1. ARCHETYPE DETECTION ---
         let firstPosRound = { QB: 99, RB: 99, WR: 99, TE: 99 };
         myPlayers.forEach(p => {
-            let pickNum = p.id; // approximation or lookup if rawDraftPicks exists
+            let pickNum = p.id;
             if (State.rawDraftPicks) {
                 let m = State.rawDraftPicks.find(r => r.player_id === p.sleeperId);
                 if (m) pickNum = m.pick_no;
@@ -1182,18 +1182,18 @@ function renderDraftRecap() {
         else if (firstPosRound.QB <= 3) archetype = "Early QB Build";
         else if (firstPosRound.TE <= 4) archetype = "Elite TE Build";
 
-        // --- 2. POSITION GRADES & VORP ---
+        // --- 2. POSITION GRADES BASED ON DRAFT VALUE (PICK - RANK) ---
         let starterCounts = { QB: State.dsLimits.QB || 1, RB: State.dsLimits.RB || 2, WR: State.dsLimits.WR || 3, TE: State.dsLimits.TE || 1 };
         let gradesHTML = "";
         let totalValSum = 0;
         let gradeCount = 0;
 
         const getLetterGrade = (avgVal) => {
-            if (avgVal >= 15) return { grade: "A+", color: "#4ade80" };
-            if (avgVal >= 8) return { grade: "A", color: "#4ade80" };
-            if (avgVal >= 3) return { grade: "B", color: "#60a5fa" };
-            if (avgVal >= -3) return { grade: "C", color: "#fde047" };
-            if (avgVal >= -10) return { grade: "D", color: "#f97316" };
+            if (avgVal >= 10) return { grade: "A+", color: "#4ade80" };
+            if (avgVal >= 4) return { grade: "A", color: "#4ade80" };
+            if (avgVal >= 0) return { grade: "B", color: "#60a5fa" };
+            if (avgVal >= -5) return { grade: "C", color: "#fde047" };
+            if (avgVal >= -15) return { grade: "D", color: "#f97316" };
             return { grade: "F", color: "#ef4444" };
         };
 
@@ -1204,12 +1204,10 @@ function renderDraftRecap() {
 
             let posValSum = 0;
             starters.forEach(sp => {
-                // Find actual pick used for this player to calculate individual VORP/value
                 let pPick = 50; 
                 if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === sp.sleeperId); if (m) pPick = m.pick_no; }
-                let replacementBaseline = (teams * needed);
-                let vorpVal = replacementBaseline - sp.rank; // Higher is better
-                posValSum += vorpVal;
+                let valueDiff = pPick - sp.rank; // Positive = Steal, Negative = Reach
+                posValSum += valueDiff;
             });
 
             let posAvg = starters.length > 0 ? (posValSum / starters.length) : 0;
@@ -1227,7 +1225,7 @@ function renderDraftRecap() {
         let overallAvg = gradeCount > 0 ? (totalValSum / gradeCount) : 0;
         let overallG = getLetterGrade(overallAvg);
 
-        // --- 3. RENDER HTML ---
+        // --- 3. RENDER HTML (Clean SVGs, No Emojis) ---
         let html = `
             <div style="display:flex; justify-content:space-between; align-items:center; background: rgba(59, 130, 246, 0.1); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3);">
                 <div>
@@ -1243,19 +1241,25 @@ function renderDraftRecap() {
 
         if (bestSteal && bestSteal.diff > 2) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border);">
-                <span><strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})</span>
+                <span style="display:flex; align-items:center; gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary-green);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                    <strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})
+                </span>
                 <span class="badge badge-value">+${Math.abs(bestSteal.diff)} Value</span>
             </div>`;
         }
 
         if (worstReach && worstReach.diff < -5) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border);">
-                <span><strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})</span>
+                <span style="display:flex; align-items:center; gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--avoid-border);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})
+                </span>
                 <span class="badge badge-reach">${worstReach.diff} Reach</span>
             </div>`;
         }
 
-        html += `<div style="margin-top: 0.25rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Positional Grades (Starter VORP)</div>`;
+        html += `<div style="margin-top: 0.25rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Positional Grades (Draft Value Efficiency)</div>`;
         html += `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.25rem;">`;
         html += gradesHTML;
         html += `</div>`;
