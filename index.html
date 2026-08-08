@@ -316,15 +316,15 @@
             <input type="checkbox" id="byeWarningToggle" class="toggle-switch">
         </div>
                <div class="toggle-row">
-            <div class="toggle-info">
-                <span class="toggle-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                    Enable T-Score Analytics
-                </span>
-                <span class="toggle-desc">Overlay predictive WR scoring models onto the draft board.</span>
-            </div>
-            <input type="checkbox" id="tscoreToggle" class="toggle-switch">
-        </div>
+    <div class="toggle-info">
+        <span class="toggle-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+            Enable T-Score Analytics
+        </span>
+        <span class="toggle-desc">Overlay predictive WR scoring models. <a href="t-score.html" target="_blank" style="color: #a855f7; text-decoration: none; margin-left: 4px; font-weight: 500;">Read Methodology →</a></span>
+    </div>
+    <input type="checkbox" id="tscoreToggle" class="toggle-switch" onchange="saveSettings()">
+</div>
 
         <button class="btn btn-primary mt-2" onclick="saveSettings(this)">Save Settings</button>
     </section>
@@ -445,10 +445,13 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Export
     </button>
-    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
-        <input type="checkbox" id="includeRecapInExport" checked style="accent-color: var(--primary-purple);">
-        Include Draft Recap in Export
-    </label>
+    <div id="exportRecapContainer" class="toggle-row" style="display: none; margin-bottom: 1.5rem;">
+    <div class="toggle-info">
+        <span class="toggle-title">Include Draft Recap</span>
+        <span class="toggle-desc">Append the round-by-round recap to your export file.</span>
+    </div>
+    <input type="checkbox" id="exportRecapToggle" class="toggle-switch">
+</div>
 </div>
     
     <!-- ========================================== -->
