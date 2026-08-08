@@ -403,7 +403,7 @@
     
     <div id="byeWarningContainer"></div>
 
-    <!-- ROSTER LIMITS CARD -->
+    <!-- ROSTER LIMITS CARD (Stays outside export) -->
     <section class="settings-card">
         <header class="card-header">
             <h3>
@@ -411,7 +411,6 @@
                 Roster Limits
             </h3>
         </header>
-        
         <div class="table-responsive">
             <table class="limits-table">
                 <thead>
@@ -430,24 +429,74 @@
         </div>
     </section>
 
-    <!-- STARTING LINEUP & BENCH -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                Starting Lineup & Bench
-            </h3>
-        </header>
-        <div id="myTeamList" class="roster-list">
-            <!-- JS generates roster slots here -->
-        </div>
-    </section>
-    <!-- Export Team Button -->
-    <button id="exportTeamBtn" class="btn btn-purple mb-4" onclick="exportTeam()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                Export
-            </button>
-    <!-- OTHER DRAFTED PLAYERS -->
+    <!-- EXPORT BUTTON (Stays outside export) -->
+    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+    <button id="exportTeamBtn" class="btn btn-purple" onclick="exportTeam()" style="margin-bottom: 0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Export
+    </button>
+    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+        <input type="checkbox" id="includeRecapInExport" checked style="accent-color: var(--primary-purple);">
+        Include Draft Recap in Export
+    </label>
+</div>
+    
+    <!-- ========================================== -->
+    <!-- START OF EXPORT WRAPPER (Captured in PNG)  -->
+    <!-- ========================================== -->
+    <div id="exportableTeamContainer" style="display: flex; flex-direction: column; gap: 1rem;">
+
+        <!-- 1. Draft Recap & Team Strength Card -->
+        <section class="settings-card" id="draftRecapCard" style="display: none; margin: 0;">
+            <header class="card-header">
+                <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    Draft Recap & Value Analysis
+                </h3>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">
+                        <strong>Draft Archetype:</strong> Categorized by the earliest rounds you targeted core positions.<br><br>
+                        <strong>Positional Grades:</strong> Evaluated using Draft Value Efficiency (Pick Number minus Custom Rank) for your starters.<br><br>
+                        <strong>Steals & Reaches:</strong> Compares your Custom Rank against the exact pick number where the player was drafted.
+                    </span>
+                </div>
+            </header>
+            
+            <div id="draftRecapContent" style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;"></div>
+
+            <!-- Toggleable Math Breakdown -->
+            <div style="margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                <button id="toggleRecapMathBtn" onclick="toggleRecapMath()" style="background: none; border: none; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 0;">
+                    <span>Show Starter Value Breakdown</span>
+                    <svg id="recapMathArrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                
+                <div id="recapMathBreakdown" style="display: none; margin-top: 0.75rem; font-size: 0.8rem; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border);">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Starting Lineup & Bench -->
+        <section class="settings-card" style="margin: 0;">
+            <header class="card-header">
+                <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Starting Lineup & Bench
+                </h3>
+            </header>
+            <div id="myTeamList" class="roster-list">
+                <!-- JS generates roster slots here -->
+            </div>
+        </section>
+
+    </div>
+    <!-- ========================================== -->
+    <!-- END OF EXPORT WRAPPER                      -->
+    <!-- ========================================== -->
+
+    <!-- OTHER DRAFTED PLAYERS (Stays outside export) -->
     <section class="settings-card">
         <header class="card-header">
             <h3>
@@ -459,6 +508,7 @@
             <!-- JS generates other drafted players here -->
         </div>
     </section>
+
 </div>
    <!-- DRAFT BOARD TAB (Grid View) -->
 <div id="boardTab" class="tab-content">
