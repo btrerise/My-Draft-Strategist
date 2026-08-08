@@ -193,7 +193,7 @@
     }
     updateMetaDisplay();
 
-    window.saveSettings = function(btnElement) {
+    window.saveSettings = function(btnElement, skipRender = false) {
         const getVal = id => document.getElementById(id)?.value.trim() || "";
         const getCheck = id => document.getElementById(id)?.checked || false;
 
@@ -218,12 +218,13 @@
             SFLEX: parseInt(getVal('limitSFLEX')) || 0,
             BENCH: parseInt(getVal('limitBENCH')) || 0,
         };
-        State.dsLimits.TOTAL = Object.values(State.dsLimits).reduce((a, b) => a + b, 0) - State.dsLimits.TOTAL; // re-sum properly
-        // Recalculate total correctly
         State.dsLimits.TOTAL = State.dsLimits.QB + State.dsLimits.RB + State.dsLimits.WR + State.dsLimits.TE + State.dsLimits.FLEX + State.dsLimits.SFLEX + State.dsLimits.BENCH;
         localStorage.setItem('ds_limits', JSON.stringify(State.dsLimits));
 
-        renderBoard();
+        if (!skipRender) {
+            renderBoard();
+        }
+        
         if (btnElement) flashButton(btnElement, "Settings Saved");
     };
 
@@ -626,14 +627,14 @@
         if (isLive) {
             if (liveInd) liveInd.style.display = 'inline-block';
             window.syncSleeper(true, null);
-            State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 3000);
+            State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 1000);
         } else {
             if (liveInd) liveInd.style.display = 'none';
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
         }
     };
 
-    window.syncSleeper = async function(isSilent = false, btn = null) {
+        window.syncSleeper = async function(isSilent = false, btn = null) {
         const username = document.getElementById('sleeperUsername')?.value.trim();
         const draftId = document.getElementById('sleeperDraftId')?.value.trim();
 
@@ -641,8 +642,9 @@
             if (!isSilent && btn) window.alert("Please enter both Username and Draft ID.");
             return;
         }
-
-        window.saveSettings(null); 
+        
+        // Pass isSilent so background syncs don't force a re-render
+        window.saveSettings(null, isSilent); 
 
         try {
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
@@ -651,22 +653,46 @@
 
             const draftRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`);
             if (draftRes.ok) {
-                let dInfo = await draftRes.json();
-                let numTeams = dInfo.settings?.teams || 12;
-                let numRounds = dInfo.settings?.rounds || 15;
-                State.leagueDraftSettings = { teams: numTeams, rounds: numRounds };
-                
-                const lTeamsEl = document.getElementById('leagueTeams');
-                const lRoundsEl = document.getElementById('leagueRounds');
-                if (lTeamsEl) lTeamsEl.value = numTeams;
-                if (lRoundsEl) lRoundsEl.value = numRounds;
-            }
+    let dInfo = await draftRes.json();
+    
+    if (dInfo.settings) {
+        // Update State
+        State.leagueDraftSettings = { 
+            teams: dInfo.settings.teams || 12, 
+            rounds: dInfo.settings.rounds || 15 
+        };
+        
+        // Helper to update UI Inputs
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        
+        setVal('leagueTeams', State.leagueDraftSettings.teams);
+        setVal('leagueRounds', State.leagueDraftSettings.rounds);
+        
+        // Pull roster slots directly from draft settings (works universally for Mocks and Leagues)
+        setVal('limitQB', dInfo.settings.slots_qb || 0);
+        setVal('limitRB', dInfo.settings.slots_rb || 0);
+        setVal('limitWR', dInfo.settings.slots_wr || 0);
+        setVal('limitTE', dInfo.settings.slots_te || 0);
+        setVal('limitFLEX', dInfo.settings.slots_flex || 0);
+        setVal('limitSFLEX', dInfo.settings.slots_super_flex || 0);
+        setVal('limitBENCH', dInfo.settings.slots_bn || 0);
 
-            const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
+       // Save and force re-render
+        window.saveSettings(null, false);
+    } // closes if (dInfo.settings)
+} // closes if (draftRes.ok)
+
+const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
             if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
             const picksData = await picksRes.json();
 
             if (!picksData || picksData.length === 0) return;
+
+            // Check if the number of picks has actually changed before doing heavy processing
+            let previousTotal = parseInt(localStorage.getItem('ds_total_picks')) || 0;
+            if (picksData.length === previousTotal) {
+                return; // Board is up to date, do nothing.
+            }
 
             State.rawDraftPicks = picksData;
             let sleeperDrafted = [];
@@ -697,6 +723,7 @@
             if (!isSilent && btn) window.alert(`Sleeper Sync Error:\n${err.message}`);
         }
     };
+
 
     window.draftPlayer = function(id, isMine) {
         if (!State.draftedPlayers.includes(id)) {
@@ -744,11 +771,21 @@
         const container = document.getElementById('draftMatrixContainer');
         if (!container) return;
 
+        // 1. Capture the current scroll position
+        let currentScroll = 0;
+        const existingGrid = container.querySelector('.draft-grid');
+        if (existingGrid) {
+            currentScroll = existingGrid.scrollLeft;
+        } else {
+            currentScroll = container.scrollLeft; 
+        }
+
         let totalTeams = State.leagueDraftSettings.teams || 12;
         let totalRounds = State.leagueDraftSettings.rounds || 15;
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
 
+        // BUILD HEADERS
         for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
@@ -768,6 +805,7 @@
             gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}">T${t}</div>`;
         }
 
+        // BUILD CELLS
         for (let r = 1; r <= totalRounds; r++) {
             for (let t = 1; t <= totalTeams; t++) {
                 let pickNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
@@ -813,8 +851,19 @@
             }
         }
 
+        // Close the .draft-grid wrapper
         gridHTML += `</div>`;
+        
+        // 2. Inject the new HTML
         container.innerHTML = gridHTML;
+
+        // 3. Immediately restore the scroll position
+        const newGrid = container.querySelector('.draft-grid');
+        if (newGrid && currentScroll > 0) {
+            newGrid.scrollLeft = currentScroll;
+        } else if (currentScroll > 0) {
+            container.scrollLeft = currentScroll;
+        }
     }
 
     function renderFantasyRoster() {
@@ -1069,7 +1118,6 @@
 
     if (State.players.length > 0) renderBoard();
 
-    // Expose search bar event listener helper if needed
     const searchBarEl = document.getElementById('searchBar');
     if (searchBarEl) {
         searchBarEl.addEventListener('input', renderBoard);
