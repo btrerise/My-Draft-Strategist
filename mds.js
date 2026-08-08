@@ -1002,8 +1002,6 @@
         else if (firstPosRound.QB <= 3) archetype = "Early QB Build";
         else if (firstPosRound.TE <= 4) archetype = "Elite TE Build";
 
-        let starterCounts = { QB: State.dsLimits.QB || 1, RB: State.dsLimits.RB || 2, WR: State.dsLimits.WR || 3, TE: State.dsLimits.TE || 1 };
-
         // Position Grades evaluated across ALL drafted players using Median Value
         let gradesHTML = "";
         let totalValSum = 0;
@@ -1096,14 +1094,25 @@
 
         recapContent.innerHTML = html;
 
-        // Build itemized math breakdown for starting players
+        // Build itemized math breakdown for ALL drafted players, sorted by pick number
         let mathHTML = `<div style="display:flex; flex-direction:column; gap:0.4rem;">`;
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let posPlayers = myPlayers.filter(p => p.posGroup === pos).sort((a, b) => a.rank - b.rank);
-            let needed = starterCounts[pos] || 1;
-            let starters = posPlayers.slice(0, needed);
+            let posPlayers = myPlayers.filter(p => p.posGroup === pos);
+            if (posPlayers.length === 0) return;
 
-            starters.forEach(sp => {
+            // Sort all drafted players at this position by their actual draft pick number
+            posPlayers.sort((a, b) => {
+                let pickA = 0, pickB = 0;
+                if (State.rawDraftPicks) {
+                    let mA = State.rawDraftPicks.find(r => r.player_id === a.sleeperId);
+                    let mB = State.rawDraftPicks.find(r => r.player_id === b.sleeperId);
+                    if (mA) pickA = mA.pick_no;
+                    if (mB) pickB = mB.pick_no;
+                }
+                return pickA - pickB;
+            });
+
+            posPlayers.forEach(sp => {
                 let pPick = 0; 
                 if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === sp.sleeperId); if (m) pPick = m.pick_no; }
                 let diff = pPick - sp.rank;
