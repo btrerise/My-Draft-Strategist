@@ -1128,10 +1128,9 @@ function renderDraftRecap() {
         const recapContent = document.getElementById('draftRecapContent');
         if (!recapCard || !recapContent) return;
 
-        // Get the total required roster size from settings (default to 14/15 if not set)
         let totalRequired = State.dsLimits.TOTAL || 15;
+        let teams = State.leagueDraftSettings.teams || 12;
 
-        // Only display the recap if your draft team is completely full
         if (!State.myTeam || State.myTeam.length < totalRequired) {
             recapCard.style.display = 'none';
             return;
@@ -1153,55 +1152,112 @@ function renderDraftRecap() {
                 if (match) pickNum = match.pick_no;
             }
 
-            // Corrected Math: Draft Pick minus Custom Rank (Positive = Steal, Negative = Reach)
             let valueDiff = pickNum - p.rank;
-
-            if (valueDiff > maxDiff) {
-                maxDiff = valueDiff;
-                bestSteal = { player: p, diff: valueDiff, pick: pickNum };
-            }
-            if (valueDiff < minDiff) {
-                minDiff = valueDiff;
-                worstReach = { player: p, diff: valueDiff, pick: pickNum };
-            }
+            if (valueDiff > maxDiff) { maxDiff = valueDiff; bestSteal = { player: p, diff: valueDiff }; }
+            if (valueDiff < minDiff) { minDiff = valueDiff; worstReach = { player: p, diff: valueDiff }; }
         });
 
-        let posAverages = { QB: 0, RB: 0, WR: 0, TE: 0 };
-        let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 };
-
+        // --- 1. ARCHETYPE DETECTION ---
+        let firstPosRound = { QB: 99, RB: 99, WR: 99, TE: 99 };
         myPlayers.forEach(p => {
-            if (posAverages[p.posGroup] !== undefined) {
-                posAverages[p.posGroup] += p.rank;
-                posCounts[p.posGroup]++;
+            let pickNum = p.id; // approximation or lookup if rawDraftPicks exists
+            if (State.rawDraftPicks) {
+                let m = State.rawDraftPicks.find(r => r.player_id === p.sleeperId);
+                if (m) pickNum = m.pick_no;
             }
+            let rd = Math.ceil(pickNum / teams);
+            if (rd < firstPosRound[p.posGroup]) firstPosRound[p.posGroup] = rd;
         });
 
-        let html = "";
+        let archetype = "Balanced Build";
+        let rbCountRds12 = myPlayers.filter(p => {
+            let pNum = p.id;
+            if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === p.sleeperId); if (m) pNum = m.pick_no; }
+            return p.posGroup === 'RB' && Math.ceil(pNum / teams) <= 2;
+        }).length;
+
+        if (rbCountRds12 >= 2) archetype = "Robust / Heavy RB";
+        else if (rbCountRds12 === 1) archetype = "Hero RB Strategy";
+        else if (firstPosRound.RB >= 5) archetype = "Zero RB Build";
+        else if (firstPosRound.QB <= 3) archetype = "Early QB Build";
+        else if (firstPosRound.TE <= 4) archetype = "Elite TE Build";
+
+        // --- 2. POSITION GRADES & VORP ---
+        let starterCounts = { QB: State.dsLimits.QB || 1, RB: State.dsLimits.RB || 2, WR: State.dsLimits.WR || 3, TE: State.dsLimits.TE || 1 };
+        let gradesHTML = "";
+        let totalValSum = 0;
+        let gradeCount = 0;
+
+        const getLetterGrade = (avgVal) => {
+            if (avgVal >= 15) return { grade: "A+", color: "#4ade80" };
+            if (avgVal >= 8) return { grade: "A", color: "#4ade80" };
+            if (avgVal >= 3) return { grade: "B", color: "#60a5fa" };
+            if (avgVal >= -3) return { grade: "C", color: "#fde047" };
+            if (avgVal >= -10) return { grade: "D", color: "#f97316" };
+            return { grade: "F", color: "#ef4444" };
+        };
+
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+            let posPlayers = myPlayers.filter(p => p.posGroup === pos).sort((a, b) => a.rank - b.rank);
+            let needed = starterCounts[pos] || 1;
+            let starters = posPlayers.slice(0, needed);
+
+            let posValSum = 0;
+            starters.forEach(sp => {
+                // Find actual pick used for this player to calculate individual VORP/value
+                let pPick = 50; 
+                if (State.rawDraftPicks) { let m = State.rawDraftPicks.find(r => r.player_id === sp.sleeperId); if (m) pPick = m.pick_no; }
+                let replacementBaseline = (teams * needed);
+                let vorpVal = replacementBaseline - sp.rank; // Higher is better
+                posValSum += vorpVal;
+            });
+
+            let posAvg = starters.length > 0 ? (posValSum / starters.length) : 0;
+            let gInfo = getLetterGrade(posAvg);
+            
+            totalValSum += posAvg;
+            gradeCount++;
+
+            gradesHTML += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); text-align: center;">
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
+                <div style="font-size: 1.25rem; font-weight: bold; color: ${gInfo.color};">${gInfo.grade}</div>
+            </div>`;
+        });
+
+        let overallAvg = gradeCount > 0 ? (totalValSum / gradeCount) : 0;
+        let overallG = getLetterGrade(overallAvg);
+
+        // --- 3. RENDER HTML ---
+        let html = `
+            <div style="display:flex; justify-content:space-between; align-items:center; background: rgba(59, 130, 246, 0.1); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                <div>
+                    <div style="font-size: 0.75rem; color: #93c5fd; text-transform: uppercase; font-weight: 700;">Draft Archetype</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; color: var(--text-main);">${archetype}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.75rem; color: #93c5fd; text-transform: uppercase; font-weight: 700;">Overall Grade</div>
+                    <div style="font-size: 1.4rem; font-weight: bold; color: ${overallG.color};">${overallG.grade}</div>
+                </div>
+            </div>
+        `;
 
         if (bestSteal && bestSteal.diff > 2) {
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border); margin-bottom: 0.5rem;">
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border);">
                 <span>🔥 <strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})</span>
                 <span class="badge badge-value">+${Math.abs(bestSteal.diff)} Value</span>
             </div>`;
         }
 
         if (worstReach && worstReach.diff < -5) {
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border); margin-bottom: 0.5rem;">
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border);">
                 <span>⚠️ <strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})</span>
                 <span class="badge badge-reach">${worstReach.diff} Reach</span>
             </div>`;
         }
 
-        html += `<div style="margin-top: 0.5rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Custom Rank Strength Score</div>`;
-        html += `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; text-align: center; margin-top: 0.25rem;">`;
-        
-        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let avg = posCounts[pos] > 0 ? (posAverages[pos] / posCounts[pos]).toFixed(1) : "—";
-            html += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border);">
-                <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
-                <div style="font-size: 1rem; font-weight: bold; color: var(--text-main);">${avg}</div>
-            </div>`;
-        });
+        html += `<div style="margin-top: 0.25rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Positional Grades (Starter VORP)</div>`;
+        html += `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.25rem;">`;
+        html += gradesHTML;
         html += `</div>`;
 
         recapContent.innerHTML = html;
