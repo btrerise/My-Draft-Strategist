@@ -27,6 +27,8 @@
     <!-- PapaParse & SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- HTML2Canvas for MDS Team -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -102,7 +104,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </button>
     </div>
-    
+    <div id="shared-feedback-container"></div>
     <div class="menu-footer">
         <a href="https://ko-fi.com/btrerise" target="_blank" rel="noopener noreferrer" class="kofi-link">
             <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
@@ -422,7 +424,11 @@
             <!-- JS generates roster slots here -->
         </div>
     </section>
-
+    <!-- Export Team Button -->
+    <button id="exportTeamBtn" class="btn btn-purple mb-4" onclick="exportTeam()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Export
+            </button>
     <!-- OTHER DRAFTED PLAYERS -->
     <section class="settings-card">
         <header class="card-header">

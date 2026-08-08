@@ -862,7 +862,6 @@ body {
     text-align: center;
     color: var(--text-muted);
     padding: 2rem 1rem;
-    font-style: italic;
     font-size: 0.9rem;
 }
 
@@ -1504,6 +1503,7 @@ body {
     font-weight: 600; 
     font-size: 1rem; 
     color: var(--text-main);
+    white-space: nowrap;
 }
 
 /* Roster Slots (Team Tab) */
@@ -1874,4 +1874,20 @@ input[type="file"]::-webkit-file-upload-button {
 input[type="file"]::-webkit-file-upload-button:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
+}
+@media (max-width: 450px) {
+    .limits-table th, 
+    .limits-table td {
+        /* Reduces the left/right padding to free up horizontal space */
+        padding: 0.5rem 0.2rem; 
+    }
+    
+    .limits-table th {
+        font-size: 0.7rem;
+        letter-spacing: 0; /* Removes extra spacing between header letters */
+    }
+    
+    .limits-table td {
+        font-size: 0.85rem; /* Shrinks the numbers just enough to fit */
+    }
 }
