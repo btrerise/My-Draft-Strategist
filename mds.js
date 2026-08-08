@@ -1002,7 +1002,8 @@
         else if (firstPosRound.QB <= 3) archetype = "Early QB Build";
         else if (firstPosRound.TE <= 4) archetype = "Elite TE Build";
 
-        // Position Grades
+        let starterCounts = { QB: State.dsLimits.QB || 1, RB: State.dsLimits.RB || 2, WR: State.dsLimits.WR || 3, TE: State.dsLimits.TE || 1 };
+
         // Position Grades evaluated across ALL drafted players using Median Value
         let gradesHTML = "";
         let totalValSum = 0;
@@ -1020,7 +1021,6 @@
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             let posPlayers = myPlayers.filter(p => p.posGroup === pos);
             
-            // If you didn't draft any at this position, skip or assign neutral
             if (posPlayers.length === 0) {
                 gradesHTML += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
@@ -1029,17 +1029,15 @@
                 return;
             }
 
-            // Calculate value efficiency for ALL players drafted at this position
             let efficiencies = posPlayers.map(sp => {
                 let pPick = 50; 
                 if (State.rawDraftPicks) { 
                     let m = State.rawDraftPicks.find(r => r.player_id === sp.sleeperId); 
                     if (m) pPick = m.pick_no; 
                 }
-                return pPick - sp.rank; // Pick minus Custom Rank
+                return pPick - sp.rank; 
             });
 
-            // Sort to find the median value
             efficiencies.sort((a, b) => a - b);
             let mid = Math.floor(efficiencies.length / 2);
             let medianVal = efficiencies.length % 2 !== 0 ? efficiencies[mid] : (efficiencies[mid - 1] + efficiencies[mid]) / 2;
@@ -1124,7 +1122,6 @@
         const mathContainer = document.getElementById('recapMathBreakdown');
         if (mathContainer) mathContainer.innerHTML = mathHTML;
     }
-
     // --- RECAP MATH TOGGLE HELPER ---
     window.toggleRecapMath = function() {
         const breakdown = document.getElementById('recapMathBreakdown');
