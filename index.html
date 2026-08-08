@@ -441,17 +441,20 @@
 
     <!-- EXPORT BUTTON (Stays outside export) -->
     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
-    <button id="exportTeamBtn" class="btn btn-purple" onclick="exportTeam()" style="margin-bottom: 0;">
+    <div id="exportRecapContainer" class="toggle-row" style="display: none; margin-bottom: 1.5rem;">
+    <div class="toggle-info">
+        <span class="toggle-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary-green)"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"></path><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"></path></svg>
+            Include Draft Recap
+        </span>
+        <span class="toggle-desc">Append the round-by-round recap analysis to your export file.</span>
+    </div>
+    <input type="checkbox" id="includeRecapInExport" class="toggle-switch" checked>
+</div>
+        <button id="exportTeamBtn" class="btn btn-purple" onclick="exportTeam()" style="margin-bottom: 0;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Export
     </button>
-    <div id="exportRecapContainer" class="toggle-row" style="display: none; margin-bottom: 1.5rem;">
-    <div class="toggle-info">
-        <span class="toggle-title">Include Draft Recap</span>
-        <span class="toggle-desc">Append the round-by-round recap to your export file.</span>
-    </div>
-    <input type="checkbox" id="exportRecapToggle" class="toggle-switch">
-</div>
 </div>
     
     <!-- ========================================== -->
