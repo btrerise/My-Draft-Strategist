@@ -145,6 +145,7 @@
         setVal('dartList', localStorage.getItem('ds_darts') || "");
         setCheck('stackToggle', localStorage.getItem('ds_stacks') === 'true');
         setCheck('byeWarningToggle', localStorage.getItem('ds_bye_warnings') === 'true');
+        setCheck('tscoreToggle', localStorage.getItem('ds_tscore') === 'true');
         
         setVal('leagueTeams', State.leagueDraftSettings.teams || 12);
         setVal('leagueRounds', State.leagueDraftSettings.rounds || 15);
@@ -204,6 +205,7 @@
         localStorage.setItem('ds_darts', document.getElementById('dartList')?.value || "");
         localStorage.setItem('ds_stacks', getCheck('stackToggle'));
         localStorage.setItem('ds_bye_warnings', getCheck('byeWarningToggle'));
+        localStorage.setItem('ds_tscore', getCheck('tscoreToggle'));
         
         State.leagueDraftSettings.teams = parseInt(getVal('leagueTeams')) || 12;
         State.leagueDraftSettings.rounds = parseInt(getVal('leagueRounds')) || 15;
@@ -1266,7 +1268,35 @@
                     } else {
                         valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
                     }
-                    
+                    // --- T-SCORE INTEGRATION ---
+                    if (p.posGroup === 'WR' && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
+                        // Utilize normalizeName from utils.js to match the JSON keys perfectly
+                        const normName = normalizeName(p.name); 
+                        const tInfo = tScoreData[normName];
+                        
+                        if (tInfo) {
+                            // Assign styling mapped from the JSON class 
+                            let tsColor = "#9ca3af";
+                            let tsBg = "rgba(255,255,255,0.1)";
+                            let tsBorder = "var(--border)";
+                            
+                            if (tInfo.c === 'label-elite') { tsColor = "#a855f7"; tsBg = "rgba(168, 85, 247, 0.15)"; tsBorder = "rgba(168, 85, 247, 0.3)"; }
+                            else if (tInfo.c === 'label-high') { tsColor = "#3b82f6"; tsBg = "rgba(59, 130, 246, 0.15)"; tsBorder = "rgba(59, 130, 246, 0.3)"; }
+                            else if (tInfo.c === 'label-strong') { tsColor = "#10b981"; tsBg = "rgba(16, 185, 129, 0.15)"; tsBorder = "rgba(16, 185, 129, 0.3)"; }
+                            else if (tInfo.c === 'label-quality') { tsColor = "#f59e0b"; tsBg = "rgba(245, 158, 11, 0.15)"; tsBorder = "rgba(245, 158, 11, 0.3)"; }
+                            else if (tInfo.c === 'label-boom') { tsColor = "#ef4444"; tsBg = "rgba(239, 68, 68, 0.15)"; tsBorder = "rgba(239, 68, 68, 0.3)"; }
+                            
+                            // Inject Tooltip wrapper inline next to the Value Badge
+                            let tScoreHTML = ` | 
+                                <div class="tooltip-container" style="display:inline-flex;">
+                                    <span class="badge" style="background: ${tsBg}; color: ${tsColor}; border: 1px solid ${tsBorder}; font-weight: 700;">${tInfo.l}</span>
+                                    <span class="tooltip-text" style="width: max-content; white-space: nowrap;">T-Score: ${tInfo.s} | ${tInfo.l}</span>
+                                </div>`;
+                            
+                            valueBadgeHTML += tScoreHTML;
+                        }
+                    }
+                    // --- END T-SCORE INTEGRATION ---
                     let adpText = (p.adp && p.adp !== "-") ? ` | Market: ${p.adp}` : "";
                     let isStack = false;
                     if (showStacks && p.team !== "FA") {
@@ -1360,7 +1390,12 @@
                     <td><strong>${State.myTeam.length} / ${State.dsLimits.TOTAL}</strong></td>
                 </tr>`;
         }
-
+        // --- NEW: Toggle Visibility Logic ---
+        const exportRecapContainer = document.getElementById('exportRecapContainer');
+        if (exportRecapContainer) {
+            // Only show the toggle if the user's team is completely full
+            exportRecapContainer.style.display = (State.myTeam.length >= State.dsLimits.TOTAL) ? 'flex' : 'none';
+        }
         renderDraftMatrix();
         renderDraftRecap();
     }
