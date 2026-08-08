@@ -1243,14 +1243,14 @@ function renderDraftRecap() {
 
         if (bestSteal && bestSteal.diff > 2) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border);">
-                <span>🔥 <strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})</span>
+                <span><strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})</span>
                 <span class="badge badge-value">+${Math.abs(bestSteal.diff)} Value</span>
             </div>`;
         }
 
         if (worstReach && worstReach.diff < -5) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border);">
-                <span>⚠️ <strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})</span>
+                <span><strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})</span>
                 <span class="badge badge-reach">${worstReach.diff} Reach</span>
             </div>`;
         }
