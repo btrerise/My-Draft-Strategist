@@ -70,3 +70,16 @@ function injectFeedbackForm() {
 
 // Automatically run this when the page loads
 document.addEventListener('DOMContentLoaded', injectFeedbackForm);
+function dismissBanner(bannerId, storageKey) {
+    const banner = document.getElementById(bannerId);
+    if (banner) banner.style.display = 'none';
+    if (storageKey) localStorage.setItem(storageKey, 'true');
+}
+
+// Hide on load if previously dismissed
+document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('ds_hide_guide_banner') === 'true') {
+        const b = document.getElementById('guideBanner');
+        if (b) b.style.display = 'none';
+    }
+});
