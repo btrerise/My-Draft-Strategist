@@ -627,7 +627,7 @@
         if (isLive) {
             if (liveInd) liveInd.style.display = 'inline-block';
             window.syncSleeper(true, null);
-            State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 1000);
+            State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 500);
         } else {
             if (liveInd) liveInd.style.display = 'none';
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
