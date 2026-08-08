@@ -625,18 +625,34 @@
         }
     };
 
+    window.handleSmartSync = function() {
+        // If the auto-sync timer is running, the button acts as a kill-switch
+        if (State.autoSyncTimer) {
+            window.toggleAutoSync(false);
+            const toggleEl = document.getElementById('autoSyncToggle');
+            if (toggleEl) toggleEl.checked = false;
+        } else {
+            // Otherwise, it acts as a standard manual sync
+            window.syncSleeper(false, document.getElementById('headerSyncBtn'));
+        }
+    };
+    
+    // Update your existing toggleAutoSync function to handle the new UI swap
     window.toggleAutoSync = function(isLive) {
-        const liveInd = document.getElementById('liveIndicator');
+        const syncWrap = document.getElementById('syncIconWrap');
+        const liveWrap = document.getElementById('liveIconWrap');
+        
         if (isLive) {
-            if (liveInd) liveInd.style.display = 'inline-block';
+            if (syncWrap) syncWrap.style.display = 'none';
+            if (liveWrap) liveWrap.style.display = 'flex';
             window.syncSleeper(true, null);
             State.autoSyncTimer = setInterval(() => window.syncSleeper(true, null), 1000);
         } else {
-            if (liveInd) liveInd.style.display = 'none';
+            if (syncWrap) syncWrap.style.display = 'flex';
+            if (liveWrap) liveWrap.style.display = 'none';
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
         }
     };
-
     window.syncSleeper = async function(isSilent = false, btn = null) {
         const username = document.getElementById('sleeperUsername')?.value.trim();
         const draftId = document.getElementById('sleeperDraftId')?.value.trim();
