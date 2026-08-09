@@ -60,6 +60,11 @@
     }
 
     function saveActiveDraftState() {
+        let activeDraft = getActiveDraft();
+        if (activeDraft) {
+            // Save current rankings specifically to this draft
+            activeDraft.players = [...State.players]; 
+        }
         localStorage.setItem('ds_drafts', JSON.stringify(State.drafts));
         localStorage.setItem('ds_active_draft_id', State.activeDraftId || '');
         renderBoard();
@@ -85,6 +90,10 @@
 
         let draft = getActiveDraft();
         if (draft) {
+            // Load the rankings for this draft, fallback to global if none exist yet
+            State.players = draft.players && draft.players.length > 0 ? [...draft.players] : JSON.parse(localStorage.getItem('ds_players')) || [];
+            localStorage.setItem('ds_players', JSON.stringify(State.players));
+            
             initSettingsUI();
             if (draft.username === "Manual" && State.autoSyncTimer) {
                 window.toggleAutoSync(false);
@@ -386,6 +395,7 @@
                 BENCH: parseInt(getVal('limitBENCH')) || 6,
                 TOTAL: 14
             },
+            players: [...State.players],
             draftedPlayers: [],
             myTeam: [],
             rawDraftPicks: [],
@@ -465,6 +475,7 @@
                 username: username,
                 settings: draftSettings,
                 limits: draftLimits,
+                players: [...State.players],
                 draftedPlayers: Array.from(new Set(sleeperDrafted)),
                 myTeam: Array.from(new Set(sleeperMyTeam)),
                 rawDraftPicks: picksData || [],

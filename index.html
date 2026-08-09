@@ -52,7 +52,7 @@
     
     <!-- HEADER CONTROL DROPDOWN -->
 <div class="header-controls" style="display: flex; align-items: center; gap: 0.5rem;">
-    <select id="draftProfileSelect" class="form-input" style="font-weight: 600; font-size: 0.85rem; padding: 4px 8px; height: 32px; width: auto; max-width: 140px;" onchange="switchDraftProfile(this.value)" aria-label="Select Active Draft">
+    <select id="draftProfileSelect" class="form-input" style="font-weight: 600; font-size: 0.85rem; height: 32px; width: auto; max-width: 180px;" onchange="switchDraftProfile(this.value)" aria-label="Select Active Draft">
         <option value="">No Drafts</option>
     </select>
 
@@ -103,7 +103,11 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             User Guide
         </button>
-
+        <button class="nav-btn" onclick="window.open('t-score.html', '_blank')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
+            T-Score Methodology
+        </button>
+        
         <button class="nav-btn premium-link-btn" onclick="window.location.href='./inseason/'">
             My Lineup Strategist 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
@@ -162,75 +166,10 @@
         <button id="installAppBtn" class="btn btn-blue">Install App</button>
     </section>
 
-    <!-- 1. LOAD RANKINGS -->
+    <!-- 1. ADD / SYNC DRAFT -->
     <section class="settings-card">
         <header class="card-header">
-            <h3><span class="step-num">1</span> Load Rankings</h3>
-                <div class="tooltip-container">
-                    <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span>
-                </div>
-        </header>
-        
-        <div id="metaDisplay" class="status-badge"></div>
-        
-        <p class="card-desc">Want to skip the spreadsheet? Quick-start using live Market Value rankings (Select your league format below in Step 2).</p>
-        <button class="btn btn-purple" onclick="quickStartLeagueLogs(this)">
-            Quick-Start: LeagueLogs Market
-        </button>
-        
-        <div class="divider-text">OR UPLOAD CUSTOM</div>
-        <input type="file" id="fileInput" class="form-input" accept=".csv, .xlsx, .xls">
-        
-        <div class="divider-text">OR PASTE</div>
-        <textarea id="csvPasteArea" class="form-input" rows="2" placeholder="Paste raw CSV text here..."></textarea>
-        <button class="btn btn-primary" onclick="processPaste(this)">Process Pasted Data</button>
-    </section>
-
-    <!-- 2. LIVE MARKET VALUE -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3><span class="step-num">2</span> Live Market Value (ADP)</h3>
-                <div class="tooltip-container">
-                    <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">If you uploaded custom rankings above, click here to pull in live ADP market value so you know when players are actually being drafted.</span>
-                </div>
-        </header>
-
-        <div id="adpStatusDisplay" class="status-badge"></div>
-
-        <div class="input-group">
-            <label>Select LeagueLogs Profile</label>
-            <select id="adpFormatSelect" class="form-input">
-                <option value="redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
-                <option value="redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
-                <option value="redraft-2qb-12t-ppr1">Redraft - Superflex/2QB (PPR)</option>
-                <option value="dynasty-1qb-12t-ppr1">Dynasty - 1QB (PPR)</option>
-                <option value="dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
-            </select>
-        </div>
-        
-        <button id="fetchAdpBtn" class="btn btn-purple" onclick="fetchLeagueLogsADP(this)">Fetch Market Value</button>
-
-        <div class="leaguelogs-attribution">
-            <a href="https://leaguelogs.com" target="_blank" rel="noopener">
-                <span>Powered by</span>
-                <em>LeagueLogs</em>
-                <span class="dot-accent" aria-hidden="true"></span>
-            </a>
-        </div>
-
-        <div class="input-group mt-4">
-            <label class="text-muted font-normal">Manual Paste Fallback:</label>
-            <textarea id="adpPasteArea" class="form-input" rows="2" placeholder="e.g. Christian McCaffrey, 1.01"></textarea>
-            <button class="btn btn-secondary" onclick="processManualADP(this)">Apply Manual Market Paste</button>
-        </div>
-    </section>
-
-    <!-- 3. ADD / SYNC DRAFT -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3><span class="step-num">3</span> Add / Sync Draft</h3>
+            <h3><span class="step-num">1</span> Add / Sync Draft</h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
                 <span class="tooltip-text">Sync with Sleeper via Username and Draft ID, OR create a manual draft for Yahoo/ESPN by clicking 'Create Manual Draft'.</span>
@@ -274,6 +213,72 @@
         </div>
     </section>
 
+    <!-- 2. LOAD RANKINGS -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3><span class="step-num">2</span> Load Rankings</h3>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span>
+                </div>
+        </header>
+        
+        <div id="metaDisplay" class="status-badge"></div>
+        
+        <p class="card-desc">Want to skip the spreadsheet? Quick-start using live Market Value rankings (Select your league format below in Step 2).</p>
+        <button class="btn btn-purple" onclick="quickStartLeagueLogs(this)">
+            Quick-Start: LeagueLogs Market
+        </button>
+        
+        <div class="divider-text">OR UPLOAD CUSTOM</div>
+        <input type="file" id="fileInput" class="form-input" accept=".csv, .xlsx, .xls">
+        
+        <div class="divider-text">OR PASTE</div>
+        <textarea id="csvPasteArea" class="form-input" rows="2" placeholder="Paste raw CSV text here..."></textarea>
+        <button class="btn btn-primary" onclick="processPaste(this)">Process Pasted Data</button>
+    </section>
+
+    <!-- 3. LIVE MARKET VALUE -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3><span class="step-num">3</span> Live Market Value (ADP)</h3>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">If you uploaded custom rankings above, click here to pull in live ADP market value so you know when players are actually being drafted.</span>
+                </div>
+        </header>
+
+        <div id="adpStatusDisplay" class="status-badge"></div>
+
+        <div class="input-group">
+            <label>Select LeagueLogs Profile</label>
+            <select id="adpFormatSelect" class="form-input">
+                <option value="redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
+                <option value="redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
+                <option value="redraft-2qb-12t-ppr1">Redraft - Superflex/2QB (PPR)</option>
+                <option value="dynasty-1qb-12t-ppr1">Dynasty - 1QB (PPR)</option>
+                <option value="dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
+            </select>
+        </div>
+        
+        <button id="fetchAdpBtn" class="btn btn-purple" onclick="fetchLeagueLogsADP(this)">Fetch Market Value</button>
+
+        <div class="leaguelogs-attribution">
+            <a href="https://leaguelogs.com" target="_blank" rel="noopener">
+                <span>Powered by</span>
+                <em>LeagueLogs</em>
+                <span class="dot-accent" aria-hidden="true"></span>
+            </a>
+        </div>
+
+        <div class="input-group mt-4">
+            <label class="text-muted font-normal">Manual Paste Fallback:</label>
+            <textarea id="adpPasteArea" class="form-input" rows="2" placeholder="e.g. Christian McCaffrey, 1.01"></textarea>
+            <button class="btn btn-secondary" onclick="processManualADP(this)">Apply Manual Market Paste</button>
+        </div>
+    </section>
+
+    
     <!-- 4. ROSTER LIMITS & SETTINGS -->
     <section class="settings-card">
         <header class="card-header">

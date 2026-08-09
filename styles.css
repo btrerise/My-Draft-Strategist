@@ -89,10 +89,11 @@ body {
     align-items: center;
     gap: 1rem;
 }
-
-/* --- Header League Select (MLS) --- */
-#headerLeagueSelect { 
+/* --- Header League Select --- */
+#draftProfileSelect { 
     text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
     background-color: rgba(0, 0, 0, 0.3);
     color: var(--text-main);
     border: 1px solid var(--border);
@@ -103,7 +104,6 @@ body {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    /* Clean dark custom dropdown arrow */
     background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
@@ -111,11 +111,31 @@ body {
 }
 
 @media (max-width: 600px) {
-    #headerLeagueSelect { 
-        max-width: 130px; 
+    /* 1. Reduce the wide left/right padding on the ends of the header */
+    .header {
+        padding: 0.5rem 0.5rem; 
+    }
+    
+    /* 2. Reduce the gap between the hamburger menu and the logo */
+    .header-left {
+        gap: 0.5rem;
+    }
+    
+    /* 3. Hide the app title text to free up massive space for the controls */
+    .logo-text {
+        display: none;
+    }
+
+    /* 4. Implement the missing class to hide the word "Sync" inside the button */
+    .hide-on-mobile {
+        display: none;
+    }
+    
+    /* 5. Keep the dropdown contained */
+    #draftProfileSelect { 
+        max-width: 170px !important; 
     }
 }
-
 /* --- HAMBURGER MENU & DRAWER --- */
 .menu-overlay { 
     position: fixed; 
