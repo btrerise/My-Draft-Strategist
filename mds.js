@@ -1375,13 +1375,19 @@
         const buttons = container.querySelectorAll('.btn-draft, #toggleRecapMathBtn');
         buttons.forEach(b => b.style.display = 'none');
         
-        try {
+                try {
             const canvas = await html2canvas(container, { 
-                backgroundColor: '#131b2c', 
+                backgroundColor: '#0a0e17', // Updated to match your true app background
                 scale: 2,
                 onclone: (clonedDoc) => {
                     const clonedContainer = clonedDoc.getElementById('exportableTeamContainer');
                     const includeRecap = clonedDoc.getElementById('includeRecapInExport')?.checked;
+                    const branding = clonedDoc.getElementById('exportBranding');
+                    
+                    // Reveal the logo only in the screenshot
+                    if (branding) {
+                        branding.style.display = 'flex';
+                    }
                     
                     if (!includeRecap) {
                         const clonedRecap = clonedDoc.getElementById('draftRecapCard');
@@ -1392,7 +1398,7 @@
                         clonedContainer.style.width = '480px';
                         clonedContainer.style.maxWidth = '100%';
                         clonedContainer.style.margin = '0 auto';
-                        clonedContainer.style.padding = '1rem';
+                        clonedContainer.style.padding = '1.5rem'; // Slight padding bump to frame the logo beautifully
                         clonedContainer.style.boxSizing = 'border-box';
                     }
                 }
