@@ -1,5 +1,5 @@
 // Service Worker with Dynamic Runtime Caching for Root and /inseason/ apps
-const CACHE_NAME = 'draft-strategist-v1.5';
+const CACHE_NAME = 'draft-strategist-v1.8';
 
 // Core assets to pre-cache immediately on install
 const PRECACHE_ASSETS = [
