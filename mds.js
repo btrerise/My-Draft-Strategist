@@ -842,6 +842,94 @@
             }
             
             let masterId = bestMatchId || fallbackId || null;
+    async function processData(data, btn = null) {
+        const metaEl = document.getElementById('metaDisplay');
+        const originalBtnText = btn ? btn.innerHTML : "Upload"; 
+        
+        if (metaEl) {
+            metaEl.style.display = 'block';
+            metaEl.innerText = "Processing players and building database...";
+        }
+        if (btn) btn.innerHTML = "Processing...";
+
+        // Yield to the browser to ensure the UI updates before the heavy lifting starts
+        await new Promise(resolve => setTimeout(resolve, 15));
+
+        let newPlayers = [];
+        let posCounters = {}; 
+        let sleeperMap = {};
+
+        try {
+            let res = await fetch('https://api.sleeper.app/v1/players/nfl');
+            if (res.ok) sleeperMap = await res.json();
+        } catch(err) {
+            console.warn("Could not fetch Sleeper database.");
+        }
+
+        // --- OPTIMIZATION ---
+        // Build the Sleeper array ONCE outside the loop.
+        const sleeperArray = Object.entries(sleeperMap)
+            .filter(([_, sp]) => sp.first_name && sp.last_name)
+            .map(([sId, sp]) => ({
+                id: sId,
+                fullName: `${sp.first_name} ${sp.last_name}`,
+                lowerName: `${sp.first_name} ${sp.last_name}`.toLowerCase(),
+                pos: (sp.position || "").toUpperCase(),
+                team: sp.team ? sp.team.toUpperCase() : ""
+            }));
+
+        data.forEach((row, index) => {
+            let keys = Object.keys(row);
+            let getVal = possibleNames => {
+                let key = keys.find(k => possibleNames.includes(k.toLowerCase().trim().replace(/['"]/g, '')));
+                return key ? row[key] : "";
+            };
+
+            let name = getVal(['player', 'name', 'player name']);
+            if (!name) return;
+
+            let cleanName = String(name).trim();
+            let team = getVal(['team', 'tm', 'franchise']);
+            let bye = getVal(['bye', 'bye week']);
+
+            let nameMatch = cleanName.match(/(.+)\s+\(([A-Z]{2,3})\)/i);
+            if (nameMatch) {
+                cleanName = nameMatch[1].trim();
+                if (!team) team = nameMatch[2].toUpperCase();
+            }
+
+            let posRaw = getVal(['position', 'pos', 'pos rank', 'posn']);
+            let posGroup = posRaw ? String(posRaw).replace(/[0-9]/g, '').toUpperCase().trim() : "FLEX";
+            let posDisplay = posRaw ? String(posRaw).toUpperCase().trim() : posGroup;
+
+            if (!posCounters[posGroup]) posCounters[posGroup] = 1;
+            if (!/\d/.test(posDisplay)) posDisplay = posGroup + posCounters[posGroup];
+            posCounters[posGroup]++;
+
+            let tier = getVal(['tier', '#', 'tier #']) || "-";
+            let adp = getVal(['adp', 'auction', 'value', 'auction value', 'rank/auction value']) || "-";
+
+            let bestMatchId = null;
+            let fallbackId = null;
+            
+            // Iterate over the pre-built array
+            for (let i = 0; i < sleeperArray.length; i++) {
+                let sp = sleeperArray[i];
+                let isName = typeof isNameMatch === 'function' ? isNameMatch(cleanName, sp.fullName) : cleanName.toLowerCase() === sp.lowerName;
+                let isPos = posGroup === "FLEX" || sp.pos === posGroup;
+                
+                if (isName && isPos) {
+                    fallbackId = sp.id;
+                    if (team && team !== "FA" && sp.team === team) {
+                        bestMatchId = sp.id;
+                        break;
+                    } else if (sp.team) {
+                        bestMatchId = sp.id;
+                    }
+                }
+            }
+            
+            let masterId = bestMatchId || fallbackId || null;
             if (masterId && sleeperMap[masterId]) {
                 let sp = sleeperMap[masterId];
                 if (!team || team === "FA") team = sp.team || "FA";
