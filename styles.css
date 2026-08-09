@@ -111,8 +111,29 @@ body {
 }
 
 @media (max-width: 600px) {
+    /* 1. Reduce the wide left/right padding on the ends of the header */
+    .header {
+        padding: 0.5rem 0.5rem; 
+    }
+    
+    /* 2. Reduce the gap between the hamburger menu and the logo */
+    .header-left {
+        gap: 0.5rem;
+    }
+    
+    /* 3. Hide the app title text to free up massive space for the controls */
+    .logo-text {
+        display: none;
+    }
+
+    /* 4. Implement the missing class to hide the word "Sync" inside the button */
+    .hide-on-mobile {
+        display: none;
+    }
+    
+    /* 5. Keep the dropdown contained */
     #draftProfileSelect { 
-        max-width: 120px !important; /* Overrides the inline 140px width in the HTML */
+        max-width: 110px !important; 
     }
 }
 /* --- HAMBURGER MENU & DRAWER --- */
