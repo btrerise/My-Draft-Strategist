@@ -526,10 +526,10 @@
             }
         }
     };
-
     window.toggleAutoSync = function(isLive) {
         const syncWrap = document.getElementById('syncIconWrap');
         const liveWrap = document.getElementById('liveIconWrap');
+        const syncBtn = document.getElementById('headerSyncBtn'); // Target the button
         
         if (isLive) {
             let draft = getActiveDraft();
@@ -541,6 +541,7 @@
             }
             if (syncWrap) syncWrap.style.display = 'none';
             if (liveWrap) liveWrap.style.display = 'flex';
+            if (syncBtn) syncBtn.classList.add('is-live'); // Add the state class
             
             processSleeperDraftData(draft.username, draft.draftId, null, true);
             State.autoSyncTimer = setInterval(() => {
@@ -552,6 +553,7 @@
         } else {
             if (syncWrap) syncWrap.style.display = 'flex';
             if (liveWrap) liveWrap.style.display = 'none';
+            if (syncBtn) syncBtn.classList.remove('is-live'); // Remove the state class
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
         }
     };
