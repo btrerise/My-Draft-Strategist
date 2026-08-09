@@ -554,7 +554,10 @@
             if (syncWrap) syncWrap.style.display = 'flex';
             if (liveWrap) liveWrap.style.display = 'none';
             if (syncBtn) syncBtn.classList.remove('is-live'); // Remove the state class
-            if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
+            if (State.autoSyncTimer) {
+                clearInterval(State.autoSyncTimer);
+            State.autoSyncTimer = null;
+            }
         }
     };
 
