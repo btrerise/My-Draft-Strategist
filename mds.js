@@ -548,40 +548,62 @@
             }
         }
     };
-    window.toggleAutoSync = function(isLive) {
-        const syncWrap = document.getElementById('syncIconWrap');
-        const liveWrap = document.getElementById('liveIconWrap');
-        const syncBtn = document.getElementById('headerSyncBtn'); // Target the button
+    window.toggleAutoSync = function(isLive, sourceToggle = null) {
+    // 1. Mirror the state across all toggles on all tabs
+    document.querySelectorAll('.sync-toggle').forEach(el => {
+        if (el !== sourceToggle) el.checked = isLive;
+    });
+
+    const syncWrap = document.getElementById('syncIconWrap');
+    const liveWrap = document.getElementById('liveIconWrap');
+    const syncBtn = document.getElementById('headerSyncBtn'); 
+    
+    if (isLive) {
+        let draft = getActiveDraft();
+
+        // 2. Aggressively grab credentials from the DOM if the user hasn't clicked sync/save yet
+        const usernameInput = document.getElementById('sleeperUsername')?.value.trim();
+        const draftIdInput = document.getElementById('sleeperDraftId')?.value.trim();
         
-        if (isLive) {
-            let draft = getActiveDraft();
-            if (!draft || draft.username === "Manual") {
-                window.alert("Live Auto-Sync only works with Sleeper drafts.");
-                const toggleEl = document.getElementById('autoSyncToggle');
-                if (toggleEl) toggleEl.checked = false;
-                return;
-            }
-            if (syncWrap) syncWrap.style.display = 'none';
-            if (liveWrap) liveWrap.style.display = 'flex';
-            if (syncBtn) syncBtn.classList.add('is-live'); // Add the state class
-            
-            processSleeperDraftData(draft.username, draft.draftId, null, true);
-            State.autoSyncTimer = setInterval(() => {
-                let curDraft = getActiveDraft();
-                if (curDraft && curDraft.username !== "Manual") {
-                    processSleeperDraftData(curDraft.username, curDraft.draftId, null, true);
-                }
-            }, 1500);
-        } else {
-            if (syncWrap) syncWrap.style.display = 'flex';
-            if (liveWrap) liveWrap.style.display = 'none';
-            if (syncBtn) syncBtn.classList.remove('is-live'); // Remove the state class
-            if (State.autoSyncTimer) {
-                clearInterval(State.autoSyncTimer);
-            State.autoSyncTimer = null;
-            }
+        if (usernameInput && draftIdInput) {
+            draft.username = usernameInput;
+            draft.draftId = draftIdInput;
         }
-    };
+
+        if (!draft || draft.username === "Manual" || !draft.username || !draft.draftId) {
+            window.alert("Please enter your Sleeper Username and Draft ID on the Setup tab first.");
+            document.querySelectorAll('.sync-toggle').forEach(el => el.checked = false);
+            return;
+        }
+
+        // Update UI styling for Live State
+        if (syncWrap) syncWrap.style.display = 'none';
+        if (liveWrap) liveWrap.style.display = 'flex';
+        if (syncBtn) syncBtn.classList.add('is-live'); 
+        
+        // Fire immediately without waiting for the first interval tick
+        processSleeperDraftData(draft.username, draft.draftId, null, true);
+        
+        // 3. Smooth polling interval set to 1000ms to reduce scroll jitter
+        State.autoSyncTimer = setInterval(() => {
+            let curDraft = getActiveDraft();
+            if (curDraft && curDraft.username !== "Manual") {
+                processSleeperDraftData(curDraft.username, curDraft.draftId, null, true);
+            }
+        }, 1000); 
+
+    } else {
+        // Stop Sync & Revert UI
+        if (syncWrap) syncWrap.style.display = 'flex';
+        if (liveWrap) liveWrap.style.display = 'none';
+        if (syncBtn) syncBtn.classList.remove('is-live'); 
+        
+        if (State.autoSyncTimer) {
+            clearInterval(State.autoSyncTimer);
+            State.autoSyncTimer = null;
+        }
+    }
+};
 
     window.draftPlayer = function(id, isMine) {
         let draft = getActiveDraft();
