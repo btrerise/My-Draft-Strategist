@@ -136,17 +136,17 @@
     }
 
     // --- UI HELPERS ---
-    function flashButton(btn, text, isError = false, fallbackText = null) {
+    function flashButton(btn, text, isError = false, fallbackContent = null) {
         if (!btn) return;
-        const originalText = fallbackText || btn.innerText;
+        const originalContent = fallbackContent || btn.innerHTML; // Changed to innerHTML
         const originalBg = btn.style.backgroundColor;
 
-        btn.innerText = text;
+        btn.innerHTML = text; // Changed to innerHTML
         btn.style.backgroundColor = isError ? "var(--error-color, #ea4335)" : "var(--success-color, #4ade80)";
         btn.style.color = isError ? "white" : "var(--bg-main, #0b132b)";
 
         setTimeout(() => {
-            btn.innerText = originalText;
+            btn.innerHTML = originalContent; // Changed to innerHTML
             btn.style.backgroundColor = originalBg;
             btn.style.color = "";
         }, 2500);
@@ -554,7 +554,10 @@
             if (syncWrap) syncWrap.style.display = 'flex';
             if (liveWrap) liveWrap.style.display = 'none';
             if (syncBtn) syncBtn.classList.remove('is-live'); // Remove the state class
-            if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
+            if (State.autoSyncTimer) {
+                clearInterval(State.autoSyncTimer);
+            State.autoSyncTimer = null;
+            }
         }
     };
 
@@ -749,8 +752,8 @@
         const profileKey = formatSelect.value;
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
-        const originalText = btn.innerText;
-        btn.innerText = "Building Quick-Start...";
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "Building Quick-Start...";
 
         try {
             let sleeperMap = {};
@@ -839,8 +842,8 @@
         const profileKey = formatSelect.value;
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
-        const originalText = btn.innerText;
-        btn.innerText = "Fetching...";
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "Fetching...";
 
         try {
             const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
