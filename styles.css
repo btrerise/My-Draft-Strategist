@@ -850,7 +850,10 @@ body {
 /* --- BADGES & POSITIONAL STYLING --- */
 .badge { 
     background: #3a506b; padding: 2px 5px; border-radius: 4px; font-weight: bold; 
-    font-size: 0.7rem; color: #f1f5f9; display: inline-block; white-space: nowrap; 
+    font-size: 0.7rem; color: #f1f5f9; display: inline-block; white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 /* Restrict fixed 32px width only to roster/lineup contexts */
@@ -882,7 +885,11 @@ body {
 .status-badge { font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; background-color: #102a1e; color: #4ade80; border: 1px solid #34A853; }
 
 /* --- TOOLTIPS (Refined for Dark Mode) --- */
-.tooltip, .tooltip-container { position: relative; display: inline-flex; align-items: center; cursor: help; }
+.tooltip, .tooltip-container { position: relative; display: inline-flex; align-items: center; cursor: help; 
+                             user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+                             }
 .tooltip-icon { 
     background: rgba(255,255,255,0.1); color: var(--text-muted); border: 1px solid var(--border);
     border-radius: 50%; width: 18px; height: 18px; display: inline-flex; justify-content: center; 

@@ -224,6 +224,7 @@
         setVal('limitFLEX', limits.FLEX);
         setVal('limitSFLEX', limits.SFLEX);
         setVal('limitBENCH', limits.BENCH);
+        updateTotalRounds();
     }
 
     function updateTotalRounds() {
@@ -423,11 +424,15 @@
             const dInfo = await draftRes.json();
 
             let draftName = document.getElementById('newDraftName')?.value.trim() || "";
-            if (!draftName && dInfo.league_id) {
+            let fetchedLeague = null;
+            if (dInfo.league_id) {
                 try {
                     const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}`);
-                    if (leagueRes.ok) draftName = (await leagueRes.json()).name;
-                } catch (e) { console.warn("Could not fetch league name", e); }
+                    if (leagueRes.ok) {
+                        fetchedLeague = await leagueRes.json();
+                        if (!draftName) draftName = fetchedLeague.name;
+                    }
+                } catch (e) { console.warn("Could not fetch league details", e); }
             }
             if (!draftName) draftName = dInfo.metadata?.name || `Sleeper Draft ${draftId}`;
 
@@ -436,21 +441,38 @@
                 rounds: dInfo.settings?.rounds || 15
             };
 
-            let draftLimits = {
-                QB: dInfo.settings?.slots_qb || 1,
-                RB: dInfo.settings?.slots_rb || 2,
-                WR: dInfo.settings?.slots_wr || 3,
-                TE: dInfo.settings?.slots_te || 1,
-                FLEX: dInfo.settings?.slots_flex || 1,
-                SFLEX: dInfo.settings?.slots_super_flex || 0,
-                BENCH: dInfo.settings?.slots_bn || 6,
-            };
+            let draftLimits = { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
+
+            // Parse Sleeper's roster_positions array if we successfully grabbed the league
+            if (fetchedLeague && fetchedLeague.roster_positions) {
+                draftLimits = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0, BENCH: 0 };
+                fetchedLeague.roster_positions.forEach(pos => {
+                    if (pos === 'QB') draftLimits.QB++;
+                    else if (pos === 'RB') draftLimits.RB++;
+                    else if (pos === 'WR') draftLimits.WR++;
+                    else if (pos === 'TE') draftLimits.TE++;
+                    else if (pos === 'FLEX' || pos === 'W/R/T') draftLimits.FLEX++;
+                    else if (pos === 'SUPER_FLEX' || pos === 'Q/W/R/T') draftLimits.SFLEX++;
+                    else if (pos === 'BN') draftLimits.BENCH++;
+                });
+            } else {
+                // Fallback for manual/mock drafts unattached to a league
+                draftLimits = {
+                    QB: dInfo.settings?.slots_qb || 1,
+                    RB: dInfo.settings?.slots_rb || 2,
+                    WR: dInfo.settings?.slots_wr || 3,
+                    TE: dInfo.settings?.slots_te || 1,
+                    FLEX: dInfo.settings?.slots_flex || 1,
+                    SFLEX: dInfo.settings?.slots_super_flex || 0,
+                    BENCH: dInfo.settings?.slots_bn || 6,
+                };
+            }
             draftLimits.TOTAL = draftLimits.QB + draftLimits.RB + draftLimits.WR + draftLimits.TE + draftLimits.FLEX + draftLimits.SFLEX + draftLimits.BENCH;
 
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
             if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
             const picksData = await picksRes.json();
-
+            
             let sleeperDrafted = [];
             let sleeperMyTeam = [];
 
