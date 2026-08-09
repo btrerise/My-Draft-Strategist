@@ -198,14 +198,15 @@
         </div>
 
         <div class="toggle-row">
-            <div class="toggle-info">
-                <span class="toggle-title">
-                    <span class="pulse-dot" style="position:static; margin-right:4px;"></span> Live Auto-Sync
-                </span>
-                <span class="toggle-desc">Automatically polls Sleeper for new picks in your active draft.</span>
-            </div>
-            <input type="checkbox" id="autoSyncToggle" class="toggle-switch" onchange="toggleAutoSync(this.checked)">
-        </div>
+    <div class="toggle-info">
+        <span class="toggle-title">
+            <span class="pulse-dot" style="position:static; margin-right:4px;"></span> Live Auto-Sync
+        </span>
+        <span class="toggle-desc">Automatically polls Sleeper for new picks in your active draft.</span>
+    </div>
+    <!-- ADDED: sync-toggle class and updated onchange -->
+    <input type="checkbox" id="autoSyncToggle" class="toggle-switch sync-toggle" onchange="toggleAutoSync(this.checked, this)">
+</div>
 
         <div class="button-row-dual mt-2" style="display: flex; gap: 0.5rem;">
             <button id="syncBtn" class="btn btn-blue" style="flex: 1;" onclick="addAndSyncSleeperDraft(this)">Sync Sleeper Draft</button>
@@ -397,13 +398,21 @@
     <!-- Clean Stacked Row Layout for Tracker Control Card -->
     <section class="settings-card tracker-controls-card">
         <div class="tracker-header-actions">
-            <div id="pickTracker" class="pick-badge">Pick: 1.01</div>
-            
-            <button class="btn btn-warning btn-sm flex-grow" onclick="resetPicksOnly()" title="Reset Draft Picks">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                Reset Picks
-            </button>
-        </div>
+    <div id="pickTracker" class="pick-badge">Pick: 1.01</div>
+    
+    <!-- NEW: Compact Live Sync Toggle -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; flex-grow: 1;">
+        <span class="pulse-dot" style="position:static; width: 5px; height: 5px;"></span>
+        <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Live Sync</span>
+        <input type="checkbox" class="toggle-switch sync-toggle" style="transform: scale(0.85);" onchange="toggleAutoSync(this.checked, this)">
+    </div>
+
+    <!-- Removed 'flex-grow' from this button so it doesn't stretch awkwardly -->
+    <button class="btn btn-warning btn-sm" onclick="resetPicksOnly()" title="Reset Draft Picks">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+        Reset Picks
+    </button>
+</div>
         
         <div class="search-wrapper">
             <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -541,13 +550,23 @@
    <!-- DRAFT BOARD TAB (Grid View) -->
 <div id="boardTab" class="tab-content">
     
-    <div class="board-header-group">
+    <!-- UPDATED: Flex layout to accommodate the toggle on the right -->
+<div class="board-header-group" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+    <div>
         <h3>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
             Draft Board Grid
         </h3>
         <p class="card-desc" style="margin-top: 0.25rem;">Dynamically updates via Sleeper Auto-Sync or manual Tracker picks.</p>
     </div>
+    
+    <!-- NEW: Enclosed Live Sync Toggle -->
+    <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(0,0,0,0.15); padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+        <span class="pulse-dot" style="position:static;"></span>
+        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-main);">Auto-Sync</span>
+        <input type="checkbox" class="toggle-switch sync-toggle" style="transform: scale(0.85); margin-left: 0.25rem;" onchange="toggleAutoSync(this.checked, this)">
+    </div>
+</div>
     
     <div id="draftMatrixContainer" class="draft-board-container">
         <!-- Premium Empty State -->
