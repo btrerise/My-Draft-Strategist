@@ -78,8 +78,16 @@ function dismissBanner(bannerId, storageKey) {
 
 // Hide on load if previously dismissed
 document.addEventListener('DOMContentLoaded', () => {
-    if (localStorage.getItem('ds_hide_guide_banner') === 'true') {
-        const b = document.getElementById('guideBanner');
-        if (b) b.style.display = 'none';
-    }
+    // Helper function to check storage and hide
+    const checkAndHideBanner = (bannerId, storageKey) => {
+        if (localStorage.getItem(storageKey) === 'true') {
+            const banner = document.getElementById(bannerId);
+            if (banner) banner.style.display = 'none';
+        }
+    };
+
+    // Check all your app banners
+    checkAndHideBanner('guideBanner', 'ds_hide_guide_banner');
+    checkAndHideBanner('mlsBanner', 'ds_hide_mls_banner');
+    checkAndHideBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner');
 });
