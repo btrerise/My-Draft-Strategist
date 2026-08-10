@@ -555,28 +555,27 @@
             const toggleEl = document.getElementById('autoSyncToggle');
             if (toggleEl) toggleEl.checked = false;
         } else {
-            let draft = getActiveDraft();
-            
-            // Also grab from DOM aggressively if they hit the header button without saving
-            const usernameInput = document.getElementById('sleeperUsername')?.value.trim();
+            let targetUser = document.getElementById('sleeperUsername')?.value.trim();
             let draftIdEl = document.getElementById('sleeperDraftId');
-            let draftIdInput = draftIdEl ? draftIdEl.value.trim() : "";
+            let targetDraftId = draftIdEl ? draftIdEl.value.trim() : "";
             
-            if (draftIdInput && draftIdInput.includes('/')) {
-                const parts = draftIdInput.split('/');
-                draftIdInput = parts[parts.length - 1].split('?')[0];
-                if (draftIdEl) draftIdEl.value = draftIdInput;
+            if (targetDraftId && targetDraftId.includes('/')) {
+                const parts = targetDraftId.split('/');
+                targetDraftId = parts[parts.length - 1].split('?')[0];
+                if (draftIdEl) draftIdEl.value = targetDraftId;
             }
-            
-            if (usernameInput) draft.username = usernameInput;
-            if (draftIdInput) draft.draftId = draftIdInput;
 
-            if (draft && draft.username !== "Manual" && draft.draftId) {
-                if (typeof window.saveSettings === 'function') window.saveSettings(null, true);
-                processSleeperDraftData(draft.username, draft.draftId, document.getElementById('headerSyncBtn'), false);
-            } else {
+            let draft = getActiveDraft();
+            targetUser = targetUser || (draft ? draft.username : "");
+            targetDraftId = targetDraftId || (draft ? draft.draftId : "");
+
+            if (!targetUser || targetUser === "Manual" || !targetDraftId) {
                 window.alert("Please enter your Sleeper Username and Draft ID on the Setup tab first.");
+                return;
             }
+
+            if (typeof window.saveSettings === 'function') window.saveSettings(null, true);
+            processSleeperDraftData(targetUser, targetDraftId, document.getElementById('headerSyncBtn'), false);
         }
     };
 
@@ -591,33 +590,31 @@
         const syncBtn = document.getElementById('headerSyncBtn'); 
         
         if (isLive) {
-            let draft = getActiveDraft();
-
             // 2. Aggressively grab credentials from the DOM
-            const usernameInput = document.getElementById('sleeperUsername')?.value.trim();
+            let targetUser = document.getElementById('sleeperUsername')?.value.trim();
             let draftIdEl = document.getElementById('sleeperDraftId');
-            let draftIdInput = draftIdEl ? draftIdEl.value.trim() : "";
+            let targetDraftId = draftIdEl ? draftIdEl.value.trim() : "";
             
             // Safely extract ID from URL
-            if (draftIdInput && draftIdInput.includes('/')) {
-                const parts = draftIdInput.split('/');
-                draftIdInput = parts[parts.length - 1].split('?')[0];
-                if (draftIdEl) draftIdEl.value = draftIdInput;
-            }
-            
-            // Individually assign to prevent failure if one is missing
-            if (usernameInput) draft.username = usernameInput;
-            if (draftIdInput) draft.draftId = draftIdInput;
-
-            // Force a save to lock in the new credentials instantly
-            if (typeof window.saveSettings === 'function') {
-                window.saveSettings(null, true);
+            if (targetDraftId && targetDraftId.includes('/')) {
+                const parts = targetDraftId.split('/');
+                targetDraftId = parts[parts.length - 1].split('?')[0];
+                if (draftIdEl) draftIdEl.value = targetDraftId;
             }
 
-            if (!draft || draft.username === "Manual" || !draft.username || !draft.draftId) {
+            let draft = getActiveDraft();
+            targetUser = targetUser || (draft ? draft.username : "");
+            targetDraftId = targetDraftId || (draft ? draft.draftId : "");
+
+            if (!targetUser || targetUser === "Manual" || !targetDraftId) {
                 window.alert("Please enter your Sleeper Username and Draft ID on the Setup tab first.");
                 document.querySelectorAll('.sync-toggle').forEach(el => el.checked = false);
                 return;
+            }
+
+            // Lock in settings (which also grabs the visual input values we just cleaned)
+            if (typeof window.saveSettings === 'function') {
+                window.saveSettings(null, true);
             }
 
             // Update UI styling for Live State
@@ -625,8 +622,8 @@
             if (liveWrap) liveWrap.style.display = 'flex';
             if (syncBtn) syncBtn.classList.add('is-live'); 
             
-            // Fire immediately without waiting for the first interval tick
-            processSleeperDraftData(draft.username, draft.draftId, null, true);
+            // Fire immediately. We pass "false" so if the sync fails, you get an alert instead of silence!
+            processSleeperDraftData(targetUser, targetDraftId, null, false);
             
             // 3. Smooth polling interval
             if (!State.autoSyncTimer) {
