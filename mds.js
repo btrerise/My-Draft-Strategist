@@ -530,11 +530,13 @@
         const username = document.getElementById('sleeperUsername')?.value.trim();
         let rawDraftId = document.getElementById('sleeperDraftId')?.value.trim();
         
-        // Extract just the numbers if they pasted a full URL
+        // Safely extract ID from URL without destroying alphanumeric Mock Draft IDs
         let draftId = rawDraftId;
         if (rawDraftId) {
-            const draftIdMatch = rawDraftId.match(/\d{15,}/);
-            draftId = draftIdMatch ? draftIdMatch[0] : rawDraftId.replace(/\D/g, '');
+            if (rawDraftId.includes('/')) {
+                const parts = rawDraftId.split('/');
+                draftId = parts[parts.length - 1].split('?')[0]; // Drops URL queries if present
+            }
             
             // Clean up the UI input visually
             const draftIdEl = document.getElementById('sleeperDraftId');
@@ -562,6 +564,7 @@
             }
         }
     };
+
     window.toggleAutoSync = function(isLive, sourceToggle = null) {
         // 1. Mirror the state across all toggles on all tabs
         document.querySelectorAll('.sync-toggle').forEach(el => {
@@ -579,11 +582,13 @@
             const usernameInput = document.getElementById('sleeperUsername')?.value.trim();
             let rawDraftIdInput = document.getElementById('sleeperDraftId')?.value.trim();
             
-            // Extract just the numbers if they pasted a full URL
+            // Safely extract ID from URL without destroying alphanumeric Mock Draft IDs
             let draftIdInput = rawDraftIdInput;
             if (rawDraftIdInput) {
-                const draftIdMatch = rawDraftIdInput.match(/\d{15,}/);
-                draftIdInput = draftIdMatch ? draftIdMatch[0] : rawDraftIdInput.replace(/\D/g, '');
+                if (rawDraftIdInput.includes('/')) {
+                    const parts = rawDraftIdInput.split('/');
+                    draftIdInput = parts[parts.length - 1].split('?')[0];
+                }
                 
                 // Clean up the UI input visually
                 const draftIdEl = document.getElementById('sleeperDraftId');
@@ -609,13 +614,15 @@
             // Fire immediately without waiting for the first interval tick
             processSleeperDraftData(draft.username, draft.draftId, null, true);
             
-            // 3. Smooth polling interval set to 1000ms to reduce scroll jitter
-            State.autoSyncTimer = setInterval(() => {
-                let curDraft = getActiveDraft();
-                if (curDraft && curDraft.username !== "Manual") {
-                    processSleeperDraftData(curDraft.username, curDraft.draftId, null, true);
-                }
-            }, 1000); 
+            // 3. Smooth polling interval (set to 3 seconds as promised in User Guide)
+            if (!State.autoSyncTimer) {
+                State.autoSyncTimer = setInterval(() => {
+                    let curDraft = getActiveDraft();
+                    if (curDraft && curDraft.username !== "Manual") {
+                        processSleeperDraftData(curDraft.username, curDraft.draftId, null, true);
+                    }
+                }, 3000); 
+            }
 
         } else {
             // Stop Sync & Revert UI
@@ -629,7 +636,6 @@
             }
         }
     };
-
     window.draftPlayer = function(id, isMine) {
         let draft = getActiveDraft();
         if (!draft) return;
