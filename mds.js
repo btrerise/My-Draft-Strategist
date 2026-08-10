@@ -511,12 +511,14 @@
             State.activeDraftId = draftId;
             saveActiveDraftState();
 
-            const nameInput = document.getElementById('newDraftName');
-            if (nameInput) nameInput.value = "";
-            refreshDraftDropdown();
-            initSettingsUI();
-
-            if (!isSilent && btn) flashButton(btn, "Sync Complete!");
+            if (!isSilent) {
+                const nameInput = document.getElementById('newDraftName');
+                if (nameInput) nameInput.value = "";
+                refreshDraftDropdown();
+                initSettingsUI();
+                if (btn) flashButton(btn, "Sync Complete!");
+            }
+            
         } catch (err) {
             console.error(err);
             if (!isSilent && btn) flashButton(btn, "Sync Failed", true);
@@ -681,13 +683,18 @@
         const text = document.getElementById('csvPasteArea')?.value;
         if (text) Papa.parse(text, { header: true, skipEmptyLines: true, complete: results => processData(results.data, btn) });
     };
-
     async function processData(data, btn = null) {
         const metaEl = document.getElementById('metaDisplay');
+        const originalBtnText = btn ? btn.innerHTML : "Upload"; 
+        
         if (metaEl) {
             metaEl.style.display = 'block';
             metaEl.innerText = "Processing players and building database...";
         }
+        if (btn) btn.innerHTML = "Processing...";
+
+        // Yield to the browser to ensure the UI updates before the heavy lifting starts
+        await new Promise(resolve => setTimeout(resolve, 15));
 
         let newPlayers = [];
         let posCounters = {}; 
@@ -699,6 +706,18 @@
         } catch(err) {
             console.warn("Could not fetch Sleeper database.");
         }
+
+        // --- OPTIMIZATION ---
+        // Build the Sleeper array ONCE outside the loop.
+        const sleeperArray = Object.entries(sleeperMap)
+            .filter(([_, sp]) => sp.first_name && sp.last_name)
+            .map(([sId, sp]) => ({
+                id: sId,
+                fullName: `${sp.first_name} ${sp.last_name}`,
+                lowerName: `${sp.first_name} ${sp.last_name}`.toLowerCase(),
+                pos: (sp.position || "").toUpperCase(),
+                team: sp.team ? sp.team.toUpperCase() : ""
+            }));
 
         data.forEach((row, index) => {
             let keys = Object.keys(row);
@@ -734,20 +753,19 @@
             let bestMatchId = null;
             let fallbackId = null;
             
-            for (let [sId, sp] of Object.entries(sleeperMap)) {
-                if (sp.first_name && sp.last_name) {
-                    let fullName = `${sp.first_name} ${sp.last_name}`;
-                    let isName = typeof isNameMatch === 'function' ? isNameMatch(cleanName, fullName) : cleanName.toLowerCase() === fullName.toLowerCase();
-                    let isPos = posGroup === "FLEX" || (sp.position || "").toUpperCase() === posGroup;
-                    
-                    if (isName && isPos) {
-                        fallbackId = sId;
-                        if (team && team !== "FA" && sp.team && sp.team.toUpperCase() === team) {
-                            bestMatchId = sId;
-                            break;
-                        } else if (sp.team) {
-                            bestMatchId = sId;
-                        }
+            // Iterate over the pre-built array instead of running Object.entries() 
+            for (let i = 0; i < sleeperArray.length; i++) {
+                let sp = sleeperArray[i];
+                let isName = typeof isNameMatch === 'function' ? isNameMatch(cleanName, sp.fullName) : cleanName.toLowerCase() === sp.lowerName;
+                let isPos = posGroup === "FLEX" || sp.pos === posGroup;
+                
+                if (isName && isPos) {
+                    fallbackId = sp.id;
+                    if (team && team !== "FA" && sp.team === team) {
+                        bestMatchId = sp.id;
+                        break;
+                    } else if (sp.team) {
+                        bestMatchId = sp.id;
                     }
                 }
             }
@@ -781,11 +799,11 @@
             updateMetaDisplay();
             saveActiveDraftState();
 
-            if (btn) flashButton(btn, "Loaded Successfully");
+            if (btn) flashButton(btn, "Loaded Successfully", false, originalBtnText);
         } else {
             if (metaEl) metaEl.style.display = 'none';
-            if (btn) flashButton(btn, "Error Parsing Data", true);
-            window.alert("Error: Could not detect player names.");
+            if (btn) flashButton(btn, "Error Parsing Data", true, originalBtnText);
+            window.alert("Error: Could not detect player names. Please check your CSV format.");
         }
     }
 
