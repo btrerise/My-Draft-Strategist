@@ -101,7 +101,15 @@
         
         <!-- SETUP TAB -->
 <div id="setupTab" class="tab-content active">
-    
+    <!-- Info & Guide Banner Shortcut -->
+    <div class="guide-banner" id="guideBanner" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem;">
+        <div onclick="showTab('guide')" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
+            <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
+            <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+        </div>
+        <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'ds_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+    </div>
     <!-- ADD/SYNC LEAGUE -->
     <section class="settings-card">
         <header class="card-header">
@@ -125,15 +133,15 @@
         </div>
         
         <div class="input-group">
-            <label class="flex-label">
-                Sleeper League ID (Optional)
-                <div class="tooltip-container">
-                    <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text"><strong>Mobile App:</strong> League Settings > General > scroll to bottom.<br><br><strong>Desktop:</strong> The string of numbers in your league's URL.</span>
-                </div>
-            </label>
-            <input type="text" id="sleeperLeagueId" class="form-input" placeholder="e.g., 912345678901234567">
+    <label class="flex-label" style="display: flex; align-items: center; gap: 0.5rem;">
+        <span>Sleeper League ID (Optional)</span>
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text"><strong>Mobile App:</strong> League Settings > General > scroll to bottom.<br><br><strong>Desktop:</strong> The string of numbers in your league's URL.</span>
         </div>
+    </label>
+    <input type="text" id="sleeperLeagueId" class="form-input" placeholder="e.g., 912345678901234567">
+</div>
         
         <div class="button-row-dual">
             <button class="btn btn-secondary" onclick="addAndSyncLeague(this)">Sync Sleeper</button>
@@ -434,7 +442,7 @@
     </section>
 </div>
 
-        <!-- INFO & GUIDE TAB -->
+        <!-- USER GUIDE TAB -->
 <div id="guideTab" class="tab-content">
     <section class="settings-card">
         <header class="card-header">
@@ -472,13 +480,13 @@
             <!-- Step 4 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">4</span> Swapping & Optimizing</h4>
-                <p class="step-desc">The Lineup Optimizer will do the heavy lifting for you based on the Weekly Rankings you provide. However, you can manually override it by tapping <strong class="text-main">⇄ Swap</strong> on any player to switch them with someone else. Tap <strong class="text-main">⚡ Optimize Lineup</strong> to revert back to the algorithmic ideal.</p>
+                <p class="step-desc">The Lineup Optimizer will do the heavy lifting for you based on the Weekly Rankings you provide. However, you can manually override it by tapping <strong class="text-main">⇄ Swap</strong> on any player to switch them with someone else. Tap <strong class="text-main">Optimize Lineup</strong> to revert back to the algorithmic ideal.</p>
             </div>
 
             <!-- Step 5 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">5</span> Exporting & Sharing</h4>
-                <p class="step-desc">Once your lineup is set, tap the <strong class="text-main">📸 Export</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media!</p>
+                <p class="step-desc">Once your lineup is set, tap the <strong class="text-main"> Export</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media!</p>
             </div>
         </div>
     </section>
