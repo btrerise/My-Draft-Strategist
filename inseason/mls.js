@@ -314,7 +314,7 @@
         let newId = 'manual_' + Date.now();
         let leagueObj = {
             leagueId: newId, name: name, username: "Manual",
-            reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 }, roster: [], globalRosterMap: {}
+            reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 }, roster: [], globalRosterMap: {},
             rosRankings: [...State.rosRankings],       
             weeklyRankings: [...State.weeklyRankings]  
         };
@@ -473,7 +473,7 @@
 
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username,
-                reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap
+                reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 rosRankings: [...State.rosRankings],   
             weeklyRankings: [...State.weeklyRankings]  
             };
