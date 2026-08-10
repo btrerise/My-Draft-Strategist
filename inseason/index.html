@@ -65,7 +65,7 @@
             T-Score Methodology
         </button>
         <button class="nav-btn premium-link-btn" onclick="window.location.href='../index.html'">
-            Back to Draft Strategist 
+            My Draft Strategist 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
         </button>
     </div>
@@ -374,11 +374,13 @@
 <div id="scoutTab" class="tab-content">
     
     <!-- INFO BANNER -->
-    <div class="info-banner">
+    <div class="info-banner" id="sleeperSyncBanner" style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div style="display: flex; gap: 0.5rem;">
         <div class="info-banner-icon">i</div>
         <div><strong>Sleeper Sync Required:</strong> To see exactly which team owns a player or if they are a Free Agent, you must sync a Sleeper league on the Setup tab. Otherwise, this tool will only display the player's Weekly/ROS ranks.</div>
     </div>
-
+    <button class="close-banner-btn" onclick="dismissBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem; margin-left: 0.75rem; flex-shrink: 0;">✕</button>
+</div>
     <!-- WAIVER WIRE ASSISTANT -->
     <section class="settings-card">
         <header class="card-header">

@@ -224,6 +224,25 @@
         if (!leagueId) return;
         State.activeLeagueId = leagueId;
         localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+        
+        // HYDRATION: Unpack rankings for this specific league
+        let league = getActiveLeague();
+        if (league) {
+            State.rosRankings = league.rosRankings && league.rosRankings.length > 0 
+                ? [...league.rosRankings] 
+                : JSON.parse(localStorage.getItem('mds_season_ros')) || [];
+                
+            State.weeklyRankings = league.weeklyRankings && league.weeklyRankings.length > 0 
+                ? [...league.weeklyRankings] 
+                : JSON.parse(localStorage.getItem('mds_season_weekly')) || [];
+
+            // Update the global fallbacks so the UI stays in sync
+            localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings));
+            localStorage.setItem('mds_season_weekly', JSON.stringify(State.weeklyRankings));
+            
+            updateRankingsMetaDisplay();
+        }
+
         loadActiveLeagueData();
         State.swapSourceId = null;
 
@@ -247,7 +266,15 @@
     function getActiveLeague() {
         return State.leagues.find(l => l.leagueId === State.activeLeagueId) || null;
     }
-
+    function saveActiveLeagueState() {
+    let league = getActiveLeague();
+    if (league) {
+        // Save current rankings specifically to this league
+        league.rosRankings = [...State.rosRankings];
+        league.weeklyRankings = [...State.weeklyRankings];
+    }
+    localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+}
     function loadActiveLeagueData() {
         let league = getActiveLeague();
         if (!league) return;
@@ -287,7 +314,9 @@
         let newId = 'manual_' + Date.now();
         let leagueObj = {
             leagueId: newId, name: name, username: "Manual",
-            reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 }, roster: [], globalRosterMap: {}
+            reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 }, roster: [], globalRosterMap: {},
+            rosRankings: [...State.rosRankings],       
+            weeklyRankings: [...State.weeklyRankings]  
         };
         State.leagues.push(leagueObj);
         State.activeLeagueId = newId;
@@ -444,7 +473,9 @@
 
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username,
-                reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap
+                reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
+                rosRankings: [...State.rosRankings],   
+            weeklyRankings: [...State.weeklyRankings]  
             };
 
             let existingIdx = State.leagues.findIndex(l => l.leagueId === leagueId);
@@ -781,7 +812,7 @@
             State.rosRankings = parsed; 
             localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings)); 
         }
-        
+        saveActiveLeagueState();
         updateRankingsMetaDisplay();
         
         if (hasNewSos) {
