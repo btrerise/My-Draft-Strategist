@@ -1990,11 +1990,13 @@ input[type="file"]::-webkit-file-upload-button:hover {
 /* Mobile-specific adjustments for Draft Board edge-to-edge bleed */
 @media (max-width: 768px) {
     .draft-board-container {
-        /* Pulls the container out through the 1.5rem padding of the parent */
         margin-left: -1.5rem; 
         margin-right: -1.5rem;
         
-        /* Puts the padding inside the scrollable area so it aligns perfectly with the rest of the app */
+        /* Overrides the base 100% width so it actually stretches edge-to-edge */
+        width: calc(100% + 3rem);
+        max-width: none;
+        
         padding-left: 1.5rem;
         padding-right: 1.5rem;
         
