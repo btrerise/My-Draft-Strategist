@@ -884,13 +884,15 @@
         let parsed = [];
         if (rows.length < 1) return;
 
-        // Automatically detect KTC / FantasyCalc column headers
+        // Automatically detect KTC / FantasyCalc column headers (prioritizing overall rank over value)
         let sample = rows[0];
         let nameKey = Object.keys(sample).find(k => /player|name/i.test(k));
-        let rankKey = Object.keys(sample).find(k => /rank|overall|value/i.test(k));
+        let rankKey = Object.keys(sample).find(k => /overall[_\s]?rank/i.test(k)) ||
+                      Object.keys(sample).find(k => /^rank$/i.test(k)) ||
+                      Object.keys(sample).find(k => /overall/i.test(k) && !/value/i.test(k));
 
         if (!nameKey || !rankKey) {
-            window.alert("Could not automatically detect 'Player' and 'Rank/Value' columns in your market file.");
+            window.alert("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.");
             return;
         }
 
@@ -902,7 +904,7 @@
                 parsed.push({
                     name: nameStr.trim(),
                     cleanName: normalizeName(nameStr.trim()),
-                    marketVal: numVal // Can represent rank or KTC value score
+                    marketVal: numVal // Represents the player's overall market rank
                 });
             }
         });
@@ -962,16 +964,15 @@
             let isSignificant = false;
 
             if (mode === 'flat') {
-                // Assuming marketVal is a rank (lower is better)
+                // marketVal is a rank (lower is better)
                 // Delta = Market Rank - User Rank
                 // Positive delta = User ranks them HIGHER than market (Buy target)
                 // Negative delta = User ranks them LOWER than market (Sell candidate)
                 delta = marketVal - userRank; 
                 isSignificant = Math.abs(delta) >= threshold;
             } else {
-                // Percentage shift calculation (e.g., KTC value differences)
-                // Delta % = (User Value - Market Value) / Market Value
-                let diff = userRank - marketVal; // Conceptual representation
+                // Percentage shift calculation based on rank differences
+                let diff = userRank - marketVal; 
                 let pct = (Math.abs(diff) / marketVal) * 100;
                 delta = diff;
                 isSignificant = pct >= threshold;
