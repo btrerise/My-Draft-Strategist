@@ -963,16 +963,16 @@
             let delta = 0;
             let isSignificant = false;
 
+            // Corrected sign convention: Market Rank - User Rank
+            // Positive delta = User ranks them HIGHER/BETTER than market (Buy target)
+            // Negative delta = User ranks them LOWER/WORSE than market (Sell candidate)
+            let diff = marketVal - userRank; 
+
             if (mode === 'flat') {
-                // marketVal is a rank (lower is better)
-                // Delta = Market Rank - User Rank
-                // Positive delta = User ranks them HIGHER than market (Buy target)
-                // Negative delta = User ranks them LOWER than market (Sell candidate)
-                delta = marketVal - userRank; 
+                delta = diff; 
                 isSignificant = Math.abs(delta) >= threshold;
             } else {
-                // Percentage shift calculation based on rank differences
-                let diff = userRank - marketVal; 
+                // Percentage shift calculation based on consistent rank difference
                 let pct = (Math.abs(diff) / marketVal) * 100;
                 delta = diff;
                 isSignificant = pct >= threshold;
