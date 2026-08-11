@@ -2005,22 +2005,30 @@ input[type="file"]::-webkit-file-upload-button:hover {
     }
 
     .draft-grid {
-        /* REMOVE the 100% width trap and nested scroll */
+        /* Remove the nested scroll trap */
         max-width: none;
-        width: max-content; 
         overflow-x: visible;
         
-        /* Optional: Keep min-width to 100% so it doesn't shrink awkwardly in small leagues */
-        min-width: 100%;
+        /* Force the grid to prioritize the 56px minimum over the text width */
+        width: 100%; 
     }
 
-    /* Ensures long names truncate elegantly in the narrower 64px columns */
+    .draft-cell {
+        /* THE MAGIC LINE: Tells the grid NOT to expand columns based on text width */
+        min-width: 0;
+        
+        /* Slightly tighter side padding to maximize text space in narrow columns */
+        padding: 0.5rem 0.25rem; 
+    }
+
     .draft-cell-first, 
     .draft-cell-last {
         font-size: 0.75rem; 
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 100%;
+        
+        /* Forces the text to respect the truncation limits */
+        width: 100%; 
     }
 }
