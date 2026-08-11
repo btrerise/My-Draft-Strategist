@@ -979,14 +979,22 @@
             }
 
             if (isSignificant) {
+                let tradeType = delta > 0 ? 'BUY' : 'SELL';
+                let owner = rosterMap[userObj.cleanName];
+
+                // For SELL opportunities, ensure the player is actually on the user's roster
+                if (tradeType === 'SELL' && owner !== 'You') {
+                    return; // Skip if you don't own them
+                }
+
                 analysisList.push({
                     name: userObj.name,
                     cleanName: userObj.cleanName,
                     userRank: userRank,
                     marketVal: marketVal,
                     delta: delta,
-                    type: delta > 0 ? 'BUY' : 'SELL',
-                    owner: rosterMap[userObj.cleanName]
+                    type: tradeType,
+                    owner: owner
                 });
             }
         });
@@ -1027,7 +1035,6 @@
         if (sellItems.length > 0) {
             html += `<div style="font-weight:bold; color:#fca5a5; margin: 1.25rem 0 0.5rem 0;">🔴 Overvalued Assets (Sell High Opportunities)</div>`;
             sellItems.forEach(item => {
-                let ownerStr = item.owner === "You" ? `<strong style="color:#fca5a5;">On your roster (Sell High!)</strong>` : (item.owner ? `Rostered by: ${item.owner}` : `Available / Unrostered`);
                 html += `
                 <div class="scout-result-card">
                     <div>
@@ -1039,7 +1046,7 @@
                     </div>
                     <div style="text-align:right;">
                         <span class="badge" style="background:var(--avoid-bg); color:#fca5a5; border:1px solid var(--avoid-border);">${item.delta} Edge</span>
-                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">${ownerStr}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;"><strong style="color:#fca5a5;">On your roster (Sell High!)</strong></div>
                     </div>
                 </div>`;
             });
