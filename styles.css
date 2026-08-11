@@ -1018,12 +1018,12 @@ body {
 /* 1. Fix position badge width so it never shifts */
 .roster-item .pos-badge, 
 .lineup-slot .slot-label { 
-    width: 48px;
-    min-width: 48px;
+    width: 38px;
+    min-width: 38px;
     flex-shrink: 0;
     text-align: center;
+    font-size: 0.8rem; /* Scaled down slightly */
 }
-
 /* 2. UNIVERSAL FIX: Force whatever player data is in the middle to left-align and fill space */
 .roster-item > *:not(:first-child):not(:last-child),
 .lineup-slot > *:not(:first-child):not(:last-child) {
@@ -1075,13 +1075,38 @@ body {
 .lock-btn { font-size: 1.1rem; background: transparent; border: none; cursor: pointer; padding: 0 0.25rem; }
 
 /* Responsive adjustments */
+/* Responsive adjustments for optimal mobile density */
 @media (max-width: 450px) {
-    .lineup-slot, .roster-item { padding: 0.6rem 0.5rem; gap: 0.4rem; }
-    .slot-label { width: 36px; min-width: 36px; font-size: 0.7rem; }
-    .player-name-wrap { font-size: 0.85rem; }
-    .badge { padding: 2px 5px; font-size: 0.65rem; }
-    .swap-btn { padding: 0.3rem 0.5rem; font-size: 0.75rem; }
-    .lock-btn { font-size: 1rem; }
+    .lineup-slot, .roster-item { 
+        padding: 0.5rem 0.4rem; 
+        gap: 0.4rem; 
+    }
+    
+    .roster-item .pos-badge, 
+    .lineup-slot .slot-label { 
+        width: 32px; 
+        min-width: 32px; 
+        font-size: 0.7rem; 
+    }
+    
+    .player-name-wrap { 
+        font-size: 0.85rem; 
+    }
+    
+    .badge { 
+        padding: 2px 4px; 
+        font-size: 0.65rem; 
+    }
+    
+    .swap-btn { 
+        padding: 0.3rem 0.5rem; 
+        font-size: 0.75rem; 
+    }
+    
+    .lock-btn { 
+        /* Bumps the SVG size up slightly for better touch targets */
+        transform: scale(1.1); 
+    }
 }
 /* Scout Tab Specific Styles */
 .scout-textarea { 
