@@ -2049,3 +2049,22 @@ input[type="file"]::-webkit-file-upload-button:hover {
         max-width: 100%;
     }
 }
+/* Reclaim horizontal space for player cards on mobile */
+@media (max-width: 600px) {
+    .container {
+        /* Reduces the outer screen edge gap from 1.5rem to 0.5rem */
+        padding: 1.25rem 0.5rem; 
+    }
+
+    .settings-card {
+        /* Reduces the inner card gap from 1.5rem to 0.75rem */
+        padding: 1rem 0.75rem; 
+    }
+
+    /* Optional: Ensure the empty state messages don't force awkward sizing */
+    .lineup-empty-state,
+    .bench-empty-state,
+    .roster-empty-state {
+        padding: 1.5rem 0.5rem;
+    }
+}
