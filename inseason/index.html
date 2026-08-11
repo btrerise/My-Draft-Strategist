@@ -445,7 +445,41 @@
         <div id="tradeOutput" class="scout-output-container"></div>
     </section>
 </div>
+<!-- TRADE FINDER: MARKET DISCONNECT -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3>
+                <span>Trade Finder: Market Disconnect</span>
+            </h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Upload a market CSV (from KTC or FantasyCalc) to compare consensus values against your custom ROS rankings and instantly expose buy-low targets and sell-high candidates.</span>
+            </div>
+        </header>
+        
+        <div id="marketMetaDisplay" class="status-badge-meta"></div>
+        <input type="file" id="marketFileInput" class="form-input file-input mb-3" accept=".csv, text/csv, .xlsx, .xls">
+        <div id="marketSuccessMsg" class="success-feedback">✅ Market Data Uploaded Successfully!</div>
 
+        <!-- Filter / Control Bar -->
+        <div class="settings-grid mb-3" style="align-items: center;">
+            <div class="input-group" style="margin-bottom: 0;">
+                <label>Filter Mode</label>
+                <select id="disconnectMode" class="form-input" onchange="toggleDisconnectMode()">
+                    <option value="flat">Flat Rank Gap (e.g., 10+ spots)</option>
+                    <option value="percent">Percentage Shift (e.g., 20%+ value delta)</option>
+                </select>
+            </div>
+            <div class="input-group" style="margin-bottom: 0;">
+                <label id="thresholdLabel">Minimum Rank Gap</label>
+                <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1">
+            </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="runMarketDisconnectAnalysis()">Find Trade Targets</button>
+        
+        <div id="marketDisconnectOutput" class="scout-output-container"></div>
+    </section>
         <!-- USER GUIDE TAB -->
 <div id="guideTab" class="tab-content">
     <section class="settings-card">
