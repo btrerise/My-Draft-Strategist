@@ -23,6 +23,7 @@
         earlyTeams: JSON.parse(localStorage.getItem('mds_season_early_teams')) || [],
         rosRankings: JSON.parse(localStorage.getItem('mds_season_ros')) || [],
         weeklyRankings: JSON.parse(localStorage.getItem('mds_season_weekly')) || [],
+        marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
         manualStartersMap: JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {},
@@ -836,7 +837,223 @@
     const weeklyFileEl = document.getElementById('weeklyFileInput');
     if (rosFileEl) rosFileEl.addEventListener('change', () => processRankingsUpload('rosFileInput', false, 'rosSuccessMsg'));
     if (weeklyFileEl) weeklyFileEl.addEventListener('change', () => processRankingsUpload('weeklyFileInput', true, 'weeklySuccessMsg'));
+// --- MARKET DISCONNECT ENGINE ---
+    const marketFileEl = document.getElementById('marketFileInput');
+    if (marketFileEl) {
+        marketFileEl.addEventListener('change', () => processMarketUpload('marketFileInput', 'marketSuccessMsg'));
+    }
 
+    window.toggleDisconnectMode = function() {
+        const mode = document.getElementById('disconnectMode')?.value;
+        const label = document.getElementById('thresholdLabel');
+        const input = document.getElementById('disconnectThreshold');
+        if (!label || !input) return;
+
+        if (mode === 'percent') {
+            label.innerText = "Min Percentage Shift (%)";
+            input.value = "20";
+        } else {
+            label.innerText = "Minimum Rank Gap";
+            input.value = "10";
+        }
+    };
+
+    function processMarketUpload(fileInputId, successMsgId) {
+        const fileInput = document.getElementById(fileInputId);
+        if (!fileInput || !fileInput.files[0]) return;
+        const file = fileInput.files[0];
+
+        const filename = file.name.toLowerCase();
+        if (filename.endsWith('.csv')) {
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+                Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            window.alert("Unsupported file format. Please upload a .csv or .xlsx file.");
+        }
+    }
+
+    function parseMarketData(rows, successMsgId) {
+        let parsed = [];
+        if (rows.length < 1) return;
+
+        // Automatically detect KTC / FantasyCalc column headers (prioritizing overall rank over value)
+        let sample = rows[0];
+        let nameKey = Object.keys(sample).find(k => /player|name/i.test(k));
+        let rankKey = Object.keys(sample).find(k => /overall[_\s]?rank/i.test(k)) ||
+                      Object.keys(sample).find(k => /^rank$/i.test(k)) ||
+                      Object.keys(sample).find(k => /overall/i.test(k) && !/value/i.test(k));
+
+        if (!nameKey || !rankKey) {
+            window.alert("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.");
+            return;
+        }
+
+        rows.forEach((row, idx) => {
+            let nameStr = row[nameKey];
+            let valStr = row[rankKey] ? String(row[rankKey]).replace(/[^0-9.]/g, '') : "";
+            if (nameStr && nameStr.trim() && valStr) {
+                let numVal = parseFloat(valStr);
+                parsed.push({
+                    name: nameStr.trim(),
+                    cleanName: normalizeName(nameStr.trim()),
+                    marketVal: numVal // Represents the player's overall market rank
+                });
+            }
+        });
+
+        State.marketRankings = parsed;
+        localStorage.setItem('mds_season_market', JSON.stringify(State.marketRankings));
+        updateMarketMetaDisplay();
+
+        let msgEl = document.getElementById(successMsgId);
+        if (msgEl) {
+            msgEl.style.display = 'block';
+            setTimeout(() => msgEl.style.display = 'none', 2500);
+        }
+    }
+
+    function updateMarketMetaDisplay() {
+        const metaEl = document.getElementById('marketMetaDisplay');
+        if (metaEl) {
+            if (State.marketRankings.length > 0) {
+                metaEl.style.display = 'block';
+                metaEl.innerText = `Market Consensus Loaded: ${State.marketRankings.length} players`;
+            } else {
+                metaEl.style.display = 'none';
+            }
+        }
+    }
+
+    window.runMarketDisconnectAnalysis = function() {
+        const outputEl = document.getElementById('marketDisconnectOutput');
+        if (!outputEl) return;
+
+        if (State.marketRankings.length === 0) {
+            outputEl.innerHTML = `<span style="color:var(--error-color, #fca5a5);">Please upload a market consensus file (KTC/FantasyCalc) first.</span>`;
+            return;
+        }
+        if (State.rosRankings.length === 0) {
+            outputEl.innerHTML = `<span style="color:var(--error-color, #fca5a5);">Please upload your Rest-of-Season (ROS) rankings on the Roster tab first.</span>`;
+            return;
+        }
+
+        const mode = document.getElementById('disconnectMode')?.value || 'flat';
+        const threshold = parseFloat(document.getElementById('disconnectThreshold')?.value) || 10;
+
+        let league = getActiveLeague();
+        let rosterMap = league ? (league.globalRosterMap || {}) : {};
+
+        let analysisList = [];
+
+        State.marketRankings.forEach(m => {
+            let userObj = State.rosRankings.find(r => r.cleanName === m.cleanName);
+            if (!userObj) return; // Skip if user didn't rank this player
+
+            let userRank = userObj.rank;
+            let marketVal = m.marketVal;
+
+            let delta = 0;
+            let isSignificant = false;
+
+            // Corrected sign convention: Market Rank - User Rank
+            // Positive delta = User ranks them HIGHER/BETTER than market (Buy target)
+            // Negative delta = User ranks them LOWER/WORSE than market (Sell candidate)
+            let diff = marketVal - userRank; 
+
+            if (mode === 'flat') {
+                delta = diff; 
+                isSignificant = Math.abs(delta) >= threshold;
+            } else {
+                // Percentage shift calculation based on consistent rank difference
+                let pct = (Math.abs(diff) / marketVal) * 100;
+                delta = diff;
+                isSignificant = pct >= threshold;
+            }
+
+            if (isSignificant) {
+                let tradeType = delta > 0 ? 'BUY' : 'SELL';
+                let owner = rosterMap[userObj.cleanName];
+
+                // For SELL opportunities, ensure the player is actually on the user's roster
+                if (tradeType === 'SELL' && owner !== 'You') {
+                    return; // Skip if you don't own them
+                }
+
+                analysisList.push({
+                    name: userObj.name,
+                    cleanName: userObj.cleanName,
+                    userRank: userRank,
+                    marketVal: marketVal,
+                    delta: delta,
+                    type: tradeType,
+                    owner: owner
+                });
+            }
+        });
+
+        // Sort by magnitude of disconnect
+        analysisList.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+        if (analysisList.length === 0) {
+            outputEl.innerHTML = `<div class="scout-result-card" style="justify-content:center; color:var(--text-muted);">No significant market disconnects found matching your threshold. Try adjusting the filter limit.</div>`;
+            return;
+        }
+
+        let html = "";
+        let buyItems = analysisList.filter(x => x.type === 'BUY');
+        let sellItems = analysisList.filter(x => x.type === 'SELL');
+
+        if (buyItems.length > 0) {
+            html += `<div style="font-weight:bold; color:var(--primary-green); margin: 0.75rem 0 0.5rem 0;">🟢 High-Value Targets (Market Sleeping)</div>`;
+            buyItems.forEach(item => {
+                let ownerStr = item.owner === "You" ? `<span style="color:#60a5fa;">On your roster</span>` : (item.owner ? `Rostered by: ${item.owner}` : `<span style="color:var(--primary-green);">Free Agent</span>`);
+                html += `
+                <div class="scout-result-card">
+                    <div>
+                        <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px;">${item.name}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); display:flex; gap:0.8rem;">
+                            <span>Your Board: <strong style="color:#86efac;">#${item.userRank}</strong></span>
+                            <span>Market: <strong style="color:#93c5fd;">#${item.marketVal}</strong></span>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="badge" style="background:var(--target-bg); color:var(--primary-green); border:1px solid var(--target-border);">+${item.delta} Edge</span>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">${ownerStr}</div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        if (sellItems.length > 0) {
+            html += `<div style="font-weight:bold; color:#fca5a5; margin: 1.25rem 0 0.5rem 0;">🔴 Overvalued Assets (Sell High Opportunities)</div>`;
+            sellItems.forEach(item => {
+                html += `
+                <div class="scout-result-card">
+                    <div>
+                        <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px;">${item.name}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); display:flex; gap:0.8rem;">
+                            <span>Your Board: <strong style="color:#fca5a5;">#${item.userRank}</strong></span>
+                            <span>Market: <strong style="color:#93c5fd;">#${item.marketVal}</strong></span>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="badge" style="background:var(--avoid-bg); color:#fca5a5; border:1px solid var(--avoid-border);">${item.delta} Edge</span>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;"><strong style="color:#fca5a5;">On your roster (Sell High!)</strong></div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        outputEl.innerHTML = html;
+    };
     // --- SCREENSHOT EXPORT ---
     window.exportLineup = async function() {
     if (typeof html2canvas === 'undefined') { 
