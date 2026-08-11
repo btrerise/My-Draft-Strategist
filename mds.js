@@ -1036,7 +1036,7 @@
         let totalTeams = draft.settings?.teams || 12;
         let totalRounds = draft.settings?.rounds || 15;
 
-        let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(78px, 1fr));">`;
+        let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(64px, 1fr));">`;
 
         for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;

@@ -1987,3 +1987,40 @@ input[type="file"]::-webkit-file-upload-button:hover {
     background-color: rgba(239, 68, 68, 0.25);
     box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(239, 68, 68, 0.2);
 }
+/* Mobile-specific adjustments for Draft Board edge-to-edge bleed */
+@media (max-width: 768px) {
+    .draft-board-container {
+        /* Pull container out to the absolute edges */
+        margin-left: -1.5rem; 
+        margin-right: -1.5rem;
+        width: calc(100% + 3rem);
+        max-width: none;
+        
+        /* Start grid cleanly with padding, but let it scroll fully to the edge */
+        padding-left: 1.5rem;
+        padding-right: 1.5rem; 
+        
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .draft-grid {
+        /* REMOVE the 100% width trap and nested scroll */
+        max-width: none;
+        width: max-content; 
+        overflow-x: visible;
+        
+        /* Optional: Keep min-width to 100% so it doesn't shrink awkwardly in small leagues */
+        min-width: 100%;
+    }
+
+    /* Ensures long names truncate elegantly in the narrower 64px columns */
+    .draft-cell-first, 
+    .draft-cell-last {
+        font-size: 0.75rem; 
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+}
