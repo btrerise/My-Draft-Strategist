@@ -1092,7 +1092,9 @@
 
             if (s.player) {
                 let p = s.player;
-                let lockIcon = p.isLocked ? "🔒" : "🔓";
+                let lockIcon = p.isLocked 
+                    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>` 
+                    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.6;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
                 let lockClass = p.isLocked ? "locked" : "";
                 if (State.swapSourceId === p.id) lockClass += " swapping";
 
@@ -1134,6 +1136,7 @@
 
         let benchHTML = "";
         if (benchPool.length > 0) {
+            benchContainer.classList.remove('bench-empty-state');
             benchPool.forEach(p => {
                 let lockClass = State.swapSourceId === p.id ? "swapping" : "";
                 let displayRank = p.flexRank !== 999 ? p.flexRank : p.posRank;
@@ -1163,6 +1166,7 @@
                 </div>`;
             });
         } else { 
+            benchContainer.classList.add('bench-empty-state');
             benchHTML = "No bench players."; 
         }
         benchContainer.innerHTML = benchHTML;
