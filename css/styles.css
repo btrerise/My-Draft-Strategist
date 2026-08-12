@@ -196,6 +196,7 @@ body {
 
 .menu-logo-img {
     height: 28px;
+    width: auto; /* Guarantees 1:1 square ratio */
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2); 
 }
@@ -315,7 +316,10 @@ body {
 
 .kofi-img {
     height: 36px;
+    width: auto;
+    max-width: 100%;
     border-radius: 8px;
+    border: none;
 }
 
 /* --- LOGO & TITLE --- */
@@ -448,6 +452,7 @@ body {
 .hero-logo {
     width: 100%;
     max-width: 500px;
+    height: auto; /* Guarantees proportional scaling */
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
@@ -791,7 +796,6 @@ body {
 .swap-btn { padding: 4px 8px; }
 .lock-btn { font-size: 1.2rem; }
 
-.kofi-img { height: 32px; border: 0px; }
 /* --- HAMBURGER BUTTON --- */
 .hamburger-btn {
     background: transparent;
