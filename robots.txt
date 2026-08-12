@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Optional: Add your sitemap link here once you create one in the future
+# Sitemap: https://mydraftstrategist.com/sitemap.xml
