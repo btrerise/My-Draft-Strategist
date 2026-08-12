@@ -3,6 +3,26 @@
 **My Draft Strategist** is a mobile-first, high-performance web application designed for fantasy football enthusiasts. It functions as a complete draft companion, offering custom ranking management, real-time market value (ADP) syncing, live platform integrations, advanced roster tracking, and full draft-board grid visualization.
 
 ---
+# My Draft Strategist
+
+The official repository for [My Draft Strategist](https://mydraftstrategist.com), featuring custom tools and calculators designed for fantasy football draft preparation and lineup strategy.
+
+## Project Structure
+
+* **`/css`** - Global stylesheets (`styles.css`) applied across the application.
+* **`/images`** - Brand assets, logos, and graphics (`logo.png`).
+* **`/js`** - Shared JavaScript utility and helper scripts.
+* **`/lineup`** - The *Lineup Strategist* tool (contains its page-specific HTML and script files).
+* **`/t-score`** - The *T-Score* tool (contains its page-specific HTML and `tscore_data.js` file).
+* **Root Files:**
+  * `index.html` - The main landing page of the website.
+  * `sw.js` - Progressive Web App service worker for caching.
+  * `manifest.json` - PWA web app manifest configuration.
+  * `5775.png` - Site favicon.
+
+## Hosting
+Hosted and deployed statically via Cloudflare Pages.
+---
 
 ## 🌟 Comprehensive Feature List
 
