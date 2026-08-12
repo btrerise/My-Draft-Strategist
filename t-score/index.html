@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="T-Score Methodology and Rankings for Wide Receivers">
     <title>T-Score Methodology | My Draft Strategist</title>
+    <link rel="canonical" href="https://mydraftstrategist.com/t-score/" />
 
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -177,11 +178,42 @@
     
     <!-- MathJax for rendering LaTeX equations -->
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <meta property="og:title" content="My Draft Strategist - Lineup & Draft Tools">
-    <meta property="og:description" content="Fantasy football draft and lineup tools allowing use of custom rankings.">
+    <!-- Open Graph / Social Meta Tags -->
+    <meta property="og:title" content="The T-Score Model | My Draft Strategist">
+    <meta property="og:description" content="A predictive statistical model for evaluating Wide Receiver fantasy production based on multiple linear regression analysis.">
     <meta property="og:image" content="https://mydraftstrategist.com/images/5775.png">
-    <meta property="og:url" content="https://mydraftstrategist.com">
+    <meta property="og:url" content="https://mydraftstrategist.com/t-score/">
     <meta name="twitter:card" content="summary_large_image">
+
+    <script type="application/ld+json">
+    {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://mydraftstrategist.com/t-score/"
+    },
+    "headline": "The T-Score Model: A Predictive Wide Receiver Methodology",
+    "description": "A predictive statistical model for evaluating Wide Receiver fantasy production based on multiple linear regression analysis.",
+    "image": "https://mydraftstrategist.com/images/5775.png",
+    "author": {
+        "@type": "Person",
+        "name": "Benton Trerise"
+    "datePublished": "2025-08-01"
+    "dateModified": "2026-08-05"
+    },
+    "publisher": {
+        "@type": "Organization",
+        "name": "My Draft Strategist",
+        "logo": {
+        "@type": "ImageObject",
+        "url": "https://mydraftstrategist.com/images/5775.png"
+        }
+    },
+    "articleSection": "Fantasy Football Analytics",
+    "keywords": "Fantasy Football, Wide Receiver, Predictive Model, Multiple Linear Regression, T-Score, ADP, Target Share, Yards, Yards Per Game, Targets Per Team Pass Attempt, Targets, Per Game, Red Zone Targets, Yards Per Route Run, Yards After Catch, Air Yards, Air Yards Share"
+    }
+    </script>
 </head>
 <body>
 
@@ -217,7 +249,7 @@
     <!-- TAB: THE RESEARCH -->
     <div id="researchTab" class="tab-content active">
         <div class="article-content">
-        <h3>Introduction</h3>
+        <h2>Introduction</h2>
         <p>I stumbled upon a <a href="https://fantasyclassroom.org/Blogs/sticky-stats/wr-metrics" style="color:var(--primary-green);">random article</a> on Reddit, where the author was using WR stats from a previous season to try and predict fantasy success for Wide Receivers (WR) the following season. He had created his own “trinity” score utilizing Target (Tgt) Share, Air Yards (AY) Share, and Yards After Catch (YAC) per reception, and normalized them. Normalizing means taking the stats of a particular metric, and putting it all on a 0-100 (or 0-1) scale, in order to make more fair comparisons. He also looked into alternative combinations of metrics, and the one where he had found the most correlation used total receiving yards, YAC, AY Share, and Yards per Team Pass Attempt, and normalized each stat.</p>
         <p>At the time I read this particular article, he didn’t have anything using the stats from 2024 to try and predict 2025 fantasy success, so I decided to take it on myself. I then decided to adjust it, because some of those stats hurt WRs who got injured. I know that decreases sample sizes in some cases, but I decided nonetheless to adjust each stat for "per game". I then combined those normalized stats into a sum to give each WR a score, sorted the data by that score, and ranked them. I found the results for the top-12 interesting.</p>
         <p>I proceeded to do some manual testing (with assistance from AI), and my model that I landed on for awhile that I dubbed “T-Score” (which I will dub “v1.4”) used the following metrics (in order of weight in v1.4):</p>
@@ -231,7 +263,7 @@
         <p><em>Note: Coincidentally, I found out that “t-scoring” is a common method used in data analytics to standardize raw data points. It is completely by accident that I decided to call my model “T-Score” based on my last name. Fun accident, though.</em></p>
         <p>Since then, though, I’ve done a ton of learning and reading on data analysis, and have greatly adjusted my model. I also learned that I needed to apply qualifications in order for WR to be ranked; I eventually landed on a minimum of both 8 games played in a season, and 15 receptions in a season (this might seem low, but if a WR played only 8 games, that comes out to just under 2 receptions a game; surprisingly, if I raised the minimum much more, I was missing what I felt to be somewhat relevant players in deep leagues).</p>
 
-        <h3>The Goal: Predicting N+1 PPG</h3>
+        <h2>The Goal: Predicting N+1 PPG</h2>
         <p>My primary objective has been to build a robust predictive model for wide receiver performance in the subsequent season (N+1), measured by Points Per Game (PPG). I utilized <strong>T-scoring</strong> (the data analytics method) to standardize different metrics, allowing for fair comparison and combination, and <strong>Multiple Linear Regression (MLR)</strong> to determine the optimal weights for each metric in predicting N+1 PPG.</p>
         <p>MLR is a statistical technique used to model the relationship between a <strong>single dependent variable</strong> and <strong>two or more independent variables</strong>. The core idea of MLR is to find a linear equation that best describes how the independent variables influence or predict the value of the dependent variable. For my math nerds out there, the general form of a Multiple Linear Regression equation is:</p>
         <div class="math-block">
@@ -242,7 +274,7 @@
         <p>This makes some sense; for example, while a WR <em>is</em> impacted by a poor O-Line, WRs are not as <em>directly</em> impacted as a Running Back. Once the ball is in a WR’s hands, they are more than likely well beyond the O-Line. That’s just one example, but the point I’m trying to make is that the variables that impact a WR’s play tend to be more straightforward than the other positions. If a WR is targeted a lot, more than likely they will produce a lot.</p>
         <p>So, while MLR is <em>not</em> the end-all be-all in figuring out how closely particular metrics relate to PPG, it is helpful (and interesting) for WR data. Once I started applying Multiple Linear Regression analysis with the metrics I had landed on, I learned some <em>very</em> interesting information. Reminder, I first standardized the metrics before evaluating them with N+1 PPG.</p>
 
-        <h3>Metrics Explored and Their Relationship to N+1 PPG:</h3>
+        <h2>Metrics Explored and Their Relationship to N+1 PPG:</h2>
         <ul>
             <li><strong>Target Rate Per game (Tgt Rt/G):</strong> “Volume is king.” A mantra repeated often in fantasy football circles. Well, this is true; when you complete a Single Linear Regression analysis of Tgt Rt/G and N+1 PPG, the relationship is strong, producing a strong positive coefficient (0.303).
                 <br><br><em>Note: A Coefficient is the number that tells us how important a particular metric is in predicting N+1 PPG. The bigger the number, the stronger the relationship.</em>
@@ -280,7 +312,7 @@
             <br><br>I should note here that the coefficient is not as big as it is for Yds/G and Y/Tm PA/G, but it still contributed positively. I actually like that, of the three metrics, RZ Tgt has the least weight.</li>
         </ul>
 
-        <h3>Model Performance and Optimal Choice:</h3>
+        <h2>Model Performance and Optimal Choice:</h2>
         <p>Now that I knew which metrics were best, I applied weights to each standardized metric to combine them into one Composite T-Score. I took the coefficient of each metric, summed them up, and then divided each metric by the sum to determine the weight.</p>
         <p>The weights for v2.1 are as follows:</p>
         <ul>
@@ -296,7 +328,7 @@
             <li><strong>Simpler is Often Better:</strong> The fact that v2.1 consistently performed on par with or better than v1.4 suggests that focusing on the most impactful and independently predictive metrics is more effective than simply adding more.</li>
         </ul>
 
-        <h3>Conclusion:</h3>
+        <h2>Conclusion:</h2>
         <p>My analysis strongly supports the <strong>3-metric T-Score model (using Yds/G, Y/Tm PA/G, and RZ Tgt), v2.1</strong> as the most effective and balanced approach for predicting N+1 PPG for WRs. Each of these three metrics has a statistically significant and positive relationship with future PPG, and their combination provides robust predictive power, particularly for identifying high-value players.</p>
         <p>Once I found the metrics I liked, I placed the results on a 0-100 scale for easier cross-season comparison (ya’ll, 2021 Cooper Kupp was <em>insane</em>). I then grouped scores together into buckets based on percentile:</p>
         <div class="data-table-wrapper" style="margin-top: 1rem;">
@@ -398,7 +430,7 @@
     <!-- TAB: TOP 50 -->
     <div id="top50Tab" class="tab-content">
         <div class="settings-card highlight-card">
-        <h3>2026 Top-50 T-Score Rankings</h3>
+        <h2>2026 Top-50 T-Score Rankings</h2>
         <p class="card-desc">T-Score is a combination of a player’s previous season Yds/G, Yds/Tm PA/G, and RZ Tgt, each weighted based on their coefficient to the following season using historical data. <em>Note: Rookies are not included since there is no previous NFL data to utilize.</em></p>
             
             <div class="data-table-wrapper">
@@ -469,7 +501,7 @@
     <!-- TAB: VALUES -->
     <div id="valuesTab" class="tab-content">
         <div class="settings-card">
-        <h3>2026 Values at ADP</h3>
+        <h2>2026 Values at ADP</h2>
         <p class="card-desc">Players with an ADP above 100 that the model has identified as a value. This compares the expected T-Score (based on an ADP trendline) to the actual T-Score.</p>
             
             <div class="data-table-wrapper">
@@ -495,7 +527,7 @@
     <!-- TAB: SLEEPERS -->
     <div id="sleepersTab" class="tab-content">
         <div class="settings-card">
-        <h3>2026 Sleepers at ADP</h3>
+        <h2>2026 Sleepers at ADP</h2>
         <p class="card-desc">Players drafted outside the top 100 overall (ADP > 100) that present massive upside compared to their cost.</p>
             
             <div class="data-table-wrapper">
@@ -520,7 +552,7 @@
     <!-- TAB: AVOIDS -->
     <div id="avoidsTab" class="tab-content">
         <div class="settings-card">
-        <h3>2026 Avoids at ADP</h3>
+        <h2>2026 Avoids at ADP</h2>
         <p class="card-desc">Players the T-Score model suggests fading based on their market price versus historical production metrics.</p>
             
             <div class="data-table-wrapper">
