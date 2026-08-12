@@ -8,6 +8,7 @@
     <!-- Added basic SEO / Description -->
     <meta name="description" content="Advanced fantasy football draft strategist and tracker.">
     <title>My Draft Strategist</title>
+    <link rel="canonical" href="https://mydraftstrategist.com/" />
 
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Browser Tab Favicon -->
-    <link rel="icon" href="images/5775.png">
+    <link rel="icon" type="image/png" href="https://mydraftstrategist.com/images/5775.png">
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -36,6 +37,36 @@
     <meta property="og:image" content="https://mydraftstrategist.com/images/5775.png">
     <meta property="og:url" content="https://mydraftstrategist.com">
     <meta name="twitter:card" content="summary_large_image">
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "My Draft Strategist",
+  "alternateName": "My Lineup Strategist",
+  "url": "https://mydraftstrategist.com",
+  "image": "https://mydraftstrategist.com/images/5775.png",
+  "description": "Advanced fantasy football draft strategist and tracker.",
+  "applicationCategory": "SportsApplication",
+  "operatingSystem": "Web browser",
+  "author": {
+    "@type": "Person",
+    "name": "Benton Trerise"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "Upload custom rankings via CSV or Excel",
+    "Live Market Value (ADP) via LeagueLogs",
+    "Live Sleeper Draft Auto-Sync",
+    "T-Score Predictive Analytics for Wide Receivers",
+    "Weekly Lineup Optimizer",
+    "Positional Strength of Schedule (SoS) integration"
+  ]
+}
+</script>
 </head>
 <body>
 
@@ -108,7 +139,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             User Guide
         </button>
-        <button class="nav-btn" onclick="window.location.href='.//t-score/'">
+        <button class="nav-btn" onclick="window.location.href='./t-score/'">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
             T-Score Methodology
         </button>
@@ -133,7 +164,7 @@
     
     <!-- LARGE HERO LOGO -->
     <div class="setup-hero">
-        <img src="images/images/logo.png" alt="My Draft Strategist" class="hero-logo" onerror="this.style.display='none'">
+        <img src="images/logo.png" alt="My Draft Strategist" class="hero-logo" onerror="this.style.display='none'">
     </div>
 
     <!-- Cross-App Navigation Banner -->
@@ -335,7 +366,7 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     Enable T-Score Analytics
                 </span>
-                <span class="toggle-desc">Overlay predictive WR scoring models. <a href=".//t-score/" style="color: #a855f7; text-decoration: none; margin-left: 4px; font-weight: 500;">Read Methodology →</a></span>
+                <span class="toggle-desc">Overlay predictive WR scoring models. <a href="./t-score/" style="color: #a855f7; text-decoration: none; margin-left: 4px; font-weight: 500;">Read Methodology →</a></span>
             </div>
             <input type="checkbox" id="tscoreToggle" class="toggle-switch" onchange="saveSettings()">
         </div>
