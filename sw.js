@@ -1,16 +1,16 @@
-// Service Worker with Dynamic Runtime Caching for Root and /inseason/ apps
+// Service Worker with Dynamic Runtime Caching for Root and /lineup/ apps
 const CACHE_NAME = 'draft-strategist-v2.1';
 
 // Core assets to pre-cache immediately on install
 const PRECACHE_ASSETS = [
     '/',
     '/index.html',
-    '/styles.css',
-    '/mds.js',
-    '/utils.js',
-    '/inseason/',
-    '/inseason/index.html',
-    '/inseason/mls.js'
+    '/css/styles.css',
+    '/js/mds.js',
+    '/js/utils.js',
+    '/lineup/',
+    '/lineup/index.html',
+    '/lineup/mls.js'
 ];
 
 self.addEventListener('install', (event) => {
