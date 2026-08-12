@@ -5,9 +5,9 @@ const CACHE_NAME = 'draft-strategist-v2.1';
 const PRECACHE_ASSETS = [
     '/',
     '/index.html',
-    '/styles.css',
-    '/mds.js',
-    '/utils.js',
+    '/css/styles.css',
+    '/js/mds.js',
+    '/js/utils.js',
     '/lineup/',
     '/lineup/index.html',
     '/lineup/mls.js'
