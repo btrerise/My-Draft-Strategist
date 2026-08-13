@@ -695,29 +695,50 @@
     }
 
     // --- FILE PARSING & DATA IMPORT ---
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) {
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+const fileInput = document.getElementById('fileInput');
+if (fileInput) {
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-            const ext = file.name.split('.').pop().toLowerCase();
-            if (ext === 'csv') {
-                Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
-            } else if (ext === 'xlsx' || ext === 'xls') {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        if (ext === 'csv') {
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
+        } else if (ext === 'xlsx' || ext === 'xls') {
+            
+            // Check if SheetJS is already loaded. If not, fetch it on the fly.
+            if (typeof XLSX === 'undefined') {
+                const script = document.createElement('script');
+                script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+                
+                // Once the script finishes downloading, run the parser
+                script.onload = () => {
+                    parseExcel(file);
                 };
-                reader.readAsArrayBuffer(file);
+                document.head.appendChild(script);
             } else {
-                window.alert("Please upload a .csv, .xlsx, or .xls file");
+                // If it was already loaded from a previous upload, just run it
+                parseExcel(file);
             }
-        });
-    }
+            
+        } else {
+            window.alert("Please upload a .csv, .xlsx, or .xls file");
+        }
+    });
+}
+
+// Helper function that processes the Excel file
+function parseExcel(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
+    };
+    reader.readAsArrayBuffer(file);
+}
 
     window.processPaste = function(btn) {
         const text = document.getElementById('csvPasteArea')?.value;
