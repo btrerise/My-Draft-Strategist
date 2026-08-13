@@ -1,0 +1,14 @@
+# My Draft Strategist
+
+My Draft Strategist is a toolset for fantasy football drafting and roster management.
+
+## Key Pages
+- [Setup](https://mydraftstrategist.com/index.html)
+- [Tracker](https://mydraftstrategist.com/index.html#tracker)
+- [Team](https://mydraftstrategist.com/index.html#team)
+- [Draft Board](https://mydraftstrategist.com/index.html#board)
+- [My Lineup Strategist](https://mydraftstrategist.com/lineup/index.html)
+- [T-Score Methodology](https://mydraftstrategist.com/t-score/index.html)
+
+## Description
+This application provides data-driven draft strategies, lineup optimization, and roster management tools for fantasy football players.
