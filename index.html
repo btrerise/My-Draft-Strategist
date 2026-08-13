@@ -156,7 +156,7 @@
     </div>
 </nav>
 
-<div class="container">
+<main class="container">
 
    <!-- SETUP TAB -->
 <div id="setupTab" class="tab-content active">
@@ -235,7 +235,7 @@
         <span class="toggle-desc">Automatically polls Sleeper for new picks in your active draft.</span>
     </div>
     <!-- ADDED: sync-toggle class and updated onchange -->
-    <input type="checkbox" id="autoSyncToggle" class="toggle-switch sync-toggle" onchange="toggleAutoSync(this.checked, this)">
+    <input type="checkbox" id="autoSyncToggle" class="toggle-switch sync-toggle" onchange="toggleAutoSync(this.checked, this)" aria-label="Toggle Live Auto-Sync">
 </div>
 
         <div class="button-row-dual mt-2" style="display: flex; gap: 0.5rem;">
@@ -262,7 +262,7 @@
         </button>
         
         <div class="divider-text">OR UPLOAD CUSTOM</div>
-        <input type="file" id="fileInput" class="form-input" accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls">
+        <input type="file" id="fileInput" class="form-input" accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls" aria-label="Upload Custom Rankings">
         
         <div class="divider-text">OR PASTE</div>
         <textarea id="csvPasteArea" class="form-input" rows="2" placeholder="Paste raw CSV text here..."></textarea>
@@ -283,7 +283,7 @@
 
         <div class="input-group">
             <label>Select LeagueLogs Profile</label>
-            <select id="adpFormatSelect" class="form-input">
+            <select id="adpFormatSelect" class="form-input" aria-label="Select ADP Format">
                 <option value="redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
                 <option value="redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
                 <option value="redraft-2qb-12t-ppr1">Redraft - Superflex/2QB (PPR)</option>
@@ -321,20 +321,20 @@
         </header>
         
         <div class="roster-grid">
-            <div class="input-group"><label>QB</label><input type="number" id="limitQB" class="form-input text-center" min="0" value="1"></div>
-            <div class="input-group"><label>RB</label><input type="number" id="limitRB" class="form-input text-center" min="0" value="2"></div>
-            <div class="input-group"><label>WR</label><input type="number" id="limitWR" class="form-input text-center" min="0" value="3"></div>
-            <div class="input-group"><label>TE</label><input type="number" id="limitTE" class="form-input text-center" min="0" value="1"></div>
-            <div class="input-group"><label>FLEX</label><input type="number" id="limitFLEX" class="form-input text-center" min="0" value="1"></div>
-            <div class="input-group"><label>SFLEX</label><input type="number" id="limitSFLEX" class="form-input text-center" min="0" value="0"></div>
-            <div class="input-group"><label>BENCH</label><input type="number" id="limitBENCH" class="form-input text-center" min="0" value="6"></div>
+            <div class="input-group"><label>QB</label><input type="number" id="limitQB" class="form-input text-center" min="0" value="1" aria-label="QB Roster Limit"></div>
+            <div class="input-group"><label>RB</label><input type="number" id="limitRB" class="form-input text-center" min="0" value="2" aria-label="RB Roster Limit"></div>
+            <div class="input-group"><label>WR</label><input type="number" id="limitWR" class="form-input text-center" min="0" value="3" aria-label="WR Roster Limit"></div>
+            <div class="input-group"><label>TE</label><input type="number" id="limitTE" class="form-input text-center" min="0" value="1" aria-label="TE Roster Limit"></div>
+            <div class="input-group"><label>FLEX</label><input type="number" id="limitFLEX" class="form-input text-center" min="0" value="1" aria-label="Flex Roster Limit"></div>
+            <div class="input-group"><label>SFLEX</label><input type="number" id="limitSFLEX" class="form-input text-center" min="0" value="0" aria-label="Superflex Roster Limit"></div>
+            <div class="input-group"><label>BENCH</label><input type="number" id="limitBENCH" class="form-input text-center" min="0" value="6" aria-label="Bench Roster Limit"></div>
         </div>
 
         <hr class="card-divider">
         
         <div class="settings-grid">
-            <div class="input-group"><label>Teams in League</label><input type="number" id="leagueTeams" class="form-input" min="2" value="12"></div>
-            <div class="input-group"><label>Total Rounds</label><input type="number" id="leagueRounds" class="form-input" min="1" value="15"></div>
+            <div class="input-group"><label>Teams in League</label><input type="number" id="leagueTeams" class="form-input" min="2" value="12" aria-label="Number of League Teams"></div>
+            <div class="input-group"><label>Total Rounds</label><input type="number" id="leagueRounds" class="form-input" min="1" value="15" aria-label="Number of Draft Rounds"></div>
         </div>
 
         <div class="toggle-row">
@@ -345,7 +345,7 @@
                 </span>
                 <span class="toggle-desc">Highlights WR/TEs if you own their QB, and vice-versa.</span>
             </div>
-            <input type="checkbox" id="stackToggle" class="toggle-switch">
+            <input type="checkbox" id="stackToggle" class="toggle-switch" aria-label="Toggle Team Stacks">
         </div>
 
         <div class="toggle-row">
@@ -356,7 +356,7 @@
                 </span>
                 <span class="toggle-desc">Alerts you if 3+ starters share the same bye week.</span>
             </div>
-            <input type="checkbox" id="byeWarningToggle" class="toggle-switch">
+            <input type="checkbox" id="byeWarningToggle" class="toggle-switch" aria-label="Toggle Bye Week Warnings">
         </div>
 
         <div class="toggle-row">
@@ -367,7 +367,7 @@
                 </span>
                 <span class="toggle-desc">Overlay predictive WR scoring models. <a href="./t-score/" style="color: #a855f7; text-decoration: none; margin-left: 4px; font-weight: 500;">Read Methodology →</a></span>
             </div>
-            <input type="checkbox" id="tscoreToggle" class="toggle-switch" onchange="saveSettings()">
+            <input type="checkbox" id="tscoreToggle" class="toggle-switch" onchange="saveSettings()" aria-label="Toggle T-Score">
         </div>
 
         <button class="btn btn-primary mt-2" onclick="saveSettings(this)">Save Settings</button>
@@ -687,7 +687,7 @@
         </div>
     </section>
 </div>
-
+</main>
 <!-- BOTTOM HYBRID NAVIGATION -->
 <nav class="nav-bar">
     <button class="nav-btn" data-target="tracker" onclick="showTab('tracker')">
