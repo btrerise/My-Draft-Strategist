@@ -729,7 +729,8 @@
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: false, skipEmptyLines: true, complete: results => parseRankingsData(results.data, isWeekly, successMsgId) });
         } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
-            const reader = new FileReader();
+            loadSheetJS(() => {
+                const reader = new FileReader();
             reader.onload = e => {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
@@ -737,7 +738,8 @@
                 Papa.parse(csvStr, { header: false, skipEmptyLines: true, complete: results => parseRankingsData(results.data, isWeekly, successMsgId) });
             };
             reader.readAsArrayBuffer(file);
-        } else {
+            });
+            } else {
             window.alert("Unsupported file format. Please upload a .csv or .xlsx file.");
         }
     }
@@ -867,6 +869,7 @@
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
         } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
+            loadSheetJS(() => {            
             const reader = new FileReader();
             reader.onload = e => {
                 const data = new Uint8Array(e.target.result);
@@ -875,6 +878,7 @@
                 Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
             };
             reader.readAsArrayBuffer(file);
+            });
         } else {
             window.alert("Unsupported file format. Please upload a .csv or .xlsx file.");
         }
@@ -1389,3 +1393,14 @@
         benchContainer.innerHTML = benchHTML;
     }
 })();
+// Add this helper function at the bottom of mls.js
+function loadSheetJS(callback) {
+    if (typeof XLSX !== 'undefined') {
+        callback();
+    } else {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+        script.onload = callback;
+        document.head.appendChild(script);
+    }
+}

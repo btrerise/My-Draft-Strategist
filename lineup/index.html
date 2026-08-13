@@ -15,8 +15,6 @@
 
     <!-- PapaParse for CSV reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
-    <!-- SheetJS for XLSX reading support on mobile -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
     <!-- html2canvas for Screenshot Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 
@@ -112,7 +110,7 @@
     </div>
 </nav>
 
-<div id="mainApp">
+<main id="mainApp">
     <header class="header">
         <div class="header-left">
             <button class="hamburger-btn" onclick="toggleDrawer()" aria-label="Toggle Menu">
@@ -159,12 +157,12 @@
 
         <div class="input-group">
             <label>League Name / Nickname</label>
-            <input type="text" id="newLeagueName" class="form-input" placeholder="Auto-fills from Sleeper if blank">
+            <input type="text" id="newLeagueName" class="form-input" placeholder="Auto-fills from Sleeper if blank" aria-label="Type in League name">
         </div>
 
         <div class="input-group">
             <label>Sleeper Username (Optional)</label>
-            <input type="text" id="sleeperUsername" class="form-input" placeholder="e.g., fantasy_guru">
+            <input type="text" id="sleeperUsername" class="form-input" placeholder="e.g., fantasy_guru" aria-label="Type in Sleeper Username">
         </div>
         
         <div class="input-group">
@@ -175,7 +173,7 @@
             <span class="tooltip-text"><strong>Mobile App:</strong> League Settings &gt; General &gt; scroll to bottom.<br><br><strong>Desktop:</strong> The string of numbers in your league's URL.</span>
         </div>
     </label>
-    <input type="text" id="sleeperLeagueId" class="form-input" placeholder="e.g., 912345678901234567">
+    <input type="text" id="sleeperLeagueId" class="form-input" placeholder="e.g., 912345678901234567" aria-label="Type in Sleeper League ID">
 </div>
         
         <div class="button-row-dual">
@@ -199,12 +197,12 @@
         <div id="activeLeagueReqTitle" class="league-req-subtitle">(Select a League)</div>
         
         <div class="roster-grid mb-4">
-            <div class="input-group"><label>QB</label><input type="number" id="reqQB" class="form-input text-center" value="1"></div>
-            <div class="input-group"><label>RB</label><input type="number" id="reqRB" class="form-input text-center" value="2"></div>
-            <div class="input-group"><label>WR</label><input type="number" id="reqWR" class="form-input text-center" value="2"></div>
-            <div class="input-group"><label>TE</label><input type="number" id="reqTE" class="form-input text-center" value="1"></div>
-            <div class="input-group"><label>FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2"></div>
-            <div class="input-group"><label>SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0"></div>
+            <div class="input-group"><label>QB</label><input type="number" id="reqQB" class="form-input text-center" value="1" aria-label="QB lineup slots"></div>
+            <div class="input-group"><label>RB</label><input type="number" id="reqRB" class="form-input text-center" value="2" aria-label="RB lineup slots"></div>
+            <div class="input-group"><label>WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
+            <div class="input-group"><label>TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
+            <div class="input-group"><label>FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
+            <div class="input-group"><label>SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
         </div>
         
         <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
@@ -217,7 +215,7 @@
         </header>
         
         <div class="manual-player-grid">
-            <input type="text" id="manualName" class="form-input" placeholder="Player Name">
+            <input type="text" id="manualName" class="form-input" placeholder="Player Name" aria-label="Type in player name">
             <select id="manualPos" class="form-input">
                 <option value="QB">QB</option>
                 <option value="RB">RB</option>
@@ -226,7 +224,7 @@
                 <option value="K">K</option>
                 <option value="DEF">DEF</option>
             </select>
-            <input type="text" id="manualTeam" class="form-input" placeholder="Team">
+            <input type="text" id="manualTeam" class="form-input" placeholder="Team" aria-label="Type in player's team">
         </div>
         
         <button class="btn btn-primary mt-2" onclick="addManualPlayer()">Add Player to Active Roster</button>
@@ -287,7 +285,7 @@
         </header>
         
         <div id="rosMetaDisplay" class="status-badge-meta"></div>
-        <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+        <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
         <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
     </section>
     
@@ -301,7 +299,7 @@
             </div>
         </header>
         
-        <input type="file" id="sosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls">
+        <input type="file" id="sosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload strength of schedule file">
         <div id="sosSuccessMsg" class="success-feedback">SoS Uploaded Successfully!</div>
         
         <details class="sos-details-accordion">
@@ -412,7 +410,7 @@
         </header>
         
         <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
-        <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+        <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
         <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
     </section>
 </div>
@@ -492,7 +490,7 @@
         </header>
         
         <div id="marketMetaDisplay" class="status-badge-meta"></div>
-        <input type="file" id="marketFileInput" class="form-input file-input mb-3" accept=".csv, text/csv, .xlsx, .xls">
+        <input type="file" id="marketFileInput" class="form-input file-input mb-3" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
         <div id="marketSuccessMsg" class="success-feedback">Market Data Uploaded Successfully!</div>
 
         <!-- Filter / Control Bar -->
@@ -506,7 +504,7 @@
             </div>
             <div class="input-group" style="margin-bottom: 0;">
                 <label id="thresholdLabel">Minimum Rank Gap</label>
-                <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1">
+                <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
             </div>
         </div>
 
@@ -580,7 +578,7 @@
         <span>Scout</span>
     </button>
 </nav>
-</div> <!-- Closes #mainApp -->
+</main> <!-- Closes #mainApp -->
 <script src="../js/utils.js" defer></script>
     <script src="mls.js" defer></script>
 </body>
