@@ -10,7 +10,7 @@ The official repository for [My Draft Strategist](https://mydraftstrategist.com)
 ## Project Structure
 
 * **`/css`** - Global stylesheets (`styles.css`) applied across the application.
-* **`/images`** - Brand assets, logos, and graphics (`logo.png`).
+* **`/images`** - Brand assets, logos, and graphics (`logo.svg`).
 * **`/js`** - Shared JavaScript utility and helper scripts.
 * **`/lineup`** - The *Lineup Strategist* tool (contains its page-specific HTML and script files).
 * **`/t-score`** - The *T-Score* tool (contains its page-specific HTML and `tscore_data.js` file).
@@ -18,7 +18,7 @@ The official repository for [My Draft Strategist](https://mydraftstrategist.com)
   * `index.html` - The main landing page of the website.
   * `sw.js` - Progressive Web App service worker for caching.
   * `manifest.json` - PWA web app manifest configuration.
-  * `5775.png` - Site favicon.
+  * `5775.svg` - Site favicon.
 
 ## Hosting
 Hosted and deployed statically via Cloudflare Pages.
