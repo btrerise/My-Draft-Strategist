@@ -875,6 +875,7 @@ function parseExcel(file) {
         if (!formatSelect.value.startsWith('leaguelogs')) {
             window.alert("Quick-Start auto-generation is currently only supported for LeagueLogs formats. Please select a LeagueLogs option from the dropdown.");
             return;
+        }
         const profileKey = formatSelect.value;
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
