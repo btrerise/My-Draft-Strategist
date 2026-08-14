@@ -889,7 +889,9 @@
     const msgEl = document.getElementById('marketSuccessMsg');
     
     if (!formatSelect) return;
-    const profileKey = formatSelect.value;
+    
+    // Parse the pipe-delimited value: source|param1|param2|param3
+    const [source, param1, param2, param3] = formatSelect.value.split('|');
     const formatText = formatSelect.options[formatSelect.selectedIndex].text;
     
     const origText = btn.innerText;
@@ -898,45 +900,74 @@
     btn.disabled = true;
 
     try {
-        // 1. Fetch Sleeper DB for name mapping (matches your ds.js logic)
-        let sleeperMap = {};
-        let sleeperRes = await fetch('https://api.sleeper.app/v1/players/nfl');
-        if (sleeperRes.ok) {
-            sleeperMap = await sleeperRes.json();
+        let parsed = [];
+
+        // --- SOURCE 1: LEAGUELOGS ---
+        if (source === 'leaguelogs') {
+            // Fetch Sleeper DB for name mapping
+            let sleeperMap = {};
+            let sleeperRes = await fetch('https://api.sleeper.app/v1/players/nfl');
+            if (sleeperRes.ok) {
+                sleeperMap = await sleeperRes.json();
+            }
+
+            // Fetch LeagueLogs Market Data using param1 (profileKey)
+            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${param1}`);
+            if (!marketRes.ok) throw new Error(`LeagueLogs Error: ${marketRes.status}`);
+            const llMarket = await marketRes.json();
+
+            // Map IDs to Names and build array
+            llMarket.data.forEach(item => {
+                let sId = item.sleeperPlayerId;
+                let sp = sleeperMap[sId];
+                
+                if (!sp || !sp.first_name) return; 
+
+                let fullName = `${sp.first_name} ${sp.last_name}`;
+                let rankVal = parseFloat(item.overallRank);
+
+                if (!isNaN(rankVal)) {
+                    parsed.push({
+                        name: fullName,
+                        cleanName: normalizeName(fullName),
+                        marketVal: rankVal
+                    });
+                }
+            });
+        } 
+        
+        // --- SOURCE 2: FANTASYCALC ---
+        else if (source === 'fantasycalc') {
+            // param1 = isDynasty, param2 = numQbs, param3 = ppr
+            const isDynasty = param1 || 'false';
+            const numQbs = param2 || '1';
+            const ppr = param3 || '1';
+
+            const fcRes = await fetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynasty}&numQbs=${numQbs}&numTeams=12&ppr=${ppr}`);
+            if (!fcRes.ok) throw new Error(`FantasyCalc API Error: ${fcRes.status}`);
+            const fcData = await fcRes.json();
+
+            fcData.forEach(item => {
+                if (item.player && item.player.name) {
+                    let fullName = item.player.name;
+                    let rankVal = parseFloat(item.overallRank);
+
+                    if (!isNaN(rankVal)) {
+                        parsed.push({
+                            name: fullName,
+                            cleanName: normalizeName(fullName),
+                            marketVal: rankVal
+                        });
+                    }
+                }
+            });
         }
 
-        // 2. Fetch LeagueLogs Market Data
-        const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
-        if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
-        const llMarket = await marketRes.json();
-        
-        let parsed = [];
-        
-        // 3. Map the IDs to Names and build the array
-        llMarket.data.forEach(item => {
-            let sId = item.sleeperPlayerId;
-            let sp = sleeperMap[sId];
-            
-            // Skip if we can't find a valid name match
-            if (!sp || !sp.first_name) return; 
-
-            let fullName = `${sp.first_name} ${sp.last_name}`;
-            let rankVal = parseFloat(item.overallRank);
-
-            if (!isNaN(rankVal)) {
-                parsed.push({
-                    name: fullName,
-                    cleanName: normalizeName(fullName),
-                    marketVal: rankVal
-                });
-            }
-        });
-
-        // 4. Save to state and local storage
+        // Save to state and local storage
         State.marketRankings = parsed;
         localStorage.setItem('mds_season_market', JSON.stringify(State.marketRankings));
         
-        // 5. Update UI
+        // Update UI
         updateMarketMetaDisplay(); 
         if (msgEl) {
             msgEl.innerText = `Live Market Data (${formatText}) Pulled Successfully!`;

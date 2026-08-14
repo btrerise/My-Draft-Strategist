@@ -284,11 +284,25 @@
         <div class="input-group">
             <label>Select LeagueLogs Profile</label>
             <select id="adpFormatSelect" class="form-input" aria-label="Select ADP Format">
-                <option value="redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
-                <option value="redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
-                <option value="redraft-2qb-12t-ppr1">Redraft - Superflex/2QB (PPR)</option>
-                <option value="dynasty-1qb-12t-ppr1">Dynasty - 1QB (PPR)</option>
-                <option value="dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
+            <optgroup label="LeagueLogs (Aggregate Market)">
+                <option value="leaguelogs|redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
+                <option value="leaguelogs|redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
+                <option value="leaguelogs|dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
+            </optgroup>
+            
+            <optgroup label="Sleeper Native ADP">
+                <option value="sleeper|adp_ppr">Redraft - 1QB (PPR)</option>
+                <option value="sleeper|adp_half_ppr">Redraft - 1QB (Half-PPR)</option>
+                <option value="sleeper|adp_std">Redraft - 1QB (Standard)</option>
+                <option value="sleeper|adp_2qb">Redraft - 2QB/Superflex</option>
+            </optgroup>
+            
+            <optgroup label="Fantasy Football Calculator">
+                <option value="ffc|ppr">Redraft - 1QB (PPR)</option>
+                <option value="ffc|half-ppr">Redraft - 1QB (Half-PPR)</option>
+                <option value="ffc|standard">Redraft - 1QB (Standard)</option>
+                <option value="ffc|2qb">Redraft - 2QB</option>
+            </optgroup>
             </select>
         </div>
         

@@ -872,6 +872,9 @@ function parseExcel(file) {
     window.quickStartLeagueLogs = async function(btn) {
         const formatSelect = document.getElementById('adpFormatSelect');
         if (!formatSelect) return;
+        if (!formatSelect.value.startsWith('leaguelogs')) {
+            window.alert("Quick-Start auto-generation is currently only supported for LeagueLogs formats. Please select a LeagueLogs option from the dropdown.");
+            return;
         const profileKey = formatSelect.value;
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
@@ -954,57 +957,89 @@ function parseExcel(file) {
     };
 
     window.fetchLeagueLogsADP = async function(btn) {
-        if (State.players.length === 0) {
-            flashButton(btn, "Load Rankings First", true);
-            window.alert("You must load a set of player rankings before fetching Market Value.");
-            return;
-        }
+    if (State.players.length === 0) {
+        flashButton(btn, "Load Rankings First", true);
+        window.alert("You must load a set of player rankings before fetching Market Value.");
+        return;
+    }
 
-        const formatSelect = document.getElementById('adpFormatSelect');
-        if (!formatSelect) return;
-        const profileKey = formatSelect.value;
-        const formatText = formatSelect.options[formatSelect.selectedIndex].text;
+    const formatSelect = document.getElementById('adpFormatSelect');
+    if (!formatSelect) return;
+    
+    // Split the value to route to the correct API
+    const [source, profileKey] = formatSelect.value.split('|');
+    const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
-        const originalText = btn.innerHTML;
-        btn.innerHTML = "Fetching...";
+    const originalText = btn.innerHTML;
+    btn.innerHTML = "Fetching...";
 
-        try {
+    try {
+        let adpMap = {}; // Key: SleeperID (or Name string), Value: ADP
+
+        // --- 1. LEAGUELOGS ---
+        if (source === 'leaguelogs') {
             const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
             if (!marketRes.ok) throw new Error(`LeagueLogs Market Error: ${marketRes.status}`);
             const llMarket = await marketRes.json();
-
-            const adpMap = {};
             llMarket.data.forEach(item => { adpMap[item.sleeperPlayerId] = item.overallRank; });
-
-            let playerMetaMap = {};
-            let pRes = await fetch(`https://developer.leaguelogs.com/v1/players`);
-            if (pRes.ok) {
-                let pData = await pRes.json();
-                pData.data.forEach(lp => { playerMetaMap[lp.sleeperPlayerId] = lp; });
-            }
-
-            State.players.forEach(p => {
-                if (adpMap[p.sleeperId] !== undefined) p.adp = adpMap[p.sleeperId];
-                let meta = playerMetaMap[p.sleeperId];
-                p.isRookie = meta ? (meta.yearsExp === 0 || meta.yearsExp === "0" || meta.yearsExp === null) : false;
+        } 
+        
+        // --- 2. SLEEPER ---
+        else if (source === 'sleeper') {
+            const sleeperRes = await fetch(`https://api.sleeper.com/projections/nfl/2026?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=${profileKey}`);
+            if (!sleeperRes.ok) throw new Error(`Sleeper API Error: ${sleeperRes.status}`);
+            const sleeperData = await sleeperRes.json();
+            sleeperData.forEach(item => {
+                // Check if the specific ADP metric exists in the stats object
+                if (item.player_id && item.stats && item.stats[profileKey]) {
+                    adpMap[item.player_id] = item.stats[profileKey];
+                }
             });
-
-            localStorage.setItem('ds_players', JSON.stringify(State.players));
-            renderBoard();
-
-            let now = new Date();
-            let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            State.adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
-            localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
-            updateMetaDisplay();
-
-            flashButton(btn, "Complete!", false, originalText);
-        } catch(err) {
-            console.error(err);
-            flashButton(btn, "Fetch Error", true, originalText);
-            window.alert(`Failed to fetch live Market Value.\n\n${err.message}`);
+        } 
+        
+        // --- 3. FANTASY FOOTBALL CALCULATOR ---
+        else if (source === 'ffc') {
+            const ffcRes = await fetch(`https://fantasyfootballcalculator.com/api/v1/adp/${profileKey}?teams=12&year=2026`);
+            if (!ffcRes.ok) throw new Error(`FFC API Error: ${ffcRes.status}`);
+            const ffcData = await ffcRes.json();
+            ffcData.players.forEach(item => {
+                // FFC doesn't use Sleeper IDs, so we map by normalized name prefix
+                let cleanName = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                adpMap['name_' + cleanName] = item.adp;
+            });
         }
-    };
+
+        // --- APPLY TO STATE ---
+        State.players.forEach(p => {
+            // Optional: fallback normalizeName function if you don't have it globally scoped
+            let cleanName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            
+            if (adpMap[p.sleeperId] !== undefined) {
+                p.adp = parseFloat(adpMap[p.sleeperId]).toFixed(1);
+            } else if (adpMap['name_' + cleanName] !== undefined) {
+                p.adp = parseFloat(adpMap['name_' + cleanName]).toFixed(1);
+            } else {
+                p.adp = "-"; // Reset if no ADP is found in this specific pull
+            }
+        });
+
+        localStorage.setItem('ds_players', JSON.stringify(State.players));
+        renderBoard();
+
+        let now = new Date();
+        let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        State.adpMeta = { format: `${source.toUpperCase()}: ${formatText}`, date: dateString };
+        localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
+        updateMetaDisplay();
+
+        flashButton(btn, "Complete!", false, originalText);
+        
+    } catch(err) {
+        console.error(err);
+        flashButton(btn, "Fetch Error", true, originalText);
+        window.alert(`Failed to fetch live Market Value.\n\n${err.message}`);
+    }
+};
 
     window.processManualADP = function(btn) {
         const text = document.getElementById('adpPasteArea')?.value;

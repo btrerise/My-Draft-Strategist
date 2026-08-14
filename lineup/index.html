@@ -499,17 +499,25 @@
     
     <!-- Option B: Fetch Live -->
     <div class="input-group">
-        <select id="adpFormatSelect" class="form-input" aria-label="Select ADP Format">
-            <option value="redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
-            <option value="redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
-            <option value="redraft-2qb-12t-ppr1">Redraft - Superflex/2QB (PPR)</option>
-            <option value="dynasty-1qb-12t-ppr1">Dynasty - 1QB (PPR)</option>
-            <option value="dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
+        <select id="adpFormatSelect" class="form-input" aria-label="Select Market Format">
+            <optgroup label="LeagueLogs (Aggregate Market)"
+            <option value="leaguelogs|redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
+            <option value="leaguelogs|redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
+            <option value="leaguelogs|redraft-2qb-12t-ppr1">Redraft - Superflex/2QB (PPR)</option>
+            <option value="leaguelogs|dynasty-1qb-12t-ppr1">Dynasty - 1QB (PPR)</option>
+            <option value="leaguelogs|dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
+        </optgroup>
+        <optgroup label="FantasyCalc (Trade Value)">
+        <option value="fantasycalc|false|1|1">Redraft - 1QB (PPR)</option>
+        <option value="fantasycalc|false|2|1">Redraft - Superflex (PPR)</option>
+        <option value="fantasycalc|true|1|1">Dynasty - 1QB (PPR)</option>
+        <option value="fantasycalc|true|2|1">Dynasty - Superflex (PPR)</option>
+        </optgroup>
         </select>
     </div>
     
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-        <button id="fetchAdpBtn" class="btn btn-purple btn-sm" onclick="fetchLeagueLogsADP(this)" style="width: auto;">Fetch Market Value</button>
+        <button id="fetchAdpBtn" class="btn btn-purple" onclick="fetchLeagueLogsADP(this)" style="width: auto;">Fetch Market Value</button>
         <div class="leaguelogs-attribution" style="margin-top: 0;">
             <a href="https://leaguelogs.com" target="_blank" rel="noopener">
                 <span>Powered by</span>

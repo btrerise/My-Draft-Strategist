@@ -223,6 +223,9 @@
 
 <header class="header">
     <div class="header-left">
+        <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
         <div class="logo-container" onclick="window.location.href='../index.html'">
             <img src="../images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
             <div class="logo-text">My Draft <span>Strategist</span></div>
@@ -1378,6 +1381,14 @@
         
         // 4. Add the 'active' class to the button that was just clicked
         btnElement.classList.add('active');
+    }
+    function toggleMenu() {
+    const menu = document.getElementById('hamburgerMenu');
+    const overlay = document.getElementById('menuOverlay');
+    if (!menu || !overlay) return;
+    
+    menu.classList.toggle('open');
+    overlay.style.display = menu.classList.contains('open') ? 'block' : 'none';
     }
 </script>
 </body>
