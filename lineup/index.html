@@ -447,7 +447,7 @@
         <div id="waiverOutput" class="scout-output-container"></div>
     </section>
     
-    <!-- TRADE ANALYZER -->
+    <!-- Target Watchlist -->
     <section class="settings-card">
         <header class="card-header">
             <h3>
@@ -477,41 +477,106 @@
         
         <div id="tradeOutput" class="scout-output-container"></div>
     </section>
-    <!-- TRADE FINDER: MARKET DISCONNECT -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3>
-                <span>Trade Finder</span>
-            </h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Upload a market CSV (e.g., from KTC or FantasyCalc) to compare consensus values against your custom ROS rankings and instantly expose buy-low targets and sell-high candidates.</span>
-            </div>
-        </header>
-        
-        <div id="marketMetaDisplay" class="status-badge-meta"></div>
-        <input type="file" id="marketFileInput" class="form-input file-input mb-3" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
-        <div id="marketSuccessMsg" class="success-feedback">Market Data Uploaded Successfully!</div>
+    <!-- TRADE FINDER -->
+<section class="settings-card">
+    <header class="card-header">
+        <h3>
+            <span>Trade Finder</span>
+        </h3>
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Upload a market CSV or pull live market values to compare consensus against your custom ROS rankings and instantly expose buy-low/sell-high candidates.</span>
+        </div>
+    </header>
+    
+    <div id="marketMetaDisplay" class="status-badge-meta"></div>
+    
+    <!-- Option A: Upload -->
+    <input type="file" id="marketFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
+    
+    <hr class="card-divider">
+    <div class="divider-text">OR PULL LIVE MARKET VALUE</div>
+    
+    <!-- Option B: Modular Configuration Panel -->
+    <div class="input-group">
+        <label>Market Source</label>
+        <select id="marketSourceSelect" class="form-input" onchange="toggleMarketSourceUI()" aria-label="Select Market Source">
+            <option value="fantasycalc" selected>FantasyCalc.com (Trade Value)</option>
+            <option value="leaguelogs">LeagueLogs (Aggregate Market)</option>
+        </select>
+    </div>
 
-        <!-- Filter / Control Bar -->
+    <!-- Common Settings (Dynasty/Redraft & QB Format) -->
+    <div class="settings-grid mb-2">
+        <div class="input-group" style="margin-bottom: 0;">
+            <label>League Type</label>
+            <select id="marketType" class="form-input" aria-label="League Type">
+                <option value="redraft">Redraft</option>
+                <option value="dynasty">Dynasty</option>
+            </select>
+        </div>
+        <div class="input-group" style="margin-bottom: 0;">
+            <label>QB Format</label>
+            <select id="marketQbs" class="form-input" aria-label="QB Format">
+                <option value="1">1QB</option>
+                <option value="2">Superflex / 2QB</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- FantasyCalc Specific Controls (PPR & TEP) -->
+    <div id="fantasycalcSpecificControls">
         <div class="settings-grid mb-3" style="align-items: center;">
             <div class="input-group" style="margin-bottom: 0;">
-                <label>Filter Mode</label>
-                <select id="disconnectMode" class="form-input" onchange="toggleDisconnectMode()">
-                    <option value="flat">Flat Rank Gap (e.g., 10+ spots)</option>
-                    <option value="percent">Percentage Shift (e.g., 20%+ value delta)</option>
+                <label>PPR Scoring</label>
+                <select id="marketPpr" class="form-input" aria-label="PPR Scoring">
+                    <option value="1">Full PPR (1.0)</option>
+                    <option value="0.5">Half PPR (0.5)</option>
+                    <option value="0">Standard (0)</option>
                 </select>
             </div>
-            <div class="input-group" style="margin-bottom: 0;">
-                <label id="thresholdLabel">Minimum Rank Gap</label>
-                <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
+            <div class="input-group" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: flex-end;">
+                <div class="toggle-row" style="padding: 0.4rem 0; border: none; background: none; margin-top: 1rem;">
+                    <div class="toggle-info">
+                        <span class="toggle-title" style="font-size: 0.85rem;">TE Premium (TEP)</span>
+                    </div>
+                    <input type="checkbox" id="marketTep" class="toggle-switch" aria-label="Toggle Tight End Premium">
+                </div>
             </div>
         </div>
-
-        <button class="btn btn-primary mt-2" onclick="runMarketDisconnectAnalysis()">Find Trade Targets</button>
+    </div>
+    
+        <button id="fetchAdpBtn" class="btn btn-purple" onclick="fetchLeagueLogsADP(this)">Fetch Market Value</button>
         
-        <div id="marketDisconnectOutput" class="scout-output-container"></div>
-    </section>
+        <div class="leaguelogs-attribution" style="margin-top: 0;">
+            <a href="https://fantasycalc.com" target="_blank" rel="noopener" id="attributionLink">
+                <span>Powered by</span>
+                <em id="attributionBrand">FantasyCalc</em>
+                <span class="dot-accent" aria-hidden="true"></span>
+            </a>
+        </div>
+
+    <div id="marketSuccessMsg" class="success-feedback" style="display:none;">Market Data Loaded Successfully!</div>
+
+    <!-- Filter / Control Bar -->
+    <div class="settings-grid mb-3" style="align-items: center; margin-top: 1rem;">
+        <div class="input-group" style="margin-bottom: 0;">
+            <label>Filter Mode</label>
+            <select id="disconnectMode" class="form-input" onchange="toggleDisconnectMode()">
+                <option value="flat">Flat Rank Gap (e.g., 10+ spots)</option>
+                <option value="percent">Percentage Shift (e.g., 20%+ value delta)</option>
+            </select>
+        </div>
+        <div class="input-group" style="margin-bottom: 0;">
+            <label id="thresholdLabel">Minimum Rank Gap</label>
+            <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
+        </div>
+    </div>
+
+    <button class="btn btn-primary mt-2" onclick="runMarketDisconnectAnalysis()">Find Trade Targets</button>
+    
+    <div id="marketDisconnectOutput" class="scout-output-container"></div>
+</section>
 </div>
         <!-- USER GUIDE TAB -->
 <div id="guideTab" class="tab-content">

@@ -883,7 +883,137 @@
             window.alert("Unsupported file format. Please upload a .csv or .xlsx file.");
         }
     }
+    window.fetchLeagueLogsADP = async function(btn) {
+    const outputEl = document.getElementById('marketDisconnectOutput');
+    const msgEl = document.getElementById('marketSuccessMsg');
+    
+    const sourceSelect = document.getElementById('marketSourceSelect');
+    if (!sourceSelect) return;
+    const source = sourceSelect.value;
+    
+    const origText = btn.innerText;
+    btn.innerText = "Fetching...";
+    btn.style.opacity = "0.7";
+    btn.disabled = true;
 
+    try {
+        let parsed = [];
+        let formatText = "";
+
+        // Common settings extracted from dropdowns
+        const isDynastyVal = document.getElementById('marketType')?.value || 'redraft';
+        const numQbsVal = document.getElementById('marketQbs')?.value || '1';
+        const isDynastyBool = isDynastyVal === 'dynasty';
+
+        // --- 1. FANTASYCALC ---
+        if (source === 'fantasycalc') {
+            const ppr = document.getElementById('marketPpr')?.value || '1';
+            const isTEP = document.getElementById('marketTep')?.checked ? 'true' : 'false';
+
+            // Pull team count from active league settings if available, default to 12
+            let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
+
+            const fcRes = await fetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
+            if (!fcRes.ok) throw new Error(`FantasyCalc API Error: ${fcRes.status}`);
+            const fcData = await fcRes.json();
+
+            fcData.forEach(item => {
+                if (item.player && item.player.name) {
+                    let fullName = item.player.name;
+                    let rankVal = parseFloat(item.overallRank);
+
+                    if (!isNaN(rankVal)) {
+                        parsed.push({
+                            name: fullName,
+                            cleanName: normalizeName(fullName),
+                            marketVal: rankVal
+                        });
+                    }
+                }
+            });
+            formatText = `${isDynastyVal.toUpperCase()} (${numQbsVal === '2' ? 'Superflex' : '1QB'}, PPR: ${ppr})`;
+        } 
+        
+        // --- 2. LEAGUELOGS ---
+        else if (source === 'leaguelogs') {
+            // Map common selections to LeagueLogs profile keys
+            let pprKey = "ppr1";
+            let qbKey = numQbsVal === '2' ? '2qb' : '1qb';
+            let typeKey = isDynastyVal; // 'redraft' or 'dynasty'
+            let profileKey = `${typeKey}-${qbKey}-12t-${pprKey}`;
+            
+            formatText = `${typeKey.toUpperCase()} - ${qbKey.toUpperCase()} (PPR)`;
+
+            // Fetch Sleeper DB for name mapping
+            let sleeperMap = {};
+            let sleeperRes = await fetch('https://api.sleeper.app/v1/players/nfl');
+            if (sleeperRes.ok) {
+                sleeperMap = await sleeperRes.json();
+            }
+
+            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+            if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
+            const llMarket = await marketRes.json();
+
+            llMarket.data.forEach(item => {
+                let sId = item.sleeperPlayerId;
+                let sp = sleeperMap[sId];
+                if (!sp || !sp.first_name) return; 
+
+                let fullName = `${sp.first_name} ${sp.last_name}`;
+                let rankVal = parseFloat(item.overallRank);
+
+                if (!isNaN(rankVal)) {
+                    parsed.push({
+                        name: fullName,
+                        cleanName: normalizeName(fullName),
+                        marketVal: rankVal
+                    });
+                }
+            });
+        }
+
+        // Save to state and local storage
+        State.marketRankings = parsed;
+        localStorage.setItem('mls_season_market', JSON.stringify(State.marketRankings));
+        
+        // Update UI
+        updateMarketMetaDisplay(); 
+        if (msgEl) {
+            msgEl.innerText = `Market Data (${formatText}) Pulled Successfully!`;
+            msgEl.style.display = 'block';
+            setTimeout(() => msgEl.style.display = 'none', 3500);
+        }
+        
+        if (outputEl) outputEl.innerHTML = ''; 
+
+    } catch (error) {
+        console.error("Error fetching market data:", error);
+        window.alert(`Could not pull live market data.\n\n${error.message}`);
+    } finally {
+        btn.innerText = origText;
+        btn.style.opacity = "1";
+        btn.disabled = false;
+    }
+};
+// --- UI TOGGLE HELPER FOR MARKET SOURCE ---
+window.toggleMarketSourceUI = function() {
+    const source = document.getElementById('marketSourceSelect')?.value;
+    const fcControls = document.getElementById('fantasycalcSpecificControls');
+    const brandEl = document.getElementById('attributionBrand');
+    const attrLink = document.getElementById('attributionLink');
+
+    if (source === 'fantasycalc') {
+        if (fcControls) fcControls.style.display = 'block';
+        if (brandEl) brandEl.innerText = "FantasyCalc";
+        if (attrLink) attrLink.href = "https://fantasycalc.com";
+    } else {
+        // LeagueLogs doesn't use PPR dropdown or TEP toggle directly, so hide them
+        if (fcControls) fcControls.style.display = 'none';
+        if (brandEl) brandEl.innerText = "LeagueLogs";
+        if (attrLink) attrLink.href = "https://leaguelogs.com";
+    }
+};
     function parseMarketData(rows, successMsgId) {
         let parsed = [];
         if (rows.length < 1) return;
@@ -986,9 +1116,14 @@
                 let tradeType = delta > 0 ? 'BUY' : 'SELL';
                 let owner = rosterMap[userObj.cleanName];
 
-                // For SELL opportunities, ensure the player is actually on the user's roster
+                // For SELL opportunities, ensure the player is actually on your roster
                 if (tradeType === 'SELL' && owner !== 'You') {
                     return; // Skip if you don't own them
+                }
+
+                // For BUY opportunities, ensure the player is NOT already on your roster
+                if (tradeType === 'BUY' && owner === 'You') {
+                    return; // Skip if you already own them
                 }
 
                 analysisList.push({

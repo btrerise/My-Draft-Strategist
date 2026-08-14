@@ -54,7 +54,11 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-
+        @media (max-width: 600px) {
+    .tscore-nav-wrapper {
+        top: 49px; /* Aligns perfectly with your reduced mobile header */
+        }
+        }
         .tscore-nav-btn {
             background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--border);
@@ -219,6 +223,9 @@
 
 <header class="header">
     <div class="header-left">
+        <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
         <div class="logo-container" onclick="window.location.href='../index.html'">
             <img src="../images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
             <div class="logo-text">My Draft <span>Strategist</span></div>
@@ -230,7 +237,37 @@
         </button>
     </div>
 </header>
+<!-- HAMBURGER MENU OVERLAY & DRAWER -->
+<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
 
+<nav class="hamburger-menu" id="hamburgerMenu" aria-label="Main Navigation">
+    <div class="menu-header">
+        <div class="menu-logo-section">
+            <img src="../images/5775.svg" alt="Draft Strategist Logo" class="menu-logo-img" width="36" height="36">
+            <span>Menu</span>
+        </div>
+        <button class="close-menu-btn" onclick="toggleMenu()" aria-label="Close Menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+
+    <div class="menu-nav-links">
+        <button class="nav-btn premium-link-btn" onclick="window.location.href='../index.html'">
+            My Draft Strategist 
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+        </button>       
+        <button class="nav-btn premium-link-btn" onclick="window.location.href='../lineup/'">
+            My Lineup Strategist 
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+        </button>
+    </div>
+    <div id="shared-feedback-container"></div>
+    <div class="menu-footer">
+        <a href="https://ko-fi.com/btrerise" target="_blank" rel="noopener noreferrer" class="kofi-link">
+            <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" width="274" height="36" />
+        </a>
+    </div>
+</nav>
 <div class="tscore-hero">
     <h1 class="tscore-title">The T-Score Model</h1>
     <p class="tscore-subtitle">A predictive statistical model for evaluating Wide Receiver fantasy production based on multiple linear regression analysis.</p>
@@ -832,6 +869,16 @@
         </tr>
         <tr>
             <td>37</td>
+            <td><strong>Michael Pittman Jr.</strong></td>
+            <td><span class="label-quality">Quality Contributor</span></td>
+            <td>42.0</td>
+            <td>103.4</td>
+            <td>46.1</td>
+            <td>13</td>
+            <td>1.43</td>
+        </tr>
+        <tr>
+            <td>38</td>
             <td><strong>Jakobi Meyers</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>41.0</td>
@@ -841,7 +888,7 @@
             <td>0.00</td>
         </tr>
         <tr>
-            <td>38</td>
+            <td>39</td>
             <td><strong>Jauan Jennings</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>40.4</td>
@@ -851,7 +898,7 @@
             <td>1.12</td>
         </tr>
         <tr>
-            <td>39</td>
+            <td>40</td>
             <td><strong>Troy Franklin</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>39.1</td>
@@ -861,7 +908,7 @@
             <td>1.16</td>
         </tr>
         <tr>
-            <td>40</td>
+            <td>41</td>
             <td><strong>Brian Thomas</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>39.0</td>
@@ -871,7 +918,7 @@
             <td>1.26</td>
         </tr>
         <tr>
-            <td>41</td>
+            <td>42</td>
             <td><strong>Jordan Addison</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>38.3</td>
@@ -881,7 +928,7 @@
             <td>1.26</td>
         </tr>
         <tr>
-            <td>42</td>
+            <td>43</td>
             <td><strong>Ricky Pearsall</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>38.6</td>
@@ -891,7 +938,7 @@
             <td>0.92</td>
         </tr>
         <tr>
-            <td>43</td>
+            <td>44</td>
             <td><strong>Rashid Shaheed</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>38.4</td>
@@ -901,7 +948,7 @@
             <td>0.00</td>
         </tr>
         <tr>
-            <td>44</td>
+            <td>45</td>
             <td><strong>Malik Nabers</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>38.5</td>
@@ -911,7 +958,7 @@
             <td>0.52</td>
         </tr>
         <tr>
-            <td>45</td>
+            <td>46</td>
             <td><strong>Jakobi Meyers</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>37.5</td>
@@ -921,7 +968,7 @@
             <td>0.00</td>
         </tr>
         <tr>
-            <td>46</td>
+            <td>47</td>
             <td><strong>Tyreek Hill</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>37.0</td>
@@ -931,7 +978,7 @@
             <td>0.55</td>
         </tr>
         <tr>
-            <td>47</td>
+            <td>48</td>
             <td><strong>Tre Tucker</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>36.3</td>
@@ -941,7 +988,7 @@
             <td>1.35</td>
         </tr>
         <tr>
-            <td>48</td>
+            <td>49</td>
             <td><strong>Garrett Wilson</strong></td>
             <td><span class="label-quality">Quality Contributor</span></td>
             <td>35.7</td>
@@ -949,16 +996,6 @@
             <td>56.4</td>
             <td>4</td>
             <td>0.80</td>
-        </tr>
-        <tr>
-            <td>49</td>
-            <td><strong>Michael Pittman Jr.</strong></td>
-            <td><span class="label-quality">Quality Contributor</span></td>
-            <td>34.7</td>
-            <td>103.4</td>
-            <td>46.1</td>
-            <td></td>
-            <td>1.43</td>
         </tr>
         <tr>
             <td>50</td>
@@ -1344,6 +1381,14 @@
         
         // 4. Add the 'active' class to the button that was just clicked
         btnElement.classList.add('active');
+    }
+    function toggleMenu() {
+    const menu = document.getElementById('hamburgerMenu');
+    const overlay = document.getElementById('menuOverlay');
+    if (!menu || !overlay) return;
+    
+    menu.classList.toggle('open');
+    overlay.style.display = menu.classList.contains('open') ? 'block' : 'none';
     }
 </script>
 </body>
