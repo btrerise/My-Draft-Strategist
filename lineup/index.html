@@ -447,7 +447,7 @@
         <div id="waiverOutput" class="scout-output-container"></div>
     </section>
     
-    <!-- TRADE ANALYZER -->
+    <!-- Target Watchlist -->
     <section class="settings-card">
         <header class="card-header">
             <h3>
@@ -477,41 +477,69 @@
         
         <div id="tradeOutput" class="scout-output-container"></div>
     </section>
-    <!-- TRADE FINDER: MARKET DISCONNECT -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3>
-                <span>Trade Finder</span>
-            </h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Upload a market CSV (e.g., from KTC or FantasyCalc) to compare consensus values against your custom ROS rankings and instantly expose buy-low targets and sell-high candidates.</span>
-            </div>
-        </header>
-        
-        <div id="marketMetaDisplay" class="status-badge-meta"></div>
-        <input type="file" id="marketFileInput" class="form-input file-input mb-3" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
-        <div id="marketSuccessMsg" class="success-feedback">Market Data Uploaded Successfully!</div>
-
-        <!-- Filter / Control Bar -->
-        <div class="settings-grid mb-3" style="align-items: center;">
-            <div class="input-group" style="margin-bottom: 0;">
-                <label>Filter Mode</label>
-                <select id="disconnectMode" class="form-input" onchange="toggleDisconnectMode()">
-                    <option value="flat">Flat Rank Gap (e.g., 10+ spots)</option>
-                    <option value="percent">Percentage Shift (e.g., 20%+ value delta)</option>
-                </select>
-            </div>
-            <div class="input-group" style="margin-bottom: 0;">
-                <label id="thresholdLabel">Minimum Rank Gap</label>
-                <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
-            </div>
+    <!-- TRADE FINDER -->
+<section class="settings-card">
+    <header class="card-header">
+        <h3>
+            <span>Trade Finder</span>
+        </h3>
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Upload a market CSV or pull live market values to compare consensus against your custom ROS rankings and instantly expose buy-low/sell-high candidates.</span>
         </div>
+    </header>
+    
+    <div id="marketMetaDisplay" class="status-badge-meta"></div>
+    
+    <!-- Option A: Upload -->
+    <input type="file" id="marketFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
+    
+    <hr class="card-divider">
+    <div class="divider-text">OR PULL LIVE MARKET VALUE</div>
+    
+    <!-- Option B: Fetch Live -->
+    <div class="input-group">
+        <select id="adpFormatSelect" class="form-input" aria-label="Select ADP Format">
+            <option value="redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
+            <option value="redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
+            <option value="redraft-2qb-12t-ppr1">Redraft - Superflex/2QB (PPR)</option>
+            <option value="dynasty-1qb-12t-ppr1">Dynasty - 1QB (PPR)</option>
+            <option value="dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
+        </select>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <button id="fetchAdpBtn" class="btn btn-purple btn-sm" onclick="fetchLeagueLogsADP(this)" style="width: auto;">Fetch Market Value</button>
+        <div class="leaguelogs-attribution" style="margin-top: 0;">
+            <a href="https://leaguelogs.com" target="_blank" rel="noopener">
+                <span>Powered by</span>
+                <em>LeagueLogs</em>
+                <span class="dot-accent" aria-hidden="true"></span>
+            </a>
+        </div>
+    </div>
 
-        <button class="btn btn-primary mt-2" onclick="runMarketDisconnectAnalysis()">Find Trade Targets</button>
-        
-        <div id="marketDisconnectOutput" class="scout-output-container"></div>
-    </section>
+    <div id="marketSuccessMsg" class="success-feedback">Market Data Loaded Successfully!</div>
+
+    <!-- Filter / Control Bar -->
+    <div class="settings-grid mb-3" style="align-items: center; margin-top: 1rem;">
+        <div class="input-group" style="margin-bottom: 0;">
+            <label>Filter Mode</label>
+            <select id="disconnectMode" class="form-input" onchange="toggleDisconnectMode()">
+                <option value="flat">Flat Rank Gap (e.g., 10+ spots)</option>
+                <option value="percent">Percentage Shift (e.g., 20%+ value delta)</option>
+            </select>
+        </div>
+        <div class="input-group" style="margin-bottom: 0;">
+            <label id="thresholdLabel">Minimum Rank Gap</label>
+            <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
+        </div>
+    </div>
+
+    <button class="btn btn-primary mt-2" onclick="runMarketDisconnectAnalysis()">Find Trade Targets</button>
+    
+    <div id="marketDisconnectOutput" class="scout-output-container"></div>
+</section>
 </div>
         <!-- USER GUIDE TAB -->
 <div id="guideTab" class="tab-content">

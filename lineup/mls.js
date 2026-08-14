@@ -883,7 +883,79 @@
             window.alert("Unsupported file format. Please upload a .csv or .xlsx file.");
         }
     }
+    window.fetchLeagueLogsADP = async function(btn) {
+    const formatSelect = document.getElementById('adpFormatSelect');
+    const outputEl = document.getElementById('marketDisconnectOutput');
+    const msgEl = document.getElementById('marketSuccessMsg');
+    
+    if (!formatSelect) return;
+    const profileKey = formatSelect.value;
+    const formatText = formatSelect.options[formatSelect.selectedIndex].text;
+    
+    const origText = btn.innerText;
+    btn.innerText = "Fetching...";
+    btn.style.opacity = "0.7";
+    btn.disabled = true;
 
+    try {
+        // 1. Fetch Sleeper DB for name mapping (matches your ds.js logic)
+        let sleeperMap = {};
+        let sleeperRes = await fetch('https://api.sleeper.app/v1/players/nfl');
+        if (sleeperRes.ok) {
+            sleeperMap = await sleeperRes.json();
+        }
+
+        // 2. Fetch LeagueLogs Market Data
+        const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+        if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
+        const llMarket = await marketRes.json();
+        
+        let parsed = [];
+        
+        // 3. Map the IDs to Names and build the array
+        llMarket.data.forEach(item => {
+            let sId = item.sleeperPlayerId;
+            let sp = sleeperMap[sId];
+            
+            // Skip if we can't find a valid name match
+            if (!sp || !sp.first_name) return; 
+
+            let fullName = `${sp.first_name} ${sp.last_name}`;
+            let rankVal = parseFloat(item.overallRank);
+
+            if (!isNaN(rankVal)) {
+                parsed.push({
+                    name: fullName,
+                    cleanName: normalizeName(fullName),
+                    marketVal: rankVal
+                });
+            }
+        });
+
+        // 4. Save to state and local storage
+        State.marketRankings = parsed;
+        localStorage.setItem('mds_season_market', JSON.stringify(State.marketRankings));
+        
+        // 5. Update UI
+        updateMarketMetaDisplay(); 
+        if (msgEl) {
+            msgEl.innerText = `Live Market Data (${formatText}) Pulled Successfully!`;
+            msgEl.style.display = 'block';
+            setTimeout(() => msgEl.style.display = 'none', 3500);
+        }
+        
+        // Clear out any old analysis results to prevent confusion
+        if (outputEl) outputEl.innerHTML = ''; 
+
+    } catch (error) {
+        console.error("Error fetching ADP:", error);
+        window.alert(`Could not pull live market data.\n\n${error.message}`);
+    } finally {
+        btn.innerText = origText;
+        btn.style.opacity = "1";
+        btn.disabled = false;
+    }
+};
     function parseMarketData(rows, successMsgId) {
         let parsed = [];
         if (rows.length < 1) return;
@@ -986,9 +1058,14 @@
                 let tradeType = delta > 0 ? 'BUY' : 'SELL';
                 let owner = rosterMap[userObj.cleanName];
 
-                // For SELL opportunities, ensure the player is actually on the user's roster
+                // For SELL opportunities, ensure the player is actually on your roster
                 if (tradeType === 'SELL' && owner !== 'You') {
                     return; // Skip if you don't own them
+                }
+
+                // For BUY opportunities, ensure the player is NOT already on your roster
+                if (tradeType === 'BUY' && owner === 'You') {
+                    return; // Skip if you already own them
                 }
 
                 analysisList.push({
