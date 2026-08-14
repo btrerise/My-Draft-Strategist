@@ -497,37 +497,67 @@
     <hr class="card-divider">
     <div class="divider-text">OR PULL LIVE MARKET VALUE</div>
     
-    <!-- Option B: Fetch Live -->
+    <!-- Option B: Modular Configuration Panel -->
     <div class="input-group">
-        <select id="adpFormatSelect" class="form-input" aria-label="Select Market Format">
-            <optgroup label="LeagueLogs (Aggregate Market)"
-            <option value="leaguelogs|redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
-            <option value="leaguelogs|redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
-            <option value="leaguelogs|redraft-2qb-12t-ppr1">Redraft - Superflex/2QB (PPR)</option>
-            <option value="leaguelogs|dynasty-1qb-12t-ppr1">Dynasty - 1QB (PPR)</option>
-            <option value="leaguelogs|dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
-        </optgroup>
-        <optgroup label="FantasyCalc (Trade Value)">
-        <option value="fantasycalc|false|1|1">Redraft - 1QB (PPR)</option>
-        <option value="fantasycalc|false|2|1">Redraft - Superflex (PPR)</option>
-        <option value="fantasycalc|true|1|1">Dynasty - 1QB (PPR)</option>
-        <option value="fantasycalc|true|2|1">Dynasty - Superflex (PPR)</option>
-        </optgroup>
+        <label>Market Source</label>
+        <select id="marketSourceSelect" class="form-input" onchange="toggleMarketSourceUI()" aria-label="Select Market Source">
+            <option value="fantasycalc" selected>FantasyCalc.com (Trade Value)</option>
+            <option value="leaguelogs">LeagueLogs (Aggregate Market)</option>
         </select>
+    </div>
+
+    <!-- Common Settings (Dynasty/Redraft & QB Format) -->
+    <div class="settings-grid mb-2">
+        <div class="input-group" style="margin-bottom: 0;">
+            <label>League Type</label>
+            <select id="marketType" class="form-input" aria-label="League Type">
+                <option value="redraft">Redraft</option>
+                <option value="dynasty">Dynasty</option>
+            </select>
+        </div>
+        <div class="input-group" style="margin-bottom: 0;">
+            <label>QB Format</label>
+            <select id="marketQbs" class="form-input" aria-label="QB Format">
+                <option value="1">1QB</option>
+                <option value="2">Superflex / 2QB</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- FantasyCalc Specific Controls (PPR & TEP) -->
+    <div id="fantasycalcSpecificControls">
+        <div class="settings-grid mb-3" style="align-items: center;">
+            <div class="input-group" style="margin-bottom: 0;">
+                <label>PPR Scoring</label>
+                <select id="marketPpr" class="form-input" aria-label="PPR Scoring">
+                    <option value="1">Full PPR (1.0)</option>
+                    <option value="0.5">Half PPR (0.5)</option>
+                    <option value="0">Standard (0)</option>
+                </select>
+            </div>
+            <div class="input-group" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: flex-end;">
+                <div class="toggle-row" style="padding: 0.4rem 0; border: none; background: none; margin-top: 1rem;">
+                    <div class="toggle-info">
+                        <span class="toggle-title" style="font-size: 0.85rem;">TE Premium (TEP)</span>
+                    </div>
+                    <input type="checkbox" id="marketTep" class="toggle-switch" aria-label="Toggle Tight End Premium">
+                </div>
+            </div>
+        </div>
     </div>
     
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
         <button id="fetchAdpBtn" class="btn btn-purple" onclick="fetchLeagueLogsADP(this)" style="width: auto;">Fetch Market Value</button>
         <div class="leaguelogs-attribution" style="margin-top: 0;">
-            <a href="https://leaguelogs.com" target="_blank" rel="noopener">
+            <a href="https://fantasycalc.com" target="_blank" rel="noopener" id="attributionLink">
                 <span>Powered by</span>
-                <em>LeagueLogs</em>
+                <em id="attributionBrand">FantasyCalc</em>
                 <span class="dot-accent" aria-hidden="true"></span>
             </a>
         </div>
     </div>
 
-    <div id="marketSuccessMsg" class="success-feedback">Market Data Loaded Successfully!</div>
+    <div id="marketSuccessMsg" class="success-feedback" style="display:none;">Market Data Loaded Successfully!</div>
 
     <!-- Filter / Control Bar -->
     <div class="settings-grid mb-3" style="align-items: center; margin-top: 1rem;">

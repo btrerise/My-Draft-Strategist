@@ -997,18 +997,6 @@ function parseExcel(file) {
                 }
             });
         } 
-        
-        // --- 3. FANTASY FOOTBALL CALCULATOR ---
-        else if (source === 'ffc') {
-            const ffcRes = await fetch(`https://fantasyfootballcalculator.com/api/v1/adp/${profileKey}?teams=12&year=2026`);
-            if (!ffcRes.ok) throw new Error(`FFC API Error: ${ffcRes.status}`);
-            const ffcData = await ffcRes.json();
-            ffcData.players.forEach(item => {
-                // FFC doesn't use Sleeper IDs, so we map by normalized name prefix
-                let cleanName = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                adpMap['name_' + cleanName] = item.adp;
-            });
-        }
 
         // --- APPLY TO STATE ---
         State.players.forEach(p => {

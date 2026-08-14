@@ -1938,6 +1938,13 @@ select option {
     color: var(--text-main);
     padding: 0.75rem;
 }
+optgroup {
+    background-color: var(--bg-main, #0b132b);
+    color: var(--primary-green, #4ade80);
+    font-weight: 600;
+    font-style: normal;
+    padding: 4px 8px;
+}
 /* --- MODERNIZED FILE UPLOAD BUTTON --- */
 input[type="file"]::file-selector-button {
     background: rgba(255, 255, 255, 0.08);
