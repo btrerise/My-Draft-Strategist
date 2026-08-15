@@ -91,3 +91,25 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAndHideBanner('mlsBanner', 'ds_hide_mls_banner');
     checkAndHideBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner');
 });
+// --- TOAST NOTIFICATIONS ---
+window.showToast = function(message) {
+  let toast = document.getElementById('mds-toast');
+  
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'mds-toast';
+    toast.className = 'mds-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toast);
+  }
+  
+  toast.textContent = message;
+  void toast.offsetWidth; // Force CSS reflow to ensure animation replays
+  toast.classList.add('show');
+  
+  clearTimeout(toast.hideTimeout);
+  toast.hideTimeout = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2500);
+};

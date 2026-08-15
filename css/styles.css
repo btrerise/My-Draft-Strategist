@@ -153,15 +153,15 @@ body {
 .hamburger-menu { 
     position: fixed; 
     top: 0; 
-    left: 0; /* Anchor left, we move it with transform instead */
-    width: 280px; /* Slightly wider for better breathing room */
+    left: 0; 
+    width: 280px; 
     height: 100%; 
     background: var(--card-bg); 
     z-index: 1000; 
     
-    /* GPU Accelerated Animation - MUCH smoother than animating 'left' */
     transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    visibility: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.3s; 
     
     border-right: 1px solid var(--border); 
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4); 
@@ -173,6 +173,8 @@ body {
 
 .hamburger-menu.open { 
     transform: translateX(0); 
+    visibility: visible;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0s;
 }
 
 /* Header inside the drawer */
@@ -2080,4 +2082,80 @@ input[type="file"]::-webkit-file-upload-button:hover {
     .roster-empty-state {
         padding: 1.5rem 0.5rem;
     }
+}
+/* --- ACCESSIBILITY & MICRO-INTERACTIONS --- */
+.player-card:focus-visible {
+  outline: 2px solid var(--primary-green);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+}
+
+.player-card[tabindex="0"] {
+  cursor: pointer;
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.player-card[tabindex="0"]:active {
+  transform: scale(0.98);
+}
+
+/* --- TOAST NOTIFICATIONS --- */
+.mds-toast {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  background-color: var(--card-bg, #131b2c); 
+  color: var(--text-main, #f3f4f6);
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--primary-green, #10b981);
+  transform: translateY(150%);
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.mds-toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .mds-toast {
+    bottom: 90px;
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, 150%);
+    width: max-content;
+    max-width: 90vw;
+  }
+  .mds-toast.show {
+    transform: translate(-50%, 0);
+  }
+}
+
+/* --- DENSE DATA TABLE STICKY SCROLLING (SCOPED) --- */
+.table-container th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--bg-surface, #121212);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1); 
+}
+
+.table-container th:first-child, 
+.table-container td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background-color: var(--bg-surface, #121212);
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.1); 
+}
+
+.table-container th:first-child {
+  z-index: 15;
 }

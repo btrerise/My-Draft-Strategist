@@ -491,6 +491,11 @@
                 });
             }
 
+            // --- PRESERVE MANUAL OVERRIDES ---
+            let existingDraft = State.drafts.find(d => d.draftId === draftId);
+            let manualDrafted = existingDraft ? existingDraft.draftedPlayers.filter(id => !sleeperDrafted.includes(id)) : [];
+            let manualMyTeam = existingDraft ? existingDraft.myTeam.filter(id => !sleeperMyTeam.includes(id)) : [];
+
             let draftObj = {
                 draftId: draftId,
                 name: draftName,
@@ -498,8 +503,8 @@
                 settings: draftSettings,
                 limits: draftLimits,
                 players: [...State.players],
-                draftedPlayers: Array.from(new Set(sleeperDrafted)),
-                myTeam: Array.from(new Set(sleeperMyTeam)),
+                draftedPlayers: Array.from(new Set([...sleeperDrafted, ...manualDrafted])),
+                myTeam: Array.from(new Set([...sleeperMyTeam, ...manualMyTeam])),
                 rawDraftPicks: picksData || [],
                 totalPicks: picksData ? picksData.length : 0
             };
@@ -654,6 +659,9 @@
             draft.draftedPlayers.push(id);
             if (isMine) draft.myTeam.push(id);
             saveActiveDraftState();
+
+            let p = State.players.find(x => x.id === id);
+            if (p && typeof window.showToast === 'function') window.showToast(`${p.name} drafted`);
         }
     };
 
@@ -663,6 +671,9 @@
         draft.draftedPlayers = draft.draftedPlayers.filter(pId => pId !== id);
         draft.myTeam = draft.myTeam.filter(pId => pId !== id);
         saveActiveDraftState();
+
+        let p = State.players.find(x => x.id === id);
+        if (p && typeof window.showToast === 'function') window.showToast(`${p.name} returned to pool`);
     };
 
     function getCallOutStyle(playerName) {
@@ -1626,7 +1637,7 @@ function parseExcel(file) {
                     let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
 
                     newPoolHTML += `
-                        <div class="player-card" style="${customStyle}">
+                        <div class="player-card" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
                             <div class="player-card-main">
                                 <div class="player-info">
                                     <h4>
@@ -1733,6 +1744,18 @@ function parseExcel(file) {
         const searchBarEl = document.getElementById('searchBar');
         if (searchBarEl) {
             searchBarEl.addEventListener('input', renderBoard);
+        }
+
+        // --- KEYBOARD ACCESSIBILITY FOR PLAYER CARDS ---
+        const poolEl = document.getElementById('playerPool');
+        if (poolEl) {
+            poolEl.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('player-card')) {
+                    e.preventDefault();
+                    const draftBtn = e.target.querySelector('.btn-draft');
+                    if (draftBtn) draftBtn.click();
+                }
+            });
         }
 
         if (State.players.length > 0) renderBoard();
