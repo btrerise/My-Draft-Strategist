@@ -1570,10 +1570,18 @@ function loadSheetJS(callback) {
         document.head.appendChild(script);
     }
 }
-// --- AUTO-LOAD SHARED LEAGUE ID FROM MDS ---
+// --- AUTO-LOAD SHARED DATA FROM MDS ---
 const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
+const sharedUsername = localStorage.getItem('shared_sleeper_username');
+
 const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
+// Assuming your username input ID is 'sleeperUsername'. If it is different in lineup/index.html, update the ID below.
+const mlsUsernameInput = document.getElementById('sleeperUsername'); 
 
 if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
     mlsLeagueInput.value = sharedLeagueId;
+}
+
+if (sharedUsername && mlsUsernameInput && !mlsUsernameInput.value) {
+    mlsUsernameInput.value = sharedUsername;
 }
