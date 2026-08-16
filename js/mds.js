@@ -302,7 +302,11 @@
             draft.rawDraftPicks = [];
             draft.totalPicks = 0;
             saveActiveDraftState();
-            if (p && typeof window.showToast === 'function') window.showToast("Draft picks reset to 1.01");
+            
+            // The timeout ensures the heavy DOM render doesn't swallow the animation
+            setTimeout(() => {
+                if (typeof window.showToast === 'function') window.showToast("Draft picks reset to 1.01");
+            }, 100);
         }
     };
 
@@ -1764,6 +1768,64 @@ function parseExcel(file) {
                 }
             });
         }
+        // --- POWER-USER KEYBOARD SHORTCUTS ---
+        document.addEventListener('keydown', (e) => {
+            // Check if user is typing in an input field to prevent accidental triggers
+            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+
+            if (isInputActive) {
+                // EXCEPTION: Allow Escape key to quickly clear and exit the search bar
+                if (e.key === 'Escape' && document.activeElement.id === 'searchBar') {
+                    document.activeElement.value = '';
+                    document.activeElement.blur();
+                    renderBoard(); // Force board to reset instantly
+                }
+                return; // Stop processing other hotkeys if typing
+            }
+
+            // Global Hotkeys
+            switch(e.key.toLowerCase()) {
+                case '/': // Focus search bar
+                    e.preventDefault(); 
+                    const searchEl = document.getElementById('searchBar');
+                    if (searchEl) {
+                        searchEl.focus();
+                        searchEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    break;
+                case 'a': // Filter All
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('ALL');
+                    break;
+                case 'q': // Filter QB
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('QB');
+                    break;
+                case 'r': // Filter RB
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('RB');
+                    break;
+                case 'w': // Filter WR
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('WR');
+                    break;
+                case 't': // Filter TE
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('TE');
+                    break;
+                case '1':
+                    if (typeof window.showTab === 'function') window.showTab('setup');
+                    break;
+                case '2':
+                    if (typeof window.showTab === 'function') window.showTab('tracker');
+                    break;
+                case '3':
+                    if (typeof window.showTab === 'function') window.showTab('team');
+                    break;
+                case '4':
+                    if (typeof window.showTab === 'function') window.showTab('board');
+                    break;
+                case '5':
+                    if (typeof window.showTab === 'function') window.showTab('guide');
+                    break;
+            }
+        });
 
         if (State.players.length > 0) renderBoard();
     });

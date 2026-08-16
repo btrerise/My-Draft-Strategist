@@ -1529,6 +1529,20 @@ window.toggleMarketSourceUI = function() {
         }
         benchContainer.innerHTML = benchHTML;
     }
+    // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS ---
+document.addEventListener('DOMContentLoaded', () => {
+    const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
+    
+    const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
+    
+    if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
+        mlsLeagueInput.value = sharedLeagueId;
+        
+        // Optional: If you want it to auto-trigger the sync button right away, uncomment the lines below
+        const syncBtn = document.getElementById('syncSleeperBtn');
+        if (syncBtn) syncBtn.click();
+    }
+});
 })();
 // Add this helper function at the bottom of mls.js
 function loadSheetJS(callback) {
