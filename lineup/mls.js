@@ -1571,23 +1571,43 @@ function loadSheetJS(callback) {
     }
 }
 // --- AUTO-LOAD & AUTO-SYNC SHARED DATA FROM MDS ---
-window.addEventListener('load', () => {
+function checkAndAutoSyncMLS() {
     const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
     const sharedUsername = localStorage.getItem('shared_sleeper_username');
+    const needsSync = localStorage.getItem('shared_sleeper_needs_sync');
 
     const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
     const mlsUsernameInput = document.getElementById('sleeperUsername'); 
     const syncBtn = document.getElementById('syncSleeperBtn'); 
 
-    if (sharedLeagueId && mlsLeagueInput && mlsLeagueInput.value !== sharedLeagueId) {
-        mlsLeagueInput.value = sharedLeagueId;
-        if (sharedUsername && mlsUsernameInput) {
+    let valuesChanged = false;
+
+    if (sharedLeagueId && mlsLeagueInput) {
+        if (mlsLeagueInput.value !== sharedLeagueId) {
+            mlsLeagueInput.value = sharedLeagueId;
+            valuesChanged = true;
+        }
+    }
+
+    if (sharedUsername && mlsUsernameInput) {
+        if (mlsUsernameInput.value !== sharedUsername) {
             mlsUsernameInput.value = sharedUsername;
+            valuesChanged = true;
         }
-        
-        // Safely trigger the sync button after all other scripts have initialized
-        if (syncBtn) {
-            setTimeout(() => syncBtn.click(), 300);
-        }
+    }
+
+    // Trigger sync if values changed or if MDS requested a sync
+    if ((valuesChanged || needsSync === 'true') && syncBtn) {
+        localStorage.removeItem('shared_sleeper_needs_sync');
+        setTimeout(() => syncBtn.click(), 200);
+    }
+}
+
+// Run on page load and when tab gains focus
+window.addEventListener('load', checkAndAutoSyncMLS);
+window.addEventListener('pageshow', checkAndAutoSyncMLS);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        checkAndAutoSyncMLS();
     }
 });

@@ -2209,3 +2209,48 @@ input[type="file"]::-webkit-file-upload-button:hover {
         display: none !important;
     }
 }
+/* --- PLAYER CARD CONTENT CONSTRAINTS --- */
+.player-card-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.player-info {
+    flex: 1;
+    min-width: 0; /* Prevents long text from pushing buttons off screen */
+}
+
+.player-info h4 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.card-details {
+    padding-right: 140px; /* Reserves space on the right so text never flows under buttons */
+}
+
+.edit-link {
+    cursor: pointer;
+    font-size: 0.8rem;
+    opacity: 0.75;
+    margin-left: 8px;
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.edit-link:hover {
+    opacity: 1;
+    color: var(--primary-green);
+}
+
+@media (max-width: 600px) {
+    /* On mobile, allow full width when cards are collapsed */
+    body.enable-mobile-collapse .card-details {
+        padding-right: 0;
+    }
+}

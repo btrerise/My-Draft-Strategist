@@ -436,9 +436,13 @@
             let draftName = document.getElementById('newDraftName')?.value.trim() || "";
             let fetchedLeague = null;
             if (dInfo.league_id) {
-                // NEW: Save the League ID and username globally so My Lineup Strategist can auto-load it later
+                let currentUsername = document.getElementById('sleeperUsername')?.value.trim() || username || draftName || "";
+                
                 localStorage.setItem('shared_sleeper_league_id', dInfo.league_id);
-                localStorage.setItem('shared_sleeper_username', username);
+                if (currentUsername) {
+                    localStorage.setItem('shared_sleeper_username', currentUsername);
+                }
+                localStorage.setItem('shared_sleeper_needs_sync', 'true'); // Flag to force MLS sync
                 try {
                     const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}`);
                     if (leagueRes.ok) {
@@ -1660,7 +1664,6 @@ function parseExcel(file) {
                                         <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                                         ${rookieBadge}
                                         ${stackBadge}
-                                        <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.8; margin-left: 8px; font-weight: normal;" onclick="toggleCardDetails(event, ${p.id}); toggleEditBar(${p.id});" title="Edit Details">Edit</span>
                                     </h4>
                                 </div>
                                 <div class="actions">
@@ -1675,6 +1678,7 @@ function parseExcel(file) {
                             <div class="card-details" id="details-${p.id}">
                                 <div class="player-stats">
                                     ${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}
+                                    <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
                                 </div>
                                 <div class="inline-editor" id="inline-edit-${p.id}">
                                     <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
