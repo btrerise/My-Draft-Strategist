@@ -438,11 +438,6 @@
             if (dInfo.league_id) {
                 let currentUsername = document.getElementById('sleeperUsername')?.value.trim() || username || draftName || "";
                 
-                localStorage.setItem('shared_sleeper_league_id', dInfo.league_id);
-                if (currentUsername) {
-                    localStorage.setItem('shared_sleeper_username', currentUsername);
-                }
-                localStorage.setItem('shared_sleeper_needs_sync', 'true'); // Flag to force MLS sync
                 try {
                     const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}`);
                     if (leagueRes.ok) {
@@ -1657,52 +1652,55 @@ function parseExcel(file) {
 
                     newPoolHTML += `
                         <div class="player-card" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
-                            <div class="player-card-main">
-                                <div class="player-info">
-                                    <h4>
-                                        ${p.rank}. ${p.name} 
-                                        <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
-                                        ${rookieBadge}
-                                        ${stackBadge}
-                                    </h4>
+                            <div class="card-body">
+                                <div class="card-left">
+                                    <div class="player-info">
+                                        <h4>
+                                            ${p.rank}. ${p.name} 
+                                            <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
+                                            ${rookieBadge}
+                                            ${stackBadge}
+                                        </h4>
+                                    </div>
+                                    
+                                    <div class="card-details" id="details-${p.id}">
+                                        <div class="player-stats">
+                                            <span>${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</span>
+                                            <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
+                                        </div>
+                                        <div class="inline-editor" id="inline-edit-${p.id}">
+                                            <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
+                                                <div>
+                                                    <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
+                                                    <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
+                                                </div>
+                                                <div>
+                                                    <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
+                                                    <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
+                                                </div>
+                                                <div>
+                                                    <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
+                                                    <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
+                                                </div>
+                                                <div>
+                                                    <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
+                                                    <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
+                                                </div>
+                                                <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
+                                                    <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
+                                                    <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
+
                                 <div class="actions">
                                     <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
                                     <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">My Pick</button>
                                     <button class="btn-sm btn-expand hide-on-desktop" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details">
                                         <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                     </button>
-                                </div>
-                            </div>
-                            
-                            <div class="card-details" id="details-${p.id}">
-                                <div class="player-stats">
-                                    ${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}
-                                    <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
-                                </div>
-                                <div class="inline-editor" id="inline-edit-${p.id}">
-                                    <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
-                                        <div>
-                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
-                                            <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
-                                            <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
-                                            <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
-                                            <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
-                                        </div>
-                                        <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
-                                            <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
-                                            <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>`;
@@ -1847,15 +1845,6 @@ function parseExcel(file) {
         // Verify 'draftSelect' matches the ID of your draft dropdown in index.html
         const draftDropdown = document.getElementById('draftSelect'); 
         if (draftDropdown) {
-            draftDropdown.addEventListener('change', (e) => {
-                setTimeout(() => {
-                    let draft = typeof getActiveDraft === 'function' ? getActiveDraft() : null;
-                    if (draft && draft.leagueId) {
-                        localStorage.setItem('shared_sleeper_league_id', draft.leagueId);
-                        localStorage.setItem('shared_sleeper_username', draft.username);
-                    }
-                }, 100);
-            });
         }
     // --- MOBILE COLLAPSE TOGGLE ---
         const collapseCheckbox = document.getElementById('ds_mobile_collapse');

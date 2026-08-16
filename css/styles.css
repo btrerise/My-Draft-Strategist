@@ -2209,17 +2209,21 @@ input[type="file"]::-webkit-file-upload-button:hover {
         display: none !important;
     }
 }
-/* --- PLAYER CARD CONTENT CONSTRAINTS --- */
-.player-card-main {
+/* --- PLAYER CARD FLEX LAYOUT & VERTICAL CENTERING --- */
+.card-body {
     display: flex;
+    align-items: center; /* Vertically centers Taken/My Pick buttons relative to the left column */
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    width: 100%;
 }
 
-.player-info {
+.card-left {
     flex: 1;
-    min-width: 0; /* Prevents long text from pushing buttons off screen */
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
 }
 
 .player-info h4 {
@@ -2229,23 +2233,35 @@ input[type="file"]::-webkit-file-upload-button:hover {
     word-break: break-word;
 }
 
-.card-details {
-    padding-right: 140px; /* Reserves space on the right so text never flows under buttons */
+.player-stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.4rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
 }
 
 .edit-link {
     cursor: pointer;
     font-size: 0.8rem;
     opacity: 0.75;
-    margin-left: 8px;
     color: var(--text-muted);
     text-decoration: underline;
     text-underline-offset: 2px;
+    margin-left: 0; /* Ensures flush left alignment when wrapped to a new line */
 }
 
 .edit-link:hover {
     opacity: 1;
     color: var(--primary-green);
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
 }
 
 @media (max-width: 600px) {
