@@ -21,7 +21,7 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0a0e17">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Draft Strategist">
 
@@ -187,12 +187,13 @@
     </div>
     
     <!-- DYNAMIC INSTALL APP PROMPT -->
-    <section id="installCard" class="settings-card highlight-card" style="display: none;">
-        <div class="card-header centered-header">
+    <section id="installCard" class="settings-card highlight-card" style="display: none; position: relative;">
+        <button class="close-banner-btn" onclick="dismissBanner('installCard', 'ds_hide_install_banner')" aria-label="Dismiss Banner" style="position: absolute; top: 12px; right: 12px; font-size: 1rem;">✕</button>
+        <div class="card-header centered-header" style="border-bottom: none; margin-bottom: 0.5rem; padding-bottom: 0;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-            <h3 class="text-blue">Install the App</h3>
+            <h3 class="text-blue" style="margin: 0;">Install the App</h3>
         </div>
-        <p class="card-desc text-center">Add My Draft Strategist to your home screen for a full-screen, native app experience!</p>
+        <p class="card-desc text-center">Add to your home screen for a full-screen, native app experience!</p>
         <button id="installAppBtn" class="btn btn-blue">Install App</button>
     </section>
 
@@ -376,7 +377,16 @@
             </div>
             <input type="checkbox" id="tscoreToggle" class="toggle-switch" onchange="saveSettings()" aria-label="Toggle T-Score">
         </div>
-
+        <div class="toggle-row hide-on-desktop">
+            <div class="toggle-info">
+                <span class="toggle-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                    Collapse Player Cards
+                </span>
+                <span class="toggle-desc">Tucks player stats into an expandable drawer to save space on mobile.</span>
+            </div>
+            <input type="checkbox" id="ds_mobile_collapse" class="toggle-switch" aria-label="Toggle Mobile Collapse" checked>
+        </div>
         <button class="btn btn-primary mt-2" onclick="saveSettings(this)">Save Settings</button>
     </section>
 
@@ -690,6 +700,18 @@
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">8</span> Install the App (Optional)</h4>
                 <p class="step-desc">For the best experience, you can install this app directly to your home screen! If your browser supports it, tap the "Install App" button on the Setup screen or use your browser's menu options (like "Add to Home Screen"). This will give you a full-screen, native app experience.</p>
+            </div>
+            <!-- Step 9: Shortcuts -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">9</span> Keyboard Shortcuts</h4>
+                <p class="step-desc">Draft like a power-user with these global keyboard shortcuts (active whenever you aren't typing in a text box):</p>
+                <ul class="guide-list" style="list-style-type: none; padding-left: 2.2rem;">
+                    <li><strong class="text-main">/ (Forward Slash):</strong> Instantly jump to the Player Search bar.</li>
+                    <li><strong class="text-main">Escape:</strong> Clear the search bar and reset the board.</li>
+                    <li><strong class="text-main">Spacebar / Enter:</strong> Draft the currently focused player.</li>
+                    <li><strong class="text-main">A, Q, R, W, T:</strong> Instantly filter the Tracker by position (All, QB, RB, WR, TE).</li>
+                    <li><strong class="text-main">1, 2, 3, 4, 5:</strong> Instantly switch tabs (Setup, Tracker, Team, Board, Guide).</li>
+                </ul>
             </div>
         </div>
     </section>

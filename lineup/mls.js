@@ -1313,6 +1313,7 @@ window.toggleMarketSourceUI = function() {
         
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = bench;
+        if (typeof window.showToast === 'function') window.showToast("${p.name} is locked");
         renderLineupUI();
     };
 
@@ -1431,6 +1432,7 @@ window.toggleMarketSourceUI = function() {
         
         localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
         localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+        if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
         renderLineupUI();
     };
 
@@ -1527,6 +1529,35 @@ window.toggleMarketSourceUI = function() {
         }
         benchContainer.innerHTML = benchHTML;
     }
+    // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS ---
+document.addEventListener('DOMContentLoaded', () => {
+    const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
+    
+    const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
+    
+    if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
+        mlsLeagueInput.value = sharedLeagueId;
+        
+        // Optional: If you want it to auto-trigger the sync button right away, uncomment the lines below
+        const syncBtn = document.getElementById('syncSleeperBtn');
+        if (syncBtn) syncBtn.click();
+    }
+});
+// --- POWER-USER KEYBOARD SHORTCUTS (MLS) ---
+document.addEventListener('keydown', (e) => {
+    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+    const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+    
+    if (isInputActive) return;
+
+    switch(e.key) {
+        case '1': if (typeof window.showTab === 'function') window.showTab('setup'); break;
+        case '2': if (typeof window.showTab === 'function') window.showTab('roster'); break;
+        case '3': if (typeof window.showTab === 'function') window.showTab('lineup'); break;
+        case '4': if (typeof window.showTab === 'function') window.showTab('scout'); break;
+        case '5': if (typeof window.showTab === 'function') window.showTab('guide'); break;
+    }
+});
 })();
 // Add this helper function at the bottom of mls.js
 function loadSheetJS(callback) {

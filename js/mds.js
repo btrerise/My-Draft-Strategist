@@ -302,6 +302,11 @@
             draft.rawDraftPicks = [];
             draft.totalPicks = 0;
             saveActiveDraftState();
+            
+            // The timeout ensures the heavy DOM render doesn't swallow the animation
+            setTimeout(() => {
+                if (typeof window.showToast === 'function') window.showToast("Draft picks reset to 1.01");
+            }, 100);
         }
     };
 
@@ -338,6 +343,11 @@
     window.toggleEditBar = function(id) {
         const bar = document.getElementById(`inline-edit-${id}`);
         if (bar) bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex';
+    };
+    window.toggleCardDetails = function(e, id) {
+        e.stopPropagation(); // Prevents the space/enter keydown listener from firing if clicked
+        const card = document.getElementById(`details-${id}`).closest('.player-card');
+        if (card) card.classList.toggle('is-expanded');
     };
 
     window.saveInlineEdit = function(id) {
@@ -426,6 +436,8 @@
             let draftName = document.getElementById('newDraftName')?.value.trim() || "";
             let fetchedLeague = null;
             if (dInfo.league_id) {
+                let currentUsername = document.getElementById('sleeperUsername')?.value.trim() || username || draftName || "";
+                
                 try {
                     const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}`);
                     if (leagueRes.ok) {
@@ -491,15 +503,21 @@
                 });
             }
 
+            // --- PRESERVE MANUAL OVERRIDES ---
+            let existingDraft = State.drafts.find(d => d.draftId === draftId);
+            let manualDrafted = existingDraft ? existingDraft.draftedPlayers.filter(id => !sleeperDrafted.includes(id)) : [];
+            let manualMyTeam = existingDraft ? existingDraft.myTeam.filter(id => !sleeperMyTeam.includes(id)) : [];
+
             let draftObj = {
                 draftId: draftId,
+                leagueId: dInfo.league_id || null,
                 name: draftName,
                 username: username,
                 settings: draftSettings,
                 limits: draftLimits,
                 players: [...State.players],
-                draftedPlayers: Array.from(new Set(sleeperDrafted)),
-                myTeam: Array.from(new Set(sleeperMyTeam)),
+                draftedPlayers: Array.from(new Set([...sleeperDrafted, ...manualDrafted])),
+                myTeam: Array.from(new Set([...sleeperMyTeam, ...manualMyTeam])),
                 rawDraftPicks: picksData || [],
                 totalPicks: picksData ? picksData.length : 0
             };
@@ -654,6 +672,9 @@
             draft.draftedPlayers.push(id);
             if (isMine) draft.myTeam.push(id);
             saveActiveDraftState();
+
+            let p = State.players.find(x => x.id === id);
+            if (p && typeof window.showToast === 'function') window.showToast(`${p.name} drafted`);
         }
     };
 
@@ -663,6 +684,9 @@
         draft.draftedPlayers = draft.draftedPlayers.filter(pId => pId !== id);
         draft.myTeam = draft.myTeam.filter(pId => pId !== id);
         saveActiveDraftState();
+
+        let p = State.players.find(x => x.id === id);
+        if (p && typeof window.showToast === 'function') window.showToast(`${p.name} returned to pool`);
     };
 
     function getCallOutStyle(playerName) {
@@ -861,6 +885,7 @@ function parseExcel(file) {
             saveActiveDraftState();
 
             if (btn) flashButton(btn, "Loaded Successfully", false, originalBtnText);
+            if (typeof window.showToast === 'function') window.showToast(`Loaded ${State.players.length} players`);
         } else {
             if (metaEl) metaEl.style.display = 'none';
             if (btn) flashButton(btn, "Error Parsing Data", true, originalBtnText);
@@ -876,7 +901,7 @@ function parseExcel(file) {
             window.alert("Quick-Start auto-generation is currently only supported for LeagueLogs formats. Please select a LeagueLogs option from the dropdown.");
             return;
         }
-        const profileKey = formatSelect.value;
+        const profileKey = formatSelect.value.split('|')[1];
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
         const originalText = btn.innerHTML;
@@ -947,6 +972,7 @@ function parseExcel(file) {
                 updateMetaDisplay();
                 saveActiveDraftState();
                 flashButton(btn, "Quick-Start Loaded!", false, originalText);
+                if (typeof window.showToast === 'function') window.showToast("Quick-Start market rankings loaded");
             } else {
                 throw new Error("No players generated.");
             }
@@ -1022,6 +1048,7 @@ function parseExcel(file) {
         updateMetaDisplay();
 
         flashButton(btn, "Complete!", false, originalText);
+        if (typeof window.showToast === 'function') window.showToast("Market Value (ADP) updated");
         
     } catch(err) {
         console.error(err);
@@ -1587,9 +1614,7 @@ function parseExcel(file) {
                         valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
                     }
                     
-                    // --- T-SCORE INTEGRATION ---
                     if (p.posGroup === 'WR' && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
-                        // Ensure window.normalizeName exists or fallback to direct string replace
                         const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
                         const normName = normFunc(p.name); 
                         const tInfo = tScoreData[normName];
@@ -1626,45 +1651,53 @@ function parseExcel(file) {
                     let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
 
                     newPoolHTML += `
-                        <div class="player-card" style="${customStyle}">
-                            <div class="player-card-main">
+                        <div class="player-card" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
+                            <div class="card-grid">
                                 <div class="player-info">
                                     <h4>
                                         ${p.rank}. ${p.name} 
                                         <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                                         ${rookieBadge}
                                         ${stackBadge}
-                                        <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.7; margin-left: 2px;" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
                                     </h4>
-                                    <div class="player-stats">${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</div>
                                 </div>
+                                
                                 <div class="actions">
                                     <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
                                     <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">My Pick</button>
+                                    <button class="btn-sm btn-expand hide-on-desktop" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details">
+                                        <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </button>
                                 </div>
-                            </div>
-                            
-                            <div class="inline-editor" id="inline-edit-${p.id}">
-                                <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
-                                    <div>
-                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
-                                        <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
+
+                                <div class="card-details" id="details-${p.id}">
+                                    <div class="player-stats">
+                                        <span>${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</span>
+                                        <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
                                     </div>
-                                    <div>
-                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
-                                        <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
-                                        <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
-                                        <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
-                                    </div>
-                                    <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
-                                        <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
-                                        <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
+                                    <div class="inline-editor" id="inline-edit-${p.id}">
+                                        <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
+                                            <div>
+                                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
+                                                <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
+                                            </div>
+                                            <div>
+                                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
+                                                <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
+                                            </div>
+                                            <div>
+                                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
+                                                <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
+                                            </div>
+                                            <div>
+                                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
+                                                <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
+                                            </div>
+                                            <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
+                                                <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
+                                                <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1735,7 +1768,100 @@ function parseExcel(file) {
             searchBarEl.addEventListener('input', renderBoard);
         }
 
+        // --- KEYBOARD ACCESSIBILITY FOR PLAYER CARDS ---
+        const poolEl = document.getElementById('playerPool');
+        if (poolEl) {
+            poolEl.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('player-card')) {
+                    e.preventDefault();
+                    const draftBtn = e.target.querySelector('.btn-draft');
+                    if (draftBtn) draftBtn.click();
+                }
+            });
+        }
+        // --- POWER-USER KEYBOARD SHORTCUTS ---
+        document.addEventListener('keydown', (e) => {
+            // Check if user is typing in an input field to prevent accidental triggers
+            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+
+            if (isInputActive) {
+                // EXCEPTION: Allow Escape key to quickly clear and exit the search bar
+                if (e.key === 'Escape' && document.activeElement.id === 'searchBar') {
+                    document.activeElement.value = '';
+                    document.activeElement.blur();
+                    renderBoard(); // Force board to reset instantly
+                }
+                return; // Stop processing other hotkeys if typing
+            }
+
+            // Global Hotkeys
+            switch(e.key.toLowerCase()) {
+                case '/': // Focus search bar
+                    e.preventDefault(); 
+                    const searchEl = document.getElementById('searchBar');
+                    if (searchEl) {
+                        searchEl.focus();
+                        searchEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    break;
+                case 'a': // Filter All
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('ALL');
+                    break;
+                case 'q': // Filter QB
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('QB');
+                    break;
+                case 'r': // Filter RB
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('RB');
+                    break;
+                case 'w': // Filter WR
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('WR');
+                    break;
+                case 't': // Filter TE
+                    if (typeof window.setPosFilter === 'function') window.setPosFilter('TE');
+                    break;
+                case '1':
+                    if (typeof window.showTab === 'function') window.showTab('setup');
+                    break;
+                case '2':
+                    if (typeof window.showTab === 'function') window.showTab('tracker');
+                    break;
+                case '3':
+                    if (typeof window.showTab === 'function') window.showTab('team');
+                    break;
+                case '4':
+                    if (typeof window.showTab === 'function') window.showTab('board');
+                    break;
+                case '5':
+                    if (typeof window.showTab === 'function') window.showTab('guide');
+                    break;
+            }
+        });
+
         if (State.players.length > 0) renderBoard();
+    // --- UPDATE SHARED STORAGE ON DRAFT SWITCH ---
+        // Verify 'draftSelect' matches the ID of your draft dropdown in index.html
+        const draftDropdown = document.getElementById('draftSelect'); 
+        if (draftDropdown) {
+        }
+    // --- MOBILE COLLAPSE TOGGLE ---
+        const collapseCheckbox = document.getElementById('ds_mobile_collapse');
+        if (collapseCheckbox) {
+            const savedPref = localStorage.getItem('ds_mobile_collapse_pref');
+            if (savedPref !== null) collapseCheckbox.checked = savedPref === 'true';
+            
+            const applyCollapsePref = (isChecked) => {
+                if (isChecked) document.body.classList.add('enable-mobile-collapse');
+                else document.body.classList.remove('enable-mobile-collapse');
+            };
+            
+            applyCollapsePref(collapseCheckbox.checked);
+            
+            collapseCheckbox.addEventListener('change', (e) => {
+                localStorage.setItem('ds_mobile_collapse_pref', e.target.checked);
+                applyCollapsePref(e.target.checked);
+            });
+        }
     });
 
 })();
