@@ -1543,15 +1543,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (syncBtn) syncBtn.click();
     }
 });
-// --- AUTO-LOAD SHARED LEAGUE ID FROM MDS ---
-(function autoLoadLeagueId() {
-    const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
-    const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
-    
-    if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
-        mlsLeagueInput.value = sharedLeagueId;
-    }
-})();
 // --- POWER-USER KEYBOARD SHORTCUTS (MLS) ---
 document.addEventListener('keydown', (e) => {
     const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
@@ -1578,4 +1569,11 @@ function loadSheetJS(callback) {
         script.onload = callback;
         document.head.appendChild(script);
     }
+}
+// --- AUTO-LOAD SHARED LEAGUE ID FROM MDS ---
+const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
+const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
+
+if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
+    mlsLeagueInput.value = sharedLeagueId;
 }

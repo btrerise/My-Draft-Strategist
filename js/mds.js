@@ -901,7 +901,7 @@ function parseExcel(file) {
             window.alert("Quick-Start auto-generation is currently only supported for LeagueLogs formats. Please select a LeagueLogs option from the dropdown.");
             return;
         }
-        const profileKey = formatSelect.value;
+        const profileKey = formatSelect.value.split('|')[1];
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
         const originalText = btn.innerHTML;
@@ -1673,7 +1673,7 @@ function parseExcel(file) {
                             <div class="card-details" id="details-${p.id}">
                                 <div class="player-stats">
                                     ${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}
-                                    <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.8; margin-left: 8px; color: var(--primary-green);" onclick="toggleEditBar(${p.id})" title="Edit Details">✏️ Edit</span>
+                                    <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.8; margin-left: 8px; color: var(--primary-green);" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
                                 </div>
                                 <div class="inline-editor" id="inline-edit-${p.id}">
                                     <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
