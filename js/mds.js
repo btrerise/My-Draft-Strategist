@@ -1164,8 +1164,8 @@ function parseExcel(file) {
                     cellClass += ` picked ${pPos}`;
                     if (pObj && draft.myTeam.includes(pObj.id)) cellClass += " mine";
 
-                    // 1. Grab the exact Sleeper ID
-                    let playerId = pObj ? pObj.sleeperId : (matchedPick ? matchedPick.player_id : null);
+                    // 1. Grab the exact Sleeper ID safely (removing the undefined matchedPick variable)
+                    let playerId = pObj ? (pObj.sleeperId || pObj.id) : null;
                     
                     // 2. Build the image string (excluding custom uploaded players)
                     let imgHTML = playerId && !playerId.toString().startsWith('custom_') ? 
