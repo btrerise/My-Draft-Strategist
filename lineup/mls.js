@@ -1313,6 +1313,7 @@ window.toggleMarketSourceUI = function() {
         
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = bench;
+        if (typeof window.showToast === 'function') window.showToast("${p.name} is locked");
         renderLineupUI();
     };
 
@@ -1431,6 +1432,7 @@ window.toggleMarketSourceUI = function() {
         
         localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
         localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+        if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
         renderLineupUI();
     };
 

@@ -302,6 +302,7 @@
             draft.rawDraftPicks = [];
             draft.totalPicks = 0;
             saveActiveDraftState();
+            if (p && typeof window.showToast === 'function') window.showToast("Draft picks reset to 1.01");
         }
     };
 
@@ -426,6 +427,9 @@
             let draftName = document.getElementById('newDraftName')?.value.trim() || "";
             let fetchedLeague = null;
             if (dInfo.league_id) {
+                // NEW: Save the League ID globally so My Lineup Strategist can auto-load it later
+                localStorage.setItem('shared_sleeper_league_id', dInfo.league_id);
+                
                 try {
                     const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}`);
                     if (leagueRes.ok) {
@@ -872,6 +876,7 @@ function parseExcel(file) {
             saveActiveDraftState();
 
             if (btn) flashButton(btn, "Loaded Successfully", false, originalBtnText);
+            if (typeof window.showToast === 'function') window.showToast(`Loaded ${State.players.length} players`);
         } else {
             if (metaEl) metaEl.style.display = 'none';
             if (btn) flashButton(btn, "Error Parsing Data", true, originalBtnText);
@@ -958,6 +963,7 @@ function parseExcel(file) {
                 updateMetaDisplay();
                 saveActiveDraftState();
                 flashButton(btn, "Quick-Start Loaded!", false, originalText);
+                if (typeof window.showToast === 'function') window.showToast("Quick-Start market rankings loaded");
             } else {
                 throw new Error("No players generated.");
             }
@@ -1033,6 +1039,7 @@ function parseExcel(file) {
         updateMetaDisplay();
 
         flashButton(btn, "Complete!", false, originalText);
+        if (typeof window.showToast === 'function') window.showToast("Market Value (ADP) updated");
         
     } catch(err) {
         console.error(err);
