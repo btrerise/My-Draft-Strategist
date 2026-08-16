@@ -1660,6 +1660,7 @@ function parseExcel(file) {
                                         <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                                         ${rookieBadge}
                                         ${stackBadge}
+                                        <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.8; margin-left: 8px; font-weight: normal;" onclick="toggleCardDetails(event, ${p.id}); toggleEditBar(${p.id});" title="Edit Details">Edit</span>
                                     </h4>
                                 </div>
                                 <div class="actions">
@@ -1674,7 +1675,6 @@ function parseExcel(file) {
                             <div class="card-details" id="details-${p.id}">
                                 <div class="player-stats">
                                     ${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}
-                                    <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.8; margin-left: 8px;" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
                                 </div>
                                 <div class="inline-editor" id="inline-edit-${p.id}">
                                     <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">

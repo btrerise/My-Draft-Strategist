@@ -377,9 +377,15 @@
             </div>
             <input type="checkbox" id="tscoreToggle" class="toggle-switch" onchange="saveSettings()" aria-label="Toggle T-Score">
         </div>
-        <div class="setting-item" style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem;">
-            <input type="checkbox" id="ds_mobile_collapse" checked>
-            <label for="ds_mobile_collapse">Collapse Player Cards on Mobile</label>
+        <div class="toggle-row hide-on-desktop">
+            <div class="toggle-info">
+                <span class="toggle-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                    Collapse Player Cards
+                </span>
+                <span class="toggle-desc">Tucks player stats into an expandable drawer to save space on mobile.</span>
+            </div>
+            <input type="checkbox" id="ds_mobile_collapse" class="toggle-switch" aria-label="Toggle Mobile Collapse" checked>
         </div>
         <button class="btn btn-primary mt-2" onclick="saveSettings(this)">Save Settings</button>
     </section>
