@@ -2178,18 +2178,23 @@ input[type="file"]::-webkit-file-upload-button:hover {
     transform: rotate(180deg);
 }
 
-/* Mobile Default: Details are hidden, divider is added when expanded */
+/* Mobile Default: Details hidden only if setting is enabled */
 @media (max-width: 600px) {
-    .card-details {
+    body.enable-mobile-collapse .card-details {
         display: none;
         margin-top: 0.75rem;
         padding-top: 0.75rem;
         border-top: 1px dashed rgba(255, 255, 255, 0.1);
     }
     
-    .player-card.is-expanded .card-details {
+    body.enable-mobile-collapse .player-card.is-expanded .card-details {
         display: block;
         animation: fadeIn 0.2s ease forwards;
+    }
+
+    /* Hide the expand arrow completely if the setting is disabled */
+    body:not(.enable-mobile-collapse) .btn-expand {
+        display: none !important;
     }
 }
 

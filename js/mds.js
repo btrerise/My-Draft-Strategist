@@ -511,6 +511,7 @@
 
             let draftObj = {
                 draftId: draftId,
+                leagueId: dInfo.league_id || null,
                 name: draftName,
                 username: username,
                 settings: draftSettings,
@@ -1838,6 +1839,38 @@ function parseExcel(file) {
         });
 
         if (State.players.length > 0) renderBoard();
+    // --- UPDATE SHARED STORAGE ON DRAFT SWITCH ---
+        // Verify 'draftSelect' matches the ID of your draft dropdown in index.html
+        const draftDropdown = document.getElementById('draftSelect'); 
+        if (draftDropdown) {
+            draftDropdown.addEventListener('change', (e) => {
+                setTimeout(() => {
+                    let draft = typeof getActiveDraft === 'function' ? getActiveDraft() : null;
+                    if (draft && draft.leagueId) {
+                        localStorage.setItem('shared_sleeper_league_id', draft.leagueId);
+                        localStorage.setItem('shared_sleeper_username', draft.username);
+                    }
+                }, 100);
+            });
+        }
+    // --- MOBILE COLLAPSE TOGGLE ---
+        const collapseCheckbox = document.getElementById('ds_mobile_collapse');
+        if (collapseCheckbox) {
+            const savedPref = localStorage.getItem('ds_mobile_collapse_pref');
+            if (savedPref !== null) collapseCheckbox.checked = savedPref === 'true';
+            
+            const applyCollapsePref = (isChecked) => {
+                if (isChecked) document.body.classList.add('enable-mobile-collapse');
+                else document.body.classList.remove('enable-mobile-collapse');
+            };
+            
+            applyCollapsePref(collapseCheckbox.checked);
+            
+            collapseCheckbox.addEventListener('change', (e) => {
+                localStorage.setItem('ds_mobile_collapse_pref', e.target.checked);
+                applyCollapsePref(e.target.checked);
+            });
+        }
     });
 
 })();

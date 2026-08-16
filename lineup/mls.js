@@ -1570,18 +1570,23 @@ function loadSheetJS(callback) {
         document.head.appendChild(script);
     }
 }
-// --- AUTO-LOAD SHARED DATA FROM MDS ---
+// --- AUTO-LOAD & AUTO-SYNC SHARED DATA FROM MDS ---
 const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
 const sharedUsername = localStorage.getItem('shared_sleeper_username');
 
 const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
-// Assuming your username input ID is 'sleeperUsername'. If it is different in lineup/index.html, update the ID below.
 const mlsUsernameInput = document.getElementById('sleeperUsername'); 
+// Verify 'syncSleeperBtn' matches the ID of the sync button in lineup/index.html
+const syncBtn = document.getElementById('syncSleeperBtn'); 
 
-if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
+if (sharedLeagueId && mlsLeagueInput && mlsLeagueInput.value !== sharedLeagueId) {
     mlsLeagueInput.value = sharedLeagueId;
-}
-
-if (sharedUsername && mlsUsernameInput && !mlsUsernameInput.value) {
-    mlsUsernameInput.value = sharedUsername;
+    if (sharedUsername && mlsUsernameInput) {
+        mlsUsernameInput.value = sharedUsername;
+    }
+    
+    // Automatically trigger the sync button
+    if (syncBtn) {
+        setTimeout(() => syncBtn.click(), 100);
+    }
 }
