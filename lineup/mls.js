@@ -914,7 +914,6 @@
             const ppr = document.getElementById('marketPpr')?.value || '1';
             const isTEP = document.getElementById('marketTep')?.checked ? 'true' : 'false';
 
-            // Pull team count from active league settings if available, default to 12
             let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
 
             const fcRes = await fetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
@@ -930,7 +929,7 @@
                         parsed.push({
                             name: fullName,
                             cleanName: normalizeName(fullName),
-                            marketVal: rankVal
+                            marketVal: rankVal, // Added missing comma
                             pos: item.player.position || ""
                         });
                     }
@@ -941,15 +940,13 @@
         
         // --- 2. LEAGUELOGS ---
         else if (source === 'leaguelogs') {
-            // Map common selections to LeagueLogs profile keys
             let pprKey = "ppr1";
             let qbKey = numQbsVal === '2' ? '2qb' : '1qb';
-            let typeKey = isDynastyVal; // 'redraft' or 'dynasty'
+            let typeKey = isDynastyVal; 
             let profileKey = `${typeKey}-${qbKey}-12t-${pprKey}`;
             
             formatText = `${typeKey.toUpperCase()} - ${qbKey.toUpperCase()} (PPR)`;
 
-            // Fetch Sleeper DB for name mapping
             let sleeperMap = {};
             let sleeperRes = await fetch('https://api.sleeper.app/v1/players/nfl');
             if (sleeperRes.ok) {
@@ -972,7 +969,7 @@
                     parsed.push({
                         name: fullName,
                         cleanName: normalizeName(fullName),
-                        marketVal: rankVal
+                        marketVal: rankVal, // Added missing comma
                         pos: sp.position || ""
                     });
                 }
@@ -1024,7 +1021,6 @@ window.toggleMarketSourceUI = function() {
         let parsed = [];
         if (rows.length < 1) return;
 
-        // Automatically detect KTC / FantasyCalc column headers (prioritizing overall rank over value)
         let sample = rows[0];
         let nameKey = Object.keys(sample).find(k => /player|name/i.test(k));
         let rankKey = Object.keys(sample).find(k => /overall[_\s]?rank/i.test(k)) ||
@@ -1046,7 +1042,7 @@ window.toggleMarketSourceUI = function() {
                 parsed.push({
                     name: nameStr.trim(),
                     cleanName: normalizeName(nameStr.trim()),
-                    marketVal: numVal // Represents the player's overall market rank
+                    marketVal: numVal, // Added missing comma
                     pos: posStr
                 });
             }

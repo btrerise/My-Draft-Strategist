@@ -1761,14 +1761,14 @@ function parseExcel(file) {
         renderDraftMatrix();
         renderDraftRecap();
     }
-function toggleHeadshots(show) {
+window.toggleHeadshots = function(show) {
     localStorage.setItem('mds_show_headshots', show);
     if (show) {
         document.body.classList.remove('hide-headshots');
     } else {
         document.body.classList.add('hide-headshots');
     }
-}
+};
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
         ensureDefaultDraft();
