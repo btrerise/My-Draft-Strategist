@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAndHideBanner('guideBanner', 'ds_hide_guide_banner');
     checkAndHideBanner('mlsBanner', 'ds_hide_mls_banner');
     checkAndHideBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner');
+    checkAndHideBanner('installCard', 'ds_hide_install_banner');
 });
 // --- TOAST NOTIFICATIONS ---
 window.showToast = function(message) {

@@ -187,12 +187,13 @@
     </div>
     
     <!-- DYNAMIC INSTALL APP PROMPT -->
-    <section id="installCard" class="settings-card highlight-card" style="display: none;">
-        <div class="card-header centered-header">
+    <section id="installCard" class="settings-card highlight-card" style="display: none; position: relative;">
+        <button class="close-banner-btn" onclick="dismissBanner('installCard', 'ds_hide_install_banner')" aria-label="Dismiss Banner" style="position: absolute; top: 12px; right: 12px; font-size: 1rem;">✕</button>
+        <div class="card-header centered-header" style="border-bottom: none; margin-bottom: 0.5rem; padding-bottom: 0;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-            <h3 class="text-blue">Install the App</h3>
+            <h3 class="text-blue" style="margin: 0;">Install the App</h3>
         </div>
-        <p class="card-desc text-center">Add My Draft Strategist to your home screen for a full-screen, native app experience!</p>
+        <p class="card-desc text-center">Add to your home screen for a full-screen, native app experience!</p>
         <button id="installAppBtn" class="btn btn-blue">Install App</button>
     </section>
 

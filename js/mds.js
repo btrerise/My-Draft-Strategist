@@ -344,6 +344,11 @@
         const bar = document.getElementById(`inline-edit-${id}`);
         if (bar) bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex';
     };
+    window.toggleCardDetails = function(e, id) {
+        e.stopPropagation(); // Prevents the space/enter keydown listener from firing if clicked
+        const card = document.getElementById(`details-${id}`).closest('.player-card');
+        if (card) card.classList.toggle('is-expanded');
+    };
 
     window.saveInlineEdit = function(id) {
         let p = State.players.find(x => x.id === id);
@@ -1609,9 +1614,7 @@ function parseExcel(file) {
                         valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
                     }
                     
-                    // --- T-SCORE INTEGRATION ---
                     if (p.posGroup === 'WR' && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
-                        // Ensure window.normalizeName exists or fallback to direct string replace
                         const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
                         const normName = normFunc(p.name); 
                         const tInfo = tScoreData[normName];
@@ -1656,37 +1659,44 @@ function parseExcel(file) {
                                         <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                                         ${rookieBadge}
                                         ${stackBadge}
-                                        <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.7; margin-left: 2px;" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
                                     </h4>
-                                    <div class="player-stats">${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</div>
                                 </div>
                                 <div class="actions">
                                     <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
                                     <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">My Pick</button>
+                                    <button class="btn-sm btn-expand hide-on-desktop" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details">
+                                        <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </button>
                                 </div>
                             </div>
                             
-                            <div class="inline-editor" id="inline-edit-${p.id}">
-                                <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
-                                    <div>
-                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
-                                        <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
-                                        <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
-                                        <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
-                                        <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
-                                    </div>
-                                    <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
-                                        <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
-                                        <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
+                            <div class="card-details" id="details-${p.id}">
+                                <div class="player-stats">
+                                    ${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}
+                                    <span style="cursor:pointer; font-size: 0.85rem; opacity: 0.8; margin-left: 8px; color: var(--primary-green);" onclick="toggleEditBar(${p.id})" title="Edit Details">✏️ Edit</span>
+                                </div>
+                                <div class="inline-editor" id="inline-edit-${p.id}">
+                                    <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
+                                        <div>
+                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
+                                            <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
+                                            <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
+                                            <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
+                                            <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
+                                        </div>
+                                        <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
+                                            <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
+                                            <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

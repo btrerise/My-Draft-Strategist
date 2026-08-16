@@ -1543,6 +1543,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (syncBtn) syncBtn.click();
     }
 });
+// --- AUTO-LOAD SHARED LEAGUE ID FROM MDS ---
+(function autoLoadLeagueId() {
+    const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
+    const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
+    
+    if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
+        mlsLeagueInput.value = sharedLeagueId;
+    }
+})();
+// --- POWER-USER KEYBOARD SHORTCUTS (MLS) ---
+document.addEventListener('keydown', (e) => {
+    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+    const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+    
+    if (isInputActive) return;
+
+    switch(e.key) {
+        case '1': if (typeof window.showTab === 'function') window.showTab('setup'); break;
+        case '2': if (typeof window.showTab === 'function') window.showTab('roster'); break;
+        case '3': if (typeof window.showTab === 'function') window.showTab('lineup'); break;
+        case '4': if (typeof window.showTab === 'function') window.showTab('scout'); break;
+        case '5': if (typeof window.showTab === 'function') window.showTab('guide'); break;
+    }
+});
 })();
 // Add this helper function at the bottom of mls.js
 function loadSheetJS(callback) {
