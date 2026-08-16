@@ -833,6 +833,10 @@
             msgEl.style.display = 'block'; 
             setTimeout(() => msgEl.style.display = 'none', 2500);
         }
+        if (typeof window.showToast === 'function') {
+            let rankType = isWeekly ? "Weekly" : "ROS";
+            window.showToast(`${rankType} Rankings loaded successfully!`);
+        }
     }
 
     const rosFileEl = document.getElementById('rosFileInput');
@@ -910,7 +914,6 @@
             const ppr = document.getElementById('marketPpr')?.value || '1';
             const isTEP = document.getElementById('marketTep')?.checked ? 'true' : 'false';
 
-            // Pull team count from active league settings if available, default to 12
             let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
 
             const fcRes = await fetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
@@ -926,7 +929,8 @@
                         parsed.push({
                             name: fullName,
                             cleanName: normalizeName(fullName),
-                            marketVal: rankVal
+                            marketVal: rankVal, // Added missing comma
+                            pos: item.player.position || ""
                         });
                     }
                 }
@@ -936,15 +940,13 @@
         
         // --- 2. LEAGUELOGS ---
         else if (source === 'leaguelogs') {
-            // Map common selections to LeagueLogs profile keys
             let pprKey = "ppr1";
             let qbKey = numQbsVal === '2' ? '2qb' : '1qb';
-            let typeKey = isDynastyVal; // 'redraft' or 'dynasty'
+            let typeKey = isDynastyVal; 
             let profileKey = `${typeKey}-${qbKey}-12t-${pprKey}`;
             
             formatText = `${typeKey.toUpperCase()} - ${qbKey.toUpperCase()} (PPR)`;
 
-            // Fetch Sleeper DB for name mapping
             let sleeperMap = {};
             let sleeperRes = await fetch('https://api.sleeper.app/v1/players/nfl');
             if (sleeperRes.ok) {
@@ -967,7 +969,8 @@
                     parsed.push({
                         name: fullName,
                         cleanName: normalizeName(fullName),
-                        marketVal: rankVal
+                        marketVal: rankVal, // Added missing comma
+                        pos: sp.position || ""
                     });
                 }
             });
@@ -1018,12 +1021,12 @@ window.toggleMarketSourceUI = function() {
         let parsed = [];
         if (rows.length < 1) return;
 
-        // Automatically detect KTC / FantasyCalc column headers (prioritizing overall rank over value)
         let sample = rows[0];
         let nameKey = Object.keys(sample).find(k => /player|name/i.test(k));
         let rankKey = Object.keys(sample).find(k => /overall[_\s]?rank/i.test(k)) ||
                       Object.keys(sample).find(k => /^rank$/i.test(k)) ||
                       Object.keys(sample).find(k => /overall/i.test(k) && !/value/i.test(k));
+        let posKey = Object.keys(sample).find(k => /^pos/i.test(k) || /position/i.test(k));
 
         if (!nameKey || !rankKey) {
             window.alert("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.");
@@ -1033,12 +1036,14 @@ window.toggleMarketSourceUI = function() {
         rows.forEach((row, idx) => {
             let nameStr = row[nameKey];
             let valStr = row[rankKey] ? String(row[rankKey]).replace(/[^0-9.]/g, '') : "";
+            let posStr = (posKey && row[posKey]) ? String(row[posKey]).trim().toUpperCase() : "";
             if (nameStr && nameStr.trim() && valStr) {
                 let numVal = parseFloat(valStr);
                 parsed.push({
                     name: nameStr.trim(),
                     cleanName: normalizeName(nameStr.trim()),
-                    marketVal: numVal // Represents the player's overall market rank
+                    marketVal: numVal, // Added missing comma
+                    pos: posStr
                 });
             }
         });
@@ -1081,6 +1086,7 @@ window.toggleMarketSourceUI = function() {
 
         const mode = document.getElementById('disconnectMode')?.value || 'flat';
         const threshold = parseFloat(document.getElementById('disconnectThreshold')?.value) || 10;
+        const posFilter = document.getElementById('disconnectPosFilter')?.value || 'ALL';
 
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
@@ -1088,6 +1094,9 @@ window.toggleMarketSourceUI = function() {
         let analysisList = [];
 
         State.marketRankings.forEach(m => {
+            if (posFilter !== 'ALL') {
+                if (!m.pos || !m.pos.includes(posFilter)) return; 
+            }
             let userObj = State.rosRankings.find(r => r.cleanName === m.cleanName);
             if (!userObj) return; // Skip if user didn't rank this player
 
@@ -1300,6 +1309,10 @@ window.toggleMarketSourceUI = function() {
     window.toggleLock = function(playerId) {
         if (!State.activeLeagueId) return;
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
+        
+        // Track whether we are actively locking or unlocking
+        let isLocking = !locks.includes(playerId);
+        
         if (locks.includes(playerId)) locks = locks.filter(id => id !== playerId);
         else locks.push(playerId);
         
@@ -1308,12 +1321,29 @@ window.toggleMarketSourceUI = function() {
         
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         let bench = State.manualBenchMap[State.activeLeagueId] || [];
-        starters.forEach(s => { if (s.player && s.player.id === playerId) s.player.isLocked = locks.includes(playerId); });
-        bench.forEach(p => { if (p.id === playerId) p.isLocked = locks.includes(playerId); });
+        
+        let playerName = 'Player'; // Fallback
+        
+        starters.forEach(s => { 
+            if (s.player && s.player.id === playerId) {
+                s.player.isLocked = locks.includes(playerId);
+                playerName = s.player.name; // Extract name
+            } 
+        });
+        bench.forEach(p => { 
+            if (p.id === playerId) {
+                p.isLocked = locks.includes(playerId);
+                playerName = p.name; // Extract name
+            } 
+        });
         
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = bench;
-        if (typeof window.showToast === 'function') window.showToast("${p.name} is locked");
+        
+        // Use backticks to evaluate the variables dynamically
+        if (typeof window.showToast === 'function') {
+            window.showToast(`${playerName} is ${isLocking ? 'locked' : 'unlocked'}`);
+        }
         renderLineupUI();
     };
 

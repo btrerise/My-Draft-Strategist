@@ -244,7 +244,7 @@
                 <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" width="274" height="36" />
             </a>
         </div>
-    <div class="app-version">My Lineup Strategist v2.3</div>
+    <div class="app-version">My Lineup Strategist v2.4</div>
 </div>
 
         <!-- ROSTER TAB -->
@@ -573,6 +573,17 @@
         </div>
     </div>
 
+    <div class="input-group mb-3">
+        <label>Filter by Position</label>
+        <select id="disconnectPosFilter" class="form-input" aria-label="Filter results by position">
+            <option value="ALL">All Positions</option>
+            <option value="QB">QB</option>
+            <option value="RB">RB</option>
+            <option value="WR">WR</option>
+            <option value="TE">TE</option>
+        </select>
+    </div>
+
     <button class="btn btn-primary mt-2" onclick="runMarketDisconnectAnalysis()">Find Trade Targets</button>
     
     <div id="marketDisconnectOutput" class="scout-output-container"></div>
@@ -597,34 +608,41 @@
             <!-- Step 1 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">1</span> Syncing & Adding Leagues</h4>
-                <p class="step-desc">Navigate to the <strong class="text-main">Setup</strong> tab (via the Menu) and enter your Sleeper Username and League ID to sync your roster automatically. If you don't use Sleeper, tap "Create Manual League" and add your players one-by-one.</p>
+                <p class="step-desc">Navigate to the <strong class="text-main">Setup</strong> tab and enter your Sleeper Username and League ID to sync your roster automatically. You can manage multiple leagues and switch between them using the header dropdown. If you don't use Sleeper, tap "Create Manual League" and add players one-by-one.</p>
             </div>
 
             <!-- Step 2 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">2</span> Uploading Custom Rankings & SoS</h4>
-                <p class="step-desc">Upload custom rankings from your favorite analyst in either <strong class="text-main">.CSV</strong> or native <strong class="text-main">.XLSX Excel</strong> format.</p>
-                <p class="step-desc mt-2">Upload Rest-of-Season (ROS) rankings on the <strong class="text-main">Roster</strong> tab, and Weekly Matchup rankings on the <strong class="text-main">Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Roster tab to instantly generate visual matchup gradients on player cards! <em class="text-muted">Note: If you upload a generic rankings CSV that already contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.</em></p>
+                <p class="step-desc">Upload custom analyst rankings in either <strong class="text-main">.CSV</strong> or native <strong class="text-main">.XLSX Excel</strong> format.</p>
+                <p class="step-desc mt-2">Upload Rest-of-Season (ROS) rankings on the <strong class="text-main">Roster</strong> tab, and Weekly Matchup rankings on the <strong class="text-main">Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Roster tab to instantly generate color-coded matchup gradients on player cards. <em class="text-muted">Note: If you upload a generic rankings CSV that contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.</em></p>
             </div>
 
             <!-- Step 3 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">3</span> Scout & Waivers</h4>
-                <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. Paste a list of recommended waiver wire pickups or trade targets. The app will cross-reference your <strong class="text-main">Sleeper Sync</strong> data to tell you immediately if they are available on waivers, on your roster, or owned by a specific opponent. It will also display their Weekly and ROS ranks side-by-side to help you weigh short-term vs. long-term value.</p>
+                <h4 class="step-title"><span class="step-num blue-step">3</span> Lineup Optimizer & Early Games</h4>
+                <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with 🔒 or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. Select teams playing in early windows (TNF, London) under <strong class="text-main">Early Games</strong> to flag them with an <span class="badge early-badge">EARLY</span> badge across your lineup before roster locks.</p>
             </div>
 
             <!-- Step 4 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">4</span> Swapping & Optimizing</h4>
-                <p class="step-desc">The Lineup Optimizer will do the heavy lifting for you based on the Weekly Rankings you provide. However, you can manually override it by tapping <strong class="text-main">⇄ Swap</strong> on any player to switch them with someone else. Tap <strong class="text-main">Optimize Lineup</strong> to revert back to the algorithmic ideal.</p>
+                <h4 class="step-title"><span class="step-num blue-step">4</span> Scout & Waivers</h4>
+                <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. Paste waiver wire recommendations or trade targets. The app cross-references your <strong class="text-main">Sleeper Sync</strong> data to show whether players are available on waivers, on your roster, or owned by opponents, alongside side-by-side Weekly and ROS ranks.</p>
             </div>
 
             <!-- Step 5 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">5</span> Exporting & Sharing</h4>
-                <p class="step-desc">Once your lineup is set, tap the <strong class="text-main"> Export</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media!</p>
+                <h4 class="step-title"><span class="step-num blue-step">5</span> Trade Finder & Market Disconnects</h4>
+                <p class="step-desc">Pull live market consensus values from <strong class="text-main">FantasyCalc</strong> or <strong class="text-main">LeagueLogs</strong> (or upload a market CSV). Use the Trade Finder to filter by flat rank gaps or percentage shifts to instantly uncover high-value buy-low targets and overvalued sell-high assets relative to your custom ROS board.</p>
             </div>
-            <!-- Step 6-->
+
+            <!-- Step 6 -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">6</span> Exporting & Sharing</h4>
+                <p class="step-desc">Once your lineup is finalized, tap the <strong class="text-main">Export</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media!</p>
+            </div>
+
+            <!-- Step 7: Shortcuts -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">✦</span> Keyboard Shortcuts</h4>
                 <p class="step-desc">Navigate the app instantly with your keyboard (active when not typing in a text box):</p>

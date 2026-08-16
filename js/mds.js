@@ -1164,9 +1164,20 @@ function parseExcel(file) {
                     cellClass += ` picked ${pPos}`;
                     if (pObj && draft.myTeam.includes(pObj.id)) cellClass += " mine";
 
+                    // 1. Grab the exact Sleeper ID safely (removing the undefined matchedPick variable)
+                    let playerId = pObj ? (pObj.sleeperId || pObj.id) : null;
+                    
+                    // 2. Build the image string (excluding custom uploaded players)
+                    let imgHTML = playerId && !playerId.toString().startsWith('custom_') ? 
+                        `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="draft-cell-img" onerror="this.style.display='none'">` : '';
+
+                    // 3. Inject into the cell
                     cellContent = `
-                        <div class="draft-cell-first" title="${pName}">${firstName}</div>
-                        <div class="draft-cell-last" title="${pName}">${lastName}</div>
+                        ${imgHTML}
+                        <div style="display:flex; flex-direction:column; align-items:center;">
+                            <div class="draft-cell-first" title="${pName}">${firstName}</div>
+                            <div class="draft-cell-last" title="${pName}">${lastName}</div>
+                        </div>
                     `;
                 }
 
@@ -1750,7 +1761,14 @@ function parseExcel(file) {
         renderDraftMatrix();
         renderDraftRecap();
     }
-
+window.toggleHeadshots = function(show) {
+    localStorage.setItem('mds_show_headshots', show);
+    if (show) {
+        document.body.classList.remove('hide-headshots');
+    } else {
+        document.body.classList.add('hide-headshots');
+    }
+};
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
         ensureDefaultDraft();
@@ -1862,6 +1880,10 @@ function parseExcel(file) {
                 applyCollapsePref(e.target.checked);
             });
         }
+        const showHeadshots = localStorage.getItem('mds_show_headshots') !== 'false';
+        const toggleEl = document.getElementById('toggleHeadshots');
+        if (toggleEl) toggleEl.checked = showHeadshots;
+        toggleHeadshots(showHeadshots);
     });
 
 })();
