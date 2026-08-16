@@ -2209,11 +2209,11 @@ input[type="file"]::-webkit-file-upload-button:hover {
         display: none !important;
     }
 }
-/* --- PLAYER CARD FLEX LAYOUT & VERTICAL CENTERING --- */
-.card-body {
+/* --- PLAYER CARD BASE LAYOUT --- */
+.player-card-main {
     display: flex;
-    align-items: center; /* Vertically centers Taken/My Pick buttons relative to the left column */
     justify-content: space-between;
+    align-items: center; /* Default: Vertically centers buttons when collapse is disabled */
     gap: 0.75rem;
     width: 100%;
 }
@@ -2249,7 +2249,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
     color: var(--text-muted);
     text-decoration: underline;
     text-underline-offset: 2px;
-    margin-left: 0; /* Ensures flush left alignment when wrapped to a new line */
+    margin-left: 0; /* Keeps Edit flush-left if it wraps to a new line */
 }
 
 .edit-link:hover {
@@ -2262,6 +2262,47 @@ input[type="file"]::-webkit-file-upload-button:hover {
     align-items: center;
     gap: 0.4rem;
     flex-shrink: 0;
+}
+
+/* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
+@media (max-width: 600px) {
+    /* When Mobile Collapse setting is ENABLED */
+    body.enable-mobile-collapse .card-details {
+        display: none;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+    
+    body.enable-mobile-collapse .player-card.is-expanded .card-details {
+        display: block;
+        animation: fadeIn 0.2s ease forwards;
+    }
+
+    /* Pin buttons to the top row (player name) when expanded */
+    body.enable-mobile-collapse .player-card.is-expanded .player-card-main {
+        align-items: flex-start;
+    }
+
+    body.enable-mobile-collapse .player-card.is-expanded .actions {
+        margin-top: 2px;
+    }
+
+    /* Hide expand chevron when mobile collapse setting is DISABLED */
+    body:not(.enable-mobile-collapse) .btn-expand {
+        display: none !important;
+    }
+}
+
+@media (min-width: 601px) {
+    .card-details {
+        display: block !important;
+        margin-top: 0.25rem;
+    }
+    
+    .hide-on-desktop {
+        display: none !important;
+    }
 }
 
 @media (max-width: 600px) {

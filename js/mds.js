@@ -1652,7 +1652,7 @@ function parseExcel(file) {
 
                     newPoolHTML += `
                         <div class="player-card" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
-                            <div class="card-body">
+                            <div class="player-card-main">
                                 <div class="card-left">
                                     <div class="player-info">
                                         <h4>
