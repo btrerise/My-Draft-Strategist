@@ -572,6 +572,17 @@
             <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
         </div>
     </div>
+    
+    <div class="input-group mb-3">
+        <label>Filter by Position</label>
+        <select id="disconnectPosFilter" class="form-input" aria-label="Filter results by position">
+            <option value="ALL">All Positions</option>
+            <option value="QB">QB</option>
+            <option value="RB">RB</option>
+            <option value="WR">WR</option>
+            <option value="TE">TE</option>
+        </select>
+    </div>
 
     <button class="btn btn-primary mt-2" onclick="runMarketDisconnectAnalysis()">Find Trade Targets</button>
     

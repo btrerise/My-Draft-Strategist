@@ -1763,7 +1763,7 @@ body {
 
 .draft-cell { 
     background: var(--bg-color); 
-    padding: 0.4rem 0.3rem; 
+    padding: 0.35rem 0.3rem; 
     min-height: 48px; /* Gives player names more breathing room */
     display: flex; 
     flex-direction: column; 
@@ -1772,6 +1772,9 @@ body {
     text-align: center; 
     transition: filter 0.2s;
     gap: 2px;
+    overflow: hidden;
+    position: relative;
+    max-width: 100%;
 }
 
 .draft-cell:hover {
@@ -1819,6 +1822,15 @@ body {
 .draft-cell.K { background-color: var(--pos-k); border-left: 3px solid var(--pos-k-border); }
 .draft-cell.DEF { background-color: var(--pos-def); border-left: 3px solid var(--pos-def-border); }
 
+@media (min-width: 768px) {
+    .draft-cell-first {
+        font-size: 0.65rem;
+    }
+    .draft-cell-last {
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+}
 /* --- LIVE INDICATOR --- */
 .live-indicator {
     background: rgba(239, 68, 68, 0.1);
@@ -2066,6 +2078,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 100%;
+        padding: 0 1px;
     }
 }
 .draft-cell-img {
@@ -2347,4 +2360,8 @@ input[type="file"]::-webkit-file-upload-button:hover {
         margin-left: 0;
         margin-top: 4px;
     }
+}
+/* Instantly hides headshots when the body class is present */
+body.hide-headshots .draft-cell-img {
+    display: none !important;
 }

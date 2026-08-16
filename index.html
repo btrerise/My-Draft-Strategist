@@ -197,10 +197,35 @@
         <button id="installAppBtn" class="btn btn-blue">Install App</button>
     </section>
 
-    <!-- 1. ADD / SYNC DRAFT -->
+   <!-- 1. LOAD RANKINGS -->
     <section class="settings-card">
         <header class="card-header">
-            <h3><span class="step-num">1</span> Add / Sync Draft</h3>
+            <h3><span class="step-num">1</span> Load Rankings</h3>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span>
+                </div>
+        </header>
+        
+        <div id="metaDisplay" class="status-badge"></div>
+        
+        <p class="card-desc">Want to skip the spreadsheet? Quick-start using live Market Value rankings (Select your league format below in Step 2).</p>
+        <button class="btn btn-purple" onclick="quickStartLeagueLogs(this)">
+            Quick-Start: LeagueLogs Market
+        </button>
+        
+        <div class="divider-text">OR UPLOAD CUSTOM</div>
+        <input type="file" id="fileInput" class="form-input" accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls" aria-label="Upload Custom Rankings">
+        
+        <div class="divider-text">OR PASTE</div>
+        <textarea id="csvPasteArea" class="form-input" rows="2" placeholder="Paste raw CSV text here..."></textarea>
+        <button class="btn btn-primary" onclick="processPaste(this)">Process Pasted Data</button>
+    </section>
+
+    <!-- 2. ADD / SYNC DRAFT -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3><span class="step-num">2</span> Add / Sync Draft</h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
                 <span class="tooltip-text">Sync with Sleeper via Username and Draft ID, OR create a manual draft by clicking 'Create Manual Draft'.</span>
@@ -243,31 +268,6 @@
             <button id="syncBtn" class="btn btn-blue" style="flex: 1;" onclick="addAndSyncSleeperDraft(this)">Sync Sleeper Draft</button>
             <button class="btn btn-purple" style="flex: 1;" onclick="createManualDraft()">Create Manual Draft</button>
         </div>
-    </section>
-
-    <!-- 2. LOAD RANKINGS -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3><span class="step-num">2</span> Load Rankings</h3>
-                <div class="tooltip-container">
-                    <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">Upload your own Excel/CSV custom rankings, or hit Quick-Start to automatically load the latest market data into the app.</span>
-                </div>
-        </header>
-        
-        <div id="metaDisplay" class="status-badge"></div>
-        
-        <p class="card-desc">Want to skip the spreadsheet? Quick-start using live Market Value rankings (Select your league format below in Step 2).</p>
-        <button class="btn btn-purple" onclick="quickStartLeagueLogs(this)">
-            Quick-Start: LeagueLogs Market
-        </button>
-        
-        <div class="divider-text">OR UPLOAD CUSTOM</div>
-        <input type="file" id="fileInput" class="form-input" accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls" aria-label="Upload Custom Rankings">
-        
-        <div class="divider-text">OR PASTE</div>
-        <textarea id="csvPasteArea" class="form-input" rows="2" placeholder="Paste raw CSV text here..."></textarea>
-        <button class="btn btn-primary" onclick="processPaste(this)">Process Pasted Data</button>
     </section>
 
     <!-- 3. LIVE MARKET VALUE -->
@@ -386,6 +386,13 @@
                 <span class="toggle-desc">Tucks player stats into an expandable drawer to save space on mobile.</span>
             </div>
             <input type="checkbox" id="ds_mobile_collapse" class="toggle-switch" aria-label="Toggle Mobile Collapse" checked>
+        </div>
+        <div class="toggle-row">
+        <div class="toggle-info">
+            <span class="toggle-title">Show Player Headshots</span>
+            <span class="toggle-desc">Display NFL player avatars on the Draft Board.</span>
+        </div>
+        <input type="checkbox" id="toggleHeadshots" class="toggle-switch" checked onchange="toggleHeadshots(this.checked)">
         </div>
         <button class="btn btn-primary mt-2" onclick="saveSettings(this)">Save Settings</button>
     </section>

@@ -931,6 +931,7 @@
                             name: fullName,
                             cleanName: normalizeName(fullName),
                             marketVal: rankVal
+                            pos: item.player.position || ""
                         });
                     }
                 }
@@ -972,6 +973,7 @@
                         name: fullName,
                         cleanName: normalizeName(fullName),
                         marketVal: rankVal
+                        pos: sp.position || ""
                     });
                 }
             });
@@ -1028,6 +1030,7 @@ window.toggleMarketSourceUI = function() {
         let rankKey = Object.keys(sample).find(k => /overall[_\s]?rank/i.test(k)) ||
                       Object.keys(sample).find(k => /^rank$/i.test(k)) ||
                       Object.keys(sample).find(k => /overall/i.test(k) && !/value/i.test(k));
+        let posKey = Object.keys(sample).find(k => /^pos/i.test(k) || /position/i.test(k));
 
         if (!nameKey || !rankKey) {
             window.alert("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.");
@@ -1037,12 +1040,14 @@ window.toggleMarketSourceUI = function() {
         rows.forEach((row, idx) => {
             let nameStr = row[nameKey];
             let valStr = row[rankKey] ? String(row[rankKey]).replace(/[^0-9.]/g, '') : "";
+            let posStr = (posKey && row[posKey]) ? String(row[posKey]).trim().toUpperCase() : "";
             if (nameStr && nameStr.trim() && valStr) {
                 let numVal = parseFloat(valStr);
                 parsed.push({
                     name: nameStr.trim(),
                     cleanName: normalizeName(nameStr.trim()),
                     marketVal: numVal // Represents the player's overall market rank
+                    pos: posStr
                 });
             }
         });
@@ -1085,6 +1090,7 @@ window.toggleMarketSourceUI = function() {
 
         const mode = document.getElementById('disconnectMode')?.value || 'flat';
         const threshold = parseFloat(document.getElementById('disconnectThreshold')?.value) || 10;
+        const posFilter = document.getElementById('disconnectPosFilter')?.value || 'ALL';
 
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
@@ -1092,6 +1098,9 @@ window.toggleMarketSourceUI = function() {
         let analysisList = [];
 
         State.marketRankings.forEach(m => {
+            if (posFilter !== 'ALL') {
+                if (!m.pos || !m.pos.includes(posFilter)) return; 
+            }
             let userObj = State.rosRankings.find(r => r.cleanName === m.cleanName);
             if (!userObj) return; // Skip if user didn't rank this player
 

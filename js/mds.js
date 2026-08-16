@@ -1761,7 +1761,14 @@ function parseExcel(file) {
         renderDraftMatrix();
         renderDraftRecap();
     }
-
+function toggleHeadshots(show) {
+    localStorage.setItem('mds_show_headshots', show);
+    if (show) {
+        document.body.classList.remove('hide-headshots');
+    } else {
+        document.body.classList.add('hide-headshots');
+    }
+}
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
         ensureDefaultDraft();
@@ -1873,6 +1880,10 @@ function parseExcel(file) {
                 applyCollapsePref(e.target.checked);
             });
         }
+        const showHeadshots = localStorage.getItem('mds_show_headshots') !== 'false';
+        const toggleEl = document.getElementById('toggleHeadshots');
+        if (toggleEl) toggleEl.checked = showHeadshots;
+        toggleHeadshots(showHeadshots);
     });
 
 })();
