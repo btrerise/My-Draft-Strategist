@@ -347,7 +347,15 @@
     window.toggleCardDetails = function(e, id) {
         e.stopPropagation(); // Prevents the space/enter keydown listener from firing if clicked
         const card = document.getElementById(`details-${id}`).closest('.player-card');
-        if (card) card.classList.toggle('is-expanded');
+        if (card) {
+            card.classList.toggle('is-expanded');
+            
+            // Track the state in memory so it persists during live sync redraws
+            let p = State.players.find(x => x.id === id);
+            if (p) {
+                p.isExpanded = card.classList.contains('is-expanded');
+            }
+        }
     };
 
     window.saveInlineEdit = function(id) {
@@ -1660,9 +1668,12 @@ function parseExcel(file) {
 
                     let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">Stack</span>` : "";
                     let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
+                    
+                    // Check if the card was expanded before the sync happened
+                    let expandedClass = p.isExpanded ? " is-expanded" : "";
 
                     newPoolHTML += `
-                        <div class="player-card" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
+                        <div class="player-card${expandedClass}" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
                             <div class="card-grid">
                                 <div class="player-info">
                                     <h4>
