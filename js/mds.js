@@ -342,7 +342,14 @@
 
     window.toggleEditBar = function(id) {
         const bar = document.getElementById(`inline-edit-${id}`);
-        if (bar) bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex';
+        if (bar) {
+            const isFlex = bar.style.display === 'flex';
+            bar.style.display = isFlex ? 'none' : 'flex';
+            
+            // Remember the edit state so it doesn't snap shut on auto-sync
+            let p = State.players.find(x => x.id === id);
+            if (p) p.isEditing = !isFlex;
+        }
     };
     window.toggleCardDetails = function(e, id) {
         e.stopPropagation(); // Prevents the space/enter keydown listener from firing if clicked
@@ -381,6 +388,8 @@
         p.tier = newTier;
         if (newTeam) p.team = newTeam;
         if (newBye) p.bye = newBye;
+        
+        p.isEditing = false;
 
         State.players.sort((a, b) => a.rank - b.rank);
         localStorage.setItem('ds_players', JSON.stringify(State.players));
@@ -1695,9 +1704,11 @@ function parseExcel(file) {
                                 <div class="card-details" id="details-${p.id}">
                                     <div class="player-stats">
                                         <span>${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</span>
-                                        <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">Edit</span>
+                                        <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                        </span>
                                     </div>
-                                    <div class="inline-editor" id="inline-edit-${p.id}">
+                                    <div class="inline-editor" id="inline-edit-${p.id}" style="${p.isEditing ? 'display: flex;' : ''}">
                                         <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
                                             <div>
                                                 <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
