@@ -2214,7 +2214,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
     
     body.enable-mobile-collapse .player-card.is-expanded .card-details {
         display: block;
-        animation: fadeIn 0.2s ease forwards;
     }
 
     /* Hide the expand arrow completely if the setting is disabled */
@@ -2315,7 +2314,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
     
     body.enable-mobile-collapse .player-card.is-expanded .card-details {
         display: block;
-        animation: fadeIn 0.2s ease forwards;
     }
 
     body:not(.enable-mobile-collapse) .btn-expand {
