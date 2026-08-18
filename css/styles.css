@@ -2366,3 +2366,10 @@ body.hide-headshots .draft-cell-img {
 }
 .custom-scrollbar::-webkit-scrollbar { width: 4px; } 
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+.tooltip-container, 
+.tooltip-icon, 
+.tooltip-text {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
