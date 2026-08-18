@@ -422,7 +422,8 @@
             let myTeam = rosters.find(r => r.owner_id === userId);
             if (!myTeam && !isRefresh) throw new Error("Could not find your team in this league.");
             
-            let globalRosterMap = {}; 
+            let globalRosterMap = {};
+            let globalPosMap = {}; 
             rosters.forEach(r => {
                 let ownerName = userMap[r.owner_id] || "Unknown Team";
                 if (r.owner_id === userId) ownerName = "You";
@@ -433,6 +434,7 @@
                         if (p) {
                             let clean = normalizeName(`${p.first_name} ${p.last_name}`);
                             globalRosterMap[clean] = ownerName;
+                            globalPosMap[clean] = p.position || "FLEX";
                         }
                     });
                 }
@@ -475,6 +477,7 @@
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
+                globalPosMap: globalPosMap,
                 rosRankings: [...State.rosRankings],   
             weeklyRankings: [...State.weeklyRankings]  
             };
@@ -1588,6 +1591,204 @@ document.addEventListener('keydown', (e) => {
         case '5': if (typeof window.showTab === 'function') window.showTab('guide'); break;
     }
 });
+window.runPositionalStrength = function() {
+    let league = getActiveLeague();
+    if (!league || !league.globalRosterMap || !league.globalPosMap) {
+        window.alert("Please sync a league on the Setup tab first.");
+        return;
+    }
+
+    const source = document.getElementById('powerRankingsSource')?.value || 'custom';
+    const activeRankings = source === 'market' ? State.marketRankings : State.rosRankings;
+
+    if (!activeRankings || activeRankings.length === 0) {
+        let msg = source === 'market' 
+            ? "Please pull live Market Value data below first." 
+            : "Please upload your Rest of Season rankings first.";
+        window.alert(msg);
+        return;
+    }
+
+    let teamScoresMap = {};
+
+    // 1. Initialize scoring objects for every manager
+    Object.values(league.globalRosterMap).forEach(owner => {
+        if (!teamScoresMap[owner]) {
+            teamScoresMap[owner] = { 
+                owner: owner, 
+                scores: { QB: 0, RB: 0, WR: 0, TE: 0 }, 
+                total: 0,
+                players: { QB: [], RB: [], WR: [], TE: [] } // For our tooltips
+            };
+        }
+    });
+
+    // 2. Assign Power Points to EVERY rostered player
+    Object.keys(league.globalRosterMap).forEach(cleanName => {
+        let owner = league.globalRosterMap[cleanName];
+        let pos = league.globalPosMap[cleanName];
+        
+        let data = activeRankings.find(r => r.cleanName === cleanName);
+        
+        // Use custom rank, or market rank. Default to 300 if not on the board.
+        let rank = data ? (data.rank || data.marketVal) : 300; 
+        let actualName = data ? data.name : cleanName;
+        
+        // Power Curve: Heavily weights studs, incrementally adds value for depth
+        let powerValue = Math.round(100000 / (rank + 5));
+        
+        if (teamScoresMap[owner] && ['QB', 'RB', 'WR', 'TE'].includes(pos)) {
+            teamScoresMap[owner].scores[pos] += powerValue;
+            teamScoresMap[owner].total += powerValue;
+            teamScoresMap[owner].players[pos].push({ name: actualName, rank: rank });
+        }
+    });
+
+    let teamScores = Object.values(teamScoresMap);
+
+    if (teamScores.length === 0) {
+        window.alert("Not enough roster data to evaluate.");
+        return;
+    }
+
+    // 3. Sort player arrays so the tooltip shows the best players at the top
+    teamScores.forEach(team => {
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+            team.players[pos].sort((a, b) => a.rank - b.rank);
+        });
+    });
+
+    // 4. Rank teams 1 to N (Highest Power Score = Rank 1)
+    const assignRanks = (arr, posKey, rankKey) => {
+        let sorted = [...arr].sort((a, b) => {
+            let scoreA = posKey === 'total' ? a.total : a.scores[posKey];
+            let scoreB = posKey === 'total' ? b.total : b.scores[posKey];
+            return scoreB - scoreA; // Descending Sort
+        });
+        
+        sorted.forEach((team, idx) => {
+            let original = arr.find(t => t.owner === team.owner);
+            original[rankKey] = idx + 1;
+        });
+    };
+
+    assignRanks(teamScores, 'QB', 'qbRank');
+    assignRanks(teamScores, 'RB', 'rbRank');
+    assignRanks(teamScores, 'WR', 'wrRank');
+    assignRanks(teamScores, 'TE', 'teRank');
+    assignRanks(teamScores, 'total', 'overallRank');
+
+    // Final sort by overall rank for the table display
+    teamScores.sort((a, b) => a.overallRank - b.overallRank);
+    renderPowerRankingsTable(teamScores);
+};
+
+window.renderPowerRankingsTable = function(teamScores) {
+    let out = document.getElementById('powerRankingsOutput');
+    if (!out) return;
+    
+    let totalTeams = teamScores.length;
+
+    // Hardcoded hex values prevent CSS root variables from clashing
+    const getRankColor = (rank) => {
+        if (rank <= Math.ceil(totalTeams / 3)) return '#4ade80'; // Top Tier (Green)
+        if (rank > Math.floor(totalTeams * 2 / 3)) return '#fca5a5'; // Bottom Tier (Red)
+        return 'var(--text-main, #f8fafc)'; // Middle Tier (Neutral)
+    };
+
+    // Helper to generate the nested player tooltips
+    const buildTooltip = (players, posName, isRightEdge = false) => {
+        let shiftStyle = isRightEdge ? "right: 0; left: auto; transform: translateY(-4px);" : "";
+        let html = `<div class="tooltip-text" style="width: 220px; font-weight: normal; z-index: 1005; ${shiftStyle}">`;
+        html += `<div style="font-weight: 700; color: var(--text-main); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border);">${posName} Room</div>`;
+        
+        if (players.length === 0) {
+            html += `<div style="color: var(--text-muted); font-style: italic; font-size: 0.8rem;">No players rostered.</div>`;
+        } else {
+            // Show up to the top 6 players at the position
+            let listHtml = players.slice(0, 6).map(p => `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 12px; font-size: 0.8rem;">
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">${p.name}</span>
+                    <span style="color: var(--text-muted); font-weight: 600; flex-shrink: 0;">#${p.rank}</span>
+                </div>
+            `).join('');
+            
+            html += listHtml;
+            if (players.length > 6) {
+                html += `<div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 6px; text-align: center;">+ ${players.length - 6} more</div>`;
+            }
+        }
+        return html + `</div>`;
+    };
+
+    // Note: We use overflow: visible here so the tooltips don't get clipped by the scroll container
+    let html = `
+        <div style="overflow: visible; border-radius: 6px; border: 1px solid var(--border-color, #334155); margin-top: 15px;">
+        <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color, #334155); color: var(--text-muted, #94a3b8); font-size: 0.8rem; text-transform: uppercase;">
+                    <th style="padding: 12px 10px; text-align: left;">Manager</th>
+                    <th style="padding: 12px 10px;">Ovr</th>
+                    <th style="padding: 12px 10px;">QB</th>
+                    <th style="padding: 12px 10px;">RB</th>
+                    <th style="padding: 12px 10px;">WR</th>
+                    <th style="padding: 12px 10px;">TE</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    teamScores.forEach(t => {
+        let isYou = t.owner === "You" ? "font-weight: bold; background: rgba(147, 197, 253, 0.08);" : "";
+        
+        html += `
+            <tr style="border-bottom: 1px solid var(--border-color, #334155); ${isYou}">
+                <td style="padding: 12px 10px; text-align: left; color: var(--text-main, #f8fafc);">${t.owner}</td>
+                
+                <td style="padding: 12px 10px; font-weight: 800; color: ${getRankColor(t.overallRank)};">
+                    ${t.overallRank}
+                </td>
+                
+                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.qbRank)};">
+                    <div class="tooltip-container" style="display: flex; justify-content: center; width: 100%;" ontouchstart="">
+                        <span style="border-bottom: 1px dotted currentColor; cursor: pointer;">${t.qbRank}</span>
+                        ${buildTooltip(t.players.QB, 'QB')}
+                    </div>
+                </td>
+                
+                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.rbRank)};">
+                    <div class="tooltip-container" style="display: flex; justify-content: center; width: 100%;" ontouchstart="">
+                        <span style="border-bottom: 1px dotted currentColor; cursor: pointer;">${t.rbRank}</span>
+                        ${buildTooltip(t.players.RB, 'RB')}
+                    </div>
+                </td>
+                
+                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.wrRank)};">
+                    <div class="tooltip-container" style="display: flex; justify-content: center; width: 100%;" ontouchstart="">
+                        <span style="border-bottom: 1px dotted currentColor; cursor: pointer;">${t.wrRank}</span>
+                        ${buildTooltip(t.players.WR, 'WR', true)}
+                    </div>
+                </td>
+                
+                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.teRank)};">
+                    <div class="tooltip-container" style="display: flex; justify-content: center; width: 100%;" ontouchstart="">
+                        <span style="border-bottom: 1px dotted currentColor; cursor: pointer;">${t.teRank}</span>
+                        ${buildTooltip(t.players.TE, 'TE', true)}
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table></div>`;
+    out.innerHTML = html;
+    
+    out.style.display = 'none';
+    setTimeout(() => {
+        out.style.display = 'block';
+        out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+};
 })();
 // Add this helper function at the bottom of mls.js
 function loadSheetJS(callback) {
