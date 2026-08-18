@@ -8,12 +8,12 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "images/5775.svg",
+      "src": "images/appicon.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "images/5775.svg",
+      "src": "images/appicon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
