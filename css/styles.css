@@ -2364,3 +2364,5 @@ input[type="file"]::-webkit-file-upload-button:hover {
 body.hide-headshots .draft-cell-img {
     display: none !important;
 }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; } 
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }

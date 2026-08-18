@@ -477,6 +477,36 @@
         
         <div id="tradeOutput" class="scout-output-container"></div>
     </section>
+    
+    <!-- POSITIONAL STRENGTH -->
+<section class="settings-card">
+    <header class="card-header">
+        <h3><span>Positional Power Rankings</span></h3>
+        <div class="tooltip-container">
+            <div class="tooltip-icon">i</div>
+            <span class="tooltip-text">Evaluates every team's positional strength based on your own custom board or live market data.</span>
+        </div>
+    </header>
+    
+    <div style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+        See how you stack up against the rest of the league. Hover or tap on any positional rank to see the players driving that score. Find teams who are strong where you are weak to identify ideal trade partners.
+    </div>
+
+    <div class="input-group mb-3">
+        <label>Rankings Source</label>
+        <select id="powerRankingsSource" class="form-input" aria-label="Select Source for Power Rankings">
+            <option value="custom" selected>My Custom ROS Rankings</option>
+            <option value="market">Market Consensus (FantasyCalc / LeagueLogs)</option>
+        </select>
+    </div>
+
+    <button class="btn btn-purple" style="width: 100%;" onclick="runPositionalStrength()">Calculate League Strengths</button>
+
+    <div id="powerRankingsOutput" style="margin-top: 1rem; display: none;">
+        <!-- The heatmap table injects here -->
+    </div>
+</section>
+
     <!-- TRADE FINDER -->
 <section class="settings-card">
     <header class="card-header">
