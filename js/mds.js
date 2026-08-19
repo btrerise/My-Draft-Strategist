@@ -1273,10 +1273,10 @@ function parseExcel(file) {
             if (p) {
                 let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
                 
-                // 1. Grab ID and build the image tag
+                // 1. Grab ID and build the image tag (crossorigin removed)
                 let playerId = p.sleeperId || p.id;
                 let imgHTML = playerId && !playerId.toString().startsWith('custom_') 
-                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" crossorigin="anonymous" onerror="this.style.display='none'">` 
+                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" onerror="this.style.display='none'">` 
                     : `<div class="roster-avatar placeholder"></div>`;
 
                 return `
@@ -1599,6 +1599,10 @@ function parseExcel(file) {
                     const clonedContainer = clonedDoc.getElementById('exportableTeamContainer');
                     const includeRecap = clonedDoc.getElementById('includeRecapInExport')?.checked;
                     const branding = clonedDoc.getElementById('exportBranding');
+                    
+                    // NEW: Hide all roster avatars in the clone so we don't get blank circles in the export
+                    const avatars = clonedDoc.querySelectorAll('.roster-avatar');
+                    avatars.forEach(av => av.style.display = 'none');
                     
                     // Reveal the logo only in the screenshot
                     if (branding) {
