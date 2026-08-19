@@ -893,14 +893,20 @@ function parseExcel(file) {
             let masterId = bestMatchId || fallbackId || null;
             let finalIsRookie = false;
             let finalInjury = null;
+            
+            // Dictionary to map full words to abbreviations
+            const injMap = { "Questionable": "Q", "Doubtful": "D", "Out": "O", "Suspended": "SUSP" };
 
             if (masterId && sleeperMap[masterId]) {
                 let sp = sleeperMap[masterId];
                 if (!team || team === "FA") team = sp.team || "FA";
                 
-                // NEW: Grab Rookie & Injury info directly from Sleeper
+                // Grab Rookie & Injury info directly from Sleeper
                 finalIsRookie = (sp.years_exp === 0 || sp.years_exp === null);
-                finalInjury = sp.injury_status || null;
+                
+                let rawInj = sp.injury_status;
+                // If it exists in our map, abbreviate it. Otherwise, return what Sleeper gave us (like "IR" or "PUP").
+                finalInjury = rawInj ? (injMap[rawInj] || rawInj) : null; 
             }
 
             if (team && team !== "FA" && (!bye || bye === "-" || String(bye).trim() === "")) {
@@ -995,8 +1001,10 @@ function parseExcel(file) {
                 // Prefer Sleeper DB for Rookie status if we have it, else fallback to LeagueLogs
                 let isRookie = sp ? (sp.years_exp === 0 || sp.years_exp === null) : (lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false);
                 
-                // Extract Injury Status
-                let injuryStatus = sp ? sp.injury_status : null;
+                // Dictionary to map full words to abbreviations
+                const injMap = { "Questionable": "Q", "Doubtful": "D", "Out": "O", "Suspended": "SUSP" };
+                let rawInj = sp ? sp.injury_status : null;
+                let injuryStatus = rawInj ? (injMap[rawInj] || rawInj) : null;
                 
                 let adpNum = parseFloat(item.overallRank);
 
@@ -1005,7 +1013,7 @@ function parseExcel(file) {
                     name: cleanName, posGroup: posGroup, posDisplay: posDisplay, tier: "-", 
                     team: team, bye: bye, adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1), 
                     isRookie: isRookie, 
-                    injury: injuryStatus // NEW
+                    injury: injuryStatus
                 });
             });
 
@@ -1265,10 +1273,10 @@ function parseExcel(file) {
             if (p) {
                 let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
                 
-                // 1. Grab ID and build the image tag (same logic as Draft Board)
+                // 1. Grab ID and build the image tag
                 let playerId = p.sleeperId || p.id;
                 let imgHTML = playerId && !playerId.toString().startsWith('custom_') 
-                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" onerror="this.style.display='none'">` 
+                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" crossorigin="anonymous" onerror="this.style.display='none'">` 
                     : `<div class="roster-avatar placeholder"></div>`;
 
                 return `
