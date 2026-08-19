@@ -446,12 +446,10 @@
             if (!userRes.ok) throw new Error("Could not find Sleeper User.");
             const userId = (await userRes.json()).user_id;
 
-            const draftRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`);
-            if (!draftRes.ok) throw new Error("Could not fetch Draft ID details.");
-            const dInfo = await draftRes.json();
-
-            let draftName = document.getElementById('newDraftName')?.value.trim() || "";
+                        let draftName = document.getElementById('newDraftName')?.value.trim() || "";
             let fetchedLeague = null;
+            let draftSlotNames = {}; // NEW: Store our mapped team names
+
             if (dInfo.league_id) {
                 let currentUsername = document.getElementById('sleeperUsername')?.value.trim() || username || draftName || "";
                 
@@ -461,8 +459,25 @@
                         fetchedLeague = await leagueRes.json();
                         if (!draftName) draftName = fetchedLeague.name;
                     }
-                } catch (e) { console.warn("Could not fetch league details", e); }
+
+                    // NEW: Fetch league users to map to the draft board columns
+                    const usersRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}/users`);
+                    if (usersRes.ok) {
+                        const leagueUsers = await usersRes.json();
+                        // dInfo.draft_order maps user_id to slot number (e.g., {"12345": 1})
+                        if (dInfo.draft_order) {
+                            for (const [uid, slot] of Object.entries(dInfo.draft_order)) {
+                                let user = leagueUsers.find(u => u.user_id === uid);
+                                if (user) {
+                                    // Prefer custom Team Name, fallback to Display Name
+                                    draftSlotNames[slot] = user.metadata?.team_name || user.display_name;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) { console.warn("Could not fetch league details or users", e); }
             }
+
             if (!draftName) draftName = dInfo.metadata?.name || `Sleeper Draft ${draftId}`;
 
             let draftSettings = {
@@ -525,7 +540,7 @@
             let manualDrafted = existingDraft ? existingDraft.draftedPlayers.filter(id => !sleeperDrafted.includes(id)) : [];
             let manualMyTeam = existingDraft ? existingDraft.myTeam.filter(id => !sleeperMyTeam.includes(id)) : [];
 
-            let draftObj = {
+                        let draftObj = {
                 draftId: draftId,
                 leagueId: dInfo.league_id || null,
                 name: draftName,
@@ -536,7 +551,8 @@
                 draftedPlayers: Array.from(new Set([...sleeperDrafted, ...manualDrafted])),
                 myTeam: Array.from(new Set([...sleeperMyTeam, ...manualMyTeam])),
                 rawDraftPicks: picksData || [],
-                totalPicks: picksData ? picksData.length : 0
+                totalPicks: picksData ? picksData.length : 0,
+                draftSlotNames: draftSlotNames // <-- Add this here
             };
 
             let existingIdx = State.drafts.findIndex(d => d.draftId === draftId);
@@ -1127,7 +1143,7 @@ function parseExcel(file) {
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(64px, 1fr));">`;
 
-        for (let t = 1; t <= totalTeams; t++) {
+                for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
                 let pNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
@@ -1143,8 +1159,13 @@ function parseExcel(file) {
                     if (manualPId && draft.myTeam.includes(manualPId)) { isMyCol = true; break; }
                 }
             }
-            gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}">T${t}</div>`;
+            
+            // Apply custom team name if we fetched it, otherwise fallback gracefully to T1, T2
+            let headerText = (draft.draftSlotNames && draft.draftSlotNames[t]) ? draft.draftSlotNames[t] : `T${t}`;
+            
+            gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}" title="${headerText}">${headerText}</div>`;
         }
+
 
         for (let r = 1; r <= totalRounds; r++) {
             for (let t = 1; t <= totalTeams; t++) {
