@@ -445,8 +445,10 @@
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
             if (!userRes.ok) throw new Error("Could not find Sleeper User.");
             const userId = (await userRes.json()).user_id;
-
-                        let draftName = document.getElementById('newDraftName')?.value.trim() || "";
+            const draftRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`);
+            if (!draftRes.ok) throw new Error("Could not fetch Draft ID details.");
+            const dInfo = await draftRes.json();
+            let draftName = document.getElementById('newDraftName')?.value.trim() || "";
             let fetchedLeague = null;
             let draftSlotNames = {}; // NEW: Store our mapped team names
 
