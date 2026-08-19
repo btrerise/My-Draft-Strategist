@@ -445,13 +445,13 @@
             const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
             if (!userRes.ok) throw new Error("Could not find Sleeper User.");
             const userId = (await userRes.json()).user_id;
-
             const draftRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`);
             if (!draftRes.ok) throw new Error("Could not fetch Draft ID details.");
             const dInfo = await draftRes.json();
-
             let draftName = document.getElementById('newDraftName')?.value.trim() || "";
             let fetchedLeague = null;
+            let draftSlotNames = {}; // NEW: Store our mapped team names
+
             if (dInfo.league_id) {
                 let currentUsername = document.getElementById('sleeperUsername')?.value.trim() || username || draftName || "";
                 
@@ -461,8 +461,25 @@
                         fetchedLeague = await leagueRes.json();
                         if (!draftName) draftName = fetchedLeague.name;
                     }
-                } catch (e) { console.warn("Could not fetch league details", e); }
+
+                    // NEW: Fetch league users to map to the draft board columns
+                    const usersRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}/users`);
+                    if (usersRes.ok) {
+                        const leagueUsers = await usersRes.json();
+                        // dInfo.draft_order maps user_id to slot number (e.g., {"12345": 1})
+                        if (dInfo.draft_order) {
+                            for (const [uid, slot] of Object.entries(dInfo.draft_order)) {
+                                let user = leagueUsers.find(u => u.user_id === uid);
+                                if (user) {
+                                    // Prefer custom Team Name, fallback to Display Name
+                                    draftSlotNames[slot] = user.metadata?.team_name || user.display_name;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) { console.warn("Could not fetch league details or users", e); }
             }
+
             if (!draftName) draftName = dInfo.metadata?.name || `Sleeper Draft ${draftId}`;
 
             let draftSettings = {
@@ -525,7 +542,7 @@
             let manualDrafted = existingDraft ? existingDraft.draftedPlayers.filter(id => !sleeperDrafted.includes(id)) : [];
             let manualMyTeam = existingDraft ? existingDraft.myTeam.filter(id => !sleeperMyTeam.includes(id)) : [];
 
-            let draftObj = {
+                        let draftObj = {
                 draftId: draftId,
                 leagueId: dInfo.league_id || null,
                 name: draftName,
@@ -536,7 +553,8 @@
                 draftedPlayers: Array.from(new Set([...sleeperDrafted, ...manualDrafted])),
                 myTeam: Array.from(new Set([...sleeperMyTeam, ...manualMyTeam])),
                 rawDraftPicks: picksData || [],
-                totalPicks: picksData ? picksData.length : 0
+                totalPicks: picksData ? picksData.length : 0,
+                draftSlotNames: draftSlotNames // <-- Add this here
             };
 
             let existingIdx = State.drafts.findIndex(d => d.draftId === draftId);
@@ -873,9 +891,22 @@ function parseExcel(file) {
             }
             
             let masterId = bestMatchId || fallbackId || null;
+            let finalIsRookie = false;
+            let finalInjury = null;
+            
+            // Dictionary to map full words to abbreviations
+            const injMap = { "Questionable": "Q", "Doubtful": "D", "Out": "O", "Suspended": "SUSP" };
+
             if (masterId && sleeperMap[masterId]) {
                 let sp = sleeperMap[masterId];
                 if (!team || team === "FA") team = sp.team || "FA";
+                
+                // Grab Rookie & Injury info directly from Sleeper
+                finalIsRookie = (sp.years_exp === 0 || sp.years_exp === null);
+                
+                let rawInj = sp.injury_status;
+                // If it exists in our map, abbreviate it. Otherwise, return what Sleeper gave us (like "IR" or "PUP").
+                finalInjury = rawInj ? (injMap[rawInj] || rawInj) : null; 
             }
 
             if (team && team !== "FA" && (!bye || bye === "-" || String(bye).trim() === "")) {
@@ -886,7 +917,8 @@ function parseExcel(file) {
                 id: index + 1, sleeperId: masterId || `custom_${index}`, rank: index + 1, name: cleanName, 
                 posGroup: posGroup, posDisplay: posDisplay, tier: tier, 
                 team: (team ? String(team).toUpperCase() : "FA"), bye: (bye || "-"), adp: adp,
-                isRookie: false
+                isRookie: finalIsRookie, // UPDATED
+                injury: finalInjury      // NEW
             });
         });
 
@@ -965,13 +997,23 @@ function parseExcel(file) {
                 posCounters[posGroup]++;
 
                 let lp = playerMetaMap[sId];
-                let isRookie = lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false;
+                
+                // Prefer Sleeper DB for Rookie status if we have it, else fallback to LeagueLogs
+                let isRookie = sp ? (sp.years_exp === 0 || sp.years_exp === null) : (lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false);
+                
+                // Dictionary to map full words to abbreviations
+                const injMap = { "Questionable": "Q", "Doubtful": "D", "Out": "O", "Suspended": "SUSP" };
+                let rawInj = sp ? sp.injury_status : null;
+                let injuryStatus = rawInj ? (injMap[rawInj] || rawInj) : null;
+                
                 let adpNum = parseFloat(item.overallRank);
 
                 newPlayers.push({
                     id: newPlayers.length + 1, sleeperId: sId, rank: newPlayers.length + 1,
                     name: cleanName, posGroup: posGroup, posDisplay: posDisplay, tier: "-", 
-                    team: team, bye: bye, adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1), isRookie: isRookie
+                    team: team, bye: bye, adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1), 
+                    isRookie: isRookie, 
+                    injury: injuryStatus
                 });
             });
 
@@ -1127,7 +1169,7 @@ function parseExcel(file) {
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(64px, 1fr));">`;
 
-        for (let t = 1; t <= totalTeams; t++) {
+                for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
                 let pNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
@@ -1143,8 +1185,13 @@ function parseExcel(file) {
                     if (manualPId && draft.myTeam.includes(manualPId)) { isMyCol = true; break; }
                 }
             }
-            gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}">T${t}</div>`;
+            
+            // Apply custom team name if we fetched it, otherwise fallback gracefully to T1, T2
+            let headerText = (draft.draftSlotNames && draft.draftSlotNames[t]) ? draft.draftSlotNames[t] : `T${t}`;
+            
+            gridHTML += `<div class="draft-col-header ${isMyCol ? 'mine' : ''}" title="${headerText}">${headerText}</div>`;
         }
+
 
         for (let r = 1; r <= totalRounds; r++) {
             for (let t = 1; t <= totalTeams; t++) {
@@ -1222,13 +1269,21 @@ function parseExcel(file) {
         let rosterSlotsHTML = '';
         let limits = draft.limits || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
 
-        const buildSlotHTML = (label, color, p) => {
+                const buildSlotHTML = (label, color, p) => {
             if (p) {
                 let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
+                
+                // 1. Grab ID and build the image tag (crossorigin removed)
+                let playerId = p.sleeperId || p.id;
+                let imgHTML = playerId && !playerId.toString().startsWith('custom_') 
+                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" onerror="this.style.display='none'">` 
+                    : `<div class="roster-avatar placeholder"></div>`;
+
                 return `
                 <div class="roster-slot">
                     <div style="display:flex; align-items:center; gap: 0.5rem;">
                         <span class="roster-label" style="color:${color}">${label}</span>
+                        ${imgHTML} <!-- Inject Image Here -->
                         <div>
                             <div style="font-weight: bold;">${p.name} ${rookieBadge}</div>
                             <div style="margin-top: 2px;">
@@ -1247,6 +1302,7 @@ function parseExcel(file) {
                 <div class="roster-slot empty">
                     <div style="display:flex; align-items:center; gap: 0.5rem;">
                         <span class="roster-label" style="color:var(--text-muted)">${label}</span>
+                        <div class="roster-avatar placeholder"></div>
                         <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
                     </div>
                     <div></div>
@@ -1537,10 +1593,16 @@ function parseExcel(file) {
             const canvas = await html2canvas(container, { 
                 backgroundColor: '#0a0e17', // Updated to match your true app background
                 scale: 2,
+                useCORS: true,     
+                allowTaint: true,
                 onclone: (clonedDoc) => {
                     const clonedContainer = clonedDoc.getElementById('exportableTeamContainer');
                     const includeRecap = clonedDoc.getElementById('includeRecapInExport')?.checked;
                     const branding = clonedDoc.getElementById('exportBranding');
+                    
+                    // NEW: Hide all roster avatars in the clone so we don't get blank circles in the export
+                    const avatars = clonedDoc.querySelectorAll('.roster-avatar');
+                    avatars.forEach(av => av.style.display = 'none');
                     
                     // Reveal the logo only in the screenshot
                     if (branding) {
@@ -1678,6 +1740,9 @@ function parseExcel(file) {
                     let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">Stack</span>` : "";
                     let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
                     
+                    // NEW: Generate the injury badge using your existing CSS class
+                    let injuryBadge = p.injury ? `<span class="badge inj-badge">${p.injury}</span>` : "";
+                    
                     // Check if the card was expanded before the sync happened
                     let expandedClass = p.isExpanded ? " is-expanded" : "";
 
@@ -1689,6 +1754,7 @@ function parseExcel(file) {
                                         ${p.rank}. ${p.name} 
                                         <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                                         ${rookieBadge}
+                                        ${injuryBadge}
                                         ${stackBadge}
                                     </h4>
                                 </div>
