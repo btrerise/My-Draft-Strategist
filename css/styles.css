@@ -2373,3 +2373,17 @@ body.hide-headshots .draft-cell-img {
     -webkit-user-select: none;
     -webkit-touch-callout: none;
 }
+/* --- ROSTER AVATARS --- */
+.roster-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.roster-avatar.placeholder {
+    background-color: transparent;
+    border: none;
+}
