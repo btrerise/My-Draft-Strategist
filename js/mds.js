@@ -891,9 +891,16 @@ function parseExcel(file) {
             }
             
             let masterId = bestMatchId || fallbackId || null;
+            let finalIsRookie = false;
+            let finalInjury = null;
+
             if (masterId && sleeperMap[masterId]) {
                 let sp = sleeperMap[masterId];
                 if (!team || team === "FA") team = sp.team || "FA";
+                
+                // NEW: Grab Rookie & Injury info directly from Sleeper
+                finalIsRookie = (sp.years_exp === 0 || sp.years_exp === null);
+                finalInjury = sp.injury_status || null;
             }
 
             if (team && team !== "FA" && (!bye || bye === "-" || String(bye).trim() === "")) {
@@ -904,7 +911,8 @@ function parseExcel(file) {
                 id: index + 1, sleeperId: masterId || `custom_${index}`, rank: index + 1, name: cleanName, 
                 posGroup: posGroup, posDisplay: posDisplay, tier: tier, 
                 team: (team ? String(team).toUpperCase() : "FA"), bye: (bye || "-"), adp: adp,
-                isRookie: false
+                isRookie: finalIsRookie, // UPDATED
+                injury: finalInjury      // NEW
             });
         });
 
@@ -983,13 +991,21 @@ function parseExcel(file) {
                 posCounters[posGroup]++;
 
                 let lp = playerMetaMap[sId];
-                let isRookie = lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false;
+                
+                // Prefer Sleeper DB for Rookie status if we have it, else fallback to LeagueLogs
+                let isRookie = sp ? (sp.years_exp === 0 || sp.years_exp === null) : (lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false);
+                
+                // Extract Injury Status
+                let injuryStatus = sp ? sp.injury_status : null;
+                
                 let adpNum = parseFloat(item.overallRank);
 
                 newPlayers.push({
                     id: newPlayers.length + 1, sleeperId: sId, rank: newPlayers.length + 1,
                     name: cleanName, posGroup: posGroup, posDisplay: posDisplay, tier: "-", 
-                    team: team, bye: bye, adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1), isRookie: isRookie
+                    team: team, bye: bye, adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1), 
+                    isRookie: isRookie, 
+                    injury: injuryStatus // NEW
                 });
             });
 
@@ -1569,6 +1585,8 @@ function parseExcel(file) {
             const canvas = await html2canvas(container, { 
                 backgroundColor: '#0a0e17', // Updated to match your true app background
                 scale: 2,
+                useCORS: true,     
+                allowTaint: true,
                 onclone: (clonedDoc) => {
                     const clonedContainer = clonedDoc.getElementById('exportableTeamContainer');
                     const includeRecap = clonedDoc.getElementById('includeRecapInExport')?.checked;
@@ -1710,6 +1728,9 @@ function parseExcel(file) {
                     let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">Stack</span>` : "";
                     let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
                     
+                    // NEW: Generate the injury badge using your existing CSS class
+                    let injuryBadge = p.injury ? `<span class="badge inj-badge">${p.injury}</span>` : "";
+                    
                     // Check if the card was expanded before the sync happened
                     let expandedClass = p.isExpanded ? " is-expanded" : "";
 
@@ -1721,6 +1742,7 @@ function parseExcel(file) {
                                         ${p.rank}. ${p.name} 
                                         <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                                         ${rookieBadge}
+                                        ${injuryBadge}
                                         ${stackBadge}
                                     </h4>
                                 </div>
