@@ -1222,13 +1222,21 @@ function parseExcel(file) {
         let rosterSlotsHTML = '';
         let limits = draft.limits || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
 
-        const buildSlotHTML = (label, color, p) => {
+                const buildSlotHTML = (label, color, p) => {
             if (p) {
                 let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
+                
+                // 1. Grab ID and build the image tag (same logic as Draft Board)
+                let playerId = p.sleeperId || p.id;
+                let imgHTML = playerId && !playerId.toString().startsWith('custom_') 
+                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" onerror="this.style.display='none'">` 
+                    : `<div class="roster-avatar placeholder"></div>`;
+
                 return `
                 <div class="roster-slot">
                     <div style="display:flex; align-items:center; gap: 0.5rem;">
                         <span class="roster-label" style="color:${color}">${label}</span>
+                        ${imgHTML} <!-- Inject Image Here -->
                         <div>
                             <div style="font-weight: bold;">${p.name} ${rookieBadge}</div>
                             <div style="margin-top: 2px;">
@@ -1247,6 +1255,7 @@ function parseExcel(file) {
                 <div class="roster-slot empty">
                     <div style="display:flex; align-items:center; gap: 0.5rem;">
                         <span class="roster-label" style="color:var(--text-muted)">${label}</span>
+                        <div class="roster-avatar placeholder"></div>
                         <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
                     </div>
                     <div></div>
