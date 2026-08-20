@@ -241,7 +241,7 @@
 
 <header class="header">
     <div class="header-left">
-        <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu">
+        <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu" aria-expanded="false">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
         <div class="logo-container" onclick="window.location.href='../index.html'">
@@ -250,9 +250,9 @@
         </div>
     </div>
     <div class="header-controls">
-        <button class="btn-secondary btn-sm" onclick="window.location.href='../index.html'">
+        <a href="../index.html" class="btn-secondary btn-sm" style="text-decoration: none; display: inline-flex; align-items: center;">
             ← Back to Draft
-        </button>
+        </a>
     </div>
 </header>
 <!-- HAMBURGER MENU OVERLAY & DRAWER -->
@@ -270,14 +270,15 @@
     </div>
 
     <div class="menu-nav-links">
-        <button class="nav-btn premium-link-btn" onclick="window.location.href='../index.html'">
-            My Draft Strategist 
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
-        </button>       
-        <button class="nav-btn premium-link-btn" onclick="window.location.href='../lineup/'">
+        <a href="../index.html" class="nav-btn premium-link-btn">
+        My Draft Strategist 
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+        </a>       
+
+        <a href="../lineup/" class="nav-btn premium-link-btn">
             My Lineup Strategist 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
-        </button>
+        </a>
     </div>
     <div id="shared-feedback-container"></div>
     <div class="menu-footer">
@@ -707,27 +708,49 @@
 </div>
 </main>
 <script>
-    function switchTab(tabId, btnElement) {
-        // 1. Remove the 'active' class from all tab content containers
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        
-        // 2. Remove the 'active' class from all navigation buttons
-        document.querySelectorAll('.tscore-nav-btn').forEach(el => el.classList.remove('active'));
-        
-        // 3. Add the 'active' class to the targeted tab content
-        document.getElementById(tabId).classList.add('active');
-        
-        // 4. Add the 'active' class to the button that was just clicked
-        btnElement.classList.add('active');
+    function switchTab(tabId, skipHistory) {
+    // 1. Remove the 'active' class from all tab content containers
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    
+    // 2. Remove the 'active' class from all navigation buttons
+    document.querySelectorAll('.tscore-nav-btn').forEach(el => el.classList.remove('active'));
+    
+    // 3. Add the 'active' class to the targeted tab content
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) targetTab.classList.add('active');
+    
+    // 4. Find the matching button and add the 'active' class
+    const targetBtn = document.querySelector(`.tscore-nav-btn[onclick*="${tabId}"]`);
+    if (targetBtn) targetBtn.classList.add('active');
+
+    // 5. Push to history log (unless we are clicking the back button)
+    if (skipHistory !== true) {
+        history.pushState({ tab: tabId }, '', `#${tabId}`);
     }
+}
+
+// Catch the native back button
+window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.tab) {
+        switchTab(e.state.tab, true);
+    } else {
+        switchTab('researchTab', true); // Default back to the first tab
+    }
+});
     function toggleMenu() {
     const menu = document.getElementById('hamburgerMenu');
     const overlay = document.getElementById('menuOverlay');
+    const hamburgerBtn = document.querySelector('.hamburger-btn');
+    
     if (!menu || !overlay) return;
     
-    menu.classList.toggle('open');
-    overlay.style.display = menu.classList.contains('open') ? 'block' : 'none';
+    const isOpen = menu.classList.toggle('open');
+    overlay.style.display = isOpen ? 'block' : 'none';
+    
+    if (hamburgerBtn) {
+        hamburgerBtn.setAttribute('aria-expanded', isOpen);
     }
+}
 </script>
 </body>
 </html>

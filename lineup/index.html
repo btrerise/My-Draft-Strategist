@@ -93,14 +93,14 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             User Guide
         </button>
-        <button class="nav-btn" onclick="window.location.href='../t-score/'">
+        <a href="../t-score/" class="nav-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
             T-Score Methodology
-        </button>
-        <button class="nav-btn premium-link-btn" onclick="window.location.href='../index.html'">
+        </a>
+        <a href="../index.html" class="nav-btn premium-link-btn">
             My Draft Strategist 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
-        </button>
+        </a>
     </div>
     <div id="shared-feedback-container"></div>
     <div class="menu-footer">
@@ -113,7 +113,7 @@
 <main id="mainApp">
     <header class="header">
         <div class="header-left">
-            <button class="hamburger-btn" onclick="toggleDrawer()" aria-label="Toggle Menu">
+            <button class="hamburger-btn" onclick="toggleDrawer()" aria-label="Toggle Menu" aria-expanded="false">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
             
@@ -156,12 +156,12 @@
 </header>
 
         <div class="input-group">
-            <label>League Name / Nickname</label>
+            <label for="newLeagueName">League Name / Nickname</label>
             <input type="text" id="newLeagueName" class="form-input" placeholder="Auto-fills from Sleeper if blank" aria-label="Type in League name">
         </div>
 
         <div class="input-group">
-            <label>Sleeper Username (Optional)</label>
+            <label for="sleeperUsername">Sleeper Username (Optional)</label>
             <input type="text" id="sleeperUsername" class="form-input" placeholder="e.g., fantasy_guru" aria-label="Type in Sleeper Username">
         </div>
         
@@ -197,12 +197,12 @@
         <div id="activeLeagueReqTitle" class="league-req-subtitle">(Select a League)</div>
         
         <div class="roster-grid mb-4">
-            <div class="input-group"><label>QB</label><input type="number" id="reqQB" class="form-input text-center" value="1" aria-label="QB lineup slots"></div>
-            <div class="input-group"><label>RB</label><input type="number" id="reqRB" class="form-input text-center" value="2" aria-label="RB lineup slots"></div>
-            <div class="input-group"><label>WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
-            <div class="input-group"><label>TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
-            <div class="input-group"><label>FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
-            <div class="input-group"><label>SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
+            <div class="input-group"><label for="reqQB">QB</label><input type="number" id="reqQB" class="form-input text-center" value="1" aria-label="QB lineup slots"></div>
+            <div class="input-group"><label for="reqRB">RB</label><input type="number" id="reqRB" class="form-input text-center" value="2" aria-label="RB lineup slots"></div>
+            <div class="input-group"><label for="reqWR">WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
+            <div class="input-group"><label for="reqTE">TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
+            <div class="input-group"><label for="reqFLEX">FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
+            <div class="input-group"><label for="reqSFLEX">SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
         </div>
         
         <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
@@ -493,7 +493,7 @@
     </div>
 
     <div class="input-group mb-3">
-        <label>Rankings Source</label>
+        <label for="powerRankingsSource">Rankings Source</label>
         <select id="powerRankingsSource" class="form-input" aria-label="Select Source for Power Rankings">
             <option value="custom" selected>My Custom ROS Rankings</option>
             <option value="market">Market Consensus (FantasyCalc / LeagueLogs)</option>
@@ -529,7 +529,7 @@
     
     <!-- Option B: Modular Configuration Panel -->
     <div class="input-group">
-        <label>Market Source</label>
+        <label for="marketSourceSelect">Market Source</label>
         <select id="marketSourceSelect" class="form-input" onchange="toggleMarketSourceUI()" aria-label="Select Market Source">
             <option value="fantasycalc" selected>FantasyCalc.com (Trade Value)</option>
             <option value="leaguelogs">LeagueLogs (Aggregate Market)</option>
@@ -539,14 +539,14 @@
     <!-- Common Settings (Dynasty/Redraft & QB Format) -->
     <div class="settings-grid mb-2">
         <div class="input-group" style="margin-bottom: 0;">
-            <label>League Type</label>
+            <label for="marketType">League Type</label>
             <select id="marketType" class="form-input" aria-label="League Type">
                 <option value="redraft">Redraft</option>
                 <option value="dynasty">Dynasty</option>
             </select>
         </div>
         <div class="input-group" style="margin-bottom: 0;">
-            <label>QB Format</label>
+            <label for="marketQbs">QB Format</label>
             <select id="marketQbs" class="form-input" aria-label="QB Format">
                 <option value="1">1QB</option>
                 <option value="2">Superflex / 2QB</option>
@@ -558,7 +558,7 @@
     <div id="fantasycalcSpecificControls">
         <div class="settings-grid mb-3" style="align-items: center;">
             <div class="input-group" style="margin-bottom: 0;">
-                <label>PPR Scoring</label>
+                <label for="marketPpr">PPR Scoring</label>
                 <select id="marketPpr" class="form-input" aria-label="PPR Scoring">
                     <option value="1">Full PPR (1.0)</option>
                     <option value="0.5">Half PPR (0.5)</option>
@@ -591,20 +591,20 @@
     <!-- Filter / Control Bar -->
     <div class="settings-grid mb-3" style="align-items: center; margin-top: 1rem;">
         <div class="input-group" style="margin-bottom: 0;">
-            <label>Filter Mode</label>
+            <label for="disconnectMode">Filter Mode</label>
             <select id="disconnectMode" class="form-input" onchange="toggleDisconnectMode()">
                 <option value="flat">Flat Rank Gap (e.g., 10+ spots)</option>
                 <option value="percent">Percentage Shift (e.g., 20%+ value delta)</option>
             </select>
         </div>
         <div class="input-group" style="margin-bottom: 0;">
-            <label id="thresholdLabel">Minimum Rank Gap</label>
+            <label for="disconnectThreshold">Minimum Rank Gap</label>
             <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
         </div>
     </div>
 
     <div class="input-group mb-3">
-        <label>Filter by Position</label>
+        <label for="disconnectPosFilter">Filter by Position</label>
         <select id="disconnectPosFilter" class="form-input" aria-label="Filter results by position">
             <option value="ALL">All Positions</option>
             <option value="QB">QB</option>

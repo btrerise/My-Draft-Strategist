@@ -56,12 +56,20 @@
 
     // --- DRAWER & SWIPE LOGIC ---
     window.toggleDrawer = function() {
-        const drawer = document.getElementById('drawer');
-        const overlay = document.getElementById('drawerOverlay');
-        if (!drawer || !overlay) return;
-        drawer.classList.toggle('open');
-        overlay.style.display = drawer.classList.contains('open') ? 'block' : 'none';
-    };
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('drawerOverlay');
+    const hamburgerBtn = document.querySelector('.hamburger-btn'); // Grab the button
+    
+    if (!drawer || !overlay) return;
+    
+    const isOpen = drawer.classList.toggle('open');
+    overlay.style.display = isOpen ? 'block' : 'none';
+    
+    // Announce the new state to screen readers
+    if (hamburgerBtn) {
+        hamburgerBtn.setAttribute('aria-expanded', isOpen);
+    }
+};
 
     window.navigateFromDrawer = function(tabId) {
         document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
@@ -75,15 +83,21 @@
     const mainAppEl = document.getElementById('mainApp');
     if (mainAppEl) {
         mainAppEl.addEventListener('touchstart', e => { State.touchStartX = e.changedTouches[0].screenX; }, {passive: true});
-        mainAppEl.addEventListener('touchend', e => { State.touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, {passive: true});
+        // --- NEW: Pass 'e' to handleSwipe ---
+        mainAppEl.addEventListener('touchend', e => { State.touchEndX = e.changedTouches[0].screenX; handleSwipe(e); }, {passive: true});
     }
 
-    function handleSwipe() {
+    function handleSwipe(e) {
+        // --- NEW: Prevent tab swipe if touching tables, grids, or inputs ---
+        if (e && e.target && e.target.closest('.roster-container-wrapper, .lineup-container-wrapper, .sos-table-wrapper, select, input, textarea')) {
+            return; 
+        }
+
         const swipeThreshold = 120; 
         const activeTabBtn = document.querySelector('.nav-bar .nav-btn.active');
         if (!activeTabBtn) return;
         
-        const tabs = ['roster', 'lineup', 'scout'];
+        const tabs = ['setup', 'roster', 'lineup', 'scout', 'guide'];
         const currentIdx = tabs.indexOf(activeTabBtn.getAttribute('data-target'));
         
         if (State.touchEndX < State.touchStartX - swipeThreshold) {
@@ -107,20 +121,33 @@
     }
 
     // --- NAVIGATION LOGIC ---
-    window.showTab = function(tabId) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        const targetTab = document.getElementById(tabId + 'Tab');
-        if (targetTab) targetTab.classList.add('active');
+    window.showTab = function(tabId, skipHistory = false) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    const targetTab = document.getElementById(tabId + 'Tab');
+    if (targetTab) targetTab.classList.add('active');
 
-        document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
-        const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
-        if (activeNavBtn) activeNavBtn.classList.add('active');
-        
-        if (tabId === 'lineup') window.optimizeLineup(false);
-        if (tabId === 'roster') loadRosterTab();
-        if (tabId === 'setup') refreshLeagueDropdown();
-        window.scrollTo(0, 0);
-    };
+    document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
+    const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
+    if (activeNavBtn) activeNavBtn.classList.add('active');
+    
+    if (tabId === 'lineup') window.optimizeLineup(false);
+    if (tabId === 'roster') loadRosterTab();
+    if (tabId === 'setup') refreshLeagueDropdown();
+    window.scrollTo(0, 0);
+
+    // --- NEW: Push to browser history so the back button works ---
+    if (!skipHistory) {
+        history.pushState({ tab: tabId }, '', `#${tabId}`);
+    }
+};
+// --- NEW: Catch the native back button ---
+window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.tab) {
+        window.showTab(e.state.tab, true); 
+    } else {
+        window.showTab('setup', true);
+    }
+});
     
     window.factoryReset = function() {
         if (window.confirm("DANGER ZONE\n\nAre you sure you want to clear ALL leagues, cached rankings, custom SoS data, and settings?\n\nThis cannot be undone.")) {
@@ -1558,7 +1585,10 @@ window.toggleMarketSourceUI = function() {
             });
         } else { 
             benchContainer.classList.add('bench-empty-state');
-            benchHTML = "No bench players."; 
+            benchHTML = `
+                <div style="display:flex; justify-content:center; align-items:center; height: 60px; color:var(--text-muted); font-style:italic; font-size:0.9rem;">
+                    [ No bench players available ]
+                </div>`; 
         }
         benchContainer.innerHTML = benchHTML;
     }
