@@ -1751,14 +1751,17 @@ body {
     color: var(--text-muted); 
     text-align: center; 
     font-weight: 700; 
-    padding: 0.75rem 0.5rem; 
-    font-size: 0.85rem; 
+    padding: 0.5rem 0.25rem; 
+    font-size: 0.8rem; 
     letter-spacing: 0.5px;
     
-    /* ADD THESE TO PREVENT LAYOUT BREAKS */
+    /* --- CRITICAL GRID TRUNCATION RULES --- */
     white-space: nowrap; 
     overflow: hidden; 
     text-overflow: ellipsis; 
+    min-width: 0; /* Forces grid children to shrink and truncate text */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .draft-col-header.mine { 
@@ -2071,12 +2074,17 @@ input[type="file"]::-webkit-file-upload-button:hover {
         max-width: none;
         width: max-content; 
         overflow-x: visible;
-        
-        /* Optional: Keep min-width to 100% so it doesn't shrink awkwardly in small leagues */
         min-width: 100%;
+        
+        /* THE FIX: Hardcode columns to 80px so they NEVER stretch to fit long team names */
+        grid-template-columns: repeat(var(--num-teams, 12), 80px) !important;
     }
 
-    /* Ensures long names truncate elegantly in the narrower 64px columns */
+    .draft-col-header {
+        padding: 0.5rem 0.2rem !important;
+    }
+
+    /* Ensures long names truncate elegantly in the narrower columns */
     .draft-cell-first, 
     .draft-cell-last {
         font-size: 0.75rem; 
@@ -2391,4 +2399,63 @@ body.hide-headshots .draft-cell-img {
 .roster-avatar.placeholder {
     background-color: transparent;
     border: none;
+}
+
+/* --- FULL-WIDTH DRAFT BOARD FOR DESKTOP --- */
+@media (min-width: 1024px) {
+    /* THE FIX: Break #boardTab out of the 1200px .container trap to fill the monitor */
+    #boardTab {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        margin-left: calc(50% - 50vw) !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        box-sizing: border-box;
+    }
+
+    #draftMatrixContainer {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .draft-grid {
+        width: 100%;
+        /* Force all columns to distribute evenly across the full width */
+        grid-template-columns: repeat(var(--num-teams, 12), minmax(0, 1fr)) !important;
+        gap: 4px; 
+    }
+
+    /* Scale up cell heights, font sizes, and headshots on large monitors */
+    .draft-cell {
+        min-height: 80px;
+        padding: 6px 4px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden; /* Stop inner text from pushing cell boundaries */
+    }
+
+    .draft-cell-img {
+        width: 38px;  
+        height: 38px;
+        margin-bottom: 2px;
+    }
+
+    .draft-cell-first {
+        font-size: 0.8rem;
+    }
+
+    .draft-cell-last {
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    .draft-col-header {
+        font-size: 0.9rem;
+        padding: 0.75rem 0.4rem;
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+        white-space: nowrap;
+    }
 }
