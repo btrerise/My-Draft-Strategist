@@ -2087,12 +2087,13 @@ input[type="file"]::-webkit-file-upload-button:hover {
     /* Ensures long names truncate elegantly in the narrower columns */
     .draft-cell-first, 
     .draft-cell-last {
-        font-size: 0.75rem; 
+        font-size: 0.75rem !important; 
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 100%;
         padding: 0 1px;
+        line-height: 1.2;
     }
 }
 .draft-cell-img {
@@ -2101,6 +2102,13 @@ input[type="file"]::-webkit-file-upload-button:hover {
     border-radius: 50%;
     background-color: var(--card-bg);
     object-fit: cover;
+}
+.draft-cell-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    overflow: hidden; 
 }
 /* Reclaim horizontal space for player cards on mobile */
 @media (max-width: 600px) {
@@ -2458,4 +2466,37 @@ body.hide-headshots .draft-cell-img {
         text-overflow: ellipsis; 
         white-space: nowrap;
     }
+}
+/* Accessibility: Ensure Minimum Mobile Touch Targets (44x44px) */
+.close-banner-btn,
+.close-menu-btn,
+.btn-expand,
+.edit-icon,
+.close-chip {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+}
+
+/* Optional: If a small icon visual size needs to be preserved, expand hit area via pseudo-element */
+.close-banner-btn {
+    padding: 0.5rem;
+    position: relative;
+}
+
+.close-banner-btn::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    bottom: -8px;
+    left: -8px;
+    right: -8px;
+}
+/* Remove default browser underlines from link buttons */
+a.nav-btn,
+.nav-btn {
+    text-decoration: none;
 }

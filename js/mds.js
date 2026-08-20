@@ -153,48 +153,53 @@
     }
     
     window.toggleMenu = function() {
-        const menu = document.getElementById('hamburgerMenu');
-        const overlay = document.getElementById('menuOverlay');
-        if (!menu || !overlay) return;
-        menu.classList.toggle('open');
-        overlay.style.display = menu.classList.contains('open') ? 'block' : 'none';
-    };
+    const menu = document.getElementById('hamburgerMenu');
+    const overlay = document.getElementById('menuOverlay');
+    const hamburgerBtn = document.querySelector('.hamburger-btn'); // Grab the button
+    
+    if (!menu || !overlay) return;
+    
+    const isOpen = menu.classList.toggle('open');
+    overlay.style.display = isOpen ? 'block' : 'none';
+    
+    // Announce the new state to screen readers
+    if (hamburgerBtn) {
+        hamburgerBtn.setAttribute('aria-expanded', isOpen);
+    }
+};
 
     // --- GESTURE HANDLING ---
-    function handleGesture() {
-        const menu = document.getElementById('hamburgerMenu');
-        if (!menu) return;
-        const isOpen = menu.classList.contains('open');
-        let diffX = State.touchendX - State.touchstartX;
-
-        if (diffX > 50 && State.touchstartX < 40 && !isOpen) {
-            window.toggleMenu();
-            return;
-        }
-        if (diffX < -50 && isOpen) {
-            window.toggleMenu();
-            return;
-        }
-
-        if (!isOpen && Math.abs(diffX) > 80) {
-            let activeTabEl = document.querySelector('.tab-content.active');
-            if (!activeTabEl) return;
-            let currentId = activeTabEl.id.replace('Tab', '');
-            if (currentId === 'board') return;
-
-            let currentIndex = State.tabOrder.indexOf(currentId);
-            if (currentIndex !== -1) {
-                if (diffX < 0 && currentIndex < State.tabOrder.length - 1) {
-                    window.showTab(State.tabOrder[currentIndex + 1]);
-                } else if (diffX > 0 && currentIndex > 0) {
-                    window.showTab(State.tabOrder[currentIndex - 1]);
-                }
-            }
-        }
+    function handleGesture(e) {
+    // Prevent tab swipe if touch started/ended inside horizontal scrolling containers or inputs
+    if (e && e.target && e.target.closest('.draft-board-container, .table-responsive, .data-table-wrapper, select, input, textarea')) {
+        return;
     }
 
+    const swipeThreshold = 80;
+    const diffX = State.touchEndX - State.touchStartX;
+
+    if (Math.abs(diffX) > swipeThreshold) {
+        const activeNavBtn = document.querySelector('.nav-bar .nav-btn.active');
+        if (!activeNavBtn) return;
+
+        const tabs = ['setup', 'tracker', 'board', 'team'];
+        const currentIdx = tabs.indexOf(activeNavBtn.getAttribute('data-target'));
+
+        if (diffX < 0 && currentIdx < tabs.length - 1) {
+            // Swiped Left -> Next Tab
+            window.showTab(tabs[currentIdx + 1]);
+        } else if (diffX > 0 && currentIdx > 0) {
+            // Swiped Right -> Previous Tab
+            window.showTab(tabs[currentIdx - 1]);
+        }
+    }
+}
+
     document.addEventListener('touchstart', e => { State.touchstartX = e.changedTouches[0].screenX; }, {passive: true});
-    document.addEventListener('touchend', e => { State.touchendX = e.changedTouches[0].screenX; handleGesture(); }, {passive: true});
+    document.addEventListener('touchend', (e) => {
+    State.touchEndX = e.changedTouches[0].screenX;
+    handleGesture(e);
+}, { passive: true });
 
     // --- INITIALIZE SETTINGS INPUTS ---
     function initSettingsUI() {
@@ -318,22 +323,36 @@
         }
     };
 
-    window.showTab = function(tabId) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        const targetTab = document.getElementById(tabId + 'Tab');
-        if (targetTab) targetTab.classList.add('active');
+    window.showTab = function(tabId, skipHistory = false) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    const targetTab = document.getElementById(tabId + 'Tab');
+    if (targetTab) targetTab.classList.add('active');
 
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll(`.hamburger-menu .nav-btn[data-target="${tabId}"], .nav-bar .nav-btn[data-target="${tabId}"]`)
-            .forEach(btn => btn.classList.add('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll(`.hamburger-menu .nav-btn[data-target="${tabId}"], .nav-bar .nav-btn[data-target="${tabId}"]`)
+        .forEach(btn => btn.classList.add('active'));
 
-        const menu = document.getElementById('hamburgerMenu');
-        if (menu && menu.classList.contains('open')) window.toggleMenu();
+    const menu = document.getElementById('hamburgerMenu');
+    if (menu && menu.classList.contains('open')) window.toggleMenu();
 
-        if (['tracker', 'team', 'board'].includes(tabId)) renderBoard();
-        if (tabId === 'setup') refreshDraftDropdown();
-        window.scrollTo(0, 0);
-    };
+    if (['tracker', 'team', 'board'].includes(tabId)) renderBoard();
+    if (tabId === 'setup') refreshDraftDropdown();
+    window.scrollTo(0, 0);
+
+    // --- NEW: Push to browser history so the back button works ---
+    if (!skipHistory) {
+        history.pushState({ tab: tabId }, '', `#${tabId}`);
+    }
+};
+// --- NEW: Catch the native back button ---
+window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.tab) {
+        // Pass 'true' so we don't accidentally create an infinite history loop
+        window.showTab(e.state.tab, true); 
+    } else {
+        window.showTab('setup', true);
+    }
+});
 
     window.setPosFilter = function(pos) {
         State.activePosFilter = pos;
@@ -352,18 +371,22 @@
         }
     };
     window.toggleCardDetails = function(e, id) {
-        e.stopPropagation(); // Prevents the space/enter keydown listener from firing if clicked
-        const card = document.getElementById(`details-${id}`).closest('.player-card');
-        if (card) {
-            card.classList.toggle('is-expanded');
-            
-            // Track the state in memory so it persists during live sync redraws
-            let p = State.players.find(x => x.id === id);
-            if (p) {
-                p.isExpanded = card.classList.contains('is-expanded');
-            }
+    e.stopPropagation(); 
+    const expandBtn = e.currentTarget; // Get the button that was clicked
+    const card = document.getElementById(`details-${id}`).closest('.player-card');
+    
+    if (card) {
+        const isNowExpanded = card.classList.toggle('is-expanded');
+        
+        // Announce the new state to screen readers
+        if (expandBtn) expandBtn.setAttribute('aria-expanded', isNowExpanded);
+        
+        let p = State.players.find(x => x.id === id);
+        if (p) {
+            p.isExpanded = isNowExpanded;
         }
-    };
+    }
+};
 
     window.saveInlineEdit = function(id) {
         let p = State.players.find(x => x.id === id);
@@ -1762,7 +1785,7 @@ function parseExcel(file) {
                                 <div class="actions">
                                     <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
                                     <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">My Pick</button>
-                                    <button class="btn-sm btn-expand hide-on-desktop" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details">
+                                    <button class="btn-sm btn-expand hide-on-desktop" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
                                         <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                     </button>
                                 </div>
@@ -1804,22 +1827,35 @@ function parseExcel(file) {
                 }
             }
         });
-
+        if (newPoolHTML === '') {
+            newPoolHTML = `
+                <div style="text-align: center; padding: 2rem; color: var(--text-muted); background: rgba(0,0,0,0.1); border-radius: 8px; margin-top: 1rem;">
+                    <h4>No players found</h4>
+                    <p style="font-size: 0.9rem;">Try clearing your search term or adjusting your position filter.</p>
+                </div>`;
+        }
         if (poolEl) poolEl.innerHTML = newPoolHTML;
         if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster();
 
         let otherDraftedIds = draftedPlayers.filter(id => !myTeam.includes(id)).slice().reverse();
         let newOtherHTML = '';
-        otherDraftedIds.forEach(id => {
-            let p = State.players.find(player => player.id === id);
-            if (p) {
-                newOtherHTML += `
-                    <div class="roster-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border);">
-                        <div style="color: var(--text-muted);"><strike>${p.name}</strike> <span class="badge">${p.posGroup}</span></div>
-                        <button class="btn-sm btn-draft" style="padding:2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
-                    </div>`;
-            }
-        });
+        if (otherDraftedIds.length === 0) {
+            newOtherHTML = `
+                <div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                    <em>No other players drafted yet.</em>
+                </div>`;
+        } else {
+            otherDraftedIds.forEach(id => {
+                let p = State.players.find(player => player.id === id);
+                if (p) {
+                    newOtherHTML += `
+                        <div class="roster-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border);">
+                            <div style="color: var(--text-muted);"><strike>${p.name}</strike> <span class="badge">${p.posGroup}</span></div>
+                            <button class="btn-sm btn-draft" style="padding:2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
+                        </div>`;
+                }
+            });
+        }
         if (otherEl) otherEl.innerHTML = newOtherHTML;
 
         let flexOverflow = Math.max(0, posCounts['RB'] - limits.RB) + Math.max(0, posCounts['WR'] - limits.WR) + Math.max(0, posCounts['TE'] - limits.TE);

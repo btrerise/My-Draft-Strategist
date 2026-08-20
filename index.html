@@ -71,7 +71,7 @@
 
 <header class="header">
     <div class="header-left">
-        <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu">
+        <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu" aria-expanded="false">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -138,15 +138,19 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             User Guide
         </button>
-        <button class="nav-btn" onclick="window.location.href='./t-score/'">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
+        <a href="./t-score/" class="nav-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="20" x2="12" y2="10"></line>
+            <line x1="18" y1="20" x2="18" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="16"></line>
+            </svg>
             T-Score Methodology
-        </button>
+        </a>
         
-        <button class="nav-btn premium-link-btn" onclick="window.location.href='./lineup/'">
+        <a href="../lineup/" class="nav-btn premium-link-btn">
             My Lineup Strategist 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
-        </button>
+        </a>
     </div>
     <div id="shared-feedback-container"></div>
     <div class="menu-footer">
@@ -233,12 +237,12 @@
         </header>
 
         <div class="input-group">
-            <label>Draft / League Nickname (Optional)</label>
+            <label for="newDraftName">Draft / League Nickname (Optional)</label>
             <input type="text" id="newDraftName" class="form-input" placeholder="Auto-fills from Sleeper League if blank">
         </div>
 
         <div class="input-group">
-            <label>Sleeper Username (Optional)</label>
+            <label for="sleeperUsername">Sleeper Username (Optional)</label>
             <input type="text" id="sleeperUsername" class="form-input" placeholder="e.g., fantasy_guru">
         </div>
 
@@ -283,7 +287,7 @@
         <div id="adpStatusDisplay" class="status-badge"></div>
 
         <div class="input-group">
-            <label>Select LeagueLogs Profile</label>
+            <label for="adpFormatSelect">Select LeagueLogs Profile</label>
             <select id="adpFormatSelect" class="form-input" aria-label="Select ADP Format">
             <optgroup label="LeagueLogs (Aggregate Market)">
                 <option value="leaguelogs|redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
@@ -329,20 +333,20 @@
         </header>
         
         <div class="roster-grid">
-            <div class="input-group"><label>QB</label><input type="number" id="limitQB" class="form-input text-center" min="0" value="1" aria-label="QB Roster Limit"></div>
-            <div class="input-group"><label>RB</label><input type="number" id="limitRB" class="form-input text-center" min="0" value="2" aria-label="RB Roster Limit"></div>
-            <div class="input-group"><label>WR</label><input type="number" id="limitWR" class="form-input text-center" min="0" value="3" aria-label="WR Roster Limit"></div>
-            <div class="input-group"><label>TE</label><input type="number" id="limitTE" class="form-input text-center" min="0" value="1" aria-label="TE Roster Limit"></div>
-            <div class="input-group"><label>FLEX</label><input type="number" id="limitFLEX" class="form-input text-center" min="0" value="1" aria-label="Flex Roster Limit"></div>
-            <div class="input-group"><label>SFLEX</label><input type="number" id="limitSFLEX" class="form-input text-center" min="0" value="0" aria-label="Superflex Roster Limit"></div>
-            <div class="input-group"><label>BENCH</label><input type="number" id="limitBENCH" class="form-input text-center" min="0" value="6" aria-label="Bench Roster Limit"></div>
+            <div class="input-group"><label for="limitQB">QB</label><input type="number" id="limitQB" class="form-input text-center" min="0" value="1" aria-label="QB Roster Limit"></div>
+            <div class="input-group"><label for="limitRB">RB</label><input type="number" id="limitRB" class="form-input text-center" min="0" value="2" aria-label="RB Roster Limit"></div>
+            <div class="input-group"><label for="limitWR">WR</label><input type="number" id="limitWR" class="form-input text-center" min="0" value="3" aria-label="WR Roster Limit"></div>
+            <div class="input-group"><label for="limitTE">TE</label><input type="number" id="limitTE" class="form-input text-center" min="0" value="1" aria-label="TE Roster Limit"></div>
+            <div class="input-group"><label for="limitFLEX">FLEX</label><input type="number" id="limitFLEX" class="form-input text-center" min="0" value="1" aria-label="Flex Roster Limit"></div>
+            <div class="input-group"><label for="limitSFLEX">SFLEX</label><input type="number" id="limitSFLEX" class="form-input text-center" min="0" value="0" aria-label="Superflex Roster Limit"></div>
+            <div class="input-group"><label for="limitBENCH">BENCH</label><input type="number" id="limitBENCH" class="form-input text-center" min="0" value="6" aria-label="Bench Roster Limit"></div>
         </div>
 
         <hr class="card-divider">
         
         <div class="settings-grid">
-            <div class="input-group"><label>Teams in League</label><input type="number" id="leagueTeams" class="form-input" min="2" value="12" aria-label="Number of League Teams"></div>
-            <div class="input-group"><label>Total Rounds</label><input type="number" id="leagueRounds" class="form-input" min="1" value="15" aria-label="Number of Draft Rounds"></div>
+            <div class="input-group"><label for="leagueTeams">Teams in League</label><input type="number" id="leagueTeams" class="form-input" min="2" value="12" aria-label="Number of League Teams"></div>
+            <div class="input-group"><label for="leagueRounds">Total Rounds</label><input type="number" id="leagueRounds" class="form-input" min="1" value="15" aria-label="Number of Draft Rounds"></div>
         </div>
 
         <div class="toggle-row">
