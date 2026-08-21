@@ -285,7 +285,7 @@
         </header>
         
         <div id="rosMetaDisplay" class="status-badge-meta"></div>
-        <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
+        <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
         <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
     </section>
     
@@ -410,7 +410,7 @@
         </header>
         
         <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
-        <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
+        <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
         <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
     </section>
 </div>
@@ -522,7 +522,7 @@
     <div id="marketMetaDisplay" class="status-badge-meta"></div>
     
     <!-- Option A: Upload -->
-    <input type="file" id="marketFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
+    <input type="file" id="marketFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers" aria-label="Upload Market rankings from KTC or FantasyCalc">
     
     <hr class="card-divider">
     <div class="divider-text">OR PULL LIVE MARKET VALUE</div>
@@ -651,7 +651,7 @@
             <!-- Step 3 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">3</span> Lineup Optimizer & Early Games</h4>
-                <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with 🔒 or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. Select teams playing in early windows (TNF, London) under <strong class="text-main">Early Games</strong> to flag them with an <span class="badge early-badge">EARLY</span> badge across your lineup before roster locks.</p>
+                <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. Select teams playing in early windows (TNF, London) under <strong class="text-main">Early Games</strong> to flag them with an <span class="badge early-badge">EARLY</span> badge across your lineup before roster locks.</p>
             </div>
 
             <!-- Step 4 -->
@@ -666,13 +666,19 @@
                 <p class="step-desc">Pull live market consensus values from <strong class="text-main">FantasyCalc</strong> or <strong class="text-main">LeagueLogs</strong> (or upload a market CSV). Use the Trade Finder to filter by flat rank gaps or percentage shifts to instantly uncover high-value buy-low targets and overvalued sell-high assets relative to your custom ROS board.</p>
             </div>
 
-            <!-- Step 6 -->
+            <!-- Step 6 (NEW) -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">6</span> Exporting & Sharing</h4>
+                <h4 class="step-title"><span class="step-num blue-step">6</span> Positional Power Rankings</h4>
+                <p class="step-desc">Found on the <strong class="text-main">Scout</strong> tab, this tool evaluates every team's positional strength based on your custom ROS rankings or live market data. It generates a heatmap table of your league's rosters—hover or tap on any positional rank to see the specific players driving that score. Use this to quickly find ideal trade partners who are strong where you are weak!</p>
+            </div>
+
+            <!-- Step 7 (Previously Step 6) -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">7</span> Exporting & Sharing</h4>
                 <p class="step-desc">Once your lineup is finalized, tap the <strong class="text-main">Export</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media!</p>
             </div>
 
-            <!-- Step 7: Shortcuts -->
+            <!-- Step 8: Shortcuts (Previously Step 7) -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">✦</span> Keyboard Shortcuts</h4>
                 <p class="step-desc">Navigate the app instantly with your keyboard (active when not typing in a text box):</p>

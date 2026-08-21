@@ -758,19 +758,19 @@ window.addEventListener('popstate', (e) => {
         const filename = file.name.toLowerCase();
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: false, skipEmptyLines: true, complete: results => parseRankingsData(results.data, isWeekly, successMsgId) });
-        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.numbers')) {
             loadSheetJS(() => {
                 const reader = new FileReader();
-            reader.onload = e => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
-                Papa.parse(csvStr, { header: false, skipEmptyLines: true, complete: results => parseRankingsData(results.data, isWeekly, successMsgId) });
-            };
-            reader.readAsArrayBuffer(file);
+                reader.onload = e => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+                    Papa.parse(csvStr, { header: false, skipEmptyLines: true, complete: results => parseRankingsData(results.data, isWeekly, successMsgId) });
+                };
+                reader.readAsArrayBuffer(file);
             });
-            } else {
-            window.alert("Unsupported file format. Please upload a .csv or .xlsx file.");
+        } else {
+            window.alert("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.");
         }
     }
 
@@ -902,19 +902,19 @@ window.addEventListener('popstate', (e) => {
         const filename = file.name.toLowerCase();
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
-        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.numbers')) {
             loadSheetJS(() => {            
-            const reader = new FileReader();
-            reader.onload = e => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
-                Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
-            };
-            reader.readAsArrayBuffer(file);
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+                    Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
+                };
+                reader.readAsArrayBuffer(file);
             });
         } else {
-            window.alert("Unsupported file format. Please upload a .csv or .xlsx file.");
+            window.alert("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.");
         }
     }
     window.fetchLeagueLogsADP = async function(btn) {
@@ -1022,7 +1022,8 @@ window.addEventListener('popstate', (e) => {
 
     } catch (error) {
         console.error("Error fetching market data:", error);
-        window.alert(`Could not pull live market data.\n\n${error.message}`);
+        let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
+        window.alert(`Could not pull live market data.\n\n${error.message}${adBlockerTip}`);
     } finally {
         btn.innerText = origText;
         btn.style.opacity = "1";
