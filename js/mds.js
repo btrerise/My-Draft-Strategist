@@ -1065,7 +1065,8 @@ function parseExcel(file) {
         } catch(err) {
             console.error(err);
             flashButton(btn, "Fetch Error", true, originalText);
-            window.alert(`Failed to load Quick-Start.\n\n${err.message}`);
+            let adBlockerTip = err.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
+            window.alert(`Failed to load Quick-Start.\n\n${err.message}${adBlockerTip}`);
         }
     };
 
@@ -1137,10 +1138,11 @@ function parseExcel(file) {
         if (typeof window.showToast === 'function') window.showToast("Market Value (ADP) updated");
         
     } catch(err) {
-        console.error(err);
-        flashButton(btn, "Fetch Error", true, originalText);
-        window.alert(`Failed to fetch live Market Value.\n\n${err.message}`);
-    }
+            console.error(err);
+            flashButton(btn, "Fetch Error", true, originalText);
+            let adBlockerTip = err.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
+            window.alert(`Failed to fetch live Market Value.\n\n${err.message}${adBlockerTip}`);
+        }
 };
 
     window.processManualADP = function(btn) {
@@ -1195,7 +1197,7 @@ function parseExcel(file) {
         let totalRounds = draft.settings?.rounds || 15;
         let is3RR = draft.settings?.is3RR || false;
 
-        let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(64px, 1fr));">`;
+        let gridHTML = `<div class="draft-grid" style="--num-teams: ${totalTeams}; grid-template-columns: repeat(${totalTeams}, minmax(64px, 1fr));">`;
 
             for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;

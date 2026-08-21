@@ -1022,7 +1022,8 @@ window.addEventListener('popstate', (e) => {
 
     } catch (error) {
         console.error("Error fetching market data:", error);
-        window.alert(`Could not pull live market data.\n\n${error.message}`);
+        let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
+        window.alert(`Could not pull live market data.\n\n${error.message}${adBlockerTip}`);
     } finally {
         btn.innerText = origText;
         btn.style.opacity = "1";
