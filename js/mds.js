@@ -217,7 +217,8 @@
         setCheck('byeWarningToggle', localStorage.getItem('ds_bye_warnings') === 'true');
         setCheck('tscoreToggle', localStorage.getItem('ds_tscore') === 'true');
         
-        let settings = draft ? draft.settings : { teams: 12, rounds: 15 };
+        let settings = draft ? draft.settings : { teams: 12, rounds: 15, is3RR: false };
+        setCheck('thirdRoundReversalToggle', settings.is3RR || false);
         let limits = draft ? draft.limits : { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6, TOTAL: 14 };
 
         setVal('leagueTeams', settings.teams || 12);
@@ -279,7 +280,8 @@
             if (getVal('sleeperUsername')) draft.username = getVal('sleeperUsername');
             draft.settings = {
                 teams: parseInt(getVal('leagueTeams')) || 12,
-                rounds: parseInt(getVal('leagueRounds')) || 15
+                rounds: parseInt(getVal('leagueRounds')) || 15,
+                is3RR: getCheck('thirdRoundReversalToggle')
             };
             draft.limits = {
                 QB: parseInt(getVal('limitQB')) || 0,
@@ -434,7 +436,8 @@ window.addEventListener('popstate', (e) => {
             username: "Manual",
             settings: {
                 teams: parseInt(getVal('leagueTeams')) || 12,
-                rounds: parseInt(getVal('leagueRounds')) || 15
+                rounds: parseInt(getVal('leagueRounds')) || 15,
+                is3RR: getCheck('thirdRoundReversalToggle')
             },
             limits: {
                 QB: parseInt(getVal('limitQB')) || 1,
@@ -507,7 +510,8 @@ window.addEventListener('popstate', (e) => {
 
             let draftSettings = {
                 teams: dInfo.settings?.teams || 12,
-                rounds: dInfo.settings?.rounds || 15
+                rounds: dInfo.settings?.rounds || 15,
+                is3RR: dInfo.settings?.reversal_round === 3
             };
 
             let draftLimits = { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
@@ -787,7 +791,7 @@ if (fileInput) {
         
         if (ext === 'csv') {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
-        } else if (ext === 'xlsx' || ext === 'xls') {
+        } else if (ext === 'xlsx' || ext === 'xls' || ext === 'numbers') {
             
             // Check if SheetJS is already loaded. If not, fetch it on the fly.
             if (typeof XLSX === 'undefined') {
@@ -805,7 +809,7 @@ if (fileInput) {
             }
             
         } else {
-            window.alert("Please upload a .csv, .xlsx, or .xls file");
+            window.alert("Please upload a .csv, .xlsx, .xls, or .numbers file");
         }
     });
 }
@@ -1189,13 +1193,18 @@ function parseExcel(file) {
 
         let totalTeams = draft.settings?.teams || 12;
         let totalRounds = draft.settings?.rounds || 15;
+        let is3RR = draft.settings?.is3RR || false;
 
         let gridHTML = `<div class="draft-grid" style="grid-template-columns: repeat(${totalTeams}, minmax(64px, 1fr));">`;
 
-                for (let t = 1; t <= totalTeams; t++) {
+            for (let t = 1; t <= totalTeams; t++) {
             let isMyCol = false;
             for (let r = 1; r <= totalRounds; r++) {
-                let pNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
+                // --- 3RR MATH FIX START ---
+                let isOddLogic = (r % 2 !== 0);
+                if (is3RR && r >= 3) { isOddLogic = !isOddLogic; }
+                let pNum = isOddLogic ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
+                // --- 3RR MATH FIX END ---
                 
                 if (draft.rawDraftPicks && draft.rawDraftPicks.length > 0) {
                     let matched = draft.rawDraftPicks.find(p => p.pick_no === pNum);
@@ -1217,9 +1226,14 @@ function parseExcel(file) {
 
 
         for (let r = 1; r <= totalRounds; r++) {
+            // --- 3RR MATH FIX START ---
+            let isOddLogic = (r % 2 !== 0);
+            if (is3RR && r >= 3) { isOddLogic = !isOddLogic; }
+
             for (let t = 1; t <= totalTeams; t++) {
-                let pickNum = (r % 2 !== 0) ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
-                let displayTeamNum = (r % 2 !== 0) ? t : (totalTeams - t + 1);
+                let pickNum = isOddLogic ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
+                let displayTeamNum = isOddLogic ? t : (totalTeams - t + 1);
+            // --- 3RR MATH FIX END ---
 
                 let pObj = null;
                 let pName = "";

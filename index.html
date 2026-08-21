@@ -219,7 +219,7 @@
         </button>
         
         <div class="divider-text">OR UPLOAD CUSTOM</div>
-        <input type="file" id="fileInput" class="form-input" accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls" aria-label="Upload Custom Rankings">
+        <input type="file" id="fileInput" class="form-input" accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls, .numbers" aria-label="Upload Custom Rankings">
         
         <div class="divider-text">OR PASTE</div>
         <textarea id="csvPasteArea" class="form-input" rows="2" placeholder="Paste raw CSV text here..."></textarea>
@@ -400,6 +400,16 @@
                 <span class="toggle-desc">Display NFL player avatars on the Draft Board.</span>
             </div>
             <input type="checkbox" id="toggleHeadshots" class="toggle-switch" checked onchange="toggleHeadshots(this.checked)" aria-label="Toggle Player Headshots">
+        </div>
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline><polyline points="7.5 19.79 7.5 14.6 3 12"></polyline><polyline points="21 12 16.5 14.6 16.5 19.79"></polyline><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                    Third Round Reversal (3RR)
+                </span>
+                <span class="toggle-desc">Flips the draft order at the start of the 3rd round.</span>
+            </div>
+            <input type="checkbox" id="thirdRoundReversalToggle" class="toggle-switch" aria-label="Toggle 3RR">
         </div>
         <button class="btn btn-primary mt-2" onclick="saveSettings(this)">Save Settings</button>
     </section>
