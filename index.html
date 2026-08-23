@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Removed user-scalable=no so mobile users can zoom if they need to -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <!-- Pinch-zoom intentionally allowed: no maximum-scale/user-scalable lock, so mobile users can zoom if they need to -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Added basic SEO / Description -->
     <meta name="description" content="Advanced fantasy football draft strategist and tracker.">
@@ -79,7 +79,7 @@
             </svg>
         </button>
       
-<div class="logo-container" onclick="showTab('setup')">
+<div class="logo-container" onclick="showTab('setup')" role="button" tabindex="0" aria-label="Go to Setup" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('setup');}">
     <img src="images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
     <div class="logo-text">My Draft <span>Strategist</span></div>
 </div>
@@ -172,7 +172,7 @@
 
     <!-- Cross-App Navigation Banner -->
     <div class="guide-banner" id="mlsBanner" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(139, 92, 246, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(139, 92, 246, 0.4); padding: 0.75rem 1rem;">
-        <div onclick="window.location.href='./lineup/'" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer; color: #a78bfa;">
+        <div onclick="window.location.href='./lineup/'" role="button" tabindex="0" aria-label="Switch to My Lineup Strategist" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='./lineup/';}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer; color: #a78bfa;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
             <span style="font-size: 0.9rem;">In-Season Mode: Switch to <strong>My Lineup Strategist</strong></span>
             <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
@@ -182,7 +182,7 @@
 
     <!-- Info & Guide Banner Shortcut -->
     <div class="guide-banner" id="guideBanner" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem;">
-        <div onclick="showTab('guide')" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
+        <div onclick="showTab('guide')" role="button" tabindex="0" aria-label="Read the User Guide" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('guide');}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
             <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
@@ -483,7 +483,7 @@
     </div>
 
     <!-- Removed 'flex-grow' from this button so it doesn't stretch awkwardly -->
-    <button class="btn btn-warning btn-sm" onclick="resetPicksOnly()" title="Reset Draft Picks">
+    <button class="btn btn-warning mds-btn-sm" onclick="resetPicksOnly()" title="Reset Draft Picks">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
         Reset Picks
     </button>
@@ -491,7 +491,7 @@
         
         <div class="search-wrapper">
             <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="searchBar" class="form-input search-input" placeholder="Search player..." onkeyup="renderBoard()">
+            <input type="text" id="searchBar" class="form-input search-input" placeholder="Search player...">
         </div>
     </section>
 

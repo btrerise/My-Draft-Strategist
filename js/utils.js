@@ -114,3 +114,25 @@ window.showToast = function(message) {
     toast.classList.remove('show');
   }, 2500);
 };
+
+// --- FLASH BUTTON FEEDBACK ---
+// Shared by mds.js and mls.js (previously two separate near-identical copies).
+// Uses innerHTML rather than innerText: some buttons' resting state includes icon markup
+// (callers capture btn.innerHTML beforehand as the fallback to restore), and plain-text
+// flash messages render identically either way, so innerHTML is the safe common choice.
+window.flashButton = function(btn, text, isError = false, fallbackContent = null, duration = 2500) {
+    if (!btn) return;
+    const originalContent = fallbackContent || btn.innerHTML;
+    const originalBg = btn.style.backgroundColor;
+
+    btn.innerHTML = text;
+    btn.style.backgroundColor = isError ? "var(--error-color, #ea4335)" : "var(--success-color, #4ade80)";
+    btn.style.color = isError ? "white" : "var(--bg-main, #0b132b)";
+
+    clearTimeout(btn.flashTimeout);
+    btn.flashTimeout = setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.style.backgroundColor = originalBg;
+        btn.style.color = "";
+    }, duration);
+};

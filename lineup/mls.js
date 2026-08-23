@@ -34,25 +34,16 @@
     };
 
     // --- UTILITY HELPERS ---
-    function normalizeName(name) {
-        return name ? name.toLowerCase().replace(/[^a-z]/g, '') : '';
-    }
+    // normalizeName intentionally NOT redeclared here -- it previously shadowed the
+    // shared, alias-aware version in js/utils.js (loaded before this file), which caused
+    // Sleeper-sourced names to fail matching against user-uploaded rankings for any player
+    // needing suffix stripping, accent stripping, or the alias map (e.g. Gabe Davis /
+    // Gabriel Davis). Calls to normalizeName() below now resolve to that shared version.
+    // Do not add a local normalizeName() back without updating utils.js instead.
 
-    function flashButton(btn, text, isError = false, fallbackText = null, duration = 2500) {
-        if (!btn) return;
-        const originalText = fallbackText || btn.innerText;
-        const originalBg = btn.style.backgroundColor;
-
-        btn.innerText = text;
-        btn.style.backgroundColor = isError ? "var(--error-color, #ea4335)" : "var(--success-color, #4ade80)";
-        btn.style.color = isError ? "white" : "var(--bg-main, #0b132b)";
-
-        setTimeout(() => {
-            btn.innerText = originalText;
-            btn.style.backgroundColor = originalBg;
-            btn.style.color = "";
-        }, duration);
-    }
+    // flashButton intentionally NOT declared here either -- previously a separate near-duplicate
+    // of mds.js's local copy. Both now consolidated into the single shared version in
+    // js/utils.js. Calls below resolve to that shared version.
 
     // --- DRAWER & SWIPE LOGIC ---
     window.toggleDrawer = function() {

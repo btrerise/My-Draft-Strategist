@@ -137,22 +137,20 @@
     }
 
     // --- UI HELPERS ---
-    function flashButton(btn, text, isError = false, fallbackContent = null) {
-        if (!btn) return;
-        const originalContent = fallbackContent || btn.innerHTML; // Changed to innerHTML
-        const originalBg = btn.style.backgroundColor;
-
-        btn.innerHTML = text; // Changed to innerHTML
-        btn.style.backgroundColor = isError ? "var(--error-color, #ea4335)" : "var(--success-color, #4ade80)";
-        btn.style.color = isError ? "white" : "var(--bg-main, #0b132b)";
-
-        setTimeout(() => {
-            btn.innerHTML = originalContent; // Changed to innerHTML
-            btn.style.backgroundColor = originalBg;
-            btn.style.color = "";
-        }, 2500);
+    // Generic debounce: delays calling fn until `wait` ms have passed since the last call.
+    // Used on the search input so renderBoard() (which rebuilds the whole player pool) doesn't
+    // run on every single keystroke.
+    function debounce(fn, wait) {
+        let timer = null;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), wait);
+        };
     }
-    
+
+    // flashButton intentionally NOT declared here -- previously shadowed the shared version
+    // now in js/utils.js (loaded before this file). Calls below resolve to that shared version.
+
     window.toggleMenu = function() {
     const menu = document.getElementById('hamburgerMenu');
     const overlay = document.getElementById('menuOverlay');
@@ -1403,6 +1401,10 @@ function parseExcel(file) {
     }
 
     function renderFantasyRoster() {
+        if (State.players.length === 0) {
+            return `<div class="empty-state-card"><p>Load rankings on the Setup tab to start building your roster.</p><button class="btn btn-primary" style="margin-top: 1rem; width: auto;" onclick="showTab('setup')">Go to Setup</button></div>`;
+        }
+
         let draft = getActiveDraft();
         if (!draft) return `<div style="text-align:center; color:var(--text-muted);">Select or add a draft first.</div>`;
 
@@ -1436,7 +1438,7 @@ function parseExcel(file) {
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Bye: ${p.bye}</div>
-                        <button class="btn-sm btn-draft" style="padding: 2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
+                        <button class="mds-btn-sm btn-draft" style="padding: 2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
                     </div>
                 </div>`;
             } else {
@@ -1787,12 +1789,208 @@ function parseExcel(file) {
         }
     };
 
+    // Pure function: same pattern as buildPlayerCardHTML above, for the Queue tab's cards.
+    // Pure function: player object + current draft context in, one player-card's HTML string out.
+    // No side effects, no DOM access -- extracted from what used to be inline in renderBoard()'s
+    // main forEach loop so this ~130-line template is readable and testable on its own.
+    function buildPlayerCardHTML(p, currentOverallPick, showStacks, myQbs, myPassCatchers, draft) {
+        let customStyle = getCallOutStyle(p.name);
+        let valueBadgeHTML = "";
+        let diff = currentOverallPick - p.rank;
+        if (diff > 0) {
+            valueBadgeHTML = ` | <span class="badge badge-value">+${diff} Value</span>`;
+        } else if (diff < 0) {
+            valueBadgeHTML = ` | <span class="badge badge-reach">${diff} Reach</span>`;
+        } else {
+            valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
+        }
+        
+        if (p.posGroup === 'WR' && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
+            const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normName = normFunc(p.name); 
+            const tInfo = tScoreData[normName];
+            
+            if (tInfo) {
+                let tsColor = "#9ca3af";
+                let tsBg = "rgba(255,255,255,0.1)";
+                let tsBorder = "var(--border)";
+                
+                if (tInfo.c === 'label-elite') { tsColor = "#a855f7"; tsBg = "rgba(168, 85, 247, 0.15)"; tsBorder = "rgba(168, 85, 247, 0.3)"; }
+                else if (tInfo.c === 'label-high') { tsColor = "#3b82f6"; tsBg = "rgba(59, 130, 246, 0.15)"; tsBorder = "rgba(59, 130, 246, 0.3)"; }
+                else if (tInfo.c === 'label-strong') { tsColor = "#10b981"; tsBg = "rgba(16, 185, 129, 0.15)"; tsBorder = "rgba(16, 185, 129, 0.3)"; }
+                else if (tInfo.c === 'label-quality') { tsColor = "#f59e0b"; tsBg = "rgba(245, 158, 11, 0.15)"; tsBorder = "rgba(245, 158, 11, 0.3)"; }
+                else if (tInfo.c === 'label-boom') { tsColor = "#ef4444"; tsBg = "rgba(239, 68, 68, 0.15)"; tsBorder = "rgba(239, 68, 68, 0.3)"; }
+                
+                let tScoreHTML = ` | 
+                    <div class="tooltip-container" style="display:inline-flex;">
+                        <span class="badge" style="background: ${tsBg}; color: ${tsColor}; border: 1px solid ${tsBorder}; font-weight: 700;">${tInfo.l}</span>
+                        <span class="tooltip-text" style="width: max-content; white-space: nowrap;">T-Score: ${tInfo.s} | ${tInfo.l}</span>
+                    </div>`;
+                
+                valueBadgeHTML += tScoreHTML;
+            }
+        }
+
+        let adpText = (p.adp && p.adp !== "-") ? ` | Market: ${p.adp}` : "";
+        let isStack = false;
+        if (showStacks && p.team !== "FA") {
+            if (['WR', 'TE'].includes(p.posGroup) && myQbs.includes(p.team)) isStack = true;
+            if (p.posGroup === 'QB' && myPassCatchers.includes(p.team)) isStack = true;
+        }
+
+        let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">Stack</span>` : "";
+        let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
+        
+        // NEW: Generate the injury badge using your existing CSS class
+        let injuryBadge = p.injury ? `<span class="badge inj-badge">${p.injury}</span>` : "";
+        
+        // Check if the card was expanded before the sync happened
+        let expandedClass = p.isExpanded ? " is-expanded" : "";
+
+        let isQueued = draft.queue && draft.queue.includes(p.id);
+        let queueStarIcon = isQueued ? "★" : "☆";
+        let queueStarColor = isQueued ? "#f59e0b" : "var(--text-muted)";
+
+        return `
+            <div class="player-card${expandedClass}" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
+                
+                <div class="card-grid" style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch; text-align: left;">
+                    
+                    <!-- TOP ROW: Rank & Name -->
+                    <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0;">
+                        <span style="color: var(--text-muted); font-weight: 500; font-size: 1rem; flex-shrink: 0;">${p.rank}.</span> 
+                        <h4 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
+                            ${p.name}
+                        </h4>
+                    </div>
+
+                    <!-- BOTTOM ROW: Badges & Actions -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: nowrap;">
+                        
+                        <!-- Bottom Left: Badges & Star -->
+                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                            <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
+                            ${rookieBadge}
+                            ${injuryBadge}
+                            ${stackBadge}
+                            <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue">${queueStarIcon}</button>
+                        </div>
+                        
+                        <!-- Bottom Right: Draft Actions & Chevron -->
+                        <div class="actions" style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
+                            <button class="mds-btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
+                            <button class="mds-btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">Pick</button>
+                            <button class="btn-expand hide-on-desktop" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
+                                <svg class="chevron-icon" style="transform: ${p.isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-details" id="details-${p.id}">
+                    <div class="player-stats">
+                        <span>${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</span>
+                        <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                        </span>
+                    </div>
+                    <div class="inline-editor" id="inline-edit-${p.id}" style="${p.isEditing ? 'display: flex;' : ''}">
+                        <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
+                            <div>
+                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
+                                <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
+                                <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
+                                <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
+                                <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
+                            </div>
+                            <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
+                                <button class="mds-btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
+                                <button class="mds-btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+    function buildQueueCardHTML(p, idx, isFirst, isLast) {
+        return `
+            <div class="player-card queue-card" 
+                 draggable="true" 
+                 ondragstart="handleQueueDragStart(event, ${idx})" 
+                 ondragover="handleQueueDragOver(event)" 
+                 ondragend="handleQueueDragEnd(event)" 
+                 ondrop="handleQueueDrop(event, ${idx})"
+                 style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.04); padding: 0.75rem; text-align: left;">
+                 
+                <div style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch;">
+                    
+                    <!-- TOP ROW: Grip & Name -->
+                    <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0;">
+                        <span style="color: var(--text-muted); cursor: grab; user-select: none; flex-shrink: 0; font-size: 1.1rem; margin-right: 0.2rem;" title="Drag to reorder">⋮⋮</span>
+                        <h4 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
+                            ${p.name}
+                        </h4>
+                    </div>
+
+                    <!-- BOTTOM ROW: Arrows, Badges, Star & Actions -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: nowrap;">
+                        
+                        <!-- Left Side: Arrows, Badges & Star -->
+                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                            <button class="mds-btn-sm btn-secondary" style="padding: 2px 8px; background: var(--bg-card); border-color: var(--border);" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+                            <button class="mds-btn-sm btn-secondary" style="padding: 2px 8px; background: var(--bg-card); border-color: var(--border);" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                            <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span>
+                            <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
+                        </div>
+                        
+                        <!-- Right Side: Draft Actions -->
+                        <div style="display: flex; gap: 0.4rem; flex-shrink: 0; align-items: center;">
+                            <button class="mds-btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
+                            <button class="mds-btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">Pick</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
     function renderBoard() {
         const poolEl = document.getElementById('playerPool');
         const myTeamEl = document.getElementById('myTeamList');
         const otherEl = document.getElementById('otherDraftedList');
         const searchEl = document.getElementById('searchBar');
         const searchTerm = searchEl ? searchEl.value.toLowerCase() : "";
+        const tierTrackerElEarly = document.getElementById('tierTracker');
+
+        // Same empty-state pattern as renderDraftMatrix() (Board tab): without any rankings
+        // loaded, there's nothing to show yet, so say so instead of leaving this blank.
+        // Covers Tracker (tierTracker/playerPool) AND Team (myTeamList/otherDraftedList) --
+        // both tabs render through this same function, so both need to be handled here or
+        // an early return leaves the Team tab silently blank with no guidance.
+        if (State.players.length === 0) {
+            if (tierTrackerElEarly) tierTrackerElEarly.innerHTML = '';
+            if (poolEl) {
+                poolEl.innerHTML = `<div class="empty-state-card"><p>Load rankings on the Setup tab to see your player pool here.</p><button class="btn btn-primary" style="margin-top: 1rem; width: auto;" onclick="showTab('setup')">Go to Setup</button></div>`;
+            }
+            if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster();
+            if (otherEl) {
+                otherEl.innerHTML = `<div class="empty-state-card"><p>Drafted players from other teams will show up here once you're synced or tracking picks.</p><button class="btn btn-primary" style="margin-top: 1rem; width: auto;" onclick="showTab('setup')">Go to Setup</button></div>`;
+            }
+            const limitsBodyElEmpty = document.getElementById('limitsBody');
+            if (limitsBodyElEmpty) {
+                const dLimits = getActiveDraft()?.limits || { QB:1, RB:2, WR:3, TE:1, FLEX:1, SFLEX:0, BENCH:6, TOTAL:14 };
+                limitsBodyElEmpty.innerHTML = `<tr><td>0 / ${dLimits.QB}</td><td>0 / ${dLimits.RB}</td><td>0 / ${dLimits.WR}</td><td>0 / ${dLimits.TE}</td><td>0 / ${dLimits.FLEX}</td><td>0 / ${dLimits.SFLEX}</td><td><strong>0 / ${dLimits.TOTAL}</strong></td></tr>`;
+            }
+            return;
+        }
 
         let draft = getActiveDraft();
         let draftedPlayers = draft ? draft.draftedPlayers : [];
@@ -1829,6 +2027,7 @@ function parseExcel(file) {
         let myQbs = myTeam.map(id => State.players.find(p => p.id === id)).filter(p => p && p.posGroup === 'QB').map(p => p.team).filter(t => t !== "FA");
         let myPassCatchers = myTeam.map(id => State.players.find(p => p.id === id)).filter(p => p && ['WR', 'TE'].includes(p.posGroup)).map(p => p.team).filter(t => t !== "FA");
 
+
         let lastTier = null;
 
         State.players.forEach(p => {
@@ -1848,132 +2047,7 @@ function parseExcel(file) {
                         lastTier = p.tier;
                     }
 
-                    let customStyle = getCallOutStyle(p.name);
-                    let valueBadgeHTML = "";
-                    let diff = currentOverallPick - p.rank;
-                    if (diff > 0) {
-                        valueBadgeHTML = ` | <span class="badge badge-value">+${diff} Value</span>`;
-                    } else if (diff < 0) {
-                        valueBadgeHTML = ` | <span class="badge badge-reach">${diff} Reach</span>`;
-                    } else {
-                        valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
-                    }
-                    
-                    if (p.posGroup === 'WR' && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
-                        const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        const normName = normFunc(p.name); 
-                        const tInfo = tScoreData[normName];
-                        
-                        if (tInfo) {
-                            let tsColor = "#9ca3af";
-                            let tsBg = "rgba(255,255,255,0.1)";
-                            let tsBorder = "var(--border)";
-                            
-                            if (tInfo.c === 'label-elite') { tsColor = "#a855f7"; tsBg = "rgba(168, 85, 247, 0.15)"; tsBorder = "rgba(168, 85, 247, 0.3)"; }
-                            else if (tInfo.c === 'label-high') { tsColor = "#3b82f6"; tsBg = "rgba(59, 130, 246, 0.15)"; tsBorder = "rgba(59, 130, 246, 0.3)"; }
-                            else if (tInfo.c === 'label-strong') { tsColor = "#10b981"; tsBg = "rgba(16, 185, 129, 0.15)"; tsBorder = "rgba(16, 185, 129, 0.3)"; }
-                            else if (tInfo.c === 'label-quality') { tsColor = "#f59e0b"; tsBg = "rgba(245, 158, 11, 0.15)"; tsBorder = "rgba(245, 158, 11, 0.3)"; }
-                            else if (tInfo.c === 'label-boom') { tsColor = "#ef4444"; tsBg = "rgba(239, 68, 68, 0.15)"; tsBorder = "rgba(239, 68, 68, 0.3)"; }
-                            
-                            let tScoreHTML = ` | 
-                                <div class="tooltip-container" style="display:inline-flex;">
-                                    <span class="badge" style="background: ${tsBg}; color: ${tsColor}; border: 1px solid ${tsBorder}; font-weight: 700;">${tInfo.l}</span>
-                                    <span class="tooltip-text" style="width: max-content; white-space: nowrap;">T-Score: ${tInfo.s} | ${tInfo.l}</span>
-                                </div>`;
-                            
-                            valueBadgeHTML += tScoreHTML;
-                        }
-                    }
-
-                    let adpText = (p.adp && p.adp !== "-") ? ` | Market: ${p.adp}` : "";
-                    let isStack = false;
-                    if (showStacks && p.team !== "FA") {
-                        if (['WR', 'TE'].includes(p.posGroup) && myQbs.includes(p.team)) isStack = true;
-                        if (p.posGroup === 'QB' && myPassCatchers.includes(p.team)) isStack = true;
-                    }
-
-                    let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">Stack</span>` : "";
-                    let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
-                    
-                    // NEW: Generate the injury badge using your existing CSS class
-                    let injuryBadge = p.injury ? `<span class="badge inj-badge">${p.injury}</span>` : "";
-                    
-                    // Check if the card was expanded before the sync happened
-                    let expandedClass = p.isExpanded ? " is-expanded" : "";
-
-                    let isQueued = draft.queue && draft.queue.includes(p.id);
-                    let queueStarIcon = isQueued ? "★" : "☆";
-                    let queueStarColor = isQueued ? "#f59e0b" : "var(--text-muted)";
-
-                    newPoolHTML += `
-                        <div class="player-card${expandedClass}" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
-                            
-                            <div class="card-grid" style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch; text-align: left;">
-                                
-                                <!-- TOP ROW: Rank & Name -->
-                                <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0;">
-                                    <span style="color: var(--text-muted); font-weight: 500; font-size: 1rem; flex-shrink: 0;">${p.rank}.</span> 
-                                    <h4 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
-                                        ${p.name}
-                                    </h4>
-                                </div>
-
-                                <!-- BOTTOM ROW: Badges & Actions -->
-                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: nowrap;">
-                                    
-                                    <!-- Bottom Left: Badges & Star -->
-                                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                                        <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
-                                        ${rookieBadge}
-                                        ${injuryBadge}
-                                        ${stackBadge}
-                                        <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue">${queueStarIcon}</button>
-                                    </div>
-                                    
-                                    <!-- Bottom Right: Draft Actions & Chevron -->
-                                    <div class="actions" style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
-                                        <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
-                                        <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">Pick</button>
-                                        <button class="btn-expand hide-on-desktop" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
-                                            <svg class="chevron-icon" style="transform: ${p.isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="card-details" id="details-${p.id}">
-                                <div class="player-stats">
-                                    <span>${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</span>
-                                    <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                                    </span>
-                                </div>
-                                <div class="inline-editor" id="inline-edit-${p.id}" style="${p.isEditing ? 'display: flex;' : ''}">
-                                    <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
-                                        <div>
-                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
-                                            <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
-                                            <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
-                                            <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
-                                            <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
-                                        </div>
-                                        <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
-                                            <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
-                                            <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>`;
+                    newPoolHTML += buildPlayerCardHTML(p, currentOverallPick, showStacks, myQbs, myPassCatchers, draft);
                 }
             }
         });
@@ -2000,45 +2074,7 @@ function parseExcel(file) {
                     if (p) {
                         let isFirst = idx === 0;
                         let isLast = idx === activeQueue.length - 1;
-
-                        newQueueHTML += `
-                            <div class="player-card queue-card" 
-                                 draggable="true" 
-                                 ondragstart="handleQueueDragStart(event, ${idx})" 
-                                 ondragover="handleQueueDragOver(event)" 
-                                 ondragend="handleQueueDragEnd(event)" 
-                                 ondrop="handleQueueDrop(event, ${idx})"
-                                 style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.04); padding: 0.75rem; text-align: left;">
-                                 
-                                <div style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch;">
-                                    
-                                    <!-- TOP ROW: Grip & Name -->
-                                    <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0;">
-                                        <span style="color: var(--text-muted); cursor: grab; user-select: none; flex-shrink: 0; font-size: 1.1rem; margin-right: 0.2rem;" title="Drag to reorder">⋮⋮</span>
-                                        <h4 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
-                                            ${p.name}
-                                        </h4>
-                                    </div>
-
-                                    <!-- BOTTOM ROW: Arrows, Badges, Star & Actions -->
-                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: nowrap;">
-                                        
-                                        <!-- Left Side: Arrows, Badges & Star -->
-                                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                                            <button class="btn-sm btn-secondary" style="padding: 2px 8px; background: var(--bg-card); border-color: var(--border);" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
-                                            <button class="btn-sm btn-secondary" style="padding: 2px 8px; background: var(--bg-card); border-color: var(--border);" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
-                                            <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span>
-                                            <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
-                                        </div>
-                                        
-                                        <!-- Right Side: Draft Actions -->
-                                        <div style="display: flex; gap: 0.4rem; flex-shrink: 0; align-items: center;">
-                                            <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
-                                            <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">Pick</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>`;
+                        newQueueHTML += buildQueueCardHTML(p, idx, isFirst, isLast);
                     }
                 });
                 newQueueHTML += `</div>`;
@@ -2061,7 +2097,7 @@ function parseExcel(file) {
                     newOtherHTML += `
                         <div class="roster-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border);">
                             <div style="color: var(--text-muted);"><strike>${p.name}</strike> <span class="badge">${p.posGroup}</span></div>
-                            <button class="btn-sm btn-draft" style="padding:2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
+                            <button class="mds-btn-sm btn-draft" style="padding:2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
                         </div>`;
                 }
             });
@@ -2117,7 +2153,7 @@ window.toggleHeadshots = function(show) {
 
         const searchBarEl = document.getElementById('searchBar');
         if (searchBarEl) {
-            searchBarEl.addEventListener('input', renderBoard);
+            searchBarEl.addEventListener('input', debounce(renderBoard, 200));
         }
 
         // --- KEYBOARD ACCESSIBILITY FOR PLAYER CARDS ---
@@ -2133,6 +2169,16 @@ window.toggleHeadshots = function(show) {
         }
         // --- POWER-USER KEYBOARD SHORTCUTS ---
         document.addEventListener('keydown', (e) => {
+            // Escape closes the hamburger drawer from anywhere, so keyboard users have a way to
+            // dismiss it without a mouse. The menuOverlay backdrop is intentionally NOT a tab
+            // stop (standard pattern for backdrops); this plus the existing visible close button
+            // are the two keyboard-accessible ways to exit the menu.
+            const openMenu = document.getElementById('hamburgerMenu');
+            if (e.key === 'Escape' && openMenu && openMenu.classList.contains('open')) {
+                window.toggleMenu();
+                return;
+            }
+
             // Check if user is typing in an input field to prevent accidental triggers
             const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
             const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
@@ -2191,11 +2237,6 @@ window.toggleHeadshots = function(show) {
         });
 
         if (State.players.length > 0) renderBoard();
-    // --- UPDATE SHARED STORAGE ON DRAFT SWITCH ---
-        // Verify 'draftSelect' matches the ID of your draft dropdown in index.html
-        const draftDropdown = document.getElementById('draftSelect'); 
-        if (draftDropdown) {
-        }
     // --- MOBILE COLLAPSE TOGGLE ---
         const collapseCheckbox = document.getElementById('ds_mobile_collapse');
         if (collapseCheckbox) {
