@@ -29,8 +29,8 @@
     --pos-rb: rgba(16, 185, 129, 0.15);  --pos-rb-border: #10b981;
     --pos-wr: rgba(59, 130, 246, 0.15);  --pos-wr-border: #3b82f6;
     --pos-te: rgba(245, 158, 11, 0.15);  --pos-te-border: #f59e0b;
-    --pos-k:  rgba(156, 163, 175, 0.15); --pos-k-border: #9ca3af;
-    --pos-def: rgba(168, 85, 247, 0.15); --pos-def-border: #a855f7;
+    --pos-k: rgba(167, 139, 250, 0.15);   --pos-k-border: #a78bfa; /* Sleeper Kicker Lavender */
+    --pos-def: rgba(146, 93, 72, 0.15);   --pos-def-border: #925d48; /* Sleeper DEF Rust */
 }
 
 /* --- GLOBAL RESETS --- */
@@ -1473,19 +1473,34 @@ body {
     width: auto;
     min-width: 0;
     max-width: none;
+    
+    /* Visually mute non-selected filters */
+    opacity: 0.35;
+    filter: grayscale(85%);
 }
 
 .pos-filter:hover { 
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-main);
     transform: translateY(-2px);
+    
+    /* Slightly illuminate when hovering over an inactive filter */
+    opacity: 0.7;
+    filter: grayscale(40%);
 }
 
-.active-filter { 
+.pos-filter.active-filter { 
+    /* Snaps the filter back to full vibrancy, inheriting its native positional color */
+    opacity: 1;
+    filter: grayscale(0%);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.08); 
+}
+
+/* Specific rule for ALL button so it turns green when active, since it lacks a positional color */
+.pos-filter.badge-all.active-filter {
     color: var(--primary-green);
     background: var(--target-bg);
     border-color: var(--primary-green); 
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); 
 }
 
 /* Premium Tier Dividers (Replaces heavy green block) */

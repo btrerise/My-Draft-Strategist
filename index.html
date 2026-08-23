@@ -497,6 +497,9 @@
 
     <!-- 5-Column Position Grid -->
     <div id="tierTracker" class="tier-grid"></div>
+    
+    <!-- Pinned Queue -->
+    <div id="queueContainer"></div>
 
     <!-- Player Pool -->
     <div id="playerPool" class="player-pool-container">
@@ -718,9 +721,13 @@
                 <h4 class="step-title"><span class="step-num blue-step">6</span> The Tracker</h4>
                 <p class="step-desc">This is your primary view for drafting. It dynamically crosses off drafted players and leaves only the available pool.</p>
                 <ul class="guide-list">
-                    <li><strong class="text-main">Position Grid & Tiers:</strong> Use the position buttons to filter by position. The text <strong class="text-main">T2 (3)</strong> means that the highest available Tier for that position is currently Tier 2, and there are exactly 3 players remaining in that tier. Use this to quickly identify positional runs and drop-offs.</li>
+                    <li><strong class="text-main">Position Grid & Tiers:</strong> Use the position buttons to filter by position. The text <strong class="text-main">T2 (3)</strong> means that the highest available Tier for that position is currently Tier 2, and there are exactly 3 players remaining in that tier. Use this to quickly identify positional runs and drop-offs. Additionally, you can tap multiple position buttons at the top (e.g., RB and WR) to view specific positional runs side-by-side.</li>
+                    <li><strong class="text-main">Injury Status:</strong> Players with injury reports will have a visible badge indicating their status.</li>
+                    <li><strong class="text-main">Queue:</strong> Tap the <strong class="text-main" style="color: #f59e0b;">★</strong> on any player card to pin them to your personal Queue at the top of the Tracker. You can drag-and-drop or use the arrows to reorder your targets.</li>
+                    <li><strong class="text-main">Rookie Badge:</strong> First-year players will have a visible badge indicating their rookie status.</li>
+                    <li><strong class="text-main">Stacks:</strong> Players who are part of a stack (e.g., a QB and his WR) will have a visible badge indicating their stack status, if selected on the Setup tab.</li>
                     <li><strong class="text-main">Value / Reach Badge:</strong> On each player card, you'll see a dynamic value badge based on your rankings. <span class="badge badge-value">+12 Value</span> means their Custom Rank is 12 spots better than the current pick. <span class="badge badge-reach">-8 Reach</span> means drafting them now is a reach.</li>
-                    <li><strong class="text-main">Inline Editor:</strong> Tap the pencil icon (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>) on any player card to quickly adjust their Rank, Tier, Team, or Bye Week without leaving the Tracker.</li>
+                    <li><strong class="text-main">Inline Editor:</strong> Tap the pencil icon (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>) on any player card to quickly adjust their Rank, Tier, Team, or Bye Week without leaving the Tracker. You can also select the "★" button to add them to your queue.</li>
                     <li><strong class="text-main">Undo:</strong> If a mistake is made, drafted players can be returned to the pool using the "Undo" buttons.</li>
                 </ul>
             </div>

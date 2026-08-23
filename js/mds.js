@@ -42,7 +42,8 @@
                 draftedPlayers: JSON.parse(localStorage.getItem('ds_drafted')) || [],
                 myTeam: JSON.parse(localStorage.getItem('ds_myTeam')) || [],
                 rawDraftPicks: JSON.parse(localStorage.getItem('ds_raw_picks')) || [],
-                totalPicks: parseInt(localStorage.getItem('ds_total_picks')) || 0
+                totalPicks: parseInt(localStorage.getItem('ds_total_picks')) || 0,
+                queue: []
             };
             State.drafts = [defaultDraft];
             State.activeDraftId = 'draft_default';
@@ -288,11 +289,14 @@
                 RB: parseInt(getVal('limitRB')) || 0,
                 WR: parseInt(getVal('limitWR')) || 0,
                 TE: parseInt(getVal('limitTE')) || 0,
+                WT: draft.limits?.WT || 0, // NEW: Preserve W/T
                 FLEX: parseInt(getVal('limitFLEX')) || 0,
                 SFLEX: parseInt(getVal('limitSFLEX')) || 0,
+                K: draft.limits?.K || 0,
+                DEF: draft.limits?.DEF || 0,
                 BENCH: parseInt(getVal('limitBENCH')) || 0,
             };
-            draft.limits.TOTAL = draft.limits.QB + draft.limits.RB + draft.limits.WR + draft.limits.TE + draft.limits.FLEX + draft.limits.SFLEX + draft.limits.BENCH;
+            draft.limits.TOTAL = draft.limits.QB + draft.limits.RB + draft.limits.WR + draft.limits.TE + draft.limits.WT + draft.limits.FLEX + draft.limits.SFLEX + draft.limits.K + draft.limits.DEF + draft.limits.BENCH;
             saveActiveDraftState();
         }
 
@@ -357,7 +361,19 @@ window.addEventListener('popstate', (e) => {
 });
 
     window.setPosFilter = function(pos) {
-        State.activePosFilter = pos;
+        // Ensure State.activePosFilter is an array (backwards compatibility)
+        if (!Array.isArray(State.activePosFilter)) State.activePosFilter = [];
+
+        if (pos === 'ALL') {
+            State.activePosFilter = []; // Empty array means ALL
+        } else {
+            let idx = State.activePosFilter.indexOf(pos);
+            if (idx !== -1) {
+                State.activePosFilter.splice(idx, 1); // Toggle off
+            } else {
+                State.activePosFilter.push(pos); // Toggle on
+            }
+        }
         renderBoard();
     };
 
@@ -453,7 +469,8 @@ window.addEventListener('popstate', (e) => {
             draftedPlayers: [],
             myTeam: [],
             rawDraftPicks: [],
-            totalPicks: 0
+            totalPicks: 0,
+            queue: []
         };
 
         State.drafts.push(newDraft);
@@ -514,33 +531,41 @@ window.addEventListener('popstate', (e) => {
                 is3RR: dInfo.settings?.reversal_round === 3
             };
 
-            let draftLimits = { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
+            let draftLimits = { QB: 0, RB: 0, WR: 0, TE: 0, WT: 0, FLEX: 0, SFLEX: 0, K: 0, DEF: 0, BENCH: 0 };
 
             // Parse Sleeper's roster_positions array if we successfully grabbed the league
             if (fetchedLeague && fetchedLeague.roster_positions) {
-                draftLimits = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0, BENCH: 0 };
                 fetchedLeague.roster_positions.forEach(pos => {
                     if (pos === 'QB') draftLimits.QB++;
                     else if (pos === 'RB') draftLimits.RB++;
                     else if (pos === 'WR') draftLimits.WR++;
                     else if (pos === 'TE') draftLimits.TE++;
+                    else if (pos === 'W/T') draftLimits.WT++; // NEW: W/T Slot
                     else if (pos === 'FLEX' || pos === 'W/R/T') draftLimits.FLEX++;
                     else if (pos === 'SUPER_FLEX' || pos === 'Q/W/R/T') draftLimits.SFLEX++;
+                    else if (pos === 'K') draftLimits.K++;
+                    else if (pos === 'DEF') draftLimits.DEF++;
                     else if (pos === 'BN') draftLimits.BENCH++;
                 });
             } else {
                 // Fallback for manual/mock drafts unattached to a league
+                // This strictly checks for undefined so that a '0' doesn't accidentally trigger the fallback
+                const getSlot = (key, def) => dInfo.settings && dInfo.settings[key] !== undefined ? dInfo.settings[key] : def;
+                
                 draftLimits = {
-                    QB: dInfo.settings?.slots_qb || 1,
-                    RB: dInfo.settings?.slots_rb || 2,
-                    WR: dInfo.settings?.slots_wr || 3,
-                    TE: dInfo.settings?.slots_te || 1,
-                    FLEX: dInfo.settings?.slots_flex || 1,
-                    SFLEX: dInfo.settings?.slots_super_flex || 0,
-                    BENCH: dInfo.settings?.slots_bn || 6,
+                    QB: getSlot('slots_qb', 1),
+                    RB: getSlot('slots_rb', 2),
+                    WR: getSlot('slots_wr', 3),
+                    TE: getSlot('slots_te', 1),
+                    WT: getSlot('slots_rec_flex', 0), // NEW: Sleeper identifies W/T as rec_flex
+                    FLEX: getSlot('slots_flex', 1),
+                    SFLEX: getSlot('slots_super_flex', 0),
+                    K: getSlot('slots_k', 0),
+                    DEF: getSlot('slots_def', 0),
+                    BENCH: getSlot('slots_bn', 6),
                 };
             }
-            draftLimits.TOTAL = draftLimits.QB + draftLimits.RB + draftLimits.WR + draftLimits.TE + draftLimits.FLEX + draftLimits.SFLEX + draftLimits.BENCH;
+            draftLimits.TOTAL = draftLimits.QB + draftLimits.RB + draftLimits.WR + draftLimits.TE + draftLimits.WT + draftLimits.FLEX + draftLimits.SFLEX + draftLimits.K + draftLimits.DEF + draftLimits.BENCH;
 
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
             if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
@@ -581,7 +606,8 @@ window.addEventListener('popstate', (e) => {
                 myTeam: Array.from(new Set([...sleeperMyTeam, ...manualMyTeam])),
                 rawDraftPicks: picksData || [],
                 totalPicks: picksData ? picksData.length : 0,
-                draftSlotNames: draftSlotNames // <-- Add this here
+                draftSlotNames: draftSlotNames,
+                queue: existingDraft && existingDraft.queue ? existingDraft.queue : []
             };
 
             let existingIdx = State.drafts.findIndex(d => d.draftId === draftId);
@@ -751,6 +777,83 @@ window.addEventListener('popstate', (e) => {
         if (p && typeof window.showToast === 'function') window.showToast(`${p.name} returned to pool`);
     };
 
+    window.toggleQueue = function(id) {
+        let draft = getActiveDraft();
+        if (!draft) return;
+        
+        if (!draft.queue) draft.queue = [];
+
+        if (draft.queue.includes(id)) {
+            draft.queue = draft.queue.filter(qId => qId !== id);
+        } else {
+            draft.queue.push(id);
+        }
+
+        saveActiveDraftState();
+        renderBoard();
+    };
+
+// --- QUEUE REORDERING LOGIC ---
+    let draggedQueueIndex = null;
+
+    window.handleQueueDragStart = function(e, index) {
+        draggedQueueIndex = index;
+        e.dataTransfer.effectAllowed = 'move';
+        e.currentTarget.style.opacity = '0.4';
+    };
+
+    window.handleQueueDragOver = function(e) {
+        e.preventDefault(); // Required to allow drop
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    window.handleQueueDragEnd = function(e) {
+        e.currentTarget.style.opacity = '1';
+        draggedQueueIndex = null;
+    };
+
+    window.handleQueueDrop = function(e, targetIndex) {
+        e.preventDefault();
+        if (draggedQueueIndex === null || draggedQueueIndex === targetIndex) return;
+
+        let draft = getActiveDraft();
+        if (!draft || !draft.queue) return;
+
+        let draftedPlayers = draft.draftedPlayers || [];
+        let activeQueue = draft.queue.filter(id => !draftedPlayers.includes(id));
+
+        // Move the dragged item to the new index
+        const [movedItem] = activeQueue.splice(draggedQueueIndex, 1);
+        activeQueue.splice(targetIndex, 0, movedItem);
+
+        // Combine back with any already-drafted queued items
+        let draftedQueue = draft.queue.filter(id => draftedPlayers.includes(id));
+        draft.queue = [...activeQueue, ...draftedQueue];
+
+        saveActiveDraftState();
+        renderBoard();
+    };
+
+    window.moveQueueItem = function(index, direction) {
+        let draft = getActiveDraft();
+        if (!draft || !draft.queue) return;
+
+        let draftedPlayers = draft.draftedPlayers || [];
+        let activeQueue = draft.queue.filter(id => !draftedPlayers.includes(id));
+
+        let targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= activeQueue.length) return;
+
+        const [movedItem] = activeQueue.splice(index, 1);
+        activeQueue.splice(targetIndex, 0, movedItem);
+
+        let draftedQueue = draft.queue.filter(id => draftedPlayers.includes(id));
+        draft.queue = [...activeQueue, ...draftedQueue];
+
+        saveActiveDraftState();
+        renderBoard();
+    };
+
     function getCallOutStyle(playerName) {
         let n = playerName.toLowerCase();
         let targets = (localStorage.getItem('ds_targets') || "").split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -766,10 +869,10 @@ window.addEventListener('popstate', (e) => {
     function getTierTrackerData() {
         let draft = getActiveDraft();
         let drafted = draft ? draft.draftedPlayers : [];
-        let trackers = { QB: null, RB: null, WR: null, TE: null };
+        let trackers = { QB: null, RB: null, WR: null, TE: null, K: null, DEF: null };
         let available = State.players.filter(p => !drafted.includes(p.id));
 
-        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+        ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].forEach(pos => {
             let posPlayers = available.filter(p => p.posGroup === pos && p.tier !== "-");
             if (posPlayers.length > 0) {
                 let minTier = Math.min(...posPlayers.map(p => parseInt(p.tier) || 99));
@@ -1017,7 +1120,7 @@ function parseExcel(file) {
                 let bye = BYE_WEEKS_2026[team] || "-";
                 
                 let posGroup = (sp.position || "FLEX").toUpperCase();
-                if (!['QB', 'RB', 'WR', 'TE'].includes(posGroup)) return;
+                if (!['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(posGroup)) return;
 
                 if (!posCounters[posGroup]) posCounters[posGroup] = 1;
                 let posDisplay = posGroup + posCounters[posGroup];
@@ -1349,7 +1452,7 @@ function parseExcel(file) {
             }
         };
 
-        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+        ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].forEach(pos => {
             let count = limits[pos] || 0;
             let color = `var(--pos-${pos.toLowerCase()}-border)`;
             for (let i = 0; i < count; i++) {
@@ -1359,6 +1462,14 @@ function parseExcel(file) {
             }
         });
 
+        // NEW: Fill W/T (Wide Receiver / Tight End) Flex Slots
+        for (let i = 0; i < (limits.WT || 0); i++) {
+            let idx = availablePool.findIndex(p => ['WR', 'TE'].includes(p.posGroup));
+            let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
+            rosterSlotsHTML += buildSlotHTML('W/T', '#2dd4bf', p); // Distinct teal color
+        }
+
+        // Fill Standard W/R/T Flex Slots
         for (let i = 0; i < (limits.FLEX || 0); i++) {
             let idx = availablePool.findIndex(p => ['RB', 'WR', 'TE'].includes(p.posGroup));
             let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
@@ -1690,7 +1801,8 @@ function parseExcel(file) {
 
         let newPoolHTML = '';
         let posCounts = { "QB": 0, "RB": 0, "WR": 0, "TE": 0 };
-        let totalPicksDone = draftedPlayers.length;
+        // Check Sleeper's raw pick count first so unranked K/DEF are included in the math
+        let totalPicksDone = (draft && draft.rawDraftPicks && draft.rawDraftPicks.length > 0) ? draft.rawDraftPicks.length : draftedPlayers.length;
         let currentOverallPick = totalPicksDone + 1;
         
         let teamsInLeague = draft?.settings?.teams || 12;
@@ -1701,10 +1813,12 @@ function parseExcel(file) {
         if (pickTrackerEl) pickTrackerEl.innerText = `Pick: ${round}.${pickInRound.toString().padStart(2, '0')}`;
 
         const trackers = getTierTrackerData();
-        let trackerHTML = `<div class="badge badge-all pos-filter ${State.activePosFilter === 'ALL' ? 'active-filter' : ''}" onclick="setPosFilter('ALL')"><span>ALL</span></div>`;
+        let isAllActive = !Array.isArray(State.activePosFilter) || State.activePosFilter.length === 0;
+        let trackerHTML = `<div class="badge badge-all pos-filter ${isAllActive ? 'active-filter' : ''}" onclick="setPosFilter('ALL')"><span>ALL</span></div>`;
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let isActive = State.activePosFilter === pos ? 'active-filter' : '';
+            // If ALL is active, everything lights up. Otherwise, check if this specific pos is selected.
+            let isActive = isAllActive || (Array.isArray(State.activePosFilter) && State.activePosFilter.includes(pos)) ? 'active-filter' : '';
             let tText = trackers[pos] ? `T${trackers[pos].tier} (${trackers[pos].count})` : "—";
             trackerHTML += `<div class="badge pos-badge ${pos} pos-filter ${isActive}" onclick="setPosFilter('${pos}')"><span>${pos}</span><span style="font-size:0.65rem; opacity:0.9;">${tText}</span></div>`;
         });
@@ -1724,7 +1838,9 @@ function parseExcel(file) {
             if (isMine && posCounts[p.posGroup] !== undefined) posCounts[p.posGroup]++;
 
             if (!isDrafted) {
-                if (State.activePosFilter !== 'ALL' && p.posGroup !== State.activePosFilter) return;
+                if (Array.isArray(State.activePosFilter) && State.activePosFilter.length > 0) {
+                    if (!State.activePosFilter.includes(p.posGroup)) return;
+                }
 
                 if (p.name.toLowerCase().includes(searchTerm)) {
                     if (searchTerm === "" && p.tier !== lastTier && p.tier !== "-") {
@@ -1785,56 +1901,74 @@ function parseExcel(file) {
                     // Check if the card was expanded before the sync happened
                     let expandedClass = p.isExpanded ? " is-expanded" : "";
 
+                    let isQueued = draft.queue && draft.queue.includes(p.id);
+                    let queueStarIcon = isQueued ? "★" : "☆";
+                    let queueStarColor = isQueued ? "#f59e0b" : "var(--text-muted)";
+
                     newPoolHTML += `
                         <div class="player-card${expandedClass}" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
-                            <div class="card-grid">
-                                <div class="player-info">
-                                    <h4>
-                                        ${p.rank}. ${p.name} 
+                            
+                            <div class="card-grid" style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch; text-align: left;">
+                                
+                                <!-- TOP ROW: Rank & Name -->
+                                <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0;">
+                                    <span style="color: var(--text-muted); font-weight: 500; font-size: 1rem; flex-shrink: 0;">${p.rank}.</span> 
+                                    <h4 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
+                                        ${p.name}
+                                    </h4>
+                                </div>
+
+                                <!-- BOTTOM ROW: Badges & Actions -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: nowrap;">
+                                    
+                                    <!-- Bottom Left: Badges & Star -->
+                                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
                                         <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                                         ${rookieBadge}
                                         ${injuryBadge}
                                         ${stackBadge}
-                                    </h4>
-                                </div>
-                                
-                                <div class="actions">
-                                    <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
-                                    <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">My Pick</button>
-                                    <button class="btn-sm btn-expand hide-on-desktop" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
-                                        <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                    </button>
-                                </div>
-
-                                <div class="card-details" id="details-${p.id}">
-                                    <div class="player-stats">
-                                        <span>${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</span>
-                                        <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                                        </span>
+                                        <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue">${queueStarIcon}</button>
                                     </div>
-                                    <div class="inline-editor" id="inline-edit-${p.id}" style="${p.isEditing ? 'display: flex;' : ''}">
-                                        <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
-                                            <div>
-                                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
-                                                <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
-                                            </div>
-                                            <div>
-                                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
-                                                <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
-                                            </div>
-                                            <div>
-                                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
-                                                <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
-                                            </div>
-                                            <div>
-                                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
-                                                <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
-                                            </div>
-                                            <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
-                                                <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
-                                                <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
-                                            </div>
+                                    
+                                    <!-- Bottom Right: Draft Actions & Chevron -->
+                                    <div class="actions" style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
+                                        <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
+                                        <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">Pick</button>
+                                        <button class="btn-expand hide-on-desktop" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
+                                            <svg class="chevron-icon" style="transform: ${p.isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-details" id="details-${p.id}">
+                                <div class="player-stats">
+                                    <span>${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</span>
+                                    <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                    </span>
+                                </div>
+                                <div class="inline-editor" id="inline-edit-${p.id}" style="${p.isEditing ? 'display: flex;' : ''}">
+                                    <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
+                                        <div>
+                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
+                                            <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
+                                            <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
+                                            <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
+                                            <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
+                                        </div>
+                                        <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
+                                            <button class="btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
+                                            <button class="btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1851,6 +1985,66 @@ function parseExcel(file) {
                 </div>`;
         }
         if (poolEl) poolEl.innerHTML = newPoolHTML;
+        const queueEl = document.getElementById('queueContainer');
+        let newQueueHTML = '';
+
+        if (draft && draft.queue && draft.queue.length > 0) {
+            let activeQueue = draft.queue.filter(id => !draftedPlayers.includes(id));
+
+            if (activeQueue.length > 0) {
+                newQueueHTML += `<div style="font-weight: 700; color: #f59e0b; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</div>`;
+                newQueueHTML += `<div class="player-pool-container" style="margin-bottom: 1.5rem; border-bottom: 1px dashed var(--border); padding-bottom: 1.5rem;">`;
+
+                activeQueue.forEach((qId, idx) => {
+                    let p = State.players.find(x => x.id === qId);
+                    if (p) {
+                        let isFirst = idx === 0;
+                        let isLast = idx === activeQueue.length - 1;
+
+                        newQueueHTML += `
+                            <div class="player-card queue-card" 
+                                 draggable="true" 
+                                 ondragstart="handleQueueDragStart(event, ${idx})" 
+                                 ondragover="handleQueueDragOver(event)" 
+                                 ondragend="handleQueueDragEnd(event)" 
+                                 ondrop="handleQueueDrop(event, ${idx})"
+                                 style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.04); padding: 0.75rem; text-align: left;">
+                                 
+                                <div style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch;">
+                                    
+                                    <!-- TOP ROW: Grip & Name -->
+                                    <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0;">
+                                        <span style="color: var(--text-muted); cursor: grab; user-select: none; flex-shrink: 0; font-size: 1.1rem; margin-right: 0.2rem;" title="Drag to reorder">⋮⋮</span>
+                                        <h4 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
+                                            ${p.name}
+                                        </h4>
+                                    </div>
+
+                                    <!-- BOTTOM ROW: Arrows, Badges, Star & Actions -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: nowrap;">
+                                        
+                                        <!-- Left Side: Arrows, Badges & Star -->
+                                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                                            <button class="btn-sm btn-secondary" style="padding: 2px 8px; background: var(--bg-card); border-color: var(--border);" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+                                            <button class="btn-sm btn-secondary" style="padding: 2px 8px; background: var(--bg-card); border-color: var(--border);" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                                            <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span>
+                                            <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
+                                        </div>
+                                        
+                                        <!-- Right Side: Draft Actions -->
+                                        <div style="display: flex; gap: 0.4rem; flex-shrink: 0; align-items: center;">
+                                            <button class="btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
+                                            <button class="btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">Pick</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+                });
+                newQueueHTML += `</div>`;
+            }
+        }
+        if (queueEl) queueEl.innerHTML = newQueueHTML;
         if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster();
 
         let otherDraftedIds = draftedPlayers.filter(id => !myTeam.includes(id)).slice().reverse();
