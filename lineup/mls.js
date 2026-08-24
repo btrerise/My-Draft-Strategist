@@ -34,25 +34,16 @@
     };
 
     // --- UTILITY HELPERS ---
-    function normalizeName(name) {
-        return name ? name.toLowerCase().replace(/[^a-z]/g, '') : '';
-    }
+    // normalizeName intentionally NOT redeclared here -- it previously shadowed the
+    // shared, alias-aware version in js/utils.js (loaded before this file), which caused
+    // Sleeper-sourced names to fail matching against user-uploaded rankings for any player
+    // needing suffix stripping, accent stripping, or the alias map (e.g. Gabe Davis /
+    // Gabriel Davis). Calls to normalizeName() below now resolve to that shared version.
+    // Do not add a local normalizeName() back without updating utils.js instead.
 
-    function flashButton(btn, text, isError = false, fallbackText = null, duration = 2500) {
-        if (!btn) return;
-        const originalText = fallbackText || btn.innerText;
-        const originalBg = btn.style.backgroundColor;
-
-        btn.innerText = text;
-        btn.style.backgroundColor = isError ? "var(--error-color, #ea4335)" : "var(--success-color, #4ade80)";
-        btn.style.color = isError ? "white" : "var(--bg-main, #0b132b)";
-
-        setTimeout(() => {
-            btn.innerText = originalText;
-            btn.style.backgroundColor = originalBg;
-            btn.style.color = "";
-        }, duration);
-    }
+    // flashButton intentionally NOT declared here either -- previously a separate near-duplicate
+    // of mds.js's local copy. Both now consolidated into the single shared version in
+    // js/utils.js. Calls below resolve to that shared version.
 
     // --- DRAWER & SWIPE LOGIC ---
     window.toggleDrawer = function() {
@@ -676,7 +667,7 @@ window.addEventListener('popstate', (e) => {
         let sellNames = (type === 'trade' && sellEl) ? sellEl.value.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
         
         if (targetNames.length === 0 && sellNames.length === 0) {
-            outputEl.innerHTML = `<span style="color:var(--error-color, #fca5a5);">Please enter at least one player name.</span>`;
+            outputEl.innerHTML = `<span class="mls-error-text">Please enter at least one player name.</span>`;
             return;
         }
 
@@ -712,12 +703,12 @@ window.addEventListener('popstate', (e) => {
                     <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
                         ${displayName} ${roleTag}
                     </div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); display:flex; gap:0.8rem;">
-                        <span>Wk Rank: <strong style="color:#93c5fd;">${wRank}</strong></span>
-                        <span>ROS Rank: <strong style="color:#86efac;">${rRank}</strong></span>
+                    <div class="mls-meta-row">
+                        <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
+                        <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
                     </div>
                 </div>
-                <div style="text-align:right;">${statusHTML}</div>
+                <div class="mls-text-right">${statusHTML}</div>
             </div>`;
         };
 
@@ -1107,11 +1098,11 @@ window.toggleMarketSourceUI = function() {
         if (!outputEl) return;
 
         if (State.marketRankings.length === 0) {
-            outputEl.innerHTML = `<span style="color:var(--error-color, #fca5a5);">Please upload a market consensus file (KTC/FantasyCalc) first.</span>`;
+            outputEl.innerHTML = `<span class="mls-error-text">Please upload a market consensus file (KTC/FantasyCalc) first.</span>`;
             return;
         }
         if (State.rosRankings.length === 0) {
-            outputEl.innerHTML = `<span style="color:var(--error-color, #fca5a5);">Please upload your Rest-of-Season (ROS) rankings on the Roster tab first.</span>`;
+            outputEl.innerHTML = `<span class="mls-error-text">Please upload your Rest-of-Season (ROS) rankings on the Roster tab first.</span>`;
             return;
         }
 
@@ -1197,15 +1188,15 @@ window.toggleMarketSourceUI = function() {
                 html += `
                 <div class="scout-result-card">
                     <div>
-                        <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px;">${item.name}</div>
-                        <div style="font-size:0.8rem; color:var(--text-muted); display:flex; gap:0.8rem;">
-                            <span>Your Board: <strong style="color:#86efac;">#${item.userRank}</strong></span>
-                            <span>Market: <strong style="color:#93c5fd;">#${item.marketVal}</strong></span>
+                        <div class="mls-item-name">${item.name}</div>
+                        <div class="mls-meta-row">
+                            <span>Your Board: <strong class="mls-stat-green">#${item.userRank}</strong></span>
+                            <span>Market: <strong class="mls-stat-blue">#${item.marketVal}</strong></span>
                         </div>
                     </div>
-                    <div style="text-align:right;">
+                    <div class="mls-text-right">
                         <span class="badge" style="background:var(--target-bg); color:var(--primary-green); border:1px solid var(--target-border);">+${item.delta} Edge</span>
-                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">${ownerStr}</div>
+                        <div class="mls-item-subtext">${ownerStr}</div>
                     </div>
                 </div>`;
             });
@@ -1217,15 +1208,15 @@ window.toggleMarketSourceUI = function() {
                 html += `
                 <div class="scout-result-card">
                     <div>
-                        <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px;">${item.name}</div>
-                        <div style="font-size:0.8rem; color:var(--text-muted); display:flex; gap:0.8rem;">
-                            <span>Your Board: <strong style="color:#fca5a5;">#${item.userRank}</strong></span>
-                            <span>Market: <strong style="color:#93c5fd;">#${item.marketVal}</strong></span>
+                        <div class="mls-item-name">${item.name}</div>
+                        <div class="mls-meta-row">
+                            <span>Your Board: <strong class="mls-stat-red">#${item.userRank}</strong></span>
+                            <span>Market: <strong class="mls-stat-blue">#${item.marketVal}</strong></span>
                         </div>
                     </div>
-                    <div style="text-align:right;">
+                    <div class="mls-text-right">
                         <span class="badge" style="background:var(--avoid-bg); color:#fca5a5; border:1px solid var(--avoid-border);">${item.delta} Edge</span>
-                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;"><strong style="color:#fca5a5;">On your roster (Sell High!)</strong></div>
+                        <div class="mls-item-subtext"><strong class="mls-stat-red">On your roster (Sell High!)</strong></div>
                     </div>
                 </div>`;
             });
@@ -1318,18 +1309,18 @@ window.toggleMarketSourceUI = function() {
             
             html += `
             <div class="roster-item">
-                <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
-                    <span class="badge pos-badge ${p.pos}" style="min-width:26px; padding:2px 4px; text-align:center;">${p.pos}</span>
-                    <div style="display:flex; flex-direction:column; align-items:flex-start; text-align:left;">
+                <div class="mls-player-row-info">
+                    <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
+                    <div class="mls-player-row-text">
                         <div class="player-name-wrap">${p.name}${byeStr} ${injBadge}</div>
-                        <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
+                        <div class="mls-player-row-meta">
                             <span class="badge">${p.team}</span>
-                            <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                            <span class="badge mls-rank-badge">${rankBadge}</span>
                             ${sosBadge}
                         </div>
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                <div class="mls-row-actions">
                     <button class="btn-danger" style="padding:4px 8px; border-radius:4px;" onclick="deletePlayer('${p.id}')">✕</button>
                 </div>
             </div>`;
@@ -1527,18 +1518,18 @@ window.toggleMarketSourceUI = function() {
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
-                    <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
+                    <div class="mls-player-row-info">
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
-                        <span class="badge pos-badge ${p.pos}" style="min-width:26px; padding:2px 4px; text-align:center;">${p.pos}</span>
-                        <div style="display:flex; flex-direction:column; align-items:flex-start; text-align:left;">
+                        <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
+                        <div class="mls-player-row-text">
                             <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
-                            <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
+                            <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
-                                <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                                <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                    <div class="mls-row-actions">
                         <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
                         <button class="btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>
                     </div>
@@ -1568,18 +1559,18 @@ window.toggleMarketSourceUI = function() {
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">
-                    <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
+                    <div class="mls-player-row-info">
                         <span class="slot-label slot-BN">BN</span>
-                        <span class="badge pos-badge ${p.pos}" style="min-width:26px; padding:2px 4px; text-align:center;">${p.pos}</span>
-                        <div style="display:flex; flex-direction:column; align-items:flex-start; text-align:left;">
+                        <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
+                        <div class="mls-player-row-text">
                             <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
-                            <div style="margin-top:3px; display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap;">
+                            <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
-                                <span class="badge" style="background:#1c2541; border:1px solid var(--border);">${rankBadge}</span>
+                                <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                    <div class="mls-row-actions">
                         <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
                     </div>
                 </div>`;
@@ -1759,11 +1750,11 @@ window.renderPowerRankingsTable = function(teamScores) {
             <thead>
                 <tr style="border-bottom: 2px solid var(--border-color, #334155); color: var(--text-muted, #94a3b8); font-size: 0.8rem; text-transform: uppercase;">
                     <th style="padding: 12px 10px; text-align: left;">Manager</th>
-                    <th style="padding: 12px 10px;">Ovr</th>
-                    <th style="padding: 12px 10px;">QB</th>
-                    <th style="padding: 12px 10px;">RB</th>
-                    <th style="padding: 12px 10px;">WR</th>
-                    <th style="padding: 12px 10px;">TE</th>
+                    <th class="mls-table-header-cell">Ovr</th>
+                    <th class="mls-table-header-cell">QB</th>
+                    <th class="mls-table-header-cell">RB</th>
+                    <th class="mls-table-header-cell">WR</th>
+                    <th class="mls-table-header-cell">TE</th>
                 </tr>
             </thead>
             <tbody>
@@ -1781,29 +1772,29 @@ window.renderPowerRankingsTable = function(teamScores) {
                 </td>
                 
                 <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.qbRank)};">
-                    <div class="tooltip-container" style="display: flex; justify-content: center; width: 100%;" ontouchstart="">
-                        <span style="border-bottom: 1px dotted currentColor; cursor: pointer;">${t.qbRank}</span>
+                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
+                        <span class="mls-dotted-underline">${t.qbRank}</span>
                         ${buildTooltip(t.players.QB, 'QB')}
                     </div>
                 </td>
                 
                 <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.rbRank)};">
-                    <div class="tooltip-container" style="display: flex; justify-content: center; width: 100%;" ontouchstart="">
-                        <span style="border-bottom: 1px dotted currentColor; cursor: pointer;">${t.rbRank}</span>
+                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
+                        <span class="mls-dotted-underline">${t.rbRank}</span>
                         ${buildTooltip(t.players.RB, 'RB')}
                     </div>
                 </td>
                 
                 <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.wrRank)};">
-                    <div class="tooltip-container" style="display: flex; justify-content: center; width: 100%;" ontouchstart="">
-                        <span style="border-bottom: 1px dotted currentColor; cursor: pointer;">${t.wrRank}</span>
+                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
+                        <span class="mls-dotted-underline">${t.wrRank}</span>
                         ${buildTooltip(t.players.WR, 'WR', true)}
                     </div>
                 </td>
                 
                 <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.teRank)};">
-                    <div class="tooltip-container" style="display: flex; justify-content: center; width: 100%;" ontouchstart="">
-                        <span style="border-bottom: 1px dotted currentColor; cursor: pointer;">${t.teRank}</span>
+                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
+                        <span class="mls-dotted-underline">${t.teRank}</span>
                         ${buildTooltip(t.players.TE, 'TE', true)}
                     </div>
                 </td>

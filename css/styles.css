@@ -29,8 +29,8 @@
     --pos-rb: rgba(16, 185, 129, 0.15);  --pos-rb-border: #10b981;
     --pos-wr: rgba(59, 130, 246, 0.15);  --pos-wr-border: #3b82f6;
     --pos-te: rgba(245, 158, 11, 0.15);  --pos-te-border: #f59e0b;
-    --pos-k:  rgba(156, 163, 175, 0.15); --pos-k-border: #9ca3af;
-    --pos-def: rgba(168, 85, 247, 0.15); --pos-def-border: #a855f7;
+    --pos-k: rgba(167, 139, 250, 0.15);   --pos-k-border: #a78bfa; /* Sleeper Kicker Lavender */
+    --pos-def: rgba(146, 93, 72, 0.15);   --pos-def-border: #925d48; /* Sleeper DEF Rust */
 }
 
 /* --- GLOBAL RESETS --- */
@@ -477,9 +477,8 @@ body {
     text-wrap: pretty;
 }
 
-.mt-2 {
-    margin-top: 0.75rem;
-}
+/* .mt-2 belongs to the spacing-utility family (with mt-4/mb-1/mb-4) defined together
+   further down -- removed the standalone duplicate that used to live here. */
 .guide-banner {
     width: 100%;
     background: linear-gradient(90deg, rgba(16, 185, 129, 0.1), rgba(19, 27, 44, 0.9));
@@ -764,6 +763,24 @@ body {
     letter-spacing: 0.3px;
 }
 
+/* MDS-namespaced small button (Tracker/Queue: Pick, Taken, Undo, Save, Cancel, reorder arrows).
+   Intentionally duplicated from .btn-sm rather than reusing it: this file is shared with
+   My Lineup Strategist, which redefines .btn-sm inside its own MLS SCOUT TAB SPECIFIC STYLES
+   section further down. Because both rules share the same specificity, source order decides
+   the winner on any page loading this stylesheet -- so MDS needs its own class to avoid being
+   silently resized by an MLS-only override. Do not delete this in favor of .btn-sm. */
+.mds-btn-sm {
+    padding: 0.4rem 0.8rem; 
+    border: none; 
+    border-radius: 6px; 
+    font-weight: 600; 
+    font-size: 0.75rem; 
+    cursor: pointer; 
+    font-family: inherit;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.3px;
+}
+
 /* 'Taken' button - Ghost style to reduce visual noise */
 .btn-draft { 
     background-color: transparent; 
@@ -800,8 +817,8 @@ body {
     transform: scale(0.95) translateY(0);
     box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
-.swap-btn { padding: 4px 8px; }
-.lock-btn { font-size: 1.2rem; }
+/* .swap-btn / .lock-btn (MLS roster swap+lock controls) defined near their actual
+   markup context further down -- removed the earlier duplicate that lived here. */
 
 /* --- HAMBURGER BUTTON --- */
 .hamburger-btn {
@@ -923,6 +940,28 @@ body {
 }
 
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
+
+/* Shared classes consolidated from repeated inline styles across mls.js's several player-row
+   renderers (Roster, Scout table, Lineup). Prefixed mls- deliberately: this file is shared with
+   My Draft Strategist, and an earlier un-prefixed shared class (.btn-sm) caused a real collision
+   between the two apps -- see the .mds-btn-sm note further down for the full story. */
+.mls-table-header-cell { padding: 12px 10px; }
+.mls-tooltip-center { display: flex; justify-content: center; width: 100%; }
+.mls-dotted-underline { border-bottom: 1px dotted currentColor; cursor: pointer; }
+.mls-error-text { color: var(--error-color, #fca5a5); }
+.mls-meta-row { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 0.8rem; }
+.mls-text-right { text-align: right; }
+.mls-player-row-info { display: flex; align-items: center; gap: 0.6rem; overflow: hidden; }
+.mls-pos-badge-sizing { min-width: 26px; padding: 2px 4px; text-align: center; }
+.mls-player-row-text { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.mls-player-row-meta { margin-top: 3px; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+.mls-rank-badge { background: #1c2541; border: 1px solid var(--border); }
+.mls-row-actions { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+.mls-stat-blue { color: #93c5fd; }
+.mls-stat-green { color: #86efac; }
+.mls-stat-red { color: #fca5a5; }
+.mls-item-name { font-weight: bold; font-size: 0.95rem; margin-bottom: 4px; }
+.mls-item-subtext { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
 
 .lineup-action-row {
     display: flex;
@@ -1473,19 +1512,34 @@ body {
     width: auto;
     min-width: 0;
     max-width: none;
+    
+    /* Visually mute non-selected filters */
+    opacity: 0.35;
+    filter: grayscale(85%);
 }
 
 .pos-filter:hover { 
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-main);
     transform: translateY(-2px);
+    
+    /* Slightly illuminate when hovering over an inactive filter */
+    opacity: 0.7;
+    filter: grayscale(40%);
 }
 
-.active-filter { 
+.pos-filter.active-filter { 
+    /* Snaps the filter back to full vibrancy, inheriting its native positional color */
+    opacity: 1;
+    filter: grayscale(0%);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.08); 
+}
+
+/* Specific rule for ALL button so it turns green when active, since it lacks a positional color */
+.pos-filter.badge-all.active-filter {
     color: var(--primary-green);
     background: var(--target-bg);
     border-color: var(--primary-green); 
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); 
 }
 
 /* Premium Tier Dividers (Replaces heavy green block) */
@@ -1550,19 +1604,9 @@ body {
     gap: 0.4rem; 
 }
 
-.player-stats { 
-    font-size: 0.85rem; 
-    color: var(--text-muted); 
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.actions { 
-    display: flex; 
-    gap: 0.5rem; 
-    flex-shrink: 0; 
-}
+/* NOTE: .player-stats and .actions rules for the player-card layout live further down,
+   in the "PLAYER CARD GRID LAYOUT" section -- removed the older, now-superseded duplicates
+   that used to live here to avoid two competing definitions in this file. */
 
 /* Inline Editor (Replaces dashed border) */
 .inline-editor { 
@@ -1730,7 +1774,44 @@ body {
     padding: 1rem;
     border-radius: 50%;
     margin-bottom: 1rem;
-    color: var(--border); /* Subdued icon color */
+    color: var(--text-muted); /* was var(--border): nearly invisible against this badge's own background */
+}
+
+.empty-state-cta {
+    margin-top: 1rem;
+    width: auto;
+}
+
+.recap-grade-box {
+    background: rgba(0,0,0,0.2);
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    text-align: center;
+}
+
+.recap-label {
+    font-size: 0.75rem;
+    color: #93c5fd;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.roster-slot-label-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.roster-slot-pos-caption {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.recap-callout-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 /* The actual Grid generated by JS */
@@ -2315,6 +2396,56 @@ input[type="file"]::-webkit-file-upload-button:hover {
 .edit-link:hover {
     opacity: 1;
     color: var(--primary-green);
+}
+
+/* --- SHARED CARD SUB-LAYOUT CLASSES ---
+   Extracted from repeated inline styles in buildPlayerCardHTML() / buildQueueCardHTML()
+   (js/mds.js). Each of these appeared identically in both card templates. */
+.card-top-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.card-name {
+    margin: 0;
+    font-size: 1.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+.card-bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+}
+
+.card-badges-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.card-field-label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    display: block;
+}
+
+.queue-arrow-btn {
+    padding: 2px 8px;
+    background: var(--bg-card);
+    border-color: var(--border);
+}
+
+.queue-arrow-btn:disabled {
+    opacity: 0.3;
 }
 
 /* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
