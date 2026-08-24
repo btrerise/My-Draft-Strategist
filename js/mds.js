@@ -554,7 +554,7 @@ window.addEventListener('popstate', (e) => {
                     QB: getSlot('slots_qb', 1),
                     RB: getSlot('slots_rb', 2),
                     WR: getSlot('slots_wr', 3),
-                    TE: getSlot('slots_te', 1),
+                    TE: getSlot('slots_te', 0),
                     WT: getSlot('slots_rec_flex', 0), // NEW: Sleeper identifies W/T as rec_flex
                     FLEX: getSlot('slots_flex', 1),
                     SFLEX: getSlot('slots_super_flex', 0),
