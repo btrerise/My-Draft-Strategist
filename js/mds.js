@@ -1402,7 +1402,7 @@ function parseExcel(file) {
 
     function renderFantasyRoster() {
         if (State.players.length === 0) {
-            return `<div class="empty-state-card"><p>Load rankings on the Setup tab to start building your roster.</p><button class="btn btn-primary" style="margin-top: 1rem; width: auto;" onclick="showTab('setup')">Go to Setup</button></div>`;
+            return `<div class="empty-state-card"><p>Load rankings on the Setup tab to start building your roster.</p><button class="btn btn-primary empty-state-cta" onclick="showTab('setup')">Go to Setup</button></div>`;
         }
 
         let draft = getActiveDraft();
@@ -1425,7 +1425,7 @@ function parseExcel(file) {
 
                 return `
                 <div class="roster-slot">
-                    <div style="display:flex; align-items:center; gap: 0.5rem;">
+                    <div class="roster-slot-label-row">
                         <span class="roster-label" style="color:${color}">${label}</span>
                         ${imgHTML} <!-- Inject Image Here -->
                         <div>
@@ -1444,7 +1444,7 @@ function parseExcel(file) {
             } else {
                 return `
                 <div class="roster-slot empty">
-                    <div style="display:flex; align-items:center; gap: 0.5rem;">
+                    <div class="roster-slot-label-row">
                         <span class="roster-label" style="color:var(--text-muted)">${label}</span>
                         <div class="roster-avatar placeholder"></div>
                         <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
@@ -1595,8 +1595,8 @@ function parseExcel(file) {
             let posPlayers = myPlayers.filter(p => p.posGroup === pos);
             
             if (posPlayers.length === 0) {
-                gradesHTML += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
+                gradesHTML += `<div class="recap-grade-box">
+                    <div class="roster-slot-pos-caption">${pos}</div>
                     <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-muted);">—</div>
                 </div>`;
                 return;
@@ -1620,8 +1620,8 @@ function parseExcel(file) {
             totalValSum += medianVal;
             gradeCount++;
 
-            gradesHTML += `<div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); text-align: center;">
-                <div style="font-size: 0.75rem; color: var(--text-muted);">${pos}</div>
+            gradesHTML += `<div class="recap-grade-box">
+                <div class="roster-slot-pos-caption">${pos}</div>
                 <div style="font-size: 1.25rem; font-weight: bold; color: ${gInfo.color};">${gInfo.grade}</div>
             </div>`;
         });
@@ -1632,11 +1632,11 @@ function parseExcel(file) {
         let html = `
             <div style="display:flex; justify-content:space-between; align-items:center; background: rgba(59, 130, 246, 0.1); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3);">
                 <div>
-                    <div style="font-size: 0.75rem; color: #93c5fd; text-transform: uppercase; font-weight: 700;">Draft Archetype</div>
+                    <div class="recap-label">Draft Archetype</div>
                     <div style="font-size: 1.05rem; font-weight: bold; color: var(--text-main);">${archetype}</div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 0.75rem; color: #93c5fd; text-transform: uppercase; font-weight: 700;">Overall Grade</div>
+                    <div class="recap-label">Overall Grade</div>
                     <div style="font-size: 1.4rem; font-weight: bold; color: ${overallG.color};">${overallG.grade}</div>
                 </div>
             </div>
@@ -1644,7 +1644,7 @@ function parseExcel(file) {
 
         if (bestSteal && bestSteal.diff > 2) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border); margin-top:0.5rem;">
-                <span style="display:flex; align-items:center; gap:6px;">
+                <span class="recap-callout-label">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary-green);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     <strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})
                 </span>
@@ -1654,7 +1654,7 @@ function parseExcel(file) {
 
         if (worstReach && worstReach.diff < -5) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border); margin-top:0.5rem;">
-                <span style="display:flex; align-items:center; gap:6px;">
+                <span class="recap-callout-label">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--avoid-border);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                     <strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})
                 </span>
@@ -1857,18 +1857,18 @@ function parseExcel(file) {
                 <div class="card-grid" style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch; text-align: left;">
                     
                     <!-- TOP ROW: Rank & Name -->
-                    <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0;">
+                    <div class="card-top-row">
                         <span style="color: var(--text-muted); font-weight: 500; font-size: 1rem; flex-shrink: 0;">${p.rank}.</span> 
-                        <h4 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
+                        <h4 class="card-name">
                             ${p.name}
                         </h4>
                     </div>
 
                     <!-- BOTTOM ROW: Badges & Actions -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: nowrap;">
+                    <div class="card-bottom-row">
                         
                         <!-- Bottom Left: Badges & Star -->
-                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                        <div class="card-badges-row">
                             <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                             ${rookieBadge}
                             ${injuryBadge}
@@ -1897,19 +1897,19 @@ function parseExcel(file) {
                     <div class="inline-editor" id="inline-edit-${p.id}" style="${p.isEditing ? 'display: flex;' : ''}">
                         <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
                             <div>
-                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Rank</label>
+                                <label class="card-field-label">Rank</label>
                                 <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
                             </div>
                             <div>
-                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Tier</label>
+                                <label class="card-field-label">Tier</label>
                                 <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
                             </div>
                             <div>
-                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Team</label>
+                                <label class="card-field-label">Team</label>
                                 <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
                             </div>
                             <div>
-                                <label style="font-size:0.75rem; font-weight:bold; display:block;">Bye</label>
+                                <label class="card-field-label">Bye</label>
                                 <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
                             </div>
                             <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
@@ -1934,20 +1934,20 @@ function parseExcel(file) {
                 <div style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch;">
                     
                     <!-- TOP ROW: Grip & Name -->
-                    <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0;">
+                    <div class="card-top-row">
                         <span style="color: var(--text-muted); cursor: grab; user-select: none; flex-shrink: 0; font-size: 1.1rem; margin-right: 0.2rem;" title="Drag to reorder">⋮⋮</span>
-                        <h4 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
+                        <h4 class="card-name">
                             ${p.name}
                         </h4>
                     </div>
 
                     <!-- BOTTOM ROW: Arrows, Badges, Star & Actions -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: nowrap;">
+                    <div class="card-bottom-row">
                         
                         <!-- Left Side: Arrows, Badges & Star -->
-                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                            <button class="mds-btn-sm btn-secondary" style="padding: 2px 8px; background: var(--bg-card); border-color: var(--border);" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
-                            <button class="mds-btn-sm btn-secondary" style="padding: 2px 8px; background: var(--bg-card); border-color: var(--border);" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                        <div class="card-badges-row">
+                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled' : ''}>▲</button>
+                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled' : ''}>▼</button>
                             <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span>
                             <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
                         </div>
@@ -1978,11 +1978,11 @@ function parseExcel(file) {
         if (State.players.length === 0) {
             if (tierTrackerElEarly) tierTrackerElEarly.innerHTML = '';
             if (poolEl) {
-                poolEl.innerHTML = `<div class="empty-state-card"><p>Load rankings on the Setup tab to see your player pool here.</p><button class="btn btn-primary" style="margin-top: 1rem; width: auto;" onclick="showTab('setup')">Go to Setup</button></div>`;
+                poolEl.innerHTML = `<div class="empty-state-card"><p>Load rankings on the Setup tab to see your player pool here.</p><button class="btn btn-primary empty-state-cta" onclick="showTab('setup')">Go to Setup</button></div>`;
             }
             if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster();
             if (otherEl) {
-                otherEl.innerHTML = `<div class="empty-state-card"><p>Drafted players from other teams will show up here once you're synced or tracking picks.</p><button class="btn btn-primary" style="margin-top: 1rem; width: auto;" onclick="showTab('setup')">Go to Setup</button></div>`;
+                otherEl.innerHTML = `<div class="empty-state-card"><p>Drafted players from other teams will show up here once you're synced or tracking picks.</p><button class="btn btn-primary empty-state-cta" onclick="showTab('setup')">Go to Setup</button></div>`;
             }
             const limitsBodyElEmpty = document.getElementById('limitsBody');
             if (limitsBodyElEmpty) {
