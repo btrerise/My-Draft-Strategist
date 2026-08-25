@@ -23,6 +23,8 @@
         earlyTeams: JSON.parse(localStorage.getItem('mds_season_early_teams')) || [],
         rosRankings: JSON.parse(localStorage.getItem('mds_season_ros')) || [],
         weeklyRankings: JSON.parse(localStorage.getItem('mds_season_weekly')) || [],
+        rosRankingsUpdatedAt: localStorage.getItem('mds_season_ros_updated') || null,
+        weeklyRankingsUpdatedAt: localStorage.getItem('mds_season_weekly_updated') || null,
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
@@ -255,6 +257,9 @@ window.addEventListener('popstate', (e) => {
                 ? [...league.weeklyRankings] 
                 : JSON.parse(localStorage.getItem('mds_season_weekly')) || [];
 
+            State.rosRankingsUpdatedAt = league.rosRankingsUpdatedAt || localStorage.getItem('mds_season_ros_updated') || null;
+            State.weeklyRankingsUpdatedAt = league.weeklyRankingsUpdatedAt || localStorage.getItem('mds_season_weekly_updated') || null;
+
             // Update the global fallbacks so the UI stays in sync
             localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings));
             localStorage.setItem('mds_season_weekly', JSON.stringify(State.weeklyRankings));
@@ -291,6 +296,8 @@ window.addEventListener('popstate', (e) => {
         // Save current rankings specifically to this league
         league.rosRankings = [...State.rosRankings];
         league.weeklyRankings = [...State.weeklyRankings];
+        league.rosRankingsUpdatedAt = State.rosRankingsUpdatedAt;
+        league.weeklyRankingsUpdatedAt = State.weeklyRankingsUpdatedAt;
     }
     localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
 }
@@ -335,7 +342,9 @@ window.addEventListener('popstate', (e) => {
             leagueId: newId, name: name, username: "Manual",
             reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 }, roster: [], globalRosterMap: {},
             rosRankings: [...State.rosRankings],       
-            weeklyRankings: [...State.weeklyRankings]  
+            weeklyRankings: [...State.weeklyRankings],
+            rosRankingsUpdatedAt: State.rosRankingsUpdatedAt,
+            weeklyRankingsUpdatedAt: State.weeklyRankingsUpdatedAt
         };
         State.leagues.push(leagueObj);
         State.activeLeagueId = newId;
@@ -497,7 +506,9 @@ window.addEventListener('popstate', (e) => {
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap,
                 rosRankings: [...State.rosRankings],   
-            weeklyRankings: [...State.weeklyRankings]  
+            weeklyRankings: [...State.weeklyRankings],
+            rosRankingsUpdatedAt: State.rosRankingsUpdatedAt,
+            weeklyRankingsUpdatedAt: State.weeklyRankingsUpdatedAt
             };
 
             let existingIdx = State.leagues.findIndex(l => l.leagueId === leagueId);
@@ -727,16 +738,50 @@ window.addEventListener('popstate', (e) => {
     };
 
     // --- RANKINGS ENGINE ---
+    // Formats a stored timestamp into a short relative string, and flags it as "stale" past
+    // the given threshold (in days) so the UI can call attention to rankings that likely need
+    // a refresh. Returns null if there's no timestamp at all (e.g. rankings from before this
+    // tracking existed) so the caller can fall back to a neutral message rather than claim
+    // false freshness.
+    function getRankingsFreshness(timestamp, staleAfterDays) {
+        if (!timestamp) return null;
+        const ms = Date.now() - Number(timestamp);
+        const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+        let label;
+        if (days <= 0) label = "Updated today";
+        else if (days === 1) label = "Updated yesterday";
+        else label = `Updated ${days} days ago`;
+        return { label, isStale: days > staleAfterDays };
+    }
+
     function updateRankingsMetaDisplay() {
         const rosMetaEl = document.getElementById('rosMetaDisplay');
         if (rosMetaEl) {
-            if (State.rosRankings.length > 0) { rosMetaEl.style.display = 'block'; rosMetaEl.innerText = `Loaded: ${State.rosRankings.length} players`; }
+            if (State.rosRankings.length > 0) {
+                rosMetaEl.style.display = 'block';
+                const fresh = getRankingsFreshness(State.rosRankingsUpdatedAt, 14); // ROS: occasional refresh is normal
+                const countText = `Loaded: ${State.rosRankings.length} players`;
+                if (fresh) {
+                    rosMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'rankings-stale' : 'rankings-fresh'}">• ${fresh.label}${fresh.isStale ? ' — consider refreshing' : ''}</span>`;
+                } else {
+                    rosMetaEl.innerText = countText;
+                }
+            }
             else { rosMetaEl.style.display = 'none'; }
         }
 
         const weeklyMetaEl = document.getElementById('weeklyMetaDisplay');
         if (weeklyMetaEl) {
-            if (State.weeklyRankings.length > 0) { weeklyMetaEl.style.display = 'block'; weeklyMetaEl.innerText = `Loaded: ${State.weeklyRankings.length} players`; }
+            if (State.weeklyRankings.length > 0) {
+                weeklyMetaEl.style.display = 'block';
+                const fresh = getRankingsFreshness(State.weeklyRankingsUpdatedAt, 6); // Weekly: expected to refresh every week
+                const countText = `Loaded: ${State.weeklyRankings.length} players`;
+                if (fresh) {
+                    weeklyMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'rankings-stale' : 'rankings-fresh'}">• ${fresh.label}${fresh.isStale ? ' — likely stale, re-upload for this week' : ''}</span>`;
+                } else {
+                    weeklyMetaEl.innerText = countText;
+                }
+            }
             else { weeklyMetaEl.style.display = 'none'; }
         }
     }
@@ -831,10 +876,14 @@ window.addEventListener('popstate', (e) => {
 
         if (isWeekly) { 
             State.weeklyRankings = parsed; 
+            State.weeklyRankingsUpdatedAt = Date.now();
             localStorage.setItem('mds_season_weekly', JSON.stringify(State.weeklyRankings)); 
+            localStorage.setItem('mds_season_weekly_updated', State.weeklyRankingsUpdatedAt);
         } else { 
             State.rosRankings = parsed; 
+            State.rosRankingsUpdatedAt = Date.now();
             localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings)); 
+            localStorage.setItem('mds_season_ros_updated', State.rosRankingsUpdatedAt);
         }
         saveActiveLeagueState();
         updateRankingsMetaDisplay();

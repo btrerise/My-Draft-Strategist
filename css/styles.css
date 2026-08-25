@@ -1392,6 +1392,16 @@ body {
     margin-bottom: 0.5rem;
 }
 
+.rankings-fresh {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.rankings-stale {
+    color: #f59e0b;
+    font-weight: 700;
+}
+
 .success-feedback {
     color: var(--primary-green);
     font-size: 0.85rem;
@@ -2136,15 +2146,18 @@ input[type="file"]::-webkit-file-upload-button:hover {
 /* Mobile-specific adjustments for Draft Board edge-to-edge bleed */
 @media (max-width: 767px) {
     .draft-board-container {
-        /* Pull container out to the absolute edges */
-        margin-left: -1.5rem; 
-        margin-right: -1.5rem;
-        width: calc(100% + 3rem);
+        /* Pull container out to the absolute edges. Must match .container's MOBILE padding
+           (0.5rem, not its 1.5rem desktop padding) or this overshoots and causes real
+           horizontal page overflow -- that overflow is what caused the Board tab to appear
+           "zoomed in" on mobile, with the bottom nav cut off until scrolling/zooming out. */
+        margin-left: -0.5rem; 
+        margin-right: -0.5rem;
+        width: calc(100% + 1rem);
         max-width: none;
         
         /* Start grid cleanly with padding, but let it scroll fully to the edge */
-        padding-left: 1.5rem;
-        padding-right: 1.5rem; 
+        padding-left: 0.5rem;
+        padding-right: 0.5rem; 
         
         scroll-behavior: smooth;
         -webkit-overflow-scrolling: touch;
