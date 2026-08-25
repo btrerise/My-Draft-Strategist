@@ -244,12 +244,28 @@
                 <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" width="274" height="36" />
             </a>
         </div>
-    <div class="app-version">My Lineup Strategist v2.4.2</div>
+    <div class="app-version">My Lineup Strategist v2.4</div>
 </div>
 
         <!-- ROSTER TAB -->
 <div id="rosterTab" class="tab-content">
     
+    <!-- REST-OF-SEASON RANKINGS (moved to top: this is the freshness-critical upload, surfaced
+         first rather than buried below the roster list, per the rankings-upload restructuring) -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3><span>Rest-of-Season (ROS) Rankings</span></h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Upload .csv or .xlsx Rest-of-Season rankings here to dictate the long-term value of your roster. This helps you evaluate trades and overall team strength.</span>
+            </div>
+        </header>
+        
+        <div id="rosMetaDisplay" class="status-badge-meta"></div>
+        <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
+        <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
+    </section>
+
     <!-- ACTIVE ROSTER -->
     <section class="settings-card">
         <header class="card-header">
@@ -258,7 +274,7 @@
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Displays all players currently rostered in your active league. Scroll down to upload Rest of Season (ROS) Rankings or a Strength of Schedule (SoS) matrix.</span>
+                <span class="tooltip-text">Displays all players currently rostered in your active league. Upload ROS Rankings above, or a Strength of Schedule (SoS) matrix below, to unlock trade/roster analysis.</span>
             </div>
         </header>
         
@@ -272,21 +288,6 @@
                 Select or create a league on the Setup tab to view your roster.
             </div>
         </div>
-    </section>
-    
-    <!-- REST-OF-SEASON RANKINGS -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3><span>Rest-of-Season (ROS) Rankings</span></h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Upload .csv or .xlsx Rest-of-Season rankings here to dictate the long-term value of your roster. This helps you evaluate trades and overall team strength.</span>
-            </div>
-        </header>
-        
-        <div id="rosMetaDisplay" class="status-badge-meta"></div>
-        <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
-        <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
     </section>
     
     <!-- POSITIONAL STRENGTH OF SCHEDULE -->
@@ -327,6 +328,22 @@
 
         <!-- LINEUP TAB -->
 <div id="lineupTab" class="tab-content">
+
+    <!-- WEEKLY MATCHUP RANKINGS (moved to top: this is the one upload that needs re-doing
+         every single week, so freshness needs to be visible before anything else here) -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3><span>Weekly Matchup Rankings</span></h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Upload .csv or .xlsx Weekly Matchup Rankings to optimize your Start/Sit decisions for the current week.</span>
+            </div>
+        </header>
+        
+        <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
+        <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
+        <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
+    </section>
     
     <!-- OPTIMAL LINEUP CARD -->
     <section class="settings-card">
@@ -334,7 +351,7 @@
             <h3><span>Optimal Lineup</span></h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Generates your highest-projected starting lineup. Lock starters with <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap ⇄ Swap to manually move players. Scroll down to upload Weekly Rankings or flag Early Games.</span>
+                <span class="tooltip-text">Generates your highest-projected starting lineup. Lock starters with <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap ⇄ Swap to manually move players. Weekly Rankings and Early Games are above and below.</span>
             </div>
         </header>
         
@@ -397,21 +414,6 @@
                 <!-- Chips inject here -->
             </div>
         </div>
-    </section>
-    
-    <!-- WEEKLY MATCHUP RANKINGS -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3><span>Weekly Matchup Rankings</span></h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Upload .csv or .xlsx Weekly Matchup Rankings to optimize your Start/Sit decisions for the current week.</span>
-            </div>
-        </header>
-        
-        <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
-        <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
-        <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
     </section>
 </div>
         
