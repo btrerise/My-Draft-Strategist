@@ -577,18 +577,17 @@
     </div>
 
     <!-- TAB: TOP 50 -->
-<div id="top50Tab" class="tab-content">
+<div id="top50Tab" class="tab-content active">
     <div class="settings-card highlight-card">
         <h2>2026 Top-50 T-Score Rankings</h2>
         <p class="card-desc">T-Score is a combination of a player’s previous season metrics, each weighted based on their coefficient to the following season (N+1) using historical data. <em>Note: Rookies are not included since there is no previous NFL data to utilize.</em></p>
             
-        <!-- Position Toggle Buttons -->
         <div class="pos-toggle-wrapper">
             <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'top50Tab')">Wide Receivers</button>
             <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'top50Tab')">Running Backs</button>
         </div>
 
-        <!-- WR CONTENT CONTAINER (Visible by default) -->
+        <!-- WR CONTENT CONTAINER -->
         <div class="wr-content" style="display: block;">
             <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
                 <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
@@ -621,9 +620,24 @@
                             <th>Player</th>
                             <th>Label</th>
                             <th>T-Score</th>
-                            <th>Yds/G</th>
-                            <th>1st D/G</th>
-                            <th>RZ Tgts</th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Yds/G
+                                    <span class="tooltip-text" style="width: 180px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Receiving Yards Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    1st D/G
+                                    <span class="tooltip-text" style="width: 180px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">First Downs Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    RZ Tgts
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Red Zone Targets</span>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -682,7 +696,7 @@
             </div>
         </div>
 
-        <!-- RB CONTENT CONTAINER (Hidden by default) -->
+        <!-- RB CONTENT CONTAINER -->
         <div class="rb-content" style="display: none;">
             <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
                 <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
@@ -714,8 +728,18 @@
                             <th>Player</th>
                             <th>Label</th>
                             <th>T-Score</th>
-                            <th>Scrimmage Yds/G</th>
-                            <th>HVT/G</th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Scrimmage Yds/G
+                                    <span class="tooltip-text" style="width: 190px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Scrimmage Yards Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    HVT/G
+                                    <span class="tooltip-text" style="width: 220px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">High-Value Touches Per Game (Calculated by combining Targets and Red Zone Carries Per Game)</span>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -768,7 +792,7 @@
                         <tr><td>47</td><td><strong>Chris Rodriguez</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.76</td><td>40.81</td><td>2.85</td></tr>
                         <tr><td>48</td><td><strong>Bam Knight</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.73</td><td>35.7</td><td>3.91</td></tr>
                         <tr><td>49</td><td><strong>Tyler Allgeier</strong></td><td><span class="label-depth">Depth Player</span></td><td>33.42</td><td>35.85</td><td>2.76</td></tr>
-                        <tr><td>50</td><td><strong>Nick Chubb</strong></td><td><span class="label-depth">Depth Player</span></td><td>33.27</td><td>38.17</td><td>2.20</td></tr>
+                        <tr><td>50</td><td><strong>Emanuel Wilson</strong></td><td><span class="label-depth">Depth Player</span></td><td>32.33</td><td>35.02</td><td>2.41</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -777,218 +801,377 @@
 </div>
 
     <!-- TAB: VALUES -->
-    <div id="valuesTab" class="tab-content">
-        <div class="settings-card">
-            <h2>2026 Values at ADP</h2>
-            <p class="card-desc">Players presenting strong value based on their expected T-Score relative to their market ADP price.</p>
+<div id="valuesTab" class="tab-content">
+    <div class="settings-card">
+        <h2>2026 Values at ADP</h2>
+        <p class="card-desc">Players presenting strong value based on their expected T-Score relative to their market ADP price.</p>
 
-            <div class="pos-toggle-wrapper">
-                <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'valuesTab')">Wide Receivers</button>
-                <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'valuesTab')">Running Backs</button>
+        <div class="pos-toggle-wrapper">
+            <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'valuesTab')">Wide Receivers</button>
+            <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'valuesTab')">Running Backs</button>
+        </div>
+
+        <!-- WR CONTENT -->
+        <div class="wr-content" style="display: block;">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>T-Score</th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Exp T-Score
+                                    <span class="tooltip-text" style="width: 200px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Expected T-Score based on market ADP trendline</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    T-Score Diff
+                                    <span class="tooltip-text" style="width: 210px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Difference between actual T-Score and Expected T-Score</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    ADP
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Average Draft Position</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Yds/G
+                                    <span class="tooltip-text" style="width: 180px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Receiving Yards Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    1st D/G
+                                    <span class="tooltip-text" style="width: 180px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">First Downs Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    RZ Tgts
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Red Zone Targets</span>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>5</td><td><strong>George Pickens</strong></td><td><span class="label-elite">Elite</span></td><td>84.14</td><td>69.39</td><td><span class="val-badge val-fire">+14.74</span></td><td>27.0</td><td>84.1</td><td>4.29</td><td>21</td></tr>
+                        <tr><td>11</td><td><strong>Davante Adams</strong></td><td><span class="label-high">High-End Starter</span></td><td>71.36</td><td>62.59</td><td><span class="val-badge val-fire">+8.78</span></td><td>51.6</td><td>56.4</td><td>3.64</td><td>31</td></tr>
+                        <tr><td>15</td><td><strong>Courtland Sutton</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.56</td><td>57.23</td><td><span class="val-badge val-fire">+9.33</span></td><td>86.0</td><td>59.8</td><td>3.06</td><td>17</td></tr>
+                        <tr><td>17</td><td><strong>Alec Pierce</strong></td><td><span class="label-strong">Strong Starter</span></td><td>65.96</td><td>57.24</td><td><span class="val-badge val-fire">+8.72</span></td><td>85.9</td><td>66.9</td><td>2.73</td><td>8</td></tr>
+                        <tr><td>19</td><td><strong>Michael Wilson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>65.45</td><td>56.28</td><td><span class="val-badge val-fire">+9.17</span></td><td>94.1</td><td>59.2</td><td>3.00</td><td>15</td></tr>
+                    </tbody>
+                </table>
             </div>
+        </div>
 
-            <!-- WR CONTENT -->
-            <div class="wr-content" style="display: block;">
-                <div class="data-table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Player</th>
-                                <th>Label</th>
-                                <th>T-Score</th>
-                                <th>Exp T-Score</th>
-                                <th>T-Score Diff</th>
-                                <th>ADP</th>
-                                <th>Yds/G</th>
-                                <th>1st D/G</th>
-                                <th>RZ Tgts</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>5</td><td><strong>George Pickens</strong></td><td><span class="label-elite">Elite</span></td><td>84.14</td><td>69.39</td><td><span class="val-badge val-fire">+14.74</span></td><td>27.0</td><td>84.1</td><td>4.29</td><td>21</td></tr>
-                            <tr><td>11</td><td><strong>Davante Adams</strong></td><td><span class="label-high">High-End Starter</span></td><td>71.36</td><td>62.59</td><td><span class="val-badge val-fire">+8.78</span></td><td>51.6</td><td>56.4</td><td>3.64</td><td>31</td></tr>
-                            <tr><td>15</td><td><strong>Courtland Sutton</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.56</td><td>57.23</td><td><span class="val-badge val-fire">+9.33</span></td><td>86.0</td><td>59.8</td><td>3.06</td><td>17</td></tr>
-                            <tr><td>17</td><td><strong>Alec Pierce</strong></td><td><span class="label-strong">Strong Starter</span></td><td>65.96</td><td>57.24</td><td><span class="val-badge val-fire">+8.72</span></td><td>85.9</td><td>66.9</td><td>2.73</td><td>8</td></tr>
-                            <tr><td>19</td><td><strong>Michael Wilson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>65.45</td><td>56.28</td><td><span class="val-badge val-fire">+9.17</span></td><td>94.1</td><td>59.2</td><td>3.00</td><td>15</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- RB CONTENT -->
-            <div class="rb-content" style="display: none;">
-                <div class="data-table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Player</th>
-                                <th>Label</th>
-                                <th>T-Score</th>
-                                <th>Exp T-Score</th>
-                                <th>T-Score Diff</th>
-                                <th>ADP</th>
-                                <th>Scrimmage Yds/G</th>
-                                <th>HVT/G</th>
-                                <th>Tgts/G</th>
-                                <th>RZ Carries/G</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>1</td><td><strong>Christian McCaffrey</strong></td><td><span class="label-elite">Elite</span></td><td>90.94</td><td>73.60</td><td><span class="val-badge val-fire">+17.34</span></td><td>5.8</td><td>125.1</td><td>11.77</td><td>7.59</td><td>4.18</td></tr>
-                            <tr><td>4</td><td><strong>De'Von Achane</strong></td><td><span class="label-high">High-End Starter</span></td><td>76.88</td><td>65.98</td><td><span class="val-badge val-fire">+10.90</span></td><td>13.4</td><td>114.9</td><td>7.12</td><td>5.31</td><td>1.81</td></tr>
-                            <tr><td>12</td><td><strong>D'Andre Swift</strong></td><td><span class="label-strong">Strong Starter</span></td><td>61.20</td><td>53.08</td><td><span class="val-badge val-fire">+8.12</span></td><td>55.3</td><td>86.6</td><td>5.50</td><td>3.00</td><td>2.50</td></tr>
-                            <tr><td>20</td><td><strong>Jaylen Warren</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>58.24</td><td>48.88</td><td><span class="val-badge val-fire">+9.35</span></td><td>87.7</td><td>80.7</td><td>5.31</td><td>2.81</td><td>2.50</td></tr>
-                            <tr><td>21</td><td><strong>Rico Dowdle</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>57.02</td><td>48.04</td><td><span class="val-badge val-fire">+8.98</span></td><td>96.3</td><td>80.8</td><td>4.70</td><td>2.94</td><td>1.76</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+        <!-- RB CONTENT -->
+        <div class="rb-content" style="display: none;">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>T-Score</th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Exp T-Score
+                                    <span class="tooltip-text" style="width: 200px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Expected T-Score based on market ADP trendline</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    T-Score Diff
+                                    <span class="tooltip-text" style="width: 210px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Difference between actual T-Score and Expected T-Score</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    ADP
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Average Draft Position</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Scrimmage Yds/G
+                                    <span class="tooltip-text" style="width: 190px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Scrimmage Yards Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    HVT/G
+                                    <span class="tooltip-text" style="width: 220px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">High-Value Touches Per Game (Calculated by combining Targets and Red Zone Carries Per Game)</span>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1</td><td><strong>Christian McCaffrey</strong></td><td><span class="label-elite">Elite</span></td><td>90.94</td><td>73.60</td><td><span class="val-badge val-fire">+17.34</span></td><td>5.8</td><td>125.1</td><td>11.77</td></tr>
+                        <tr><td>4</td><td><strong>De'Von Achane</strong></td><td><span class="label-high">High-End Starter</span></td><td>76.88</td><td>65.98</td><td><span class="val-badge val-fire">+10.90</span></td><td>13.4</td><td>114.9</td><td>7.12</td></tr>
+                        <tr><td>12</td><td><strong>D'Andre Swift</strong></td><td><span class="label-strong">Strong Starter</span></td><td>61.20</td><td>53.08</td><td><span class="val-badge val-fire">+8.12</span></td><td>55.3</td><td>86.6</td><td>5.50</td></tr>
+                        <tr><td>20</td><td><strong>Jaylen Warren</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>58.24</td><td>48.88</td><td><span class="val-badge val-fire">+9.35</span></td><td>87.7</td><td>80.7</td><td>5.31</td></tr>
+                        <tr><td>21</td><td><strong>Rico Dowdle</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>57.02</td><td>48.04</td><td><span class="val-badge val-fire">+8.98</span></td><td>96.3</td><td>80.8</td><td>4.70</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- TAB: SLEEPERS -->
-    <div id="sleepersTab" class="tab-content">
-        <div class="settings-card">
-            <h2>2026 Sleepers at ADP</h2>
-            <p class="card-desc">Players drafted outside the top 100 overall (ADP > 100) that present upside compared to their cost.</p>
+<!-- TAB: SLEEPERS -->
+<div id="sleepersTab" class="tab-content">
+    <div class="settings-card">
+        <h2>2026 Sleepers at ADP</h2>
+        <p class="card-desc">Players drafted outside the top 100 overall (ADP > 100) that present upside compared to their cost.</p>
 
-            <div class="pos-toggle-wrapper">
-                <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'sleepersTab')">Wide Receivers</button>
-                <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'sleepersTab')">Running Backs</button>
+        <div class="pos-toggle-wrapper">
+            <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'sleepersTab')">Wide Receivers</button>
+            <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'sleepersTab')">Running Backs</button>
+        </div>
+
+        <!-- WR CONTENT -->
+        <div class="wr-content" style="display: block;">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>T-Score</th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Exp T-Score
+                                    <span class="tooltip-text" style="width: 200px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Expected T-Score based on market ADP trendline</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    T-Score Diff
+                                    <span class="tooltip-text" style="width: 210px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Difference between actual T-Score and Expected T-Score</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    ADP
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Average Draft Position</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Yds/G
+                                    <span class="tooltip-text" style="width: 180px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Receiving Yards Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    1st D/G
+                                    <span class="tooltip-text" style="width: 180px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">First Downs Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    RZ Tgts
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Red Zone Targets</span>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>20</td><td><strong>Stefon Diggs</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.77</td><td>53.09</td><td><span class="val-badge val-fire">+11.68</span></td><td>127.5</td><td>59.6</td><td>3.00</td><td>12</td></tr>
+                        <tr><td>21</td><td><strong>Wan'Dale Robinson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.01</td><td>54.05</td><td><span class="val-badge val-fire">+9.96</span></td><td>116.4</td><td>63.4</td><td>2.44</td><td>11</td></tr>
+                        <tr><td>27</td><td><strong>Ricky Pearsall</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>62.47</td><td>49.46</td><td><span class="val-badge val-fire">+13.01</span></td><td>180.3</td><td>58.7</td><td>3.11</td><td>4</td></tr>
+                        <tr><td>38</td><td><strong>Jauan Jennings</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>56.51</td><td>48.18</td><td><span class="val-badge val-fire">+8.33</span></td><td>203.7</td><td>42.9</td><td>2.40</td><td>19</td></tr>
+                        <tr><td>43</td><td><strong>Troy Franklin</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.55</td><td>38.73</td><td><span class="val-badge val-fire">+14.82</span></td><td>500.6</td><td>41.7</td><td>1.88</td><td>18</td></tr>
+                    </tbody>
+                </table>
             </div>
+        </div>
 
-            <!-- WR CONTENT -->
-            <div class="wr-content" style="display: block;">
-                <div class="data-table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Player</th>
-                                <th>Label</th>
-                                <th>T-Score</th>
-                                <th>Exp T-Score</th>
-                                <th>T-Score Diff</th>
-                                <th>ADP</th>
-                                <th>Yds/G</th>
-                                <th>1st D/G</th>
-                                <th>RZ Tgts</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>20</td><td><strong>Stefon Diggs</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.77</td><td>53.09</td><td><span class="val-badge val-fire">+11.68</span></td><td>127.5</td><td>59.6</td><td>3.00</td><td>12</td></tr>
-                            <tr><td>21</td><td><strong>Wan'Dale Robinson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.01</td><td>54.05</td><td><span class="val-badge val-fire">+9.96</span></td><td>116.4</td><td>63.4</td><td>2.44</td><td>11</td></tr>
-                            <tr><td>27</td><td><strong>Ricky Pearsall</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>62.47</td><td>49.46</td><td><span class="val-badge val-fire">+13.01</span></td><td>180.3</td><td>58.7</td><td>3.11</td><td>4</td></tr>
-                            <tr><td>38</td><td><strong>Jauan Jennings</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>56.51</td><td>48.18</td><td><span class="val-badge val-fire">+8.33</span></td><td>203.7</td><td>42.9</td><td>2.40</td><td>19</td></tr>
-                            <tr><td>43</td><td><strong>Troy Franklin</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.55</td><td>38.73</td><td><span class="val-badge val-fire">+14.82</span></td><td>500.6</td><td>41.7</td><td>1.88</td><td>18</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- RB CONTENT -->
-            <div class="rb-content" style="display: none;">
-                <div class="data-table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Player</th>
-                                <th>Label</th>
-                                <th>T-Score</th>
-                                <th>Exp T-Score</th>
-                                <th>T-Score Diff</th>
-                                <th>ADP</th>
-                                <th>Scrimmage Yds/G</th>
-                                <th>HVT/G</th>
-                                <th>Tgts/G</th>
-                                <th>RZ Carries/G</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>48</td><td><strong>Bam Knight</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.73</td><td>24.81</td><td><span class="val-badge val-fire">+10.92</span></td><td>1236.5</td><td>35.7</td><td>3.91</td><td>2.58</td><td>1.33</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+        <!-- RB CONTENT -->
+        <div class="rb-content" style="display: none;">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>T-Score</th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Exp T-Score
+                                    <span class="tooltip-text" style="width: 200px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Expected T-Score based on market ADP trendline</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    T-Score Diff
+                                    <span class="tooltip-text" style="width: 210px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Difference between actual T-Score and Expected T-Score</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    ADP
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Average Draft Position</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Scrimmage Yds/G
+                                    <span class="tooltip-text" style="width: 190px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Scrimmage Yards Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    HVT/G
+                                    <span class="tooltip-text" style="width: 220px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">High-Value Touches Per Game (Calculated by combining Targets and Red Zone Carries Per Game)</span>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>48</td><td><strong>Bam Knight</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.73</td><td>24.81</td><td><span class="val-badge val-fire">+10.92</span></td><td>1236.5</td><td>35.7</td><td>3.91</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- TAB: AVOIDS -->
-    <div id="avoidsTab" class="tab-content">
-        <div class="settings-card">
-            <h2>2026 Avoids at ADP</h2>
-            <p class="card-desc">Players the T-Score model suggests fading based on market price vs historical production metrics.</p>
+<!-- TAB: AVOIDS -->
+<div id="avoidsTab" class="tab-content">
+    <div class="settings-card">
+        <h2>2026 Avoids at ADP</h2>
+        <p class="card-desc">Players the T-Score model suggests fading based on market price vs historical production metrics.</p>
 
-            <div class="pos-toggle-wrapper">
-                <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'avoidsTab')">Wide Receivers</button>
-                <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'avoidsTab')">Running Backs</button>
+        <div class="pos-toggle-wrapper">
+            <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'avoidsTab')">Wide Receivers</button>
+            <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'avoidsTab')">Running Backs</button>
+        </div>
+
+        <!-- WR CONTENT -->
+        <div class="wr-content" style="display: block;">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>T-Score</th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Exp T-Score
+                                    <span class="tooltip-text" style="width: 200px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Expected T-Score based on market ADP trendline</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    T-Score Diff
+                                    <span class="tooltip-text" style="width: 210px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Difference between actual T-Score and Expected T-Score</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    ADP
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Average Draft Position</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Yds/G
+                                    <span class="tooltip-text" style="width: 180px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Receiving Yards Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    1st D/G
+                                    <span class="tooltip-text" style="width: 180px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">First Downs Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    RZ Tgts
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Red Zone Targets</span>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>16</td><td><strong>Justin Jefferson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.19</td><td>77.68</td><td><span class="val-badge val-warn">-11.48</span></td><td>12.3</td><td>61.6</td><td>2.76</td><td>17</td></tr>
+                        <tr><td>36</td><td><strong>Ladd McConkey</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>57.23</td><td>64.35</td><td><span class="val-badge val-warn">-7.12</span></td><td>43.7</td><td>49.3</td><td>2.19</td><td>14</td></tr>
+                        <tr><td>48</td><td><strong>D.J. Moore</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.77</td><td>61.44</td><td><span class="val-badge val-warn">-10.67</span></td><td>57.6</td><td>40.1</td><td>1.88</td><td>11</td></tr>
+                        <tr><td>50</td><td><strong>Luther Burden</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.02</td><td>61.76</td><td><span class="val-badge val-warn">-11.74</span></td><td>55.9</td><td>43.5</td><td>1.80</td><td>4</td></tr>
+                        <tr><td>64</td><td><strong>Jayden Higgins</strong></td><td><span class="label-depth">Depth Player</span></td><td>44.34</td><td>52.36</td><td><span class="val-badge val-warn">-8.01</span></td><td>136.8</td><td>30.9</td><td>1.65</td><td>7</td></tr>
+                        <tr><td>80</td><td><strong>Matthew Golden</strong></td><td><span class="label-depth">Depth Player</span></td><td>38.43</td><td>54.29</td><td><span class="val-badge val-warn">-15.86</span></td><td>113.8</td><td>25.8</td><td>1.14</td><td>2</td></tr>
+                    </tbody>
+                </table>
             </div>
+        </div>
 
-            <!-- WR CONTENT -->
-            <div class="wr-content" style="display: block;">
-                <div class="data-table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Player</th>
-                                <th>Label</th>
-                                <th>T-Score</th>
-                                <th>Exp T-Score</th>
-                                <th>T-Score Diff</th>
-                                <th>ADP</th>
-                                <th>Yds/G</th>
-                                <th>1st D/G</th>
-                                <th>RZ Tgts</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>16</td><td><strong>Justin Jefferson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.19</td><td>77.68</td><td><span class="val-badge val-warn">-11.48</span></td><td>12.3</td><td>61.6</td><td>2.76</td><td>17</td></tr>
-                            <tr><td>36</td><td><strong>Ladd McConkey</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>57.23</td><td>64.35</td><td><span class="val-badge val-warn">-7.12</span></td><td>43.7</td><td>49.3</td><td>2.19</td><td>14</td></tr>
-                            <tr><td>48</td><td><strong>D.J. Moore</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.77</td><td>61.44</td><td><span class="val-badge val-warn">-10.67</span></td><td>57.6</td><td>40.1</td><td>1.88</td><td>11</td></tr>
-                            <tr><td>50</td><td><strong>Luther Burden</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.02</td><td>61.76</td><td><span class="val-badge val-warn">-11.74</span></td><td>55.9</td><td>43.5</td><td>1.80</td><td>4</td></tr>
-                            <tr><td>64</td><td><strong>Jayden Higgins</strong></td><td><span class="label-depth">Depth Player</span></td><td>44.34</td><td>52.36</td><td><span class="val-badge val-warn">-8.01</span></td><td>136.8</td><td>30.9</td><td>1.65</td><td>7</td></tr>
-                            <tr><td>80</td><td><strong>Matthew Golden</strong></td><td><span class="label-depth">Depth Player</span></td><td>38.43</td><td>54.29</td><td><span class="val-badge val-warn">-15.86</span></td><td>113.8</td><td>25.8</td><td>1.14</td><td>2</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- RB CONTENT -->
-            <div class="rb-content" style="display: none;">
-                <div class="data-table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Player</th>
-                                <th>Label</th>
-                                <th>T-Score</th>
-                                <th>Exp T-Score</th>
-                                <th>T-Score Diff</th>
-                                <th>ADP</th>
-                                <th>Scrimmage Yds/G</th>
-                                <th>HVT/G</th>
-                                <th>Tgts/G</th>
-                                <th>RZ Carries/G</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>23</td><td><strong>Kenneth Walker</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.79</td><td>63.06</td><td><span class="val-badge val-warn">-9.27</span></td><td>18.5</td><td>77.0</td><td>3.94</td><td>2.12</td><td>1.82</td></tr>
-                            <tr><td>37</td><td><strong>David Montgomery</strong></td><td><span class="label-depth">Depth Player</span></td><td>42.91</td><td>52.89</td><td><span class="val-badge val-warn">-9.99</span></td><td>56.5</td><td>53.4</td><td>3.65</td><td>1.71</td><td>1.94</td></tr>
-                            <tr><td>46</td><td><strong>Blake Corum</strong></td><td><span class="label-depth">Depth Player</span></td><td>37.00</td><td>46.43</td><td><span class="val-badge val-warn">-9.43</span></td><td>114.8</td><td>46.02</td><td>2.35</td><td>0.82</td><td>1.53</td></tr>
-                            <tr><td>47</td><td><strong>Chris Rodriguez</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.76</td><td>44.91</td><td><span class="val-badge val-warn">-9.15</span></td><td>135.8</td><td>40.81</td><td>2.85</td><td>0.31</td><td>2.54</td></tr>
-                            <tr><td>49</td><td><strong>Tyler Allgeier</strong></td><td><span class="label-depth">Depth Player</span></td><td>33.42</td><td>44.23</td><td><span class="val-badge val-warn">-10.81</span></td><td>146.4</td><td>35.85</td><td>2.76</td><td>0.94</td><td>1.82</td></tr>
-                            <tr><td>55</td><td><strong>Bhayshul Tuten</strong></td><td><span class="label-depth">Depth Player</span></td><td>28.55</td><td>52.04</td><td><span class="val-badge val-warn">-23.50</span></td><td>62.0</td><td>25.77</td><td>2.53</td><td>0.93</td><td>1.60</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+        <!-- RB CONTENT -->
+        <div class="rb-content" style="display: none;">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>T-Score</th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Exp T-Score
+                                    <span class="tooltip-text" style="width: 200px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Expected T-Score based on market ADP trendline</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    T-Score Diff
+                                    <span class="tooltip-text" style="width: 210px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Difference between actual T-Score and Expected T-Score</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    ADP
+                                    <span class="tooltip-text" style="width: 160px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Average Draft Position</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    Scrimmage Yds/G
+                                    <span class="tooltip-text" style="width: 190px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">Scrimmage Yards Per Game</span>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="tooltip-container" style="border-bottom: 1px dotted var(--text-muted);">
+                                    HVT/G
+                                    <span class="tooltip-text" style="width: 220px; text-align: center; left: 50%; right: auto; transform: translateX(-50%); font-weight: normal; font-size: 0.75rem;">High-Value Touches Per Game (Calculated by combining Targets and Red Zone Carries Per Game)</span>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>23</td><td><strong>Kenneth Walker</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.79</td><td>63.06</td><td><span class="val-badge val-warn">-9.27</span></td><td>18.5</td><td>77.0</td><td>3.94</td></tr>
+                        <tr><td>37</td><td><strong>David Montgomery</strong></td><td><span class="label-depth">Depth Player</span></td><td>42.91</td><td>52.89</td><td><span class="val-badge val-warn">-9.99</span></td><td>56.5</td><td>53.4</td><td>3.65</td></tr>
+                        <tr><td>46</td><td><strong>Blake Corum</strong></td><td><span class="label-depth">Depth Player</span></td><td>37.00</td><td>46.43</td><td><span class="val-badge val-warn">-9.43</span></td><td>114.8</td><td>46.02</td><td>2.35</td></tr>
+                        <tr><td>47</td><td><strong>Chris Rodriguez</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.76</td><td>44.91</td><td><span class="val-badge val-warn">-9.15</span></td><td>135.8</td><td>40.81</td><td>2.85</td></tr>
+                        <tr><td>49</td><td><strong>Tyler Allgeier</strong></td><td><span class="label-depth">Depth Player</span></td><td>33.42</td><td>44.23</td><td><span class="val-badge val-warn">-10.81</span></td><td>146.4</td><td>35.85</td><td>2.76</td></tr>
+                        <tr><td>55</td><td><strong>Bhayshul Tuten</strong></td><td><span class="label-depth">Depth Player</span></td><td>28.55</td><td>52.04</td><td><span class="val-badge val-warn">-23.50</span></td><td>62.0</td><td>25.77</td><td>2.53</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
 </main>
 
 <script>
