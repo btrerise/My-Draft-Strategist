@@ -1805,7 +1805,7 @@ function parseExcel(file) {
             valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
         }
         
-        if (p.posGroup === 'WR' && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
+        if (['WR', 'RB'].includes(p.posGroup) && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
             const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
             const normName = normFunc(p.name); 
             const tInfo = tScoreData[normName];
