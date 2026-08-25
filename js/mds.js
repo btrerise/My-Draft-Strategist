@@ -1805,45 +1805,31 @@ function parseExcel(file) {
             valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
         }
         
-        // --- T-SCORE BADGE LOOKUP WITH SUFFIX FALLBACK ---
-    if (['WR', 'RB'].includes(p.posGroup) && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
-    const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
-    let normName = normFunc(p.name); 
-    let tInfo = tScoreData[normName];
-    
-    // Fallback 1: Strip suffixes (III, Jr, Sr, II, IV) if p.name has one (e.g. "kennethwalkeriii" -> "kennethwalker")
-    if (!tInfo) {
-        const strippedName = normName.replace(/(iii|jr|sr|ii|iv|v)$/g, '');
-        tInfo = tScoreData[strippedName];
-    }
-
-    // Fallback 2: Check if tScoreData key has a suffix that p.name is missing
-    if (!tInfo) {
-        const keys = Object.keys(tScoreData);
-        const matchedKey = keys.find(k => k.replace(/(iii|jr|sr|ii|iv|v)$/g, '') === normName);
-        if (matchedKey) tInfo = tScoreData[matchedKey];
-    }
-    
-    if (tInfo) {
-        let tsColor = "#9ca3af";
-        let tsBg = "rgba(255,255,255,0.1)";
-        let tsBorder = "var(--border)";
-        
-        if (tInfo.c === 'label-elite') { tsColor = "#a855f7"; tsBg = "rgba(168, 85, 247, 0.15)"; tsBorder = "rgba(168, 85, 247, 0.3)"; }
-        else if (tInfo.c === 'label-high') { tsColor = "#3b82f6"; tsBg = "rgba(59, 130, 246, 0.15)"; tsBorder = "rgba(59, 130, 246, 0.3)"; }
-        else if (tInfo.c === 'label-strong') { tsColor = "#10b981"; tsBg = "rgba(16, 185, 129, 0.15)"; tsBorder = "rgba(16, 185, 129, 0.3)"; }
-        else if (tInfo.c === 'label-quality') { tsColor = "#f59e0b"; tsBg = "rgba(245, 158, 11, 0.15)"; tsBorder = "rgba(245, 158, 11, 0.3)"; }
-        else if (tInfo.c === 'label-boom') { tsColor = "#ef4444"; tsBg = "rgba(239, 68, 68, 0.15)"; tsBorder = "rgba(239, 68, 68, 0.3)"; }
-        
-        let tScoreHTML = ` | 
-            <div class="tooltip-container" style="display:inline-flex;">
-                <span class="badge" style="background: ${tsBg}; color: ${tsColor}; border: 1px solid ${tsBorder}; font-weight: 700;">${tInfo.l}</span>
-                <span class="tooltip-text" style="width: max-content; white-space: nowrap;">T-Score: ${tInfo.s} | ${tInfo.l}</span>
-            </div>`;
-        
-        valueBadgeHTML += tScoreHTML;
-    }
-    }
+        if (['WR', 'RB'].includes(p.posGroup) && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
+            const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normName = normFunc(p.name); 
+            const tInfo = tScoreData[normName];
+            
+            if (tInfo) {
+                let tsColor = "#9ca3af";
+                let tsBg = "rgba(255,255,255,0.1)";
+                let tsBorder = "var(--border)";
+                
+                if (tInfo.c === 'label-elite') { tsColor = "#a855f7"; tsBg = "rgba(168, 85, 247, 0.15)"; tsBorder = "rgba(168, 85, 247, 0.3)"; }
+                else if (tInfo.c === 'label-high') { tsColor = "#3b82f6"; tsBg = "rgba(59, 130, 246, 0.15)"; tsBorder = "rgba(59, 130, 246, 0.3)"; }
+                else if (tInfo.c === 'label-strong') { tsColor = "#10b981"; tsBg = "rgba(16, 185, 129, 0.15)"; tsBorder = "rgba(16, 185, 129, 0.3)"; }
+                else if (tInfo.c === 'label-quality') { tsColor = "#f59e0b"; tsBg = "rgba(245, 158, 11, 0.15)"; tsBorder = "rgba(245, 158, 11, 0.3)"; }
+                else if (tInfo.c === 'label-boom') { tsColor = "#ef4444"; tsBg = "rgba(239, 68, 68, 0.15)"; tsBorder = "rgba(239, 68, 68, 0.3)"; }
+                
+                let tScoreHTML = ` | 
+                    <div class="tooltip-container" style="display:inline-flex;">
+                        <span class="badge" style="background: ${tsBg}; color: ${tsColor}; border: 1px solid ${tsBorder}; font-weight: 700;">${tInfo.l}</span>
+                        <span class="tooltip-text" style="width: max-content; white-space: nowrap;">T-Score: ${tInfo.s} | ${tInfo.l}</span>
+                    </div>`;
+                
+                valueBadgeHTML += tScoreHTML;
+            }
+        }
 
         let adpText = (p.adp && p.adp !== "-") ? ` | Market: ${p.adp}` : "";
         let isStack = false;
