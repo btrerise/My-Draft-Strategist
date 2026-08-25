@@ -138,7 +138,7 @@ const tScoreData = {
     "jaylenwarren": { s: 58.24, l: "Quality Contributor", c: "label-quality" },
     "ricodowdle": { s: 57.02, l: "Boom/Bust", c: "label-boom" },
     "jkdobbins": { s: 54.17, l: "Boom/Bust", c: "label-boom" },
-    "kennethwalkeriii": { s: 53.79, l: "Boom/Bust", c: "label-boom" },
+    "kenwalker": { s: 53.79, l: "Boom/Bust", c: "label-boom" },
     "quinshonjudkins": { s: 53.04, l: "Boom/Bust", c: "label-boom" },
     "tonypollard": { s: 52.25, l: "Boom/Bust", c: "label-boom" },
     "tyronetracy": { s: 51.45, l: "Boom/Bust", c: "label-boom" },
