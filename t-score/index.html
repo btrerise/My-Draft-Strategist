@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="T-Score Methodology and Rankings for Wide Receivers">
+    <meta name="description" content="T-Score Methodology and Rankings for Wide Receivers and Running Backs">
     <title>T-Score Methodology | My Draft Strategist</title>
     <link rel="canonical" href="https://mydraftstrategist.com/t-score/" />
 
@@ -42,7 +42,7 @@
         /* Sticky Sub-Nav for Tabs */
         .tscore-nav-wrapper {
             position: sticky;
-            top: 60px; /* Sits right below the main header */
+            top: 60px;
             background: rgba(10, 14, 23, 0.85);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
@@ -55,9 +55,9 @@
             -webkit-overflow-scrolling: touch;
         }
         @media (max-width: 600px) {
-    .tscore-nav-wrapper {
-        top: 49px; /* Aligns perfectly with your reduced mobile header */
-        }
+            .tscore-nav-wrapper {
+                top: 49px;
+            }
         }
         .tscore-nav-btn {
             background: rgba(0, 0, 0, 0.2);
@@ -81,6 +81,30 @@
             background: var(--target-bg);
             color: var(--primary-green);
             border-color: var(--primary-green);
+        }
+
+        /* Tab Content Visibility Guarantee */
+        .tab-content {
+            display: none !important;
+        }
+        .tab-content.active {
+            display: block !important;
+        }
+
+        .settings-card {
+            display: block !important;
+            background: var(--card-bg, #131b2c);
+            border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: var(--text-main, #f3f4f6);
+        }
+
+        .card-desc {
+            color: var(--text-muted, #9ca3af);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
         }
 
         /* Editorial Reading Typography */
@@ -160,23 +184,23 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            background-color: var(--card-bg, #131b2c); /* Adjust hex to match your exact card background */
+            background-color: var(--card-bg, #131b2c);
             box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
         }
-        /* Freezes the 2nd column (Player Name) */
+
         .data-table th:nth-child(2),
         .data-table td:nth-child(2) {
             position: sticky;
             left: 0;
             z-index: 5;
             background-color: var(--card-bg, #1a1a1a);
-            box-shadow: 1px 0 0 rgba(255, 255, 255, 0.1); /* Puts a border on the right side of the frozen column */
+            box-shadow: 1px 0 0 rgba(255, 255, 255, 0.1);
         }
 
-        /* Ensure the top-left overlapping header cell stays above everything */
         .data-table th:nth-child(2) {
             z-index: 15; 
         }
+
         .data-table td {
             padding: 1rem;
             font-size: 0.95rem;
@@ -196,13 +220,50 @@
         .label-quality { color: #f59e0b; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
         .label-boom { color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
         .label-depth { color: var(--text-muted); background: rgba(255, 255, 255, 0.1); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+
+        /* Value Badges */
+        .val-badge { padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; }
+        .val-fire { color: #10b981; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .val-warn { color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        /* Position Toggle Styles */
+        .pos-toggle-wrapper {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1rem 0 1.5rem 0;
+        }
+
+        .pos-toggle-btn {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.5rem 1.5rem;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pos-toggle-btn:hover {
+            color: var(--text-main);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .pos-toggle-btn.active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--primary-green);
+            border-color: var(--primary-green);
+        }
     </style>
     
     <!-- MathJax for rendering LaTeX equations -->
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
     <!-- Open Graph / Social Meta Tags -->
     <meta property="og:title" content="The T-Score Model | My Draft Strategist">
-    <meta property="og:description" content="A predictive statistical model for evaluating Wide Receiver fantasy production based on multiple linear regression analysis.">
+    <meta property="og:description" content="A predictive statistical model for evaluating Wide Receiver and Running Back fantasy production based on multiple linear regression analysis.">
     <meta property="og:image" content="https://mydraftstrategist.com/images/5775.svg">
     <meta property="og:url" content="https://mydraftstrategist.com/t-score/">
     <meta name="twitter:card" content="summary_large_image">
@@ -215,14 +276,12 @@
         "@type": "WebPage",
         "@id": "https://mydraftstrategist.com/t-score/"
     },
-    "headline": "The T-Score Model: A Predictive Wide Receiver Methodology",
-    "description": "A predictive statistical model for evaluating Wide Receiver fantasy production based on multiple linear regression analysis.",
+    "headline": "The T-Score Model: A Predictive Model for WRs and RBs",
+    "description": "A predictive statistical model for evaluating Wide Receiver and Running Back fantasy production based on multiple linear regression analysis.",
     "image": "https://mydraftstrategist.com/images/5775.svg",
     "author": {
         "@type": "Person",
         "name": "Benton Trerise"
-    "datePublished": "2025-08-01"
-    "dateModified": "2026-08-05"
     },
     "publisher": {
         "@type": "Organization",
@@ -232,8 +291,7 @@
         "url": "https://mydraftstrategist.com/images/5775.svg"
         }
     },
-    "articleSection": "Fantasy Football Analytics",
-    "keywords": "Fantasy Football, Wide Receiver, Predictive Model, Multiple Linear Regression, T-Score, ADP, Target Share, Yards, Yards Per Game, Targets Per Team Pass Attempt, Targets, Per Game, Red Zone Targets, Yards Per Route Run, Yards After Catch, Air Yards, Air Yards Share"
+    "articleSection": "Fantasy Football Analytics"
     }
     </script>
 </head>
@@ -242,7 +300,7 @@
 <header class="header">
     <div class="header-left">
         <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu" aria-expanded="false">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
         <div class="logo-container" onclick="window.location.href='../index.html'">
             <img src="../images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
@@ -255,7 +313,7 @@
         </a>
     </div>
 </header>
-<!-- HAMBURGER MENU OVERLAY & DRAWER -->
+
 <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
 
 <nav class="hamburger-menu" id="hamburgerMenu" aria-label="Main Navigation">
@@ -271,10 +329,9 @@
 
     <div class="menu-nav-links">
         <a href="../index.html" class="nav-btn premium-link-btn">
-        My Draft Strategist 
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+            My Draft Strategist 
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
         </a>       
-
         <a href="../lineup/" class="nav-btn premium-link-btn">
             My Lineup Strategist 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
@@ -287,9 +344,10 @@
         </a>
     </div>
 </nav>
+
 <div class="tscore-hero">
     <h1 class="tscore-title">The T-Score Model</h1>
-    <p class="tscore-subtitle">A predictive statistical model for evaluating Wide Receiver fantasy production based on multiple linear regression analysis.</p>
+    <p class="tscore-subtitle">A predictive statistical model for evaluating Wide Receiver and Running Back fantasy production based on multiple linear regression analysis.</p>
 </div>
 
 <div class="tscore-nav-wrapper">
@@ -300,445 +358,695 @@
     <button class="tscore-nav-btn" onclick="switchTab('sleepersTab', this)">Sleepers at ADP</button>
     <button class="tscore-nav-btn" onclick="switchTab('tab-2024', this)">2024 WR Analysis</button>
 </div>
+
 <main class="container" style="padding-top: 1rem;">
     
     <!-- TAB: THE RESEARCH -->
-    <div id="researchTab" class="tab-content active">
-        <div class="article-content">
-        <h2>Introduction</h2>
-        <p>I stumbled upon a <a href="https://fantasyclassroom.org/Blogs/sticky-stats/wr-metrics" style="color:var(--primary-green);">random article</a> on Reddit, where the author was using WR stats from a previous season to try and predict fantasy success for Wide Receivers (WR) the following season. He had created his own “trinity” score utilizing Target (Tgt) Share, Air Yards (AY) Share, and Yards After Catch (YAC) per reception, and normalized them. Normalizing means taking the stats of a particular metric, and putting it all on a 0-100 (or 0-1) scale, in order to make more fair comparisons. He also looked into alternative combinations of metrics, and the one where he had found the most correlation used total receiving yards, YAC, AY Share, and Yards per Team Pass Attempt, and normalized each stat.</p>
-        <p>At the time I read this particular article, he didn’t have anything using the stats from 2024 to try and predict 2025 fantasy success, so I decided to take it on myself. I then decided to adjust it, because some of those stats hurt WRs who got injured. I know that decreases sample sizes in some cases, but I decided nonetheless to adjust each stat for "per game". I then combined those normalized stats into a sum to give each WR a score, sorted the data by that score, and ranked them. I found the results for the top-12 interesting.</p>
-        <p>I proceeded to do some manual testing (with assistance from AI), and my model that I landed on for awhile that I dubbed “T-Score” (which I will dub “v1.4”) used the following metrics (in order of weight in v1.4):</p>
-        <ul>
-            <li>Target Rate/game</li>
-            <li>Yards/game</li>
-            <li>YAC/game</li>
-            <li>Yards per Team Pass Attempts/game</li>
-            <li>Air Yards Share/game</li>
-        </ul>
-        <p><em>Note: Coincidentally, I found out that “t-scoring” is a common method used in data analytics to standardize raw data points. It is completely by accident that I decided to call my model “T-Score” based on my last name. Fun accident, though.</em></p>
-        <p>Since then, though, I’ve done a ton of learning and reading on data analysis, and have greatly adjusted my model. I also learned that I needed to apply qualifications in order for WR to be ranked; I eventually landed on a minimum of both 8 games played in a season, and 15 receptions in a season (this might seem low, but if a WR played only 8 games, that comes out to just under 2 receptions a game; surprisingly, if I raised the minimum much more, I was missing what I felt to be somewhat relevant players in deep leagues).</p>
+<div id="researchTab" class="tab-content active">
+    <div class="article-content">
 
-        <h2>The Goal: Predicting N+1 PPG</h2>
-        <p>My primary objective has been to build a robust predictive model for wide receiver performance in the subsequent season (N+1), measured by Points Per Game (PPG). I utilized <strong>T-scoring</strong> (the data analytics method) to standardize different metrics, allowing for fair comparison and combination, and <strong>Multiple Linear Regression (MLR)</strong> to determine the optimal weights for each metric in predicting N+1 PPG.</p>
-        <p>MLR is a statistical technique used to model the relationship between a <strong>single dependent variable</strong> and <strong>two or more independent variables</strong>. The core idea of MLR is to find a linear equation that best describes how the independent variables influence or predict the value of the dependent variable. For my math nerds out there, the general form of a Multiple Linear Regression equation is:</p>
-        <div class="math-block">
-                $$Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + \dots + \beta_nX_n + \epsilon$$
+        <!-- 2026 WR Section -->
+        <h2>The 2026 T-Score: Predicting WR Breakouts</h2>
+        <p>Finding elite wide receiver production before it happens is the holy grail of drafting. The T-Score is a custom evaluation metric designed to cut through the noise of a single season and accurately forecast a player's N+1 Fantasy Points Per Game.</p>
+
+        <h3>The Evolution of the Formula</h3>
+        <p>Previously, the T-Score relied on a receiver's market share of Team Pass Attempts. However, offensive volume is highly volatile year-over-year due to coaching changes and game scripts. To build a more robust, team-agnostic model, the 2026 update isolates player-earned metrics. We swapped team passing volume for <strong>First Downs per Game</strong>, focusing on a player's raw ability to move the chains and command high-value volume regardless of their environment.</p>
+
+        <h3>The Three Predictive Pillars</h3>
+        <p>A Multiple Linear Regression (MLR) analysis determined the optimal mathematical weighting for the most highly correlated N+1 predictors:</p>
+        <ul>
+            <li><strong>Receiving Yards per Game (63%):</strong> The most stable year-over-year indicator of elite talent and route-running efficiency.</li>
+            <li><strong>First Downs per Game (26%):</strong> A pure measure of situational dominance. Elite target-earners naturally generate first downs, locking them into reliable snap shares.</li>
+            <li><strong>Red Zone Targets (11%):</strong> High-value opportunity. Touchdowns fluctuate, but consistent deployment inside the 20-yard line is highly predictive of future scoring regression.</li>
+        </ul>
+
+        <h3>The Math: A Modified Bell Curve</h3>
+        <p>Rather than ranking players from 1 to 100, the T-Score standardizes these three metrics on a statistical bell curve. To make the outputs intuitive for fantasy managers, the standard deviation multiplier was expanded to stretch the dataset across a broader grading scale. An average starting NFL receiver grades out at exactly 50.0. Elite, league-winning alphas who perform multiple standard deviations above the mean push the absolute boundaries of the scale, grading out in the 90-100 range.</p>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 3rem 0;">
+
+        <!-- 2026 RB Section -->
+        <h2>The T-Score Methodology: Running Backs</h2>
+        <p>The running back position in fantasy football demands a fundamentally different evaluation model than pass-catchers. While wide receivers rely on individual route-running efficiency to dictate their volume, running back production is overwhelmingly dictated by offensive scheme, game script, and coaching tendencies.</p>
+        <p>Because of this reliance on system-driven opportunity, the RB T-Score strips away noisy efficiency metrics and focuses entirely on the volume that directly translates to fantasy points.</p>
+
+        <h3>The Core Metrics</h3>
+        <p>Through Multiple Linear Regression (MLR) analysis spanning the 2021–2025 seasons, two single-season variables proved completely dominant in forecasting N+1 Fantasy Points Per Game:</p>
+        <ul>
+            <li><strong>Scrimmage Yards per Game (75% Weight):</strong> The ultimate composite proxy for rushing volume, baseline talent, and game-script safety. It anchors the model by measuring a player's raw ability to move the offense down the field.</li>
+            <li><strong>High-Value Touches per Game (25% Weight):</strong> Calculated by combining Targets per Game and Red Zone Carries per Game (inside the 20-yard line). These specific touches score fantasy points at roughly three times the rate of standard carries between the 20s.</li>
+        </ul>
+
+        <h3>Why Elusiveness is Excluded</h3>
+        <p>Advanced metric analysis reveals a fascinating truth about running back production: forced missed tackles and yards after contact (YAC) are mathematically irrelevant to predicting future fantasy finishes.</p>
+        <ul>
+            <li>A highly elusive runner trapped in a low-volume, poor offense will consistently be outscored by an inefficient volume-dependent back in a good offense.</li>
+            <li>The T-Score intentionally excludes elusiveness metrics to prevent the artificial inflation of talented players trapped in bad situations.</li>
+        </ul>
+
+        <h3>Historical Predictive Power</h3>
+        <p>When applied to players meeting the baseline threshold of 8 games played and 70 rushing attempts, the standard deviation scoring model successfully identifies sticky, year-over-year production. Over the four-year back-test, players hitting starting-caliber T-Scores returned the following N+1 positional hit rates:</p>
+        <ul>
+            <li><strong>RB1 (Top 12):</strong> 64.6%</li>
+            <li><strong>RB2+ (Top 24):</strong> 77.1%</li>
+            <li><strong>RB3+ (Top 36):</strong> 85.4%</li>
+        </ul>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 3rem 0;">
+
+        <!-- Full Original Article in Appendix Accordion -->
+        <details class="sos-details-accordion">
+            <summary class="sos-summary" style="font-size: 1.25rem; font-weight: 600; color: var(--text-main); cursor: pointer;">
+                Appendix: The Origins of the WR T-Score Model
+            </summary>
+            <div style="margin-top: 1.5rem;">
+                <h2>Introduction</h2>
+                <p>I stumbled upon a <a href="https://fantasyclassroom.org/Blogs/sticky-stats/wr-metrics" style="color:var(--primary-green);">random article</a> on Reddit, where the author was using WR stats from a previous season to try and predict fantasy success for Wide Receivers (WR) the following season. He had created his own “trinity” score utilizing Target (Tgt) Share, Air Yards (AY) Share, and Yards After Catch (YAC) per reception, and normalized them. Normalizing means taking the stats of a particular metric, and putting it all on a 0-100 (or 0-1) scale, in order to make more fair comparisons. He also looked into alternative combinations of metrics, and the one where he had found the most correlation used total receiving yards, YAC, AY Share, and Yards per Team Pass Attempt, and normalized each stat.</p>
+
+                <p>At the time I read this particular article, he didn’t have anything using the stats from 2024 to try and predict 2025 fantasy success, so I decided to take it on myself. I then decided to adjust it, because some of those stats hurt WRs who got injured. I know that decreases sample sizes in some cases, but I decided nonetheless to adjust each stat for "per game". I then combined those normalized stats into a sum to give each WR a score, sorted the data by that score, and ranked them. I found the results for the top-12 interesting.</p>
+
+                <p>I proceeded to do some manual testing (with assistance from AI), and my model that I landed on for awhile that I dubbed “T-Score” (which I will dub “v1.4”) used the following metrics (in order of weight in v1.4):</p>
+
+                <ul>
+                    <li>Target Rate/game</li>
+                    <li>Yards/game</li>
+                    <li>YAC/game</li>
+                    <li>Yards per Team Pass Attempts/game</li>
+                    <li>Air Yards Share/game</li>
+                </ul>
+
+                <p><em>Note: Coincidentally, I found out that “t-scoring” is a common method used in data analytics to standardize raw data points. It is completely by accident that I decided to call my model “T-Score” based on my last name. Fun accident, though.</em></p>
+
+                <p>Since then, though, I’ve done a ton of learning and reading on data analysis, and have greatly adjusted my model. I also learned that I needed to apply qualifications in order for WR to be ranked; I eventually landed on a minimum of both 8 games played in a season, and 15 receptions in a season (this might seem low, but if a WR played only 8 games, that comes out to just under 2 receptions a game; surprisingly, if I raised the minimum much more, I was missing what I felt to be somewhat relevant players in deep leagues).</p>
+
+                <h2>The Goal: Predicting N+1 PPG</h2>
+                <p>My primary objective has been to build a robust predictive model for wide receiver performance in the subsequent season (N+1), measured by Points Per Game (PPG). I utilized <strong>T-scoring</strong> (the data analytics method) to standardize different metrics, allowing for fair comparison and combination, and <strong>Multiple Linear Regression (MLR)</strong> to determine the optimal weights for each metric in predicting N+1 PPG.</p>
+
+                <p>MLR is a statistical technique used to model the relationship between a <strong>single dependent variable</strong> and <strong>two or more independent variables</strong>. The core idea of MLR is to find a linear equation that best describes how the independent variables influence or predict the value of the dependent variable. For my math nerds out there, the general form of a Multiple Linear Regression equation is:</p>
+
+                <div class="math-block">
+                    $$Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + \dots + \beta_nX_n + \epsilon$$
+                </div>
+
+                <p>Now, the problem with MLR and football stats is that MLR makes the assumption that the relationship between the dependent variable and each independent variable (and their combination) is linear. Well, we all know that’s just not the case. Too many things such as QB play, offensive scheme, O-Line strength, and so much more causes football to be a highly variable sport. The good news is, of the main offensive positions used in fantasy football, WR is probably the closest to have a more linear relationship than the other positions.</p>
+
+                <p>This makes some sense; for example, while a WR <em>is</em> impacted by a poor O-Line, WRs are not as <em>directly</em> impacted as a Running Back. Once the ball is in a WR’s hands, they are more than likely well beyond the O-Line. That’s just one example, but the point I’m trying to make is that the variables that impact a WR’s play tend to be more straightforward than the other positions. If a WR is targeted a lot, more than likely they will produce a lot.</p>
+
+                <p>So, while MLR is <em>not</em> the end-all be-all in figuring out how closely particular metrics relate to PPG, it is helpful (and interesting) for WR data. Once I started applying Multiple Linear Regression analysis with the metrics I had landed on, I learned some <em>very</em> interesting information. Reminder, I first standardized the metrics before evaluating them with N+1 PPG.</p>
+
+                <h2>Metrics Explored and Their Relationship to N+1 PPG:</h2>
+                <ul>
+                    <li><strong>Target Rate Per game (Tgt Rt/G):</strong> “Volume is king.” A mantra repeated often in fantasy football circles. Well, this is true; when you complete a Single Linear Regression analysis of Tgt Rt/G and N+1 PPG, the relationship is strong, producing a strong positive coefficient (0.303).
+                        <br><br><em>Note: A Coefficient is the number that tells us how important a particular metric is in predicting N+1 PPG. The bigger the number, the stronger the relationship.</em>
+                        <br><br>However, in terms of my model, Tgt Rt/G actually has a <em>negative</em> Coefficient when completing MLR alongside the other four metrics in v1.4 of T-Score. And its P-Value was larger than any of the others in T-Score v1.4!
+                        <br><br><em>Note: A P-Value is a number that tells us how likely a Y-variable’s (i.e., Tgt Rt/G) relationship to the X-variable (N+1 PPG) is just “lucky”. The higher the P-value, the more likely a metric looks good because of luck. I’d like to be clear that I do not have a degree in Mathematics or Statistics; so if I say something wrong…</em>
+                        <br><br>So, with v2.0, I gave Tgt Rt/G the boot.
+                    </li>
+                    <br>
+                    <li><strong>Yards Per Game (Yds/G):</strong> <strong>Relationship to N+1 PPG:</strong> This metric consistently proved to be a <strong>highly significant</strong> predictor of future PPG. It received a strong positive coefficient (around <strong>0.183</strong> in my latest version, v2.1). This indicates that a receiver's yards per game in the current season is a fundamental driver of their fantasy production in the next, signifying their overall receiving volume and role in the offense.
+                        <br><br>You might be thinking, <em>“Duh, yards are what make up a good chunk of a WR’s points in fantasy.”</em> Well, you’ll be surprised to learn later that just because it is a part of fantasy points, it does not necessarily have a strong positive coefficient in predicting future fantasy success. Anyways, Yds/G is the production metric anchor in T-Score v2.1.
+                    </li>
+                    <br>
+                    <li><strong>Yards After Contact Per Game (YAC/G) and YAC Per Reception (YAC/R):</strong> You might be thinking “Why did you use YAC/G instead of YAC/R?” My answer is: I don’t know. When I was initially putting this together, in my head it made a lot of sense. It wasn’t until later that I realized YAC/R makes more sense, as it still works for players who missed games due to injury, but is a closer look at a player’s efficiency once they catch the ball, as opposed to another way at expressing the player’s opportunity/total production (essentially, a good YAC/G can be explained by a good Yds/G). 
+                        <br><br>Anyways, I eventually phased YAC/G out and subbed YAC/R into my model (around v2.0, which is when I approached all of my analysis in a pretty much new way than before). Well, whether by itself, or in MLR, YAC/R does not have a good coefficient to N+1 PPG. This <em>might</em> explain why Deebo Samuel has been a hard player to predict, injuries notwithstanding (and has me a little worried about Rashee Rice…). By itself, YAC/R has a coefficient of 0.036 (ideally we want a coefficient above 0.05) and a p-value of 0.165 (we want this to be below 0.05, or 5%). Within MLR, its coefficient was worse (negative, in fact). So, along with Tgt Rt/G, YAC/R got the boot in v2.0.
+                    </li>
+                    <br>
+                    <li><strong>Yards Per Team Pass Attempt Per Game (Y/Tm PA/G):</strong> <strong>Relationship to N+1 PPG:</strong> This metric, like Yds/G, also showed <strong>statistical significance</strong> and a positive coefficient (around <strong>0.112</strong> in v2.1). It accounts for a player's efficiency and target share relative to their team's overall passing volume. Its significance suggests that players who are efficient within their team's passing scheme are more likely to sustain or improve their PPG.
+                        <br><br>While not the same, this essentially takes the place of Tgt Rt/G as the opportunity metric anchor in T-Score v2.1.
+                    </li>
+                    <br>
+                    <li><strong>Air Yards Share Per Game (AY Sh/G):</strong> Now, this is interesting (or at least, it is to me): AY Sh/G has an independently strong relationship to N+1 PPG. The reason I find it interesting is because AY Sh is, in a way, the talent-independent aspect of a WR’s actual production. Now of course, a WR had to be open in the first place to get the target, so don’t hear (or read?) what I’m not saying; I just mean, when compared directly to YAC, AY Sh says less about a WR’s playmaking ability with the ball in their hands. Who are the players you tend to think of when you hear “High AY Sh”? Now, who are the players you tend to think of when you year “High YAC”?
+                        <br><br>Sorry, I tend to rabbit-trail a lot (I blame the ADHD).
+                        <br><br>AY Sh/G’s independent coefficient is 0.312, with a 0 (or near-0) P-value (which is good!). However, when combined with the other metrics in MLR, it loses its value. Basically, Yds/G and Y/Tm PA/G provide the same (and better) insight than AY Sh/G.
+                    </li>
+                </ul>
+
+                <p>So, of my original five metrics in T-Score v1.4, only <em>two</em> showed a strong positive coefficient to N+1 PPG. Basically, the other three metrics were just noise. To test this, I applied my T-Score v1.4 using data from 2021-2023 to “predict” success the following season (N+1), and calculated its Recall success rate. I then created a new model, T-Score v2.0, using only Yds/G and Y/Tm PA/G, and calculated its Recall success rate for those same seasons. I did this for several tiers of WRs to give myself the best glimpse as to how well these two scores did at predicting fantasy success. First tier was top-6 WRs, next was top-12, and so on until top-36 (I initially did top-48, but players beyond the top 36 had too much variance and/or inconsistency, so I found it was hurting my research more than helping).</p>
+
+                <p>What I found was that T-Score v1.4 and v2.0 performed almost identically to one another. V1.4 averaged a 78.04% success rate in the top-36 players, while v2.0 averaged 76.89%. On one hand, this was great - I had simplified my model! On the other hand, I wished I hadn’t wasted so much time setting up formulas for those other metrics…</p>
+
+                <p>However, I felt like relying solely on two metrics didn’t sit quite right. Call it curiosity, obsessiveness, or whatever you’d like; but I wanted at least one more metric to include in my T-Score to help it be more well-rounded.</p>
+
+                <p>I started with different versions of my original metrics; namely, Target Share (total) and Air Yard Share (total) as opposed to their per-game variants. More or less, these had the same results as their per-game variants. I then shifted to some new metrics, starting with Yards per Route Run (Y/RR). This proved to be a strong independent metric, but ended up having overlap with Yds/G and Y/Tm PA/G, so did not contribute meaningfully. I also tried Receptions per Game, but it held similar results.</p>
+
+                <p>I finally decided to try Red Zone Target Share (RZ Tgt Sh). I had, up until this point, avoided TD-related metrics, because they tend to have so much variance from season-to-season. But, I figured it was worth seeing if a player was targeted in the Red Zone often in one season, how much that related to their fantasy success the following season. In other words, if a player is involved in the Red Zone, they likely will be a part of a team’s Red Zone schemes in the future (players such as Mike Evans and DK Metcalf).</p>
+
+                <p>Well, I ran into a wrinkle; my data source (Pro Football Reference, or PFR) did not provide RZ Tgt Sh for a player who switched teams mid-season. The primary example was Davante Adams in 2024, who started with the Raiders and ended with the Jets. I tried finding another source that did provide this data, but I discovered that each source had its own subjectivity in what it considered “Red Zone Target Share”. I won’t bore you with the details here, but I ended up deciding to evaluate total Red Zone Targets. Not my preference, but my alternative was to manually calculate the RZ Tgt Sh myself, or to switch sources for all of my data (which I didn’t want to do).</p>
+
+                <ul>
+                    <li><strong>Red Zone Targets (RZ Tgt):</strong> <strong>Relationship to N+1 PPG:</strong> This was found to be <strong>statistically significant</strong> (with a P-value of 0.0051, or 0.51%) even after accounting for Yds/G and Y/Tm PA/G. It carried a positive coefficient (around <strong>0.056</strong>). This confirms that a player's red zone usage is not fully captured by raw yardage or team-adjusted yardage, and it adds unique predictive value, likely signaling touchdown upside and high-leverage scoring opportunities.
+                    <br><br>I should note here that the coefficient is not as big as it is for Yds/G and Y/Tm PA/G, but it still contributed positively. I actually like that, of the three metrics, RZ Tgt has the least weight.</li>
+                </ul>
+
+                <h2>Model Performance and Optimal Choice:</h2>
+                <p>Now that I knew which metrics were best, I applied weights to each standardized metric to combine them into one Composite T-Score. I took the coefficient of each metric, summed them up, and then divided each metric by the sum to determine the weight.</p>
+
+                <p>The weights for v2.1 are as follows:</p>
+                <ul>
+                    <li><strong>Yds/G</strong> = 52.1%</li>
+                    <li><strong>Y/Tm PA/G</strong> = 31.9%</li>
+                    <li><strong>RZ Tgt</strong> = 16%</li>
+                </ul>
+
+                <p>I proceeded to compare the predictive success rates of my initial 5-metric T-Score model, v1.4 (as the baseline), a 2-metric model v2.0 (Yds/G and Y/Tm PA/G), and a 3-metric model v2.1 (Yds/G, Y/Tm PA/G, and RZ Tgt).</p>
+
+                <p><strong>Key Findings from Model Comparisons:</strong></p>
+                <ul>
+                    <li><strong>Overall Strong Performance:</strong> All models demonstrated reasonable success rates in identifying players within various fantasy production tiers (top-6, top-12, top-18, etc.) across different prediction years (2022, 2023, 2024; I chose my data cutoff as 2021, since that was the first season the NFL went to an 18-game season).</li>
+                    <li><strong>v2.0's Edge:</strong> While the 3-metric model often performed similarly to the 2-metric model (v.2.1), it showed <strong>significant improvements in key areas</strong>: Notably, in <strong>2022 Top-6% success rate, it jumped from 66.7% to an impressive 83.3%</strong>. This indicates a superior ability to identify true elite-level performers in some seasons. It also showed modest improvements in some deeper tiers (e.g., 2024 Top-36%).</li>
+                    <li><strong>Simpler is Often Better:</strong> The fact that v2.1 consistently performed on par with or better than v1.4 suggests that focusing on the most impactful and independently predictive metrics is more effective than simply adding more.</li>
+                </ul>
+
+                <h2>Conclusion:</h2>
+                <p>My analysis strongly supports the <strong>3-metric T-Score model (using Yds/G, Y/Tm PA/G, and RZ Tgt), v2.1</strong> as the most effective and balanced approach for predicting N+1 PPG for WRs. Each of these three metrics has a statistically significant and positive relationship with future PPG, and their combination provides robust predictive power, particularly for identifying high-value players.</p>
+
+                <p>Once I found the metrics I liked, I placed the results on a 0-100 scale for easier cross-season comparison (ya’ll, 2021 Cooper Kupp was <em>insane</em>). I then grouped scores together into buckets based on percentile:</p>
+
+                <div class="data-table-wrapper" style="margin-top: 1rem;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Label</th>
+                                <th>Percentile</th>
+                                <th>Score Cutoff</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><span class="label-elite">Elite</span></td><td>95th</td><td>65.5</td></tr>
+                            <tr><td><span class="label-high">High-End Starter</span></td><td>90th</td><td>57.4</td></tr>
+                            <tr><td><span class="label-strong">Strong Starter</span></td><td>80th</td><td>48.4</td></tr>
+                            <tr><td><span class="label-quality">Quality Contributor</span></td><td>65th</td><td>36.0</td></tr>
+                            <tr><td><span class="label-boom">Boom/Bust</span></td><td>50th</td><td>27.5</td></tr>
+                            <tr><td><span class="label-depth">Depth Player</span></td><td>&lt; 50th</td><td>&lt; 27.5</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>And thus, the T-Score WR Model v2.1 was complete.</p>
+                <p>Thanks for reading!</p>
             </div>
+        </details>
 
-        <p>Now, the problem with MLR and football stats is that MLR makes the assumption that the relationship between the dependent variable and each independent variable (and their combination) is linear. Well, we all know that’s just not the case. Too many things such as QB play, offensive scheme, O-Line strength, and so much more causes football to be a highly variable sport. The good news is, of the main offensive positions used in fantasy football, WR is probably the closest to have a more linear relationship than the other positions.</p>
-        <p>This makes some sense; for example, while a WR <em>is</em> impacted by a poor O-Line, WRs are not as <em>directly</em> impacted as a Running Back. Once the ball is in a WR’s hands, they are more than likely well beyond the O-Line. That’s just one example, but the point I’m trying to make is that the variables that impact a WR’s play tend to be more straightforward than the other positions. If a WR is targeted a lot, more than likely they will produce a lot.</p>
-        <p>So, while MLR is <em>not</em> the end-all be-all in figuring out how closely particular metrics relate to PPG, it is helpful (and interesting) for WR data. Once I started applying Multiple Linear Regression analysis with the metrics I had landed on, I learned some <em>very</em> interesting information. Reminder, I first standardized the metrics before evaluating them with N+1 PPG.</p>
+    </div>
+</div>
 
-        <h2>Metrics Explored and Their Relationship to N+1 PPG:</h2>
-        <ul>
-            <li><strong>Target Rate Per game (Tgt Rt/G):</strong> “Volume is king.” A mantra repeated often in fantasy football circles. Well, this is true; when you complete a Single Linear Regression analysis of Tgt Rt/G and N+1 PPG, the relationship is strong, producing a strong positive coefficient (0.303).
-                <br><br><em>Note: A Coefficient is the number that tells us how important a particular metric is in predicting N+1 PPG. The bigger the number, the stronger the relationship.</em>
-                <br><br>However, in terms of my model, Tgt Rt/G actually has a <em>negative</em> Coefficient when completing MLR alongside the other four metrics in v1.4 of T-Score. And its P-Value was larger than any of the others in T-Score v1.4!
-                <br><br><em>Note: A P-Value is a number that tells us how likely a Y-variable’s (i.e., Tgt Rt/G) relationship to the X-variable (N+1 PPG) is just “lucky”. The higher the P-value, the more likely a metric looks good because of luck. I’d like to be clear that I do not have a degree in Mathematics or Statistics; so if I say something wrong…</em>
-                <br><br>So, with v2.0, I gave Tgt Rt/G the boot.
-            </li>
-            <br>
-            <li><strong>Yards Per Game (Yds/G):</strong> <strong>Relationship to N+1 PPG:</strong> This metric consistently proved to be a <strong>highly significant</strong> predictor of future PPG. It received a strong positive coefficient (around <strong>0.183</strong> in my latest version, v2.1). This indicates that a receiver's yards per game in the current season is a fundamental driver of their fantasy production in the next, signifying their overall receiving volume and role in the offense.
-                <br><br>You might be thinking, <em>“Duh, yards are what make up a good chunk of a WR’s points in fantasy.”</em> Well, you’ll be surprised to learn later that just because it is a part of fantasy points, it does not necessarily have a strong positive coefficient in predicting future fantasy success. Anyways, Yds/G is the production metric anchor in T-Score v2.1.
-            </li>
-            <br>
-            <li><strong>Yards After Contact Per Game (YAC/G) and YAC Per Reception (YAC/R):</strong> You might be thinking “Why did you use YAC/G instead of YAC/R?” My answer is: I don’t know. When I was initially putting this together, in my head it made a lot of sense. It wasn’t until later that I realized YAC/R makes more sense, as it still works for players who missed games due to injury, but is a closer look at a player’s efficiency once they catch the ball, as opposed to another way at expressing the player’s opportunity/total production (essentially, a good YAC/G can be explained by a good Yds/G). 
-                <br><br>Anyways, I eventually phased YAC/G out and subbed YAC/R into my model (around v2.0, which is when I approached all of my analysis in a pretty much new way than before). Well, whether by itself, or in MLR, YAC/R does not have a good coefficient to N+1 PPG. This <em>might</em> explain why Deebo Samuel has been a hard player to predict, injuries notwithstanding (and has me a little worried about Rashee Rice…). By itself, YAC/R has a coefficient of 0.036 (ideally we want a coefficient above 0.05) and a p-value of 0.165 (we want this to be below 0.05, or 5%). Within MLR, its coefficient was worse (negative, in fact). So, along with Tgt Rt/G, YAC/R got the boot in v2.0.
-            </li>
-            <br>
-            <li><strong>Yards Per Team Pass Attempt Per Game (Y/Tm PA/G):</strong> <strong>Relationship to N+1 PPG:</strong> This metric, like Yds/G, also showed <strong>statistical significance</strong> and a positive coefficient (around <strong>0.112</strong> in v2.1). It accounts for a player's efficiency and target share relative to their team's overall passing volume. Its significance suggests that players who are efficient within their team's passing scheme are more likely to sustain or improve their PPG.
-                <br><br>While not the same, this essentially takes the place of Tgt Rt/G as the opportunity metric anchor in T-Score v2.1.
-            </li>
-            <br>
-            <li><strong>Air Yards Share Per Game (AY Sh/G):</strong> Now, this is interesting (or at least, it is to me): AY Sh/G has an independently strong relationship to N+1 PPG. The reason I find it interesting is because AY Sh is, in a way, the talent-independent aspect of a WR’s actual production. Now of course, a WR had to be open in the first place to get the target, so don’t hear (or read?) what I’m not saying; I just mean, when compared directly to YAC, AY Sh says less about a WR’s playmaking ability with the ball in their hands. Who are the players you tend to think of when you hear “High AY Sh”? Now, who are the players you tend to think of when you year “High YAC”?
-                <br><br>Sorry, I tend to rabbit-trail a lot (I blame the ADHD).
-                <br><br>AY Sh/G’s independent coefficient is 0.312, with a 0 (or near-0) P-value (which is good!). However, when combined with the other metrics in MLR, it loses its value. Basically, Yds/G and Y/Tm PA/G provide the same (and better) insight than AY Sh/G.
-            </li>
-        </ul>
-        <p>So, of my original five metrics in T-Score v1.4, only <em>two</em> showed a strong positive coefficient to N+1 PPG. Basically, the other three metrics were just noise. To test this, I applied my T-Score v1.4 using data from 2021-2023 to “predict” success the following season (N+1), and calculated its Recall success rate. I then created a new model, T-Score v2.0, using only Yds/G and Y/Tm PA/G, and calculated its Recall success rate for those same seasons. I did this for several tiers of WRs to give myself the best glimpse as to how well these two scores did at predicting fantasy success. First tier was top-6 WRs, next was top-12, and so on until top-36 (I initially did top-48, but players beyond the top 36 had too much variance and/or inconsistency, so I found it was hurting my research more than helping).</p>
-        <p>What I found was that T-Score v1.4 and v2.0 performed almost identically to one another. V1.4 averaged a 78.04% success rate in the top-36 players, while v2.0 averaged 76.89%. On one hand, this was great - I had simplified my model! On the other hand, I wished I hadn’t wasted so much time setting up formulas for those other metrics…</p>
-        <p>However, I felt like relying solely on two metrics didn’t sit quite right. Call it curiosity, obsessiveness, or whatever you’d like; but I wanted at least one more metric to include in my T-Score to help it be more well-rounded.</p>
-        <p>I started with different versions of my original metrics; namely, Target Share (total) and Air Yard Share (total) as opposed to their per-game variants. More or less, these had the same results as their per-game variants. I then shifted to some new metrics, starting with Yards per Route Run (Y/RR). This proved to be a strong independent metric, but ended up having overlap with Yds/G and Y/Tm PA/G, so did not contribute meaningfully. I also tried Receptions per Game, but it held similar results.</p>
-        <p>I finally decided to try Red Zone Target Share (RZ Tgt Sh). I had, up until this point, avoided TD-related metrics, because they tend to have so much variance from season-to-season. But, I figured it was worth seeing if a player was targeted in the Red Zone often in one season, how much that related to their fantasy success the following season. In other words, if a player is involved in the Red Zone, they likely will be a part of a team’s Red Zone schemes in the future (players such as Mike Evans and DK Metcalf).</p>
-        <p>Well, I ran into a wrinkle; my data source (Pro Football Reference, or PFR) did not provide RZ Tgt Sh for a player who switched teams mid-season. The primary example was Davante Adams in 2024, who started with the Raiders and ended with the Jets. I tried finding another source that did provide this data, but I discovered that each source had its own subjectivity in what it considered “Red Zone Target Share”. I won’t bore you with the details here, but I ended up deciding to evaluate total Red Zone Targets. Not my preference, but my alternative was to manually calculate the RZ Tgt Sh myself, or to switch sources for all of my data (which I didn’t want to do).</p>
-        
-        <ul>
-            <li><strong>Red Zone Targets (RZ Tgt):</strong> <strong>Relationship to N+1 PPG:</strong> This was found to be <strong>statistically significant</strong> (with a P-value of 0.0051, or 0.51%) even after accounting for Yds/G and Y/Tm PA/G. It carried a positive coefficient (around <strong>0.056</strong>). This confirms that a player's red zone usage is not fully captured by raw yardage or team-adjusted yardage, and it adds unique predictive value, likely signaling touchdown upside and high-leverage scoring opportunities.
-            <br><br>I should note here that the coefficient is not as big as it is for Yds/G and Y/Tm PA/G, but it still contributed positively. I actually like that, of the three metrics, RZ Tgt has the least weight.</li>
-        </ul>
-
-        <h2>Model Performance and Optimal Choice:</h2>
-        <p>Now that I knew which metrics were best, I applied weights to each standardized metric to combine them into one Composite T-Score. I took the coefficient of each metric, summed them up, and then divided each metric by the sum to determine the weight.</p>
-        <p>The weights for v2.1 are as follows:</p>
-        <ul>
-            <li><strong>Yds/G</strong> = 52.1%</li>
-            <li><strong>Y/Tm PA/G</strong> = 31.9%</li>
-            <li><strong>RZ Tgt</strong> = 16%</li>
-        </ul>
-        <p>I proceeded to compare the predictive success rates of my initial 5-metric T-Score model, v1.4 (as the baseline), a 2-metric model v2.0 (Yds/G and Y/Tm PA/G), and a 3-metric model v2.1 (Yds/G, Y/Tm PA/G, and RZ Tgt).</p>
-        <p><strong>Key Findings from Model Comparisons:</strong></p>
-        <ul>
-            <li><strong>Overall Strong Performance:</strong> All models demonstrated reasonable success rates in identifying players within various fantasy production tiers (top-6, top-12, top-18, etc.) across different prediction years (2022, 2023, 2024; I chose my data cutoff as 2021, since that was the first season the NFL went to an 18-game season).</li>
-            <li><strong>v2.0's Edge:</strong> While the 3-metric model often performed similarly to the 2-metric model (v.2.1), it showed <strong>significant improvements in key areas</strong>: Notably, in <strong>2022 Top-6% success rate, it jumped from 66.7% to an impressive 83.3%</strong>. This indicates a superior ability to identify true elite-level performers in some seasons. It also showed modest improvements in some deeper tiers (e.g., 2024 Top-36%).</li>
-            <li><strong>Simpler is Often Better:</strong> The fact that v2.1 consistently performed on par with or better than v1.4 suggests that focusing on the most impactful and independently predictive metrics is more effective than simply adding more.</li>
-        </ul>
-
-        <h2>Conclusion:</h2>
-        <p>My analysis strongly supports the <strong>3-metric T-Score model (using Yds/G, Y/Tm PA/G, and RZ Tgt), v2.1</strong> as the most effective and balanced approach for predicting N+1 PPG for WRs. Each of these three metrics has a statistically significant and positive relationship with future PPG, and their combination provides robust predictive power, particularly for identifying high-value players.</p>
-        <p>Once I found the metrics I liked, I placed the results on a 0-100 scale for easier cross-season comparison (ya’ll, 2021 Cooper Kupp was <em>insane</em>). I then grouped scores together into buckets based on percentile:</p>
-        <div class="data-table-wrapper" style="margin-top: 1rem;">
+    <!-- TAB: 2024 ANALYSIS -->
+    <div id="tab-2024" class="tab-content">
+        <div class="article-content">
+            <h2>Was 2024 a 'down year' for WRs?</h2>
+            <h3>Average T-Scores, Standard Deviations, and CV by Season</h3>
+            <div class="data-table-wrapper">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Label</th>
-                            <th>Percentile</th>
-                            <th>Score Cutoff</th>
+                            <th>Year</th>
+                            <th>Average T-Score</th>
+                            <th>Standard Deviation</th>
+                            <th>Coefficient of Variation (CV)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td><span class="label-elite">Elite</span></td><td>95th</td><td>65.5</td></tr>
-                        <tr><td><span class="label-high">High-End Starter</span></td><td>90th</td><td>57.4</td></tr>
-                        <tr><td><span class="label-strong">Strong Starter</span></td><td>80th</td><td>48.4</td></tr>
-                        <tr><td><span class="label-quality">Quality Contributor</span></td><td>65th</td><td>36.0</td></tr>
-                        <tr><td><span class="label-boom">Boom/Bust</span></td><td>50th</td><td>27.5</td></tr>
-                        <tr><td><span class="label-depth">Depth Player</span></td><td>< 50th</td><td>< 27.5</td></tr>
+                        <tr><td>2024</td><td>32.2</td><td>18.0</td><td>55.9%</td></tr>
+                        <tr><td>2023</td><td>29.9</td><td>20.7</td><td>69.2%</td></tr>
+                        <tr><td>2022</td><td>31.3</td><td>18.2</td><td>58.2%</td></tr>
+                        <tr><td>2021</td><td>30.3</td><td>18.5</td><td>61.0%</td></tr>
                     </tbody>
                 </table>
             </div>
-            <p>And thus, the T-Score WR Model v2.1 was complete.</p>
-        <p>Thanks for reading!</p>
-    </div>
-</div>
-    <!-- TAB: 2024 ANALYSIS -->
-<div id="tab-2024" class="tab-content">
-    <div class="article-content">
-        <h2>Was 2024 a 'down year' for WRs?</h2>
-
-        <h3>Average T-Scores, Standard Deviations, and CV by Season</h3>
-        <div class="data-table-wrapper">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Year</th>
-                        <th>Average T-Score</th>
-                        <th>Standard Deviation</th>
-                        <th>Coefficient of Variation (CV)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td>2024</td><td>32.2</td><td>18.0</td><td>55.9%</td></tr>
-                    <tr><td>2023</td><td>29.9</td><td>20.7</td><td>69.2%</td></tr>
-                    <tr><td>2022</td><td>31.3</td><td>18.2</td><td>58.2%</td></tr>
-                    <tr><td>2021</td><td>30.3</td><td>18.5</td><td>61.0%</td></tr>
-                </tbody>
-            </table>
         </div>
-
-        <ul>
-            <li>A higher CV means there's more variability <em>relative to the mean</em>.</li>
-            <li>Looking at the CVs, 2023 had the highest relative variability (69.2%), suggesting a wider range of outcomes or more extreme outliers that year.</li>
-            <li>2024 has the lowest CV (55.9%), reinforcing that while the average was higher, the performances were more tightly grouped around that average. This means fewer massive outliers, which could contribute to the "down year" feeling if expecting more top-heavy production.</li>
-        </ul>
-
-        <h3>Tier Score Cutoffs (by Percentile)</h3>
-        <div class="data-table-wrapper">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Tier</th>
-                        <th>Percentile</th>
-                        <th>2024</th>
-                        <th>2023</th>
-                        <th>2022</th>
-                        <th>2021</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td><span class="label-elite">Elite</span></td><td>95th</td><td>62.1</td><td>72.1</td><td>72.2</td><td>59.7</td></tr>
-                    <tr><td><span class="label-high">High-End Starter</span></td><td>90th</td><td>56.4</td><td>65.4</td><td>64.5</td><td>54.5</td></tr>
-                    <tr><td><span class="label-strong">Strong Starter</span></td><td>80th</td><td>50.4</td><td>53.7</td><td>53.6</td><td>43.6</td></tr>
-                    <tr><td><span class="label-quality">Quality Contributor</span></td><td>65th</td><td>38.0</td><td>38.6</td><td>38.3</td><td>32.0</td></tr>
-                    <tr><td><span class="label-boom">Boom/Bust</span></td><td>50th</td><td>28.5</td><td>27.4</td><td>29.3</td><td>25.7</td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <h2>Analysis of 2024 WR Performance</h2>
-        <p>With this data, the picture becomes clearer regarding the "down year" feeling for 2024 WRs.</p>
-        <ol>
-            <li><strong>Elite (Top 5%):</strong> The 2024 Elite cutoff (62.1) is significantly <strong>lower</strong> than both 2023 (72.1) and 2022 (72.2), but slightly <strong>higher</strong> than 2021 (59.7). This strongly indicates that the very top tier of wide receiver performance in 2024 did not reach the heights seen in the two preceding years.</li>
-            <li><strong>High-End Starter (Top 10%):</strong> The 2024 High-End Starter cutoff (56.4) is noticeably <strong>lower</strong> than 2023 (65.4) and 2022 (64.5).</li>
-            <li><strong>Strong Starter (Top 20%):</strong> The 2024 Strong Starter cutoff (50.4) is again <strong>lower</strong> than 2023 (53.7) and 2022 (53.6).</li>
-            <li><strong>Quality Contributor (Top 35%):</strong> The 2024 Quality Contributor cutoff (38.0) is very <strong>similar</strong> to 2023 (38.6) and 2022 (38.3), and significantly <strong>higher</strong> than 2021 (32.0). This suggests that the mid-tier of reliable, quality contributors in 2024 remained strong.</li>
-            <li><strong>Boom/Bust (Median - 50th Percentile):</strong> The 2024 Boom/Bust cutoff (28.5) is <strong>higher</strong> than 2023 (27.4) and 2021 (25.7). This indicates that the average (median) WR performer in 2024 was actually better than in 2023 and 2021.</li>
-        </ol>
-
-        <h2>Overall Conclusion for 2024</h2>
-        <p>The analysis supports the feeling that 2024 was a "down year" for WRs in certain aspects:</p>
-        <ul>
-            <li><strong>The primary reason 2024 felt like a "down year" is likely the noticeable drop in <em>top-end</em> WR performance compared to the very strong seasons of 2022 and 2023.</strong> Both of those years had exceptionally high T-Score cutoffs for Elite, High-End, and Strong Starter tiers, indicating a greater number of truly dominant individual performances. 2024's top tiers did not reach those peaks.</li>
-            <li>However, it's important to note that <strong>2024 was still a solid year for WRs, particularly in the middle tiers and overall average performance, and was generally better than 2021.</strong> The median T-Score and the quality contributor cutoffs for 2024 were quite robust, suggesting a healthy pool of dependable players, even if the absolute ceiling wasn't as high as the two previous seasons.</li>
-        </ul>
-        <p>So, while the <strong>average</strong> WR might have performed slightly better in 2024 than 2023, the <strong>lack of extreme, game-changing outlier performances</strong> that defined 2022 and 2023 at the very top is what likely contributed to the perception of a "down year."</p>
     </div>
-</div>
+
     <!-- TAB: TOP 50 -->
-    <div id="top50Tab" class="tab-content">
-        <div class="settings-card highlight-card">
+<div id="top50Tab" class="tab-content">
+    <div class="settings-card highlight-card">
         <h2>2026 Top-50 T-Score Rankings</h2>
-        <p class="card-desc">T-Score is a combination of a player’s previous season Yds/G, Yds/Tm PA/G, and RZ Tgt, each weighted based on their coefficient to the following season using historical data. <em>Note: Rookies are not included since there is no previous NFL data to utilize.</em></p>
-            <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
-            <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                View Model Baseline Variables
-            </summary>
+        <p class="card-desc">T-Score is a combination of a player’s previous season metrics, each weighted based on their coefficient to the following season (N+1) using historical data. <em>Note: Rookies are not included since there is no previous NFL data to utilize.</em></p>
             
-            <div class="data-table-wrapper table-container" style="margin-top: 1rem; margin-bottom: 0;">
-                <table class="data-table" style="width: 100%; font-size: 0.85rem;">
+        <!-- Position Toggle Buttons -->
+        <div class="pos-toggle-wrapper">
+            <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'top50Tab')">Wide Receivers</button>
+            <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'top50Tab')">Running Backs</button>
+        </div>
+
+        <!-- WR CONTENT CONTAINER (Visible by default) -->
+        <div class="wr-content" style="display: block;">
+            <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
+                <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    View WR Model Baseline Variables
+                </summary>
+                <div class="data-table-wrapper table-container" style="margin-top: 1rem; margin-bottom: 0;">
+                    <table class="data-table" style="width: 100%; font-size: 0.85rem;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">Stat</th>
+                                <th style="text-align: center;">Mean</th>
+                                <th style="text-align: center;">St Dv</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style="text-align: left; font-weight: 600;">YDS/GM</td><td style="text-align: center;">39.5</td><td style="text-align: center;">21.4</td></tr>
+                            <tr><td style="text-align: left; font-weight: 600;">1st Downs/GM</td><td style="text-align: center;">1.9</td><td style="text-align: center;">1.0</td></tr>
+                            <tr><td style="text-align: left; font-weight: 600;">RZ Tgts</td><td style="text-align: center;">8.8</td><td style="text-align: center;">6.1</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+
+            <div class="data-table-wrapper">
+                <table class="data-table">
                     <thead>
                         <tr>
-                            <th style="text-align: left;">Stat</th>
-                            <th style="text-align: center;">Mean</th>
-                            <th style="text-align: center;">St Dv</th>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>T-Score</th>
+                            <th>Yds/G</th>
+                            <th>1st D/G</th>
+                            <th>RZ Tgts</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td style="text-align: left; font-weight: 600;">YDS/GM</td><td style="text-align: center;">26.0</td><td style="text-align: center;">22.2</td></tr>
-                        <tr><td style="text-align: left; font-weight: 600;">RZ Tgt</td><td style="text-align: center;">6.6</td><td style="text-align: center;">5.9</td></tr>
-                        <tr><td style="text-align: left; font-weight: 600;">YDS/TM PA/GM</td><td style="text-align: center;">0.60</td><td style="text-align: center;">0.66</td></tr>
+                        <tr><td>1</td><td><strong>Puka Nacua</strong></td><td><span class="label-elite">Elite</span></td><td>96.44</td><td>107.2</td><td>5.00</td><td>16</td></tr>
+                        <tr><td>2</td><td><strong>Jaxon Smith-Njigba</strong></td><td><span class="label-elite">Elite</span></td><td>94.51</td><td>105.5</td><td>4.65</td><td>17</td></tr>
+                        <tr><td>3</td><td><strong>Ja'Marr Chase</strong></td><td><span class="label-elite">Elite</span></td><td>87.21</td><td>88.3</td><td>4.56</td><td>21</td></tr>
+                        <tr><td>4</td><td><strong>Amon-Ra St. Brown</strong></td><td><span class="label-elite">Elite</span></td><td>86.42</td><td>82.4</td><td>4.12</td><td>34</td></tr>
+                        <tr><td>5</td><td><strong>George Pickens</strong></td><td><span class="label-elite">Elite</span></td><td>84.14</td><td>84.1</td><td>4.29</td><td>21</td></tr>
+                        <tr><td>6</td><td><strong>Drake London</strong></td><td><span class="label-elite">Elite</span></td><td>76.42</td><td>76.6</td><td>3.83</td><td>13</td></tr>
+                        <tr><td>7</td><td><strong>CeeDee Lamb</strong></td><td><span class="label-high">High-End Starter</span></td><td>74.66</td><td>76.9</td><td>3.07</td><td>17</td></tr>
+                        <tr><td>8</td><td><strong>Rashee Rice</strong></td><td><span class="label-high">High-End Starter</span></td><td>74.09</td><td>71.4</td><td>3.50</td><td>18</td></tr>
+                        <tr><td>9</td><td><strong>Nico Collins</strong></td><td><span class="label-high">High-End Starter</span></td><td>73.76</td><td>74.5</td><td>3.20</td><td>16</td></tr>
+                        <tr><td>10</td><td><strong>Chris Olave</strong></td><td><span class="label-high">High-End Starter</span></td><td>72.49</td><td>72.7</td><td>3.31</td><td>13</td></tr>
+                        <tr><td>11</td><td><strong>Davante Adams</strong></td><td><span class="label-high">High-End Starter</span></td><td>71.36</td><td>56.4</td><td>3.64</td><td>31</td></tr>
+                        <tr><td>12</td><td><strong>Zay Flowers</strong></td><td><span class="label-high">High-End Starter</span></td><td>68.93</td><td>71.2</td><td>2.82</td><td>10</td></tr>
+                        <tr><td>13</td><td><strong>A.J. Brown</strong></td><td><span class="label-strong">Strong Starter</span></td><td>68.49</td><td>66.9</td><td>3.07</td><td>12</td></tr>
+                        <tr><td>14</td><td><strong>Tetairoa McMillan</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.61</td><td>59.6</td><td>3.24</td><td>15</td></tr>
+                        <tr><td>15</td><td><strong>Courtland Sutton</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.56</td><td>59.8</td><td>3.06</td><td>17</td></tr>
+                        <tr><td>16</td><td><strong>Justin Jefferson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.19</td><td>61.6</td><td>2.76</td><td>17</td></tr>
+                        <tr><td>17</td><td><strong>Alec Pierce</strong></td><td><span class="label-strong">Strong Starter</span></td><td>65.96</td><td>66.9</td><td>2.73</td><td>8</td></tr>
+                        <tr><td>18</td><td><strong>Jameson Williams</strong></td><td><span class="label-strong">Strong Starter</span></td><td>65.52</td><td>65.7</td><td>2.76</td><td>8</td></tr>
+                        <tr><td>19</td><td><strong>Michael Wilson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>65.45</td><td>59.2</td><td>3.00</td><td>15</td></tr>
+                        <tr><td>20</td><td><strong>Stefon Diggs</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.77</td><td>59.6</td><td>3.00</td><td>12</td></tr>
+                        <tr><td>21</td><td><strong>Wan'Dale Robinson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.01</td><td>63.4</td><td>2.44</td><td>11</td></tr>
+                        <tr><td>22</td><td><strong>Terry McLaurin</strong></td><td><span class="label-strong">Strong Starter</span></td><td>63.87</td><td>58.2</td><td>3.30</td><td>7</td></tr>
+                        <tr><td>23</td><td><strong>Jaylen Waddle</strong></td><td><span class="label-strong">Strong Starter</span></td><td>63.21</td><td>56.9</td><td>3.00</td><td>11</td></tr>
+                        <tr><td>24</td><td><strong>Rome Odunze</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>62.97</td><td>55.1</td><td>3.08</td><td>12</td></tr>
+                        <tr><td>25</td><td><strong>Christian Watson</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>62.93</td><td>61.1</td><td>2.80</td><td>6</td></tr>
+                        <tr><td>26</td><td><strong>Tee Higgins</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>62.75</td><td>56.4</td><td>2.73</td><td>14</td></tr>
+                        <tr><td>27</td><td><strong>Ricky Pearsall</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>62.47</td><td>58.7</td><td>3.11</td><td>4</td></tr>
+                        <tr><td>28</td><td><strong>DeVonta Smith</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>62.39</td><td>59.3</td><td>2.59</td><td>10</td></tr>
+                        <tr><td>29</td><td><strong>D.K. Metcalf</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>61.55</td><td>56.7</td><td>2.47</td><td>13</td></tr>
+                        <tr><td>30</td><td><strong>Jakobi Meyers</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>60.32</td><td>52.2</td><td>2.69</td><td>13</td></tr>
+                        <tr><td>31</td><td><strong>Parker Washington</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>58.83</td><td>52.9</td><td>2.31</td><td>12</td></tr>
+                        <tr><td>32</td><td><strong>Keenan Allen</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>58.61</td><td>45.7</td><td>2.88</td><td>15</td></tr>
+                        <tr><td>33</td><td><strong>Emeka Egbuka</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>58.37</td><td>55.2</td><td>2.00</td><td>11</td></tr>
+                        <tr><td>34</td><td><strong>Quentin Johnston</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>57.97</td><td>52.5</td><td>1.93</td><td>15</td></tr>
+                        <tr><td>35</td><td><strong>Romeo Doubs</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>57.71</td><td>45.3</td><td>2.56</td><td>17</td></tr>
+                        <tr><td>36</td><td><strong>Ladd McConkey</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>57.23</td><td>49.3</td><td>2.19</td><td>14</td></tr>
+                        <tr><td>37</td><td><strong>Mike Evans</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>56.72</td><td>46.0</td><td>2.88</td><td>8</td></tr>
+                        <tr><td>38</td><td><strong>Jauan Jennings</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>56.51</td><td>42.9</td><td>2.40</td><td>19</td></tr>
+                        <tr><td>39</td><td><strong>Brian Thomas</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>56.16</td><td>50.5</td><td>2.36</td><td>6</td></tr>
+                        <tr><td>40</td><td><strong>Marvin Harrison Jr.</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>55.08</td><td>50.7</td><td>2.50</td><td>0</td></tr>
+                        <tr><td>41</td><td><strong>Michael Pittman Jr.</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.96</td><td>46.1</td><td>2.76</td><td>0</td></tr>
+                        <tr><td>42</td><td><strong>Deebo Samuel</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.75</td><td>45.4</td><td>2.00</td><td>11</td></tr>
+                        <tr><td>43</td><td><strong>Troy Franklin</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.55</td><td>41.7</td><td>1.88</td><td>18</td></tr>
+                        <tr><td>44</td><td><strong>Khalil Shakir</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.09</td><td>44.9</td><td>1.75</td><td>13</td></tr>
+                        <tr><td>45</td><td><strong>Jordan Addison</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>52.92</td><td>43.6</td><td>1.86</td><td>13</td></tr>
+                        <tr><td>46</td><td><strong>Chris Godwin</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>51.38</td><td>40.0</td><td>2.33</td><td>7</td></tr>
+                        <tr><td>47</td><td><strong>Josh Downs</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.92</td><td>35.4</td><td>2.25</td><td>14</td></tr>
+                        <tr><td>48</td><td><strong>D.J. Moore</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.77</td><td>40.1</td><td>1.88</td><td>11</td></tr>
+                        <tr><td>49</td><td><strong>Tre Tucker</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.57</td><td>40.9</td><td>1.88</td><td>9</td></tr>
+                        <tr><td>50</td><td><strong>Luther Burden</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.02</td><td>43.5</td><td>1.80</td><td>4</td></tr>
                     </tbody>
                 </table>
             </div>
-        </details>
+        </div>
+
+        <!-- RB CONTENT CONTAINER (Hidden by default) -->
+        <div class="rb-content" style="display: none;">
+            <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
+                <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    View RB Baseline Variables
+                </summary>
+                <div class="data-table-wrapper table-container" style="margin-top: 1rem; margin-bottom: 0;">
+                    <table class="data-table" style="width: 100%; font-size: 0.85rem;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">Stat</th>
+                                <th style="text-align: center;">Mean</th>
+                                <th style="text-align: center;">St Dv</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style="text-align: left; font-weight: 600;">Scrimm YDS/GM</td><td style="text-align: center;">65.5</td><td style="text-align: center;">27.5</td></tr>
+                            <tr><td style="text-align: left; font-weight: 600;">HVT/GM</td><td style="text-align: center;">4.5</td><td style="text-align: center;">1.9</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+
             <div class="data-table-wrapper">
-    <table class="data-table">
-    <thead>
-        <tr><th>Rank</th><th>Player</th><th>Label</th><th>T-Score</th><th>ADP</th><th>Yds/G</th><th>Yds/Team PA/G</th><th>RZ Tgts</th></tr>
-    </thead>
-    <tbody>
-        <tr><td>1</td><td><strong>Jaxon Smith-Njigba</strong></td><td><span class="label-elite">Elite</span></td><td>98.2</td><td>6.2</td><td>105.5</td><td>3.73</td><td>17</td></tr>
-        <tr><td>2</td><td><strong>Puka Nacua</strong></td><td><span class="label-elite">Elite</span></td><td>88.5</td><td>4.8</td><td>107.2</td><td>2.87</td><td>14</td></tr>
-        <tr><td>3</td><td><strong>Amon-Ra St. Brown</strong></td><td><span class="label-elite">Elite</span></td><td>81.2</td><td>8.9</td><td>82.4</td><td>2.41</td><td>32</td></tr>
-        <tr><td>4</td><td><strong>Ja'Marr Chase</strong></td><td><span class="label-elite">Elite</span></td><td>75.9</td><td>3.8</td><td>88.3</td><td>2.21</td><td>21</td></tr>
-        <tr><td>5</td><td><strong>George Pickens</strong></td><td><span class="label-elite">Elite</span></td><td>74.7</td><td>26.5</td><td>84.1</td><td>2.29</td><td>21</td></tr>
-        <tr><td>6</td><td><strong>Zay Flowers</strong></td><td><span class="label-elite">Elite</span></td><td>68.5</td><td>42.5</td><td>71.2</td><td>2.87</td><td>11</td></tr>
-        <tr><td>7</td><td><strong>Nico Collins</strong></td><td><span class="label-high">High-End Starter</span></td><td>64.3</td><td>26.6</td><td>74.5</td><td>1.92</td><td>18</td></tr>
-        <tr><td>8</td><td><strong>CeeDee Lamb</strong></td><td><span class="label-high">High-End Starter</span></td><td>63.0</td><td>12.0</td><td>76.9</td><td>1.73</td><td>17</td></tr>
-        <tr><td>9</td><td><strong>Chris Olave</strong></td><td><span class="label-high">High-End Starter</span></td><td>62.2</td><td>33.4</td><td>72.7</td><td>1.97</td><td>15</td></tr>
-        <tr><td>10</td><td><strong>Drake London</strong></td><td><span class="label-high">High-End Starter</span></td><td>60.1</td><td>19.2</td><td>76.6</td><td>1.69</td><td>13</td></tr>
-        <tr><td>11</td><td><strong>Justin Jefferson</strong></td><td><span class="label-high">High-End Starter</span></td><td>59.7</td><td>12.8</td><td>61.6</td><td>2.17</td><td>17</td></tr>
-        <tr><td>12</td><td><strong>A.J. Brown</strong></td><td><span class="label-high">High-End Starter</span></td><td>58.6</td><td>26.1</td><td>66.9</td><td>2.02</td><td>13</td></tr>
-        <tr><td>13</td><td><strong>Davante Adams</strong></td><td><span class="label-strong">Strong Starter</span></td><td>56.6</td><td>54.6</td><td>56.4</td><td>1.32</td><td>32</td></tr>
-        <tr><td>14</td><td><strong>Michael Wilson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>56.7</td><td>96.0</td><td>59.2</td><td>2.16</td><td>14</td></tr>
-        <tr><td>15</td><td><strong>Wan'Dale Robinson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>55.9</td><td>114.2</td><td>63.4</td><td>1.93</td><td>13</td></tr>
-        <tr><td>16</td><td><strong>Tetairoa McMillan</strong></td><td><span class="label-strong">Strong Starter</span></td><td>55.0</td><td>38.4</td><td>59.6</td><td>1.97</td><td>14</td></tr>
-        <tr><td>17</td><td><strong>Courtland Sutton</strong></td><td><span class="label-strong">Strong Starter</span></td><td>54.7</td><td>87.0</td><td>59.8</td><td>1.66</td><td>19</td></tr>
-        <tr><td>18</td><td><strong>Stefon Diggs</strong></td><td><span class="label-strong">Strong Starter</span></td><td>54.3</td><td>147.6</td><td>59.6</td><td>2.02</td><td>12</td></tr>
-        <tr><td>19</td><td><strong>Jameson Williams</strong></td><td><span class="label-strong">Strong Starter</span></td><td>54.2</td><td>60.8</td><td>65.7</td><td>1.92</td><td>8</td></tr>
-        <tr><td>20</td><td><strong>DeVonta Smith</strong></td><td><span class="label-strong">Strong Starter</span></td><td>53.7</td><td>37.6</td><td>59.3</td><td>2.03</td><td>11</td></tr>
-        <tr><td>21</td><td><strong>Alec Pierce</strong></td><td><span class="label-strong">Strong Starter</span></td><td>53.4</td><td>87.1</td><td>66.9</td><td>1.83</td><td>7</td></tr>
-        <tr><td>22</td><td><strong>Rashee Rice</strong></td><td><span class="label-strong">Strong Starter</span></td><td>52.9</td><td>30.2</td><td>71.4</td><td>0.98</td><td>18</td></tr>
-        <tr><td>23</td><td><strong>Jaylen Waddle</strong></td><td><span class="label-strong">Strong Starter</span></td><td>51.2</td><td>52.6</td><td>56.9</td><td>1.90</td><td>11</td></tr>
-        <tr><td>24</td><td><strong>Emeka Egbuka</strong></td><td><span class="label-strong">Strong Starter</span></td><td>49.2</td><td>43.0</td><td>55.2</td><td>1.68</td><td>13</td></tr>
-        <tr><td>25</td><td><strong>D.K. Metcalf</strong></td><td><span class="label-strong">Strong Starter</span></td><td>48.5</td><td>83.6</td><td>56.7</td><td>1.55</td><td>13</td></tr>
-        <tr><td>26</td><td><strong>Parker Washington</strong></td><td><span class="label-strong">Strong Starter</span></td><td>46.8</td><td>90.3</td><td>52.9</td><td>1.50</td><td>14</td></tr>
-        <tr><td>27</td><td><strong>Tee Higgins</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>45.5</td><td>43.7</td><td>56.4</td><td>1.32</td><td>12</td></tr>
-        <tr><td>28</td><td><strong>Quentin Johnston</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>44.9</td><td>111.6</td><td>52.5</td><td>1.29</td><td>15</td></tr>
-        <tr><td>29</td><td><strong>Romeo Doubs</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>44.3</td><td>132.2</td><td>45.3</td><td>1.48</td><td>17</td></tr>
-        <tr><td>30</td><td><strong>Ladd McConkey</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>44.2</td><td>49.3</td><td>49.3</td><td>1.39</td><td>15</td></tr>
-        <tr><td>31</td><td><strong>Christian Watson</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>43.8</td><td>73.8</td><td>61.1</td><td>1.25</td><td>6</td></tr>
-        <tr><td>32</td><td><strong>Terry McLaurin</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>43.4</td><td>59.4</td><td>58.2</td><td>1.24</td><td>8</td></tr>
-        <tr><td>33</td><td><strong>Rome Odunze</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>43.1</td><td>66.7</td><td>55.1</td><td>1.15</td><td>12</td></tr>
-        <tr><td>34</td><td><strong>Keenan Allen</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>42.7</td><td></td><td>45.7</td><td>1.37</td><td>16</td></tr>
-        <tr><td>35</td><td><strong>Deebo Samuel</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>42.3</td><td>154.4</td><td>45.4</td><td>1.55</td><td>12</td></tr>
-        <tr><td>36</td><td><strong>Khalil Shakir</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>42.1</td><td>135.6</td><td>44.9</td><td>1.45</td><td>14</td></tr>
-        <tr><td>37</td><td><strong>Michael Pittman Jr.</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>42.0</td><td>103.4</td><td>46.1</td><td>1.43</td><td>13</td></tr>
-        <tr><td>38</td><td><strong>Jakobi Meyers</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>41.0</td><td>112.8</td><td>52.2</td><td>0.00</td><td>15</td></tr>
-        <tr><td>39</td><td><strong>Jauan Jennings</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>40.4</td><td>163.2</td><td>42.9</td><td>1.12</td><td>19</td></tr>
-        <tr><td>40</td><td><strong>Troy Franklin</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>39.1</td><td>211.8</td><td>41.7</td><td>1.16</td><td>17</td></tr>
-        <tr><td>41</td><td><strong>Brian Thomas</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>39.0</td><td>79.5</td><td>50.5</td><td>1.26</td><td>7</td></tr>
-        <tr><td>42</td><td><strong>Jordan Addison</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>38.3</td><td>112.4</td><td>43.6</td><td>1.26</td><td>12</td></tr>
-        <tr><td>43</td><td><strong>Ricky Pearsall</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>38.6</td><td>291.0</td><td>58.7</td><td>0.92</td><td>5</td></tr>
-        <tr><td>44</td><td><strong>Rashid Shaheed</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>38.4</td><td>151.0</td><td>38.2</td><td>0.00</td><td>9</td></tr>
-        <tr><td>45</td><td><strong>Malik Nabers</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>38.5</td><td>31.6</td><td>67.8</td><td>0.52</td><td>4</td></tr>
-        <tr><td>46</td><td><strong>Jakobi Meyers</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>37.5</td><td>112.8</td><td>52.2</td><td>0.00</td><td>15</td></tr>
-        <tr><td>47</td><td><strong>Marvin Harrison Jr.</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>31.9</td><td>78.9</td><td>45.0</td><td>0.94</td><td>10</td></tr>
-        <tr><td>48</td><td><strong>Tyreek Hill</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>37.0</td><td>208.1</td><td>66.3</td><td>0.55</td><td>2</td></tr>
-        <tr><td>49</td><td><strong>Tre Tucker</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>36.3</td><td>180.5</td><td>40.9</td><td>1.35</td><td>9</td></tr>
-        <tr><td>50</td><td><strong>Garrett Wilson</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>35.7</td><td>42.3</td><td>56.4</td><td>0.80</td><td>4</td></tr>
-    </tbody>
-</table>
-</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Label</th>
+                            <th>T-Score</th>
+                            <th>Scrimmage Yds/G</th>
+                            <th>HVT/G</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1</td><td><strong>Christian McCaffrey</strong></td><td><span class="label-elite">Elite</span></td><td>90.94</td><td>125.1</td><td>11.77</td></tr>
+                        <tr><td>2</td><td><strong>Bijan Robinson</strong></td><td><span class="label-elite">Elite</span></td><td>87.38</td><td>135.1</td><td>7.94</td></tr>
+                        <tr><td>3</td><td><strong>Jonathan Taylor</strong></td><td><span class="label-elite">Elite</span></td><td>77.60</td><td>115.4</td><td>7.36</td></tr>
+                        <tr><td>4</td><td><strong>De'Von Achane</strong></td><td><span class="label-high">High-End Starter</span></td><td>76.88</td><td>114.9</td><td>7.12</td></tr>
+                        <tr><td>5</td><td><strong>Jahmyr Gibbs</strong></td><td><span class="label-high">High-End Starter</span></td><td>76.84</td><td>108.1</td><td>8.53</td></tr>
+                        <tr><td>6</td><td><strong>James Cook</strong></td><td><span class="label-high">High-End Starter</span></td><td>72.43</td><td>112.5</td><td>5.47</td></tr>
+                        <tr><td>7</td><td><strong>Derrick Henry</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.92</td><td>102.62</td><td>4.89</td></tr>
+                        <tr><td>8</td><td><strong>Chase Brown</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.24</td><td>85.6</td><td>7.18</td></tr>
+                        <tr><td>9</td><td><strong>Kyren Williams</strong></td><td><span class="label-strong">Strong Starter</span></td><td>63.64</td><td>90.1</td><td>5.94</td></tr>
+                        <tr><td>10</td><td><strong>Saquon Barkley</strong></td><td><span class="label-strong">Strong Starter</span></td><td>62.13</td><td>88.4</td><td>5.57</td></tr>
+                        <tr><td>11</td><td><strong>Javonte Williams</strong></td><td><span class="label-strong">Strong Starter</span></td><td>61.74</td><td>83.66</td><td>6.38</td></tr>
+                        <tr><td>12</td><td><strong>D'Andre Swift</strong></td><td><span class="label-strong">Strong Starter</span></td><td>61.20</td><td>86.6</td><td>5.50</td></tr>
+                        <tr><td>13</td><td><strong>Omarion Hampton</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>60.87</td><td>81.9</td><td>6.33</td></tr>
+                        <tr><td>14</td><td><strong>Travis Etienne</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>60.73</td><td>82.3</td><td>6.18</td></tr>
+                        <tr><td>15</td><td><strong>Bucky Irving</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>60.54</td><td>86.5</td><td>5.20</td></tr>
+                        <tr><td>16</td><td><strong>Cam Skattebo</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>59.96</td><td>77.2</td><td>6.88</td></tr>
+                        <tr><td>17</td><td><strong>Josh Jacobs</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>59.93</td><td>80.7</td><td>6.13</td></tr>
+                        <tr><td>18</td><td><strong>Breece Hall</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>59.57</td><td>88.5</td><td>4.31</td></tr>
+                        <tr><td>19</td><td><strong>Ashton Jeanty</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>58.63</td><td>77.8</td><td>6.11</td></tr>
+                        <tr><td>20</td><td><strong>Jaylen Warren</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>58.24</td><td>80.7</td><td>5.31</td></tr>
+                        <tr><td>21</td><td><strong>Rico Dowdle</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>57.02</td><td>80.8</td><td>4.70</td></tr>
+                        <tr><td>22</td><td><strong>J.K. Dobbins</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>54.17</td><td>80.9</td><td>3.30</td></tr>
+                        <tr><td>23</td><td><strong>Kenneth Walker</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.79</td><td>77.0</td><td>3.94</td></tr>
+                        <tr><td>24</td><td><strong>Quinshon Judkins</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.04</td><td>71.3</td><td>4.78</td></tr>
+                        <tr><td>25</td><td><strong>Tony Pollard</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>52.25</td><td>75.7</td><td>3.47</td></tr>
+                        <tr><td>26</td><td><strong>Tyrone Tracy</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>51.45</td><td>68.5</td><td>4.60</td></tr>
+                        <tr><td>27</td><td><strong>Kenneth Gainwell</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>51.22</td><td>60.2</td><td>6.24</td></tr>
+                        <tr><td>28</td><td><strong>Rhamondre Stevenson</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.90</td><td>67.7</td><td>4.50</td></tr>
+                        <tr><td>29</td><td><strong>TreVeyon Henderson</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.35</td><td>66.6</td><td>4.47</td></tr>
+                        <tr><td>30</td><td><strong>Aaron Jones</strong></td><td><span class="label-depth">Depth Player</span></td><td>48.73</td><td>62.3</td><td>4.59</td></tr>
+                        <tr><td>31</td><td><strong>Alvin Kamara</strong></td><td><span class="label-depth">Depth Player</span></td><td>47.88</td><td>59.7</td><td>4.73</td></tr>
+                        <tr><td>32</td><td><strong>Kimani Vidal</strong></td><td><span class="label-depth">Depth Player</span></td><td>45.70</td><td>60.0</td><td>3.61</td></tr>
+                        <tr><td>33</td><td><strong>Woody Marks</strong></td><td><span class="label-depth">Depth Player</span></td><td>45.67</td><td>56.9</td><td>4.25</td></tr>
+                        <tr><td>34</td><td><strong>Zach Charbonnet</strong></td><td><span class="label-depth">Depth Player</span></td><td>45.43</td><td>54.6</td><td>4.62</td></tr>
+                        <tr><td>35</td><td><strong>RJ Harvey</strong></td><td><span class="label-depth">Depth Player</span></td><td>45.27</td><td>52.7</td><td>4.94</td></tr>
+                        <tr><td>36</td><td><strong>Kyle Monangai</strong></td><td><span class="label-depth">Depth Player</span></td><td>44.03</td><td>55.75</td><td>3.70</td></tr>
+                        <tr><td>37</td><td><strong>David Montgomery</strong></td><td><span class="label-depth">Depth Player</span></td><td>42.91</td><td>53.4</td><td>3.65</td></tr>
+                        <tr><td>38</td><td><strong>Chuba Hubbard</strong></td><td><span class="label-depth">Depth Player</span></td><td>41.15</td><td>49.0</td><td>3.73</td></tr>
+                        <tr><td>39</td><td><strong>Michael Carter</strong></td><td><span class="label-depth">Depth Player</span></td><td>40.61</td><td>46.1</td><td>4.08</td></tr>
+                        <tr><td>40</td><td><strong>Tyjae Spears</strong></td><td><span class="label-depth">Depth Player</span></td><td>39.99</td><td>42.1</td><td>4.62</td></tr>
+                        <tr><td>41</td><td><strong>Jacory Croskey-Merritt</strong></td><td><span class="label-depth">Depth Player</span></td><td>39.82</td><td>51.4</td><td>2.58</td></tr>
+                        <tr><td>42</td><td><strong>Rachaad White</strong></td><td><span class="label-depth">Depth Player</span></td><td>39.73</td><td>46.4</td><td>3.59</td></tr>
+                        <tr><td>43</td><td><strong>Jordan Mason</strong></td><td><span class="label-depth">Depth Player</span></td><td>39.55</td><td>50.59</td><td>2.62</td></tr>
+                        <tr><td>44</td><td><strong>Kareem Hunt</strong></td><td><span class="label-depth">Depth Player</span></td><td>39.07</td><td>44.31</td><td>3.71</td></tr>
+                        <tr><td>45</td><td><strong>Isiah Pacheco</strong></td><td><span class="label-depth">Depth Player</span></td><td>37.93</td><td>43.27</td><td>3.38</td></tr>
+                        <tr><td>46</td><td><strong>Blake Corum</strong></td><td><span class="label-depth">Depth Player</span></td><td>37.00</td><td>46.02</td><td>2.35</td></tr>
+                        <tr><td>47</td><td><strong>Chris Rodriguez</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.76</td><td>40.81</td><td>2.85</td></tr>
+                        <tr><td>48</td><td><strong>Bam Knight</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.73</td><td>35.7</td><td>3.91</td></tr>
+                        <tr><td>49</td><td><strong>Tyler Allgeier</strong></td><td><span class="label-depth">Depth Player</span></td><td>33.42</td><td>35.85</td><td>2.76</td></tr>
+                        <tr><td>50</td><td><strong>Nick Chubb</strong></td><td><span class="label-depth">Depth Player</span></td><td>33.27</td><td>38.17</td><td>2.20</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
+
     <!-- TAB: VALUES -->
     <div id="valuesTab" class="tab-content">
         <div class="settings-card">
-        <h2>2026 Values at ADP</h2>
-        <p class="card-desc">Players with an ADP above 100 that the model has identified as a value. This compares the expected T-Score (based on an ADP trendline) to the actual T-Score.</p>
-        <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
-            <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                View Model Baseline Variables
-            </summary>
-            
-            <div class="data-table-wrapper table-container" style="margin-top: 1rem; margin-bottom: 0;">
-                <table class="data-table" style="width: 100%; font-size: 0.85rem;">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left;">Stat</th>
-                            <th style="text-align: center;">Mean</th>
-                            <th style="text-align: center;">St Dv</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td style="text-align: left; font-weight: 600;">YDS/GM</td><td style="text-align: center;">26.0</td><td style="text-align: center;">22.2</td></tr>
-                        <tr><td style="text-align: left; font-weight: 600;">RZ Tgt</td><td style="text-align: center;">6.6</td><td style="text-align: center;">5.9</td></tr>
-                        <tr><td style="text-align: left; font-weight: 600;">YDS/TM PA/GM</td><td style="text-align: center;">0.60</td><td style="text-align: center;">0.66</td></tr>
-                    </tbody>
-                </table>
+            <h2>2026 Values at ADP</h2>
+            <p class="card-desc">Players presenting strong value based on their expected T-Score relative to their market ADP price.</p>
+
+            <div class="pos-toggle-wrapper">
+                <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'valuesTab')">Wide Receivers</button>
+                <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'valuesTab')">Running Backs</button>
             </div>
-        </details>    
-            <div class="data-table-wrapper">
-    <table class="data-table">
-    <thead>
-        <tr><th>Rank</th><th>Player</th><th>Label</th><th>T-Score</th><th>Exp T-Score</th><th>T-Score Diff</th><th>ADP</th><th>Yds/G</th><th>Yds/Team PA/G</th><th>RZ Tgts</th></tr>
-    </thead>
-    <tbody>
-        <tr><td>5</td><td><strong>George Pickens</strong></td><td><span class="label-elite">Elite</span></td><td>74.7</td><td>59.7</td><td><span class="val-badge val-fire">+14.9</span></td><td>26.5</td><td>45</td><td>2.29</td><td>21</td></tr>
-        <tr><td>7</td><td><strong>Zay Flowers</strong></td><td><span class="label-elite">Elite</span></td><td>68.5</td><td>50.6</td><td><span class="val-badge val-fire">+17.9</span></td><td>42.5</td><td>64</td><td>2.87</td><td>11</td></tr>
-        <tr><td>15</td><td><strong>Michael Wilson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>56.7</td><td>34.9</td><td><span class="val-badge val-fire">+21.8</span></td><td>96.0</td><td>50</td><td>2.16</td><td>14</td></tr>
-        <tr><td>18</td><td><strong>Courtland Sutton</strong></td><td><span class="label-strong">Strong Starter</span></td><td>54.7</td><td>36.8</td><td><span class="val-badge val-fire">+17.8</span></td><td>87.0</td><td>52</td><td>1.66</td><td>19</td></tr>
-        <tr><td>22</td><td><strong>Alec Pierce</strong></td><td><span class="label-strong">Strong Starter</span></td><td>53.4</td><td>36.8</td><td><span class="val-badge val-fire">+16.6</span></td><td>87.1</td><td>66</td><td>1.83</td><td>7</td></tr>
-    </tbody>
-</table>
-</div>
+
+            <!-- WR CONTENT -->
+            <div class="wr-content" style="display: block;">
+                <div class="data-table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Label</th>
+                                <th>T-Score</th>
+                                <th>Exp T-Score</th>
+                                <th>T-Score Diff</th>
+                                <th>ADP</th>
+                                <th>Yds/G</th>
+                                <th>1st D/G</th>
+                                <th>RZ Tgts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>5</td><td><strong>George Pickens</strong></td><td><span class="label-elite">Elite</span></td><td>84.14</td><td>69.39</td><td><span class="val-badge val-fire">+14.74</span></td><td>27.0</td><td>84.1</td><td>4.29</td><td>21</td></tr>
+                            <tr><td>11</td><td><strong>Davante Adams</strong></td><td><span class="label-high">High-End Starter</span></td><td>71.36</td><td>62.59</td><td><span class="val-badge val-fire">+8.78</span></td><td>51.6</td><td>56.4</td><td>3.64</td><td>31</td></tr>
+                            <tr><td>15</td><td><strong>Courtland Sutton</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.56</td><td>57.23</td><td><span class="val-badge val-fire">+9.33</span></td><td>86.0</td><td>59.8</td><td>3.06</td><td>17</td></tr>
+                            <tr><td>17</td><td><strong>Alec Pierce</strong></td><td><span class="label-strong">Strong Starter</span></td><td>65.96</td><td>57.24</td><td><span class="val-badge val-fire">+8.72</span></td><td>85.9</td><td>66.9</td><td>2.73</td><td>8</td></tr>
+                            <tr><td>19</td><td><strong>Michael Wilson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>65.45</td><td>56.28</td><td><span class="val-badge val-fire">+9.17</span></td><td>94.1</td><td>59.2</td><td>3.00</td><td>15</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RB CONTENT -->
+            <div class="rb-content" style="display: none;">
+                <div class="data-table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Label</th>
+                                <th>T-Score</th>
+                                <th>Exp T-Score</th>
+                                <th>T-Score Diff</th>
+                                <th>ADP</th>
+                                <th>Scrimmage Yds/G</th>
+                                <th>HVT/G</th>
+                                <th>Tgts/G</th>
+                                <th>RZ Carries/G</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>1</td><td><strong>Christian McCaffrey</strong></td><td><span class="label-elite">Elite</span></td><td>90.94</td><td>73.60</td><td><span class="val-badge val-fire">+17.34</span></td><td>5.8</td><td>125.1</td><td>11.77</td><td>7.59</td><td>4.18</td></tr>
+                            <tr><td>4</td><td><strong>De'Von Achane</strong></td><td><span class="label-high">High-End Starter</span></td><td>76.88</td><td>65.98</td><td><span class="val-badge val-fire">+10.90</span></td><td>13.4</td><td>114.9</td><td>7.12</td><td>5.31</td><td>1.81</td></tr>
+                            <tr><td>12</td><td><strong>D'Andre Swift</strong></td><td><span class="label-strong">Strong Starter</span></td><td>61.20</td><td>53.08</td><td><span class="val-badge val-fire">+8.12</span></td><td>55.3</td><td>86.6</td><td>5.50</td><td>3.00</td><td>2.50</td></tr>
+                            <tr><td>20</td><td><strong>Jaylen Warren</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>58.24</td><td>48.88</td><td><span class="val-badge val-fire">+9.35</span></td><td>87.7</td><td>80.7</td><td>5.31</td><td>2.81</td><td>2.50</td></tr>
+                            <tr><td>21</td><td><strong>Rico Dowdle</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>57.02</td><td>48.04</td><td><span class="val-badge val-fire">+8.98</span></td><td>96.3</td><td>80.8</td><td>4.70</td><td>2.94</td><td>1.76</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
+
     <!-- TAB: SLEEPERS -->
     <div id="sleepersTab" class="tab-content">
         <div class="settings-card">
-        <h2>2026 Sleepers at ADP</h2>
-        <p class="card-desc">Players drafted outside the top 100 overall (ADP > 100) that present upside compared to their cost. This compares the expected T-Score (based on an ADP trendline) to the actual T-Score.</p>
-        <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
-            <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                View Model Baseline Variables
-            </summary>
-            
-            <div class="data-table-wrapper table-container" style="margin-top: 1rem; margin-bottom: 0;">
-                <table class="data-table" style="width: 100%; font-size: 0.85rem;">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left;">Stat</th>
-                            <th style="text-align: center;">Mean</th>
-                            <th style="text-align: center;">St Dv</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td style="text-align: left; font-weight: 600;">YDS/GM</td><td style="text-align: center;">26.0</td><td style="text-align: center;">22.2</td></tr>
-                        <tr><td style="text-align: left; font-weight: 600;">RZ Tgt</td><td style="text-align: center;">6.6</td><td style="text-align: center;">5.9</td></tr>
-                        <tr><td style="text-align: left; font-weight: 600;">YDS/TM PA/GM</td><td style="text-align: center;">0.60</td><td style="text-align: center;">0.66</td></tr>
-                    </tbody>
-                </table>
+            <h2>2026 Sleepers at ADP</h2>
+            <p class="card-desc">Players drafted outside the top 100 overall (ADP > 100) that present upside compared to their cost.</p>
+
+            <div class="pos-toggle-wrapper">
+                <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'sleepersTab')">Wide Receivers</button>
+                <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'sleepersTab')">Running Backs</button>
             </div>
-        </details>    
-            <div class="data-table-wrapper">
-    <table class="data-table">
-    <thead>
-        <tr><th>Rank</th><th>Player</th><th>Label</th><th>T-Score</th><th>Exp T-Score</th><th>T-Score Diff</th><th>ADP</th><th>Yds/G</th><th>Yds/Team PA/G</th><th>RZ Tgts</th></tr>
-    </thead>
-    <tbody>
-        <tr><td>16</td><td><strong>Wan'Dale Robinson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>55.9</td><td>31.6</td><td><span class="val-badge val-fire">+24.4</span></td><td>114.2</td><td>50</td><td>1.93</td><td>13</td></tr>
-        <tr><td>19</td><td><strong>Stefon Diggs</strong></td><td><span class="label-strong">Strong Starter</span></td><td>54.3</td><td>26.6</td><td><span class="val-badge val-fire">+27.7</span></td><td>147.6</td><td>34</td><td>2.02</td><td>12</td></tr>
-        <tr><td>30</td><td><strong>Romeo Doubs</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>44.3</td><td>28.7</td><td><span class="val-badge val-fire">+15.5</span></td><td>132.2</td><td>48</td><td>1.48</td><td>17</td></tr>
-        <tr><td>36</td><td><strong>Deebo Samuel</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>42.3</td><td>25.7</td><td><span class="val-badge val-fire">+16.6</span></td><td>154.4</td><td>41</td><td>1.55</td><td>12</td></tr>
-        <tr><td>39</td><td><strong>Jauan Jennings</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>40.4</td><td>24.7</td><td><span class="val-badge val-fire">+15.8</span></td><td>163.2</td><td>42</td><td>1.12</td><td>19</td></tr>
-    </tbody>
-</table>
-</div>
+
+            <!-- WR CONTENT -->
+            <div class="wr-content" style="display: block;">
+                <div class="data-table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Label</th>
+                                <th>T-Score</th>
+                                <th>Exp T-Score</th>
+                                <th>T-Score Diff</th>
+                                <th>ADP</th>
+                                <th>Yds/G</th>
+                                <th>1st D/G</th>
+                                <th>RZ Tgts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>20</td><td><strong>Stefon Diggs</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.77</td><td>53.09</td><td><span class="val-badge val-fire">+11.68</span></td><td>127.5</td><td>59.6</td><td>3.00</td><td>12</td></tr>
+                            <tr><td>21</td><td><strong>Wan'Dale Robinson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.01</td><td>54.05</td><td><span class="val-badge val-fire">+9.96</span></td><td>116.4</td><td>63.4</td><td>2.44</td><td>11</td></tr>
+                            <tr><td>27</td><td><strong>Ricky Pearsall</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>62.47</td><td>49.46</td><td><span class="val-badge val-fire">+13.01</span></td><td>180.3</td><td>58.7</td><td>3.11</td><td>4</td></tr>
+                            <tr><td>38</td><td><strong>Jauan Jennings</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>56.51</td><td>48.18</td><td><span class="val-badge val-fire">+8.33</span></td><td>203.7</td><td>42.9</td><td>2.40</td><td>19</td></tr>
+                            <tr><td>43</td><td><strong>Troy Franklin</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.55</td><td>38.73</td><td><span class="val-badge val-fire">+14.82</span></td><td>500.6</td><td>41.7</td><td>1.88</td><td>18</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RB CONTENT -->
+            <div class="rb-content" style="display: none;">
+                <div class="data-table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Label</th>
+                                <th>T-Score</th>
+                                <th>Exp T-Score</th>
+                                <th>T-Score Diff</th>
+                                <th>ADP</th>
+                                <th>Scrimmage Yds/G</th>
+                                <th>HVT/G</th>
+                                <th>Tgts/G</th>
+                                <th>RZ Carries/G</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>48</td><td><strong>Bam Knight</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.73</td><td>24.81</td><td><span class="val-badge val-fire">+10.92</span></td><td>1236.5</td><td>35.7</td><td>3.91</td><td>2.58</td><td>1.33</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
+
     <!-- TAB: AVOIDS -->
     <div id="avoidsTab" class="tab-content">
         <div class="settings-card">
-        <h2>2026 Avoids at ADP</h2>
-        <p class="card-desc">Players the T-Score model suggests fading based on their market price versus historical production metrics. This compares the expected T-Score (based on an ADP trendline) to the actual T-Score.</p>
-        <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
-            <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                View Model Baseline Variables
-            </summary>
-            
-            <div class="data-table-wrapper table-container" style="margin-top: 1rem; margin-bottom: 0;">
-                <table class="data-table" style="width: 100%; font-size: 0.85rem;">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left;">Stat</th>
-                            <th style="text-align: center;">Mean</th>
-                            <th style="text-align: center;">St Dv</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td style="text-align: left; font-weight: 600;">YDS/GM</td><td style="text-align: center;">26.0</td><td style="text-align: center;">22.2</td></tr>
-                        <tr><td style="text-align: left; font-weight: 600;">RZ Tgt</td><td style="text-align: center;">6.6</td><td style="text-align: center;">5.9</td></tr>
-                        <tr><td style="text-align: left; font-weight: 600;">YDS/TM PA/GM</td><td style="text-align: center;">0.60</td><td style="text-align: center;">0.66</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </details>    
-            <div class="data-table-wrapper">
-    <table class="data-table">
-    <thead>
-        <tr><th>Rank</th><th>Player</th><th>Label</th><th>T-Score</th><th>Exp T-Score</th><th>T-Score Diff</th><th>ADP</th><th>Yds/G</th><th>Yds/Team PA/G</th><th>RZ Tgts</th></tr>
-    </thead>
-    <tbody>
-        <tr><td>49</td><td><strong>Garrett Wilson</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>35.7</td><td>50.7</td><td><span class="val-badge val-warn">-15.0</span></td><td>42.3</td><td>33</td><td>0.80</td><td>4</td></tr>
-        <tr><td>51</td><td><strong>D.J. Moore</strong></td><td><span class="label-boom">Boom/Bust Option</span></td><td>29.1</td><td>41.8</td><td><span class="val-badge val-warn">-12.7</span></td><td>67.2</td><td>46</td><td>1.19</td><td>11</td></tr>
-        <tr><td>55</td><td><strong>Mike Evans</strong></td><td><span class="label-boom">Boom/Bust Option</span></td><td>31.7</td><td>40.4</td><td><span class="val-badge val-warn">-8.7</span></td><td>72.1</td><td>45</td><td>0.66</td><td>9</td></tr>
-        <tr><td>63</td><td><strong>Chris Godwin</strong></td><td><span class="label-boom">Boom/Bust Option</span></td><td>27.4</td><td>32.7</td><td><span class="val-badge val-warn">-5.3</span></td><td>107.6</td><td>59</td><td>0.65</td><td>7</td></tr>
-        <tr><td>91</td><td><strong>Matthew Golden</strong></td><td><span class="label-depth">Depth Player</span></td><td>18.3</td><td>29.6</td><td><span class="val-badge val-warn">-11.3</span></td><td>126.7</td><td>46</td><td>0.74</td><td>2</td></tr>
-        <tr><td>92</td><td><strong>Jayden Reed</strong></td><td><span class="label-depth">Depth Player</span></td><td>18.1</td><td>30.4</td><td><span class="val-badge val-warn">-12.3</span></td><td>121.4</td><td>31</td><td>0.42</td><td>4</td></tr>
-        <tr><td>97</td><td><strong>Rashid Shaheed</strong></td><td><span class="label-depth">Depth Player</span></td><td>16.1</td><td>26.2</td><td><span class="val-badge val-warn">-10.1</span></td><td>151.0</td><td>87</td><td>0.00</td><td>9</td></tr>
-    </tbody>
-</table>
-</div>
+            <h2>2026 Avoids at ADP</h2>
+            <p class="card-desc">Players the T-Score model suggests fading based on market price vs historical production metrics.</p>
 
+            <div class="pos-toggle-wrapper">
+                <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'avoidsTab')">Wide Receivers</button>
+                <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'avoidsTab')">Running Backs</button>
+            </div>
+
+            <!-- WR CONTENT -->
+            <div class="wr-content" style="display: block;">
+                <div class="data-table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Label</th>
+                                <th>T-Score</th>
+                                <th>Exp T-Score</th>
+                                <th>T-Score Diff</th>
+                                <th>ADP</th>
+                                <th>Yds/G</th>
+                                <th>1st D/G</th>
+                                <th>RZ Tgts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>16</td><td><strong>Justin Jefferson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.19</td><td>77.68</td><td><span class="val-badge val-warn">-11.48</span></td><td>12.3</td><td>61.6</td><td>2.76</td><td>17</td></tr>
+                            <tr><td>36</td><td><strong>Ladd McConkey</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>57.23</td><td>64.35</td><td><span class="val-badge val-warn">-7.12</span></td><td>43.7</td><td>49.3</td><td>2.19</td><td>14</td></tr>
+                            <tr><td>48</td><td><strong>D.J. Moore</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.77</td><td>61.44</td><td><span class="val-badge val-warn">-10.67</span></td><td>57.6</td><td>40.1</td><td>1.88</td><td>11</td></tr>
+                            <tr><td>50</td><td><strong>Luther Burden</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.02</td><td>61.76</td><td><span class="val-badge val-warn">-11.74</span></td><td>55.9</td><td>43.5</td><td>1.80</td><td>4</td></tr>
+                            <tr><td>64</td><td><strong>Jayden Higgins</strong></td><td><span class="label-depth">Depth Player</span></td><td>44.34</td><td>52.36</td><td><span class="val-badge val-warn">-8.01</span></td><td>136.8</td><td>30.9</td><td>1.65</td><td>7</td></tr>
+                            <tr><td>80</td><td><strong>Matthew Golden</strong></td><td><span class="label-depth">Depth Player</span></td><td>38.43</td><td>54.29</td><td><span class="val-badge val-warn">-15.86</span></td><td>113.8</td><td>25.8</td><td>1.14</td><td>2</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RB CONTENT -->
+            <div class="rb-content" style="display: none;">
+                <div class="data-table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Label</th>
+                                <th>T-Score</th>
+                                <th>Exp T-Score</th>
+                                <th>T-Score Diff</th>
+                                <th>ADP</th>
+                                <th>Scrimmage Yds/G</th>
+                                <th>HVT/G</th>
+                                <th>Tgts/G</th>
+                                <th>RZ Carries/G</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>23</td><td><strong>Kenneth Walker</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.79</td><td>63.06</td><td><span class="val-badge val-warn">-9.27</span></td><td>18.5</td><td>77.0</td><td>3.94</td><td>2.12</td><td>1.82</td></tr>
+                            <tr><td>37</td><td><strong>David Montgomery</strong></td><td><span class="label-depth">Depth Player</span></td><td>42.91</td><td>52.89</td><td><span class="val-badge val-warn">-9.99</span></td><td>56.5</td><td>53.4</td><td>3.65</td><td>1.71</td><td>1.94</td></tr>
+                            <tr><td>46</td><td><strong>Blake Corum</strong></td><td><span class="label-depth">Depth Player</span></td><td>37.00</td><td>46.43</td><td><span class="val-badge val-warn">-9.43</span></td><td>114.8</td><td>46.02</td><td>2.35</td><td>0.82</td><td>1.53</td></tr>
+                            <tr><td>47</td><td><strong>Chris Rodriguez</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.76</td><td>44.91</td><td><span class="val-badge val-warn">-9.15</span></td><td>135.8</td><td>40.81</td><td>2.85</td><td>0.31</td><td>2.54</td></tr>
+                            <tr><td>49</td><td><strong>Tyler Allgeier</strong></td><td><span class="label-depth">Depth Player</span></td><td>33.42</td><td>44.23</td><td><span class="val-badge val-warn">-10.81</span></td><td>146.4</td><td>35.85</td><td>2.76</td><td>0.94</td><td>1.82</td></tr>
+                            <tr><td>55</td><td><strong>Bhayshul Tuten</strong></td><td><span class="label-depth">Depth Player</span></td><td>28.55</td><td>52.04</td><td><span class="val-badge val-warn">-23.50</span></td><td>62.0</td><td>25.77</td><td>2.53</td><td>0.93</td><td>1.60</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
 </main>
+
 <script>
-    function switchTab(tabId, skipHistory) {
-    // 1. Remove the 'active' class from all tab content containers
+function switchTab(tabId, skipHistory) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    
-    // 2. Remove the 'active' class from all navigation buttons
     document.querySelectorAll('.tscore-nav-btn').forEach(el => el.classList.remove('active'));
     
-    // 3. Add the 'active' class to the targeted tab content
     const targetTab = document.getElementById(tabId);
-    if (targetTab) targetTab.classList.add('active');
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
     
-    // 4. Find the matching button and add the 'active' class
     const targetBtn = document.querySelector(`.tscore-nav-btn[onclick*="${tabId}"]`);
-    if (targetBtn) targetBtn.classList.add('active');
+    if (targetBtn) {
+        targetBtn.classList.add('active');
+    }
 
-    // 5. Push to history log (unless we are clicking the back button)
     if (skipHistory !== true) {
         history.pushState({ tab: tabId }, '', `#${tabId}`);
     }
 }
 
-// Catch the native back button
+function switchPosition(pos, tabId) {
+    const activeTab = document.getElementById(tabId);
+    if (!activeTab) return;
+    
+    const btns = activeTab.querySelectorAll('.pos-toggle-btn');
+    btns.forEach(btn => {
+        if (btn.dataset.pos === pos) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    const wrContent = activeTab.querySelector('.wr-content');
+    const rbContent = activeTab.querySelector('.rb-content');
+
+    if (pos === 'wr') {
+        if (wrContent) wrContent.style.display = 'block';
+        if (rbContent) rbContent.style.display = 'none';
+    } else {
+        if (wrContent) wrContent.style.display = 'none';
+        if (rbContent) rbContent.style.display = 'block';
+    }
+}
+
 window.addEventListener('popstate', (e) => {
     if (e.state && e.state.tab) {
         switchTab(e.state.tab, true);
+    } else if (window.location.hash) {
+        switchTab(window.location.hash.substring(1), true);
     } else {
-        switchTab('researchTab', true); // Default back to the first tab
+        switchTab('researchTab', true);
     }
 });
-    function toggleMenu() {
+
+function toggleMenu() {
     const menu = document.getElementById('hamburgerMenu');
     const overlay = document.getElementById('menuOverlay');
     const hamburgerBtn = document.querySelector('.hamburger-btn');
