@@ -110,7 +110,7 @@ body {
     background-size: 1rem;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 767px) {
     /* 1. Reduce the wide left/right padding on the ends of the header */
     .header {
         padding: 0.5rem 0.5rem; 
@@ -1126,7 +1126,7 @@ body {
 
 /* Responsive adjustments */
 /* Responsive adjustments for optimal mobile density */
-@media (max-width: 450px) {
+@media (max-width: 480px) {
     .lineup-slot, .roster-item { 
         padding: 0.5rem 0.4rem; 
         gap: 0.4rem; 
@@ -2092,7 +2092,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
 }
-@media (max-width: 450px) {
+@media (max-width: 480px) {
     .limits-table th, 
     .limits-table td {
         /* Reduces the left/right padding to free up horizontal space */
@@ -2134,7 +2134,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
     box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 /* Mobile-specific adjustments for Draft Board edge-to-edge bleed */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
     .draft-board-container {
         /* Pull container out to the absolute edges */
         margin-left: -1.5rem; 
@@ -2192,7 +2192,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
     overflow: hidden; 
 }
 /* Reclaim horizontal space for player cards on mobile */
-@media (max-width: 600px) {
+@media (max-width: 767px) {
     .container {
         /* Reduces the outer screen edge gap from 1.5rem to 0.5rem */
         padding: 1.25rem 0.5rem; 
@@ -2251,7 +2251,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
   opacity: 1;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 767px) {
   .mds-toast {
     bottom: 90px;
     left: 50%;
@@ -2305,27 +2305,14 @@ input[type="file"]::-webkit-file-upload-button:hover {
     transform: rotate(180deg);
 }
 
-/* Mobile Default: Details hidden only if setting is enabled */
-@media (max-width: 600px) {
-    body.enable-mobile-collapse .card-details {
-        display: none;
-        margin-top: 0.75rem;
-        padding-top: 0.75rem;
-        border-top: 1px dashed rgba(255, 255, 255, 0.1);
-    }
-    
-    body.enable-mobile-collapse .player-card.is-expanded .card-details {
-        display: block;
-    }
+/* Mobile Default: Details hidden only if setting is enabled.
+   (Consolidated from what used to be two overlapping @media(max-width:600px) blocks here plus
+   a third small one further down -- see the single block near the PLAYER CARD GRID LAYOUT
+   section below for the live rules.) */
 
-    /* Hide the expand arrow completely if the setting is disabled */
-    body:not(.enable-mobile-collapse) .btn-expand {
-        display: none !important;
-    }
-}
-
-/* Desktop Default: Details always visible, expand button hidden */
-@media (min-width: 601px) {
+/* Desktop Default: Details always visible, expand button hidden.
+   (Previously declared 3 times near-identically across this file -- consolidated to one.) */
+@media (min-width: 768px) {
     .card-details {
         display: block !important; /* Force visible */
         margin-top: 0.25rem;
@@ -2449,7 +2436,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
 }
 
 /* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
-@media (max-width: 600px) {
+@media (max-width: 767px) {
     body.enable-mobile-collapse .card-grid {
         /* When enabled: Actions stay on top row, Stats span full width below */
         grid-template-areas:
@@ -2461,6 +2448,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
         display: none;
         margin-top: 0.5rem;
         padding-top: 0.5rem;
+        padding-right: 0; /* allow full width when collapsed -- merged in from a separate block that used to live here */
         border-top: 1px dashed rgba(255, 255, 255, 0.1);
     }
     
@@ -2473,39 +2461,12 @@ input[type="file"]::-webkit-file-upload-button:hover {
     }
 }
 
-@media (min-width: 601px) {
-    .card-details {
-        display: block !important;
-    }
-    
-    .hide-on-desktop {
-        display: none !important;
-    }
-}
-
-@media (min-width: 601px) {
-    .card-details {
-        display: block !important;
-        margin-top: 0.25rem;
-    }
-    
-    .hide-on-desktop {
-        display: none !important;
-    }
-}
-
-@media (max-width: 600px) {
-    /* On mobile, allow full width when cards are collapsed */
-    body.enable-mobile-collapse .card-details {
-        padding-right: 0;
-    }
-}
 .methodology-link {
     margin-left: 4px;
     display: inline-block;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 767px) {
     .methodology-link {
         display: block; /* Forces it to its own line */
         margin-left: 0;
