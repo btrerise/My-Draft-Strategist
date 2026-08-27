@@ -2264,6 +2264,33 @@ input[type="file"]::-webkit-file-upload-button:hover {
   opacity: 1;
 }
 
+.mds-toast.toast-error {
+  border-color: var(--error-color, #ea4335);
+  max-width: 380px;
+  white-space: normal;
+  pointer-events: auto; /* base toast disables pointer-events; the dismiss button needs them back */
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.4;
+}
+
+.mds-toast .toast-dismiss-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.mds-toast .toast-dismiss-btn:hover {
+  color: var(--text-main);
+}
+
 @media (max-width: 767px) {
   .mds-toast {
     bottom: 90px;

@@ -117,7 +117,7 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
             
-            <div class="logo-container" onclick="showTab('setup')">
+            <div class="logo-container" onclick="showTab('setup')" role="button" tabindex="0" aria-label="Go to Setup" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('setup');}">
                 <img src="../images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
                 <div class="logo-text">My Lineup <span>Strategist</span></div>
             </div>
@@ -136,12 +136,21 @@
 <div id="setupTab" class="tab-content active">
     <!-- Info & Guide Banner Shortcut -->
     <div class="guide-banner" id="guideBanner" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem;">
-        <div onclick="showTab('guide')" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
+        <div onclick="showTab('guide')" role="button" tabindex="0" aria-label="Read the User Guide" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('guide');}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
             <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </div>
         <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'ds_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+    </div>
+    <!-- DRAFT STRATEGIST CROSS-PROMO -->
+    <div class="guide-banner" id="draftBanner" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4); padding: 0.75rem 1rem;">
+        <div onclick="window.location.href='../'" role="button" tabindex="0" aria-label="Switch to My Draft Strategist" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='../';}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer; color: var(--primary-green);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+            <span style="font-size: 0.9rem;">Mocking or prepping for a draft? Try <strong>My Draft Strategist</strong></span>
+            <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+        </div>
+        <button class="close-banner-btn" onclick="dismissBanner('draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
     </div>
     <!-- DRAFT STRATEGIST ROSTER HANDOFF -->
     <div class="info-banner" id="handoffBanner" style="display: none; justify-content: space-between; align-items: flex-start;">
@@ -271,7 +280,7 @@
                 <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" width="274" height="36" />
             </a>
         </div>
-    <div class="app-version">My Lineup Strategist v2.4.1</div>
+    <div class="app-version">My Lineup Strategist v2.4</div>
 </div>
 
         <!-- ROSTER TAB -->

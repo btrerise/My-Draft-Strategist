@@ -189,13 +189,13 @@ window.addEventListener('popstate', (e) => {
             try {
                 payload = JSON.parse(e.target.result);
             } catch (err) {
-                window.alert("That file isn't valid JSON -- couldn't read it as a backup.");
+                if (window.showToast) window.showToast("That file isn't valid JSON -- couldn't read it as a backup.", { isError: true });
                 fileInput.value = "";
                 return;
             }
 
             if (!payload || payload.app !== "MLS" || typeof payload.data !== 'object') {
-                window.alert("This doesn't look like a My Lineup Strategist backup file. If it's an MDS (Draft Strategist) backup, use the Import button on that app instead.");
+                if (window.showToast) window.showToast("This doesn't look like a My Lineup Strategist backup file. If it's an MDS (Draft Strategist) backup, use the Import button on that app instead.", { isError: true });
                 fileInput.value = "";
                 return;
             }
@@ -212,8 +212,8 @@ window.addEventListener('popstate', (e) => {
             getMlsOwnedKeys().forEach(k => localStorage.removeItem(k));
             Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
 
-            window.alert("Backup restored! Reloading now.");
-            window.location.reload();
+            if (window.showToast) window.showToast("Backup restored! Reloading now.");
+            setTimeout(() => { window.location.reload(); }, 900);
         };
         reader.readAsText(file);
     };
@@ -398,7 +398,7 @@ window.addEventListener('popstate', (e) => {
 
     window.saveRequirements = function(btn) {
         let league = getActiveLeague();
-        if (!league) { window.alert("Please select or add a league first."); return; }
+        if (!league) { if (window.showToast) window.showToast("Please select or add a league first.", { isError: true }); return; }
         const getInt = id => parseInt(document.getElementById(id)?.value) || 0;
         league.reqs = {
             QB: getInt('reqQB'), RB: getInt('reqRB'), WR: getInt('reqWR'),
@@ -412,7 +412,7 @@ window.addEventListener('popstate', (e) => {
     window.createManualLeague = function() {
         const nameInput = document.getElementById('newLeagueName');
         const name = nameInput ? nameInput.value.trim() : "";
-        if (!name) { window.alert("Please enter a League Name to create a manual league."); return; }
+        if (!name) { if (window.showToast) window.showToast("Please enter a League Name to create a manual league.", { isError: true }); return; }
 
         let newId = 'manual_' + Date.now();
         let leagueObj = {
@@ -511,7 +511,7 @@ window.addEventListener('popstate', (e) => {
 
     window.addManualPlayer = function() {
         let league = getActiveLeague();
-        if (!league) { window.alert("Please add or select a league first."); return; }
+        if (!league) { if (window.showToast) window.showToast("Please add or select a league first.", { isError: true }); return; }
         const nameInput = document.getElementById('manualName');
         const posInput = document.getElementById('manualPos');
         const teamInput = document.getElementById('manualTeam');
@@ -520,7 +520,7 @@ window.addEventListener('popstate', (e) => {
         const pos = posInput ? posInput.value : "FLEX";
         const team = teamInput ? teamInput.value.trim().toUpperCase() || "FA" : "FA";
 
-        if (!name) { window.alert("Please enter a player name."); return; }
+        if (!name) { if (window.showToast) window.showToast("Please enter a player name.", { isError: true }); return; }
 
         let newP = { id: 'p_' + Date.now(), name: name, cleanName: normalizeName(name), pos: pos, team: team };
         league.roster = league.roster || [];
@@ -683,14 +683,14 @@ window.addEventListener('popstate', (e) => {
         } catch(err) {
             console.error(err);
             if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? "🔄 Sync Sleeper Waivers & Trades" : "Sync Sleeper");
-            window.alert(`Sync Error:\n${err.message}`);
+            if (window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
         }
     }
 
     window.addAndSyncLeague = function(btn) {
         const username = document.getElementById('sleeperUsername')?.value.trim() || "";
         const leagueId = document.getElementById('sleeperLeagueId')?.value.trim() || "";
-        if (!username || !leagueId) { window.alert("Please enter both Sleeper Username and League ID to sync."); return; }
+        if (!username || !leagueId) { if (window.showToast) window.showToast("Please enter both Sleeper Username and League ID to sync.", { isError: true }); return; }
         if (btn) { btn.innerText = "Syncing..."; btn.style.backgroundColor = "var(--accent-color, #8b5cf6)"; }
         processSleeperData(username, leagueId, btn, false);
     };
@@ -698,7 +698,7 @@ window.addEventListener('popstate', (e) => {
     window.syncActiveLeague = function() {
         let league = getActiveLeague();
         if (!league || !league.leagueId || league.leagueId.startsWith('manual_') || !league.username) {
-            window.alert("Only Sleeper-synced leagues can be refreshed via this button."); return;
+            if (window.showToast) window.showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
         }
         const btn = document.getElementById('rosterSyncBtn');
         if (btn) btn.innerText = "Syncing...";
@@ -953,7 +953,7 @@ window.addEventListener('popstate', (e) => {
                 reader.readAsArrayBuffer(file);
             });
         } else {
-            window.alert("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.");
+            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.", { isError: true });
         }
     }
 
@@ -1101,7 +1101,7 @@ window.addEventListener('popstate', (e) => {
                 reader.readAsArrayBuffer(file);
             });
         } else {
-            window.alert("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.");
+            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.", { isError: true });
         }
     }
     // --- SHARED MARKET-CONSENSUS FETCH ---
@@ -1233,7 +1233,7 @@ window.addEventListener('popstate', (e) => {
         } catch (error) {
             console.error("Error auto-fetching ROS rankings:", error);
             let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block requests containing the word 'logs' -- try pausing yours.)" : "";
-            window.alert(`Could not auto-fetch ROS rankings.\n\n${error.message}${adBlockerTip}`);
+            if (window.showToast) window.showToast(`Could not auto-fetch ROS rankings.\n\n${error.message}${adBlockerTip}`, { isError: true });
         } finally {
             btn.innerText = origText;
             btn.style.opacity = "1";
@@ -1280,7 +1280,7 @@ window.addEventListener('popstate', (e) => {
     } catch (error) {
         console.error("Error fetching market data:", error);
         let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
-        window.alert(`Could not pull live market data.\n\n${error.message}${adBlockerTip}`);
+        if (window.showToast) window.showToast(`Could not pull live market data.\n\n${error.message}${adBlockerTip}`, { isError: true });
     } finally {
         btn.innerText = origText;
         btn.style.opacity = "1";
@@ -1317,7 +1317,7 @@ window.toggleMarketSourceUI = function() {
         let posKey = Object.keys(sample).find(k => /^pos/i.test(k) || /position/i.test(k));
 
         if (!nameKey || !rankKey) {
-            window.alert("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.");
+            if (window.showToast) window.showToast("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.", { isError: true });
             return;
         }
 
@@ -1493,7 +1493,7 @@ window.toggleMarketSourceUI = function() {
     // --- SCREENSHOT EXPORT ---
     window.exportLineup = async function() {
     if (typeof html2canvas === 'undefined') { 
-        window.alert("Screenshot library loading. Please try again in a moment."); 
+        if (window.showToast) window.showToast("Screenshot library loading. Please try again in a moment.", { isError: true });
         return; 
     }
     
@@ -1531,7 +1531,7 @@ window.toggleMarketSourceUI = function() {
         link.click();
     } catch (err) {
         console.error("Export failed:", err); 
-        window.alert("Export failed. Please try again.");
+        if (window.showToast) window.showToast("Export failed. Please try again.", { isError: true });
     } finally {
         buttons.forEach(b => b.style.display = 'inline-block');
         exportBtn.innerText = origText;
@@ -1866,6 +1866,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // --- POWER-USER KEYBOARD SHORTCUTS (MLS) ---
 document.addEventListener('keydown', (e) => {
+    // Escape closes the hamburger drawer from anywhere, so keyboard users have a way to
+    // dismiss it without a mouse. The drawerOverlay backdrop is intentionally NOT a tab
+    // stop (standard pattern for backdrops); this plus the existing visible close button
+    // are the two keyboard-accessible ways to exit the menu.
+    const openDrawer = document.getElementById('drawer');
+    if (e.key === 'Escape' && openDrawer && openDrawer.classList.contains('open')) {
+        window.toggleDrawer();
+        return;
+    }
+
     const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
     const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
     
@@ -1882,7 +1892,7 @@ document.addEventListener('keydown', (e) => {
 window.runPositionalStrength = function() {
     let league = getActiveLeague();
     if (!league || !league.globalRosterMap || !league.globalPosMap) {
-        window.alert("Please sync a league on the Setup tab first.");
+        if (window.showToast) window.showToast("Please sync a league on the Setup tab first.", { isError: true });
         return;
     }
 
@@ -1893,7 +1903,7 @@ window.runPositionalStrength = function() {
         let msg = source === 'market' 
             ? "Please pull live Market Value data below first." 
             : "Please upload your Rest of Season rankings first.";
-        window.alert(msg);
+        if (window.showToast) window.showToast(msg, { isError: true });
         return;
     }
 
@@ -1935,7 +1945,7 @@ window.runPositionalStrength = function() {
     let teamScores = Object.values(teamScoresMap);
 
     if (teamScores.length === 0) {
-        window.alert("Not enough roster data to evaluate.");
+        if (window.showToast) window.showToast("Not enough roster data to evaluate.", { isError: true });
         return;
     }
 

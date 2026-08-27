@@ -89,11 +89,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check all your app banners
     checkAndHideBanner('guideBanner', 'ds_hide_guide_banner');
     checkAndHideBanner('mlsBanner', 'ds_hide_mls_banner');
+    checkAndHideBanner('draftBanner', 'mls_hide_draft_banner');
     checkAndHideBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner');
     checkAndHideBanner('installCard', 'ds_hide_install_banner');
 });
 // --- TOAST NOTIFICATIONS ---
-window.showToast = function(message) {
+window.showToast = function(message, options = {}) {
+  const isError = options.isError || false;
+  const duration = options.duration || (isError ? 6000 : 2500);
+
   let toast = document.getElementById('mds-toast');
   
   if (!toast) {
@@ -101,18 +105,27 @@ window.showToast = function(message) {
     toast.id = 'mds-toast';
     toast.className = 'mds-toast';
     toast.setAttribute('role', 'status');
-    toast.setAttribute('aria-live', 'polite');
     document.body.appendChild(toast);
   }
-  
-  toast.textContent = message;
+
+  toast.classList.toggle('toast-error', isError);
+  toast.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+
+  // Support \n line breaks the same way the alert() messages this replaces already used them
+  const textHTML = String(message).replace(/\n/g, '<br>');
+  if (isError) {
+    toast.innerHTML = `<span class="toast-message">${textHTML}</span><button class="toast-dismiss-btn" onclick="this.parentElement.classList.remove('show')" aria-label="Dismiss">✕</button>`;
+  } else {
+    toast.innerHTML = textHTML;
+  }
+
   void toast.offsetWidth; // Force CSS reflow to ensure animation replays
   toast.classList.add('show');
   
   clearTimeout(toast.hideTimeout);
   toast.hideTimeout = setTimeout(() => {
     toast.classList.remove('show');
-  }, 2500);
+  }, duration);
 };
 
 // --- FLASH BUTTON FEEDBACK ---

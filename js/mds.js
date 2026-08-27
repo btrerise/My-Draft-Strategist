@@ -367,13 +367,13 @@
             try {
                 payload = JSON.parse(e.target.result);
             } catch (err) {
-                window.alert("That file isn't valid JSON -- couldn't read it as a backup.");
+                if (window.showToast) window.showToast("That file isn't valid JSON -- couldn't read it as a backup.", { isError: true });
                 fileInput.value = "";
                 return;
             }
 
             if (!payload || payload.app !== "MDS" || typeof payload.data !== 'object') {
-                window.alert("This doesn't look like a My Draft Strategist backup file. If it's an MLS (Lineup Strategist) backup, use the Import button on that app instead.");
+                if (window.showToast) window.showToast("This doesn't look like a My Draft Strategist backup file. If it's an MLS (Lineup Strategist) backup, use the Import button on that app instead.", { isError: true });
                 fileInput.value = "";
                 return;
             }
@@ -392,8 +392,8 @@
             getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
             Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
 
-            window.alert("Backup restored! Reloading now.");
-            window.location.reload();
+            if (window.showToast) window.showToast("Backup restored! Reloading now.");
+            setTimeout(() => { window.location.reload(); }, 900);
         };
         reader.readAsText(file);
     };
@@ -558,7 +558,7 @@ window.addEventListener('popstate', (e) => {
         if (nameInput) nameInput.value = "";
         refreshDraftDropdown();
         initSettingsUI();
-        window.alert(`Manual Draft '${draftName}' created!`);
+        if (window.showToast) window.showToast(`Manual Draft '${draftName}' created!`);
     };
 
     async function processSleeperDraftData(username, draftId, btn, isSilent = false) {
@@ -706,7 +706,7 @@ window.addEventListener('popstate', (e) => {
         } catch (err) {
             console.error(err);
             if (!isSilent && btn) flashButton(btn, "Sync Failed", true);
-            if (!isSilent) window.alert(`Sleeper Sync Error:\n${err.message}`);
+            if (!isSilent && window.showToast) window.showToast(`Sleeper Sync Error:\n${err.message}`, { isError: true });
         }
     }
 
@@ -723,7 +723,7 @@ window.addEventListener('popstate', (e) => {
         }
 
         if (!username || !draftId) {
-            window.alert("Please enter both Username and Draft ID.");
+            if (window.showToast) window.showToast("Please enter both Username and Draft ID.", { isError: true });
             return;
         }
         
@@ -754,7 +754,7 @@ window.addEventListener('popstate', (e) => {
             targetDraftId = targetDraftId || (draft ? draft.draftId : "");
 
             if (!targetUser || targetUser === "Manual" || !targetDraftId) {
-                window.alert("Please enter your Sleeper Username and Draft ID on the Setup tab first.");
+                if (window.showToast) window.showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
                 return;
             }
 
@@ -791,7 +791,7 @@ window.addEventListener('popstate', (e) => {
             targetDraftId = targetDraftId || (draft ? draft.draftId : "");
 
             if (!targetUser || targetUser === "Manual" || !targetDraftId) {
-                window.alert("Please enter your Sleeper Username and Draft ID on the Setup tab first.");
+                if (window.showToast) window.showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
                 document.querySelectorAll('.sync-toggle').forEach(el => el.checked = false);
                 return;
             }
@@ -990,7 +990,7 @@ if (fileInput) {
             }
             
         } else {
-            window.alert("Please upload a .csv, .xlsx, .xls, or .numbers file");
+            if (window.showToast) window.showToast("Please upload a .csv, .xlsx, .xls, or .numbers file", { isError: true });
         }
     });
 }
@@ -1146,7 +1146,7 @@ function parseExcel(file) {
         } else {
             if (metaEl) metaEl.style.display = 'none';
             if (btn) flashButton(btn, "Error Parsing Data", true, originalBtnText);
-            window.alert("Error: Could not detect player names. Please check your CSV format.");
+            if (window.showToast) window.showToast("Error: Could not detect player names. Please check your CSV format.", { isError: true });
         }
     }
 
@@ -1155,7 +1155,7 @@ function parseExcel(file) {
         const formatSelect = document.getElementById('adpFormatSelect');
         if (!formatSelect) return;
         if (!formatSelect.value.startsWith('leaguelogs')) {
-            window.alert("Quick-Start auto-generation is currently only supported for LeagueLogs formats. Please select a LeagueLogs option from the dropdown.");
+            if (window.showToast) window.showToast("Quick-Start auto-generation is currently only supported for LeagueLogs formats. Please select a LeagueLogs option from the dropdown.", { isError: true });
             return;
         }
         const profileKey = formatSelect.value.split('|')[1];
@@ -1247,14 +1247,14 @@ function parseExcel(file) {
             console.error(err);
             flashButton(btn, "Fetch Error", true, originalText);
             let adBlockerTip = err.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
-            window.alert(`Failed to load Quick-Start.\n\n${err.message}${adBlockerTip}`);
+            if (window.showToast) window.showToast(`Failed to load Quick-Start.\n\n${err.message}${adBlockerTip}`, { isError: true });
         }
     };
 
     window.fetchLeagueLogsADP = async function(btn) {
     if (State.players.length === 0) {
         flashButton(btn, "Load Rankings First", true);
-        window.alert("You must load a set of player rankings before fetching Market Value.");
+        if (window.showToast) window.showToast("You must load a set of player rankings before fetching Market Value.", { isError: true });
         return;
     }
 
@@ -1322,7 +1322,7 @@ function parseExcel(file) {
             console.error(err);
             flashButton(btn, "Fetch Error", true, originalText);
             let adBlockerTip = err.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
-            window.alert(`Failed to fetch live Market Value.\n\n${err.message}${adBlockerTip}`);
+            if (window.showToast) window.showToast(`Failed to fetch live Market Value.\n\n${err.message}${adBlockerTip}`, { isError: true });
         }
 };
 
@@ -1844,7 +1844,7 @@ function parseExcel(file) {
     // --- TEAM EXPORT LOGIC ---
     window.exportTeam = async function() {
         if (typeof html2canvas === 'undefined') { 
-            window.alert("Screenshot library loading. Please try again in a moment."); 
+            if (window.showToast) window.showToast("Screenshot library loading. Please try again in a moment.", { isError: true });
             return; 
         }
         
@@ -1900,7 +1900,7 @@ function parseExcel(file) {
             link.click();
         } catch (err) {
             console.error("Export failed:", err); 
-            window.alert("Export failed. Please try again.");
+            if (window.showToast) window.showToast("Export failed. Please try again.", { isError: true });
         } finally {
             buttons.forEach(b => b.style.display = '');
             if (exportBtn) exportBtn.innerText = origText;
