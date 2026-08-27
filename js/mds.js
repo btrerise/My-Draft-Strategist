@@ -319,10 +319,89 @@
         }
     };
 
+    // --- BACKUP & RESTORE ---
+    // MDS and MLS share one origin (mydraftstrategist.com) and therefore one localStorage, so
+    // "this app's data" has to be defined by key prefix rather than assumed to be everything.
+    // ds_* covers every MDS-specific key; mds_show_headshots is the one MDS setting that
+    // doesn't follow that prefix. mds_handoff_roster is deliberately excluded -- it's a
+    // transient signal to MLS, not a persistent setting, and backing it up would just replay
+    // a stale handoff on restore.
+    function getMdsOwnedKeys() {
+        return Object.keys(localStorage).filter(k =>
+            (k.startsWith('ds_') || k === 'mds_show_headshots') && k !== 'mds_handoff_roster'
+        );
+    }
+
+    window.exportMdsSettings = function() {
+        const keys = getMdsOwnedKeys();
+        const data = {};
+        keys.forEach(k => data[k] = localStorage.getItem(k));
+
+        const payload = {
+            app: "MDS",
+            appName: "My Draft Strategist",
+            exportedAt: new Date().toISOString(),
+            data: data
+        };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `my-draft-strategist-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (window.showToast) window.showToast("Backup downloaded!");
+    };
+
+    window.importMdsSettings = function(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let payload;
+            try {
+                payload = JSON.parse(e.target.result);
+            } catch (err) {
+                window.alert("That file isn't valid JSON -- couldn't read it as a backup.");
+                fileInput.value = "";
+                return;
+            }
+
+            if (!payload || payload.app !== "MDS" || typeof payload.data !== 'object') {
+                window.alert("This doesn't look like a My Draft Strategist backup file. If it's an MLS (Lineup Strategist) backup, use the Import button on that app instead.");
+                fileInput.value = "";
+                return;
+            }
+
+            const keyCount = Object.keys(payload.data).length;
+            const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
+            const confirmMsg = `This will REPLACE your current My Draft Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately. Continue?`;
+
+            if (!window.confirm(confirmMsg)) {
+                fileInput.value = "";
+                return;
+            }
+
+            // Clear existing MDS keys first so a restore from an older backup (missing keys
+            // that exist now) doesn't leave stale data mixed in from the current session.
+            getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
+            Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
+
+            window.alert("Backup restored! Reloading now.");
+            window.location.reload();
+        };
+        reader.readAsText(file);
+    };
+
     window.hardReset = function() {
-        if (window.confirm("WARNING: This will delete ALL data including saved drafts, custom rankings, and settings.")) {
+        if (window.confirm("WARNING: This will delete ALL My Draft Strategist data including saved drafts, custom rankings, and settings. (My Lineup Strategist data is not affected.)")) {
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
-            localStorage.clear();
+            getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
             window.location.reload();
         }
     };
@@ -442,6 +521,7 @@ window.addEventListener('popstate', (e) => {
         const draftName = nickname || `Manual Draft (${new Date().toLocaleDateString()})`;
 
         const getVal = id => document.getElementById(id)?.value.trim() || "";
+        const getCheck = id => document.getElementById(id)?.checked || false;
         let newId = 'manual_' + Date.now();
 
         let newDraft = {
@@ -1514,6 +1594,65 @@ function parseExcel(file) {
         return rosterSlotsHTML;
     }
 
+    // --- SEND ROSTER TO LINEUP STRATEGIST ---
+    // MDS (mydraftstrategist.com) and MLS (mydraftstrategist.com/lineup/) are same-origin, so
+    // they already share localStorage directly -- no URL params or backend needed. This writes
+    // the drafted roster to a shared key that MLS's Setup tab checks for on load and offers to
+    // import as a new league. See mls.js's checkForDraftStrategistHandoff().
+    window.sendRosterToLineupStrategist = function() {
+        const draft = getActiveDraft();
+        if (!draft || !draft.myTeam || draft.myTeam.length === 0) {
+            if (window.showToast) window.showToast("Draft a roster first before sending it to Lineup Strategist.");
+            return;
+        }
+
+        const myPlayers = draft.myTeam.map(id => State.players.find(p => p.id === id)).filter(Boolean);
+        const players = myPlayers.map(p => ({ name: p.name, pos: p.posGroup, team: p.team || "FA" }));
+
+        const limits = draft.limits || {};
+        // MLS doesn't have a WR/TE-only flex slot type yet -- folding W/T into FLEX keeps the
+        // total roster-spot count correct, though MLS's optimizer will (for now) also consider
+        // RB eligible there, unlike the stricter W/T rule this count came from.
+        const reqs = {
+            QB: limits.QB || 0,
+            RB: limits.RB || 0,
+            WR: limits.WR || 0,
+            TE: limits.TE || 0,
+            FLEX: (limits.FLEX || 0) + (limits.WT || 0),
+            SFLEX: limits.SFLEX || 0
+        };
+
+        const payload = {
+            sourceLeagueName: draft.name || "Drafted Team",
+            players: players,
+            reqs: reqs,
+            timestamp: Date.now()
+        };
+
+        localStorage.setItem('mds_handoff_roster', JSON.stringify(payload));
+
+        if (window.showToast) window.showToast(`Sending ${players.length} players to Lineup Strategist...`);
+        setTimeout(() => { window.location.href = './lineup/'; }, 700);
+    };
+
+    // Resolves the overall pick number a player was actually drafted at. Sleeper syncs have
+    // precise data via rawDraftPicks; manual drafts don't, but draft.draftedPlayers is pushed to
+    // in real draft order by draftPlayer(), so its index is the correct fallback -- NOT the
+    // three different broken placeholders (an index into myTeam only, the player's own internal
+    // id, or a hardcoded 50) that used to be scattered across the functions below, none of which
+    // reflected a real pick number for a manual draft.
+    function getPickNumberForPlayer(draft, player) {
+        if (draft.rawDraftPicks && draft.rawDraftPicks.length > 0) {
+            let match = draft.rawDraftPicks.find(r => r.player_id === player.sleeperId);
+            if (match) return match.pick_no;
+        }
+        if (draft.draftedPlayers) {
+            let idx = draft.draftedPlayers.indexOf(player.id);
+            if (idx !== -1) return idx + 1;
+        }
+        return player.rank; // last-resort neutral fallback: treat as "drafted right at their rank"
+    }
+
     // --- DRAFT RECAP & ANALYSIS RENDERER ---
     function renderDraftRecap() {
         const recapCard = document.getElementById('draftRecapCard');
@@ -1541,11 +1680,7 @@ function parseExcel(file) {
         let minDiff = 999;
 
         myPlayers.forEach((p, index) => {
-            let pickNum = index + 1;
-            if (draft.rawDraftPicks && draft.rawDraftPicks.length > 0) {
-                let match = draft.rawDraftPicks.find(r => r.player_id === p.sleeperId);
-                if (match) pickNum = match.pick_no;
-            }
+            let pickNum = getPickNumberForPlayer(draft, p);
 
             let valueDiff = pickNum - p.rank;
             if (valueDiff > maxDiff) { maxDiff = valueDiff; bestSteal = { player: p, diff: valueDiff }; }
@@ -1555,19 +1690,14 @@ function parseExcel(file) {
         // Archetype Detection
         let firstPosRound = { QB: 99, RB: 99, WR: 99, TE: 99 };
         myPlayers.forEach(p => {
-            let pickNum = p.id;
-            if (draft.rawDraftPicks) {
-                let m = draft.rawDraftPicks.find(r => r.player_id === p.sleeperId);
-                if (m) pickNum = m.pick_no;
-            }
+            let pickNum = getPickNumberForPlayer(draft, p);
             let rd = Math.ceil(pickNum / teams);
             if (rd < firstPosRound[p.posGroup]) firstPosRound[p.posGroup] = rd;
         });
 
         let archetype = "Balanced Build";
         let rbCountRds12 = myPlayers.filter(p => {
-            let pNum = p.id;
-            if (draft.rawDraftPicks) { let m = draft.rawDraftPicks.find(r => r.player_id === p.sleeperId); if (m) pNum = m.pick_no; }
+            let pNum = getPickNumberForPlayer(draft, p);
             return p.posGroup === 'RB' && Math.ceil(pNum / teams) <= 2;
         }).length;
 
@@ -1603,11 +1733,7 @@ function parseExcel(file) {
             }
 
             let efficiencies = posPlayers.map(sp => {
-                let pPick = 50; 
-                if (draft.rawDraftPicks) { 
-                    let m = draft.rawDraftPicks.find(r => r.player_id === sp.sleeperId); 
-                    if (m) pPick = m.pick_no; 
-                }
+                let pPick = getPickNumberForPlayer(draft, sp);
                 return pPick - sp.rank; 
             });
 
@@ -1675,19 +1801,11 @@ function parseExcel(file) {
             if (posPlayers.length === 0) return;
 
             posPlayers.sort((a, b) => {
-                let pickA = 0, pickB = 0;
-                if (draft.rawDraftPicks) {
-                    let mA = draft.rawDraftPicks.find(r => r.player_id === a.sleeperId);
-                    let mB = draft.rawDraftPicks.find(r => r.player_id === b.sleeperId);
-                    if (mA) pickA = mA.pick_no;
-                    if (mB) pickB = mB.pick_no;
-                }
-                return pickA - pickB;
+                return getPickNumberForPlayer(draft, a) - getPickNumberForPlayer(draft, b);
             });
 
             posPlayers.forEach(sp => {
-                let pPick = 0; 
-                if (draft.rawDraftPicks) { let m = draft.rawDraftPicks.find(r => r.player_id === sp.sleeperId); if (m) pPick = m.pick_no; }
+                let pPick = getPickNumberForPlayer(draft, sp);
                 let diff = pPick - sp.rank;
                 let valColor = diff >= 0 ? "var(--primary-green)" : "var(--avoid-border)";
                 let sign = diff >= 0 ? "+" : "";

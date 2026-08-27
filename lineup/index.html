@@ -143,6 +143,17 @@
         </div>
         <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'ds_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
     </div>
+    <!-- DRAFT STRATEGIST ROSTER HANDOFF -->
+    <div class="info-banner" id="handoffBanner" style="display: none; justify-content: space-between; align-items: flex-start;">
+        <div style="display: flex; gap: 0.5rem;">
+            <div class="info-banner-icon">i</div>
+            <div id="handoffBannerText"><strong>Roster found from My Draft Strategist.</strong></div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-shrink: 0; margin-left: 0.75rem;">
+            <button class="btn btn-primary btn-sm" onclick="importDraftStrategistRoster()">Import as New League</button>
+            <button class="close-banner-btn" onclick="dismissDraftStrategistHandoff()" aria-label="Dismiss" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+        </div>
+    </div>
     <!-- ADD/SYNC LEAGUE -->
     <section class="settings-card">
        <header class="card-header">
@@ -231,6 +242,22 @@
         <div id="manualAddMsg" class="manual-add-feedback"></div>
     </section>
     
+    <!-- BACKUP & RESTORE -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3>Backup & Restore</h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Download all your leagues, rankings, and settings as a file. Use Import to restore that file on this or another device/browser.</span>
+            </div>
+        </header>
+        <div class="flex-column gap-2">
+            <button class="btn btn-primary" onclick="exportMlsSettings()">Export Backup</button>
+            <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" onchange="importMlsSettings(this)">
+            <button class="btn btn-secondary" onclick="document.getElementById('mlsImportFileInput').click()">Import Backup</button>
+        </div>
+    </section>
+
     <!-- DANGER ZONE -->
     <section class="settings-card danger-card">
         <header class="card-header">
@@ -244,7 +271,7 @@
                 <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" width="274" height="36" />
             </a>
         </div>
-    <div class="app-version">My Lineup Strategist v2.4</div>
+    <div class="app-version">My Lineup Strategist v2.4.1</div>
 </div>
 
         <!-- ROSTER TAB -->
@@ -264,6 +291,17 @@
         <div id="rosMetaDisplay" class="status-badge-meta"></div>
         <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
         <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
+
+        <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0;">
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">or</span>
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+        </div>
+
+        <button id="autoFetchRosBtn" class="btn btn-secondary" style="width: 100%;" onclick="autoFetchRosRankings(this)" title="Pulls market-consensus values from FantasyCalc/LeagueLogs -- uses the source/format configured on the Scout tab, or sensible defaults (Redraft, 1QB, PPR) if you haven't set that up yet.">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
+            Auto-Fetch ROS Rankings
+        </button>
     </section>
 
     <!-- ACTIVE ROSTER -->

@@ -142,9 +142,85 @@ window.addEventListener('popstate', (e) => {
     }
 });
     
+    // --- BACKUP & RESTORE ---
+    // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in mds.js -- see that
+    // file's comment for why key-prefix scoping matters on a shared origin. MLS's own keys are
+    // mds_season_*, mls_*, and shared_sleeper_league_id. mds_handoff_roster is excluded --
+    // transient signal from MDS, not a persistent MLS setting.
+    function getMlsOwnedKeys() {
+        return Object.keys(localStorage).filter(k =>
+            (k.startsWith('mds_season_') || k.startsWith('mls_') || k === 'shared_sleeper_league_id')
+            && k !== 'mds_handoff_roster'
+        );
+    }
+
+    window.exportMlsSettings = function() {
+        const keys = getMlsOwnedKeys();
+        const data = {};
+        keys.forEach(k => data[k] = localStorage.getItem(k));
+
+        const payload = {
+            app: "MLS",
+            appName: "My Lineup Strategist",
+            exportedAt: new Date().toISOString(),
+            data: data
+        };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `my-lineup-strategist-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (window.showToast) window.showToast("Backup downloaded!");
+    };
+
+    window.importMlsSettings = function(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let payload;
+            try {
+                payload = JSON.parse(e.target.result);
+            } catch (err) {
+                window.alert("That file isn't valid JSON -- couldn't read it as a backup.");
+                fileInput.value = "";
+                return;
+            }
+
+            if (!payload || payload.app !== "MLS" || typeof payload.data !== 'object') {
+                window.alert("This doesn't look like a My Lineup Strategist backup file. If it's an MDS (Draft Strategist) backup, use the Import button on that app instead.");
+                fileInput.value = "";
+                return;
+            }
+
+            const keyCount = Object.keys(payload.data).length;
+            const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
+            const confirmMsg = `This will REPLACE your current My Lineup Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately. Continue?`;
+
+            if (!window.confirm(confirmMsg)) {
+                fileInput.value = "";
+                return;
+            }
+
+            getMlsOwnedKeys().forEach(k => localStorage.removeItem(k));
+            Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
+
+            window.alert("Backup restored! Reloading now.");
+            window.location.reload();
+        };
+        reader.readAsText(file);
+    };
+
     window.factoryReset = function() {
-        if (window.confirm("DANGER ZONE\n\nAre you sure you want to clear ALL leagues, cached rankings, custom SoS data, and settings?\n\nThis cannot be undone.")) {
-            localStorage.clear();
+        if (window.confirm("DANGER ZONE\n\nAre you sure you want to clear ALL leagues, cached rankings, custom SoS data, and settings?\n\n(My Draft Strategist data is not affected.)\n\nThis cannot be undone.")) {
+            getMlsOwnedKeys().forEach(k => localStorage.removeItem(k));
             window.location.reload();
         }
     };
@@ -155,6 +231,7 @@ window.addEventListener('popstate', (e) => {
         refreshLeagueDropdown();
         updateRankingsMetaDisplay();
         generateSoSGrid();
+        checkForDraftStrategistHandoff();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -360,6 +437,76 @@ window.addEventListener('popstate', (e) => {
             msgEl.innerText = `Manual League '${name}' Created`;
             setTimeout(() => msgEl.innerText = "", 3000);
         }
+    };
+
+    // --- DRAFT STRATEGIST ROSTER HANDOFF ---
+    // Counterpart to sendRosterToLineupStrategist() in MDS's mds.js. Same-origin localStorage
+    // is the transport -- see that function's comment for why no URL params/backend are needed.
+    function checkForDraftStrategistHandoff() {
+        const raw = localStorage.getItem('mds_handoff_roster');
+        if (!raw) return;
+
+        let payload;
+        try { payload = JSON.parse(raw); } catch (e) { localStorage.removeItem('mds_handoff_roster'); return; }
+        if (!payload || !Array.isArray(payload.players) || payload.players.length === 0) {
+            localStorage.removeItem('mds_handoff_roster');
+            return;
+        }
+
+        const banner = document.getElementById('handoffBanner');
+        const textEl = document.getElementById('handoffBannerText');
+        if (textEl) {
+            textEl.innerHTML = `<strong>Roster found from My Draft Strategist:</strong> "${payload.sourceLeagueName}" (${payload.players.length} players). Import it as a new league here?`;
+        }
+        if (banner) banner.style.display = 'flex';
+    }
+
+    window.importDraftStrategistRoster = function() {
+        const raw = localStorage.getItem('mds_handoff_roster');
+        if (!raw) return;
+        let payload;
+        try { payload = JSON.parse(raw); } catch (e) { return; }
+
+        let newId = 'handoff_' + Date.now();
+        let roster = [];
+        let globalRosterMap = {};
+        payload.players.forEach((p, i) => {
+            let clean = normalizeName(p.name);
+            let newP = { id: 'p_' + Date.now() + '_' + i, name: p.name, cleanName: clean, pos: p.pos || 'FLEX', team: p.team || 'FA' };
+            roster.push(newP);
+            globalRosterMap[clean] = "You";
+        });
+
+        let leagueObj = {
+            leagueId: newId, name: payload.sourceLeagueName || "Drafted Team", username: "From Draft Strategist",
+            reqs: payload.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 },
+            roster: roster, globalRosterMap: globalRosterMap,
+            rosRankings: [...State.rosRankings],
+            weeklyRankings: [...State.weeklyRankings],
+            rosRankingsUpdatedAt: State.rosRankingsUpdatedAt,
+            weeklyRankingsUpdatedAt: State.weeklyRankingsUpdatedAt
+        };
+        State.leagues.push(leagueObj);
+        State.activeLeagueId = newId;
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+        localStorage.removeItem('mds_handoff_roster');
+
+        const banner = document.getElementById('handoffBanner');
+        if (banner) banner.style.display = 'none';
+
+        refreshLeagueDropdown();
+        const leagueSelect = document.getElementById('headerLeagueSelect');
+        if (leagueSelect) leagueSelect.value = newId;
+        loadActiveLeagueData();
+
+        if (window.showToast) window.showToast(`Imported "${leagueObj.name}" with ${roster.length} players.`);
+    };
+
+    window.dismissDraftStrategistHandoff = function() {
+        localStorage.removeItem('mds_handoff_roster');
+        const banner = document.getElementById('handoffBanner');
+        if (banner) banner.style.display = 'none';
     };
 
     window.addManualPlayer = function() {
@@ -957,35 +1104,18 @@ window.addEventListener('popstate', (e) => {
             window.alert("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.");
         }
     }
-    window.fetchLeagueLogsADP = async function(btn) {
-    const outputEl = document.getElementById('marketDisconnectOutput');
-    const msgEl = document.getElementById('marketSuccessMsg');
-    
-    const sourceSelect = document.getElementById('marketSourceSelect');
-    if (!sourceSelect) return;
-    const source = sourceSelect.value;
-    
-    const origText = btn.innerText;
-    btn.innerText = "Fetching...";
-    btn.style.opacity = "0.7";
-    btn.disabled = true;
-
-    try {
+    // --- SHARED MARKET-CONSENSUS FETCH ---
+    // Extracted from what used to be inline inside fetchLeagueLogsADP() so both the Scout tab's
+    // Power Rankings feature AND the ROS Rankings auto-fetch (Roster tab) can reuse the exact
+    // same, already-proven fetch/parse logic instead of duplicating it. Pure data in/out --
+    // no DOM access, no state writes -- callers handle their own UI and State updates.
+    async function fetchMarketConsensusData(source, isDynastyVal, numQbsVal, ppr, isTEP, teamCount) {
         let parsed = [];
         let formatText = "";
-
-        // Common settings extracted from dropdowns
-        const isDynastyVal = document.getElementById('marketType')?.value || 'redraft';
-        const numQbsVal = document.getElementById('marketQbs')?.value || '1';
         const isDynastyBool = isDynastyVal === 'dynasty';
 
         // --- 1. FANTASYCALC ---
         if (source === 'fantasycalc') {
-            const ppr = document.getElementById('marketPpr')?.value || '1';
-            const isTEP = document.getElementById('marketTep')?.checked ? 'true' : 'false';
-
-            let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
-
             const fcRes = await fetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
             if (!fcRes.ok) throw new Error(`FantasyCalc API Error: ${fcRes.status}`);
             const fcData = await fcRes.json();
@@ -999,7 +1129,7 @@ window.addEventListener('popstate', (e) => {
                         parsed.push({
                             name: fullName,
                             cleanName: normalizeName(fullName),
-                            marketVal: rankVal, // Added missing comma
+                            marketVal: rankVal,
                             pos: item.player.position || ""
                         });
                     }
@@ -1039,16 +1169,103 @@ window.addEventListener('popstate', (e) => {
                     parsed.push({
                         name: fullName,
                         cleanName: normalizeName(fullName),
-                        marketVal: rankVal, // Added missing comma
+                        marketVal: rankVal,
                         pos: sp.position || ""
                     });
                 }
             });
         }
 
+        return { parsed, formatText };
+    }
+
+    // --- ROS RANKINGS AUTO-FETCH ---
+    // Reuses the exact same market-consensus fetch already proven for Scout's Power Rankings.
+    // This is a deliberately narrower feature than "auto-fetch rankings" in general: ROS
+    // (rest-of-season) value maps directly onto what FantasyCalc/LeagueLogs already provide
+    // (a single overall value per player, no week-specific data). Weekly Rankings do NOT get
+    // an equivalent auto-fetch -- the real expert-consensus weekly rankings source (FantasyPros)
+    // requires a paid/partnership API key, and the free alternatives found either return raw
+    // stats/projections rather than a ready-made ranking, or are of uncertain reliability. Rather
+    // than guess at an unverified integration, Weekly Rankings stay upload-only for now.
+    window.autoFetchRosRankings = async function(btn) {
+        if (!btn) return;
+        const origText = btn.innerText;
+        btn.innerText = "Fetching...";
+        btn.style.opacity = "0.7";
+        btn.disabled = true;
+
+        try {
+            // Reuses whatever Market Consensus source/settings are configured on the Scout tab
+            // (defaults to FantasyCalc, Redraft, 1QB, PPR if Scout hasn't been visited yet).
+            const source = document.getElementById('marketSourceSelect')?.value || 'fantasycalc';
+            const isDynastyVal = document.getElementById('marketType')?.value || 'redraft';
+            const numQbsVal = document.getElementById('marketQbs')?.value || '1';
+            const ppr = document.getElementById('marketPpr')?.value || '1';
+            const isTEP = document.getElementById('marketTep')?.checked ? 'true' : 'false';
+            let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
+
+            const { parsed, formatText } = await fetchMarketConsensusData(source, isDynastyVal, numQbsVal, ppr, isTEP, teamCount);
+            if (parsed.length === 0) throw new Error("No players returned from the market data source.");
+
+            // Convert to the same shape manual ROS uploads use (rank/posRank/flexRank), computed
+            // by sorting on marketVal (lower = better) both overall and within each position.
+            let sorted = [...parsed].sort((a, b) => a.marketVal - b.marketVal);
+            let posCounters = {};
+            let rosRankings = sorted.map((p, i) => {
+                const posKey = (p.pos || '').toUpperCase();
+                posCounters[posKey] = (posCounters[posKey] || 0) + 1;
+                return { name: p.name, cleanName: p.cleanName, rank: i + 1, posRank: posCounters[posKey], flexRank: i + 1 };
+            });
+
+            State.rosRankings = rosRankings;
+            State.rosRankingsUpdatedAt = Date.now();
+            localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings));
+            localStorage.setItem('mds_season_ros_updated', State.rosRankingsUpdatedAt);
+            saveActiveLeagueState();
+            updateRankingsMetaDisplay();
+
+            if (window.showToast) window.showToast(`ROS Rankings pulled: ${rosRankings.length} players (${formatText})`);
+
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab && activeTab.id === 'rosterTab') loadRosterTab();
+
+        } catch (error) {
+            console.error("Error auto-fetching ROS rankings:", error);
+            let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block requests containing the word 'logs' -- try pausing yours.)" : "";
+            window.alert(`Could not auto-fetch ROS rankings.\n\n${error.message}${adBlockerTip}`);
+        } finally {
+            btn.innerText = origText;
+            btn.style.opacity = "1";
+            btn.disabled = false;
+        }
+    };
+
+    window.fetchLeagueLogsADP = async function(btn) {
+    const outputEl = document.getElementById('marketDisconnectOutput');
+    const msgEl = document.getElementById('marketSuccessMsg');
+    
+    const sourceSelect = document.getElementById('marketSourceSelect');
+    if (!sourceSelect) return;
+    const source = sourceSelect.value;
+    
+    const origText = btn.innerText;
+    btn.innerText = "Fetching...";
+    btn.style.opacity = "0.7";
+    btn.disabled = true;
+
+    try {
+        const isDynastyVal = document.getElementById('marketType')?.value || 'redraft';
+        const numQbsVal = document.getElementById('marketQbs')?.value || '1';
+        const ppr = document.getElementById('marketPpr')?.value || '1';
+        const isTEP = document.getElementById('marketTep')?.checked ? 'true' : 'false';
+        let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
+
+        const { parsed, formatText } = await fetchMarketConsensusData(source, isDynastyVal, numQbsVal, ppr, isTEP, teamCount);
+
         // Save to state and local storage
         State.marketRankings = parsed;
-        localStorage.setItem('mls_season_market', JSON.stringify(State.marketRankings));
+        localStorage.setItem('mds_season_market', JSON.stringify(State.marketRankings)); // was 'mls_season_market' -- State.marketRankings is always read back from 'mds_season_market' on load (see State init above), so this key must match or fetched data silently disappears on reload
         
         // Update UI
         updateMarketMetaDisplay(); 
