@@ -557,11 +557,14 @@ window.addEventListener('popstate', (e) => {
         }
     };
 
-    async function processSleeperData(username, leagueId, btn, isRefresh = false) {
+    async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false) {
         try {
-            const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
-            if (!userRes.ok) throw new Error("User not found.");
-            const userId = (await userRes.json()).user_id;
+            let userId = preloaded.userId;
+            if (!userId) {
+                const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+                if (!userRes.ok) throw new Error("User not found.");
+                userId = (await userRes.json()).user_id;
+            }
 
             const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
             if (!leagueRes.ok) throw new Error("League ID not found.");
@@ -592,8 +595,7 @@ window.addEventListener('popstate', (e) => {
             const rosters = await rosterRes.json();
             
             if (btn) btn.innerText = "Loading Players...";
-            const mapRes = await fetch(`https://api.sleeper.app/v1/players/nfl`);
-            const playerMap = await mapRes.json();
+            const playerMap = preloaded.playerMap || await (await fetch(`https://api.sleeper.app/v1/players/nfl`)).json();
 
             let myTeam = rosters.find(r => r.owner_id === userId);
             if (!myTeam && !isRefresh) throw new Error("Could not find your team in this league.");
@@ -681,11 +683,13 @@ window.addEventListener('popstate', (e) => {
             loadRosterTab();
             
             if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? "🔄 Sync Sleeper Waivers & Trades" : "Sync Sleeper");
+            return true;
 
         } catch(err) {
             console.error(err);
             if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? "🔄 Sync Sleeper Waivers & Trades" : "Sync Sleeper");
-            if (window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
+            if (!suppressErrorToast && window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
+            return false;
         }
     }
 
@@ -695,6 +699,77 @@ window.addEventListener('popstate', (e) => {
         if (!username || !leagueId) { if (window.showToast) window.showToast("Please enter both Sleeper Username and League ID to sync.", { isError: true }); return; }
         if (btn) { btn.innerText = "Syncing..."; btn.style.backgroundColor = "var(--accent-color, #8b5cf6)"; }
         processSleeperData(username, leagueId, btn, false);
+    };
+
+    // --- IMPORT ALL LEAGUES (by username only) ---
+    // Pulls every league a Sleeper username belongs to for the current NFL season and syncs
+    // each one, so the user doesn't have to find and paste in each League ID individually.
+    // Reuses processSleeperData() per league (same logic as the single-league sync above) but
+    // fetches the user lookup and the ~5MB players list ONCE up front and passes them in via
+    // the preloaded param, rather than every league in the loop re-fetching both -- Sleeper's
+    // own docs ask callers not to hit the players endpoint more than once a day.
+    window.importAllSleeperLeagues = async function(btn) {
+        const username = document.getElementById('sleeperUsername')?.value.trim() || "";
+        if (!username) {
+            if (window.showToast) window.showToast("Please enter your Sleeper Username first.", { isError: true });
+            return;
+        }
+
+        const origText = btn ? btn.innerText : "";
+        if (btn) { btn.innerText = "Finding your leagues..."; btn.disabled = true; btn.style.opacity = "0.7"; }
+
+        try {
+            const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+            if (!userRes.ok) throw new Error("Sleeper username not found.");
+            const userId = (await userRes.json()).user_id;
+
+            // Sleeper's "current" season isn't necessarily the calendar year during the
+            // offseason -- league_season (not the more general "season" field) is what
+            // Sleeper's own docs describe as the active season for league membership, and
+            // it shifts earlier than "season" during the transition into a new year.
+            const stateRes = await fetch(`https://api.sleeper.app/v1/state/nfl`);
+            const stateData = stateRes.ok ? await stateRes.json() : null;
+            const season = stateData?.league_season || stateData?.season || String(new Date().getFullYear());
+
+            const leaguesRes = await fetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${season}`);
+            if (!leaguesRes.ok) throw new Error("Could not fetch leagues for this user.");
+            const leagues = await leaguesRes.json();
+
+            if (!leagues || leagues.length === 0) {
+                if (window.showToast) window.showToast(`No ${season} NFL leagues found for that username.`, { isError: true });
+                return;
+            }
+
+            if (btn) btn.innerText = "Loading player data...";
+            const playerMap = await (await fetch(`https://api.sleeper.app/v1/players/nfl`)).json();
+            const preloaded = { userId, playerMap };
+
+            let successCount = 0;
+            let failCount = 0;
+            for (let i = 0; i < leagues.length; i++) {
+                if (btn) btn.innerText = `Syncing ${i + 1}/${leagues.length}...`;
+                const ok = await processSleeperData(username, leagues[i].league_id, null, true, preloaded, true);
+                if (ok) successCount++; else failCount++;
+            }
+
+            refreshLeagueDropdown();
+            if (State.leagues.length > 0 && !State.activeLeagueId) {
+                State.activeLeagueId = State.leagues[0].leagueId;
+                localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+            }
+            loadActiveLeagueData();
+
+            const summary = failCount > 0
+                ? `Imported ${successCount} league${successCount === 1 ? '' : 's'} (${failCount} failed -- check console for details).`
+                : `Imported ${successCount} league${successCount === 1 ? '' : 's'}!`;
+            if (window.showToast) window.showToast(summary, { isError: failCount > 0 });
+
+        } catch (err) {
+            console.error(err);
+            if (window.showToast) window.showToast(`Could not import leagues:\n${err.message}`, { isError: true });
+        } finally {
+            if (btn) { btn.innerText = origText; btn.disabled = false; btn.style.opacity = "1"; }
+        }
     };
 
     window.syncActiveLeague = function() {

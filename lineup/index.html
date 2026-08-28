@@ -171,7 +171,7 @@
     </h3>
     <div class="tooltip-container">
         <div class="tooltip-icon">i</div>
-        <span class="tooltip-text">Sync with Sleeper via Username and League ID, OR create a manual league by leaving the Sleeper info blank and clicking 'Create Manual'.</span>
+        <span class="tooltip-text">Sync one league with Sleeper via Username and League ID, import ALL your leagues at once with just your Username, or create a manual league by leaving the Sleeper info blank and clicking 'Create Manual'.</span>
     </div>
 </header>
 
@@ -200,6 +200,18 @@
             <button class="btn btn-blue" onclick="addAndSyncLeague(this)">Sync Sleeper</button>
             <button class="btn btn-purple" onclick="createManualLeague()">Create Manual</button>
         </div>
+
+        <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0;">
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">or</span>
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+        </div>
+
+        <button id="importAllLeaguesBtn" class="btn btn-secondary" style="width: 100%;" onclick="importAllSleeperLeagues(this)" title="Uses only the Sleeper Username above (League ID not needed) to find and sync every league you're in for the current season.">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Import All My Leagues
+        </button>
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; margin-bottom: 0;">Finds and syncs every league for this username -- just the username above is needed, no League ID.</p>
     </section>
 
     <!-- ACTIVE LEAGUE REQUIREMENTS -->
