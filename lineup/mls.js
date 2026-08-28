@@ -26,6 +26,7 @@
         rosRankingsUpdatedAt: localStorage.getItem('mds_season_ros_updated') || null,
         weeklyRankingsUpdatedAt: localStorage.getItem('mds_season_weekly_updated') || null,
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
+        marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
         manualStartersMap: JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {},
@@ -232,6 +233,7 @@ window.addEventListener('popstate', (e) => {
         updateRankingsMetaDisplay();
         generateSoSGrid();
         checkForDraftStrategistHandoff();
+        applyMarketSettingsToUI();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -901,8 +903,26 @@ window.addEventListener('popstate', (e) => {
         return { label, isStale: days > staleAfterDays };
     }
 
+    // --- COLLAPSIBLE RANKINGS CARDS ---
+    window.toggleRankingsCard = function(cardId) {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+        const nowExpanded = card.classList.toggle('expanded');
+        const header = card.querySelector('.rankings-card-header');
+        if (header) header.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+    };
+
+    function setRankingsCardExpanded(cardId, expanded) {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+        card.classList.toggle('expanded', expanded);
+        const header = card.querySelector('.rankings-card-header');
+        if (header) header.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+
     function updateRankingsMetaDisplay() {
         const rosMetaEl = document.getElementById('rosMetaDisplay');
+        const rosHeaderEl = document.getElementById('rosHeaderFreshness');
         if (rosMetaEl) {
             if (State.rosRankings.length > 0) {
                 rosMetaEl.style.display = 'block';
@@ -910,14 +930,23 @@ window.addEventListener('popstate', (e) => {
                 const countText = `Loaded: ${State.rosRankings.length} players`;
                 if (fresh) {
                     rosMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'rankings-stale' : 'rankings-fresh'}">• ${fresh.label}${fresh.isStale ? ' — consider refreshing' : ''}</span>`;
+                    if (rosHeaderEl) {
+                        rosHeaderEl.textContent = fresh.label;
+                        rosHeaderEl.classList.toggle('rankings-stale', fresh.isStale);
+                    }
                 } else {
                     rosMetaEl.innerText = countText;
+                    if (rosHeaderEl) { rosHeaderEl.textContent = `${State.rosRankings.length} players`; rosHeaderEl.classList.remove('rankings-stale'); }
                 }
+            } else {
+                rosMetaEl.style.display = 'none';
+                if (rosHeaderEl) rosHeaderEl.textContent = '';
+                setRankingsCardExpanded('rosRankingsCard', true); // nothing loaded yet -- show the actionable UI
             }
-            else { rosMetaEl.style.display = 'none'; }
         }
 
         const weeklyMetaEl = document.getElementById('weeklyMetaDisplay');
+        const weeklyHeaderEl = document.getElementById('weeklyHeaderFreshness');
         if (weeklyMetaEl) {
             if (State.weeklyRankings.length > 0) {
                 weeklyMetaEl.style.display = 'block';
@@ -925,11 +954,19 @@ window.addEventListener('popstate', (e) => {
                 const countText = `Loaded: ${State.weeklyRankings.length} players`;
                 if (fresh) {
                     weeklyMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'rankings-stale' : 'rankings-fresh'}">• ${fresh.label}${fresh.isStale ? ' — likely stale, re-upload for this week' : ''}</span>`;
+                    if (weeklyHeaderEl) {
+                        weeklyHeaderEl.textContent = fresh.label;
+                        weeklyHeaderEl.classList.toggle('rankings-stale', fresh.isStale);
+                    }
                 } else {
                     weeklyMetaEl.innerText = countText;
+                    if (weeklyHeaderEl) { weeklyHeaderEl.textContent = `${State.weeklyRankings.length} players`; weeklyHeaderEl.classList.remove('rankings-stale'); }
                 }
+            } else {
+                weeklyMetaEl.style.display = 'none';
+                if (weeklyHeaderEl) weeklyHeaderEl.textContent = '';
+                setRankingsCardExpanded('weeklyRankingsCard', true); // nothing loaded yet -- show the actionable UI
             }
-            else { weeklyMetaEl.style.display = 'none'; }
         }
     }
 
@@ -1196,16 +1233,13 @@ window.addEventListener('popstate', (e) => {
         btn.disabled = true;
 
         try {
-            // Reuses whatever Market Consensus source/settings are configured on the Scout tab
-            // (defaults to FantasyCalc, Redraft, 1QB, PPR if Scout hasn't been visited yet).
-            const source = document.getElementById('marketSourceSelect')?.value || 'fantasycalc';
-            const isDynastyVal = document.getElementById('marketType')?.value || 'redraft';
-            const numQbsVal = document.getElementById('marketQbs')?.value || '1';
-            const ppr = document.getElementById('marketPpr')?.value || '1';
-            const isTEP = document.getElementById('marketTep')?.checked ? 'true' : 'false';
+            // Shared with the Scout tab's Power Rankings settings -- see updateMarketSetting()
+            // and the "ros"-prefixed controls on this tab for where this gets configured.
+            const s = State.marketSettings;
+            const isTEP = s.tep ? 'true' : 'false';
             let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
 
-            const { parsed, formatText } = await fetchMarketConsensusData(source, isDynastyVal, numQbsVal, ppr, isTEP, teamCount);
+            const { parsed, formatText } = await fetchMarketConsensusData(s.source, s.type, s.qbs, s.ppr, isTEP, teamCount);
             if (parsed.length === 0) throw new Error("No players returned from the market data source.");
 
             // Convert to the same shape manual ROS uploads use (rank/posRank/flexRank), computed
@@ -1245,23 +1279,17 @@ window.addEventListener('popstate', (e) => {
     const outputEl = document.getElementById('marketDisconnectOutput');
     const msgEl = document.getElementById('marketSuccessMsg');
     
-    const sourceSelect = document.getElementById('marketSourceSelect');
-    if (!sourceSelect) return;
-    const source = sourceSelect.value;
-    
     const origText = btn.innerText;
     btn.innerText = "Fetching...";
     btn.style.opacity = "0.7";
     btn.disabled = true;
 
     try {
-        const isDynastyVal = document.getElementById('marketType')?.value || 'redraft';
-        const numQbsVal = document.getElementById('marketQbs')?.value || '1';
-        const ppr = document.getElementById('marketPpr')?.value || '1';
-        const isTEP = document.getElementById('marketTep')?.checked ? 'true' : 'false';
+        const s = State.marketSettings;
+        const isTEP = s.tep ? 'true' : 'false';
         let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
 
-        const { parsed, formatText } = await fetchMarketConsensusData(source, isDynastyVal, numQbsVal, ppr, isTEP, teamCount);
+        const { parsed, formatText } = await fetchMarketConsensusData(s.source, s.type, s.qbs, s.ppr, isTEP, teamCount);
 
         // Save to state and local storage
         State.marketRankings = parsed;
@@ -1287,24 +1315,47 @@ window.addEventListener('popstate', (e) => {
         btn.disabled = false;
     }
 };
-// --- UI TOGGLE HELPER FOR MARKET SOURCE ---
-window.toggleMarketSourceUI = function() {
-    const source = document.getElementById('marketSourceSelect')?.value;
-    const fcControls = document.getElementById('fantasycalcSpecificControls');
+// --- SHARED MARKET SETTINGS (Scout tab + Roster tab's ROS auto-fetch) ---
+// Both tabs have their own copy of these controls (different element IDs, prefixed "ros" on
+// the Roster tab) so the user doesn't have to navigate to Scout just to configure them before
+// auto-fetching ROS rankings. Single source of truth is State.marketSettings; every control's
+// onchange calls updateMarketSetting(), which persists it and re-syncs BOTH tabs' controls so
+// they never drift out of sync with each other.
+window.updateMarketSetting = function(key, value) {
+    State.marketSettings[key] = value;
+    localStorage.setItem('mls_market_settings', JSON.stringify(State.marketSettings));
+    applyMarketSettingsToUI();
+};
+
+function applyMarketSettingsToUI() {
+    const s = State.marketSettings;
+    const instances = [
+        { source: 'marketSourceSelect', type: 'marketType', qbs: 'marketQbs', ppr: 'marketPpr', tep: 'marketTep', fcBlock: 'fantasycalcSpecificControls' },
+        { source: 'rosMarketSourceSelect', type: 'rosMarketType', qbs: 'rosMarketQbs', ppr: 'rosMarketPpr', tep: 'rosMarketTep', fcBlock: 'rosFantasycalcSpecificControls' }
+    ];
+
+    instances.forEach(ids => {
+        const sourceEl = document.getElementById(ids.source);
+        const typeEl = document.getElementById(ids.type);
+        const qbsEl = document.getElementById(ids.qbs);
+        const pprEl = document.getElementById(ids.ppr);
+        const tepEl = document.getElementById(ids.tep);
+        const fcBlock = document.getElementById(ids.fcBlock);
+
+        if (sourceEl) sourceEl.value = s.source;
+        if (typeEl) typeEl.value = s.type;
+        if (qbsEl) qbsEl.value = s.qbs;
+        if (pprEl) pprEl.value = s.ppr;
+        if (tepEl) tepEl.checked = s.tep;
+        // LeagueLogs doesn't use PPR dropdown or TEP toggle directly, so hide them
+        if (fcBlock) fcBlock.style.display = (s.source === 'fantasycalc') ? 'block' : 'none';
+    });
+
     const brandEl = document.getElementById('attributionBrand');
     const attrLink = document.getElementById('attributionLink');
-
-    if (source === 'fantasycalc') {
-        if (fcControls) fcControls.style.display = 'block';
-        if (brandEl) brandEl.innerText = "FantasyCalc";
-        if (attrLink) attrLink.href = "https://fantasycalc.com";
-    } else {
-        // LeagueLogs doesn't use PPR dropdown or TEP toggle directly, so hide them
-        if (fcControls) fcControls.style.display = 'none';
-        if (brandEl) brandEl.innerText = "LeagueLogs";
-        if (attrLink) attrLink.href = "https://leaguelogs.com";
-    }
-};
+    if (brandEl) brandEl.innerText = (s.source === 'fantasycalc') ? "FantasyCalc" : "LeagueLogs";
+    if (attrLink) attrLink.href = (s.source === 'fantasycalc') ? "https://fantasycalc.com" : "https://leaguelogs.com";
+}
     function parseMarketData(rows, successMsgId) {
         let parsed = [];
         if (rows.length < 1) return;
