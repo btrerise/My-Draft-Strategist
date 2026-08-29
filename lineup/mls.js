@@ -24,6 +24,10 @@
         rosRankings: JSON.parse(localStorage.getItem('mds_season_ros')) || [],
         weeklyRankings: JSON.parse(localStorage.getItem('mds_season_weekly')) || [],
         rosRankingsUpdatedAt: localStorage.getItem('mds_season_ros_updated') || null,
+        rankingSets: {
+            ros: JSON.parse(localStorage.getItem('mls_ranking_sets_ros')) || [],
+            weekly: JSON.parse(localStorage.getItem('mls_ranking_sets_weekly')) || []
+        },
         weeklyRankingsUpdatedAt: localStorage.getItem('mds_season_weekly_updated') || null,
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
         marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
@@ -325,23 +329,29 @@ window.addEventListener('popstate', (e) => {
         State.activeLeagueId = leagueId;
         localStorage.setItem('mds_season_active_league', State.activeLeagueId);
         
-        // HYDRATION: Unpack rankings for this specific league
+        // HYDRATION: Unpack rankings for this specific league. Priority: named set assignment,
+        // then legacy per-league data (from before named ranking sets existed), then empty --
+        // deliberately NOT falling back to the global flat key anymore. That fallback used to
+        // be exactly why a league with nothing of its own could appear to "inherit" whatever
+        // another league had most recently active, rather than genuinely remembering its own.
         let league = getActiveLeague();
         if (league) {
-            State.rosRankings = league.rosRankings && league.rosRankings.length > 0 
-                ? [...league.rosRankings] 
-                : JSON.parse(localStorage.getItem('mds_season_ros')) || [];
-                
-            State.weeklyRankings = league.weeklyRankings && league.weeklyRankings.length > 0 
-                ? [...league.weeklyRankings] 
-                : JSON.parse(localStorage.getItem('mds_season_weekly')) || [];
+            ['ros', 'weekly'].forEach(type => {
+                const cfg = RANKING_TYPE_CONFIG[type];
+                const setId = league[cfg.leagueSetIdKey];
+                const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
 
-            State.rosRankingsUpdatedAt = league.rosRankingsUpdatedAt || localStorage.getItem('mds_season_ros_updated') || null;
-            State.weeklyRankingsUpdatedAt = league.weeklyRankingsUpdatedAt || localStorage.getItem('mds_season_weekly_updated') || null;
-
-            // Update the global fallbacks so the UI stays in sync
-            localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings));
-            localStorage.setItem('mds_season_weekly', JSON.stringify(State.weeklyRankings));
+                if (set) {
+                    State[cfg.stateKey] = [...set.data];
+                    State[cfg.updatedAtKey] = set.updatedAt;
+                } else if (Array.isArray(league[cfg.leagueLegacyDataKey]) && league[cfg.leagueLegacyDataKey].length > 0) {
+                    State[cfg.stateKey] = [...league[cfg.leagueLegacyDataKey]];
+                    State[cfg.updatedAtKey] = league[cfg.leagueLegacyUpdatedKey] || null;
+                } else {
+                    State[cfg.stateKey] = [];
+                    State[cfg.updatedAtKey] = null;
+                }
+            });
             
             updateRankingsMetaDisplay();
         }
@@ -372,11 +382,18 @@ window.addEventListener('popstate', (e) => {
     function saveActiveLeagueState() {
     let league = getActiveLeague();
     if (league) {
-        // Save current rankings specifically to this league
-        league.rosRankings = [...State.rosRankings];
-        league.weeklyRankings = [...State.weeklyRankings];
-        league.rosRankingsUpdatedAt = State.rosRankingsUpdatedAt;
-        league.weeklyRankingsUpdatedAt = State.weeklyRankingsUpdatedAt;
+        // Only sync the legacy per-league copy when this league ISN'T using a named ranking
+        // set -- once a set is assigned, its data lives once in State.rankingSets (referenced
+        // by id, not copied per league), so writing a full copy here on every save would
+        // silently reintroduce the exact duplication named ranking sets exist to avoid.
+        if (!league.rosRankingSetId) {
+            league.rosRankings = [...State.rosRankings];
+            league.rosRankingsUpdatedAt = State.rosRankingsUpdatedAt;
+        }
+        if (!league.weeklyRankingSetId) {
+            league.weeklyRankings = [...State.weeklyRankings];
+            league.weeklyRankingsUpdatedAt = State.weeklyRankingsUpdatedAt;
+        }
     }
     localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
 }
@@ -420,10 +437,8 @@ window.addEventListener('popstate', (e) => {
         let leagueObj = {
             leagueId: newId, name: name, username: "Manual",
             reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 }, roster: [], globalRosterMap: {},
-            rosRankings: [...State.rosRankings],       
-            weeklyRankings: [...State.weeklyRankings],
-            rosRankingsUpdatedAt: State.rosRankingsUpdatedAt,
-            weeklyRankingsUpdatedAt: State.weeklyRankingsUpdatedAt
+            rosRankings: [], weeklyRankings: [], rosRankingsUpdatedAt: null, weeklyRankingsUpdatedAt: null,
+            rosRankingSetId: null, weeklyRankingSetId: null
         };
         State.leagues.push(leagueObj);
         State.activeLeagueId = newId;
@@ -483,10 +498,8 @@ window.addEventListener('popstate', (e) => {
             leagueId: newId, name: payload.sourceLeagueName || "Drafted Team", username: "From Draft Strategist",
             reqs: payload.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 },
             roster: roster, globalRosterMap: globalRosterMap,
-            rosRankings: [...State.rosRankings],
-            weeklyRankings: [...State.weeklyRankings],
-            rosRankingsUpdatedAt: State.rosRankingsUpdatedAt,
-            weeklyRankingsUpdatedAt: State.weeklyRankingsUpdatedAt
+            rosRankings: [], weeklyRankings: [], rosRankingsUpdatedAt: null, weeklyRankingsUpdatedAt: null,
+            rosRankingSetId: null, weeklyRankingSetId: null
         };
         State.leagues.push(leagueObj);
         State.activeLeagueId = newId;
@@ -652,17 +665,25 @@ window.addEventListener('popstate', (e) => {
                 });
             }
 
+            let existingIdx = State.leagues.findIndex(l => l.leagueId === leagueId);
+            let existingLeague = existingIdx !== -1 ? State.leagues[existingIdx] : null;
+
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap,
-                rosRankings: [...State.rosRankings],   
-            weeklyRankings: [...State.weeklyRankings],
-            rosRankingsUpdatedAt: State.rosRankingsUpdatedAt,
-            weeklyRankingsUpdatedAt: State.weeklyRankingsUpdatedAt
+                // Preserve this league's existing rankings assignment across a re-sync rather
+                // than rebuilding it from whatever happens to be currently active in State --
+                // a re-sync should only refresh roster/matchup data, not silently reassign
+                // rankings. A genuinely new league starts with nothing assigned.
+                rosRankings: existingLeague ? existingLeague.rosRankings : [],
+                weeklyRankings: existingLeague ? existingLeague.weeklyRankings : [],
+                rosRankingsUpdatedAt: existingLeague ? existingLeague.rosRankingsUpdatedAt : null,
+                weeklyRankingsUpdatedAt: existingLeague ? existingLeague.weeklyRankingsUpdatedAt : null,
+                rosRankingSetId: existingLeague ? existingLeague.rosRankingSetId : null,
+                weeklyRankingSetId: existingLeague ? existingLeague.weeklyRankingSetId : null
             };
 
-            let existingIdx = State.leagues.findIndex(l => l.leagueId === leagueId);
             if (existingIdx !== -1) State.leagues[existingIdx] = leagueObj;
             else State.leagues.push(leagueObj);
 
@@ -978,7 +999,195 @@ window.addEventListener('popstate', (e) => {
         return { label, isStale: days > staleAfterDays };
     }
 
-    // --- COLLAPSIBLE RANKINGS CARDS ---
+    // --- NAMED RANKING SETS ---
+    // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
+    // a full copy of -- so uploading "Dynasty PPR 2026" once and applying it to five leagues
+    // stores that data once, not five times, and switching to a league shows exactly the set
+    // you last picked for it rather than silently inheriting whatever another league last had
+    // active. ROS and Weekly are kept as two separate pools, matching how they already work.
+    //
+    // Migration note: leagues that accumulated their own rankings copy under the old model
+    // (league.rosRankings / league.weeklyRankings, still populated from before this existed)
+    // are NOT auto-converted into a named set. That legacy data stays available as a distinct
+    // "Unassigned Upload (legacy)" option in the dropdown until the user picks or creates a
+    // real named set for that league -- nothing is silently discarded, but nothing is silently
+    // promoted into the new system either.
+    const RANKING_TYPE_CONFIG = {
+        ros: {
+            stateKey: 'rosRankings', updatedAtKey: 'rosRankingsUpdatedAt',
+            leagueLegacyDataKey: 'rosRankings', leagueLegacyUpdatedKey: 'rosRankingsUpdatedAt',
+            leagueSetIdKey: 'rosRankingSetId', setsKey: 'ros',
+            localStorageSetsKey: 'mls_ranking_sets_ros',
+            globalDataKey: 'mds_season_ros', globalUpdatedKey: 'mds_season_ros_updated',
+            selectId: 'rosRankingSetSelect', nameInputWrapId: 'rosNewSetNameWrap',
+            nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn',
+            label: 'ROS', staleAfterDays: 14
+        },
+        weekly: {
+            stateKey: 'weeklyRankings', updatedAtKey: 'weeklyRankingsUpdatedAt',
+            leagueLegacyDataKey: 'weeklyRankings', leagueLegacyUpdatedKey: 'weeklyRankingsUpdatedAt',
+            leagueSetIdKey: 'weeklyRankingSetId', setsKey: 'weekly',
+            localStorageSetsKey: 'mls_ranking_sets_weekly',
+            globalDataKey: 'mds_season_weekly', globalUpdatedKey: 'mds_season_weekly_updated',
+            selectId: 'weeklyRankingSetSelect', nameInputWrapId: 'weeklyNewSetNameWrap',
+            nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn',
+            label: 'Weekly', staleAfterDays: 6
+        }
+    };
+
+    // Called after a successful upload or auto-fetch with the freshly parsed data. Updates the
+    // currently-selected set in place if one's selected in the dropdown; otherwise creates a new
+    // named set (using the name field, or a sensible default) and assigns it to the active league.
+    function saveRankingsAsSet(type, parsedData) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        const nameInput = document.getElementById(cfg.nameInputId);
+        const currentSelection = selectEl ? selectEl.value : '__new__';
+
+        let league = getActiveLeague();
+        let setId = null;
+
+        if (currentSelection && currentSelection !== '__new__' && currentSelection !== '__legacy__') {
+            let existing = State.rankingSets[cfg.setsKey].find(s => s.id === currentSelection);
+            if (existing) {
+                existing.data = parsedData;
+                existing.updatedAt = Date.now();
+                setId = existing.id;
+            }
+        }
+
+        if (!setId) {
+            const defaultName = `${cfg.label} Rankings – ${new Date().toLocaleDateString()}`;
+            const name = (nameInput && nameInput.value.trim()) || defaultName;
+            const newSet = { id: 'rset_' + Date.now(), name, createdAt: Date.now(), updatedAt: Date.now(), data: parsedData };
+            State.rankingSets[cfg.setsKey].push(newSet);
+            setId = newSet.id;
+            if (nameInput) nameInput.value = '';
+        }
+
+        localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
+
+        State[cfg.stateKey] = [...parsedData];
+        State[cfg.updatedAtKey] = Date.now();
+        // Keep the flat global fallback keys updated too, for consistency with how they're
+        // already used elsewhere (e.g. a brand new league with nothing assigned yet).
+        localStorage.setItem(cfg.globalDataKey, JSON.stringify(parsedData));
+        localStorage.setItem(cfg.globalUpdatedKey, State[cfg.updatedAtKey]);
+
+        if (league) league[cfg.leagueSetIdKey] = setId;
+        saveActiveLeagueState();
+        updateRankingsMetaDisplay();
+    }
+
+    // Fills a type's <select> with the active league's legacy data (if any), every named set,
+    // and a "+ Create New Set" option -- then selects whichever one the active league is
+    // actually using right now, and shows/hides the name input and delete button to match.
+    function populateRankingSetDropdown(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        if (!selectEl) return;
+
+        const league = getActiveLeague();
+        const sets = State.rankingSets[cfg.setsKey];
+        const assignedId = league ? league[cfg.leagueSetIdKey] : null;
+        const legacyData = league ? league[cfg.leagueLegacyDataKey] : null;
+        const hasLegacy = Array.isArray(legacyData) && legacyData.length > 0;
+
+        let optionsHTML = '';
+        if (hasLegacy) {
+            optionsHTML += `<option value="__legacy__">Unassigned Upload (legacy) — ${legacyData.length} players</option>`;
+        }
+        sets.forEach(s => {
+            optionsHTML += `<option value="${s.id}">${s.name} (${s.data.length} players)</option>`;
+        });
+        optionsHTML += `<option value="__new__">+ Create New Set</option>`;
+        selectEl.innerHTML = optionsHTML;
+
+        let selectedVal = '__new__';
+        if (assignedId && sets.some(s => s.id === assignedId)) {
+            selectedVal = assignedId;
+        } else if (hasLegacy) {
+            selectedVal = '__legacy__';
+        }
+        selectEl.value = selectedVal;
+
+        const nameWrap = document.getElementById(cfg.nameInputWrapId);
+        const deleteBtn = document.getElementById(cfg.deleteBtnId);
+        if (nameWrap) nameWrap.style.display = (selectedVal === '__new__') ? 'flex' : 'none';
+        if (deleteBtn) deleteBtn.style.display = (selectedVal !== '__new__' && selectedVal !== '__legacy__') ? 'inline-block' : 'none';
+    }
+
+    // User manually picked a different set (or legacy data, or "create new") from the dropdown.
+    window.onRankingSetSelectChange = function(type, selectEl) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const val = selectEl.value;
+        const nameWrap = document.getElementById(cfg.nameInputWrapId);
+        const deleteBtn = document.getElementById(cfg.deleteBtnId);
+
+        if (val === '__new__') {
+            if (nameWrap) nameWrap.style.display = 'flex';
+            if (deleteBtn) deleteBtn.style.display = 'none';
+            return; // don't touch State yet -- wait for an actual upload/fetch to create the set
+        }
+        if (nameWrap) nameWrap.style.display = 'none';
+
+        let league = getActiveLeague();
+        if (!league) return;
+
+        if (val === '__legacy__') {
+            State[cfg.stateKey] = league[cfg.leagueLegacyDataKey] || [];
+            State[cfg.updatedAtKey] = league[cfg.leagueLegacyUpdatedKey] || null;
+            league[cfg.leagueSetIdKey] = null;
+            if (deleteBtn) deleteBtn.style.display = 'none';
+        } else {
+            const set = State.rankingSets[cfg.setsKey].find(s => s.id === val);
+            if (!set) return;
+            State[cfg.stateKey] = [...set.data];
+            State[cfg.updatedAtKey] = set.updatedAt;
+            league[cfg.leagueSetIdKey] = set.id;
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+        }
+
+        saveActiveLeagueState();
+        updateRankingsMetaDisplay();
+
+        const activeTab = document.querySelector('.tab-content.active');
+        if (activeTab && activeTab.id === 'rosterTab' && typeof loadRosterTab === 'function') loadRosterTab();
+        if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+    };
+
+    // Deletes the currently-selected named set entirely. Any league referencing it (not just
+    // the active one) falls back to unassigned, since the data it pointed to no longer exists.
+    window.deleteRankingSet = function(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        const setId = selectEl ? selectEl.value : null;
+        if (!setId || setId === '__new__' || setId === '__legacy__') return;
+
+        const set = State.rankingSets[cfg.setsKey].find(s => s.id === setId);
+        if (!set) return;
+
+        if (!window.confirm(`Delete "${set.name}"? Any league using this set will need a new one selected. This can't be undone.`)) return;
+
+        State.rankingSets[cfg.setsKey] = State.rankingSets[cfg.setsKey].filter(s => s.id !== setId);
+        localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
+
+        State.leagues.forEach(l => {
+            if (l[cfg.leagueSetIdKey] === setId) l[cfg.leagueSetIdKey] = null;
+        });
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+
+        let league = getActiveLeague();
+        if (league && league[cfg.leagueSetIdKey] === null) {
+            State[cfg.stateKey] = [];
+            State[cfg.updatedAtKey] = null;
+        }
+
+        if (window.showToast) window.showToast(`Deleted "${set.name}".`);
+        updateRankingsMetaDisplay();
+    };
+
+
     window.toggleRankingsCard = function(cardId) {
         const card = document.getElementById(cardId);
         if (!card) return;
@@ -1043,6 +1252,9 @@ window.addEventListener('popstate', (e) => {
                 setRankingsCardExpanded('weeklyRankingsCard', true); // nothing loaded yet -- show the actionable UI
             }
         }
+
+        populateRankingSetDropdown('ros');
+        populateRankingSetDropdown('weekly');
     }
 
     function processRankingsUpload(fileInputId, isWeekly, successMsgId) {
@@ -1134,18 +1346,10 @@ window.addEventListener('popstate', (e) => {
         }
 
         if (isWeekly) { 
-            State.weeklyRankings = parsed; 
-            State.weeklyRankingsUpdatedAt = Date.now();
-            localStorage.setItem('mds_season_weekly', JSON.stringify(State.weeklyRankings)); 
-            localStorage.setItem('mds_season_weekly_updated', State.weeklyRankingsUpdatedAt);
+            saveRankingsAsSet('weekly', parsed);
         } else { 
-            State.rosRankings = parsed; 
-            State.rosRankingsUpdatedAt = Date.now();
-            localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings)); 
-            localStorage.setItem('mds_season_ros_updated', State.rosRankingsUpdatedAt);
+            saveRankingsAsSet('ros', parsed);
         }
-        saveActiveLeagueState();
-        updateRankingsMetaDisplay();
         
         if (hasNewSos) {
             localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
@@ -1327,12 +1531,7 @@ window.addEventListener('popstate', (e) => {
                 return { name: p.name, cleanName: p.cleanName, rank: i + 1, posRank: posCounters[posKey], flexRank: i + 1 };
             });
 
-            State.rosRankings = rosRankings;
-            State.rosRankingsUpdatedAt = Date.now();
-            localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings));
-            localStorage.setItem('mds_season_ros_updated', State.rosRankingsUpdatedAt);
-            saveActiveLeagueState();
-            updateRankingsMetaDisplay();
+            saveRankingsAsSet('ros', rosRankings);
 
             if (window.showToast) window.showToast(`ROS Rankings pulled: ${rosRankings.length} players (${formatText})`);
 

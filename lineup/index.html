@@ -317,6 +317,19 @@
         </header>
         
         <div class="rankings-card-body">
+            <div class="input-group" style="margin-bottom: 0.5rem;">
+                <label for="rosRankingSetSelect">Ranking Set for this League</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('ros', this)" aria-label="Select ROS Ranking Set">
+                    </select>
+                    <button id="rosDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('ros')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
+                </div>
+            </div>
+            <div id="rosNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
+                <label for="rosNewSetName">New Set Name (optional)</label>
+                <input type="text" id="rosNewSetName" class="form-input" placeholder="e.g. Dynasty PPR 2026">
+            </div>
+
             <div id="rosMetaDisplay" class="status-badge-meta"></div>
             <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
             <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
@@ -459,6 +472,19 @@
         </header>
         
         <div class="rankings-card-body">
+            <div class="input-group" style="margin-bottom: 0.5rem;">
+                <label for="weeklyRankingSetSelect">Ranking Set for this League</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <select id="weeklyRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('weekly', this)" aria-label="Select Weekly Ranking Set">
+                    </select>
+                    <button id="weeklyDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('weekly')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
+                </div>
+            </div>
+            <div id="weeklyNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
+                <label for="weeklyNewSetName">New Set Name (optional)</label>
+                <input type="text" id="weeklyNewSetName" class="form-input" placeholder="e.g. Week 5 Rankings">
+            </div>
+
             <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
             <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
             <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
