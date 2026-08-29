@@ -2370,6 +2370,34 @@ input[type="file"]::-webkit-file-upload-button:hover {
     transform: rotate(180deg);
 }
 
+.queue-header {
+    font-weight: 700;
+    color: #f59e0b;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.queue-header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.queue-header .chevron-icon {
+    color: #f59e0b;
+    flex-shrink: 0;
+}
+
+.queue-header.is-expanded .chevron-icon {
+    transform: rotate(180deg);
+}
+
 /* Mobile Default: Details hidden only if setting is enabled.
    (Consolidated from what used to be two overlapping @media(max-width:600px) blocks here plus
    a third small one further down -- see the single block near the PLAYER CARD GRID LAYOUT

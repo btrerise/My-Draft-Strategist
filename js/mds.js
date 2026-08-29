@@ -2080,6 +2080,18 @@ function parseExcel(file) {
             </div>`;
     }
 
+    // Queue collapse state lives here, outside renderBoard(), because renderBoard() rebuilds
+    // the queue's HTML from scratch via innerHTML on every call (every pick, every queue
+    // add/remove) -- a class toggled directly on the old DOM node wouldn't survive that. This
+    // is read by renderBoard() each time it runs so the user's choice persists across re-renders
+    // for the rest of the session (not saved to localStorage -- matches how the MLS rankings
+    // cards' collapse state also doesn't persist across a page reload).
+    let isQueueCollapsed = false;
+    window.toggleQueueCollapse = function() {
+        isQueueCollapsed = !isQueueCollapsed;
+        renderBoard();
+    };
+
     function renderBoard() {
         const poolEl = document.getElementById('playerPool');
         const myTeamEl = document.getElementById('myTeamList');
@@ -2184,18 +2196,24 @@ function parseExcel(file) {
             let activeQueue = draft.queue.filter(id => !draftedPlayers.includes(id));
 
             if (activeQueue.length > 0) {
-                newQueueHTML += `<div style="font-weight: 700; color: #f59e0b; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</div>`;
-                newQueueHTML += `<div class="player-pool-container" style="margin-bottom: 1.5rem; border-bottom: 1px dashed var(--border); padding-bottom: 1.5rem;">`;
+                let queueExpandedClass = isQueueCollapsed ? "" : " is-expanded";
+                newQueueHTML += `<div class="queue-header${queueExpandedClass}" onclick="toggleQueueCollapse()" role="button" tabindex="0" aria-expanded="${isQueueCollapsed ? 'false' : 'true'}" aria-label="Toggle Queue" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQueueCollapse();}">                    <span class="queue-header-title"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</span>
+                    <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>`;
 
-                activeQueue.forEach((qId, idx) => {
-                    let p = State.players.find(x => x.id === qId);
-                    if (p) {
-                        let isFirst = idx === 0;
-                        let isLast = idx === activeQueue.length - 1;
-                        newQueueHTML += buildQueueCardHTML(p, idx, isFirst, isLast);
-                    }
-                });
-                newQueueHTML += `</div>`;
+                if (!isQueueCollapsed) {
+                    newQueueHTML += `<div class="player-pool-container" style="margin-bottom: 1.5rem; border-bottom: 1px dashed var(--border); padding-bottom: 1.5rem;">`;
+
+                    activeQueue.forEach((qId, idx) => {
+                        let p = State.players.find(x => x.id === qId);
+                        if (p) {
+                            let isFirst = idx === 0;
+                            let isLast = idx === activeQueue.length - 1;
+                            newQueueHTML += buildQueueCardHTML(p, idx, isFirst, isLast);
+                        }
+                    });
+                    newQueueHTML += `</div>`;
+                }
             }
         }
         if (queueEl) queueEl.innerHTML = newQueueHTML;
