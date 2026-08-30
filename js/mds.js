@@ -972,7 +972,7 @@ if (fileInput) {
         
         if (ext === 'csv') {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
-        } else if (ext === 'xlsx' || ext === 'xls' || ext === 'numbers') {
+        } else if (ext === 'xlsx' || ext === 'xls') {
             
             // Check if SheetJS is already loaded. If not, fetch it on the fly.
             if (typeof XLSX === 'undefined') {
@@ -989,8 +989,13 @@ if (fileInput) {
                 parseExcel(file);
             }
             
+        } else if (ext === 'numbers') {
+            // Apple Numbers' file format isn't a spreadsheet format our parser (SheetJS) can
+            // read -- it's a proprietary zip/binary format, not CSV/XLSX under the hood.
+            // Point to Numbers' own CSV export rather than silently failing on a fake attempt.
+            if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
         } else {
-            if (window.showToast) window.showToast("Please upload a .csv, .xlsx, .xls, or .numbers file", { isError: true });
+            if (window.showToast) window.showToast("Please upload a .csv, .xlsx, or .xls file", { isError: true });
         }
     });
 }
@@ -1326,6 +1331,27 @@ function parseExcel(file) {
         }
 };
 
+    // Splits one pasted row into fields, trying delimiters in order of how unlikely they are
+    // to appear inside a player's name (tab/pipe/semicolon first, comma last, then falling back
+    // to runs of 2+ spaces for plain-text-aligned data e.g. copied out of a PDF). Quoted fields
+    // (e.g. "Smith, Jr., John",5) are respected so an embedded comma doesn't split a name apart.
+    function splitAdpRow(row) {
+        if (row.includes('"')) {
+            let fields = [];
+            let re = /"([^"]*)"|([^,\t|;]+)/g, m;
+            while ((m = re.exec(row)) !== null) {
+                let val = (m[1] !== undefined ? m[1] : m[2]).trim();
+                if (val !== '') fields.push(val);
+            }
+            if (fields.length >= 2) return fields;
+        }
+        if (row.includes('\t')) return row.split('\t');
+        if (row.includes('|')) return row.split('|');
+        if (row.includes(';')) return row.split(';');
+        if (row.includes(',')) return row.split(',');
+        return row.split(/\s{2,}/);
+    }
+
     window.processManualADP = function(btn) {
         const text = document.getElementById('adpPasteArea')?.value;
         if (!text) {
@@ -1335,15 +1361,30 @@ function parseExcel(file) {
 
         let matchedCount = 0;
         text.split('\n').forEach(row => {
-            let parts = row.split(/\t|,/); 
-            if (parts.length >= 2) {
-                let pName = parts[0];
-                let newAdp = parts[parts.length - 1].trim(); 
-                if (pName && newAdp && !isNaN(parseFloat(newAdp))) {
-                    let matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, pName) : p.name.toLowerCase() === pName.toLowerCase());
-                    if (matchedPlayer) { matchedPlayer.adp = parseFloat(newAdp).toFixed(1); matchedCount++; }
-                }
+            row = row.trim();
+            if (!row) return;
+
+            let parts = splitAdpRow(row).map(p => p.trim()).filter(p => p !== '');
+            if (parts.length < 2) return;
+
+            // The rank/ADP number can be the first OR last column -- detect which side is
+            // actually numeric rather than assuming a fixed order. Rows where both or neither
+            // side is numeric (a two-number row, a header row, name+position with no rank) are
+            // ambiguous and skipped rather than guessed at.
+            let first = parts[0];
+            let last = parts[parts.length - 1];
+            let pName, newAdp;
+
+            if (!isNaN(parseFloat(last)) && isNaN(parseFloat(first))) {
+                pName = first; newAdp = last;
+            } else if (!isNaN(parseFloat(first)) && isNaN(parseFloat(last))) {
+                pName = last; newAdp = first;
+            } else {
+                return;
             }
+
+            let matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, pName) : p.name.toLowerCase() === pName.toLowerCase());
+            if (matchedPlayer) { matchedPlayer.adp = parseFloat(newAdp).toFixed(1); matchedCount++; }
         });
 
         if (matchedCount > 0) {

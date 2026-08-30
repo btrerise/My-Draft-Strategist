@@ -1265,7 +1265,7 @@ window.addEventListener('popstate', (e) => {
         const filename = file.name.toLowerCase();
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: false, skipEmptyLines: true, complete: results => parseRankingsData(results.data, isWeekly, successMsgId) });
-        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.numbers')) {
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
             loadSheetJS(() => {
                 const reader = new FileReader();
                 reader.onload = e => {
@@ -1276,8 +1276,12 @@ window.addEventListener('popstate', (e) => {
                 };
                 reader.readAsArrayBuffer(file);
             });
+        } else if (filename.endsWith('.numbers')) {
+            // Apple Numbers' format isn't something SheetJS (or any spreadsheet parser) can
+            // read -- it's a proprietary zip/binary format, not CSV/XLSX under the hood.
+            if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
         } else {
-            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.", { isError: true });
+            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, or .xls file.", { isError: true });
         }
     }
 
@@ -1405,7 +1409,7 @@ window.addEventListener('popstate', (e) => {
         const filename = file.name.toLowerCase();
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
-        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.numbers')) {
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
             loadSheetJS(() => {            
                 const reader = new FileReader();
                 reader.onload = e => {
@@ -1416,8 +1420,10 @@ window.addEventListener('popstate', (e) => {
                 };
                 reader.readAsArrayBuffer(file);
             });
+        } else if (filename.endsWith('.numbers')) {
+            if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
         } else {
-            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.", { isError: true });
+            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, or .xls file.", { isError: true });
         }
     }
     // --- SHARED MARKET-CONSENSUS FETCH ---
