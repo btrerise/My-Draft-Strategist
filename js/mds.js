@@ -319,10 +319,89 @@
         }
     };
 
+    // --- BACKUP & RESTORE ---
+    // MDS and MLS share one origin (mydraftstrategist.com) and therefore one localStorage, so
+    // "this app's data" has to be defined by key prefix rather than assumed to be everything.
+    // ds_* covers every MDS-specific key; mds_show_headshots is the one MDS setting that
+    // doesn't follow that prefix. mds_handoff_roster is deliberately excluded -- it's a
+    // transient signal to MLS, not a persistent setting, and backing it up would just replay
+    // a stale handoff on restore.
+    function getMdsOwnedKeys() {
+        return Object.keys(localStorage).filter(k =>
+            (k.startsWith('ds_') || k === 'mds_show_headshots') && k !== 'mds_handoff_roster'
+        );
+    }
+
+    window.exportMdsSettings = function() {
+        const keys = getMdsOwnedKeys();
+        const data = {};
+        keys.forEach(k => data[k] = localStorage.getItem(k));
+
+        const payload = {
+            app: "MDS",
+            appName: "My Draft Strategist",
+            exportedAt: new Date().toISOString(),
+            data: data
+        };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `my-draft-strategist-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (window.showToast) window.showToast("Backup downloaded!");
+    };
+
+    window.importMdsSettings = function(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let payload;
+            try {
+                payload = JSON.parse(e.target.result);
+            } catch (err) {
+                if (window.showToast) window.showToast("That file isn't valid JSON -- couldn't read it as a backup.", { isError: true });
+                fileInput.value = "";
+                return;
+            }
+
+            if (!payload || payload.app !== "MDS" || typeof payload.data !== 'object') {
+                if (window.showToast) window.showToast("This doesn't look like a My Draft Strategist backup file. If it's an MLS (Lineup Strategist) backup, use the Import button on that app instead.", { isError: true });
+                fileInput.value = "";
+                return;
+            }
+
+            const keyCount = Object.keys(payload.data).length;
+            const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
+            const confirmMsg = `This will REPLACE your current My Draft Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately. Continue?`;
+
+            if (!window.confirm(confirmMsg)) {
+                fileInput.value = "";
+                return;
+            }
+
+            // Clear existing MDS keys first so a restore from an older backup (missing keys
+            // that exist now) doesn't leave stale data mixed in from the current session.
+            getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
+            Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
+
+            if (window.showToast) window.showToast("Backup restored! Reloading now.");
+            setTimeout(() => { window.location.reload(); }, 900);
+        };
+        reader.readAsText(file);
+    };
+
     window.hardReset = function() {
-        if (window.confirm("WARNING: This will delete ALL data including saved drafts, custom rankings, and settings.")) {
+        if (window.confirm("WARNING: This will delete ALL My Draft Strategist data including saved drafts, custom rankings, and settings. (My Lineup Strategist data is not affected.)")) {
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
-            localStorage.clear();
+            getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
             window.location.reload();
         }
     };
@@ -442,6 +521,7 @@ window.addEventListener('popstate', (e) => {
         const draftName = nickname || `Manual Draft (${new Date().toLocaleDateString()})`;
 
         const getVal = id => document.getElementById(id)?.value.trim() || "";
+        const getCheck = id => document.getElementById(id)?.checked || false;
         let newId = 'manual_' + Date.now();
 
         let newDraft = {
@@ -478,7 +558,7 @@ window.addEventListener('popstate', (e) => {
         if (nameInput) nameInput.value = "";
         refreshDraftDropdown();
         initSettingsUI();
-        window.alert(`Manual Draft '${draftName}' created!`);
+        if (window.showToast) window.showToast(`Manual Draft '${draftName}' created!`);
     };
 
     async function processSleeperDraftData(username, draftId, btn, isSilent = false) {
@@ -626,7 +706,7 @@ window.addEventListener('popstate', (e) => {
         } catch (err) {
             console.error(err);
             if (!isSilent && btn) flashButton(btn, "Sync Failed", true);
-            if (!isSilent) window.alert(`Sleeper Sync Error:\n${err.message}`);
+            if (!isSilent && window.showToast) window.showToast(`Sleeper Sync Error:\n${err.message}`, { isError: true });
         }
     }
 
@@ -643,7 +723,7 @@ window.addEventListener('popstate', (e) => {
         }
 
         if (!username || !draftId) {
-            window.alert("Please enter both Username and Draft ID.");
+            if (window.showToast) window.showToast("Please enter both Username and Draft ID.", { isError: true });
             return;
         }
         
@@ -674,7 +754,7 @@ window.addEventListener('popstate', (e) => {
             targetDraftId = targetDraftId || (draft ? draft.draftId : "");
 
             if (!targetUser || targetUser === "Manual" || !targetDraftId) {
-                window.alert("Please enter your Sleeper Username and Draft ID on the Setup tab first.");
+                if (window.showToast) window.showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
                 return;
             }
 
@@ -711,7 +791,7 @@ window.addEventListener('popstate', (e) => {
             targetDraftId = targetDraftId || (draft ? draft.draftId : "");
 
             if (!targetUser || targetUser === "Manual" || !targetDraftId) {
-                window.alert("Please enter your Sleeper Username and Draft ID on the Setup tab first.");
+                if (window.showToast) window.showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
                 document.querySelectorAll('.sync-toggle').forEach(el => el.checked = false);
                 return;
             }
@@ -892,7 +972,7 @@ if (fileInput) {
         
         if (ext === 'csv') {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
-        } else if (ext === 'xlsx' || ext === 'xls' || ext === 'numbers') {
+        } else if (ext === 'xlsx' || ext === 'xls') {
             
             // Check if SheetJS is already loaded. If not, fetch it on the fly.
             if (typeof XLSX === 'undefined') {
@@ -909,8 +989,13 @@ if (fileInput) {
                 parseExcel(file);
             }
             
+        } else if (ext === 'numbers') {
+            // Apple Numbers' file format isn't a spreadsheet format our parser (SheetJS) can
+            // read -- it's a proprietary zip/binary format, not CSV/XLSX under the hood.
+            // Point to Numbers' own CSV export rather than silently failing on a fake attempt.
+            if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
         } else {
-            window.alert("Please upload a .csv, .xlsx, .xls, or .numbers file");
+            if (window.showToast) window.showToast("Please upload a .csv, .xlsx, or .xls file", { isError: true });
         }
     });
 }
@@ -1066,7 +1151,7 @@ function parseExcel(file) {
         } else {
             if (metaEl) metaEl.style.display = 'none';
             if (btn) flashButton(btn, "Error Parsing Data", true, originalBtnText);
-            window.alert("Error: Could not detect player names. Please check your CSV format.");
+            if (window.showToast) window.showToast("Error: Could not detect player names. Please check your CSV format.", { isError: true });
         }
     }
 
@@ -1075,7 +1160,7 @@ function parseExcel(file) {
         const formatSelect = document.getElementById('adpFormatSelect');
         if (!formatSelect) return;
         if (!formatSelect.value.startsWith('leaguelogs')) {
-            window.alert("Quick-Start auto-generation is currently only supported for LeagueLogs formats. Please select a LeagueLogs option from the dropdown.");
+            if (window.showToast) window.showToast("Quick-Start auto-generation is currently only supported for LeagueLogs formats. Please select a LeagueLogs option from the dropdown.", { isError: true });
             return;
         }
         const profileKey = formatSelect.value.split('|')[1];
@@ -1167,14 +1252,14 @@ function parseExcel(file) {
             console.error(err);
             flashButton(btn, "Fetch Error", true, originalText);
             let adBlockerTip = err.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
-            window.alert(`Failed to load Quick-Start.\n\n${err.message}${adBlockerTip}`);
+            if (window.showToast) window.showToast(`Failed to load Quick-Start.\n\n${err.message}${adBlockerTip}`, { isError: true });
         }
     };
 
     window.fetchLeagueLogsADP = async function(btn) {
     if (State.players.length === 0) {
         flashButton(btn, "Load Rankings First", true);
-        window.alert("You must load a set of player rankings before fetching Market Value.");
+        if (window.showToast) window.showToast("You must load a set of player rankings before fetching Market Value.", { isError: true });
         return;
     }
 
@@ -1242,9 +1327,30 @@ function parseExcel(file) {
             console.error(err);
             flashButton(btn, "Fetch Error", true, originalText);
             let adBlockerTip = err.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
-            window.alert(`Failed to fetch live Market Value.\n\n${err.message}${adBlockerTip}`);
+            if (window.showToast) window.showToast(`Failed to fetch live Market Value.\n\n${err.message}${adBlockerTip}`, { isError: true });
         }
 };
+
+    // Splits one pasted row into fields, trying delimiters in order of how unlikely they are
+    // to appear inside a player's name (tab/pipe/semicolon first, comma last, then falling back
+    // to runs of 2+ spaces for plain-text-aligned data e.g. copied out of a PDF). Quoted fields
+    // (e.g. "Smith, Jr., John",5) are respected so an embedded comma doesn't split a name apart.
+    function splitAdpRow(row) {
+        if (row.includes('"')) {
+            let fields = [];
+            let re = /"([^"]*)"|([^,\t|;]+)/g, m;
+            while ((m = re.exec(row)) !== null) {
+                let val = (m[1] !== undefined ? m[1] : m[2]).trim();
+                if (val !== '') fields.push(val);
+            }
+            if (fields.length >= 2) return fields;
+        }
+        if (row.includes('\t')) return row.split('\t');
+        if (row.includes('|')) return row.split('|');
+        if (row.includes(';')) return row.split(';');
+        if (row.includes(',')) return row.split(',');
+        return row.split(/\s{2,}/);
+    }
 
     window.processManualADP = function(btn) {
         const text = document.getElementById('adpPasteArea')?.value;
@@ -1255,15 +1361,30 @@ function parseExcel(file) {
 
         let matchedCount = 0;
         text.split('\n').forEach(row => {
-            let parts = row.split(/\t|,/); 
-            if (parts.length >= 2) {
-                let pName = parts[0];
-                let newAdp = parts[parts.length - 1].trim(); 
-                if (pName && newAdp && !isNaN(parseFloat(newAdp))) {
-                    let matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, pName) : p.name.toLowerCase() === pName.toLowerCase());
-                    if (matchedPlayer) { matchedPlayer.adp = parseFloat(newAdp).toFixed(1); matchedCount++; }
-                }
+            row = row.trim();
+            if (!row) return;
+
+            let parts = splitAdpRow(row).map(p => p.trim()).filter(p => p !== '');
+            if (parts.length < 2) return;
+
+            // The rank/ADP number can be the first OR last column -- detect which side is
+            // actually numeric rather than assuming a fixed order. Rows where both or neither
+            // side is numeric (a two-number row, a header row, name+position with no rank) are
+            // ambiguous and skipped rather than guessed at.
+            let first = parts[0];
+            let last = parts[parts.length - 1];
+            let pName, newAdp;
+
+            if (!isNaN(parseFloat(last)) && isNaN(parseFloat(first))) {
+                pName = first; newAdp = last;
+            } else if (!isNaN(parseFloat(first)) && isNaN(parseFloat(last))) {
+                pName = last; newAdp = first;
+            } else {
+                return;
             }
+
+            let matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, pName) : p.name.toLowerCase() === pName.toLowerCase());
+            if (matchedPlayer) { matchedPlayer.adp = parseFloat(newAdp).toFixed(1); matchedCount++; }
         });
 
         if (matchedCount > 0) {
@@ -1514,6 +1635,65 @@ function parseExcel(file) {
         return rosterSlotsHTML;
     }
 
+    // --- SEND ROSTER TO LINEUP STRATEGIST ---
+    // MDS (mydraftstrategist.com) and MLS (mydraftstrategist.com/lineup/) are same-origin, so
+    // they already share localStorage directly -- no URL params or backend needed. This writes
+    // the drafted roster to a shared key that MLS's Setup tab checks for on load and offers to
+    // import as a new league. See mls.js's checkForDraftStrategistHandoff().
+    window.sendRosterToLineupStrategist = function() {
+        const draft = getActiveDraft();
+        if (!draft || !draft.myTeam || draft.myTeam.length === 0) {
+            if (window.showToast) window.showToast("Draft a roster first before sending it to Lineup Strategist.");
+            return;
+        }
+
+        const myPlayers = draft.myTeam.map(id => State.players.find(p => p.id === id)).filter(Boolean);
+        const players = myPlayers.map(p => ({ name: p.name, pos: p.posGroup, team: p.team || "FA" }));
+
+        const limits = draft.limits || {};
+        // MLS doesn't have a WR/TE-only flex slot type yet -- folding W/T into FLEX keeps the
+        // total roster-spot count correct, though MLS's optimizer will (for now) also consider
+        // RB eligible there, unlike the stricter W/T rule this count came from.
+        const reqs = {
+            QB: limits.QB || 0,
+            RB: limits.RB || 0,
+            WR: limits.WR || 0,
+            TE: limits.TE || 0,
+            FLEX: (limits.FLEX || 0) + (limits.WT || 0),
+            SFLEX: limits.SFLEX || 0
+        };
+
+        const payload = {
+            sourceLeagueName: draft.name || "Drafted Team",
+            players: players,
+            reqs: reqs,
+            timestamp: Date.now()
+        };
+
+        localStorage.setItem('mds_handoff_roster', JSON.stringify(payload));
+
+        if (window.showToast) window.showToast(`Sending ${players.length} players to Lineup Strategist...`);
+        setTimeout(() => { window.location.href = './lineup/'; }, 700);
+    };
+
+    // Resolves the overall pick number a player was actually drafted at. Sleeper syncs have
+    // precise data via rawDraftPicks; manual drafts don't, but draft.draftedPlayers is pushed to
+    // in real draft order by draftPlayer(), so its index is the correct fallback -- NOT the
+    // three different broken placeholders (an index into myTeam only, the player's own internal
+    // id, or a hardcoded 50) that used to be scattered across the functions below, none of which
+    // reflected a real pick number for a manual draft.
+    function getPickNumberForPlayer(draft, player) {
+        if (draft.rawDraftPicks && draft.rawDraftPicks.length > 0) {
+            let match = draft.rawDraftPicks.find(r => r.player_id === player.sleeperId);
+            if (match) return match.pick_no;
+        }
+        if (draft.draftedPlayers) {
+            let idx = draft.draftedPlayers.indexOf(player.id);
+            if (idx !== -1) return idx + 1;
+        }
+        return player.rank; // last-resort neutral fallback: treat as "drafted right at their rank"
+    }
+
     // --- DRAFT RECAP & ANALYSIS RENDERER ---
     function renderDraftRecap() {
         const recapCard = document.getElementById('draftRecapCard');
@@ -1541,11 +1721,7 @@ function parseExcel(file) {
         let minDiff = 999;
 
         myPlayers.forEach((p, index) => {
-            let pickNum = index + 1;
-            if (draft.rawDraftPicks && draft.rawDraftPicks.length > 0) {
-                let match = draft.rawDraftPicks.find(r => r.player_id === p.sleeperId);
-                if (match) pickNum = match.pick_no;
-            }
+            let pickNum = getPickNumberForPlayer(draft, p);
 
             let valueDiff = pickNum - p.rank;
             if (valueDiff > maxDiff) { maxDiff = valueDiff; bestSteal = { player: p, diff: valueDiff }; }
@@ -1555,19 +1731,14 @@ function parseExcel(file) {
         // Archetype Detection
         let firstPosRound = { QB: 99, RB: 99, WR: 99, TE: 99 };
         myPlayers.forEach(p => {
-            let pickNum = p.id;
-            if (draft.rawDraftPicks) {
-                let m = draft.rawDraftPicks.find(r => r.player_id === p.sleeperId);
-                if (m) pickNum = m.pick_no;
-            }
+            let pickNum = getPickNumberForPlayer(draft, p);
             let rd = Math.ceil(pickNum / teams);
             if (rd < firstPosRound[p.posGroup]) firstPosRound[p.posGroup] = rd;
         });
 
         let archetype = "Balanced Build";
         let rbCountRds12 = myPlayers.filter(p => {
-            let pNum = p.id;
-            if (draft.rawDraftPicks) { let m = draft.rawDraftPicks.find(r => r.player_id === p.sleeperId); if (m) pNum = m.pick_no; }
+            let pNum = getPickNumberForPlayer(draft, p);
             return p.posGroup === 'RB' && Math.ceil(pNum / teams) <= 2;
         }).length;
 
@@ -1603,11 +1774,7 @@ function parseExcel(file) {
             }
 
             let efficiencies = posPlayers.map(sp => {
-                let pPick = 50; 
-                if (draft.rawDraftPicks) { 
-                    let m = draft.rawDraftPicks.find(r => r.player_id === sp.sleeperId); 
-                    if (m) pPick = m.pick_no; 
-                }
+                let pPick = getPickNumberForPlayer(draft, sp);
                 return pPick - sp.rank; 
             });
 
@@ -1675,19 +1842,11 @@ function parseExcel(file) {
             if (posPlayers.length === 0) return;
 
             posPlayers.sort((a, b) => {
-                let pickA = 0, pickB = 0;
-                if (draft.rawDraftPicks) {
-                    let mA = draft.rawDraftPicks.find(r => r.player_id === a.sleeperId);
-                    let mB = draft.rawDraftPicks.find(r => r.player_id === b.sleeperId);
-                    if (mA) pickA = mA.pick_no;
-                    if (mB) pickB = mB.pick_no;
-                }
-                return pickA - pickB;
+                return getPickNumberForPlayer(draft, a) - getPickNumberForPlayer(draft, b);
             });
 
             posPlayers.forEach(sp => {
-                let pPick = 0; 
-                if (draft.rawDraftPicks) { let m = draft.rawDraftPicks.find(r => r.player_id === sp.sleeperId); if (m) pPick = m.pick_no; }
+                let pPick = getPickNumberForPlayer(draft, sp);
                 let diff = pPick - sp.rank;
                 let valColor = diff >= 0 ? "var(--primary-green)" : "var(--avoid-border)";
                 let sign = diff >= 0 ? "+" : "";
@@ -1726,7 +1885,7 @@ function parseExcel(file) {
     // --- TEAM EXPORT LOGIC ---
     window.exportTeam = async function() {
         if (typeof html2canvas === 'undefined') { 
-            window.alert("Screenshot library loading. Please try again in a moment."); 
+            if (window.showToast) window.showToast("Screenshot library loading. Please try again in a moment.", { isError: true });
             return; 
         }
         
@@ -1782,14 +1941,36 @@ function parseExcel(file) {
             link.click();
         } catch (err) {
             console.error("Export failed:", err); 
-            window.alert("Export failed. Please try again.");
+            if (window.showToast) window.showToast("Export failed. Please try again.", { isError: true });
         } finally {
             buttons.forEach(b => b.style.display = '');
             if (exportBtn) exportBtn.innerText = origText;
         }
     };
 
-    // Pure function: same pattern as buildPlayerCardHTML above, for the Queue tab's cards.
+    // Reads the T-Score cache the T-Score page's "Refresh from Google Sheets" button writes to
+    // localStorage (same origin as this page, so it's already visible here with no extra work).
+    // Falls back to the bundled tscore_data.js if no cache exists yet, or if it fails to parse.
+    // Memoized per page load: buildPlayerCardHTML() below calls this once per player per render
+    // (potentially hundreds of times), so re-reading and re-parsing localStorage on every call
+    // would be wasteful -- if the T-Score page writes a fresher cache mid-session, MDS picks it
+    // up on its next full page load, not instantly without a reload.
+    let cachedEffectiveTScoreData = null;
+    function getEffectiveTScoreData() {
+        if (cachedEffectiveTScoreData !== null) return cachedEffectiveTScoreData;
+        try {
+            const raw = localStorage.getItem('mds_tscore_cache');
+            if (raw) {
+                cachedEffectiveTScoreData = JSON.parse(raw);
+                return cachedEffectiveTScoreData;
+            }
+        } catch (e) {
+            console.error('Could not parse cached T-Score data, falling back to bundled tscore_data.js:', e);
+        }
+        cachedEffectiveTScoreData = (typeof tScoreData !== 'undefined') ? tScoreData : {};
+        return cachedEffectiveTScoreData;
+    }
+
     // Pure function: player object + current draft context in, one player-card's HTML string out.
     // No side effects, no DOM access -- extracted from what used to be inline in renderBoard()'s
     // main forEach loop so this ~130-line template is readable and testable on its own.
@@ -1805,10 +1986,10 @@ function parseExcel(file) {
             valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
         }
         
-        if (['WR', 'RB'].includes(p.posGroup) && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
+        if (['WR', 'RB'].includes(p.posGroup) && localStorage.getItem('ds_tscore') === 'true') {
             const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
             const normName = normFunc(p.name); 
-            const tInfo = tScoreData[normName];
+            const tInfo = getEffectiveTScoreData()[normName];
             
             if (tInfo) {
                 let tsColor = "#9ca3af";
@@ -1962,6 +2143,18 @@ function parseExcel(file) {
             </div>`;
     }
 
+    // Queue collapse state lives here, outside renderBoard(), because renderBoard() rebuilds
+    // the queue's HTML from scratch via innerHTML on every call (every pick, every queue
+    // add/remove) -- a class toggled directly on the old DOM node wouldn't survive that. This
+    // is read by renderBoard() each time it runs so the user's choice persists across re-renders
+    // for the rest of the session (not saved to localStorage -- matches how the MLS rankings
+    // cards' collapse state also doesn't persist across a page reload).
+    let isQueueCollapsed = false;
+    window.toggleQueueCollapse = function() {
+        isQueueCollapsed = !isQueueCollapsed;
+        renderBoard();
+    };
+
     function renderBoard() {
         const poolEl = document.getElementById('playerPool');
         const myTeamEl = document.getElementById('myTeamList');
@@ -2066,18 +2259,24 @@ function parseExcel(file) {
             let activeQueue = draft.queue.filter(id => !draftedPlayers.includes(id));
 
             if (activeQueue.length > 0) {
-                newQueueHTML += `<div style="font-weight: 700; color: #f59e0b; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</div>`;
-                newQueueHTML += `<div class="player-pool-container" style="margin-bottom: 1.5rem; border-bottom: 1px dashed var(--border); padding-bottom: 1.5rem;">`;
+                let queueExpandedClass = isQueueCollapsed ? "" : " is-expanded";
+                newQueueHTML += `<div class="queue-header${queueExpandedClass}" onclick="toggleQueueCollapse()" role="button" tabindex="0" aria-expanded="${isQueueCollapsed ? 'false' : 'true'}" aria-label="Toggle Queue" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQueueCollapse();}">                    <span class="queue-header-title"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</span>
+                    <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>`;
 
-                activeQueue.forEach((qId, idx) => {
-                    let p = State.players.find(x => x.id === qId);
-                    if (p) {
-                        let isFirst = idx === 0;
-                        let isLast = idx === activeQueue.length - 1;
-                        newQueueHTML += buildQueueCardHTML(p, idx, isFirst, isLast);
-                    }
-                });
-                newQueueHTML += `</div>`;
+                if (!isQueueCollapsed) {
+                    newQueueHTML += `<div class="player-pool-container" style="margin-bottom: 1.5rem; border-bottom: 1px dashed var(--border); padding-bottom: 1.5rem;">`;
+
+                    activeQueue.forEach((qId, idx) => {
+                        let p = State.players.find(x => x.id === qId);
+                        if (p) {
+                            let isFirst = idx === 0;
+                            let isLast = idx === activeQueue.length - 1;
+                            newQueueHTML += buildQueueCardHTML(p, idx, isFirst, isLast);
+                        }
+                    });
+                    newQueueHTML += `</div>`;
+                }
             }
         }
         if (queueEl) queueEl.innerHTML = newQueueHTML;
