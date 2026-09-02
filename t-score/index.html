@@ -294,6 +294,8 @@
     "articleSection": "Fantasy Football Analytics"
     }
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
+    <script src="../js/utils.js" defer></script>
 </head>
 <body>
 
@@ -357,6 +359,14 @@
     <button class="tscore-nav-btn" onclick="switchTab('avoidsTab', this)">Avoids at ADP</button>
     <button class="tscore-nav-btn" onclick="switchTab('sleepersTab', this)">Sleepers at ADP</button>
     <button class="tscore-nav-btn" onclick="switchTab('tab-2024', this)">2024 WR Analysis</button>
+</div>
+
+<div style="max-width: 1100px; margin: 0.75rem auto 0; padding: 0 1rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
+    <span id="tscoreFreshness" style="font-size: 0.8rem; color: var(--text-muted, #9ca3af);"></span>
+    <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="refreshTScoreData(this)" title="Pulls the latest data from the WR and RB Google Sheets and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
+        Sync with most recent data
+    </button>
 </div>
 
 <main class="container" style="padding-top: 1rem;">
@@ -640,7 +650,7 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="top50WrBody">
                         <tr><td>1</td><td><strong>Puka Nacua</strong></td><td><span class="label-elite">Elite</span></td><td>96.44</td><td>107.2</td><td>5.00</td><td>16</td></tr>
                         <tr><td>2</td><td><strong>Jaxon Smith-Njigba</strong></td><td><span class="label-elite">Elite</span></td><td>94.51</td><td>105.5</td><td>4.65</td><td>17</td></tr>
                         <tr><td>3</td><td><strong>Ja'Marr Chase</strong></td><td><span class="label-elite">Elite</span></td><td>87.21</td><td>88.3</td><td>4.56</td><td>21</td></tr>
@@ -742,7 +752,7 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="top50RbBody">
                         <tr><td>1</td><td><strong>Christian McCaffrey</strong></td><td><span class="label-elite">Elite</span></td><td>90.94</td><td>125.1</td><td>11.77</td></tr>
                         <tr><td>2</td><td><strong>Bijan Robinson</strong></td><td><span class="label-elite">Elite</span></td><td>87.38</td><td>135.1</td><td>7.94</td></tr>
                         <tr><td>3</td><td><strong>Jonathan Taylor</strong></td><td><span class="label-elite">Elite</span></td><td>77.60</td><td>115.4</td><td>7.36</td></tr>
@@ -859,7 +869,7 @@
         </th>
     </tr>
 </thead>
-                    <tbody>
+                    <tbody id="valuesWrBody">
                         <tr><td>5</td><td><strong>George Pickens</strong></td><td><span class="label-elite">Elite</span></td><td>84.14</td><td>69.39</td><td><span class="val-badge val-fire">+14.74</span></td><td>27.0</td><td>84.1</td><td>4.29</td><td>21</td></tr>
                         <tr><td>11</td><td><strong>Davante Adams</strong></td><td><span class="label-high">High-End Starter</span></td><td>71.36</td><td>62.59</td><td><span class="val-badge val-fire">+8.78</span></td><td>51.6</td><td>56.4</td><td>3.64</td><td>31</td></tr>
                         <tr><td>15</td><td><strong>Courtland Sutton</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.56</td><td>57.23</td><td><span class="val-badge val-fire">+9.33</span></td><td>86.0</td><td>59.8</td><td>3.06</td><td>17</td></tr>
@@ -912,7 +922,7 @@
         </th>
     </tr>
 </thead>
-                    <tbody>
+                    <tbody id="valuesRbBody">
                         <tr><td>1</td><td><strong>Christian McCaffrey</strong></td><td><span class="label-elite">Elite</span></td><td>90.94</td><td>73.60</td><td><span class="val-badge val-fire">+17.34</span></td><td>5.8</td><td>125.1</td><td>11.77</td></tr>
                         <tr><td>4</td><td><strong>De'Von Achane</strong></td><td><span class="label-high">High-End Starter</span></td><td>76.88</td><td>65.98</td><td><span class="val-badge val-fire">+10.90</span></td><td>13.4</td><td>114.9</td><td>7.12</td></tr>
                         <tr><td>12</td><td><strong>D'Andre Swift</strong></td><td><span class="label-strong">Strong Starter</span></td><td>61.20</td><td>53.08</td><td><span class="val-badge val-fire">+8.12</span></td><td>55.3</td><td>86.6</td><td>5.50</td></tr>
@@ -984,7 +994,7 @@
         </th>
     </tr>
 </thead>
-                    <tbody>
+                    <tbody id="sleepersWrBody">
                         <tr><td>20</td><td><strong>Stefon Diggs</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.77</td><td>53.09</td><td><span class="val-badge val-fire">+11.68</span></td><td>127.5</td><td>59.6</td><td>3.00</td><td>12</td></tr>
                         <tr><td>21</td><td><strong>Wan'Dale Robinson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>64.01</td><td>54.05</td><td><span class="val-badge val-fire">+9.96</span></td><td>116.4</td><td>63.4</td><td>2.44</td><td>11</td></tr>
                         <tr><td>27</td><td><strong>Ricky Pearsall</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>62.47</td><td>49.46</td><td><span class="val-badge val-fire">+13.01</span></td><td>180.3</td><td>58.7</td><td>3.11</td><td>4</td></tr>
@@ -1037,7 +1047,7 @@
         </th>
     </tr>
 </thead>
-                    <tbody>
+                    <tbody id="sleepersRbBody">
                         <tr><td>48</td><td><strong>Bam Knight</strong></td><td><span class="label-depth">Depth Player</span></td><td>35.73</td><td>24.81</td><td><span class="val-badge val-fire">+10.92</span></td><td>1236.5</td><td>35.7</td><td>3.91</td></tr>
                     </tbody>
                 </table>
@@ -1105,7 +1115,7 @@
         </th>
     </tr>
 </thead>
-                    <tbody>
+                    <tbody id="avoidsWrBody">
                         <tr><td>16</td><td><strong>Justin Jefferson</strong></td><td><span class="label-strong">Strong Starter</span></td><td>66.19</td><td>77.68</td><td><span class="val-badge val-warn">-11.48</span></td><td>12.3</td><td>61.6</td><td>2.76</td><td>17</td></tr>
                         <tr><td>36</td><td><strong>Ladd McConkey</strong></td><td><span class="label-quality">Quality Contributor</span></td><td>57.23</td><td>64.35</td><td><span class="val-badge val-warn">-7.12</span></td><td>43.7</td><td>49.3</td><td>2.19</td><td>14</td></tr>
                         <tr><td>48</td><td><strong>D.J. Moore</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>50.77</td><td>61.44</td><td><span class="val-badge val-warn">-10.67</span></td><td>57.6</td><td>40.1</td><td>1.88</td><td>11</td></tr>
@@ -1159,7 +1169,7 @@
         </th>
     </tr>
 </thead>
-                    <tbody>
+                    <tbody id="avoidsRbBody">
                         <tr><td>23</td><td><strong>Kenneth Walker</strong></td><td><span class="label-boom">Boom/Bust</span></td><td>53.79</td><td>63.06</td><td><span class="val-badge val-warn">-9.27</span></td><td>18.5</td><td>77.0</td><td>3.94</td></tr>
                         <tr><td>37</td><td><strong>David Montgomery</strong></td><td><span class="label-depth">Depth Player</span></td><td>42.91</td><td>52.89</td><td><span class="val-badge val-warn">-9.99</span></td><td>56.5</td><td>53.4</td><td>3.65</td></tr>
                         <tr><td>46</td><td><strong>Blake Corum</strong></td><td><span class="label-depth">Depth Player</span></td><td>37.00</td><td>46.43</td><td><span class="val-badge val-warn">-9.43</span></td><td>114.8</td><td>46.02</td><td>2.35</td></tr>
@@ -1175,6 +1185,209 @@
 </main>
 
 <script>
+// --- T-SCORE SHEET AUTO-REFRESH ---
+// Pulls the WR/RB Google Sheets (published to web as CSV, so a plain fetch() works with no
+// auth) and refreshes every data table on this page, plus caches a copy in localStorage that
+// mds.js checks before falling back to the bundled tscore_data.js -- see that file's
+// buildPlayerCardHTML() for the read side of this. This page and MDS share an origin
+// (mydraftstrategist.com), so localStorage is already visible to both without any extra work.
+const TSCORE_SHEET_URLS = {
+    wr: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9ckcq-TOC3soaHNBwbZEGBzd8goU4j10x8UJ4qjIH79_f_oSsf7rZUghstUQ24DYbBTvXr5hAConB/pub?output=csv',
+    rb: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQD7lelXI38YKAJhzszarIhjKlbjG5pYv5o2KTc79k1ibWUU1HhO4QcDOMbmnQnXt-O6tqlZSr6oC5s/pub?output=csv'
+};
+
+const TSCORE_LABEL_TO_CLASS = {
+    'Elite': 'label-elite',
+    'High-End Starter': 'label-high',
+    'Strong Starter': 'label-strong',
+    'Quality Contributor': 'label-quality',
+    'Boom/Bust': 'label-boom',
+    'Depth Player': 'label-depth'
+};
+
+// Stat columns shown alongside score/label differ by position: WR gets 3, RB gets 2. Matched
+// by header NAME, not fixed column position, so this survives a column getting reordered or
+// a new one inserted in the sheet later.
+const TSCORE_STAT_COLUMNS = {
+    wr: [
+        { header: 'Yds/Gm', key: 'stat1' },
+        { header: '1st D/Gm', key: 'stat2' },
+        { header: 'RZ Tgts', key: 'stat3' }
+    ],
+    rb: [
+        { header: 'Scrimmage Yds/Gm', key: 'stat1' },
+        { header: 'HVT/Gm', key: 'stat2' }
+    ]
+};
+
+function tscoreNormalize(str) {
+    return typeof normalizeName === 'function' ? normalizeName(str) : String(str).toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function tscoreEscapeHtml(str) {
+    return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Fetches and parses one position's sheet into structured player rows.
+async function fetchTScoreSheet(pos) {
+    const res = await fetch(TSCORE_SHEET_URLS[pos]);
+    if (!res.ok) throw new Error(`Could not fetch ${pos.toUpperCase()} sheet (HTTP ${res.status})`);
+    const csvText = await res.text();
+
+    const parsed = Papa.parse(csvText.trim(), { skipEmptyLines: true });
+    const rows = parsed.data;
+    if (!rows || rows.length < 2) throw new Error(`${pos.toUpperCase()} sheet returned no data`);
+
+    const header = rows[0].map(h => (h || '').trim());
+    const col = (name) => header.indexOf(name);
+
+    const rankCol = col('Rank');
+    const playerCol = col('Player');
+    const scoreCol = col('T-Score (A)') !== -1 ? col('T-Score (A)') : col('T-Score');
+    const labelCol = col('Label');
+    const adpCol = col('ADP');
+    const expCol = col('Exp T-Score');
+    const diffCol = col('T-Score Diff');
+    const classCol = col('Classification');
+    const statCols = TSCORE_STAT_COLUMNS[pos].map(sc => ({ key: sc.key, idx: col(sc.header) }));
+
+    if ([rankCol, playerCol, scoreCol, labelCol, classCol].includes(-1)) {
+        throw new Error(`${pos.toUpperCase()} sheet is missing an expected column (Rank / Player / T-Score / Label / Classification)`);
+    }
+
+    const players = [];
+    for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const name = (r[playerCol] || '').trim();
+        const score = parseFloat(r[scoreCol]);
+        if (!name || isNaN(score)) continue; // skips blank rows and any non-data rows cleanly
+
+        const label = (r[labelCol] || '').trim();
+        const player = {
+            rank: parseInt(r[rankCol], 10) || 0,
+            name: name,
+            cleanName: tscoreNormalize(name),
+            score: score,
+            label: label,
+            cssClass: TSCORE_LABEL_TO_CLASS[label] || 'label-depth',
+            adp: adpCol !== -1 ? r[adpCol] : '',
+            expScore: expCol !== -1 ? r[expCol] : '',
+            diff: diffCol !== -1 ? r[diffCol] : '',
+            classification: (r[classCol] || '').trim()
+        };
+        statCols.forEach(sc => { player[sc.key] = sc.idx !== -1 ? (r[sc.idx] || '') : ''; });
+        players.push(player);
+    }
+    return players;
+}
+
+function tscoreTop50RowHTML(p, pos) {
+    const statCells = TSCORE_STAT_COLUMNS[pos].map(sc => `<td>${tscoreEscapeHtml(p[sc.key])}</td>`).join('');
+    return `<tr><td>${p.rank}</td><td><strong>${tscoreEscapeHtml(p.name)}</strong></td><td><span class="${p.cssClass}">${tscoreEscapeHtml(p.label)}</span></td><td>${p.score.toFixed(2)}</td>${statCells}</tr>`;
+}
+
+function tscoreFilteredRowHTML(p, pos) {
+    const diffNum = parseFloat(p.diff);
+    const hasDiff = !isNaN(diffNum);
+    const diffClass = hasDiff && diffNum >= 0 ? 'val-fire' : 'val-warn';
+    const diffText = hasDiff ? `${diffNum >= 0 ? '+' : ''}${diffNum.toFixed(2)}` : tscoreEscapeHtml(p.diff);
+    const statCells = TSCORE_STAT_COLUMNS[pos].map(sc => `<td>${tscoreEscapeHtml(p[sc.key])}</td>`).join('');
+    return `<tr><td>${p.rank}</td><td><strong>${tscoreEscapeHtml(p.name)}</strong></td><td><span class="${p.cssClass}">${tscoreEscapeHtml(p.label)}</span></td><td>${p.score.toFixed(2)}</td><td>${tscoreEscapeHtml(p.expScore)}</td><td><span class="val-badge ${diffClass}">${diffText}</span></td><td>${tscoreEscapeHtml(p.adp)}</td>${statCells}</tr>`;
+}
+
+// Renders all 8 tables from already-fetched player arrays. Top-50 tables are capped at 50
+// (by rank) per an explicit decision to keep those specific tables focused; Values/Sleepers/
+// Avoids show every player matching that classification, sorted by rank.
+function renderTScoreTables(wrPlayers, rbPlayers) {
+    const byPos = { wr: wrPlayers, rb: rbPlayers };
+
+    ['wr', 'rb'].forEach(pos => {
+        const players = [...byPos[pos]].sort((a, b) => a.rank - b.rank);
+        const idPrefix = pos === 'wr' ? 'Wr' : 'Rb';
+
+        const top50 = players.slice(0, 50);
+        const top50Body = document.getElementById(`top50${idPrefix}Body`);
+        if (top50Body) top50Body.innerHTML = top50.map(p => tscoreTop50RowHTML(p, pos)).join('');
+
+        [['values', 'Value'], ['sleepers', 'Sleeper'], ['avoids', 'Avoid']].forEach(([tableName, classification]) => {
+            const filtered = players.filter(p => p.classification === classification);
+            const body = document.getElementById(`${tableName}${idPrefix}Body`);
+            if (body) body.innerHTML = filtered.map(p => tscoreFilteredRowHTML(p, pos)).join('');
+        });
+    });
+}
+
+function updateTscoreFreshnessLabel(timestamp) {
+    const el = document.getElementById('tscoreFreshness');
+    if (!el) return;
+    if (!timestamp) { el.textContent = ''; return; }
+    const days = Math.floor((Date.now() - Number(timestamp)) / (1000 * 60 * 60 * 24));
+    let label = days <= 0 ? 'Updated today' : days === 1 ? 'Updated yesterday' : `Updated ${days} days ago`;
+    el.textContent = `Sheet data: ${label}`;
+}
+
+window.refreshTScoreData = async function(btn) {
+    const origText = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = 'Refreshing...'; }
+
+    try {
+        const [wrPlayers, rbPlayers] = await Promise.all([fetchTScoreSheet('wr'), fetchTScoreSheet('rb')]);
+
+        renderTScoreTables(wrPlayers, rbPlayers);
+
+        // Build the same {cleanName: {s, l, c}} shape tscore_data.js already uses, so
+        // mds.js's lookup logic doesn't need to know or care whether it's reading the
+        // bundled static file or this cached override.
+        const combined = {};
+        [...wrPlayers, ...rbPlayers].forEach(p => {
+            combined[p.cleanName] = { s: p.score, l: p.label, c: p.cssClass };
+        });
+
+        const timestamp = Date.now();
+        localStorage.setItem('mds_tscore_cache', JSON.stringify(combined));
+        localStorage.setItem('mds_tscore_cache_updated', String(timestamp));
+        // Separate from the compact MDS-format cache above: this keeps the FULL per-player
+        // data (ADP, stat columns, etc.) this page's own tables need, so a reload re-renders
+        // the actual tables from cache too, instead of the freshness label saying "today"
+        // while the visible tables still show whatever shipped in the static HTML.
+        localStorage.setItem('tscore_page_cache', JSON.stringify({ wr: wrPlayers, rb: rbPlayers }));
+        updateTscoreFreshnessLabel(timestamp);
+
+        if (window.showToast) window.showToast(`T-Score data refreshed: ${wrPlayers.length} WRs, ${rbPlayers.length} RBs.`);
+
+    } catch (err) {
+        console.error(err);
+        if (window.showToast) window.showToast(`Could not refresh T-Score data:\n${err.message}`, { isError: true });
+        else window.alert(`Could not refresh T-Score data: ${err.message}`);
+    } finally {
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = origText; }
+    }
+};
+
+// On page open: if a previous refresh left cached data, render from that instead of the
+// static (potentially stale) HTML that ships with the page. If there's no cache yet, the
+// static tables stay exactly as written until the first refresh. Waits for DOMContentLoaded
+// specifically because Papa/normalizeName load via <script defer> in <head>, which the spec
+// guarantees finishes before DOMContentLoaded fires -- this inline script itself runs earlier,
+// synchronously, so it can define these functions but can't safely CALL into Papa/utils.js yet.
+document.addEventListener('DOMContentLoaded', () => {
+    const cachedUpdatedAt = localStorage.getItem('mds_tscore_cache_updated');
+    if (cachedUpdatedAt) updateTscoreFreshnessLabel(cachedUpdatedAt);
+
+    const pageCacheRaw = localStorage.getItem('tscore_page_cache');
+    if (pageCacheRaw) {
+        try {
+            const pageCache = JSON.parse(pageCacheRaw);
+            if (pageCache && Array.isArray(pageCache.wr) && Array.isArray(pageCache.rb)) {
+                renderTScoreTables(pageCache.wr, pageCache.rb);
+            }
+        } catch (e) {
+            console.error('Could not restore cached T-Score table data:', e);
+        }
+    }
+});
+
+
 function switchTab(tabId, skipHistory) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tscore-nav-btn').forEach(el => el.classList.remove('active'));

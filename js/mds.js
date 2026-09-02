@@ -1948,7 +1948,29 @@ function parseExcel(file) {
         }
     };
 
-    // Pure function: same pattern as buildPlayerCardHTML above, for the Queue tab's cards.
+    // Reads the T-Score cache the T-Score page's "Refresh from Google Sheets" button writes to
+    // localStorage (same origin as this page, so it's already visible here with no extra work).
+    // Falls back to the bundled tscore_data.js if no cache exists yet, or if it fails to parse.
+    // Memoized per page load: buildPlayerCardHTML() below calls this once per player per render
+    // (potentially hundreds of times), so re-reading and re-parsing localStorage on every call
+    // would be wasteful -- if the T-Score page writes a fresher cache mid-session, MDS picks it
+    // up on its next full page load, not instantly without a reload.
+    let cachedEffectiveTScoreData = null;
+    function getEffectiveTScoreData() {
+        if (cachedEffectiveTScoreData !== null) return cachedEffectiveTScoreData;
+        try {
+            const raw = localStorage.getItem('mds_tscore_cache');
+            if (raw) {
+                cachedEffectiveTScoreData = JSON.parse(raw);
+                return cachedEffectiveTScoreData;
+            }
+        } catch (e) {
+            console.error('Could not parse cached T-Score data, falling back to bundled tscore_data.js:', e);
+        }
+        cachedEffectiveTScoreData = (typeof tScoreData !== 'undefined') ? tScoreData : {};
+        return cachedEffectiveTScoreData;
+    }
+
     // Pure function: player object + current draft context in, one player-card's HTML string out.
     // No side effects, no DOM access -- extracted from what used to be inline in renderBoard()'s
     // main forEach loop so this ~130-line template is readable and testable on its own.
@@ -1964,10 +1986,10 @@ function parseExcel(file) {
             valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
         }
         
-        if (['WR', 'RB'].includes(p.posGroup) && localStorage.getItem('ds_tscore') === 'true' && typeof tScoreData !== 'undefined') {
+        if (['WR', 'RB'].includes(p.posGroup) && localStorage.getItem('ds_tscore') === 'true') {
             const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
             const normName = normFunc(p.name); 
-            const tInfo = tScoreData[normName];
+            const tInfo = getEffectiveTScoreData()[normName];
             
             if (tInfo) {
                 let tsColor = "#9ca3af";
