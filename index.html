@@ -219,7 +219,19 @@
         </button>
         
         <div class="divider-text">OR UPLOAD CUSTOM</div>
-        <input type="file" id="fileInput" class="form-input" accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls, .numbers" aria-label="Upload Custom Rankings">
+        
+        <div class="toggle-row" style="margin-bottom: 0.75rem; padding-bottom: 0; border: none;">
+            <div class="toggle-info">
+                <span class="toggle-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6;"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+                    Aggregate Rankings (50/50 Blend)
+                </span>
+                <span class="toggle-desc">Averages the incoming rankings with your currently loaded set.</span>
+            </div>
+            <input type="checkbox" id="aggregateToggle" class="toggle-switch" aria-label="Aggregate Rankings">
+        </div>
+
+        <input type="file" id="fileInput" class="form-input" accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls" aria-label="Upload Custom Rankings">
         
         <div class="divider-text">OR PASTE</div>
         <textarea id="csvPasteArea" class="form-input" rows="2" placeholder="Paste raw CSV text here..."></textarea>
