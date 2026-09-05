@@ -1785,7 +1785,9 @@ function parseExcel(file) {
             WR: limits.WR || 0,
             TE: limits.TE || 0,
             FLEX: (limits.FLEX || 0) + (limits.WT || 0),
-            SFLEX: limits.SFLEX || 0
+            SFLEX: limits.SFLEX || 0,
+            K: limits.K || 0,        // NEW
+            DEF: limits.DEF || 0
         };
 
         const payload = {
@@ -2099,6 +2101,23 @@ function parseExcel(file) {
         return cachedEffectiveTScoreData;
     }
 
+    // --- 5-COLOR AFFINITY SYSTEM ---
+    window.cycleAffinity = function(e, id) {
+        e.preventDefault(); // Stop native browser click-through
+        e.stopPropagation(); // Prevents the card's expand/collapse from triggering
+        let p = State.players.find(x => x.id === id);
+        if (p) {
+            // Cycle from 0 (Empty) up to 4 (Red), then back to 0
+            p.affinity = ((p.affinity || 0) + 1) % 5;
+            
+            // Save immediately to local storage
+            localStorage.setItem('ds_players', JSON.stringify(State.players));
+            
+            // Re-render to show the updated color
+            renderBoard();
+        }
+    };
+
     // Pure function: player object + current draft context in, one player-card's HTML string out.
     // No side effects, no DOM access -- extracted from what used to be inline in renderBoard()'s
     // main forEach loop so this ~130-line template is readable and testable on its own.
@@ -2176,13 +2195,22 @@ function parseExcel(file) {
                     <!-- BOTTOM ROW: Badges & Actions -->
                     <div class="card-bottom-row">
                         
-                        <!-- Bottom Left: Badges & Star -->
+                        <!-- Bottom Left: Badges, Star & Affinity -->
                         <div class="card-badges-row">
                             <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                             ${rookieBadge}
                             ${injuryBadge}
                             ${stackBadge}
-                            <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue">${queueStarIcon}</button>
+                            <div style="display: flex; align-items: center; gap: 2px;">
+                                <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue">${queueStarIcon}</button>
+                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
+                                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
+                                                 border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 opacity: ${p.affinity ? '1' : '0.4'}; transition: all 0.2s ease;">
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                         
                         <!-- Bottom Right: Draft Actions & Chevron -->
@@ -2253,12 +2281,21 @@ function parseExcel(file) {
                     <!-- BOTTOM ROW: Arrows, Badges, Star & Actions -->
                     <div class="card-bottom-row">
                         
-                        <!-- Left Side: Arrows, Badges & Star -->
+                        <!-- Left Side: Arrows, Badges, Star & Affinity -->
                         <div class="card-badges-row">
                             <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled' : ''}>▲</button>
                             <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled' : ''}>▼</button>
                             <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span>
-                            <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
+                            <div style="display: flex; align-items: center; gap: 2px;">
+                                <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
+                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
+                                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
+                                                 border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 opacity: ${p.affinity ? '1' : '0.4'}; transition: all 0.2s ease;">
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                         
                         <!-- Right Side: Draft Actions -->
