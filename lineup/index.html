@@ -590,7 +590,23 @@
         </header>
         
         <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
-        <button class="btn btn-primary" onclick="runScout('waiver')">Scan Waivers</button>
+        
+        <div class="input-group mt-3" style="margin-bottom: 0.75rem;">
+            <label for="waiverPosFilter">Auto-Find Target Position</label>
+            <select id="waiverPosFilter" class="form-input" aria-label="Filter waiver upgrades by position">
+                <option value="FLEX" selected>FLEX (RB/WR/TE) - Recommended</option>
+                <option value="ALL">All Positions</option>
+                <option value="QB">QB Only</option>
+                <option value="RB">RB Only</option>
+                <option value="WR">WR Only</option>
+                <option value="TE">TE Only</option>
+            </select>
+        </div>
+
+        <div class="button-row-dual">
+            <button class="btn btn-primary" onclick="autoFindWaiverUpgrades()">Auto-Find Upgrades</button>
+            <button class="btn btn-purple" onclick="runScout('waiver')">Scan Pasted List</button>
+        </div>
         
         <div id="waiverOutput" class="scout-output-container"></div>
     </section>

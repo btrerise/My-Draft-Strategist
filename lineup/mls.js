@@ -982,6 +982,176 @@ window.addEventListener('popstate', (e) => {
         outputEl.innerHTML = html;
     };
 
+    window.autoFindWaiverUpgrades = async function() {
+        const outputEl = document.getElementById('waiverOutput');
+        const posFilter = document.getElementById('waiverPosFilter') ? document.getElementById('waiverPosFilter').value : 'FLEX';
+        if (!outputEl) return;
+
+        let league = getActiveLeague();
+        if (!league || !league.globalRosterMap || !league.globalPosMap) {
+            outputEl.innerHTML = `<span class="mls-error-text">Please sync a Sleeper league on the Setup tab first to analyze waivers.</span>`;
+            return;
+        }
+
+        // Default to ROS rankings for waiver wire decisions, but fallback to Weekly if needed
+        let activeRankings = State.rosRankings.length > 0 ? State.rosRankings : State.weeklyRankings;
+        let rankType = State.rosRankings.length > 0 ? "ROS" : "Weekly";
+
+        if (activeRankings.length === 0) {
+            outputEl.innerHTML = `<span class="mls-error-text">Please upload Rest-of-Season or Weekly rankings first.</span>`;
+            return;
+        }
+
+        // --- UI LOADING STATE ---
+        const btn = document.querySelector('button[onclick="autoFindWaiverUpgrades()"]');
+        const origText = btn ? btn.innerText : "Auto-Find Upgrades";
+        if (btn) {
+            btn.innerText = "Scanning...";
+            btn.style.opacity = "0.7";
+            btn.style.pointerEvents = "none";
+        }
+        outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Analyzing global free agent pool...</div>`;
+
+        try {
+            // --- FA POSITION RESOLVER ---
+            if (!window.sleeperPosByName) {
+                try {
+                    let res = await fetch('https://api.sleeper.app/v1/players/nfl');
+                    if (res.ok) {
+                        let map = await res.json();
+                        window.sleeperPosByName = {};
+                        Object.values(map).forEach(p => {
+                            if (p.first_name) {
+                                window.sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
+                            }
+                        });
+                    }
+                } catch(e) {
+                    console.warn("Could not fetch Sleeper player map for FA positions. Falling back to cached market data.");
+                }
+            }
+
+            let rosterMap = league.globalRosterMap;
+
+            const getPos = (cleanName) => {
+                if (league.globalPosMap && league.globalPosMap[cleanName]) return league.globalPosMap[cleanName];
+                if (window.sleeperPosByName && window.sleeperPosByName[cleanName]) return window.sleeperPosByName[cleanName];
+                let mPlayer = State.marketRankings.find(m => m.cleanName === cleanName);
+                if (mPlayer && mPlayer.pos) return mPlayer.pos;
+                return "UNK";
+            };
+
+            const isMatch = (pos) => {
+                if (posFilter === 'ALL') return true;
+                if (posFilter === 'FLEX') return ['RB', 'WR', 'TE'].includes(pos) || pos === 'FLEX';
+                return pos === posFilter;
+            };
+
+            // 1. Find user's lowest-ranked players matching the position filter
+            let myRoster = league.roster.filter(p => isMatch(getPos(p.cleanName))).map(p => {
+                let rObj = activeRankings.find(rk => rk.cleanName === p.cleanName);
+                return {
+                    name: p.name,
+                    cleanName: p.cleanName,
+                    rank: rObj ? rObj.rank : 999,
+                    pos: getPos(p.cleanName)
+                };
+            });
+
+            if (myRoster.length === 0) {
+                let posLabel = posFilter === 'FLEX' ? 'FLEX (RB/WR/TE)' : posFilter;
+                outputEl.innerHTML = `<span class="mls-error-text">You have no ${posLabel} players on your roster to drop.</span>`;
+                return;
+            }
+
+            // Sort descending so the absolute worst player is first
+            myRoster.sort((a, b) => b.rank - a.rank);
+            
+            let benchmarkPlayer = myRoster[0];
+            let worstRank = benchmarkPlayer.rank;
+
+            // 2. Find all Free Agents definitively matching the position filter
+            let freeAgents = activeRankings.filter(r => !rosterMap[r.cleanName] && isMatch(getPos(r.cleanName)));
+
+            // 3. Filter FA upgrades (Rank numerically lower/better than the benchmark player)
+            let upgrades = freeAgents.filter(fa => fa.rank < worstRank);
+            upgrades.sort((a, b) => a.rank - b.rank);
+
+            if (upgrades.length === 0) {
+                let posLabel = posFilter === 'FLEX' ? 'FLEX' : posFilter;
+                let benchmarkText = benchmarkPlayer.rank === 999 ? `${benchmarkPlayer.name} (Unranked)` : `${benchmarkPlayer.name} (#${benchmarkPlayer.rank})`;
+                outputEl.innerHTML = `
+                    <div class="scout-result-card" style="justify-content: center; text-align: center; padding: 1.25rem 1rem;">
+                        <div style="color: var(--text-muted); line-height: 1.5;">
+                            No free agents found ranked higher than your lowest-ranked ${posLabel} player, <strong style="color: var(--text-main);">${benchmarkText}</strong>.
+                            <div style="margin-top: 0.35rem; color: var(--primary-green); font-weight: 600;">Your roster is optimized at this position!</div>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            // Cap to top 15
+            let topUpgrades = upgrades.slice(0, 15);
+
+            let benchmarkText = benchmarkPlayer.rank === 999 ? `${benchmarkPlayer.name} (Unranked)` : `${benchmarkPlayer.name} (#${benchmarkPlayer.rank})`;
+            
+            // Collect next 2 lowest players for bench context
+            let nextCandidates = myRoster.slice(1, 3).map(p => {
+                let rText = p.rank === 999 ? "Unranked" : `#${p.rank}`;
+                return `${p.name} (${rText})`;
+            });
+            let benchContext = nextCandidates.length > 0 ? `<br><span style="color: var(--text-muted); font-size: 0.8rem;">Other bench depth in this group: ${nextCandidates.join(', ')}</span>` : '';
+
+            let html = `
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 6px; border-left: 3px solid #fca5a5; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.5;">
+                <div style="color: #fca5a5; font-weight: bold; margin-bottom: 4px;">Benchmark Drop Candidate:</div>
+                Your lowest-ranked player in this position group is <strong>${benchmarkText}</strong>. Here are the top available Free Agents ranked higher than <strong>${benchmarkPlayer.name}</strong>:${benchContext}
+            </div>
+            <div style="font-weight:bold; color:var(--primary-green); margin-bottom:0.5rem;">Top Available Upgrades (Based on ${rankType})</div>`;
+
+            topUpgrades.forEach(fa => {
+                let wRankObj = State.weeklyRankings.find(r => r.cleanName === fa.cleanName);
+                let rRankObj = State.rosRankings.find(r => r.cleanName === fa.cleanName);
+                let pos = getPos(fa.cleanName);
+                
+                let wRank = wRankObj ? wRankObj.rank : "UR";
+                let rRank = rRankObj ? rRankObj.rank : "UR";
+                
+                let badgeClass = pos === "UNK" ? "FLEX" : pos;
+                let displayPos = pos === "UNK" ? "FA" : pos;
+
+                html += `
+                <div class="scout-result-card">
+                    <div>
+                        <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px; display:flex; align-items:center;">
+                            <span class="badge pos-badge ${badgeClass} mls-pos-badge-sizing" style="margin-right: 8px;">${displayPos}</span>
+                            ${fa.name}
+                        </div>
+                        <div class="mls-meta-row">
+                            <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
+                            <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
+                        </div>
+                    </div>
+                    <div class="mls-text-right">
+                        <div class="scout-status status-avail">Free Agent<br>(Available)</div>
+                    </div>
+                </div>`;
+            });
+
+            outputEl.innerHTML = html;
+
+        } catch (err) {
+            console.error(err);
+            outputEl.innerHTML = `<span class="mls-error-text">An error occurred while analyzing waivers. Please try again.</span>`;
+        } finally {
+            if (btn) {
+                btn.innerText = origText;
+                btn.style.opacity = "1";
+                btn.style.pointerEvents = "auto";
+            }
+        }
+    };
+
     // --- RANKINGS ENGINE ---
     // Formats a stored timestamp into a short relative string, and flags it as "stale" past
     // the given threshold (in days) so the UI can call attention to rankings that likely need
