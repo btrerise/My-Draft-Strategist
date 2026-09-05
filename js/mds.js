@@ -1136,7 +1136,58 @@ function parseExcel(file) {
         });
 
         if (newPlayers.length > 0) {
-            State.players = newPlayers;
+            const isAggregate = document.getElementById('aggregateToggle')?.checked;
+            
+            if (isAggregate && State.players.length > 0) {
+                let combinedMap = new Map();
+                let maxRankA = State.players.length;
+                let maxRankB = newPlayers.length;
+                let penaltyRank = maxRankA + maxRankB; // Safe fallback for a player missing from one of the lists
+
+                // 1. Add existing players to the map
+                State.players.forEach(p => {
+                    let key = p.sleeperId && !p.sleeperId.toString().startsWith('custom_') ? p.sleeperId : p.name.toLowerCase();
+                    combinedMap.set(key, { player: p, rankA: p.rank, rankB: penaltyRank });
+                });
+
+                // 2. Merge incoming players
+                newPlayers.forEach(p => {
+                    let key = p.sleeperId && !p.sleeperId.toString().startsWith('custom_') ? p.sleeperId : p.name.toLowerCase();
+                    if (combinedMap.has(key)) {
+                        let existing = combinedMap.get(key);
+                        existing.rankB = p.rank; // Player exists in both, update rank B
+                    } else {
+                        combinedMap.set(key, { player: p, rankA: penaltyRank, rankB: p.rank }); // New player entirely
+                    }
+                });
+
+                // 3. Calculate Weighted Average and sort
+                let mergedPlayers = Array.from(combinedMap.values());
+                let sliderValue = document.getElementById('weightSlider') ? parseInt(document.getElementById('weightSlider').value) : 50;
+                
+                // Convert to decimals (e.g., 70 on slider = 0.7 weight for New, 0.3 for Old)
+                let weightNew = sliderValue / 100;
+                let weightOld = 1 - weightNew;
+
+                mergedPlayers.forEach(entry => {
+                    entry.avgRank = (entry.rankA * weightOld) + (entry.rankB * weightNew);
+                });
+                
+                // Sort by the new averaged rank
+                mergedPlayers.sort((a, b) => a.avgRank - b.avgRank);
+
+                // 4. Assign clean, sequential integer ranks to the newly sorted master list
+                State.players = mergedPlayers.map((entry, index) => {
+                    let p = entry.player;
+                    p.rank = index + 1;
+                    p.id = index + 1;
+                    return p;
+                });
+            } else {
+                // Normal overwrite behavior if toggle is off
+                State.players = newPlayers;
+            }
+
             let now = new Date();
             let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             State.rankingsMeta = { count: State.players.length, date: dateString };

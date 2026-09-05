@@ -219,6 +219,29 @@
         </button>
         
         <div class="divider-text">OR UPLOAD CUSTOM</div>
+        
+        <div class="toggle-row" style="margin-bottom: 0.75rem; padding-bottom: 0; border: none; flex-direction: column; align-items: stretch;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="toggle-info">
+                    <span class="toggle-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6;"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+                        Aggregate Rankings
+                    </span>
+                    <span class="toggle-desc">Blend an incoming file with your currently loaded set.</span>
+                </div>
+                <input type="checkbox" id="aggregateToggle" class="toggle-switch" onchange="document.getElementById('weightSliderContainer').style.display = this.checked ? 'block' : 'none';" aria-label="Aggregate Rankings">
+            </div>
+            
+            <!-- Hidden Slider Container -->
+            <div id="weightSliderContainer" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-main); font-weight: 500; margin-bottom: 0.8rem;">
+                    <span id="weightLabelOld">50% Existing</span>
+                    <span id="weightLabelNew">50% New Upload</span>
+                </div>
+                <input type="range" id="weightSlider" class="mds-slider" min="0" max="100" step="1" value="50" oninput="document.getElementById('weightLabelOld').innerText = (100 - this.value) + '% Existing'; document.getElementById('weightLabelNew').innerText = this.value + '% New Upload';">
+            </div>
+        </div>
+
         <input type="file" id="fileInput" class="form-input" accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls" aria-label="Upload Custom Rankings">
         
         <div class="divider-text">OR PASTE</div>
