@@ -984,10 +984,11 @@ window.addEventListener('popstate', (e) => {
 
     window.autoFindWaiverUpgrades = function() {
         const outputEl = document.getElementById('waiverOutput');
+        const posFilter = document.getElementById('waiverPosFilter') ? document.getElementById('waiverPosFilter').value : 'FLEX';
         if (!outputEl) return;
 
         let league = getActiveLeague();
-        if (!league || !league.globalRosterMap) {
+        if (!league || !league.globalRosterMap || !league.globalPosMap) {
             outputEl.innerHTML = `<span class="mls-error-text">Please sync a Sleeper league on the Setup tab first to analyze waivers.</span>`;
             return;
         }
@@ -1003,8 +1004,16 @@ window.addEventListener('popstate', (e) => {
 
         let rosterMap = league.globalRosterMap;
 
-        // 1. Find user's lowest-ranked players (including unranked assets)
-        let myRoster = league.roster.map(p => {
+        // Helper to check if a player matches the selected position filter
+        const isMatch = (cleanName) => {
+            let pos = league.globalPosMap[cleanName] || "FLEX";
+            if (posFilter === 'ALL') return true;
+            if (posFilter === 'FLEX') return ['RB', 'WR', 'TE'].includes(pos) || pos === 'FLEX';
+            return pos === posFilter;
+        };
+
+        // 1. Find user's lowest-ranked players matching the position filter
+        let myRoster = league.roster.filter(p => isMatch(p.cleanName)).map(p => {
             let rObj = activeRankings.find(rk => rk.cleanName === p.cleanName);
             return {
                 name: p.name,
@@ -1014,7 +1023,8 @@ window.addEventListener('popstate', (e) => {
         });
 
         if (myRoster.length === 0) {
-            outputEl.innerHTML = `<span class="mls-error-text">Your roster is empty. Please add players or sync on the Setup tab.</span>`;
+            let posLabel = posFilter === 'FLEX' ? 'FLEX (RB/WR/TE)' : posFilter;
+            outputEl.innerHTML = `<span class="mls-error-text">You have no ${posLabel} players on your roster to drop.</span>`;
             return;
         }
 
@@ -1023,8 +1033,8 @@ window.addEventListener('popstate', (e) => {
         let worstUserRanks = myRoster.slice(0, 3);
         let worstRank = worstUserRanks[0].rank;
 
-        // 2. Find all Free Agents (Ranked players NOT on any team's roster)
-        let freeAgents = activeRankings.filter(r => !rosterMap[r.cleanName]);
+        // 2. Find all Free Agents matching the position filter
+        let freeAgents = activeRankings.filter(r => !rosterMap[r.cleanName] && isMatch(r.cleanName));
 
         // 3. Filter FA upgrades (Rank numerically lower/better than the user's worst player)
         let upgrades = freeAgents.filter(fa => fa.rank < worstRank);
@@ -1046,13 +1056,14 @@ window.addEventListener('popstate', (e) => {
         let html = `
         <div style="background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 6px; border-left: 3px solid #fca5a5; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.5;">
             <div style="color: #fca5a5; font-weight: bold; margin-bottom: 4px;">Potential Drop Candidates:</div>
-            Your lowest-ranked players are ${worstPlayersHtml}. Here are the top available Free Agents ranked higher than them:
+            Your lowest-ranked players in this category are ${worstPlayersHtml}. Here are the top available Free Agents ranked higher than them:
         </div>
         <div style="font-weight:bold; color:var(--primary-green); margin-bottom:0.5rem;">Top Available Upgrades (Based on ${rankType})</div>`;
 
         topUpgrades.forEach(fa => {
             let wRankObj = State.weeklyRankings.find(r => r.cleanName === fa.cleanName);
             let rRankObj = State.rosRankings.find(r => r.cleanName === fa.cleanName);
+            let pos = league.globalPosMap[fa.cleanName] || "FLEX";
             
             let wRank = wRankObj ? wRankObj.rank : "UR";
             let rRank = rRankObj ? rRankObj.rank : "UR";
@@ -1060,7 +1071,8 @@ window.addEventListener('popstate', (e) => {
             html += `
             <div class="scout-result-card">
                 <div>
-                    <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px;">
+                    <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px; display:flex; align-items:center;">
+                        <span class="badge pos-badge ${pos} mls-pos-badge-sizing" style="margin-right: 8px;">${pos}</span>
                         ${fa.name}
                     </div>
                     <div class="mls-meta-row">
