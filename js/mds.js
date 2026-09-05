@@ -1161,10 +1161,16 @@ function parseExcel(file) {
                     }
                 });
 
-                // 3. Calculate 50/50 average and sort
+                // 3. Calculate Weighted Average and sort
                 let mergedPlayers = Array.from(combinedMap.values());
+                let sliderValue = document.getElementById('weightSlider') ? parseInt(document.getElementById('weightSlider').value) : 50;
+                
+                // Convert to decimals (e.g., 70 on slider = 0.7 weight for New, 0.3 for Old)
+                let weightNew = sliderValue / 100;
+                let weightOld = 1 - weightNew;
+
                 mergedPlayers.forEach(entry => {
-                    entry.avgRank = (entry.rankA + entry.rankB) / 2;
+                    entry.avgRank = (entry.rankA * weightOld) + (entry.rankB * weightNew);
                 });
                 
                 // Sort by the new averaged rank
