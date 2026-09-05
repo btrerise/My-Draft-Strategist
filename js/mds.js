@@ -1785,7 +1785,9 @@ function parseExcel(file) {
             WR: limits.WR || 0,
             TE: limits.TE || 0,
             FLEX: (limits.FLEX || 0) + (limits.WT || 0),
-            SFLEX: limits.SFLEX || 0
+            SFLEX: limits.SFLEX || 0,
+            K: limits.K || 0,        // NEW
+            DEF: limits.DEF || 0
         };
 
         const payload = {
@@ -2099,6 +2101,22 @@ function parseExcel(file) {
         return cachedEffectiveTScoreData;
     }
 
+    // --- 5-COLOR AFFINITY SYSTEM ---
+    window.cycleAffinity = function(e, id) {
+        e.stopPropagation(); // Prevents the card's expand/collapse from triggering
+        let p = State.players.find(x => x.id === id);
+        if (p) {
+            // Cycle from 0 (Empty) up to 4 (Red), then back to 0
+            p.affinity = ((p.affinity || 0) + 1) % 5;
+            
+            // Save immediately to local storage
+            localStorage.setItem('ds_players', JSON.stringify(State.players));
+            
+            // Re-render to show the updated color
+            renderBoard();
+        }
+    };
+
     // Pure function: player object + current draft context in, one player-card's HTML string out.
     // No side effects, no DOM access -- extracted from what used to be inline in renderBoard()'s
     // main forEach loop so this ~130-line template is readable and testable on its own.
@@ -2166,7 +2184,14 @@ function parseExcel(file) {
                 <div class="card-grid" style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch; text-align: left;">
                     
                     <!-- TOP ROW: Rank & Name -->
-                    <div class="card-top-row">
+                    <div class="card-top-row" style="align-items: center;">
+                        <span onclick="cycleAffinity(event, ${p.id})" 
+                              style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
+                                     border: 2px solid ${['var(--border)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                     background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                     cursor: pointer; margin-right: 4px; flex-shrink: 0; transition: all 0.2s ease;" 
+                              title="Toggle Color Label">
+                        </span>
                         <span style="color: var(--text-muted); font-weight: 500; font-size: 1rem; flex-shrink: 0;">${p.rank}.</span> 
                         <h4 class="card-name">
                             ${p.name}
@@ -2243,8 +2268,15 @@ function parseExcel(file) {
                 <div style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch;">
                     
                     <!-- TOP ROW: Grip & Name -->
-                    <div class="card-top-row">
+                    <div class="card-top-row" style="align-items: center;">
                         <span style="color: var(--text-muted); cursor: grab; user-select: none; flex-shrink: 0; font-size: 1.1rem; margin-right: 0.2rem;" title="Drag to reorder">⋮⋮</span>
+                        <span onclick="cycleAffinity(event, ${p.id})" 
+                              style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
+                                     border: 2px solid ${['var(--border)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                     background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                     cursor: pointer; margin-right: 4px; flex-shrink: 0; transition: all 0.2s ease;" 
+                              title="Toggle Color Label">
+                        </span>
                         <h4 class="card-name">
                             ${p.name}
                         </h4>
