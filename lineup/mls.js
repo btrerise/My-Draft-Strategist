@@ -1080,7 +1080,13 @@ window.addEventListener('popstate', (e) => {
             if (upgrades.length === 0) {
                 let posLabel = posFilter === 'FLEX' ? 'FLEX' : posFilter;
                 let benchmarkText = benchmarkPlayer.rank === 999 ? `${benchmarkPlayer.name} (Unranked)` : `${benchmarkPlayer.name} (#${benchmarkPlayer.rank})`;
-                outputEl.innerHTML = `<div class="scout-result-card" style="justify-content:center; color:var(--text-muted); text-align:center;">No free agents found ranked higher than your lowest-ranked ${posLabel} player, <strong>${benchmarkText}</strong>.<br>Your roster is optimized at this position!</div>`;
+                outputEl.innerHTML = `
+                    <div class="scout-result-card" style="justify-content: center; text-align: center; padding: 1.25rem 1rem;">
+                        <div style="color: var(--text-muted); line-height: 1.5;">
+                            No free agents found ranked higher than your lowest-ranked ${posLabel} player, <strong style="color: var(--text-main);">${benchmarkText}</strong>.
+                            <div style="margin-top: 0.35rem; color: var(--primary-green); font-weight: 600;">Your roster is optimized at this position!</div>
+                        </div>
+                    </div>`;
                 return;
             }
 
