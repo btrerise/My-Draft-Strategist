@@ -401,7 +401,7 @@ window.addEventListener('popstate', (e) => {
         let league = getActiveLeague();
         if (!league) return;
         
-        let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+        let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 };
         const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
         setVal('reqQB', reqs.QB);
         setVal('reqRB', reqs.RB);
@@ -409,6 +409,8 @@ window.addEventListener('popstate', (e) => {
         setVal('reqTE', reqs.TE);
         setVal('reqFLEX', reqs.FLEX);
         setVal('reqSFLEX', reqs.SFLEX);
+        setVal('reqK', reqs.K !== undefined ? reqs.K : 1);
+        setVal('reqDEF', reqs.DEF !== undefined ? reqs.DEF : 1);
         
         const titleEl = document.getElementById('activeLeagueReqTitle');
         if (titleEl) titleEl.innerText = `(${league.name})`;
@@ -421,7 +423,8 @@ window.addEventListener('popstate', (e) => {
         const getInt = id => parseInt(document.getElementById(id)?.value) || 0;
         league.reqs = {
             QB: getInt('reqQB'), RB: getInt('reqRB'), WR: getInt('reqWR'),
-            TE: getInt('reqTE'), FLEX: getInt('reqFLEX'), SFLEX: getInt('reqSFLEX')
+            TE: getInt('reqTE'), FLEX: getInt('reqFLEX'), SFLEX: getInt('reqSFLEX'),
+            K: getInt('reqK'), DEF: getInt('reqDEF')
         };
         localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
         if (btn) flashButton(btn, "Requirements Saved");
@@ -436,7 +439,7 @@ window.addEventListener('popstate', (e) => {
         let newId = 'manual_' + Date.now();
         let leagueObj = {
             leagueId: newId, name: name, username: "Manual",
-            reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 }, roster: [], globalRosterMap: {},
+            reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1 }, roster: [], globalRosterMap: {},
             rosRankings: [], weeklyRankings: [], rosRankingsUpdatedAt: null, weeklyRankingsUpdatedAt: null,
             rosRankingSetId: null, weeklyRankingSetId: null
         };
@@ -496,7 +499,7 @@ window.addEventListener('popstate', (e) => {
 
         let leagueObj = {
             leagueId: newId, name: payload.sourceLeagueName || "Drafted Team", username: "From Draft Strategist",
-            reqs: payload.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 },
+            reqs: payload.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1 },
             roster: roster, globalRosterMap: globalRosterMap,
             rosRankings: [], weeklyRankings: [], rosRankingsUpdatedAt: null, weeklyRankingsUpdatedAt: null,
             rosRankingSetId: null, weeklyRankingSetId: null
@@ -584,7 +587,7 @@ window.addEventListener('popstate', (e) => {
             const leagueData = await leagueRes.json();
             let leagueName = leagueData.name || "My League";
 
-            let autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0 };
+            let autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0, K: 0, DEF: 0 };
             if (leagueData.roster_positions) {
                 leagueData.roster_positions.forEach(pos => {
                     if (pos === 'QB') autoReqs.QB++;
@@ -593,9 +596,11 @@ window.addEventListener('popstate', (e) => {
                     else if (pos === 'TE') autoReqs.TE++;
                     else if (['FLEX', 'REC_FLEX', 'WRRB_FLEX'].includes(pos)) autoReqs.FLEX++;
                     else if (pos === 'SUPER_FLEX') autoReqs.SFLEX++;
+                    else if (pos === 'K') autoReqs.K++;
+                    else if (pos === 'DEF') autoReqs.DEF++;
                 });
             } else {
-                autoReqs = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+                autoReqs = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 };
             }
 
             if (btn) btn.innerText = "Mapping League...";
@@ -703,12 +708,12 @@ window.addEventListener('popstate', (e) => {
             window.optimizeLineup(true); 
             loadRosterTab();
             
-            if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? "🔄 Sync Sleeper Waivers & Trades" : "Sync Sleeper");
+            if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? "<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades" : "Sync Sleeper");
             return true;
 
         } catch(err) {
             console.error(err);
-            if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? "🔄 Sync Sleeper Waivers & Trades" : "Sync Sleeper");
+            if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? "<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades" : "Sync Sleeper");
             if (!suppressErrorToast && window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
             return false;
         }
@@ -2182,7 +2187,7 @@ function applyMarketSettingsToUI() {
 
         let activeDataSet = State.weeklyRankings.length > 0 ? State.weeklyRankings : State.rosRankings;
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
-        let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+        let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 };
 
         let scoredRoster = league.roster.map(p => {
             let rObj = activeDataSet.find(rk => rk.cleanName === p.cleanName);
@@ -2210,11 +2215,11 @@ function applyMarketSettingsToUI() {
             else starters.push({ slot: slotLabel, player: null, usedFlex: useFlexRank });
         };
 
-        for (let i = 0; i < reqs.QB; i++) fillSlot(`QB${i+1}`, pos => pos === 'QB', false);
-        for (let i = 0; i < reqs.RB; i++) fillSlot(`RB${i+1}`, pos => pos === 'RB', false);
-        for (let i = 0; i < reqs.WR; i++) fillSlot(`WR${i+1}`, pos => pos === 'WR', false);
-        for (let i = 0; i < reqs.TE; i++) fillSlot(`TE${i+1}`, pos => pos === 'TE', false);
-        for (let i = 0; i < reqs.FLEX; i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos), true);
+        for (let i = 0; i < (reqs.QB || 0); i++) fillSlot(`QB${i+1}`, pos => pos === 'QB', false);
+        for (let i = 0; i < (reqs.RB || 0); i++) fillSlot(`RB${i+1}`, pos => pos === 'RB', false);
+        for (let i = 0; i < (reqs.WR || 0); i++) fillSlot(`WR${i+1}`, pos => pos === 'WR', false);
+        for (let i = 0; i < (reqs.TE || 0); i++) fillSlot(`TE${i+1}`, pos => pos === 'TE', false);
+        for (let i = 0; i < (reqs.FLEX || 0); i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos), true);
         
         for (let i = 0; i < reqs.SFLEX; i++) {
             let slotLabel = `SFLEX${i+1}`;
@@ -2238,6 +2243,8 @@ function applyMarketSettingsToUI() {
                 }
             }
         }
+        for (let i = 0; i < (reqs.K || 0); i++) fillSlot(`K${i+1}`, pos => pos === 'K', false);
+        for (let i = 0; i < (reqs.DEF || 0); i++) fillSlot(`DEF${i+1}`, pos => pos === 'DEF', false);
 
         pool.sort((a, b) => {
             if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
