@@ -669,9 +669,46 @@ window.addEventListener('popstate', (e) => {
             if (picksData && picksData.length > 0) {
                 picksData.forEach(pick => {
                     let matchedPlayer = State.players.find(p => p.sleeperId === pick.player_id);
+                    
+                    // Fallback 1: Try matching by name if ID fails
                     if (!matchedPlayer && pick.metadata) {
                         let fullName = `${pick.metadata.first_name} ${pick.metadata.last_name}`;
                         matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, fullName) : p.name.toLowerCase() === fullName.toLowerCase());
+                    }
+
+                    // Fallback 2: Player genuinely isn't in the uploaded rankings. Create them on the fly.
+                    if (!matchedPlayer && pick.metadata && pick.player_id) {
+                        let posGroup = pick.metadata.position || "UNK";
+                        if (['DST', 'D/ST', 'DEFENSE', 'D'].includes(posGroup)) posGroup = 'DEF';
+                        if (['PK'].includes(posGroup)) posGroup = 'K';
+                        
+                        let pTeam = pick.metadata.team || "FA";
+                        let pBye = BYE_WEEKS_2026[pTeam] || "-";
+
+                        let pName = `${pick.metadata.first_name} ${pick.metadata.last_name}`.trim() || "Unknown Player";
+                        
+                        // Clean up Defense names (Sleeper sometimes passes "Chiefs" as first name with no last name)
+                        if (posGroup === 'DEF' && pick.metadata.first_name && !pick.metadata.last_name) {
+                            pName = pick.metadata.first_name + " D/ST";
+                        }
+
+                        matchedPlayer = {
+                            id: Date.now() + Math.floor(Math.random() * 100000), // Generate unique internal ID
+                            sleeperId: pick.player_id,
+                            rank: 999, // Flag as unranked
+                            name: pName,
+                            posGroup: posGroup,
+                            posDisplay: posGroup, 
+                            tier: "-",
+                            team: pTeam,
+                            bye: pBye,
+                            adp: "-",
+                            isRookie: false,
+                            injury: null
+                        };
+                        
+                        State.players.push(matchedPlayer);
+                        State._needsPlayerSave = true; // Flag to save the database later
                     }
 
                     if (matchedPlayer) {
@@ -707,6 +744,13 @@ window.addEventListener('popstate', (e) => {
             else State.drafts.push(draftObj);
 
             State.activeDraftId = draftId;
+            
+            // If we generated unranked players on the fly, save the updated master list
+            if (State._needsPlayerSave) {
+                localStorage.setItem('ds_players', JSON.stringify(State.players));
+                delete State._needsPlayerSave;
+            }
+            
             saveActiveDraftState();
 
             if (!isSilent) {
@@ -1802,6 +1846,9 @@ function parseExcel(file) {
         let minDiff = 999;
 
         myPlayers.forEach((p, index) => {
+            // Ignore dynamically created unranked players (K, DEF, etc.) so they don't trigger as a massive reach
+            if (p.rank === 999) return; 
+
             let pickNum = getPickNumberForPlayer(draft, p);
 
             let valueDiff = pickNum - p.rank;
