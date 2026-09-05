@@ -2102,18 +2102,17 @@ function parseExcel(file) {
     }
 
     // --- 5-COLOR AFFINITY SYSTEM ---
+    // --- 5-COLOR AFFINITY SYSTEM ---
     window.cycleAffinity = function(e, id) {
-        e.preventDefault(); // Stop native browser click-through
-        e.stopPropagation(); // Prevents the card's expand/collapse from triggering
+        e.preventDefault();
+        e.stopPropagation();
+        
         let p = State.players.find(x => x.id === id);
         if (p) {
-            // Cycle from 0 (Empty) up to 4 (Red), then back to 0
-            p.affinity = ((p.affinity || 0) + 1) % 5;
+            // Cycle 0 (Empty) -> 1 (Green) -> 2 (Yellow) -> 3 (Orange) -> 4 (Red) -> 5 (Purple)
+            p.affinity = ((p.affinity || 0) + 1) % 6;
             
-            // Save immediately to local storage
             localStorage.setItem('ds_players', JSON.stringify(State.players));
-            
-            // Re-render to show the updated color
             renderBoard();
         }
     };
@@ -2205,8 +2204,8 @@ function parseExcel(file) {
                                 <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue">${queueStarIcon}</button>
                                 <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
                                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
-                                                 border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                                 background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
+                                                 background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
                                                  opacity: ${p.affinity ? '1' : '0.4'}; transition: all 0.2s ease;">
                                     </span>
                                 </button>
@@ -2290,8 +2289,8 @@ function parseExcel(file) {
                                 <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
                                 <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
                                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
-                                                 border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                                 background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
+                                                 background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
                                                  opacity: ${p.affinity ? '1' : '0.4'}; transition: all 0.2s ease;">
                                     </span>
                                 </button>
