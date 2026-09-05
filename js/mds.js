@@ -38,7 +38,7 @@
                 name: 'Main Draft',
                 username: localStorage.getItem('ds_username') || '',
                 settings: JSON.parse(localStorage.getItem('ds_draft_settings')) || { teams: 12, rounds: 15 },
-                limits: JSON.parse(localStorage.getItem('ds_limits')) || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6, TOTAL: 14 },
+                limits: JSON.parse(localStorage.getItem('ds_limits')) || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1, BENCH: 5, TOTAL: 15 },
                 draftedPlayers: JSON.parse(localStorage.getItem('ds_drafted')) || [],
                 myTeam: JSON.parse(localStorage.getItem('ds_myTeam')) || [],
                 rawDraftPicks: JSON.parse(localStorage.getItem('ds_raw_picks')) || [],
@@ -218,7 +218,7 @@
         
         let settings = draft ? draft.settings : { teams: 12, rounds: 15, is3RR: false };
         setCheck('thirdRoundReversalToggle', settings.is3RR || false);
-        let limits = draft ? draft.limits : { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6, TOTAL: 14 };
+        let limits = draft ? draft.limits : { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1, BENCH: 5, TOTAL: 15 };
 
         setVal('leagueTeams', settings.teams || 12);
         setVal('leagueRounds', settings.rounds || 15);
@@ -228,13 +228,15 @@
         setVal('limitTE', limits.TE);
         setVal('limitFLEX', limits.FLEX);
         setVal('limitSFLEX', limits.SFLEX);
+        setVal('limitK', limits.K !== undefined ? limits.K : 1);
+        setVal('limitDEF', limits.DEF !== undefined ? limits.DEF : 1);
         setVal('limitBENCH', limits.BENCH);
         updateTotalRounds();
     }
 
     function updateTotalRounds() {
         const getNum = id => parseInt(document.getElementById(id)?.value) || 0;
-        const total = getNum('limitQB') + getNum('limitRB') + getNum('limitWR') + getNum('limitTE') + getNum('limitFLEX') + getNum('limitSFLEX') + getNum('limitBENCH');
+        const total = getNum('limitQB') + getNum('limitRB') + getNum('limitWR') + getNum('limitTE') + getNum('limitFLEX') + getNum('limitSFLEX') + getNum('limitK') + getNum('limitDEF') + getNum('limitBENCH');
         const roundsEl = document.getElementById('leagueRounds');
         if (roundsEl) roundsEl.value = total;
     }
@@ -287,11 +289,11 @@
                 RB: parseInt(getVal('limitRB')) || 0,
                 WR: parseInt(getVal('limitWR')) || 0,
                 TE: parseInt(getVal('limitTE')) || 0,
-                WT: draft.limits?.WT || 0, // NEW: Preserve W/T
+                WT: draft.limits?.WT || 0,
                 FLEX: parseInt(getVal('limitFLEX')) || 0,
                 SFLEX: parseInt(getVal('limitSFLEX')) || 0,
-                K: draft.limits?.K || 0,
-                DEF: draft.limits?.DEF || 0,
+                K: parseInt(getVal('limitK')) || 0,
+                DEF: parseInt(getVal('limitDEF')) || 0,
                 BENCH: parseInt(getVal('limitBENCH')) || 0,
             };
             draft.limits.TOTAL = draft.limits.QB + draft.limits.RB + draft.limits.WR + draft.limits.TE + draft.limits.WT + draft.limits.FLEX + draft.limits.SFLEX + draft.limits.K + draft.limits.DEF + draft.limits.BENCH;
@@ -540,8 +542,10 @@ window.addEventListener('popstate', (e) => {
                 TE: parseInt(getVal('limitTE')) || 1,
                 FLEX: parseInt(getVal('limitFLEX')) || 1,
                 SFLEX: parseInt(getVal('limitSFLEX')) || 0,
-                BENCH: parseInt(getVal('limitBENCH')) || 6,
-                TOTAL: 14
+                K: parseInt(getVal('limitK')) || 1,
+                DEF: parseInt(getVal('limitDEF')) || 1,
+                BENCH: parseInt(getVal('limitBENCH')) || 5,
+                TOTAL: 15
             },
             players: [...State.players],
             draftedPlayers: [],
@@ -665,9 +669,46 @@ window.addEventListener('popstate', (e) => {
             if (picksData && picksData.length > 0) {
                 picksData.forEach(pick => {
                     let matchedPlayer = State.players.find(p => p.sleeperId === pick.player_id);
+                    
+                    // Fallback 1: Try matching by name if ID fails
                     if (!matchedPlayer && pick.metadata) {
                         let fullName = `${pick.metadata.first_name} ${pick.metadata.last_name}`;
                         matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, fullName) : p.name.toLowerCase() === fullName.toLowerCase());
+                    }
+
+                    // Fallback 2: Player genuinely isn't in the uploaded rankings. Create them on the fly.
+                    if (!matchedPlayer && pick.metadata && pick.player_id) {
+                        let posGroup = pick.metadata.position || "UNK";
+                        if (['DST', 'D/ST', 'DEFENSE', 'D'].includes(posGroup)) posGroup = 'DEF';
+                        if (['PK'].includes(posGroup)) posGroup = 'K';
+                        
+                        let pTeam = pick.metadata.team || "FA";
+                        let pBye = BYE_WEEKS_2026[pTeam] || "-";
+
+                        let pName = `${pick.metadata.first_name} ${pick.metadata.last_name}`.trim() || "Unknown Player";
+                        
+                        // Clean up Defense names (Sleeper sometimes passes "Chiefs" as first name with no last name)
+                        if (posGroup === 'DEF' && pick.metadata.first_name && !pick.metadata.last_name) {
+                            pName = pick.metadata.first_name + " D/ST";
+                        }
+
+                        matchedPlayer = {
+                            id: Date.now() + Math.floor(Math.random() * 100000), // Generate unique internal ID
+                            sleeperId: pick.player_id,
+                            rank: 999, // Flag as unranked
+                            name: pName,
+                            posGroup: posGroup,
+                            posDisplay: posGroup, 
+                            tier: "-",
+                            team: pTeam,
+                            bye: pBye,
+                            adp: "-",
+                            isRookie: false,
+                            injury: null
+                        };
+                        
+                        State.players.push(matchedPlayer);
+                        State._needsPlayerSave = true; // Flag to save the database later
                     }
 
                     if (matchedPlayer) {
@@ -703,6 +744,13 @@ window.addEventListener('popstate', (e) => {
             else State.drafts.push(draftObj);
 
             State.activeDraftId = draftId;
+            
+            // If we generated unranked players on the fly, save the updated master list
+            if (State._needsPlayerSave) {
+                localStorage.setItem('ds_players', JSON.stringify(State.players));
+                delete State._needsPlayerSave;
+            }
+            
             saveActiveDraftState();
 
             if (!isSilent) {
@@ -1096,7 +1144,11 @@ function parseExcel(file) {
 
             let posRaw = getVal(['position', 'pos', 'pos rank', 'posn']);
             let posGroup = posRaw ? String(posRaw).replace(/[0-9]/g, '').toUpperCase().trim() : "FLEX";
+            if (['DST', 'D/ST', 'DEFENSE', 'D'].includes(posGroup)) posGroup = 'DEF';
+            if (['PK'].includes(posGroup)) posGroup = 'K';
+
             let posDisplay = posRaw ? String(posRaw).toUpperCase().trim() : posGroup;
+            posDisplay = posDisplay.replace(/^(DST|D\/ST|DEFENSE|PK)/i, posGroup);
 
             if (!posCounters[posGroup]) posCounters[posGroup] = 1;
             if (!/\d/.test(posDisplay)) posDisplay = posGroup + posCounters[posGroup];
@@ -1794,6 +1846,9 @@ function parseExcel(file) {
         let minDiff = 999;
 
         myPlayers.forEach((p, index) => {
+            // Ignore dynamically created unranked players (K, DEF, etc.) so they don't trigger as a massive reach
+            if (p.rank === 999) return; 
+
             let pickNum = getPickNumberForPlayer(draft, p);
 
             let valueDiff = pickNum - p.rank;
@@ -2264,7 +2319,7 @@ function parseExcel(file) {
         let limits = draft ? draft.limits : { QB:1, RB:2, WR:3, TE:1, FLEX:1, SFLEX:0, BENCH:6, TOTAL:14 };
 
         let newPoolHTML = '';
-        let posCounts = { "QB": 0, "RB": 0, "WR": 0, "TE": 0 };
+        let posCounts = { "QB": 0, "RB": 0, "WR": 0, "TE": 0, "K": 0, "DEF": 0 };
         // Check Sleeper's raw pick count first so unranked K/DEF are included in the math
         let totalPicksDone = (draft && draft.rawDraftPicks && draft.rawDraftPicks.length > 0) ? draft.rawDraftPicks.length : draftedPlayers.length;
         let currentOverallPick = totalPicksDone + 1;
@@ -2385,13 +2440,15 @@ function parseExcel(file) {
         if (limitsBodyEl) {
             limitsBodyEl.innerHTML = `
                 <tr>
-                    <td>${posCounts['QB']} / ${limits.QB}</td>
-                    <td>${posCounts['RB']} / ${limits.RB}</td>
-                    <td>${posCounts['WR']} / ${limits.WR}</td>
-                    <td>${posCounts['TE']} / ${limits.TE}</td>
-                    <td>${flexUsed} / ${limits.FLEX}</td>
-                    <td>${sflexUsed} / ${limits.SFLEX}</td>
-                    <td><strong>${myTeam.length} / ${limits.TOTAL}</strong></td>
+                    <td>${posCounts['QB']} / ${limits.QB || 0}</td>
+                    <td>${posCounts['RB']} / ${limits.RB || 0}</td>
+                    <td>${posCounts['WR']} / ${limits.WR || 0}</td>
+                    <td>${posCounts['TE']} / ${limits.TE || 0}</td>
+                    <td>${flexUsed} / ${limits.FLEX || 0}</td>
+                    <td>${sflexUsed} / ${limits.SFLEX || 0}</td>
+                    <td>${posCounts['K'] || 0} / ${limits.K || 0}</td>
+                    <td>${posCounts['DEF'] || 0} / ${limits.DEF || 0}</td>
+                    <td><strong>${myTeam.length} / ${limits.TOTAL || 0}</strong></td>
                 </tr>`;
         }
 
@@ -2418,7 +2475,7 @@ window.toggleHeadshots = function(show) {
         initSettingsUI();
         updateMetaDisplay();
         
-        ['limitQB', 'limitRB', 'limitWR', 'limitTE', 'limitFLEX', 'limitSFLEX', 'limitBENCH'].forEach(id => {
+        ['limitQB', 'limitRB', 'limitWR', 'limitTE', 'limitFLEX', 'limitSFLEX', 'limitK', 'limitDEF', 'limitBENCH'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', updateTotalRounds);
         });
