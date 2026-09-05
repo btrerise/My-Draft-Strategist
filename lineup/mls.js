@@ -982,6 +982,101 @@ window.addEventListener('popstate', (e) => {
         outputEl.innerHTML = html;
     };
 
+    window.autoFindWaiverUpgrades = function() {
+        const outputEl = document.getElementById('waiverOutput');
+        if (!outputEl) return;
+
+        let league = getActiveLeague();
+        if (!league || !league.globalRosterMap) {
+            outputEl.innerHTML = `<span class="mls-error-text">Please sync a Sleeper league on the Setup tab first to analyze waivers.</span>`;
+            return;
+        }
+
+        // Default to ROS rankings for waiver wire decisions, but fallback to Weekly if needed
+        let activeRankings = State.rosRankings.length > 0 ? State.rosRankings : State.weeklyRankings;
+        let rankType = State.rosRankings.length > 0 ? "ROS" : "Weekly";
+
+        if (activeRankings.length === 0) {
+            outputEl.innerHTML = `<span class="mls-error-text">Please upload Rest-of-Season or Weekly rankings first.</span>`;
+            return;
+        }
+
+        let rosterMap = league.globalRosterMap;
+
+        // 1. Find user's lowest-ranked players (including unranked assets)
+        let myRoster = league.roster.map(p => {
+            let rObj = activeRankings.find(rk => rk.cleanName === p.cleanName);
+            return {
+                name: p.name,
+                cleanName: p.cleanName,
+                rank: rObj ? rObj.rank : 999
+            };
+        });
+
+        if (myRoster.length === 0) {
+            outputEl.innerHTML = `<span class="mls-error-text">Your roster is empty. Please add players or sync on the Setup tab.</span>`;
+            return;
+        }
+
+        // Sort descending so the worst players are at the front of the array
+        myRoster.sort((a, b) => b.rank - a.rank);
+        let worstUserRanks = myRoster.slice(0, 3);
+        let worstRank = worstUserRanks[0].rank;
+
+        // 2. Find all Free Agents (Ranked players NOT on any team's roster)
+        let freeAgents = activeRankings.filter(r => !rosterMap[r.cleanName]);
+
+        // 3. Filter FA upgrades (Rank numerically lower/better than the user's worst player)
+        let upgrades = freeAgents.filter(fa => fa.rank < worstRank);
+        upgrades.sort((a, b) => a.rank - b.rank);
+
+        if (upgrades.length === 0) {
+            outputEl.innerHTML = `<div class="scout-result-card" style="justify-content:center; color:var(--text-muted); text-align:center;">No free agents found ranked higher than your current bench players.<br>Your roster is fully optimized!</div>`;
+            return;
+        }
+
+        // Cap to the top 15 so we don't flood the UI
+        let topUpgrades = upgrades.slice(0, 15);
+
+        let worstPlayersHtml = worstUserRanks.map(p => {
+            let rText = p.rank === 999 ? "Unranked" : `#${p.rank}`;
+            return `<strong>${p.name}</strong> (${rText})`;
+        }).join(', ');
+
+        let html = `
+        <div style="background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 6px; border-left: 3px solid #fca5a5; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.5;">
+            <div style="color: #fca5a5; font-weight: bold; margin-bottom: 4px;">Potential Drop Candidates:</div>
+            Your lowest-ranked players are ${worstPlayersHtml}. Here are the top available Free Agents ranked higher than them:
+        </div>
+        <div style="font-weight:bold; color:var(--primary-green); margin-bottom:0.5rem;">Top Available Upgrades (Based on ${rankType})</div>`;
+
+        topUpgrades.forEach(fa => {
+            let wRankObj = State.weeklyRankings.find(r => r.cleanName === fa.cleanName);
+            let rRankObj = State.rosRankings.find(r => r.cleanName === fa.cleanName);
+            
+            let wRank = wRankObj ? wRankObj.rank : "UR";
+            let rRank = rRankObj ? rRankObj.rank : "UR";
+
+            html += `
+            <div class="scout-result-card">
+                <div>
+                    <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px;">
+                        ${fa.name}
+                    </div>
+                    <div class="mls-meta-row">
+                        <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
+                        <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
+                    </div>
+                </div>
+                <div class="mls-text-right">
+                    <div class="scout-status status-avail">Free Agent<br>(Available)</div>
+                </div>
+            </div>`;
+        });
+
+        outputEl.innerHTML = html;
+    };
+
     // --- RANKINGS ENGINE ---
     // Formats a stored timestamp into a short relative string, and flags it as "stale" past
     // the given threshold (in days) so the UI can call attention to rankings that likely need

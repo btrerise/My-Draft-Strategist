@@ -590,7 +590,11 @@
         </header>
         
         <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
-        <button class="btn btn-primary" onclick="runScout('waiver')">Scan Waivers</button>
+        
+        <div class="button-row-dual mt-2">
+            <button class="btn btn-primary" onclick="autoFindWaiverUpgrades()">Auto-Find Upgrades</button>
+            <button class="btn btn-purple" onclick="runScout('waiver')">Scan Pasted List</button>
+        </div>
         
         <div id="waiverOutput" class="scout-output-container"></div>
     </section>
