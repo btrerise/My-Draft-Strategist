@@ -24,8 +24,13 @@
         rosRankings: JSON.parse(localStorage.getItem('mds_season_ros')) || [],
         weeklyRankings: JSON.parse(localStorage.getItem('mds_season_weekly')) || [],
         rosRankingsUpdatedAt: localStorage.getItem('mds_season_ros_updated') || null,
+        rankingSets: {
+            ros: JSON.parse(localStorage.getItem('mls_ranking_sets_ros')) || [],
+            weekly: JSON.parse(localStorage.getItem('mls_ranking_sets_weekly')) || []
+        },
         weeklyRankingsUpdatedAt: localStorage.getItem('mds_season_weekly_updated') || null,
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
+        marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
         manualStartersMap: JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {},
@@ -142,9 +147,85 @@ window.addEventListener('popstate', (e) => {
     }
 });
     
+    // --- BACKUP & RESTORE ---
+    // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in mds.js -- see that
+    // file's comment for why key-prefix scoping matters on a shared origin. MLS's own keys are
+    // mds_season_*, mls_*, and shared_sleeper_league_id. mds_handoff_roster is excluded --
+    // transient signal from MDS, not a persistent MLS setting.
+    function getMlsOwnedKeys() {
+        return Object.keys(localStorage).filter(k =>
+            (k.startsWith('mds_season_') || k.startsWith('mls_') || k === 'shared_sleeper_league_id')
+            && k !== 'mds_handoff_roster'
+        );
+    }
+
+    window.exportMlsSettings = function() {
+        const keys = getMlsOwnedKeys();
+        const data = {};
+        keys.forEach(k => data[k] = localStorage.getItem(k));
+
+        const payload = {
+            app: "MLS",
+            appName: "My Lineup Strategist",
+            exportedAt: new Date().toISOString(),
+            data: data
+        };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `my-lineup-strategist-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (window.showToast) window.showToast("Backup downloaded!");
+    };
+
+    window.importMlsSettings = function(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let payload;
+            try {
+                payload = JSON.parse(e.target.result);
+            } catch (err) {
+                if (window.showToast) window.showToast("That file isn't valid JSON -- couldn't read it as a backup.", { isError: true });
+                fileInput.value = "";
+                return;
+            }
+
+            if (!payload || payload.app !== "MLS" || typeof payload.data !== 'object') {
+                if (window.showToast) window.showToast("This doesn't look like a My Lineup Strategist backup file. If it's an MDS (Draft Strategist) backup, use the Import button on that app instead.", { isError: true });
+                fileInput.value = "";
+                return;
+            }
+
+            const keyCount = Object.keys(payload.data).length;
+            const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
+            const confirmMsg = `This will REPLACE your current My Lineup Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately. Continue?`;
+
+            if (!window.confirm(confirmMsg)) {
+                fileInput.value = "";
+                return;
+            }
+
+            getMlsOwnedKeys().forEach(k => localStorage.removeItem(k));
+            Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
+
+            if (window.showToast) window.showToast("Backup restored! Reloading now.");
+            setTimeout(() => { window.location.reload(); }, 900);
+        };
+        reader.readAsText(file);
+    };
+
     window.factoryReset = function() {
-        if (window.confirm("DANGER ZONE\n\nAre you sure you want to clear ALL leagues, cached rankings, custom SoS data, and settings?\n\nThis cannot be undone.")) {
-            localStorage.clear();
+        if (window.confirm("DANGER ZONE\n\nAre you sure you want to clear ALL leagues, cached rankings, custom SoS data, and settings?\n\n(My Draft Strategist data is not affected.)\n\nThis cannot be undone.")) {
+            getMlsOwnedKeys().forEach(k => localStorage.removeItem(k));
             window.location.reload();
         }
     };
@@ -155,6 +236,8 @@ window.addEventListener('popstate', (e) => {
         refreshLeagueDropdown();
         updateRankingsMetaDisplay();
         generateSoSGrid();
+        checkForDraftStrategistHandoff();
+        applyMarketSettingsToUI();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -246,23 +329,29 @@ window.addEventListener('popstate', (e) => {
         State.activeLeagueId = leagueId;
         localStorage.setItem('mds_season_active_league', State.activeLeagueId);
         
-        // HYDRATION: Unpack rankings for this specific league
+        // HYDRATION: Unpack rankings for this specific league. Priority: named set assignment,
+        // then legacy per-league data (from before named ranking sets existed), then empty --
+        // deliberately NOT falling back to the global flat key anymore. That fallback used to
+        // be exactly why a league with nothing of its own could appear to "inherit" whatever
+        // another league had most recently active, rather than genuinely remembering its own.
         let league = getActiveLeague();
         if (league) {
-            State.rosRankings = league.rosRankings && league.rosRankings.length > 0 
-                ? [...league.rosRankings] 
-                : JSON.parse(localStorage.getItem('mds_season_ros')) || [];
-                
-            State.weeklyRankings = league.weeklyRankings && league.weeklyRankings.length > 0 
-                ? [...league.weeklyRankings] 
-                : JSON.parse(localStorage.getItem('mds_season_weekly')) || [];
+            ['ros', 'weekly'].forEach(type => {
+                const cfg = RANKING_TYPE_CONFIG[type];
+                const setId = league[cfg.leagueSetIdKey];
+                const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
 
-            State.rosRankingsUpdatedAt = league.rosRankingsUpdatedAt || localStorage.getItem('mds_season_ros_updated') || null;
-            State.weeklyRankingsUpdatedAt = league.weeklyRankingsUpdatedAt || localStorage.getItem('mds_season_weekly_updated') || null;
-
-            // Update the global fallbacks so the UI stays in sync
-            localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings));
-            localStorage.setItem('mds_season_weekly', JSON.stringify(State.weeklyRankings));
+                if (set) {
+                    State[cfg.stateKey] = [...set.data];
+                    State[cfg.updatedAtKey] = set.updatedAt;
+                } else if (Array.isArray(league[cfg.leagueLegacyDataKey]) && league[cfg.leagueLegacyDataKey].length > 0) {
+                    State[cfg.stateKey] = [...league[cfg.leagueLegacyDataKey]];
+                    State[cfg.updatedAtKey] = league[cfg.leagueLegacyUpdatedKey] || null;
+                } else {
+                    State[cfg.stateKey] = [];
+                    State[cfg.updatedAtKey] = null;
+                }
+            });
             
             updateRankingsMetaDisplay();
         }
@@ -293,11 +382,18 @@ window.addEventListener('popstate', (e) => {
     function saveActiveLeagueState() {
     let league = getActiveLeague();
     if (league) {
-        // Save current rankings specifically to this league
-        league.rosRankings = [...State.rosRankings];
-        league.weeklyRankings = [...State.weeklyRankings];
-        league.rosRankingsUpdatedAt = State.rosRankingsUpdatedAt;
-        league.weeklyRankingsUpdatedAt = State.weeklyRankingsUpdatedAt;
+        // Only sync the legacy per-league copy when this league ISN'T using a named ranking
+        // set -- once a set is assigned, its data lives once in State.rankingSets (referenced
+        // by id, not copied per league), so writing a full copy here on every save would
+        // silently reintroduce the exact duplication named ranking sets exist to avoid.
+        if (!league.rosRankingSetId) {
+            league.rosRankings = [...State.rosRankings];
+            league.rosRankingsUpdatedAt = State.rosRankingsUpdatedAt;
+        }
+        if (!league.weeklyRankingSetId) {
+            league.weeklyRankings = [...State.weeklyRankings];
+            league.weeklyRankingsUpdatedAt = State.weeklyRankingsUpdatedAt;
+        }
     }
     localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
 }
@@ -321,7 +417,7 @@ window.addEventListener('popstate', (e) => {
 
     window.saveRequirements = function(btn) {
         let league = getActiveLeague();
-        if (!league) { window.alert("Please select or add a league first."); return; }
+        if (!league) { if (window.showToast) window.showToast("Please select or add a league first.", { isError: true }); return; }
         const getInt = id => parseInt(document.getElementById(id)?.value) || 0;
         league.reqs = {
             QB: getInt('reqQB'), RB: getInt('reqRB'), WR: getInt('reqWR'),
@@ -335,16 +431,14 @@ window.addEventListener('popstate', (e) => {
     window.createManualLeague = function() {
         const nameInput = document.getElementById('newLeagueName');
         const name = nameInput ? nameInput.value.trim() : "";
-        if (!name) { window.alert("Please enter a League Name to create a manual league."); return; }
+        if (!name) { if (window.showToast) window.showToast("Please enter a League Name to create a manual league.", { isError: true }); return; }
 
         let newId = 'manual_' + Date.now();
         let leagueObj = {
             leagueId: newId, name: name, username: "Manual",
             reqs: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 }, roster: [], globalRosterMap: {},
-            rosRankings: [...State.rosRankings],       
-            weeklyRankings: [...State.weeklyRankings],
-            rosRankingsUpdatedAt: State.rosRankingsUpdatedAt,
-            weeklyRankingsUpdatedAt: State.weeklyRankingsUpdatedAt
+            rosRankings: [], weeklyRankings: [], rosRankingsUpdatedAt: null, weeklyRankingsUpdatedAt: null,
+            rosRankingSetId: null, weeklyRankingSetId: null
         };
         State.leagues.push(leagueObj);
         State.activeLeagueId = newId;
@@ -362,9 +456,77 @@ window.addEventListener('popstate', (e) => {
         }
     };
 
+    // --- DRAFT STRATEGIST ROSTER HANDOFF ---
+    // Counterpart to sendRosterToLineupStrategist() in MDS's mds.js. Same-origin localStorage
+    // is the transport -- see that function's comment for why no URL params/backend are needed.
+    function checkForDraftStrategistHandoff() {
+        const raw = localStorage.getItem('mds_handoff_roster');
+        if (!raw) return;
+
+        let payload;
+        try { payload = JSON.parse(raw); } catch (e) { localStorage.removeItem('mds_handoff_roster'); return; }
+        if (!payload || !Array.isArray(payload.players) || payload.players.length === 0) {
+            localStorage.removeItem('mds_handoff_roster');
+            return;
+        }
+
+        const banner = document.getElementById('handoffBanner');
+        const textEl = document.getElementById('handoffBannerText');
+        if (textEl) {
+            textEl.innerHTML = `<strong>Roster found from My Draft Strategist:</strong> "${payload.sourceLeagueName}" (${payload.players.length} players). Import it as a new league here?`;
+        }
+        if (banner) banner.style.display = 'flex';
+    }
+
+    window.importDraftStrategistRoster = function() {
+        const raw = localStorage.getItem('mds_handoff_roster');
+        if (!raw) return;
+        let payload;
+        try { payload = JSON.parse(raw); } catch (e) { return; }
+
+        let newId = 'handoff_' + Date.now();
+        let roster = [];
+        let globalRosterMap = {};
+        payload.players.forEach((p, i) => {
+            let clean = normalizeName(p.name);
+            let newP = { id: 'p_' + Date.now() + '_' + i, name: p.name, cleanName: clean, pos: p.pos || 'FLEX', team: p.team || 'FA' };
+            roster.push(newP);
+            globalRosterMap[clean] = "You";
+        });
+
+        let leagueObj = {
+            leagueId: newId, name: payload.sourceLeagueName || "Drafted Team", username: "From Draft Strategist",
+            reqs: payload.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0 },
+            roster: roster, globalRosterMap: globalRosterMap,
+            rosRankings: [], weeklyRankings: [], rosRankingsUpdatedAt: null, weeklyRankingsUpdatedAt: null,
+            rosRankingSetId: null, weeklyRankingSetId: null
+        };
+        State.leagues.push(leagueObj);
+        State.activeLeagueId = newId;
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+        localStorage.removeItem('mds_handoff_roster');
+
+        const banner = document.getElementById('handoffBanner');
+        if (banner) banner.style.display = 'none';
+
+        refreshLeagueDropdown();
+        const leagueSelect = document.getElementById('headerLeagueSelect');
+        if (leagueSelect) leagueSelect.value = newId;
+        loadActiveLeagueData();
+
+        if (window.showToast) window.showToast(`Imported "${leagueObj.name}" with ${roster.length} players.`);
+    };
+
+    window.dismissDraftStrategistHandoff = function() {
+        localStorage.removeItem('mds_handoff_roster');
+        const banner = document.getElementById('handoffBanner');
+        if (banner) banner.style.display = 'none';
+    };
+
     window.addManualPlayer = function() {
         let league = getActiveLeague();
-        if (!league) { window.alert("Please add or select a league first."); return; }
+        if (!league) { if (window.showToast) window.showToast("Please add or select a league first.", { isError: true }); return; }
         const nameInput = document.getElementById('manualName');
         const posInput = document.getElementById('manualPos');
         const teamInput = document.getElementById('manualTeam');
@@ -373,7 +535,7 @@ window.addEventListener('popstate', (e) => {
         const pos = posInput ? posInput.value : "FLEX";
         const team = teamInput ? teamInput.value.trim().toUpperCase() || "FA" : "FA";
 
-        if (!name) { window.alert("Please enter a player name."); return; }
+        if (!name) { if (window.showToast) window.showToast("Please enter a player name.", { isError: true }); return; }
 
         let newP = { id: 'p_' + Date.now(), name: name, cleanName: normalizeName(name), pos: pos, team: team };
         league.roster = league.roster || [];
@@ -408,11 +570,14 @@ window.addEventListener('popstate', (e) => {
         }
     };
 
-    async function processSleeperData(username, leagueId, btn, isRefresh = false) {
+    async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false) {
         try {
-            const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
-            if (!userRes.ok) throw new Error("User not found.");
-            const userId = (await userRes.json()).user_id;
+            let userId = preloaded.userId;
+            if (!userId) {
+                const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+                if (!userRes.ok) throw new Error("User not found.");
+                userId = (await userRes.json()).user_id;
+            }
 
             const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
             if (!leagueRes.ok) throw new Error("League ID not found.");
@@ -443,8 +608,7 @@ window.addEventListener('popstate', (e) => {
             const rosters = await rosterRes.json();
             
             if (btn) btn.innerText = "Loading Players...";
-            const mapRes = await fetch(`https://api.sleeper.app/v1/players/nfl`);
-            const playerMap = await mapRes.json();
+            const playerMap = preloaded.playerMap || await (await fetch(`https://api.sleeper.app/v1/players/nfl`)).json();
 
             let myTeam = rosters.find(r => r.owner_id === userId);
             if (!myTeam && !isRefresh) throw new Error("Could not find your team in this league.");
@@ -501,17 +665,25 @@ window.addEventListener('popstate', (e) => {
                 });
             }
 
+            let existingIdx = State.leagues.findIndex(l => l.leagueId === leagueId);
+            let existingLeague = existingIdx !== -1 ? State.leagues[existingIdx] : null;
+
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap,
-                rosRankings: [...State.rosRankings],   
-            weeklyRankings: [...State.weeklyRankings],
-            rosRankingsUpdatedAt: State.rosRankingsUpdatedAt,
-            weeklyRankingsUpdatedAt: State.weeklyRankingsUpdatedAt
+                // Preserve this league's existing rankings assignment across a re-sync rather
+                // than rebuilding it from whatever happens to be currently active in State --
+                // a re-sync should only refresh roster/matchup data, not silently reassign
+                // rankings. A genuinely new league starts with nothing assigned.
+                rosRankings: existingLeague ? existingLeague.rosRankings : [],
+                weeklyRankings: existingLeague ? existingLeague.weeklyRankings : [],
+                rosRankingsUpdatedAt: existingLeague ? existingLeague.rosRankingsUpdatedAt : null,
+                weeklyRankingsUpdatedAt: existingLeague ? existingLeague.weeklyRankingsUpdatedAt : null,
+                rosRankingSetId: existingLeague ? existingLeague.rosRankingSetId : null,
+                weeklyRankingSetId: existingLeague ? existingLeague.weeklyRankingSetId : null
             };
 
-            let existingIdx = State.leagues.findIndex(l => l.leagueId === leagueId);
             if (existingIdx !== -1) State.leagues[existingIdx] = leagueObj;
             else State.leagues.push(leagueObj);
 
@@ -532,26 +704,99 @@ window.addEventListener('popstate', (e) => {
             loadRosterTab();
             
             if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? "🔄 Sync Sleeper Waivers & Trades" : "Sync Sleeper");
+            return true;
 
         } catch(err) {
             console.error(err);
             if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? "🔄 Sync Sleeper Waivers & Trades" : "Sync Sleeper");
-            window.alert(`Sync Error:\n${err.message}`);
+            if (!suppressErrorToast && window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
+            return false;
         }
     }
 
     window.addAndSyncLeague = function(btn) {
         const username = document.getElementById('sleeperUsername')?.value.trim() || "";
         const leagueId = document.getElementById('sleeperLeagueId')?.value.trim() || "";
-        if (!username || !leagueId) { window.alert("Please enter both Sleeper Username and League ID to sync."); return; }
+        if (!username || !leagueId) { if (window.showToast) window.showToast("Please enter both Sleeper Username and League ID to sync.", { isError: true }); return; }
         if (btn) { btn.innerText = "Syncing..."; btn.style.backgroundColor = "var(--accent-color, #8b5cf6)"; }
         processSleeperData(username, leagueId, btn, false);
+    };
+
+    // --- IMPORT ALL LEAGUES (by username only) ---
+    // Pulls every league a Sleeper username belongs to for the current NFL season and syncs
+    // each one, so the user doesn't have to find and paste in each League ID individually.
+    // Reuses processSleeperData() per league (same logic as the single-league sync above) but
+    // fetches the user lookup and the ~5MB players list ONCE up front and passes them in via
+    // the preloaded param, rather than every league in the loop re-fetching both -- Sleeper's
+    // own docs ask callers not to hit the players endpoint more than once a day.
+    window.importAllSleeperLeagues = async function(btn) {
+        const username = document.getElementById('sleeperUsername')?.value.trim() || "";
+        if (!username) {
+            if (window.showToast) window.showToast("Please enter your Sleeper Username first.", { isError: true });
+            return;
+        }
+
+        const origText = btn ? btn.innerText : "";
+        if (btn) { btn.innerText = "Finding your leagues..."; btn.disabled = true; btn.style.opacity = "0.7"; }
+
+        try {
+            const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+            if (!userRes.ok) throw new Error("Sleeper username not found.");
+            const userId = (await userRes.json()).user_id;
+
+            // Sleeper's "current" season isn't necessarily the calendar year during the
+            // offseason -- league_season (not the more general "season" field) is what
+            // Sleeper's own docs describe as the active season for league membership, and
+            // it shifts earlier than "season" during the transition into a new year.
+            const stateRes = await fetch(`https://api.sleeper.app/v1/state/nfl`);
+            const stateData = stateRes.ok ? await stateRes.json() : null;
+            const season = stateData?.league_season || stateData?.season || String(new Date().getFullYear());
+
+            const leaguesRes = await fetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${season}`);
+            if (!leaguesRes.ok) throw new Error("Could not fetch leagues for this user.");
+            const leagues = await leaguesRes.json();
+
+            if (!leagues || leagues.length === 0) {
+                if (window.showToast) window.showToast(`No ${season} NFL leagues found for that username.`, { isError: true });
+                return;
+            }
+
+            if (btn) btn.innerText = "Loading player data...";
+            const playerMap = await (await fetch(`https://api.sleeper.app/v1/players/nfl`)).json();
+            const preloaded = { userId, playerMap };
+
+            let successCount = 0;
+            let failCount = 0;
+            for (let i = 0; i < leagues.length; i++) {
+                if (btn) btn.innerText = `Syncing ${i + 1}/${leagues.length}...`;
+                const ok = await processSleeperData(username, leagues[i].league_id, null, true, preloaded, true);
+                if (ok) successCount++; else failCount++;
+            }
+
+            refreshLeagueDropdown();
+            if (State.leagues.length > 0 && !State.activeLeagueId) {
+                State.activeLeagueId = State.leagues[0].leagueId;
+                localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+            }
+            loadActiveLeagueData();
+
+            const summary = failCount > 0
+                ? `Imported ${successCount} league${successCount === 1 ? '' : 's'} (${failCount} failed -- check console for details).`
+                : `Imported ${successCount} league${successCount === 1 ? '' : 's'}!`;
+            if (window.showToast) window.showToast(summary, { isError: failCount > 0 });
+
+        } catch (err) {
+            console.error(err);
+            if (window.showToast) window.showToast(`Could not import leagues:\n${err.message}`, { isError: true });
+        } finally {
+            if (btn) { btn.innerText = origText; btn.disabled = false; btn.style.opacity = "1"; }
+        }
     };
 
     window.syncActiveLeague = function() {
         let league = getActiveLeague();
         if (!league || !league.leagueId || league.leagueId.startsWith('manual_') || !league.username) {
-            window.alert("Only Sleeper-synced leagues can be refreshed via this button."); return;
+            if (window.showToast) window.showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
         }
         const btn = document.getElementById('rosterSyncBtn');
         if (btn) btn.innerText = "Syncing...";
@@ -754,8 +999,214 @@ window.addEventListener('popstate', (e) => {
         return { label, isStale: days > staleAfterDays };
     }
 
+    // --- NAMED RANKING SETS ---
+    // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
+    // a full copy of -- so uploading "Dynasty PPR 2026" once and applying it to five leagues
+    // stores that data once, not five times, and switching to a league shows exactly the set
+    // you last picked for it rather than silently inheriting whatever another league last had
+    // active. ROS and Weekly are kept as two separate pools, matching how they already work.
+    //
+    // Migration note: leagues that accumulated their own rankings copy under the old model
+    // (league.rosRankings / league.weeklyRankings, still populated from before this existed)
+    // are NOT auto-converted into a named set. That legacy data stays available as a distinct
+    // "Unassigned Upload (legacy)" option in the dropdown until the user picks or creates a
+    // real named set for that league -- nothing is silently discarded, but nothing is silently
+    // promoted into the new system either.
+    const RANKING_TYPE_CONFIG = {
+        ros: {
+            stateKey: 'rosRankings', updatedAtKey: 'rosRankingsUpdatedAt',
+            leagueLegacyDataKey: 'rosRankings', leagueLegacyUpdatedKey: 'rosRankingsUpdatedAt',
+            leagueSetIdKey: 'rosRankingSetId', setsKey: 'ros',
+            localStorageSetsKey: 'mls_ranking_sets_ros',
+            globalDataKey: 'mds_season_ros', globalUpdatedKey: 'mds_season_ros_updated',
+            selectId: 'rosRankingSetSelect', nameInputWrapId: 'rosNewSetNameWrap',
+            nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn',
+            label: 'ROS', staleAfterDays: 14
+        },
+        weekly: {
+            stateKey: 'weeklyRankings', updatedAtKey: 'weeklyRankingsUpdatedAt',
+            leagueLegacyDataKey: 'weeklyRankings', leagueLegacyUpdatedKey: 'weeklyRankingsUpdatedAt',
+            leagueSetIdKey: 'weeklyRankingSetId', setsKey: 'weekly',
+            localStorageSetsKey: 'mls_ranking_sets_weekly',
+            globalDataKey: 'mds_season_weekly', globalUpdatedKey: 'mds_season_weekly_updated',
+            selectId: 'weeklyRankingSetSelect', nameInputWrapId: 'weeklyNewSetNameWrap',
+            nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn',
+            label: 'Weekly', staleAfterDays: 6
+        }
+    };
+
+    // Called after a successful upload or auto-fetch with the freshly parsed data. Updates the
+    // currently-selected set in place if one's selected in the dropdown; otherwise creates a new
+    // named set (using the name field, or a sensible default) and assigns it to the active league.
+    function saveRankingsAsSet(type, parsedData) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        const nameInput = document.getElementById(cfg.nameInputId);
+        const currentSelection = selectEl ? selectEl.value : '__new__';
+
+        let league = getActiveLeague();
+        let setId = null;
+
+        if (currentSelection && currentSelection !== '__new__' && currentSelection !== '__legacy__') {
+            let existing = State.rankingSets[cfg.setsKey].find(s => s.id === currentSelection);
+            if (existing) {
+                existing.data = parsedData;
+                existing.updatedAt = Date.now();
+                setId = existing.id;
+            }
+        }
+
+        if (!setId) {
+            const defaultName = `${cfg.label} Rankings – ${new Date().toLocaleDateString()}`;
+            const name = (nameInput && nameInput.value.trim()) || defaultName;
+            const newSet = { id: 'rset_' + Date.now(), name, createdAt: Date.now(), updatedAt: Date.now(), data: parsedData };
+            State.rankingSets[cfg.setsKey].push(newSet);
+            setId = newSet.id;
+            if (nameInput) nameInput.value = '';
+        }
+
+        localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
+
+        State[cfg.stateKey] = [...parsedData];
+        State[cfg.updatedAtKey] = Date.now();
+        // Keep the flat global fallback keys updated too, for consistency with how they're
+        // already used elsewhere (e.g. a brand new league with nothing assigned yet).
+        localStorage.setItem(cfg.globalDataKey, JSON.stringify(parsedData));
+        localStorage.setItem(cfg.globalUpdatedKey, State[cfg.updatedAtKey]);
+
+        if (league) league[cfg.leagueSetIdKey] = setId;
+        saveActiveLeagueState();
+        updateRankingsMetaDisplay();
+    }
+
+    // Fills a type's <select> with the active league's legacy data (if any), every named set,
+    // and a "+ Create New Set" option -- then selects whichever one the active league is
+    // actually using right now, and shows/hides the name input and delete button to match.
+    function populateRankingSetDropdown(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        if (!selectEl) return;
+
+        const league = getActiveLeague();
+        const sets = State.rankingSets[cfg.setsKey];
+        const assignedId = league ? league[cfg.leagueSetIdKey] : null;
+        const legacyData = league ? league[cfg.leagueLegacyDataKey] : null;
+        const hasLegacy = Array.isArray(legacyData) && legacyData.length > 0;
+
+        let optionsHTML = '';
+        if (hasLegacy) {
+            optionsHTML += `<option value="__legacy__">Unassigned Upload (legacy) — ${legacyData.length} players</option>`;
+        }
+        sets.forEach(s => {
+            optionsHTML += `<option value="${s.id}">${s.name} (${s.data.length} players)</option>`;
+        });
+        optionsHTML += `<option value="__new__">+ Create New Set</option>`;
+        selectEl.innerHTML = optionsHTML;
+
+        let selectedVal = '__new__';
+        if (assignedId && sets.some(s => s.id === assignedId)) {
+            selectedVal = assignedId;
+        } else if (hasLegacy) {
+            selectedVal = '__legacy__';
+        }
+        selectEl.value = selectedVal;
+
+        const nameWrap = document.getElementById(cfg.nameInputWrapId);
+        const deleteBtn = document.getElementById(cfg.deleteBtnId);
+        if (nameWrap) nameWrap.style.display = (selectedVal === '__new__') ? 'flex' : 'none';
+        if (deleteBtn) deleteBtn.style.display = (selectedVal !== '__new__' && selectedVal !== '__legacy__') ? 'inline-block' : 'none';
+    }
+
+    // User manually picked a different set (or legacy data, or "create new") from the dropdown.
+    window.onRankingSetSelectChange = function(type, selectEl) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const val = selectEl.value;
+        const nameWrap = document.getElementById(cfg.nameInputWrapId);
+        const deleteBtn = document.getElementById(cfg.deleteBtnId);
+
+        if (val === '__new__') {
+            if (nameWrap) nameWrap.style.display = 'flex';
+            if (deleteBtn) deleteBtn.style.display = 'none';
+            return; // don't touch State yet -- wait for an actual upload/fetch to create the set
+        }
+        if (nameWrap) nameWrap.style.display = 'none';
+
+        let league = getActiveLeague();
+        if (!league) return;
+
+        if (val === '__legacy__') {
+            State[cfg.stateKey] = league[cfg.leagueLegacyDataKey] || [];
+            State[cfg.updatedAtKey] = league[cfg.leagueLegacyUpdatedKey] || null;
+            league[cfg.leagueSetIdKey] = null;
+            if (deleteBtn) deleteBtn.style.display = 'none';
+        } else {
+            const set = State.rankingSets[cfg.setsKey].find(s => s.id === val);
+            if (!set) return;
+            State[cfg.stateKey] = [...set.data];
+            State[cfg.updatedAtKey] = set.updatedAt;
+            league[cfg.leagueSetIdKey] = set.id;
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+        }
+
+        saveActiveLeagueState();
+        updateRankingsMetaDisplay();
+
+        const activeTab = document.querySelector('.tab-content.active');
+        if (activeTab && activeTab.id === 'rosterTab' && typeof loadRosterTab === 'function') loadRosterTab();
+        if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+    };
+
+    // Deletes the currently-selected named set entirely. Any league referencing it (not just
+    // the active one) falls back to unassigned, since the data it pointed to no longer exists.
+    window.deleteRankingSet = function(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        const setId = selectEl ? selectEl.value : null;
+        if (!setId || setId === '__new__' || setId === '__legacy__') return;
+
+        const set = State.rankingSets[cfg.setsKey].find(s => s.id === setId);
+        if (!set) return;
+
+        if (!window.confirm(`Delete "${set.name}"? Any league using this set will need a new one selected. This can't be undone.`)) return;
+
+        State.rankingSets[cfg.setsKey] = State.rankingSets[cfg.setsKey].filter(s => s.id !== setId);
+        localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
+
+        State.leagues.forEach(l => {
+            if (l[cfg.leagueSetIdKey] === setId) l[cfg.leagueSetIdKey] = null;
+        });
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+
+        let league = getActiveLeague();
+        if (league && league[cfg.leagueSetIdKey] === null) {
+            State[cfg.stateKey] = [];
+            State[cfg.updatedAtKey] = null;
+        }
+
+        if (window.showToast) window.showToast(`Deleted "${set.name}".`);
+        updateRankingsMetaDisplay();
+    };
+
+
+    window.toggleRankingsCard = function(cardId) {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+        const nowExpanded = card.classList.toggle('expanded');
+        const header = card.querySelector('.rankings-card-header');
+        if (header) header.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+    };
+
+    function setRankingsCardExpanded(cardId, expanded) {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+        card.classList.toggle('expanded', expanded);
+        const header = card.querySelector('.rankings-card-header');
+        if (header) header.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+
     function updateRankingsMetaDisplay() {
         const rosMetaEl = document.getElementById('rosMetaDisplay');
+        const rosHeaderEl = document.getElementById('rosHeaderFreshness');
         if (rosMetaEl) {
             if (State.rosRankings.length > 0) {
                 rosMetaEl.style.display = 'block';
@@ -763,14 +1214,23 @@ window.addEventListener('popstate', (e) => {
                 const countText = `Loaded: ${State.rosRankings.length} players`;
                 if (fresh) {
                     rosMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'rankings-stale' : 'rankings-fresh'}">• ${fresh.label}${fresh.isStale ? ' — consider refreshing' : ''}</span>`;
+                    if (rosHeaderEl) {
+                        rosHeaderEl.textContent = fresh.label;
+                        rosHeaderEl.classList.toggle('rankings-stale', fresh.isStale);
+                    }
                 } else {
                     rosMetaEl.innerText = countText;
+                    if (rosHeaderEl) { rosHeaderEl.textContent = `${State.rosRankings.length} players`; rosHeaderEl.classList.remove('rankings-stale'); }
                 }
+            } else {
+                rosMetaEl.style.display = 'none';
+                if (rosHeaderEl) rosHeaderEl.textContent = '';
+                setRankingsCardExpanded('rosRankingsCard', true); // nothing loaded yet -- show the actionable UI
             }
-            else { rosMetaEl.style.display = 'none'; }
         }
 
         const weeklyMetaEl = document.getElementById('weeklyMetaDisplay');
+        const weeklyHeaderEl = document.getElementById('weeklyHeaderFreshness');
         if (weeklyMetaEl) {
             if (State.weeklyRankings.length > 0) {
                 weeklyMetaEl.style.display = 'block';
@@ -778,12 +1238,23 @@ window.addEventListener('popstate', (e) => {
                 const countText = `Loaded: ${State.weeklyRankings.length} players`;
                 if (fresh) {
                     weeklyMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'rankings-stale' : 'rankings-fresh'}">• ${fresh.label}${fresh.isStale ? ' — likely stale, re-upload for this week' : ''}</span>`;
+                    if (weeklyHeaderEl) {
+                        weeklyHeaderEl.textContent = fresh.label;
+                        weeklyHeaderEl.classList.toggle('rankings-stale', fresh.isStale);
+                    }
                 } else {
                     weeklyMetaEl.innerText = countText;
+                    if (weeklyHeaderEl) { weeklyHeaderEl.textContent = `${State.weeklyRankings.length} players`; weeklyHeaderEl.classList.remove('rankings-stale'); }
                 }
+            } else {
+                weeklyMetaEl.style.display = 'none';
+                if (weeklyHeaderEl) weeklyHeaderEl.textContent = '';
+                setRankingsCardExpanded('weeklyRankingsCard', true); // nothing loaded yet -- show the actionable UI
             }
-            else { weeklyMetaEl.style.display = 'none'; }
         }
+
+        populateRankingSetDropdown('ros');
+        populateRankingSetDropdown('weekly');
     }
 
     function processRankingsUpload(fileInputId, isWeekly, successMsgId) {
@@ -794,7 +1265,7 @@ window.addEventListener('popstate', (e) => {
         const filename = file.name.toLowerCase();
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: false, skipEmptyLines: true, complete: results => parseRankingsData(results.data, isWeekly, successMsgId) });
-        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.numbers')) {
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
             loadSheetJS(() => {
                 const reader = new FileReader();
                 reader.onload = e => {
@@ -805,8 +1276,12 @@ window.addEventListener('popstate', (e) => {
                 };
                 reader.readAsArrayBuffer(file);
             });
+        } else if (filename.endsWith('.numbers')) {
+            // Apple Numbers' format isn't something SheetJS (or any spreadsheet parser) can
+            // read -- it's a proprietary zip/binary format, not CSV/XLSX under the hood.
+            if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
         } else {
-            window.alert("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.");
+            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, or .xls file.", { isError: true });
         }
     }
 
@@ -875,18 +1350,10 @@ window.addEventListener('popstate', (e) => {
         }
 
         if (isWeekly) { 
-            State.weeklyRankings = parsed; 
-            State.weeklyRankingsUpdatedAt = Date.now();
-            localStorage.setItem('mds_season_weekly', JSON.stringify(State.weeklyRankings)); 
-            localStorage.setItem('mds_season_weekly_updated', State.weeklyRankingsUpdatedAt);
+            saveRankingsAsSet('weekly', parsed);
         } else { 
-            State.rosRankings = parsed; 
-            State.rosRankingsUpdatedAt = Date.now();
-            localStorage.setItem('mds_season_ros', JSON.stringify(State.rosRankings)); 
-            localStorage.setItem('mds_season_ros_updated', State.rosRankingsUpdatedAt);
+            saveRankingsAsSet('ros', parsed);
         }
-        saveActiveLeagueState();
-        updateRankingsMetaDisplay();
         
         if (hasNewSos) {
             localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
@@ -942,7 +1409,7 @@ window.addEventListener('popstate', (e) => {
         const filename = file.name.toLowerCase();
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
-        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.numbers')) {
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
             loadSheetJS(() => {            
                 const reader = new FileReader();
                 reader.onload = e => {
@@ -953,39 +1420,24 @@ window.addEventListener('popstate', (e) => {
                 };
                 reader.readAsArrayBuffer(file);
             });
+        } else if (filename.endsWith('.numbers')) {
+            if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
         } else {
-            window.alert("Unsupported file format. Please upload a .csv, .xlsx, .xls, or .numbers file.");
+            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, or .xls file.", { isError: true });
         }
     }
-    window.fetchLeagueLogsADP = async function(btn) {
-    const outputEl = document.getElementById('marketDisconnectOutput');
-    const msgEl = document.getElementById('marketSuccessMsg');
-    
-    const sourceSelect = document.getElementById('marketSourceSelect');
-    if (!sourceSelect) return;
-    const source = sourceSelect.value;
-    
-    const origText = btn.innerText;
-    btn.innerText = "Fetching...";
-    btn.style.opacity = "0.7";
-    btn.disabled = true;
-
-    try {
+    // --- SHARED MARKET-CONSENSUS FETCH ---
+    // Extracted from what used to be inline inside fetchLeagueLogsADP() so both the Scout tab's
+    // Power Rankings feature AND the ROS Rankings auto-fetch (Roster tab) can reuse the exact
+    // same, already-proven fetch/parse logic instead of duplicating it. Pure data in/out --
+    // no DOM access, no state writes -- callers handle their own UI and State updates.
+    async function fetchMarketConsensusData(source, isDynastyVal, numQbsVal, ppr, isTEP, teamCount) {
         let parsed = [];
         let formatText = "";
-
-        // Common settings extracted from dropdowns
-        const isDynastyVal = document.getElementById('marketType')?.value || 'redraft';
-        const numQbsVal = document.getElementById('marketQbs')?.value || '1';
         const isDynastyBool = isDynastyVal === 'dynasty';
 
         // --- 1. FANTASYCALC ---
         if (source === 'fantasycalc') {
-            const ppr = document.getElementById('marketPpr')?.value || '1';
-            const isTEP = document.getElementById('marketTep')?.checked ? 'true' : 'false';
-
-            let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
-
             const fcRes = await fetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
             if (!fcRes.ok) throw new Error(`FantasyCalc API Error: ${fcRes.status}`);
             const fcData = await fcRes.json();
@@ -999,7 +1451,7 @@ window.addEventListener('popstate', (e) => {
                         parsed.push({
                             name: fullName,
                             cleanName: normalizeName(fullName),
-                            marketVal: rankVal, // Added missing comma
+                            marketVal: rankVal,
                             pos: item.player.position || ""
                         });
                     }
@@ -1039,16 +1491,89 @@ window.addEventListener('popstate', (e) => {
                     parsed.push({
                         name: fullName,
                         cleanName: normalizeName(fullName),
-                        marketVal: rankVal, // Added missing comma
+                        marketVal: rankVal,
                         pos: sp.position || ""
                     });
                 }
             });
         }
 
+        return { parsed, formatText };
+    }
+
+    // --- ROS RANKINGS AUTO-FETCH ---
+    // Reuses the exact same market-consensus fetch already proven for Scout's Power Rankings.
+    // This is a deliberately narrower feature than "auto-fetch rankings" in general: ROS
+    // (rest-of-season) value maps directly onto what FantasyCalc/LeagueLogs already provide
+    // (a single overall value per player, no week-specific data). Weekly Rankings do NOT get
+    // an equivalent auto-fetch -- the real expert-consensus weekly rankings source (FantasyPros)
+    // requires a paid/partnership API key, and the free alternatives found either return raw
+    // stats/projections rather than a ready-made ranking, or are of uncertain reliability. Rather
+    // than guess at an unverified integration, Weekly Rankings stay upload-only for now.
+    window.autoFetchRosRankings = async function(btn) {
+        if (!btn) return;
+        const origText = btn.innerText;
+        btn.innerText = "Fetching...";
+        btn.style.opacity = "0.7";
+        btn.disabled = true;
+
+        try {
+            // Shared with the Scout tab's Power Rankings settings -- see updateMarketSetting()
+            // and the "ros"-prefixed controls on this tab for where this gets configured.
+            const s = State.marketSettings;
+            const isTEP = s.tep ? 'true' : 'false';
+            let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
+
+            const { parsed, formatText } = await fetchMarketConsensusData(s.source, s.type, s.qbs, s.ppr, isTEP, teamCount);
+            if (parsed.length === 0) throw new Error("No players returned from the market data source.");
+
+            // Convert to the same shape manual ROS uploads use (rank/posRank/flexRank), computed
+            // by sorting on marketVal (lower = better) both overall and within each position.
+            let sorted = [...parsed].sort((a, b) => a.marketVal - b.marketVal);
+            let posCounters = {};
+            let rosRankings = sorted.map((p, i) => {
+                const posKey = (p.pos || '').toUpperCase();
+                posCounters[posKey] = (posCounters[posKey] || 0) + 1;
+                return { name: p.name, cleanName: p.cleanName, rank: i + 1, posRank: posCounters[posKey], flexRank: i + 1 };
+            });
+
+            saveRankingsAsSet('ros', rosRankings);
+
+            if (window.showToast) window.showToast(`ROS Rankings pulled: ${rosRankings.length} players (${formatText})`);
+
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab && activeTab.id === 'rosterTab') loadRosterTab();
+
+        } catch (error) {
+            console.error("Error auto-fetching ROS rankings:", error);
+            let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block requests containing the word 'logs' -- try pausing yours.)" : "";
+            if (window.showToast) window.showToast(`Could not auto-fetch ROS rankings.\n\n${error.message}${adBlockerTip}`, { isError: true });
+        } finally {
+            btn.innerText = origText;
+            btn.style.opacity = "1";
+            btn.disabled = false;
+        }
+    };
+
+    window.fetchLeagueLogsADP = async function(btn) {
+    const outputEl = document.getElementById('marketDisconnectOutput');
+    const msgEl = document.getElementById('marketSuccessMsg');
+    
+    const origText = btn.innerText;
+    btn.innerText = "Fetching...";
+    btn.style.opacity = "0.7";
+    btn.disabled = true;
+
+    try {
+        const s = State.marketSettings;
+        const isTEP = s.tep ? 'true' : 'false';
+        let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
+
+        const { parsed, formatText } = await fetchMarketConsensusData(s.source, s.type, s.qbs, s.ppr, isTEP, teamCount);
+
         // Save to state and local storage
         State.marketRankings = parsed;
-        localStorage.setItem('mls_season_market', JSON.stringify(State.marketRankings));
+        localStorage.setItem('mds_season_market', JSON.stringify(State.marketRankings)); // was 'mls_season_market' -- State.marketRankings is always read back from 'mds_season_market' on load (see State init above), so this key must match or fetched data silently disappears on reload
         
         // Update UI
         updateMarketMetaDisplay(); 
@@ -1063,31 +1588,54 @@ window.addEventListener('popstate', (e) => {
     } catch (error) {
         console.error("Error fetching market data:", error);
         let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
-        window.alert(`Could not pull live market data.\n\n${error.message}${adBlockerTip}`);
+        if (window.showToast) window.showToast(`Could not pull live market data.\n\n${error.message}${adBlockerTip}`, { isError: true });
     } finally {
         btn.innerText = origText;
         btn.style.opacity = "1";
         btn.disabled = false;
     }
 };
-// --- UI TOGGLE HELPER FOR MARKET SOURCE ---
-window.toggleMarketSourceUI = function() {
-    const source = document.getElementById('marketSourceSelect')?.value;
-    const fcControls = document.getElementById('fantasycalcSpecificControls');
+// --- SHARED MARKET SETTINGS (Scout tab + Roster tab's ROS auto-fetch) ---
+// Both tabs have their own copy of these controls (different element IDs, prefixed "ros" on
+// the Roster tab) so the user doesn't have to navigate to Scout just to configure them before
+// auto-fetching ROS rankings. Single source of truth is State.marketSettings; every control's
+// onchange calls updateMarketSetting(), which persists it and re-syncs BOTH tabs' controls so
+// they never drift out of sync with each other.
+window.updateMarketSetting = function(key, value) {
+    State.marketSettings[key] = value;
+    localStorage.setItem('mls_market_settings', JSON.stringify(State.marketSettings));
+    applyMarketSettingsToUI();
+};
+
+function applyMarketSettingsToUI() {
+    const s = State.marketSettings;
+    const instances = [
+        { source: 'marketSourceSelect', type: 'marketType', qbs: 'marketQbs', ppr: 'marketPpr', tep: 'marketTep', fcBlock: 'fantasycalcSpecificControls' },
+        { source: 'rosMarketSourceSelect', type: 'rosMarketType', qbs: 'rosMarketQbs', ppr: 'rosMarketPpr', tep: 'rosMarketTep', fcBlock: 'rosFantasycalcSpecificControls' }
+    ];
+
+    instances.forEach(ids => {
+        const sourceEl = document.getElementById(ids.source);
+        const typeEl = document.getElementById(ids.type);
+        const qbsEl = document.getElementById(ids.qbs);
+        const pprEl = document.getElementById(ids.ppr);
+        const tepEl = document.getElementById(ids.tep);
+        const fcBlock = document.getElementById(ids.fcBlock);
+
+        if (sourceEl) sourceEl.value = s.source;
+        if (typeEl) typeEl.value = s.type;
+        if (qbsEl) qbsEl.value = s.qbs;
+        if (pprEl) pprEl.value = s.ppr;
+        if (tepEl) tepEl.checked = s.tep;
+        // LeagueLogs doesn't use PPR dropdown or TEP toggle directly, so hide them
+        if (fcBlock) fcBlock.style.display = (s.source === 'fantasycalc') ? 'block' : 'none';
+    });
+
     const brandEl = document.getElementById('attributionBrand');
     const attrLink = document.getElementById('attributionLink');
-
-    if (source === 'fantasycalc') {
-        if (fcControls) fcControls.style.display = 'block';
-        if (brandEl) brandEl.innerText = "FantasyCalc";
-        if (attrLink) attrLink.href = "https://fantasycalc.com";
-    } else {
-        // LeagueLogs doesn't use PPR dropdown or TEP toggle directly, so hide them
-        if (fcControls) fcControls.style.display = 'none';
-        if (brandEl) brandEl.innerText = "LeagueLogs";
-        if (attrLink) attrLink.href = "https://leaguelogs.com";
-    }
-};
+    if (brandEl) brandEl.innerText = (s.source === 'fantasycalc') ? "FantasyCalc" : "LeagueLogs";
+    if (attrLink) attrLink.href = (s.source === 'fantasycalc') ? "https://fantasycalc.com" : "https://leaguelogs.com";
+}
     function parseMarketData(rows, successMsgId) {
         let parsed = [];
         if (rows.length < 1) return;
@@ -1100,7 +1648,7 @@ window.toggleMarketSourceUI = function() {
         let posKey = Object.keys(sample).find(k => /^pos/i.test(k) || /position/i.test(k));
 
         if (!nameKey || !rankKey) {
-            window.alert("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.");
+            if (window.showToast) window.showToast("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.", { isError: true });
             return;
         }
 
@@ -1276,7 +1824,7 @@ window.toggleMarketSourceUI = function() {
     // --- SCREENSHOT EXPORT ---
     window.exportLineup = async function() {
     if (typeof html2canvas === 'undefined') { 
-        window.alert("Screenshot library loading. Please try again in a moment."); 
+        if (window.showToast) window.showToast("Screenshot library loading. Please try again in a moment.", { isError: true });
         return; 
     }
     
@@ -1314,7 +1862,7 @@ window.toggleMarketSourceUI = function() {
         link.click();
     } catch (err) {
         console.error("Export failed:", err); 
-        window.alert("Export failed. Please try again.");
+        if (window.showToast) window.showToast("Export failed. Please try again.", { isError: true });
     } finally {
         buttons.forEach(b => b.style.display = 'inline-block');
         exportBtn.innerText = origText;
@@ -1649,6 +2197,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // --- POWER-USER KEYBOARD SHORTCUTS (MLS) ---
 document.addEventListener('keydown', (e) => {
+    // Escape closes the hamburger drawer from anywhere, so keyboard users have a way to
+    // dismiss it without a mouse. The drawerOverlay backdrop is intentionally NOT a tab
+    // stop (standard pattern for backdrops); this plus the existing visible close button
+    // are the two keyboard-accessible ways to exit the menu.
+    const openDrawer = document.getElementById('drawer');
+    if (e.key === 'Escape' && openDrawer && openDrawer.classList.contains('open')) {
+        window.toggleDrawer();
+        return;
+    }
+
     const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
     const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
     
@@ -1665,7 +2223,7 @@ document.addEventListener('keydown', (e) => {
 window.runPositionalStrength = function() {
     let league = getActiveLeague();
     if (!league || !league.globalRosterMap || !league.globalPosMap) {
-        window.alert("Please sync a league on the Setup tab first.");
+        if (window.showToast) window.showToast("Please sync a league on the Setup tab first.", { isError: true });
         return;
     }
 
@@ -1676,7 +2234,7 @@ window.runPositionalStrength = function() {
         let msg = source === 'market' 
             ? "Please pull live Market Value data below first." 
             : "Please upload your Rest of Season rankings first.";
-        window.alert(msg);
+        if (window.showToast) window.showToast(msg, { isError: true });
         return;
     }
 
@@ -1718,7 +2276,7 @@ window.runPositionalStrength = function() {
     let teamScores = Object.values(teamScoresMap);
 
     if (teamScores.length === 0) {
-        window.alert("Not enough roster data to evaluate.");
+        if (window.showToast) window.showToast("Not enough roster data to evaluate.", { isError: true });
         return;
     }
 

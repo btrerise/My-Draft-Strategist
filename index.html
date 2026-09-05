@@ -473,6 +473,22 @@
         <button class="btn btn-primary" onclick="showTab('tracker')">Go to Tracker</button>
     </section>
 
+    <!-- BACKUP & RESTORE -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3>Backup & Restore</h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Download all your drafts, rankings, and settings as a file. Use Import to restore that file on this or another device/browser.</span>
+            </div>
+        </header>
+        <div class="flex-column gap-2">
+            <button class="btn btn-primary" onclick="exportMdsSettings()">Export Backup</button>
+            <input type="file" id="mdsImportFileInput" accept="application/json,.json" style="display:none;" onchange="importMdsSettings(this)">
+            <button class="btn btn-secondary" onclick="document.getElementById('mdsImportFileInput').click()">Import Backup</button>
+        </div>
+    </section>
+
     <!-- RESET CONTROLS -->
     <section class="settings-card">
         <header class="card-header">
@@ -576,6 +592,10 @@
         <button id="exportTeamBtn" class="btn btn-purple" onclick="exportTeam()" style="margin-bottom: 0;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Export
+    </button>
+        <button id="sendToLineupBtn" class="btn btn-secondary" onclick="sendRosterToLineupStrategist()" style="margin-bottom: 0;" title="Send this drafted roster to My Lineup Strategist as a new league">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        Send to Lineup Strategist
     </button>
 </div>
     

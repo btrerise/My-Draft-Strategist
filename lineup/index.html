@@ -117,7 +117,7 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
             
-            <div class="logo-container" onclick="showTab('setup')">
+            <div class="logo-container" onclick="showTab('setup')" role="button" tabindex="0" aria-label="Go to Setup" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('setup');}">
                 <img src="../images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
                 <div class="logo-text">My Lineup <span>Strategist</span></div>
             </div>
@@ -136,12 +136,32 @@
 <div id="setupTab" class="tab-content active">
     <!-- Info & Guide Banner Shortcut -->
     <div class="guide-banner" id="guideBanner" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem;">
-        <div onclick="showTab('guide')" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
+        <div onclick="showTab('guide')" role="button" tabindex="0" aria-label="Read the User Guide" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('guide');}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
             <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </div>
         <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'ds_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+    </div>
+    <!-- DRAFT STRATEGIST CROSS-PROMO -->
+    <div class="guide-banner" id="draftBanner" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4); padding: 0.75rem 1rem;">
+        <div onclick="window.location.href='../'" role="button" tabindex="0" aria-label="Switch to My Draft Strategist" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='../';}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer; color: var(--primary-green);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+            <span style="font-size: 0.9rem;">Mocking or prepping for a draft? Try <strong>My Draft Strategist</strong></span>
+            <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+        </div>
+        <button class="close-banner-btn" onclick="dismissBanner('draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+    </div>
+    <!-- DRAFT STRATEGIST ROSTER HANDOFF -->
+    <div class="info-banner" id="handoffBanner" style="display: none; justify-content: space-between; align-items: flex-start;">
+        <div style="display: flex; gap: 0.5rem;">
+            <div class="info-banner-icon">i</div>
+            <div id="handoffBannerText"><strong>Roster found from My Draft Strategist.</strong></div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-shrink: 0; margin-left: 0.75rem;">
+            <button class="btn btn-primary btn-sm" onclick="importDraftStrategistRoster()">Import as New League</button>
+            <button class="close-banner-btn" onclick="dismissDraftStrategistHandoff()" aria-label="Dismiss" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+        </div>
     </div>
     <!-- ADD/SYNC LEAGUE -->
     <section class="settings-card">
@@ -151,7 +171,7 @@
     </h3>
     <div class="tooltip-container">
         <div class="tooltip-icon">i</div>
-        <span class="tooltip-text">Sync with Sleeper via Username and League ID, OR create a manual league by leaving the Sleeper info blank and clicking 'Create Manual'.</span>
+        <span class="tooltip-text">Sync one league with Sleeper via Username and League ID, import ALL your leagues at once with just your Username, or create a manual league by leaving the Sleeper info blank and clicking 'Create Manual'.</span>
     </div>
 </header>
 
@@ -180,6 +200,18 @@
             <button class="btn btn-blue" onclick="addAndSyncLeague(this)">Sync Sleeper</button>
             <button class="btn btn-purple" onclick="createManualLeague()">Create Manual</button>
         </div>
+
+        <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0;">
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">or</span>
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+        </div>
+
+        <button id="importAllLeaguesBtn" class="btn btn-secondary" style="width: 100%;" onclick="importAllSleeperLeagues(this)" title="Uses only the Sleeper Username above (League ID not needed) to find and sync every league you're in for the current season.">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Import All My Leagues
+        </button>
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; margin-bottom: 0;">Finds and syncs every league for this username -- just the username above is needed, no League ID.</p>
     </section>
 
     <!-- ACTIVE LEAGUE REQUIREMENTS -->
@@ -231,6 +263,22 @@
         <div id="manualAddMsg" class="manual-add-feedback"></div>
     </section>
     
+    <!-- BACKUP & RESTORE -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3>Backup & Restore</h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Download all your leagues, rankings, and settings as a file. Use Import to restore that file on this or another device/browser.</span>
+            </div>
+        </header>
+        <div class="flex-column gap-2">
+            <button class="btn btn-primary" onclick="exportMlsSettings()">Export Backup</button>
+            <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" onchange="importMlsSettings(this)">
+            <button class="btn btn-secondary" onclick="document.getElementById('mlsImportFileInput').click()">Import Backup</button>
+        </div>
+    </section>
+
     <!-- DANGER ZONE -->
     <section class="settings-card danger-card">
         <header class="card-header">
@@ -251,19 +299,98 @@
 <div id="rosterTab" class="tab-content">
     
     <!-- REST-OF-SEASON RANKINGS (moved to top: this is the freshness-critical upload, surfaced
-         first rather than buried below the roster list, per the rankings-upload restructuring) -->
-    <section class="settings-card">
-        <header class="card-header">
+         first rather than buried below the roster list, per the rankings-upload restructuring.
+         Collapsible: the auto-fetch settings panel made this card tall enough to push Active
+         Roster too far down, so the body collapses once rankings exist, leaving a compact
+         header with a freshness readout still visible for quick reference.) -->
+    <section class="settings-card rankings-card" id="rosRankingsCard">
+        <header class="card-header rankings-card-header" onclick="toggleRankingsCard('rosRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Rest-of-Season Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('rosRankingsCard');}">
             <h3><span>Rest-of-Season (ROS) Rankings</span></h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Upload .csv or .xlsx Rest-of-Season rankings here to dictate the long-term value of your roster. This helps you evaluate trades and overall team strength.</span>
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span id="rosHeaderFreshness" class="header-freshness"></span>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Upload .csv or .xlsx Rest-of-Season rankings here to dictate the long-term value of your roster. This helps you evaluate trades and overall team strength.</span>
+                </div>
+                <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
         </header>
         
-        <div id="rosMetaDisplay" class="status-badge-meta"></div>
-        <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
-        <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
+        <div class="rankings-card-body">
+            <div class="input-group" style="margin-bottom: 0.5rem;">
+                <label for="rosRankingSetSelect">Ranking Set for this League</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('ros', this)" aria-label="Select ROS Ranking Set">
+                    </select>
+                    <button id="rosDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('ros')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
+                </div>
+            </div>
+            <div id="rosNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
+                <label for="rosNewSetName">New Set Name (optional)</label>
+                <input type="text" id="rosNewSetName" class="form-input" placeholder="e.g. Dynasty PPR 2026">
+            </div>
+
+            <div id="rosMetaDisplay" class="status-badge-meta"></div>
+            <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
+            <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
+
+            <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0;">
+                <div style="flex: 1; height: 1px; background: var(--border);"></div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">or auto-fetch market value</span>
+                <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            </div>
+
+            <div class="input-group">
+                <label for="rosMarketSourceSelect">Market Source</label>
+                <select id="rosMarketSourceSelect" class="form-input" onchange="updateMarketSetting('source', this.value)" aria-label="Select Market Source">
+                    <option value="fantasycalc">FantasyCalc.com (Trade Value)</option>
+                    <option value="leaguelogs">LeagueLogs (Aggregate Market)</option>
+                </select>
+            </div>
+
+            <div class="settings-grid mb-2">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="rosMarketType">League Type</label>
+                    <select id="rosMarketType" class="form-input" onchange="updateMarketSetting('type', this.value)" aria-label="League Type">
+                        <option value="redraft">Redraft</option>
+                        <option value="dynasty">Dynasty</option>
+                    </select>
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="rosMarketQbs">QB Format</label>
+                    <select id="rosMarketQbs" class="form-input" onchange="updateMarketSetting('qbs', this.value)" aria-label="QB Format">
+                        <option value="1">1QB</option>
+                        <option value="2">Superflex / 2QB</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="rosFantasycalcSpecificControls">
+                <div class="settings-grid mb-3" style="align-items: center;">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label for="rosMarketPpr">PPR Scoring</label>
+                        <select id="rosMarketPpr" class="form-input" onchange="updateMarketSetting('ppr', this.value)" aria-label="PPR Scoring">
+                            <option value="1">Full PPR (1.0)</option>
+                            <option value="0.5">Half PPR (0.5)</option>
+                            <option value="0">Standard (0)</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: flex-end;">
+                        <div class="toggle-row" style="padding: 0.4rem 0; border: none; background: none; margin-top: 1rem;">
+                            <div class="toggle-info">
+                                <span class="toggle-title" style="font-size: 0.85rem;">TE Premium (TEP)</span>
+                            </div>
+                            <input type="checkbox" id="rosMarketTep" class="toggle-switch" onchange="updateMarketSetting('tep', this.checked)" aria-label="Toggle Tight End Premium">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="autoFetchRosBtn" class="btn btn-secondary" style="width: 100%;" onclick="autoFetchRosRankings(this)" title="Pulls market-consensus values from FantasyCalc/LeagueLogs. These settings are shared with the Scout tab's Power Rankings feature -- changing them here updates them there too.">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
+                Auto-Fetch ROS Rankings
+            </button>
+        </div>
     </section>
 
     <!-- ACTIVE ROSTER -->
@@ -331,18 +458,37 @@
 
     <!-- WEEKLY MATCHUP RANKINGS (moved to top: this is the one upload that needs re-doing
          every single week, so freshness needs to be visible before anything else here) -->
-    <section class="settings-card">
-        <header class="card-header">
+    <section class="settings-card rankings-card" id="weeklyRankingsCard">
+        <header class="card-header rankings-card-header" onclick="toggleRankingsCard('weeklyRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Weekly Matchup Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('weeklyRankingsCard');}">
             <h3><span>Weekly Matchup Rankings</span></h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Upload .csv or .xlsx Weekly Matchup Rankings to optimize your Start/Sit decisions for the current week.</span>
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span id="weeklyHeaderFreshness" class="header-freshness"></span>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Upload .csv or .xlsx Weekly Matchup Rankings to optimize your Start/Sit decisions for the current week.</span>
+                </div>
+                <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
         </header>
         
-        <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
-        <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
-        <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
+        <div class="rankings-card-body">
+            <div class="input-group" style="margin-bottom: 0.5rem;">
+                <label for="weeklyRankingSetSelect">Ranking Set for this League</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <select id="weeklyRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('weekly', this)" aria-label="Select Weekly Ranking Set">
+                    </select>
+                    <button id="weeklyDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('weekly')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
+                </div>
+            </div>
+            <div id="weeklyNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
+                <label for="weeklyNewSetName">New Set Name (optional)</label>
+                <input type="text" id="weeklyNewSetName" class="form-input" placeholder="e.g. Week 5 Rankings">
+            </div>
+
+            <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
+            <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
+            <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
+        </div>
     </section>
     
     <!-- OPTIMAL LINEUP CARD -->
@@ -524,7 +670,7 @@
     <div id="marketMetaDisplay" class="status-badge-meta"></div>
     
     <!-- Option A: Upload -->
-    <input type="file" id="marketFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, .numbers" aria-label="Upload Market rankings from KTC or FantasyCalc">
+    <input type="file" id="marketFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
     
     <hr class="card-divider">
     <div class="divider-text">OR PULL LIVE MARKET VALUE</div>
@@ -532,7 +678,7 @@
     <!-- Option B: Modular Configuration Panel -->
     <div class="input-group">
         <label for="marketSourceSelect">Market Source</label>
-        <select id="marketSourceSelect" class="form-input" onchange="toggleMarketSourceUI()" aria-label="Select Market Source">
+        <select id="marketSourceSelect" class="form-input" onchange="updateMarketSetting('source', this.value)" aria-label="Select Market Source">
             <option value="fantasycalc" selected>FantasyCalc.com (Trade Value)</option>
             <option value="leaguelogs">LeagueLogs (Aggregate Market)</option>
         </select>
@@ -542,14 +688,14 @@
     <div class="settings-grid mb-2">
         <div class="input-group" style="margin-bottom: 0;">
             <label for="marketType">League Type</label>
-            <select id="marketType" class="form-input" aria-label="League Type">
+            <select id="marketType" class="form-input" onchange="updateMarketSetting('type', this.value)" aria-label="League Type">
                 <option value="redraft">Redraft</option>
                 <option value="dynasty">Dynasty</option>
             </select>
         </div>
         <div class="input-group" style="margin-bottom: 0;">
             <label for="marketQbs">QB Format</label>
-            <select id="marketQbs" class="form-input" aria-label="QB Format">
+            <select id="marketQbs" class="form-input" onchange="updateMarketSetting('qbs', this.value)" aria-label="QB Format">
                 <option value="1">1QB</option>
                 <option value="2">Superflex / 2QB</option>
             </select>
@@ -561,7 +707,7 @@
         <div class="settings-grid mb-3" style="align-items: center;">
             <div class="input-group" style="margin-bottom: 0;">
                 <label for="marketPpr">PPR Scoring</label>
-                <select id="marketPpr" class="form-input" aria-label="PPR Scoring">
+                <select id="marketPpr" class="form-input" onchange="updateMarketSetting('ppr', this.value)" aria-label="PPR Scoring">
                     <option value="1">Full PPR (1.0)</option>
                     <option value="0.5">Half PPR (0.5)</option>
                     <option value="0">Standard (0)</option>
@@ -572,7 +718,7 @@
                     <div class="toggle-info">
                         <span class="toggle-title" style="font-size: 0.85rem;">TE Premium (TEP)</span>
                     </div>
-                    <input type="checkbox" id="marketTep" class="toggle-switch" aria-label="Toggle Tight End Premium">
+                    <input type="checkbox" id="marketTep" class="toggle-switch" onchange="updateMarketSetting('tep', this.checked)" aria-label="Toggle Tight End Premium">
                 </div>
             </div>
         </div>
