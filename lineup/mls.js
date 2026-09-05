@@ -1954,7 +1954,10 @@ function applyMarketSettingsToUI() {
         let sellItems = analysisList.filter(x => x.type === 'SELL');
 
         if (buyItems.length > 0) {
-            html += `<div style="font-weight:bold; color:var(--primary-green); margin: 0.75rem 0 0.5rem 0;">🟢 High-Value Targets (Market Sleeping)</div>`;
+            html += `<div style="font-weight:bold; color:var(--primary-green); margin: 0.75rem 0 0.5rem 0; display: flex; align-items: center; gap: 6px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                High-Value Targets (Market Sleeping)
+            </div>`;
             buyItems.forEach(item => {
                 let ownerStr = item.owner === "You" ? `<span style="color:#60a5fa;">On your roster</span>` : (item.owner ? `Rostered by: ${item.owner}` : `<span style="color:var(--primary-green);">Free Agent</span>`);
                 html += `
@@ -1975,7 +1978,10 @@ function applyMarketSettingsToUI() {
         }
 
         if (sellItems.length > 0) {
-            html += `<div style="font-weight:bold; color:#fca5a5; margin: 1.25rem 0 0.5rem 0;">🔴 Overvalued Assets (Sell High Opportunities)</div>`;
+            html += `<div style="font-weight:bold; color:#fca5a5; margin: 1.25rem 0 0.5rem 0; display: flex; align-items: center; gap: 6px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
+                Overvalued Assets (Sell High Opportunities)
+            </div>`;
             sellItems.forEach(item => {
                 html += `
                 <div class="scout-result-card">
