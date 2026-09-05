@@ -2185,16 +2185,7 @@ function parseExcel(file) {
                 <div class="card-grid" style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch; text-align: left;">
                     
                     <!-- TOP ROW: Rank & Name -->
-                    <div class="card-top-row" style="align-items: center;">
-                        <button onclick="cycleAffinity(event, ${p.id})" 
-                                style="background: transparent; border: none; padding: 6px; margin: -6px 0 -6px -6px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
-                                title="Toggle Color Label" aria-label="Toggle Color Label">
-                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
-                                         border: 2px solid ${['var(--border)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                         background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                         transition: all 0.2s ease;">
-                            </span>
-                        </button>
+                    <div class="card-top-row">
                         <span style="color: var(--text-muted); font-weight: 500; font-size: 1rem; flex-shrink: 0;">${p.rank}.</span> 
                         <h4 class="card-name">
                             ${p.name}
@@ -2204,13 +2195,22 @@ function parseExcel(file) {
                     <!-- BOTTOM ROW: Badges & Actions -->
                     <div class="card-bottom-row">
                         
-                        <!-- Bottom Left: Badges & Star -->
+                        <!-- Bottom Left: Badges, Star & Affinity -->
                         <div class="card-badges-row">
                             <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
                             ${rookieBadge}
                             ${injuryBadge}
                             ${stackBadge}
-                            <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue">${queueStarIcon}</button>
+                            <div style="display: flex; align-items: center; gap: 2px;">
+                                <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue">${queueStarIcon}</button>
+                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
+                                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
+                                                 border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 opacity: ${p.affinity ? '1' : '0.4'}; transition: all 0.2s ease;">
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                         
                         <!-- Bottom Right: Draft Actions & Chevron -->
@@ -2271,17 +2271,8 @@ function parseExcel(file) {
                 <div style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch;">
                     
                     <!-- TOP ROW: Grip & Name -->
-                    <div class="card-top-row" style="align-items: center;">
+                    <div class="card-top-row">
                         <span style="color: var(--text-muted); cursor: grab; user-select: none; flex-shrink: 0; font-size: 1.1rem; margin-right: 0.2rem;" title="Drag to reorder">⋮⋮</span>
-                        <button onclick="cycleAffinity(event, ${p.id})" 
-                                style="background: transparent; border: none; padding: 6px; margin: -6px 0 -6px -2px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
-                                title="Toggle Color Label" aria-label="Toggle Color Label">
-                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
-                                         border: 2px solid ${['var(--border)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                         background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                         transition: all 0.2s ease;">
-                            </span>
-                        </button>
                         <h4 class="card-name">
                             ${p.name}
                         </h4>
@@ -2290,12 +2281,21 @@ function parseExcel(file) {
                     <!-- BOTTOM ROW: Arrows, Badges, Star & Actions -->
                     <div class="card-bottom-row">
                         
-                        <!-- Left Side: Arrows, Badges & Star -->
+                        <!-- Left Side: Arrows, Badges, Star & Affinity -->
                         <div class="card-badges-row">
                             <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled' : ''}>▲</button>
                             <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled' : ''}>▼</button>
                             <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span>
-                            <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
+                            <div style="display: flex; align-items: center; gap: 2px;">
+                                <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
+                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
+                                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
+                                                 border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                                 opacity: ${p.affinity ? '1' : '0.4'}; transition: all 0.2s ease;">
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                         
                         <!-- Right Side: Draft Actions -->
