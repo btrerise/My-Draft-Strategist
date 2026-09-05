@@ -2103,6 +2103,7 @@ function parseExcel(file) {
 
     // --- 5-COLOR AFFINITY SYSTEM ---
     window.cycleAffinity = function(e, id) {
+        e.preventDefault(); // Stop native browser click-through
         e.stopPropagation(); // Prevents the card's expand/collapse from triggering
         let p = State.players.find(x => x.id === id);
         if (p) {
@@ -2185,13 +2186,15 @@ function parseExcel(file) {
                     
                     <!-- TOP ROW: Rank & Name -->
                     <div class="card-top-row" style="align-items: center;">
-                        <span onclick="cycleAffinity(event, ${p.id})" 
-                              style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
-                                     border: 2px solid ${['var(--border)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                     background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                     cursor: pointer; margin-right: 4px; flex-shrink: 0; transition: all 0.2s ease;" 
-                              title="Toggle Color Label">
-                        </span>
+                        <button onclick="cycleAffinity(event, ${p.id})" 
+                                style="background: transparent; border: none; padding: 6px; margin: -6px 0 -6px -6px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
+                                title="Toggle Color Label" aria-label="Toggle Color Label">
+                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
+                                         border: 2px solid ${['var(--border)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                         background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                         transition: all 0.2s ease;">
+                            </span>
+                        </button>
                         <span style="color: var(--text-muted); font-weight: 500; font-size: 1rem; flex-shrink: 0;">${p.rank}.</span> 
                         <h4 class="card-name">
                             ${p.name}
@@ -2270,13 +2273,15 @@ function parseExcel(file) {
                     <!-- TOP ROW: Grip & Name -->
                     <div class="card-top-row" style="align-items: center;">
                         <span style="color: var(--text-muted); cursor: grab; user-select: none; flex-shrink: 0; font-size: 1.1rem; margin-right: 0.2rem;" title="Drag to reorder">⋮⋮</span>
-                        <span onclick="cycleAffinity(event, ${p.id})" 
-                              style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
-                                     border: 2px solid ${['var(--border)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                     background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
-                                     cursor: pointer; margin-right: 4px; flex-shrink: 0; transition: all 0.2s ease;" 
-                              title="Toggle Color Label">
-                        </span>
+                        <button onclick="cycleAffinity(event, ${p.id})" 
+                                style="background: transparent; border: none; padding: 6px; margin: -6px 0 -6px -2px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
+                                title="Toggle Color Label" aria-label="Toggle Color Label">
+                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
+                                         border: 2px solid ${['var(--border)', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                         background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444'][p.affinity || 0]}; 
+                                         transition: all 0.2s ease;">
+                            </span>
+                        </button>
                         <h4 class="card-name">
                             ${p.name}
                         </h4>
