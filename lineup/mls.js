@@ -1432,19 +1432,32 @@ window.addEventListener('popstate', (e) => {
         populateRankingSetDropdown('weekly');
     }
 
-    async function processRankingsUpload(fileInputId, isWeekly, successMsgId) {
-        const fileInput = document.getElementById(fileInputId);
-        if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
+    window.toggleUploadMode = function(type) {
+        const mode = document.getElementById(`${type}UploadMode`).value;
+        document.getElementById(`${type}SingleMode`).style.display = mode === 'single' ? 'block' : 'none';
+        document.getElementById(`${type}MultiMode`).style.display = mode === 'multi' ? 'block' : 'none';
+    };
 
-        const files = Array.from(fileInput.files);
+    window.togglePosInput = function(type, pos) {
+        const wrap = document.getElementById(`${type}-input-wrap-${pos}`);
+        if (wrap.style.display === 'none') {
+            wrap.style.display = 'flex';
+        } else {
+            wrap.style.display = 'none';
+            const input = document.getElementById(`${type}FileInput-${pos}`);
+            if (input) input.value = ''; // Clear file if unchecked
+        }
+    };
+
+    const parseFiles = async (filesWithContext, isWeekly, successMsgId) => {
         let combinedPlayers = {};
         let hasNewSos = false;
 
-        const parseSingleFile = (file) => new Promise((resolve) => {
-            const filename = file.name.toLowerCase();
-            const isFlexFile = filename.includes('flex');
+        const parseSingleFile = (fileObj) => new Promise((resolve) => {
+            const file = fileObj.file;
+            const parseContext = fileObj.context; // 'SINGLE', 'QB', 'FLEX', etc.
 
-            if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
+            if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
                 loadSheetJS(() => {
                     const reader = new FileReader();
                     reader.onload = e => {
@@ -1453,11 +1466,10 @@ window.addEventListener('popstate', (e) => {
                             const workbook = XLSX.read(data, { type: 'array' });
                             workbook.SheetNames.forEach(sheetName => {
                                 const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
-                                const isFlexSheet = isFlexFile || sheetName.toLowerCase().includes('flex');
                                 Papa.parse(csvStr, {
                                     header: false,
                                     skipEmptyLines: true,
-                                    complete: results => parseRowsIntoCombined(results.data, isFlexSheet)
+                                    complete: results => parseRowsIntoCombined(results.data, parseContext)
                                 });
                             });
                         } catch (err) {
@@ -1472,18 +1484,18 @@ window.addEventListener('popstate', (e) => {
                     header: false,
                     skipEmptyLines: true,
                     complete: results => {
-                        parseRowsIntoCombined(results.data, isFlexFile);
+                        parseRowsIntoCombined(results.data, parseContext);
                         resolve();
                     }
                 });
             }
         });
 
-        function parseRowsIntoCombined(rows, isFlexContext) {
+        function parseRowsIntoCombined(rows, context) {
             if (!rows || rows.length < 1) return;
 
             let headers = rows[0].map(h => String(h).trim().toLowerCase());
-            let isHorizontal = headers.includes('quarterback') || headers.includes('running back') || headers.includes('flex');
+            let isHorizontal = (context === 'SINGLE') && (headers.includes('quarterback') || headers.includes('running back') || headers.includes('flex'));
 
             if (isHorizontal) {
                 headers.forEach((h, idx) => {
@@ -1512,12 +1524,14 @@ window.addEventListener('popstate', (e) => {
                     }
                 });
             } else {
+                // Vertical Parsing Engine
                 let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
                 let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
                 let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
+                let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank');
 
                 let hasHeaders = headers.some(h => h === 'player' || h === 'name' || h === 'player name');
-                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'pos rank' || h === 'tier') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
+                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'tier') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
                 let nameColIdx = hasHeaders ? headers.findIndex(h => h === 'player' || h === 'name' || h === 'player name') : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
 
                 let startIndex = hasHeaders ? 1 : 0;
@@ -1526,19 +1540,37 @@ window.addEventListener('popstate', (e) => {
                     let nameStr = rows[i][nameColIdx];
                     if (nameStr && nameStr.trim()) {
                         let clean = normalizeName(nameStr.trim());
-                        let rankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
-                        if (isNaN(rankVal)) rankVal = i + 1 - startIndex;
+                        
+                        let overallRankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
+                        if (isNaN(overallRankVal)) overallRankVal = i + 1 - startIndex;
+                        
+                        let extractedPosRank = 999;
+                        if (explicitPosRankColIdx !== -1 && rows[i][explicitPosRankColIdx]) {
+                            extractedPosRank = parseInt(rows[i][explicitPosRankColIdx]);
+                            if (isNaN(extractedPosRank)) extractedPosRank = 999;
+                        }
 
                         if (!combinedPlayers[clean]) {
                             combinedPlayers[clean] = { name: nameStr.trim(), cleanName: clean, rank: 999, posRank: 999, flexRank: 999 };
                         }
 
-                        if (isFlexContext) {
-                            combinedPlayers[clean].flexRank = rankVal;
-                            combinedPlayers[clean].rank = rankVal;
+                        // Determine where ranks go based on user UI selection
+                        if (context === 'FLEX') {
+                            combinedPlayers[clean].flexRank = overallRankVal;
+                            combinedPlayers[clean].rank = overallRankVal; 
+                        } else if (context !== 'SINGLE') {
+                            // Specific position like QB, RB
+                            combinedPlayers[clean].posRank = overallRankVal;
+                            if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = overallRankVal;
                         } else {
-                            combinedPlayers[clean].posRank = rankVal;
-                            if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = rankVal;
+                            // Single File
+                            combinedPlayers[clean].rank = overallRankVal;
+                            if (extractedPosRank !== 999) {
+                                combinedPlayers[clean].posRank = extractedPosRank;
+                            } else if (combinedPlayers[clean].posRank === 999) {
+                                combinedPlayers[clean].posRank = overallRankVal; // Fallback
+                            }
+                            combinedPlayers[clean].flexRank = overallRankVal; 
                         }
 
                         // SoS Extraction
@@ -1561,16 +1593,13 @@ window.addEventListener('popstate', (e) => {
             }
         }
 
-        await Promise.all(files.map(f => parseSingleFile(f)));
+        await Promise.all(filesWithContext.map(f => parseSingleFile(f)));
 
         const parsedData = Object.values(combinedPlayers);
         if (parsedData.length === 0) return;
 
-        if (isWeekly) {
-            saveRankingsAsSet('weekly', parsedData);
-        } else {
-            saveRankingsAsSet('ros', parsedData);
-        }
+        if (isWeekly) saveRankingsAsSet('weekly', parsedData);
+        else saveRankingsAsSet('ros', parsedData);
 
         if (hasNewSos) {
             localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
@@ -1589,14 +1618,42 @@ window.addEventListener('popstate', (e) => {
         }
         if (typeof window.showToast === 'function') {
             let rankType = isWeekly ? "Weekly" : "ROS";
-            window.showToast(`${rankType} Rankings loaded from ${files.length} file(s)!`);
+            window.showToast(`${rankType} Rankings loaded successfully!`);
         }
-    }
+    };
+
+    window.processSingleRankingUpload = function(type, successMsgId) {
+        const fileInput = document.getElementById(`${type}FileInput`);
+        if (!fileInput || !fileInput.files[0]) return;
+        
+        const isWeekly = type === 'weekly';
+        parseFiles([{ file: fileInput.files[0], context: 'SINGLE' }], isWeekly, successMsgId);
+    };
+
+    window.processMultiRankings = function(type, successMsgId) {
+        const positions = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
+        let filesWithContext = [];
+
+        positions.forEach(pos => {
+            const input = document.getElementById(`${type}FileInput-${pos}`);
+            if (input && input.parentElement.style.display !== 'none' && input.files[0]) {
+                filesWithContext.push({ file: input.files[0], context: pos });
+            }
+        });
+
+        if (filesWithContext.length === 0) {
+            if (window.showToast) window.showToast("Please select and upload at least one positional file.", { isError: true });
+            return;
+        }
+
+        const isWeekly = type === 'weekly';
+        parseFiles(filesWithContext, isWeekly, successMsgId);
+    };
 
     const rosFileEl = document.getElementById('rosFileInput');
     const weeklyFileEl = document.getElementById('weeklyFileInput');
-    if (rosFileEl) rosFileEl.addEventListener('change', () => processRankingsUpload('rosFileInput', false, 'rosSuccessMsg'));
-    if (weeklyFileEl) weeklyFileEl.addEventListener('change', () => processRankingsUpload('weeklyFileInput', true, 'weeklySuccessMsg'));
+    if (rosFileEl) rosFileEl.addEventListener('change', () => processSingleRankingUpload('ros', 'rosSuccessMsg'));
+    if (weeklyFileEl) weeklyFileEl.addEventListener('change', () => processSingleRankingUpload('weekly', 'weeklySuccessMsg'));
 // --- MARKET DISCONNECT ENGINE ---
     const marketFileEl = document.getElementById('marketFileInput');
     if (marketFileEl) {
