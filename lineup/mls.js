@@ -1499,14 +1499,21 @@ window.addEventListener('popstate', (e) => {
 
             if (isHorizontal) {
                 headers.forEach((h, idx) => {
-                    let isFlexCol = (h === 'flex');
-                    let isPosCol = ['quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense', 'qb', 'rb', 'wr', 'te', 'def', 'k'].includes(h);
+                    // Look for columns that contain the word 'player' to identify name columns
+                    if (h.includes('player')) {
+                        // The rank is usually the column immediately to the left
+                        let rankColIdx = idx - 1;
+                        // Determine position context from the header (e.g., 'qb player' -> 'qb')
+                        let isFlexCol = h.includes('flex');
+                        let posMatch = h.match(/(qb|rb|wr|te|def|k)\s+player/);
+                        let isPosCol = posMatch !== null;
 
-                    if (isFlexCol || isPosCol) {
-                        for (let r = 1; r < rows.length; r++) {
-                            let pName = rows[r][idx];
-                            let pRank = rows[r][idx - 1];
-                            if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
+                        if ((isFlexCol || isPosCol) && rankColIdx >= 0) {
+                            for (let r = 1; r < rows.length; r++) {
+                                let pName = rows[r][idx];
+                                let pRank = rows[r][rankColIdx];
+                                
+                                if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
                                 let clean = normalizeName(pName.trim());
                                 if (!combinedPlayers[clean]) {
                                     combinedPlayers[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
@@ -1530,9 +1537,11 @@ window.addEventListener('popstate', (e) => {
                 let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
                 let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank');
 
-                let hasHeaders = headers.some(h => h === 'player' || h === 'name' || h === 'player name');
+                // Include position names as valid player name headers
+                const validNameHeaders = ['player', 'name', 'player name', 'quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense', 'flex'];
+                let hasHeaders = headers.some(h => validNameHeaders.includes(h));
                 let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'tier') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
-                let nameColIdx = hasHeaders ? headers.findIndex(h => h === 'player' || h === 'name' || h === 'player name') : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
+                let nameColIdx = hasHeaders ? headers.findIndex(h => validNameHeaders.includes(h)) : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
 
                 let startIndex = hasHeaders ? 1 : 0;
 
