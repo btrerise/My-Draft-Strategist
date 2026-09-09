@@ -1544,7 +1544,7 @@ window.addEventListener('popstate', (e) => {
                 let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
                 let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
                 let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
-                let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank');
+                let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank' || h === 'positional rank');
 
                 // Include position names as valid player name headers
                 const validNameHeaders = ['player', 'name', 'player name', 'quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense', 'flex'];
