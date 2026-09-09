@@ -133,6 +133,8 @@
     if (tabId === 'setup') refreshLeagueDropdown();
     window.scrollTo(0, 0);
 
+    if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
+
     // --- NEW: Push to browser history so the back button works ---
     if (!skipHistory) {
         history.pushState({ tab: tabId }, '', `#${tabId}`);
@@ -239,6 +241,13 @@ window.addEventListener('popstate', (e) => {
             else syncBtn.classList.remove('btn-pulse');
         }
         
+        // Setup Sync Card Pulse
+        const syncCard = document.getElementById('setupSyncCard');
+        if (syncCard) {
+            if (State.leagues.length === 0) syncCard.classList.add('pulse-border');
+            else syncCard.classList.remove('pulse-border');
+        }
+
         // ROS Rankings Pulse
         const rosCard = document.getElementById('rosRankingsCard');
         if (rosCard) {
@@ -253,22 +262,16 @@ window.addEventListener('popstate', (e) => {
             else weeklyCard.classList.remove('pulse-border');
         }
 
-        // Navigation Element Pulses
-        const setupNav = document.querySelector('.logo-container'); // Acts as the Setup tab button
-        const rosterTab = document.querySelector('.nav-btn[data-target="roster"]');
-        const lineupTab = document.querySelector('.nav-btn[data-target="lineup"]');
+        // Navigation Element Pulses (Only Logo, and only when NOT on Setup tab)
+        const setupNav = document.querySelector('.logo-container');
+        const setupTab = document.getElementById('setupTab');
         
-        if (setupNav) setupNav.classList.remove('nav-pulse');
-        if (rosterTab) rosterTab.classList.remove('nav-pulse');
-        if (lineupTab) lineupTab.classList.remove('nav-pulse');
-
-        // Progressive Guidance Logic
-        if (State.leagues.length === 0) {
-            if (setupNav) setupNav.classList.add('nav-pulse');
-        } else if (State.rosRankings.length === 0) {
-            if (rosterTab) rosterTab.classList.add('nav-pulse');
-        } else if (State.weeklyRankings.length === 0) {
-            if (lineupTab) lineupTab.classList.add('nav-pulse');
+        if (setupNav) {
+            setupNav.classList.remove('nav-pulse');
+            // Only pulse the logo if they have zero leagues AND they are currently on another tab
+            if (State.leagues.length === 0 && setupTab && !setupTab.classList.contains('active')) {
+                setupNav.classList.add('nav-pulse');
+            }
         }
     }
 
@@ -813,12 +816,12 @@ window.addEventListener('popstate', (e) => {
             window.optimizeLineup(true); 
             loadRosterTab();
             
-            if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades' : "Sync Sleeper");
+            if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades' : "Sync Sleeper");
             return true;
 
         } catch(err) {
             console.error(err);
-            if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades' : "Sync Sleeper");
+            if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades' : "Sync Sleeper");
             if (!suppressErrorToast && window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
             return false;
         }
