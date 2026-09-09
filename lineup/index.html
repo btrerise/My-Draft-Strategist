@@ -333,7 +333,42 @@
             </div>
 
             <div id="rosMetaDisplay" class="status-badge-meta"></div>
-            <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
+
+            <div class="input-group" style="margin-bottom: 0.75rem;">
+                <label for="rosUploadMode">Upload Format</label>
+                <select id="rosUploadMode" class="form-input" onchange="toggleUploadMode('ros')" aria-label="Select Upload Format">
+                    <option value="single">Single File (All Positions)</option>
+                    <option value="multi">Multiple Files (One Per Position)</option>
+                </select>
+            </div>
+
+            <div id="rosSingleMode">
+                <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
+            </div>
+
+            <div id="rosMultiMode" style="display: none; background: rgba(0,0,0,0.15); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: block; margin-bottom: 0.75rem;">Check the positions you want to upload:</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.85rem; margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'QB')"> QB</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'RB')"> RB</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'WR')"> WR</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'TE')"> TE</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'FLEX')"> FLEX</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'K')"> K</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'DEF')"> DEF</label>
+                </div>
+                <div id="rosPosInputsContainer">
+                    <div id="ros-input-wrap-QB" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="rosFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-RB" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="rosFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-WR" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="rosFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-TE" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="rosFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-FLEX" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="rosFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-K" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="rosFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-DEF" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="rosFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                </div>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="processMultiRankings('ros', 'rosSuccessMsg')">Combine & Process Files</button>
+            </div>
+
             <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
 
             <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0;">
@@ -488,7 +523,42 @@
             </div>
 
             <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
-            <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
+
+            <div class="input-group" style="margin-bottom: 0.75rem;">
+                <label for="weeklyUploadMode">Upload Format</label>
+                <select id="weeklyUploadMode" class="form-input" onchange="toggleUploadMode('weekly')" aria-label="Select Upload Format">
+                    <option value="single">Single File (All Positions)</option>
+                    <option value="multi">Multiple Files (One Per Position)</option>
+                </select>
+            </div>
+
+            <div id="weeklySingleMode">
+                <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
+            </div>
+
+            <div id="weeklyMultiMode" style="display: none; background: rgba(0,0,0,0.15); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: block; margin-bottom: 0.75rem;">Check the positions you want to upload:</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.85rem; margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'QB')"> QB</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'RB')"> RB</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'WR')"> WR</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'TE')"> TE</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'FLEX')"> FLEX</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'K')"> K</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'DEF')"> DEF</label>
+                </div>
+                <div id="weeklyPosInputsContainer">
+                    <div id="weekly-input-wrap-QB" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="weeklyFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-RB" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="weeklyFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-WR" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="weeklyFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-TE" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="weeklyFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-FLEX" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="weeklyFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-K" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="weeklyFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-DEF" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="weeklyFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                </div>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="processMultiRankings('weekly', 'weeklySuccessMsg')">Combine & Process Files</button>
+            </div>
+
             <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
         </div>
     </section>

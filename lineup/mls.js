@@ -1432,91 +1432,178 @@ window.addEventListener('popstate', (e) => {
         populateRankingSetDropdown('weekly');
     }
 
-    function processRankingsUpload(fileInputId, isWeekly, successMsgId) {
-        const fileInput = document.getElementById(fileInputId);
-        if (!fileInput || !fileInput.files[0]) return;
-        const file = fileInput.files[0];
+    window.toggleUploadMode = function(type) {
+        const mode = document.getElementById(`${type}UploadMode`).value;
+        document.getElementById(`${type}SingleMode`).style.display = mode === 'single' ? 'block' : 'none';
+        document.getElementById(`${type}MultiMode`).style.display = mode === 'multi' ? 'block' : 'none';
+    };
 
-        const filename = file.name.toLowerCase();
-        if (filename.endsWith('.csv')) {
-            Papa.parse(file, { header: false, skipEmptyLines: true, complete: results => parseRankingsData(results.data, isWeekly, successMsgId) });
-        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
-            loadSheetJS(() => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
-                    Papa.parse(csvStr, { header: false, skipEmptyLines: true, complete: results => parseRankingsData(results.data, isWeekly, successMsgId) });
-                };
-                reader.readAsArrayBuffer(file);
-            });
-        } else if (filename.endsWith('.numbers')) {
-            // Apple Numbers' format isn't something SheetJS (or any spreadsheet parser) can
-            // read -- it's a proprietary zip/binary format, not CSV/XLSX under the hood.
-            if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
+    window.togglePosInput = function(type, pos) {
+        const wrap = document.getElementById(`${type}-input-wrap-${pos}`);
+        if (wrap.style.display === 'none') {
+            wrap.style.display = 'flex';
         } else {
-            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, or .xls file.", { isError: true });
+            wrap.style.display = 'none';
+            const input = document.getElementById(`${type}FileInput-${pos}`);
+            if (input) input.value = ''; // Clear file if unchecked
         }
-    }
+    };
 
-    function parseRankingsData(rows, isWeekly, successMsgId) {
-        let parsed = [];
-        if (rows.length < 1) return;
-
-        let headers = rows[0].map(h => String(h).trim().toLowerCase());
-        let isHorizontal = headers.includes('quarterback') || headers.includes('running back');
+    const parseFiles = async (filesWithContext, isWeekly, successMsgId) => {
+        let combinedPlayers = {};
         let hasNewSos = false;
 
-        if (isHorizontal) {
-            let playerRanks = {};
-            headers.forEach((h, idx) => {
-                let isFlex = (h === 'flex');
-                let isPos = ['quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense'].includes(h);
-                
-                if (isFlex || isPos) {
-                    for (let r = 1; r < rows.length; r++) {
-                        let pName = rows[r][idx];
-                        let pRank = rows[r][idx - 1];
-                        if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
-                            let clean = normalizeName(pName.trim());
-                            if (!playerRanks[clean]) playerRanks[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
-                            if (isFlex) { playerRanks[clean].flexRank = parseInt(pRank); playerRanks[clean].rank = parseInt(pRank); } 
-                            else { playerRanks[clean].posRank = parseInt(pRank); playerRanks[clean].rank = parseInt(pRank); }
+        const parseSingleFile = (fileObj) => new Promise((resolve) => {
+            const file = fileObj.file;
+            const parseContext = fileObj.context; // 'SINGLE', 'QB', 'FLEX', etc.
+
+            if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+                loadSheetJS(() => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            workbook.SheetNames.forEach(sheetName => {
+                                const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
+                                Papa.parse(csvStr, {
+                                    header: false,
+                                    skipEmptyLines: true,
+                                    complete: results => parseRowsIntoCombined(results.data, parseContext)
+                                });
+                            });
+                        } catch (err) {
+                            console.error("Error reading Excel file:", err);
+                        }
+                        resolve();
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            } else {
+                Papa.parse(file, {
+                    header: false,
+                    skipEmptyLines: true,
+                    complete: results => {
+                        parseRowsIntoCombined(results.data, parseContext);
+                        resolve();
+                    }
+                });
+            }
+        });
+
+        function parseRowsIntoCombined(rows, context) {
+            if (!rows || rows.length < 1) return;
+
+            let headers = rows[0].map(h => String(h).trim().toLowerCase());
+            
+            // Check if this is a combined horizontal sheet (either old format or new 'wk1' format)
+            let isHorizontal = (context === 'SINGLE') && headers.some(h => 
+                h.includes('quarterback') || 
+                h.includes('running back') || 
+                h === 'flex' || 
+                h.includes('qb player') || 
+                h.includes('rb player') ||
+                h.includes('flex player')
+            );
+
+            if (isHorizontal) {
+                headers.forEach((h, idx) => {
+                    // Name columns end in 'player', or are exactly 'def team' for defense
+                    if (h.includes('player') || h === 'def team') {
+                        let rankColIdx = idx - 1;
+                        let isFlexCol = h.includes('flex');
+                        let posMatch = h.match(/(qb|rb|wr|te|k)\s+player/);
+                        let isDefCol = (h === 'def team');
+                        let isPosCol = (posMatch !== null) || isDefCol;
+
+                        if ((isFlexCol || isPosCol) && rankColIdx >= 0) {
+                            for (let r = 1; r < rows.length; r++) {
+                                let pName = rows[r][idx];
+                                let pRank = rows[r][rankColIdx];
+                                
+                                if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
+                                    let clean = normalizeName(pName.trim());
+                                    if (!combinedPlayers[clean]) {
+                                        combinedPlayers[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
+                                    }
+                                    let rVal = parseInt(pRank);
+                                    if (isFlexCol) {
+                                        combinedPlayers[clean].flexRank = rVal;
+                                        combinedPlayers[clean].rank = rVal;
+                                    } else {
+                                        combinedPlayers[clean].posRank = rVal;
+                                        if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = rVal;
+                                    }
+                                }
+                            }
                         }
                     }
-                }
-            });
-            parsed = Object.values(playerRanks);
-        } else {
-            let nameColIdx = -1; 
-            let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
-            let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
-            let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
-            
-            let hasHeaders = headers.some(h => h === 'player' || h === 'name' || h === 'player name');
-            let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'pos rank' || h === 'tier') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
-            nameColIdx = hasHeaders ? headers.findIndex(h => h === 'player' || h === 'name' || h === 'player name') : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
+                });
+            } else {
+            // Vertical Parsing Engine
+                let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
+                let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
+                let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
+                let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank');
 
-            let startIndex = hasHeaders ? 1 : 0;
-            for (let i = startIndex; i < rows.length; i++) {
-                let nameStr = rows[i][nameColIdx];
-                if (nameStr && nameStr.trim()) {
-                    let rankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
-                    if (isNaN(rankVal)) rankVal = i + 1 - startIndex;
-                    parsed.push({ name: nameStr.trim(), cleanName: normalizeName(nameStr.trim()), rank: rankVal, posRank: rankVal, flexRank: rankVal });
-                    
-                    if (sosColIdx !== -1 && teamColIdx !== -1 && posColIdx !== -1) {
-                        let teamStr = rows[i][teamColIdx] ? rows[i][teamColIdx].toString().trim().toUpperCase() : "";
-                        let posStr = rows[i][posColIdx] ? rows[i][posColIdx].toString().trim().toUpperCase() : "";
-                        let sosVal = rows[i][sosColIdx] ? rows[i][sosColIdx].toString().replace(/[^0-9]/g, '') : "";
+                // Include position names as valid player name headers
+                const validNameHeaders = ['player', 'name', 'player name', 'quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense', 'flex'];
+                let hasHeaders = headers.some(h => validNameHeaders.includes(h));
+                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'tier') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
+                let nameColIdx = hasHeaders ? headers.findIndex(h => validNameHeaders.includes(h)) : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
 
-                        if (teamStr && posStr && sosVal && NFL_TEAMS.includes(teamStr)) {
-                            let posGroup = posStr.includes('QB') ? 'QB' : posStr.includes('RB') ? 'RB' : posStr.includes('WR') ? 'WR' : posStr.includes('TE') ? 'TE' : null;
-                            if (posGroup) {
-                                if (!State.sosMap[teamStr]) State.sosMap[teamStr] = {};
-                                State.sosMap[teamStr][posGroup] = sosVal;
-                                hasNewSos = true;
+                let startIndex = hasHeaders ? 1 : 0;
+
+                for (let i = startIndex; i < rows.length; i++) {
+                    let nameStr = rows[i][nameColIdx];
+                    if (nameStr && nameStr.trim()) {
+                        let clean = normalizeName(nameStr.trim());
+                        
+                        let overallRankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
+                        if (isNaN(overallRankVal)) overallRankVal = i + 1 - startIndex;
+                        
+                        let extractedPosRank = 999;
+                        if (explicitPosRankColIdx !== -1 && rows[i][explicitPosRankColIdx]) {
+                            extractedPosRank = parseInt(rows[i][explicitPosRankColIdx]);
+                            if (isNaN(extractedPosRank)) extractedPosRank = 999;
+                        }
+
+                        if (!combinedPlayers[clean]) {
+                            combinedPlayers[clean] = { name: nameStr.trim(), cleanName: clean, rank: 999, posRank: 999, flexRank: 999 };
+                        }
+
+                        // Determine where ranks go based on user UI selection
+                        if (context === 'FLEX') {
+                            combinedPlayers[clean].flexRank = overallRankVal;
+                            combinedPlayers[clean].rank = overallRankVal; 
+                        } else if (context !== 'SINGLE') {
+                            // Specific position like QB, RB
+                            combinedPlayers[clean].posRank = overallRankVal;
+                            if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = overallRankVal;
+                        } else {
+                            // Single File
+                            combinedPlayers[clean].rank = overallRankVal;
+                            if (extractedPosRank !== 999) {
+                                combinedPlayers[clean].posRank = extractedPosRank;
+                            } else if (combinedPlayers[clean].posRank === 999) {
+                                combinedPlayers[clean].posRank = overallRankVal; // Fallback
+                            }
+                            combinedPlayers[clean].flexRank = overallRankVal; 
+                        }
+
+                        // SoS Extraction
+                        if (sosColIdx !== -1 && teamColIdx !== -1 && posColIdx !== -1) {
+                            let teamStr = rows[i][teamColIdx] ? rows[i][teamColIdx].toString().trim().toUpperCase() : "";
+                            let posStr = rows[i][posColIdx] ? rows[i][posColIdx].toString().trim().toUpperCase() : "";
+                            let sosVal = rows[i][sosColIdx] ? rows[i][sosColIdx].toString().replace(/[^0-9]/g, '') : "";
+
+                            if (teamStr && posStr && sosVal && NFL_TEAMS.includes(teamStr)) {
+                                let posGroup = posStr.includes('QB') ? 'QB' : posStr.includes('RB') ? 'RB' : posStr.includes('WR') ? 'WR' : posStr.includes('TE') ? 'TE' : null;
+                                if (posGroup) {
+                                    if (!State.sosMap[teamStr]) State.sosMap[teamStr] = {};
+                                    State.sosMap[teamStr][posGroup] = sosVal;
+                                    hasNewSos = true;
+                                }
                             }
                         }
                     }
@@ -1524,37 +1611,67 @@ window.addEventListener('popstate', (e) => {
             }
         }
 
-        if (isWeekly) { 
-            saveRankingsAsSet('weekly', parsed);
-        } else { 
-            saveRankingsAsSet('ros', parsed);
-        }
-        
+        await Promise.all(filesWithContext.map(f => parseSingleFile(f)));
+
+        const parsedData = Object.values(combinedPlayers);
+        if (parsedData.length === 0) return;
+
+        if (isWeekly) saveRankingsAsSet('weekly', parsedData);
+        else saveRankingsAsSet('ros', parsedData);
+
         if (hasNewSos) {
             localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
             generateSoSGrid();
         }
-        
+
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
         if (activeTab === 'lineupTab') window.optimizeLineup(true);
         if (activeTab === 'rosterTab') loadRosterTab();
-        
+
         let msgEl = document.getElementById(successMsgId);
         if (msgEl) {
-            msgEl.style.display = 'block'; 
+            msgEl.style.display = 'block';
             setTimeout(() => msgEl.style.display = 'none', 2500);
         }
         if (typeof window.showToast === 'function') {
             let rankType = isWeekly ? "Weekly" : "ROS";
             window.showToast(`${rankType} Rankings loaded successfully!`);
         }
-    }
+    };
+
+    window.processSingleRankingUpload = function(type, successMsgId) {
+        const fileInput = document.getElementById(`${type}FileInput`);
+        if (!fileInput || !fileInput.files[0]) return;
+        
+        const isWeekly = type === 'weekly';
+        parseFiles([{ file: fileInput.files[0], context: 'SINGLE' }], isWeekly, successMsgId);
+    };
+
+    window.processMultiRankings = function(type, successMsgId) {
+        const positions = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
+        let filesWithContext = [];
+
+        positions.forEach(pos => {
+            const input = document.getElementById(`${type}FileInput-${pos}`);
+            if (input && input.parentElement.style.display !== 'none' && input.files[0]) {
+                filesWithContext.push({ file: input.files[0], context: pos });
+            }
+        });
+
+        if (filesWithContext.length === 0) {
+            if (window.showToast) window.showToast("Please select and upload at least one positional file.", { isError: true });
+            return;
+        }
+
+        const isWeekly = type === 'weekly';
+        parseFiles(filesWithContext, isWeekly, successMsgId);
+    };
 
     const rosFileEl = document.getElementById('rosFileInput');
     const weeklyFileEl = document.getElementById('weeklyFileInput');
-    if (rosFileEl) rosFileEl.addEventListener('change', () => processRankingsUpload('rosFileInput', false, 'rosSuccessMsg'));
-    if (weeklyFileEl) weeklyFileEl.addEventListener('change', () => processRankingsUpload('weeklyFileInput', true, 'weeklySuccessMsg'));
+    if (rosFileEl) rosFileEl.addEventListener('change', () => processSingleRankingUpload('ros', 'rosSuccessMsg'));
+    if (weeklyFileEl) weeklyFileEl.addEventListener('change', () => processSingleRankingUpload('weekly', 'weeklySuccessMsg'));
 // --- MARKET DISCONNECT ENGINE ---
     const marketFileEl = document.getElementById('marketFileInput');
     if (marketFileEl) {
@@ -2069,7 +2186,11 @@ function applyMarketSettingsToUI() {
         
         let displayRoster = league.roster.map(p => {
             let rObj = State.rosRankings.find(rk => rk.cleanName === p.cleanName);
-            return { ...p, rosRank: rObj ? rObj.rank : 999 };
+            return { 
+                ...p, 
+                rosRank: rObj ? rObj.rank : 999,
+                posRank: rObj ? rObj.posRank : 999 
+            };
         });
 
         const posOrder = { "QB": 1, "RB": 2, "WR": 3, "TE": 4, "K": 5, "DEF": 6 };
@@ -2080,7 +2201,9 @@ function applyMarketSettingsToUI() {
 
         let html = "";
         displayRoster.forEach(p => {
-            let rankBadge = p.rosRank !== 999 ? `ROS Rank: ${p.rosRank}` : "Unranked";
+            let ovrStr = p.rosRank !== 999 ? `#${p.rosRank}` : "-";
+            let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
+            let rankBadge = (p.rosRank !== 999 || p.posRank !== 999) ? `Ovr: ${ovrStr} | Pos: ${posStr}` : "Unranked";
             let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
             let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
@@ -2288,9 +2411,11 @@ function applyMarketSettingsToUI() {
                 let lockClass = p.isLocked ? "locked" : "";
                 if (State.swapSourceId === p.id) lockClass += " swapping";
 
-                let displayRank = s.usedFlex && p.flexRank !== 999 ? p.flexRank : p.posRank;
-                let rankLabel = s.usedFlex && p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
-                let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
+                let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
+                let flexStr = p.flexRank !== 999 ? `#${p.flexRank}` : "-";
+                let rankBadge = (p.posRank !== 999 || p.flexRank !== 999)
+                    ? (['QB', 'K', 'DEF'].includes(p.pos) || p.flexRank === 999 ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${flexStr}`)
+                    : "Unranked";
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
@@ -2329,9 +2454,11 @@ function applyMarketSettingsToUI() {
             benchContainer.classList.remove('bench-empty-state');
             benchPool.forEach(p => {
                 let lockClass = State.swapSourceId === p.id ? "swapping" : "";
-                let displayRank = p.flexRank !== 999 ? p.flexRank : p.posRank;
-                let rankLabel = p.flexRank !== 999 ? "Flex Rk" : "Pos Rk";
-                let rankBadge = displayRank !== 999 ? `${rankLabel}: ${displayRank}` : "Unranked";
+                let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
+                let flexStr = p.flexRank !== 999 ? `#${p.flexRank}` : "-";
+                let rankBadge = (p.posRank !== 999 || p.flexRank !== 999)
+                    ? (['QB', 'K', 'DEF'].includes(p.pos) || p.flexRank === 999 ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${flexStr}`)
+                    : "Unranked";
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
