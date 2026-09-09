@@ -1529,9 +1529,10 @@ window.addEventListener('popstate', (e) => {
                             }
                         }
                     }
-                });
-            } else {
-                // Vertical Parsing Engine
+                }
+            });
+        } else {
+            // Vertical Parsing Engine
                 let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
                 let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
                 let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
