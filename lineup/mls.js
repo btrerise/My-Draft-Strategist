@@ -239,11 +239,36 @@ window.addEventListener('popstate', (e) => {
             else syncBtn.classList.remove('btn-pulse');
         }
         
+        // ROS Rankings Pulse
+        const rosCard = document.getElementById('rosRankingsCard');
+        if (rosCard) {
+            if (State.leagues.length > 0 && State.rosRankings.length === 0) rosCard.classList.add('pulse-border');
+            else rosCard.classList.remove('pulse-border');
+        }
+
         // Weekly Rankings Pulse
         const weeklyCard = document.getElementById('weeklyRankingsCard');
         if (weeklyCard) {
             if (State.leagues.length > 0 && State.weeklyRankings.length === 0) weeklyCard.classList.add('pulse-border');
             else weeklyCard.classList.remove('pulse-border');
+        }
+
+        // Navigation Element Pulses
+        const setupNav = document.querySelector('.logo-container'); // Acts as the Setup tab button
+        const rosterTab = document.querySelector('.nav-btn[data-target="roster"]');
+        const lineupTab = document.querySelector('.nav-btn[data-target="lineup"]');
+        
+        if (setupNav) setupNav.classList.remove('nav-pulse');
+        if (rosterTab) rosterTab.classList.remove('nav-pulse');
+        if (lineupTab) lineupTab.classList.remove('nav-pulse');
+
+        // Progressive Guidance Logic
+        if (State.leagues.length === 0) {
+            if (setupNav) setupNav.classList.add('nav-pulse');
+        } else if (State.rosRankings.length === 0) {
+            if (rosterTab) rosterTab.classList.add('nav-pulse');
+        } else if (State.weeklyRankings.length === 0) {
+            if (lineupTab) lineupTab.classList.add('nav-pulse');
         }
     }
 
@@ -2284,9 +2309,9 @@ function applyMarketSettingsToUI() {
             <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                 <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to your Roster</div>
                 <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 1. Sync your Sleeper League (Setup Tab)</div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 2. Upload ROS Rankings (Above)</div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 3. Evaluate your team</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Setup Tab)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload ROS Rankings (Above)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Evaluate your team</div>
                 </div>
             </div>`;
             return;
@@ -2417,9 +2442,9 @@ function applyMarketSettingsToUI() {
                 <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                     <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to the Lineup Optimizer</div>
                     <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 1. Sync your Sleeper League (Setup Tab)</div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 2. Upload Weekly Rankings (Above)</div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 3. Click 'Optimize Lineup'</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Setup Tab)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload Weekly Rankings (Above)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Click 'Optimize Lineup'</div>
                     </div>
                 </div>`;
             }
