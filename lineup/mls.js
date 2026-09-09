@@ -311,6 +311,7 @@ window.addEventListener('popstate', (e) => {
     // --- LEAGUE & SYNC LOGIC ---
     function refreshLeagueDropdown() {
         const select = document.getElementById('headerLeagueSelect');
+        renderLeagueManager();
         if (!select) return;
         if (State.leagues.length === 0) {
             select.innerHTML = `<option value="">No Leagues</option>`;
@@ -319,10 +320,61 @@ window.addEventListener('popstate', (e) => {
         let html = "";
         State.leagues.forEach(l => {
             let sel = l.leagueId === State.activeLeagueId ? "selected" : "";
-            html += `<option value="${l.leagueId}" ${sel}>${l.name}</option>`;
+            let formatText = l.formatBadge ? ` (${l.formatBadge})` : "";
+            html += `<option value="${l.leagueId}" ${sel}>${l.name}${formatText}</option>`;
         });
         select.innerHTML = html;
     }
+
+    function renderLeagueManager() {
+        const container = document.getElementById('leagueManagerContainer');
+        if (!container) return;
+        if (State.leagues.length === 0) {
+            container.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">No leagues synced yet.</div>`;
+            return;
+        }
+        
+        let html = "";
+        State.leagues.forEach((l, index) => {
+            let formatText = l.formatBadge ? `<span style="color:var(--text-muted); font-size: 0.75rem;">${l.formatBadge}</span>` : "";
+            html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15); padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border);">
+                <div style="display: flex; flex-direction: column;">
+                    <strong style="color: var(--text-main); font-size: 0.9rem;">${l.name}</strong>
+                    ${formatText}
+                </div>
+                <div style="display: flex; gap: 0.4rem;">
+                    <button class="btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+                    <button class="btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                    <button class="btn-sm btn-danger" style="padding: 0.2rem 0.5rem; margin-left: 0.5rem;" onclick="deleteLeagueManager('${l.leagueId}')">✕</button>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    window.moveLeague = function(index, direction) {
+        if (index + direction < 0 || index + direction >= State.leagues.length) return;
+        let temp = State.leagues[index];
+        State.leagues[index] = State.leagues[index + direction];
+        State.leagues[index + direction] = temp;
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        refreshLeagueDropdown();
+    };
+
+    window.deleteLeagueManager = function(leagueId) {
+        if (!window.confirm("Are you sure you want to remove this league?")) return;
+        State.leagues = State.leagues.filter(l => l.leagueId !== leagueId);
+        if (State.activeLeagueId === leagueId) {
+            State.activeLeagueId = State.leagues.length > 0 ? State.leagues[0].leagueId : null;
+            localStorage.setItem('mds_season_active_league', State.activeLeagueId || "");
+        }
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        refreshLeagueDropdown();
+        loadActiveLeagueData();
+        if (typeof loadRosterTab === 'function') loadRosterTab();
+        if (typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+    };
 
     window.switchActiveLeague = function(leagueId) {
         if (!leagueId) return;
@@ -586,6 +638,18 @@ window.addEventListener('popstate', (e) => {
             if (!leagueRes.ok) throw new Error("League ID not found.");
             const leagueData = await leagueRes.json();
             let leagueName = leagueData.name || "My League";
+            
+            let formatBadge = "";
+            if (leagueData.settings) {
+                let typeStr = leagueData.settings.type === 2 ? "Dynasty" : (leagueData.settings.type === 1 ? "Keeper" : "Redraft");
+                if (leagueData.settings.best_ball === 1) typeStr = "Best Ball";
+                let pprVal = leagueData.scoring_settings?.rec || 0;
+                let pprStr = pprVal === 1 ? "PPR" : (pprVal === 0.5 ? "Half-PPR" : "Std");
+                let isSF = leagueData.roster_positions?.includes("SUPER_FLEX") ? "SF" : "1QB";
+                let tepVal = leagueData.scoring_settings?.bonus_rec_te || 0;
+                let tepStr = tepVal > 0 ? `TEP (+${tepVal})` : "";
+                formatBadge = `${typeStr} ${isSF} ${pprStr} ${tepStr}`.trim();
+            }
 
             let autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0, K: 0, DEF: 0 };
             if (leagueData.roster_positions) {
@@ -674,7 +738,7 @@ window.addEventListener('popstate', (e) => {
             let existingLeague = existingIdx !== -1 ? State.leagues[existingIdx] : null;
 
             let leagueObj = {
-                leagueId: leagueId, name: leagueName, username: username,
+                leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap,
                 // Preserve this league's existing rankings assignment across a re-sync rather
@@ -1636,7 +1700,14 @@ window.addEventListener('popstate', (e) => {
         }
         if (typeof window.showToast === 'function') {
             let rankType = isWeekly ? "Weekly" : "ROS";
-            window.showToast(`${rankType} Rankings loaded successfully!`);
+            let isFirstTime = !localStorage.getItem('mls_has_seen_rankings_toast');
+            
+            if (isFirstTime) {
+                window.showToast(`${rankType} Rankings loaded! \n\nTip: We saved this as a reusable set. When you switch to another league, select it from the dropdown to apply it there too!`, { duration: 6000 });
+                localStorage.setItem('mls_has_seen_rankings_toast', 'true');
+            } else {
+                window.showToast(`${rankType} Rankings loaded successfully!`);
+            }
         }
     };
 
@@ -2304,8 +2375,18 @@ function applyMarketSettingsToUI() {
         const benchContainer = document.getElementById('benchContainer');
 
         if (!league || !league.roster || league.roster.length === 0) {
-            if (container) container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Please select and sync a league first.</div>`;
-            if (benchContainer) benchContainer.innerHTML = "No bench data."; 
+            if (container) {
+                container.innerHTML = `
+                <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
+                    <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to the Lineup Optimizer</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 1. Sync your Sleeper League (Setup Tab)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 2. Upload Weekly Rankings (Above)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 3. Click 'Optimize Lineup'</div>
+                    </div>
+                </div>`;
+            }
+            if (benchContainer) benchContainer.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 1rem; font-size:0.9rem; font-style:italic;">No bench data yet.</div>`; 
             return;
         }
 
@@ -2727,6 +2808,102 @@ window.renderPowerRankingsTable = function(teamScores) {
         out.style.display = 'block';
         out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 50);
+};
+
+window.runGlobalInjuryAudit = async function(btn) {
+    const outputEl = document.getElementById('injuryAuditOutput');
+    const origText = btn.innerHTML;
+    btn.innerHTML = "Scanning Leagues...";
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
+    outputEl.innerHTML = "";
+
+    try {
+        if (!State.leagues || State.leagues.length === 0) {
+            outputEl.innerHTML = `<span class="mls-error-text">No leagues synced.</span>`;
+            return;
+        }
+
+        // Fetch global player map to check current injury status
+        const playerMapRes = await fetch('https://api.sleeper.app/v1/players/nfl');
+        const playerMap = await playerMapRes.json();
+
+        let auditResults = [];
+
+        for (let league of State.leagues) {
+            if (!league.leagueId || league.leagueId.startsWith('manual_')) continue;
+
+            const rostersRes = await fetch(`https://api.sleeper.app/v1/league/${league.leagueId}/rosters`);
+            const rosters = await rostersRes.json();
+            
+            // Resolve User ID
+            const userRes = await fetch(`https://api.sleeper.app/v1/user/${league.username}`);
+            const userData = await userRes.json();
+            const userId = userData.user_id;
+
+            const myRoster = rosters.find(r => r.owner_id === userId);
+            if (!myRoster) continue;
+
+            const starters = myRoster.starters || [];
+            const reserve = myRoster.reserve || [];
+            const allPlayers = myRoster.players || [];
+            let leagueIssues = [];
+
+            allPlayers.forEach(pId => {
+                let p = playerMap[pId];
+                if (!p) return;
+
+                let isInjured = p.injury_status === "Out" || ["IR", "PUP", "NFI", "Suspended"].includes(p.status);
+                
+                if (isInjured) {
+                    let isStarting = starters.includes(pId);
+                    let isBench = !isStarting && !reserve.includes(pId);
+
+                    if (isStarting) {
+                        leagueIssues.push({ name: `${p.first_name} ${p.last_name}`, status: p.injury_status || p.status, location: "Starting Lineup" });
+                    } else if (isBench) {
+                        leagueIssues.push({ name: `${p.first_name} ${p.last_name}`, status: p.injury_status || p.status, location: "Active Bench (Move to IR)" });
+                    }
+                }
+            });
+
+            if (leagueIssues.length > 0) {
+                auditResults.push({ leagueName: league.name, format: league.formatBadge || "", issues: leagueIssues });
+            }
+        }
+
+        if (auditResults.length === 0) {
+            outputEl.innerHTML = `<div class="scout-result-card" style="justify-content:center; color:var(--primary-green);">All clear! No injured players found in active slots across your leagues.</div>`;
+        } else {
+            let html = "";
+            auditResults.forEach(res => {
+                html += `<div style="font-weight:bold; color:#fca5a5; margin: 1rem 0 0.5rem 0;">${res.leagueName} <span style="color:var(--text-muted); font-size: 0.75rem; font-weight: normal;">${res.format}</span></div>`;
+                res.issues.forEach(issue => {
+                    html += `
+                    <div class="scout-result-card" style="border-color: #ef4444;">
+                        <div>
+                            <div class="mls-item-name">${issue.name}</div>
+                            <div class="mls-meta-row">
+                                <span style="color: #fca5a5; font-weight: bold;">${issue.status}</span>
+                            </div>
+                        </div>
+                        <div class="mls-text-right">
+                            <span class="badge" style="background:var(--avoid-bg); color:#fca5a5; border:1px solid var(--avoid-border);">${issue.location}</span>
+                        </div>
+                    </div>`;
+                });
+            });
+            outputEl.innerHTML = html;
+        }
+
+    } catch (err) {
+        console.error(err);
+        outputEl.innerHTML = `<span class="mls-error-text">Failed to run audit. Check console for details.</span>`;
+    } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    }
 };
 })();
 // Add this helper function at the bottom of mls.js

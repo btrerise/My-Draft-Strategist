@@ -242,6 +242,20 @@
         <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
     </section>
 
+    <!-- MANAGE LEAGUES -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3>Manage Leagues</h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Reorder how your leagues appear in the header dropdown, or delete old ones to keep things clean.</span>
+            </div>
+        </header>
+        <div id="leagueManagerContainer" class="flex-column gap-2">
+            <!-- Injected by JS -->
+        </div>
+    </section>
+
     <!-- ADD PLAYER MANUALLY -->
     <section class="settings-card">
         <header class="card-header">
@@ -646,6 +660,20 @@
     </div>
     <button class="close-banner-btn" onclick="dismissBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem; margin-left: 0.75rem; flex-shrink: 0;">✕</button>
 </div>
+
+    <!-- GLOBAL INJURY AUDITOR -->
+    <section class="settings-card danger-card">
+        <header class="card-header">
+            <h3><span class="text-danger">Global Injury Auditor</span></h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Scans all synced leagues to find 'Out' or 'IR' players left in starting lineups or taking up active bench spots instead of IR slots.</span>
+            </div>
+        </header>
+        <button class="btn btn-danger" onclick="runGlobalInjuryAudit(this)">Run Global Audit</button>
+        <div id="injuryAuditOutput" class="scout-output-container"></div>
+    </section>
+
     <!-- WAIVER WIRE ASSISTANT -->
     <section class="settings-card">
         <header class="card-header">
