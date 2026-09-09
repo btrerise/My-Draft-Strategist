@@ -197,7 +197,7 @@
 </div>
         
         <div class="button-row-dual">
-            <button class="btn btn-blue" onclick="addAndSyncLeague(this)">Sync Sleeper</button>
+            <button id="mainSyncBtn" class="btn btn-blue" onclick="addAndSyncLeague(this)">Sync Sleeper</button>
             <button class="btn btn-purple" onclick="createManualLeague()">Create Manual</button>
         </div>
 
@@ -448,7 +448,7 @@
     <section class="settings-card">
         <header class="card-header">
             <h3>
-                <span>Active Roster <span class="header-subtitle">(Sorted by ROS)</span></span>
+                <span id="rosterLeagueHeader">Active Roster</span> <span id="rosterFormatBadge" class="header-subtitle">(Sorted by ROS)</span>
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
@@ -647,6 +647,25 @@
             </div>
         </div>
     </section>
+
+    <!-- GLOBAL INJURY AUDITOR -->
+    <section class="settings-card danger-card">
+        <header class="card-header">
+            <h3><span class="text-danger">Global Injury Auditor</span></h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Scans all synced leagues to find 'Out' or 'IR' players left in starting lineups or taking up active bench spots.</span>
+            </div>
+        </header>
+        <div class="info-banner" style="display: flex; margin-bottom: 1rem; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
+            <div style="display: flex; gap: 0.5rem;">
+                <div class="info-banner-icon" style="background: #ef4444; color: white;">i</div>
+                <div><strong>Sleeper Sync Required:</strong> This tool only audits leagues synced via Sleeper on the Setup tab.</div>
+            </div>
+        </div>
+        <button class="btn btn-danger" onclick="runGlobalInjuryAudit(this)">Run Global Audit</button>
+        <div id="injuryAuditOutput" class="scout-output-container"></div>
+    </section>
 </div>
         
         <!-- SCOUT TAB -->
@@ -660,19 +679,6 @@
     </div>
     <button class="close-banner-btn" onclick="dismissBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem; margin-left: 0.75rem; flex-shrink: 0;">✕</button>
 </div>
-
-    <!-- GLOBAL INJURY AUDITOR -->
-    <section class="settings-card danger-card">
-        <header class="card-header">
-            <h3><span class="text-danger">Global Injury Auditor</span></h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Scans all synced leagues to find 'Out' or 'IR' players left in starting lineups or taking up active bench spots instead of IR slots.</span>
-            </div>
-        </header>
-        <button class="btn btn-danger" onclick="runGlobalInjuryAudit(this)">Run Global Audit</button>
-        <div id="injuryAuditOutput" class="scout-output-container"></div>
-    </section>
 
     <!-- WAIVER WIRE ASSISTANT -->
     <section class="settings-card">

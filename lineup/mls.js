@@ -231,6 +231,22 @@ window.addEventListener('popstate', (e) => {
     };
 
     // --- INITIALIZATION ---
+    function updatePulsePrompts() {
+        // Sync Button Pulse
+        const syncBtn = document.getElementById('mainSyncBtn');
+        if (syncBtn) {
+            if (State.leagues.length === 0) syncBtn.classList.add('btn-pulse');
+            else syncBtn.classList.remove('btn-pulse');
+        }
+        
+        // Weekly Rankings Pulse
+        const weeklyCard = document.getElementById('weeklyRankingsCard');
+        if (weeklyCard) {
+            if (State.leagues.length > 0 && State.weeklyRankings.length === 0) weeklyCard.classList.add('pulse-border');
+            else weeklyCard.classList.remove('pulse-border');
+        }
+    }
+
     window.onload = function() {
         populateEarlyGameDropdown();
         refreshLeagueDropdown();
@@ -238,6 +254,7 @@ window.addEventListener('popstate', (e) => {
         generateSoSGrid();
         checkForDraftStrategistHandoff();
         applyMarketSettingsToUI();
+        updatePulsePrompts();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -320,8 +337,7 @@ window.addEventListener('popstate', (e) => {
         let html = "";
         State.leagues.forEach(l => {
             let sel = l.leagueId === State.activeLeagueId ? "selected" : "";
-            let formatText = l.formatBadge ? ` (${l.formatBadge})` : "";
-            html += `<option value="${l.leagueId}" ${sel}>${l.name}${formatText}</option>`;
+            html += `<option value="${l.leagueId}" ${sel}>${l.name}</option>`;
         });
         select.innerHTML = html;
     }
@@ -1354,6 +1370,8 @@ window.addEventListener('popstate', (e) => {
         const deleteBtn = document.getElementById(cfg.deleteBtnId);
         if (nameWrap) nameWrap.style.display = (selectedVal === '__new__') ? 'flex' : 'none';
         if (deleteBtn) deleteBtn.style.display = (selectedVal !== '__new__' && selectedVal !== '__legacy__') ? 'inline-block' : 'none';
+        
+        if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
     }
 
     // User manually picked a different set (or legacy data, or "create new") from the dropdown.
@@ -2242,6 +2260,17 @@ function applyMarketSettingsToUI() {
     function loadRosterTab() {
         let league = getActiveLeague();
         const syncBtn = document.getElementById('rosterSyncBtn');
+        const headerNameEl = document.getElementById('rosterLeagueHeader');
+        const headerFormatEl = document.getElementById('rosterFormatBadge');
+
+        // Dynamically update the header
+        if (headerNameEl) {
+            headerNameEl.innerText = league ? league.name : "Active Roster";
+        }
+        if (headerFormatEl) {
+            headerFormatEl.innerText = league && league.formatBadge ? `(${league.formatBadge})` : "(Sorted by ROS)";
+        }
+
         if (syncBtn) {
             if (league && league.leagueId && !league.leagueId.startsWith('manual_') && league.username) syncBtn.style.display = 'block';
             else syncBtn.style.display = 'none';
@@ -2251,7 +2280,15 @@ function applyMarketSettingsToUI() {
         if (!rosterListEl) return;
 
         if (!league || !league.roster || league.roster.length === 0) {
-            rosterListEl.innerHTML = "Select or create a league on the Setup tab to view your roster.";
+            rosterListEl.innerHTML = `
+            <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
+                <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to your Roster</div>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 1. Sync your Sleeper League (Setup Tab)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 2. Upload ROS Rankings (Above)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green);">⬜</span> 3. Evaluate your team</div>
+                </div>
+            </div>`;
             return;
         }
         
