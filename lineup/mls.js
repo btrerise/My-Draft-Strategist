@@ -1495,18 +1495,26 @@ window.addEventListener('popstate', (e) => {
             if (!rows || rows.length < 1) return;
 
             let headers = rows[0].map(h => String(h).trim().toLowerCase());
-            let isHorizontal = (context === 'SINGLE') && (headers.includes('quarterback') || headers.includes('running back') || headers.includes('flex'));
+            
+            // Check if this is a combined horizontal sheet (either old format or new 'wk1' format)
+            let isHorizontal = (context === 'SINGLE') && headers.some(h => 
+                h.includes('quarterback') || 
+                h.includes('running back') || 
+                h === 'flex' || 
+                h.includes('qb player') || 
+                h.includes('rb player') ||
+                h.includes('flex player')
+            );
 
             if (isHorizontal) {
                 headers.forEach((h, idx) => {
-                    // Look for columns that contain the word 'player' to identify name columns
-                    if (h.includes('player')) {
-                        // The rank is usually the column immediately to the left
+                    // Name columns end in 'player', or are exactly 'def team' for defense
+                    if (h.includes('player') || h === 'def team') {
                         let rankColIdx = idx - 1;
-                        // Determine position context from the header (e.g., 'qb player' -> 'qb')
                         let isFlexCol = h.includes('flex');
-                        let posMatch = h.match(/(qb|rb|wr|te|def|k)\s+player/);
-                        let isPosCol = posMatch !== null;
+                        let posMatch = h.match(/(qb|rb|wr|te|k)\s+player/);
+                        let isDefCol = (h === 'def team');
+                        let isPosCol = (posMatch !== null) || isDefCol;
 
                         if ((isFlexCol || isPosCol) && rankColIdx >= 0) {
                             for (let r = 1; r < rows.length; r++) {
@@ -1514,24 +1522,24 @@ window.addEventListener('popstate', (e) => {
                                 let pRank = rows[r][rankColIdx];
                                 
                                 if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
-                                let clean = normalizeName(pName.trim());
-                                if (!combinedPlayers[clean]) {
-                                    combinedPlayers[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
-                                }
-                                let rVal = parseInt(pRank);
-                                if (isFlexCol) {
-                                    combinedPlayers[clean].flexRank = rVal;
-                                    combinedPlayers[clean].rank = rVal;
-                                } else {
-                                    combinedPlayers[clean].posRank = rVal;
-                                    if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = rVal;
+                                    let clean = normalizeName(pName.trim());
+                                    if (!combinedPlayers[clean]) {
+                                        combinedPlayers[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
+                                    }
+                                    let rVal = parseInt(pRank);
+                                    if (isFlexCol) {
+                                        combinedPlayers[clean].flexRank = rVal;
+                                        combinedPlayers[clean].rank = rVal;
+                                    } else {
+                                        combinedPlayers[clean].posRank = rVal;
+                                        if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = rVal;
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
-        } else {
+                });
+            } else {
             // Vertical Parsing Engine
                 let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
                 let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
