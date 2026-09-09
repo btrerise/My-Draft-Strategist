@@ -817,6 +817,7 @@ window.addEventListener('popstate', (e) => {
             loadRosterTab();
             
             if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades' : "Sync Sleeper");
+            if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
             return true;
 
         } catch(err) {
@@ -892,6 +893,7 @@ window.addEventListener('popstate', (e) => {
                 localStorage.setItem('mds_season_active_league', State.activeLeagueId);
             }
             loadActiveLeagueData();
+            if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
 
             const summary = failCount > 0
                 ? `Imported ${successCount} league${successCount === 1 ? '' : 's'} (${failCount} failed -- check console for details).`
@@ -912,7 +914,7 @@ window.addEventListener('popstate', (e) => {
             if (window.showToast) window.showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
         }
         const btn = document.getElementById('rosterSyncBtn');
-        if (btn) btn.innerText = "Syncing...";
+        if (btn) btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing...</span>`;
         processSleeperData(league.username, league.leagueId, btn, true);
     };
 
@@ -2533,7 +2535,17 @@ function applyMarketSettingsToUI() {
         
         localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
         localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
-        if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
+        
+        let hasOptimizedBefore = localStorage.getItem('mls_has_optimized');
+        if (!hasOptimizedBefore) {
+            if (typeof window.showToast === 'function') {
+                window.showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
+            }
+            localStorage.setItem('mls_has_optimized', 'true');
+        } else {
+            if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
+        }
+        
         renderLineupUI();
     };
 
@@ -2637,19 +2649,34 @@ function applyMarketSettingsToUI() {
         }
         benchContainer.innerHTML = benchHTML;
     }
-    // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS ---
+    // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS & MOBILE TOOLTIPS ---
 document.addEventListener('DOMContentLoaded', () => {
     const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
-    
     const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
     
     if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
         mlsLeagueInput.value = sharedLeagueId;
-        
-        // Optional: If you want it to auto-trigger the sync button right away, uncomment the lines below
         const syncBtn = document.getElementById('syncSleeperBtn');
         if (syncBtn) syncBtn.click();
     }
+
+    // Enable tap-to-toggle for tooltips on touch devices
+    document.querySelectorAll('.tooltip-icon').forEach(icon => {
+        icon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const text = icon.nextElementSibling;
+            if (text && text.classList.contains('tooltip-text')) {
+                text.classList.toggle('mobile-visible');
+            }
+        });
+    });
+
+    // Tap anywhere else on the screen to close open tooltips
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.tooltip-text.mobile-visible').forEach(text => {
+            text.classList.remove('mobile-visible');
+        });
+    });
 });
 // --- POWER-USER KEYBOARD SHORTCUTS (MLS) ---
 document.addEventListener('keydown', (e) => {

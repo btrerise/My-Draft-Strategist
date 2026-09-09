@@ -979,6 +979,13 @@ body {
     visibility: visible; opacity: 1; transform: translateY(0);
 }
 
+/* Mobile tap-to-toggle class */
+.tooltip-text.mobile-visible {
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
 
 /* Shared classes consolidated from repeated inline styles across mls.js's several player-row
