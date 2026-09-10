@@ -725,6 +725,7 @@ window.addEventListener('popstate', (e) => {
 
             let myTeam = rosters.find(r => r.owner_id === userId);
             if (!myTeam && !isRefresh) throw new Error("Could not find your team in this league.");
+            let sleeperStarters = myTeam && myTeam.starters ? myTeam.starters : [];
             
             let globalRosterMap = {};
             let globalPosMap = {}; 
@@ -784,7 +785,7 @@ window.addEventListener('popstate', (e) => {
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
-                globalPosMap: globalPosMap,
+                globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
                 // Preserve this league's existing rankings assignment across a re-sync rather
                 // than rebuilding it from whatever happens to be currently active in State --
                 // a re-sync should only refresh roster/matchup data, not silently reassign
@@ -816,13 +817,13 @@ window.addEventListener('popstate', (e) => {
             window.optimizeLineup(true); 
             loadRosterTab();
             
-            if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades' : "Sync Sleeper");
+            if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
             return true;
 
         } catch(err) {
             console.error(err);
-            if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades' : "Sync Sleeper");
+            if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
             if (!suppressErrorToast && window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
             return false;
         }
@@ -1441,6 +1442,30 @@ window.addEventListener('popstate', (e) => {
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab && activeTab.id === 'rosterTab' && typeof loadRosterTab === 'function') loadRosterTab();
         if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+    };
+
+    window.applyRankingSetToAll = function(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        const val = selectEl ? selectEl.value : null;
+
+        if (!val || val === '__new__') {
+            if (window.showToast) window.showToast("Please select a saved ranking set first.", { isError: true });
+            return;
+        }
+        if (val === '__legacy__') {
+            if (window.showToast) window.showToast("Cannot apply legacy data to all leagues. Upload it as a new set first.", { isError: true });
+            return;
+        }
+
+        if (!window.confirm("Apply this ranking set to ALL of your synced leagues?")) return;
+
+        State.leagues.forEach(l => {
+            l[cfg.leagueSetIdKey] = val;
+        });
+
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        if (window.showToast) window.showToast(`Applied to all ${State.leagues.length} leagues!`);
     };
 
     // Deletes the currently-selected named set entirely. Any league referencing it (not just
@@ -2554,10 +2579,26 @@ function applyMarketSettingsToUI() {
         const benchContainer = document.getElementById('benchContainer');
         if (!container || !benchContainer) return;
         
+        let league = getActiveLeague();
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         let benchPool = State.manualBenchMap[State.activeLeagueId] || [];
+        let validSleeperStarters = (league && league.sleeperStarters) ? league.sleeperStarters.filter(id => id && id !== "0") : [];
+        let optimizedStarterIds = starters.filter(s => s.player).map(s => s.player.id);
 
         let html = "";
+        
+        if (validSleeperStarters.length > 0) {
+            let sleeperSet = new Set(validSleeperStarters);
+            let optSet = new Set(optimizedStarterIds);
+            let isMatch = sleeperSet.size === optSet.size && [...sleeperSet].every(id => optSet.has(id));
+            
+            if (isMatch) {
+                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-green); display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Matches your active Sleeper lineup</div>`;
+            } else {
+                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: #f59e0b; display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Action Required: Differs from Sleeper lineup</div>`;
+            }
+        }
+
         starters.forEach(s => {
             let slotType = s.slot.replace(/[0-9]/g, '');
 
@@ -2578,6 +2619,11 @@ function applyMarketSettingsToUI() {
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+                
+                let sleeperWarn = "";
+                if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
+                    sleeperWarn = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; font-size: 0.65rem; margin-left: 4px;">Bench in Sleeper</span>`;
+                }
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
@@ -2585,7 +2631,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -2621,6 +2667,11 @@ function applyMarketSettingsToUI() {
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+                
+                let sleeperWarn = "";
+                if (validSleeperStarters.length > 0 && validSleeperStarters.includes(p.id)) {
+                    sleeperWarn = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`;
+                }
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">
@@ -2628,7 +2679,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>

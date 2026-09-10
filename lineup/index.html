@@ -333,13 +333,16 @@
         </header>
         
         <div class="rankings-card-body">
-            <div class="input-group" style="margin-bottom: 0.5rem;">
+            <div class="input-group" style="margin-bottom: 0;">
                 <label for="rosRankingSetSelect">Ranking Set for this League</label>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('ros', this)" aria-label="Select ROS Ranking Set">
                     </select>
                     <button id="rosDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('ros')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
+            </div>
+            <div style="text-align: right; margin-bottom: 0.75rem;">
+                <button class="btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('ros')">Apply this set to all leagues</button>
             </div>
             <div id="rosNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
                 <label for="rosNewSetName">New Set Name (optional)</label>
@@ -522,13 +525,16 @@
         </header>
         
         <div class="rankings-card-body">
-            <div class="input-group" style="margin-bottom: 0.5rem;">
+            <div class="input-group" style="margin-bottom: 0;">
                 <label for="weeklyRankingSetSelect">Ranking Set for this League</label>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <select id="weeklyRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('weekly', this)" aria-label="Select Weekly Ranking Set">
                     </select>
                     <button id="weeklyDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('weekly')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
+            </div>
+            <div style="text-align: right; margin-bottom: 0.75rem;">
+                <button class="btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('weekly')">Apply this set to all leagues</button>
             </div>
             <div id="weeklyNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
                 <label for="weeklyNewSetName">New Set Name (optional)</label>
