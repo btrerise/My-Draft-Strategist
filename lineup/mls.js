@@ -65,8 +65,46 @@
         manualBenchMap: JSON.parse(localStorage.getItem('mds_season_manual_bench')) || {},
         swapSourceId: null,
         touchStartX: 0,
-        touchEndX: 0
+        touchEndX: 0,
+        // Not persisted -- refreshed once per page load from Sleeper's state endpoint (see
+        // refreshCurrentNflWeek() below). Starts null and stays null if that fetch fails or
+        // hasn't resolved yet; every consumer below treats null as "unknown" and simply skips
+        // bye-week detection rather than guessing, so a slow/failed fetch degrades to the old
+        // (bye-unaware) behavior instead of showing wrong information.
+        currentNflWeek: null
     };
+
+    // Refreshes State.currentNflWeek from Sleeper's public NFL state endpoint. Fire-and-forget:
+    // called once from window.onload, with no loading indicator and no retry, since this only
+    // upgrades the lineup optimizer's bye-week awareness -- if it's slow or fails, the app works
+    // exactly as it did before this existed.
+    function refreshCurrentNflWeek() {
+        fetch('https://api.sleeper.app/v1/state/nfl')
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data && typeof data.week === 'number') {
+                    State.currentNflWeek = data.week;
+                }
+            })
+            .catch(() => { /* leave State.currentNflWeek as null; see comment above */ });
+    }
+
+    // Statuses from Sleeper's player sync (see rosterDetails in processSleeperData) that mean
+    // a player has ~zero chance of playing this week. Deliberately excludes "Q" (Questionable)
+    // and "D" (Doubtful) -- those are still game-time calls, not a reason to auto-bench someone
+    // your rankings already have rated highly.
+    const HARD_OUT_STATUSES = ['OUT', 'IR', 'SUS', 'PUP', 'NFI'];
+
+    // True if a player should be avoided as an optimizer pick this week -- on bye, or flagged
+    // with a hard-out status above -- unless no eligible alternative exists at all (see
+    // findBestStarterIndex), in which case they're started anyway rather than leaving a slot
+    // empty. Locked players bypass this check entirely at the call sites below: a lock is an
+    // explicit instruction to start someone regardless of bye/injury status.
+    function isUnavailableThisWeek(p) {
+        const onBye = State.currentNflWeek != null && TEAM_BYES[p.team] === State.currentNflWeek;
+        const hardOut = p.inj && HARD_OUT_STATUSES.includes(p.inj);
+        return onBye || hardOut;
+    }
 
     // --- UTILITY HELPERS ---
     // normalizeName intentionally NOT redeclared here -- it previously shadowed the
@@ -275,7 +313,7 @@
             else syncBtn.classList.remove('btn-pulse');
         }
         
-        // Setup Sync Card Pulse
+        // Dashboard Sync Card Pulse
         const syncCard = document.getElementById('setupSyncCard');
         if (syncCard) {
             if (State.leagues.length === 0) syncCard.classList.add('pulse-border');
@@ -296,7 +334,7 @@
             else weeklyCard.classList.remove('pulse-border');
         }
 
-        // Navigation Element Pulses (Only Logo, and only when NOT on Setup tab)
+        // Navigation Element Pulses (Only Logo, and only when NOT on Dashboard tab)
         const setupNav = document.querySelector('.logo-container');
         const setupTab = document.getElementById('setupTab');
         
@@ -317,6 +355,7 @@
         checkForDraftStrategistHandoff();
         applyMarketSettingsToUI();
         updatePulsePrompts();
+        refreshCurrentNflWeek();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -387,6 +426,16 @@
         return State.earlyTeams.includes(teamStr.toUpperCase());
     }
 
+    // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
+    // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
+    // this season. Returns "" (no badge) if the current week isn't known yet, rather than
+    // guessing. Used alongside the always-present "(##)" bye-week text so a roster/lineup card
+    // still shows the raw week number for season-long planning either way.
+    function getByeBadgeHTML(team) {
+        if (State.currentNflWeek == null || TEAM_BYES[team] !== State.currentNflWeek) return "";
+        return `<span class="badge bye-badge">BYE</span>`;
+    }
+
     // --- LEAGUE & SYNC LOGIC ---
     function refreshLeagueDropdown() {
         const select = document.getElementById('headerLeagueSelect');
@@ -406,30 +455,97 @@
     }
 
     function renderLeagueManager() {
-        const container = document.getElementById('leagueManagerContainer');
-        if (!container) return;
+        const cmdCenter = document.getElementById('dashboardCommandCenter');
+        const tbody = document.getElementById('dashboardMatrixBody');
+        
+        if (!cmdCenter || !tbody) return;
+
         if (State.leagues.length === 0) {
-            container.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">No leagues synced yet.</div>`;
+            cmdCenter.style.display = 'none';
             return;
         }
-        
+
+        cmdCenter.style.display = 'block';
         let html = "";
+        
         State.leagues.forEach((l, index) => {
-            let formatText = l.formatBadge ? `<span style="color:var(--text-muted); font-size: 0.75rem;">${l.formatBadge}</span>` : "";
+            // --- Rankings Status Check ---
+            let wDate = null;
+            let wSet = l.weeklyRankingSetId ? State.rankingSets.weekly.find(s => s.id === l.weeklyRankingSetId) : null;
+            if (wSet) wDate = wSet.updatedAt;
+            else if (l.weeklyRankingsUpdatedAt) wDate = l.weeklyRankingsUpdatedAt;
+            
+            let wFresh = getRankingsFreshness(wDate, 6);
+            let wIsStale = !wFresh || wFresh.isStale;
+
+            let rankIcon = wIsStale 
+                ? `<span class="status-icon status-warn tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Weekly Rankings Stale or Missing</span></span>`
+                : `<span class="status-icon status-good tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Weekly Rankings Fresh</span></span>`;
+
+            // --- Lineup Match Check ---
+            let isBestBall = l.formatBadge && l.formatBadge.toLowerCase().includes("best ball");
+            let starters = State.manualStartersMap[l.leagueId] || [];
+            let optStarterIds = starters.filter(s => s.player).map(s => s.player.id);
+            let sleeperStarters = (l.sleeperStarters || []).filter(id => id && id !== "0");
+            
+            let isMatch = false;
+            let isSetup = optStarterIds.length > 0;
+            
+            if (isSetup && sleeperStarters.length > 0) {
+                let sleeperSet = new Set(sleeperStarters);
+                let optSet = new Set(optStarterIds);
+                isMatch = sleeperSet.size === optSet.size && [...sleeperSet].every(id => optSet.has(id));
+            } else if (isSetup && l.leagueId.startsWith('manual_')) {
+                isMatch = true; 
+            }
+
+            let lineupIcon = '';
+            if (isBestBall) {
+                lineupIcon = `<span class="badge tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); padding: 2px 6px;">BB<span class="tooltip-text">Best Ball (No Lineup Management)</span></span>`;
+            } else if (!isSetup) {
+                lineupIcon = `<span class="status-icon tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span class="tooltip-text">Not Optimized Yet</span></span>`;
+            } else if (isMatch) {
+                lineupIcon = `<span class="status-icon status-good tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
+            } else {
+                lineupIcon = `<span class="status-icon status-danger tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Action Required: Differs from Sleeper Lineup</span></span>`;
+            }
+
+            // --- Early Game Check ---
+            let hasEarly = false;
+            if (isSetup) {
+                hasEarly = starters.some(s => s.player && isEarlyPlayer(s.player.team));
+            }
+            let earlyIcon = hasEarly ? `<span class="badge early-badge tooltip-container" style="padding: 2px 4px; font-size: 0.6rem; margin-left: 6px; cursor: help;">EARLY<span class="tooltip-text">Starter has an Early Game</span></span>` : '';
+
+            // --- Layout ---
+            let formatText = l.formatBadge ? `<div style="color:var(--text-muted); font-size: 0.75rem; margin-top: 2px; font-weight: normal;">${l.formatBadge}</div>` : "";
+            let activeStyle = l.leagueId === State.activeLeagueId ? 'background: rgba(16, 185, 129, 0.08);' : '';
+            let activeIndicator = l.leagueId === State.activeLeagueId ? `<div style="width: 3px; height: 100%; background: var(--primary-green); position: absolute; left: 0; top: 0;"></div>` : '';
+
             html += `
-            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15); padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border);">
-                <div style="display: flex; flex-direction: column;">
-                    <strong style="color: var(--text-main); font-size: 0.9rem;">${l.name}</strong>
-                    ${formatText}
-                </div>
-                <div style="display: flex; gap: 0.4rem;">
-                    <button class="mls-btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
-                    <button class="mls-btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
-                    <button class="mls-btn-sm btn-danger" style="padding: 0.2rem 0.5rem; margin-left: 0.5rem;" onclick="deleteLeagueManager('${l.leagueId}')">✕</button>
-                </div>
-            </div>`;
+            <tr style="position: relative; ${activeStyle}">
+                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); position: relative; cursor: pointer;" onclick="switchActiveLeague('${l.leagueId}')">
+                    ${activeIndicator}
+                    <div style="padding-left: 6px;">
+                        <strong style="color: var(--text-main); font-size: 0.9rem;">${l.name}</strong>
+                        ${formatText}
+                    </div>
+                </td>
+                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: center;">
+                    ${rankIcon}
+                </td>
+                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap;">
+                    ${lineupIcon} ${earlyIcon}
+                </td>
+                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap;">
+                    <button class="btn-sm btn-secondary" style="padding: 0.3rem 0.5rem;" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+                    <button class="btn-sm btn-secondary" style="padding: 0.3rem 0.5rem;" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                    <button class="btn-sm btn-danger" style="padding: 0.3rem 0.5rem; margin-left: 0.3rem;" onclick="deleteLeagueManager('${l.leagueId}')">✕</button>
+                </td>
+            </tr>`;
         });
-        container.innerHTML = html;
+
+        tbody.innerHTML = html;
     }
 
     window.moveLeague = function(index, direction) {
@@ -459,6 +575,11 @@
         if (!leagueId) return;
         State.activeLeagueId = leagueId;
         localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+        
+        // Keep UI elements in sync with the active state
+        const headerSelect = document.getElementById('headerLeagueSelect');
+        if (headerSelect && headerSelect.value !== leagueId) headerSelect.value = leagueId;
+        if (typeof renderLeagueManager === 'function') renderLeagueManager();
         
         // HYDRATION: Unpack rankings for this specific league. Priority: named set assignment,
         // then legacy per-league data (from before named ranking sets existed), then empty --
@@ -1178,7 +1299,7 @@
 
         let league = getActiveLeague();
         if (!league || !league.globalRosterMap || !league.globalPosMap) {
-            outputEl.innerHTML = `<span class="mls-error-text">Please sync a Sleeper league on the Setup tab first to analyze waivers.</span>`;
+            outputEl.innerHTML = `<span class="mls-error-text">Please sync a Sleeper league on the Dashboard first to analyze waivers.</span>`;
             return;
         }
 
@@ -2393,7 +2514,7 @@ function applyMarketSettingsToUI() {
             <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                 <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to your Roster</div>
                 <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Setup Tab)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Dashboard)</div>
                     <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload ROS Rankings (Above)</div>
                     <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Evaluate your team</div>
                 </div>
@@ -2422,6 +2543,7 @@ function applyMarketSettingsToUI() {
             let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
             let rankBadge = (p.rosRank !== 999 || p.posRank !== 999) ? `Ovr: ${ovrStr} | Pos: ${posStr}` : "Unranked";
             let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
+            let byeBadge = getByeBadgeHTML(p.team);
             let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
             
@@ -2430,7 +2552,7 @@ function applyMarketSettingsToUI() {
                 <div class="mls-player-row-info">
                     <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                     <div class="mls-player-row-text">
-                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge}</div>
+                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge}</div>
                         <div class="mls-player-row-meta">
                             <span class="badge">${p.team}</span>
                             <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -2515,7 +2637,7 @@ function applyMarketSettingsToUI() {
         renderLineupUI();
     };
 
-    window.optimizeLineup = function(forceReset = true) {
+    window.optimizeLineup = function(forceReset = true, isManualAction = false) {
         let league = getActiveLeague();
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
@@ -2526,7 +2648,7 @@ function applyMarketSettingsToUI() {
                 <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                     <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to the Lineup Optimizer</div>
                     <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Setup Tab)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Dashboard)</div>
                         <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload Weekly Rankings (Above)</div>
                         <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Click 'Optimize Lineup'</div>
                     </div>
@@ -2553,20 +2675,44 @@ function applyMarketSettingsToUI() {
         let pool = [...scoredRoster];
         let starters = [];
 
+        // Finds the best index in `pool` matching `matchFn`, using `compareFn` to rank
+        // candidates against each other (same contract as Array.prototype.sort's comparator:
+        // negative means `a` ranks ahead of `b`). Prefers players who are actually available
+        // this week per isUnavailableThisWeek(); only falls back to an unavailable player if
+        // NO eligible one exists at all, so a slot is never silently left empty just because
+        // the best-ranked option happens to be on bye.
+        const findBestStarterIndex = (matchFn, compareFn) => {
+            let bestIdx = -1;
+            pool.forEach((p, idx) => {
+                if (!matchFn(p) || isUnavailableThisWeek(p)) return;
+                if (bestIdx === -1 || compareFn(p, pool[bestIdx]) < 0) bestIdx = idx;
+            });
+            if (bestIdx !== -1) return bestIdx;
+
+            // Fallback pass: nobody eligible is available at this position. Allow a bye/hard-out
+            // player rather than leaving the slot empty -- they'll show up with a clear BYE or
+            // injury badge in the UI instead of just vanishing from the lineup.
+            pool.forEach((p, idx) => {
+                if (!matchFn(p)) return;
+                if (bestIdx === -1 || compareFn(p, pool[bestIdx]) < 0) bestIdx = idx;
+            });
+            return bestIdx;
+        };
+
         const fillSlot = (slotLabel, posFilter, useFlexRank) => {
-            pool.sort((a, b) => {
-                if (useFlexRank) {
+            let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
+            if (lockedIndex !== -1) { starters.push({ slot: slotLabel, player: pool.splice(lockedIndex, 1)[0], usedFlex: useFlexRank }); return; }
+
+            const compareFn = useFlexRank
+                ? (a, b) => {
                     if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
                     if (a.flexRank !== 999 && b.flexRank === 999) return -1;
                     if (a.flexRank === 999 && b.flexRank !== 999) return 1;
                     return a.posRank - b.posRank;
-                } else { return a.posRank - b.posRank; }
-            });
+                }
+                : (a, b) => a.posRank - b.posRank;
 
-            let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
-            if (lockedIndex !== -1) { starters.push({ slot: slotLabel, player: pool.splice(lockedIndex, 1)[0], usedFlex: useFlexRank }); return; }
-
-            let bestIndex = pool.findIndex(p => posFilter(p.pos));
+            let bestIndex = findBestStarterIndex(p => posFilter(p.pos), compareFn);
             if (bestIndex !== -1) starters.push({ slot: slotLabel, player: pool.splice(bestIndex, 1)[0], usedFlex: useFlexRank });
             else starters.push({ slot: slotLabel, player: null, usedFlex: useFlexRank });
         };
@@ -2589,18 +2735,15 @@ function applyMarketSettingsToUI() {
                 continue;
             }
 
-            let bestQBIdx = pool.findIndex(p => p.pos === 'QB' && p.posRank !== 999);
+            let bestQBIdx = findBestStarterIndex(p => p.pos === 'QB' && p.posRank !== 999, (a, b) => a.posRank - b.posRank);
             if (bestQBIdx !== -1) {
-                let highest = -1; let maxRk = 9999;
-                pool.forEach((p, idx) => { if (p.pos === 'QB' && p.posRank < maxRk) { maxRk = p.posRank; highest = idx; } });
-                starters.push({ slot: slotLabel, player: pool.splice(highest, 1)[0], usedFlex: false });
+                starters.push({ slot: slotLabel, player: pool.splice(bestQBIdx, 1)[0], usedFlex: false });
             } else {
-                let bestFlexIdx = -1; let maxFlexRk = 9999;
-                pool.forEach((p, idx) => { if (['RB', 'WR', 'TE'].includes(p.pos) && p.flexRank < maxFlexRk) { maxFlexRk = p.flexRank; bestFlexIdx = idx; } });
-                if (bestFlexIdx !== -1 && maxFlexRk !== 999) { starters.push({ slot: slotLabel, player: pool.splice(bestFlexIdx, 1)[0], usedFlex: true }); } 
-                else {
-                    let bestPosIdx = -1; let maxPosRk = 9999;
-                    pool.forEach((p, idx) => { if (['RB', 'WR', 'TE'].includes(p.pos) && p.posRank < maxPosRk) { maxPosRk = p.posRank; bestPosIdx = idx; } });
+                let bestFlexIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && p.flexRank !== 999, (a, b) => a.flexRank - b.flexRank);
+                if (bestFlexIdx !== -1) {
+                    starters.push({ slot: slotLabel, player: pool.splice(bestFlexIdx, 1)[0], usedFlex: true });
+                } else {
+                    let bestPosIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && p.posRank !== 999, (a, b) => a.posRank - b.posRank);
                     if (bestPosIdx !== -1) starters.push({ slot: slotLabel, player: pool.splice(bestPosIdx, 1)[0], usedFlex: false });
                     else starters.push({ slot: slotLabel, player: null, usedFlex: false });
                 }
@@ -2622,17 +2765,68 @@ function applyMarketSettingsToUI() {
         localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
         localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
         
-        let hasOptimizedBefore = localStorage.getItem('mls_has_optimized');
-        if (!hasOptimizedBefore) {
-            if (typeof window.showToast === 'function') {
-                window.showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
+        if (isManualAction) {
+            let hasOptimizedBefore = localStorage.getItem('mls_has_optimized');
+            if (!hasOptimizedBefore) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
+                }
+                localStorage.setItem('mls_has_optimized', 'true');
+            } else {
+                if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
             }
-            localStorage.setItem('mls_has_optimized', 'true');
-        } else {
-            if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
         }
         
         renderLineupUI();
+    };
+
+    window.optimizeAllLineups = function(btn) {
+        if (!State.leagues || State.leagues.length === 0) return;
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Optimizing All...`;
+        btn.disabled = true;
+        btn.style.opacity = '0.8';
+
+        // Brief timeout ensures the UI button state updates before locking the main thread
+        setTimeout(() => {
+            const originalActiveId = State.activeLeagueId;
+            
+            // Temporarily suppress single-toast spam
+            let tempToast = window.showToast;
+            window.showToast = function(){}; 
+            
+            State.leagues.forEach(l => {
+                let isBestBall = l.formatBadge && l.formatBadge.toLowerCase().includes("best ball");
+                if (isBestBall) return; // Skip optimizing Best Ball leagues
+
+                State.activeLeagueId = l.leagueId;
+                
+                // Manually hydrate rankings for this specific league so the optimizer uses the correct set
+                ['ros', 'weekly'].forEach(type => {
+                    const cfg = RANKING_TYPE_CONFIG[type];
+                    const setId = l[cfg.leagueSetIdKey];
+                    const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+
+                    if (set) State[cfg.stateKey] = [...set.data];
+                    else if (Array.isArray(l[cfg.leagueLegacyDataKey]) && l[cfg.leagueLegacyDataKey].length > 0) State[cfg.stateKey] = [...l[cfg.leagueLegacyDataKey]];
+                    else State[cfg.stateKey] = [];
+                });
+
+                window.optimizeLineup(true); 
+            });
+
+            // Restore original state and reactivate toasts
+            window.showToast = tempToast; 
+            switchActiveLeague(originalActiveId); 
+            
+            let managedLeaguesCount = State.leagues.filter(l => !(l.formatBadge && l.formatBadge.toLowerCase().includes("best ball"))).length;
+            
+            if (window.showToast) window.showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
+            
+            btn.innerHTML = origText;
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }, 50);
     };
 
     function renderLineupUI() {
@@ -2679,6 +2873,7 @@ function applyMarketSettingsToUI() {
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
+                let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
                 
                 let sleeperWarn = "";
@@ -2692,7 +2887,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sleeperWarn}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -2727,6 +2922,7 @@ function applyMarketSettingsToUI() {
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
+                let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
                 
                 let sleeperWarn = "";
@@ -2740,7 +2936,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sleeperWarn}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -2760,6 +2956,9 @@ function applyMarketSettingsToUI() {
                 </div>`; 
         }
         benchContainer.innerHTML = benchHTML;
+
+        // Auto-update the dashboard matrix in the background so status icons stay live
+        if (typeof renderLeagueManager === 'function') renderLeagueManager();
     }
     // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS & MOBILE TOOLTIPS ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -2830,7 +3029,7 @@ document.addEventListener('keydown', (e) => {
 window.runPositionalStrength = function() {
     let league = getActiveLeague();
     if (!league || !league.globalRosterMap || !league.globalPosMap) {
-        if (window.showToast) window.showToast("Please sync a league on the Setup tab first.", { isError: true });
+        if (window.showToast) window.showToast("Please sync a league on the Dashboard first.", { isError: true });
         return;
     }
 
