@@ -117,7 +117,7 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
             
-            <div class="logo-container" onclick="showTab('setup')" role="button" tabindex="0" aria-label="Go to Setup" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('setup');}">
+            <div class="logo-container" onclick="showTab('setup')" role="button" tabindex="0" aria-label="Go to Dashboard" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('setup');}">
                 <img src="../images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
                 <div class="logo-text">My Lineup <span>Strategist</span></div>
             </div>
@@ -191,9 +191,9 @@
             Optimize All Lineups
         </button>
 
-        <div class="table-responsive">
-            <table class="sos-grid" style="width: 100%; text-align: left;">
-                <thead>
+        <div class="table-responsive custom-scrollbar" style="max-height: 400px; overflow-y: auto;">
+            <table class="sos-grid" style="width: 100%; text-align: left; position: relative;">
+                <thead style="position: sticky; top: 0; z-index: 10; background: var(--card-bg); box-shadow: 0 1px 0 var(--border);">
                     <tr>
                         <th style="text-align: left; padding-left: 0.5rem;">League</th>
                         <th>Rankings</th>
@@ -608,7 +608,7 @@
             <h3><span>Optimal Lineup</span></h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Generates your highest-projected starting lineup. Lock starters with <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap ⇄ Swap to manually move players. Weekly Rankings and Early Games are above and below.</span>
+                <span class="tooltip-text">Generates your highest-projected starting lineup. Lock starters with <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap ⇄ Swap to manually move players. Weekly Rankings and Early Games are above and below. You can also use the League Command Center on the Dashboard to optimize all of your leagues at once!</span>
             </div>
         </header>
         
@@ -685,7 +685,7 @@
         <div class="info-banner" style="display: flex; margin-bottom: 1rem; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
             <div style="display: flex; gap: 0.5rem;">
                 <div class="info-banner-icon" style="background: #ef4444; color: white;">i</div>
-                <div><strong>Sleeper Sync Required:</strong> This tool only audits leagues synced via Sleeper on the Setup tab.</div>
+                <div><strong>Sleeper Sync Required:</strong> This tool only audits leagues synced via Sleeper on the Dashboard.</div>
             </div>
         </div>
         <button class="btn btn-danger" onclick="runGlobalInjuryAudit(this)">Run Global Audit</button>
@@ -700,7 +700,7 @@
     <div class="info-banner" id="sleeperSyncBanner" style="display: flex; justify-content: space-between; align-items: flex-start;">
     <div style="display: flex; gap: 0.5rem;">
         <div class="info-banner-icon">i</div>
-        <div><strong>Sleeper Sync Required:</strong> To see exactly which team owns a player or if they are a Free Agent, you must sync a Sleeper league on the Setup tab. Otherwise, this tool will only display the player's Weekly/ROS ranks.</div>
+        <div><strong>Sleeper Sync Required:</strong> To see exactly which team owns a player or if they are a Free Agent, you must sync a Sleeper league on the Dashboard. Otherwise, this tool will only display the player's Weekly/ROS ranks.</div>
     </div>
     <button class="close-banner-btn" onclick="dismissBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem; margin-left: 0.75rem; flex-shrink: 0;">✕</button>
 </div>
@@ -933,7 +933,7 @@
             <!-- Step 1 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">1</span> Syncing & Adding Leagues</h4>
-                <p class="step-desc">Navigate to the <strong class="text-main">Setup</strong> tab and enter your Sleeper Username and League ID to sync your roster automatically. You can manage multiple leagues and switch between them using the header dropdown. If you don't use Sleeper, tap "Create Manual League" and add players one-by-one.</p>
+                <p class="step-desc">Navigate to the <strong class="text-main">Dashboard</strong> tab and enter your Sleeper Username and League ID to sync your roster automatically. You can manage multiple leagues and switch between them using the header dropdown or the League Command Center. If you don't use Sleeper, tap "Create Manual" and add players one-by-one.</p>
             </div>
 
             <!-- Step 2 -->

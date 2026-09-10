@@ -483,6 +483,7 @@
                 : `<span class="status-icon status-good tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Weekly Rankings Fresh</span></span>`;
 
             // --- Lineup Match Check ---
+            let isBestBall = l.formatBadge && l.formatBadge.toLowerCase().includes("best ball");
             let starters = State.manualStartersMap[l.leagueId] || [];
             let optStarterIds = starters.filter(s => s.player).map(s => s.player.id);
             let sleeperStarters = (l.sleeperStarters || []).filter(id => id && id !== "0");
@@ -499,7 +500,9 @@
             }
 
             let lineupIcon = '';
-            if (!isSetup) {
+            if (isBestBall) {
+                lineupIcon = `<span class="badge tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); padding: 2px 6px;">BB<span class="tooltip-text">Best Ball (No Lineup Management)</span></span>`;
+            } else if (!isSetup) {
                 lineupIcon = `<span class="status-icon tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span class="tooltip-text">Not Optimized Yet</span></span>`;
             } else if (isMatch) {
                 lineupIcon = `<span class="status-icon status-good tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
@@ -1291,7 +1294,7 @@
 
         let league = getActiveLeague();
         if (!league || !league.globalRosterMap || !league.globalPosMap) {
-            outputEl.innerHTML = `<span class="mls-error-text">Please sync a Sleeper league on the Setup tab first to analyze waivers.</span>`;
+            outputEl.innerHTML = `<span class="mls-error-text">Please sync a Sleeper league on the Dashboard first to analyze waivers.</span>`;
             return;
         }
 
@@ -2506,7 +2509,7 @@ function applyMarketSettingsToUI() {
             <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                 <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to your Roster</div>
                 <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Setup Tab)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Dashboard)</div>
                     <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload ROS Rankings (Above)</div>
                     <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Evaluate your team</div>
                 </div>
@@ -2640,7 +2643,7 @@ function applyMarketSettingsToUI() {
                 <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                     <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to the Lineup Optimizer</div>
                     <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Setup Tab)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Dashboard)</div>
                         <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload Weekly Rankings (Above)</div>
                         <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Click 'Optimize Lineup'</div>
                     </div>
@@ -2786,6 +2789,9 @@ function applyMarketSettingsToUI() {
             window.showToast = function(){}; 
             
             State.leagues.forEach(l => {
+                let isBestBall = l.formatBadge && l.formatBadge.toLowerCase().includes("best ball");
+                if (isBestBall) return; // Skip optimizing Best Ball leagues
+
                 State.activeLeagueId = l.leagueId;
                 
                 // Manually hydrate rankings for this specific league so the optimizer uses the correct set
@@ -2806,7 +2812,9 @@ function applyMarketSettingsToUI() {
             window.showToast = tempToast; 
             switchActiveLeague(originalActiveId); 
             
-            if (window.showToast) window.showToast(`Successfully optimized ${State.leagues.length} lineups!`);
+            let managedLeaguesCount = State.leagues.filter(l => !(l.formatBadge && l.formatBadge.toLowerCase().includes("best ball"))).length;
+            
+            if (window.showToast) window.showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
             
             btn.innerHTML = origText;
             btn.disabled = false;
@@ -3014,7 +3022,7 @@ document.addEventListener('keydown', (e) => {
 window.runPositionalStrength = function() {
     let league = getActiveLeague();
     if (!league || !league.globalRosterMap || !league.globalPosMap) {
-        if (window.showToast) window.showToast("Please sync a league on the Setup tab first.", { isError: true });
+        if (window.showToast) window.showToast("Please sync a league on the Dashboard first.", { isError: true });
         return;
     }
 
