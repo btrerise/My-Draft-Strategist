@@ -1330,10 +1330,21 @@ body {
    (once here, once in the MDS section above), and because both rules had equal specificity,
    whichever came later in the file silently won on BOTH apps' pages. MLS now uses its own
    namespaced class, matching the .mds-btn-sm pattern, so this sizing can never leak onto MDS's
-   buttons (or vice versa) just because someone reorders the file. Do not rename back to .btn-sm. */
+   buttons (or vice versa) just because someone reorders the file.
+   Fully self-contained (not just the padding/font-size/width this used to override) since these
+   buttons no longer also match the base .btn-sm rule above -- without border/cursor/etc. repeated
+   here, they'd fall back to the browser's default button chrome (visible border, 3D look).
+   Do not rename back to .btn-sm. */
 .mls-btn-sm {
     padding: 0.25rem 0.6rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
     font-size: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.3px;
     width: auto !important;
 }
 /* Strength of Schedule (SoS) Grid Styles */
