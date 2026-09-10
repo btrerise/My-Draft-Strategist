@@ -368,6 +368,7 @@ window.addEventListener('popstate', (e) => {
             html += `<option value="${l.leagueId}" ${sel}>${l.name}</option>`;
         });
         select.innerHTML = html;
+        if (typeof updateLeagueNavUI === 'function') updateLeagueNavUI();
     }
 
     function renderLeagueManager() {
@@ -455,6 +456,9 @@ window.addEventListener('popstate', (e) => {
         loadActiveLeagueData();
         State.swapSourceId = null;
 
+        if (typeof updateLeagueNavUI === 'function') updateLeagueNavUI();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
         if (activeTab === 'lineupTab') window.optimizeLineup(false);
@@ -474,6 +478,49 @@ window.addEventListener('popstate', (e) => {
 
     function getActiveLeague() {
         return State.leagues.find(l => l.leagueId === State.activeLeagueId) || null;
+    }
+
+    window.cycleLeague = function(direction) {
+        if (!State.leagues || State.leagues.length <= 1) return;
+        
+        const currentIndex = State.leagues.findIndex(l => l.leagueId === State.activeLeagueId);
+        if (currentIndex === -1) return;
+        
+        let newIndex = currentIndex + direction;
+        
+        // Wrap around seamlessly
+        if (newIndex < 0) newIndex = State.leagues.length - 1;
+        if (newIndex >= State.leagues.length) newIndex = 0;
+        
+        const newLeagueId = State.leagues[newIndex].leagueId;
+        
+        // Ensure the dropdown UI updates visually before triggering the data switch
+        const selectEl = document.getElementById('headerLeagueSelect');
+        if (selectEl) selectEl.value = newLeagueId;
+        
+        switchActiveLeague(newLeagueId);
+    };
+
+    function updateLeagueNavUI() {
+        const prevBtn = document.getElementById('prevLeagueBtn');
+        const nextBtn = document.getElementById('nextLeagueBtn');
+        const counter = document.getElementById('leagueCounter');
+        
+        if (!State.leagues || State.leagues.length <= 1) {
+            if (prevBtn) prevBtn.disabled = true;
+            if (nextBtn) nextBtn.disabled = true;
+            if (counter) counter.style.display = 'none';
+            return;
+        }
+        
+        if (prevBtn) prevBtn.disabled = false;
+        if (nextBtn) nextBtn.disabled = false;
+        
+        const currentIndex = State.leagues.findIndex(l => l.leagueId === State.activeLeagueId);
+        if (counter && currentIndex !== -1) {
+            counter.textContent = `League ${currentIndex + 1} of ${State.leagues.length}`;
+            counter.style.display = 'block';
+        }
     }
     function saveActiveLeagueState() {
     let league = getActiveLeague();
@@ -2745,6 +2792,18 @@ document.addEventListener('keydown', (e) => {
     const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
     
     if (isInputActive) return;
+
+    // Shift + Arrow keys to quickly cycle leagues
+    if (e.shiftKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (typeof window.cycleLeague === 'function') window.cycleLeague(-1);
+        return;
+    }
+    if (e.shiftKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (typeof window.cycleLeague === 'function') window.cycleLeague(1);
+        return;
+    }
 
     switch(e.key) {
         case '1': if (typeof window.showTab === 'function') window.showTab('setup'); break;
