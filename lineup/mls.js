@@ -313,7 +313,7 @@
             else syncBtn.classList.remove('btn-pulse');
         }
         
-        // Setup Sync Card Pulse
+        // Dashboard Sync Card Pulse
         const syncCard = document.getElementById('setupSyncCard');
         if (syncCard) {
             if (State.leagues.length === 0) syncCard.classList.add('pulse-border');
@@ -334,7 +334,7 @@
             else weeklyCard.classList.remove('pulse-border');
         }
 
-        // Navigation Element Pulses (Only Logo, and only when NOT on Setup tab)
+        // Navigation Element Pulses (Only Logo, and only when NOT on Dashboard tab)
         const setupNav = document.querySelector('.logo-container');
         const setupTab = document.getElementById('setupTab');
         
@@ -575,6 +575,11 @@
         if (!leagueId) return;
         State.activeLeagueId = leagueId;
         localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+        
+        // Keep UI elements in sync with the active state
+        const headerSelect = document.getElementById('headerLeagueSelect');
+        if (headerSelect && headerSelect.value !== leagueId) headerSelect.value = leagueId;
+        if (typeof renderLeagueManager === 'function') renderLeagueManager();
         
         // HYDRATION: Unpack rankings for this specific league. Priority: named set assignment,
         // then legacy per-league data (from before named ranking sets existed), then empty --
@@ -2632,7 +2637,7 @@ function applyMarketSettingsToUI() {
         renderLineupUI();
     };
 
-    window.optimizeLineup = function(forceReset = true) {
+    window.optimizeLineup = function(forceReset = true, isManualAction = false) {
         let league = getActiveLeague();
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
@@ -2760,14 +2765,16 @@ function applyMarketSettingsToUI() {
         localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
         localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
         
-        let hasOptimizedBefore = localStorage.getItem('mls_has_optimized');
-        if (!hasOptimizedBefore) {
-            if (typeof window.showToast === 'function') {
-                window.showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
+        if (isManualAction) {
+            let hasOptimizedBefore = localStorage.getItem('mls_has_optimized');
+            if (!hasOptimizedBefore) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
+                }
+                localStorage.setItem('mls_has_optimized', 'true');
+            } else {
+                if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
             }
-            localStorage.setItem('mls_has_optimized', 'true');
-        } else {
-            if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
         }
         
         renderLineupUI();
