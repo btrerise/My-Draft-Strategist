@@ -124,19 +124,16 @@
         </div>
         
         <div class="header-controls">
-            <div style="display: flex; align-items: center; gap: 0.4rem; position: relative;">
-                <button id="prevLeagueBtn" class="btn-sm btn-secondary" onclick="cycleLeague(-1)" aria-label="Previous League" style="padding: 0.4rem 0.5rem;" disabled>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <button id="prevLeagueBtn" class="btn-sm btn-secondary" onclick="cycleLeague(-1)" aria-label="Previous League" style="padding: 0.4rem 0.6rem; flex-shrink: 0;" disabled>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
                 
-                <div style="display: flex; flex-direction: column; align-items: center; position: relative;">
-                    <span id="leagueCounter" style="font-size: 0.65rem; color: var(--primary-green); font-weight: 700; position: absolute; top: -14px; white-space: nowrap; display: none;"></span>
-                    <select id="headerLeagueSelect" class="form-input" onchange="switchActiveLeague(this.value)" aria-label="Select Active League">
-                        <option value="">No Leagues</option>
-                    </select>
-                </div>
+                <select id="headerLeagueSelect" class="form-input" onchange="switchActiveLeague(this.value)" aria-label="Select Active League">
+                    <option value="">No Leagues</option>
+                </select>
 
-                <button id="nextLeagueBtn" class="btn-sm btn-secondary" onclick="cycleLeague(1)" aria-label="Next League" style="padding: 0.4rem 0.5rem;" disabled>
+                <button id="nextLeagueBtn" class="btn-sm btn-secondary" onclick="cycleLeague(1)" aria-label="Next League" style="padding: 0.4rem 0.6rem; flex-shrink: 0;" disabled>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
             </div>

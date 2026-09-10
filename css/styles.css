@@ -131,10 +131,10 @@ body {
         display: none;
     }
     
-    /* 5. Keep the dropdown contained */
-    #draftProfileSelect { 
-        max-width: 170px !important; 
-    }
+    /* 5. Keep the dropdown contained and leave room for the arrows */
+        #draftProfileSelect, #headerLeagueSelect { 
+            max-width: 130px !important; 
+        }
 }
 /* --- HAMBURGER MENU & DRAWER --- */
 .menu-overlay { 

@@ -504,23 +504,15 @@ window.addEventListener('popstate', (e) => {
     function updateLeagueNavUI() {
         const prevBtn = document.getElementById('prevLeagueBtn');
         const nextBtn = document.getElementById('nextLeagueBtn');
-        const counter = document.getElementById('leagueCounter');
         
         if (!State.leagues || State.leagues.length <= 1) {
             if (prevBtn) prevBtn.disabled = true;
             if (nextBtn) nextBtn.disabled = true;
-            if (counter) counter.style.display = 'none';
             return;
         }
         
         if (prevBtn) prevBtn.disabled = false;
         if (nextBtn) nextBtn.disabled = false;
-        
-        const currentIndex = State.leagues.findIndex(l => l.leagueId === State.activeLeagueId);
-        if (counter && currentIndex !== -1) {
-            counter.textContent = `League ${currentIndex + 1} of ${State.leagues.length}`;
-            counter.style.display = 'block';
-        }
     }
     function saveActiveLeagueState() {
     let league = getActiveLeague();
