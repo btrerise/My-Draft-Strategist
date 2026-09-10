@@ -65,8 +65,46 @@
         manualBenchMap: JSON.parse(localStorage.getItem('mds_season_manual_bench')) || {},
         swapSourceId: null,
         touchStartX: 0,
-        touchEndX: 0
+        touchEndX: 0,
+        // Not persisted -- refreshed once per page load from Sleeper's state endpoint (see
+        // refreshCurrentNflWeek() below). Starts null and stays null if that fetch fails or
+        // hasn't resolved yet; every consumer below treats null as "unknown" and simply skips
+        // bye-week detection rather than guessing, so a slow/failed fetch degrades to the old
+        // (bye-unaware) behavior instead of showing wrong information.
+        currentNflWeek: null
     };
+
+    // Refreshes State.currentNflWeek from Sleeper's public NFL state endpoint. Fire-and-forget:
+    // called once from window.onload, with no loading indicator and no retry, since this only
+    // upgrades the lineup optimizer's bye-week awareness -- if it's slow or fails, the app works
+    // exactly as it did before this existed.
+    function refreshCurrentNflWeek() {
+        fetch('https://api.sleeper.app/v1/state/nfl')
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data && typeof data.week === 'number') {
+                    State.currentNflWeek = data.week;
+                }
+            })
+            .catch(() => { /* leave State.currentNflWeek as null; see comment above */ });
+    }
+
+    // Statuses from Sleeper's player sync (see rosterDetails in processSleeperData) that mean
+    // a player has ~zero chance of playing this week. Deliberately excludes "Q" (Questionable)
+    // and "D" (Doubtful) -- those are still game-time calls, not a reason to auto-bench someone
+    // your rankings already have rated highly.
+    const HARD_OUT_STATUSES = ['OUT', 'IR', 'SUS', 'PUP', 'NFI'];
+
+    // True if a player should be avoided as an optimizer pick this week -- on bye, or flagged
+    // with a hard-out status above -- unless no eligible alternative exists at all (see
+    // findBestStarterIndex), in which case they're started anyway rather than leaving a slot
+    // empty. Locked players bypass this check entirely at the call sites below: a lock is an
+    // explicit instruction to start someone regardless of bye/injury status.
+    function isUnavailableThisWeek(p) {
+        const onBye = State.currentNflWeek != null && TEAM_BYES[p.team] === State.currentNflWeek;
+        const hardOut = p.inj && HARD_OUT_STATUSES.includes(p.inj);
+        return onBye || hardOut;
+    }
 
     // --- UTILITY HELPERS ---
     // normalizeName intentionally NOT redeclared here -- it previously shadowed the
@@ -317,6 +355,7 @@
         checkForDraftStrategistHandoff();
         applyMarketSettingsToUI();
         updatePulsePrompts();
+        refreshCurrentNflWeek();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -385,6 +424,16 @@
     function isEarlyPlayer(teamStr) {
         if (!teamStr || teamStr === "FA") return false;
         return State.earlyTeams.includes(teamStr.toUpperCase());
+    }
+
+    // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
+    // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
+    // this season. Returns "" (no badge) if the current week isn't known yet, rather than
+    // guessing. Used alongside the always-present "(##)" bye-week text so a roster/lineup card
+    // still shows the raw week number for season-long planning either way.
+    function getByeBadgeHTML(team) {
+        if (State.currentNflWeek == null || TEAM_BYES[team] !== State.currentNflWeek) return "";
+        return `<span class="badge bye-badge">BYE</span>`;
     }
 
     // --- LEAGUE & SYNC LOGIC ---
@@ -2422,6 +2471,7 @@ function applyMarketSettingsToUI() {
             let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
             let rankBadge = (p.rosRank !== 999 || p.posRank !== 999) ? `Ovr: ${ovrStr} | Pos: ${posStr}` : "Unranked";
             let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
+            let byeBadge = getByeBadgeHTML(p.team);
             let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
             
@@ -2430,7 +2480,7 @@ function applyMarketSettingsToUI() {
                 <div class="mls-player-row-info">
                     <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                     <div class="mls-player-row-text">
-                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge}</div>
+                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge}</div>
                         <div class="mls-player-row-meta">
                             <span class="badge">${p.team}</span>
                             <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -2553,20 +2603,44 @@ function applyMarketSettingsToUI() {
         let pool = [...scoredRoster];
         let starters = [];
 
+        // Finds the best index in `pool` matching `matchFn`, using `compareFn` to rank
+        // candidates against each other (same contract as Array.prototype.sort's comparator:
+        // negative means `a` ranks ahead of `b`). Prefers players who are actually available
+        // this week per isUnavailableThisWeek(); only falls back to an unavailable player if
+        // NO eligible one exists at all, so a slot is never silently left empty just because
+        // the best-ranked option happens to be on bye.
+        const findBestStarterIndex = (matchFn, compareFn) => {
+            let bestIdx = -1;
+            pool.forEach((p, idx) => {
+                if (!matchFn(p) || isUnavailableThisWeek(p)) return;
+                if (bestIdx === -1 || compareFn(p, pool[bestIdx]) < 0) bestIdx = idx;
+            });
+            if (bestIdx !== -1) return bestIdx;
+
+            // Fallback pass: nobody eligible is available at this position. Allow a bye/hard-out
+            // player rather than leaving the slot empty -- they'll show up with a clear BYE or
+            // injury badge in the UI instead of just vanishing from the lineup.
+            pool.forEach((p, idx) => {
+                if (!matchFn(p)) return;
+                if (bestIdx === -1 || compareFn(p, pool[bestIdx]) < 0) bestIdx = idx;
+            });
+            return bestIdx;
+        };
+
         const fillSlot = (slotLabel, posFilter, useFlexRank) => {
-            pool.sort((a, b) => {
-                if (useFlexRank) {
+            let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
+            if (lockedIndex !== -1) { starters.push({ slot: slotLabel, player: pool.splice(lockedIndex, 1)[0], usedFlex: useFlexRank }); return; }
+
+            const compareFn = useFlexRank
+                ? (a, b) => {
                     if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
                     if (a.flexRank !== 999 && b.flexRank === 999) return -1;
                     if (a.flexRank === 999 && b.flexRank !== 999) return 1;
                     return a.posRank - b.posRank;
-                } else { return a.posRank - b.posRank; }
-            });
+                }
+                : (a, b) => a.posRank - b.posRank;
 
-            let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
-            if (lockedIndex !== -1) { starters.push({ slot: slotLabel, player: pool.splice(lockedIndex, 1)[0], usedFlex: useFlexRank }); return; }
-
-            let bestIndex = pool.findIndex(p => posFilter(p.pos));
+            let bestIndex = findBestStarterIndex(p => posFilter(p.pos), compareFn);
             if (bestIndex !== -1) starters.push({ slot: slotLabel, player: pool.splice(bestIndex, 1)[0], usedFlex: useFlexRank });
             else starters.push({ slot: slotLabel, player: null, usedFlex: useFlexRank });
         };
@@ -2589,18 +2663,15 @@ function applyMarketSettingsToUI() {
                 continue;
             }
 
-            let bestQBIdx = pool.findIndex(p => p.pos === 'QB' && p.posRank !== 999);
+            let bestQBIdx = findBestStarterIndex(p => p.pos === 'QB' && p.posRank !== 999, (a, b) => a.posRank - b.posRank);
             if (bestQBIdx !== -1) {
-                let highest = -1; let maxRk = 9999;
-                pool.forEach((p, idx) => { if (p.pos === 'QB' && p.posRank < maxRk) { maxRk = p.posRank; highest = idx; } });
-                starters.push({ slot: slotLabel, player: pool.splice(highest, 1)[0], usedFlex: false });
+                starters.push({ slot: slotLabel, player: pool.splice(bestQBIdx, 1)[0], usedFlex: false });
             } else {
-                let bestFlexIdx = -1; let maxFlexRk = 9999;
-                pool.forEach((p, idx) => { if (['RB', 'WR', 'TE'].includes(p.pos) && p.flexRank < maxFlexRk) { maxFlexRk = p.flexRank; bestFlexIdx = idx; } });
-                if (bestFlexIdx !== -1 && maxFlexRk !== 999) { starters.push({ slot: slotLabel, player: pool.splice(bestFlexIdx, 1)[0], usedFlex: true }); } 
-                else {
-                    let bestPosIdx = -1; let maxPosRk = 9999;
-                    pool.forEach((p, idx) => { if (['RB', 'WR', 'TE'].includes(p.pos) && p.posRank < maxPosRk) { maxPosRk = p.posRank; bestPosIdx = idx; } });
+                let bestFlexIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && p.flexRank !== 999, (a, b) => a.flexRank - b.flexRank);
+                if (bestFlexIdx !== -1) {
+                    starters.push({ slot: slotLabel, player: pool.splice(bestFlexIdx, 1)[0], usedFlex: true });
+                } else {
+                    let bestPosIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && p.posRank !== 999, (a, b) => a.posRank - b.posRank);
                     if (bestPosIdx !== -1) starters.push({ slot: slotLabel, player: pool.splice(bestPosIdx, 1)[0], usedFlex: false });
                     else starters.push({ slot: slotLabel, player: null, usedFlex: false });
                 }
@@ -2679,6 +2750,7 @@ function applyMarketSettingsToUI() {
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
+                let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
                 
                 let sleeperWarn = "";
@@ -2692,7 +2764,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sleeperWarn}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -2727,6 +2799,7 @@ function applyMarketSettingsToUI() {
                 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
+                let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
                 
                 let sleeperWarn = "";
@@ -2740,7 +2813,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sleeperWarn}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
