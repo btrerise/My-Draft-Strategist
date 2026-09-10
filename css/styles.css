@@ -979,6 +979,13 @@ body {
     visibility: visible; opacity: 1; transform: translateY(0);
 }
 
+/* Mobile tap-to-toggle class */
+.tooltip-text.mobile-visible {
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
 
 /* Shared classes consolidated from repeated inline styles across mls.js's several player-row
@@ -2030,6 +2037,38 @@ body {
     0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
     70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
     100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes btn-pulse-anim {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.btn-pulse {
+    animation: btn-pulse-anim 2s infinite;
+}
+
+@keyframes border-pulse-anim {
+    0% { border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+    50% { border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 0 2px rgba(16, 185, 129, 0.1); }
+    100% { border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+}
+
+.pulse-border {
+    animation: border-pulse-anim 2.5s infinite;
+    border-radius: 8px; /* ensures corner rounding matches the card */
+}
+
+@keyframes nav-pulse-anim {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0); }
+    50% { box-shadow: 0 0 12px 2px rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); background: rgba(16, 185, 129, 0); }
+}
+
+.nav-pulse {
+    animation: nav-pulse-anim 2s infinite;
+    border-radius: 8px;
 }
 /* Sync Loading Spinner */
 @keyframes spin {

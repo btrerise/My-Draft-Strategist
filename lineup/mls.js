@@ -133,6 +133,8 @@
     if (tabId === 'setup') refreshLeagueDropdown();
     window.scrollTo(0, 0);
 
+    if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
+
     // --- NEW: Push to browser history so the back button works ---
     if (!skipHistory) {
         history.pushState({ tab: tabId }, '', `#${tabId}`);
@@ -231,6 +233,48 @@ window.addEventListener('popstate', (e) => {
     };
 
     // --- INITIALIZATION ---
+    function updatePulsePrompts() {
+        // Sync Button Pulse
+        const syncBtn = document.getElementById('mainSyncBtn');
+        if (syncBtn) {
+            if (State.leagues.length === 0) syncBtn.classList.add('btn-pulse');
+            else syncBtn.classList.remove('btn-pulse');
+        }
+        
+        // Setup Sync Card Pulse
+        const syncCard = document.getElementById('setupSyncCard');
+        if (syncCard) {
+            if (State.leagues.length === 0) syncCard.classList.add('pulse-border');
+            else syncCard.classList.remove('pulse-border');
+        }
+
+        // ROS Rankings Pulse
+        const rosCard = document.getElementById('rosRankingsCard');
+        if (rosCard) {
+            if (State.leagues.length > 0 && State.rosRankings.length === 0) rosCard.classList.add('pulse-border');
+            else rosCard.classList.remove('pulse-border');
+        }
+
+        // Weekly Rankings Pulse
+        const weeklyCard = document.getElementById('weeklyRankingsCard');
+        if (weeklyCard) {
+            if (State.leagues.length > 0 && State.weeklyRankings.length === 0) weeklyCard.classList.add('pulse-border');
+            else weeklyCard.classList.remove('pulse-border');
+        }
+
+        // Navigation Element Pulses (Only Logo, and only when NOT on Setup tab)
+        const setupNav = document.querySelector('.logo-container');
+        const setupTab = document.getElementById('setupTab');
+        
+        if (setupNav) {
+            setupNav.classList.remove('nav-pulse');
+            // Only pulse the logo if they have zero leagues AND they are currently on another tab
+            if (State.leagues.length === 0 && setupTab && !setupTab.classList.contains('active')) {
+                setupNav.classList.add('nav-pulse');
+            }
+        }
+    }
+
     window.onload = function() {
         populateEarlyGameDropdown();
         refreshLeagueDropdown();
@@ -238,6 +282,7 @@ window.addEventListener('popstate', (e) => {
         generateSoSGrid();
         checkForDraftStrategistHandoff();
         applyMarketSettingsToUI();
+        updatePulsePrompts();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -311,6 +356,7 @@ window.addEventListener('popstate', (e) => {
     // --- LEAGUE & SYNC LOGIC ---
     function refreshLeagueDropdown() {
         const select = document.getElementById('headerLeagueSelect');
+        renderLeagueManager();
         if (!select) return;
         if (State.leagues.length === 0) {
             select.innerHTML = `<option value="">No Leagues</option>`;
@@ -323,6 +369,56 @@ window.addEventListener('popstate', (e) => {
         });
         select.innerHTML = html;
     }
+
+    function renderLeagueManager() {
+        const container = document.getElementById('leagueManagerContainer');
+        if (!container) return;
+        if (State.leagues.length === 0) {
+            container.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">No leagues synced yet.</div>`;
+            return;
+        }
+        
+        let html = "";
+        State.leagues.forEach((l, index) => {
+            let formatText = l.formatBadge ? `<span style="color:var(--text-muted); font-size: 0.75rem;">${l.formatBadge}</span>` : "";
+            html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15); padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border);">
+                <div style="display: flex; flex-direction: column;">
+                    <strong style="color: var(--text-main); font-size: 0.9rem;">${l.name}</strong>
+                    ${formatText}
+                </div>
+                <div style="display: flex; gap: 0.4rem;">
+                    <button class="btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+                    <button class="btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                    <button class="btn-sm btn-danger" style="padding: 0.2rem 0.5rem; margin-left: 0.5rem;" onclick="deleteLeagueManager('${l.leagueId}')">✕</button>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    window.moveLeague = function(index, direction) {
+        if (index + direction < 0 || index + direction >= State.leagues.length) return;
+        let temp = State.leagues[index];
+        State.leagues[index] = State.leagues[index + direction];
+        State.leagues[index + direction] = temp;
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        refreshLeagueDropdown();
+    };
+
+    window.deleteLeagueManager = function(leagueId) {
+        if (!window.confirm("Are you sure you want to remove this league?")) return;
+        State.leagues = State.leagues.filter(l => l.leagueId !== leagueId);
+        if (State.activeLeagueId === leagueId) {
+            State.activeLeagueId = State.leagues.length > 0 ? State.leagues[0].leagueId : null;
+            localStorage.setItem('mds_season_active_league', State.activeLeagueId || "");
+        }
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        refreshLeagueDropdown();
+        loadActiveLeagueData();
+        if (typeof loadRosterTab === 'function') loadRosterTab();
+        if (typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+    };
 
     window.switchActiveLeague = function(leagueId) {
         if (!leagueId) return;
@@ -586,6 +682,18 @@ window.addEventListener('popstate', (e) => {
             if (!leagueRes.ok) throw new Error("League ID not found.");
             const leagueData = await leagueRes.json();
             let leagueName = leagueData.name || "My League";
+            
+            let formatBadge = "";
+            if (leagueData.settings) {
+                let typeStr = leagueData.settings.type === 2 ? "Dynasty" : (leagueData.settings.type === 1 ? "Keeper" : "Redraft");
+                if (leagueData.settings.best_ball === 1) typeStr = "Best Ball";
+                let pprVal = leagueData.scoring_settings?.rec || 0;
+                let pprStr = pprVal === 1 ? "PPR" : (pprVal === 0.5 ? "Half-PPR" : "Std");
+                let isSF = leagueData.roster_positions?.includes("SUPER_FLEX") ? "SF" : "1QB";
+                let tepVal = leagueData.scoring_settings?.bonus_rec_te || 0;
+                let tepStr = tepVal > 0 ? `TEP (+${tepVal})` : "";
+                formatBadge = `${typeStr} ${isSF} ${pprStr} ${tepStr}`.trim();
+            }
 
             let autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0, K: 0, DEF: 0 };
             if (leagueData.roster_positions) {
@@ -617,6 +725,7 @@ window.addEventListener('popstate', (e) => {
 
             let myTeam = rosters.find(r => r.owner_id === userId);
             if (!myTeam && !isRefresh) throw new Error("Could not find your team in this league.");
+            let sleeperStarters = myTeam && myTeam.starters ? myTeam.starters : [];
             
             let globalRosterMap = {};
             let globalPosMap = {}; 
@@ -674,9 +783,9 @@ window.addEventListener('popstate', (e) => {
             let existingLeague = existingIdx !== -1 ? State.leagues[existingIdx] : null;
 
             let leagueObj = {
-                leagueId: leagueId, name: leagueName, username: username,
+                leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
-                globalPosMap: globalPosMap,
+                globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
                 // Preserve this league's existing rankings assignment across a re-sync rather
                 // than rebuilding it from whatever happens to be currently active in State --
                 // a re-sync should only refresh roster/matchup data, not silently reassign
@@ -708,12 +817,13 @@ window.addEventListener('popstate', (e) => {
             window.optimizeLineup(true); 
             loadRosterTab();
             
-            if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades' : "Sync Sleeper");
+            if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
+            if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
             return true;
 
         } catch(err) {
             console.error(err);
-            if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Sync Sleeper Waivers & Trades' : "Sync Sleeper");
+            if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
             if (!suppressErrorToast && window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
             return false;
         }
@@ -784,6 +894,7 @@ window.addEventListener('popstate', (e) => {
                 localStorage.setItem('mds_season_active_league', State.activeLeagueId);
             }
             loadActiveLeagueData();
+            if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
 
             const summary = failCount > 0
                 ? `Imported ${successCount} league${successCount === 1 ? '' : 's'} (${failCount} failed -- check console for details).`
@@ -804,7 +915,7 @@ window.addEventListener('popstate', (e) => {
             if (window.showToast) window.showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
         }
         const btn = document.getElementById('rosterSyncBtn');
-        if (btn) btn.innerText = "Syncing...";
+        if (btn) btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing...</span>`;
         processSleeperData(league.username, league.leagueId, btn, true);
     };
 
@@ -1290,6 +1401,8 @@ window.addEventListener('popstate', (e) => {
         const deleteBtn = document.getElementById(cfg.deleteBtnId);
         if (nameWrap) nameWrap.style.display = (selectedVal === '__new__') ? 'flex' : 'none';
         if (deleteBtn) deleteBtn.style.display = (selectedVal !== '__new__' && selectedVal !== '__legacy__') ? 'inline-block' : 'none';
+        
+        if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
     }
 
     // User manually picked a different set (or legacy data, or "create new") from the dropdown.
@@ -1329,6 +1442,30 @@ window.addEventListener('popstate', (e) => {
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab && activeTab.id === 'rosterTab' && typeof loadRosterTab === 'function') loadRosterTab();
         if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+    };
+
+    window.applyRankingSetToAll = function(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        const val = selectEl ? selectEl.value : null;
+
+        if (!val || val === '__new__') {
+            if (window.showToast) window.showToast("Please select a saved ranking set first.", { isError: true });
+            return;
+        }
+        if (val === '__legacy__') {
+            if (window.showToast) window.showToast("Cannot apply legacy data to all leagues. Upload it as a new set first.", { isError: true });
+            return;
+        }
+
+        if (!window.confirm("Apply this ranking set to ALL of your synced leagues?")) return;
+
+        State.leagues.forEach(l => {
+            l[cfg.leagueSetIdKey] = val;
+        });
+
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        if (window.showToast) window.showToast(`Applied to all ${State.leagues.length} leagues!`);
     };
 
     // Deletes the currently-selected named set entirely. Any league referencing it (not just
@@ -1636,7 +1773,14 @@ window.addEventListener('popstate', (e) => {
         }
         if (typeof window.showToast === 'function') {
             let rankType = isWeekly ? "Weekly" : "ROS";
-            window.showToast(`${rankType} Rankings loaded successfully!`);
+            let isFirstTime = !localStorage.getItem('mls_has_seen_rankings_toast');
+            
+            if (isFirstTime) {
+                window.showToast(`${rankType} Rankings loaded! \n\nTip: We saved this as a reusable set. When you switch to another league, select it from the dropdown to apply it there too!`, { duration: 6000 });
+                localStorage.setItem('mls_has_seen_rankings_toast', 'true');
+            } else {
+                window.showToast(`${rankType} Rankings loaded successfully!`);
+            }
         }
     };
 
@@ -2171,6 +2315,17 @@ function applyMarketSettingsToUI() {
     function loadRosterTab() {
         let league = getActiveLeague();
         const syncBtn = document.getElementById('rosterSyncBtn');
+        const headerNameEl = document.getElementById('rosterLeagueHeader');
+        const headerFormatEl = document.getElementById('rosterFormatBadge');
+
+        // Dynamically update the header
+        if (headerNameEl) {
+            headerNameEl.innerText = league ? league.name : "Active Roster";
+        }
+        if (headerFormatEl) {
+            headerFormatEl.innerText = league && league.formatBadge ? `(${league.formatBadge})` : "(Sorted by ROS)";
+        }
+
         if (syncBtn) {
             if (league && league.leagueId && !league.leagueId.startsWith('manual_') && league.username) syncBtn.style.display = 'block';
             else syncBtn.style.display = 'none';
@@ -2180,7 +2335,15 @@ function applyMarketSettingsToUI() {
         if (!rosterListEl) return;
 
         if (!league || !league.roster || league.roster.length === 0) {
-            rosterListEl.innerHTML = "Select or create a league on the Setup tab to view your roster.";
+            rosterListEl.innerHTML = `
+            <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
+                <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to your Roster</div>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Setup Tab)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload ROS Rankings (Above)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Evaluate your team</div>
+                </div>
+            </div>`;
             return;
         }
         
@@ -2304,8 +2467,18 @@ function applyMarketSettingsToUI() {
         const benchContainer = document.getElementById('benchContainer');
 
         if (!league || !league.roster || league.roster.length === 0) {
-            if (container) container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Please select and sync a league first.</div>`;
-            if (benchContainer) benchContainer.innerHTML = "No bench data."; 
+            if (container) {
+                container.innerHTML = `
+                <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
+                    <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to the Lineup Optimizer</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Setup Tab)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload Weekly Rankings (Above)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Click 'Optimize Lineup'</div>
+                    </div>
+                </div>`;
+            }
+            if (benchContainer) benchContainer.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 1rem; font-size:0.9rem; font-style:italic;">No bench data yet.</div>`; 
             return;
         }
 
@@ -2387,7 +2560,17 @@ function applyMarketSettingsToUI() {
         
         localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
         localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
-        if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
+        
+        let hasOptimizedBefore = localStorage.getItem('mls_has_optimized');
+        if (!hasOptimizedBefore) {
+            if (typeof window.showToast === 'function') {
+                window.showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
+            }
+            localStorage.setItem('mls_has_optimized', 'true');
+        } else {
+            if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
+        }
+        
         renderLineupUI();
     };
 
@@ -2396,10 +2579,26 @@ function applyMarketSettingsToUI() {
         const benchContainer = document.getElementById('benchContainer');
         if (!container || !benchContainer) return;
         
+        let league = getActiveLeague();
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         let benchPool = State.manualBenchMap[State.activeLeagueId] || [];
+        let validSleeperStarters = (league && league.sleeperStarters) ? league.sleeperStarters.filter(id => id && id !== "0") : [];
+        let optimizedStarterIds = starters.filter(s => s.player).map(s => s.player.id);
 
         let html = "";
+        
+        if (validSleeperStarters.length > 0) {
+            let sleeperSet = new Set(validSleeperStarters);
+            let optSet = new Set(optimizedStarterIds);
+            let isMatch = sleeperSet.size === optSet.size && [...sleeperSet].every(id => optSet.has(id));
+            
+            if (isMatch) {
+                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-green); display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Matches your active Sleeper lineup</div>`;
+            } else {
+                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: #f59e0b; display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Action Required: Differs from Sleeper lineup</div>`;
+            }
+        }
+
         starters.forEach(s => {
             let slotType = s.slot.replace(/[0-9]/g, '');
 
@@ -2420,6 +2619,11 @@ function applyMarketSettingsToUI() {
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+                
+                let sleeperWarn = "";
+                if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
+                    sleeperWarn = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; font-size: 0.65rem; margin-left: 4px;">Bench in Sleeper</span>`;
+                }
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
@@ -2427,7 +2631,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -2463,6 +2667,11 @@ function applyMarketSettingsToUI() {
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+                
+                let sleeperWarn = "";
+                if (validSleeperStarters.length > 0 && validSleeperStarters.includes(p.id)) {
+                    sleeperWarn = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`;
+                }
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">
@@ -2470,7 +2679,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${earlyTag} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -2491,19 +2700,34 @@ function applyMarketSettingsToUI() {
         }
         benchContainer.innerHTML = benchHTML;
     }
-    // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS ---
+    // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS & MOBILE TOOLTIPS ---
 document.addEventListener('DOMContentLoaded', () => {
     const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
-    
     const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
     
     if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
         mlsLeagueInput.value = sharedLeagueId;
-        
-        // Optional: If you want it to auto-trigger the sync button right away, uncomment the lines below
         const syncBtn = document.getElementById('syncSleeperBtn');
         if (syncBtn) syncBtn.click();
     }
+
+    // Enable tap-to-toggle for tooltips on touch devices
+    document.querySelectorAll('.tooltip-icon').forEach(icon => {
+        icon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const text = icon.nextElementSibling;
+            if (text && text.classList.contains('tooltip-text')) {
+                text.classList.toggle('mobile-visible');
+            }
+        });
+    });
+
+    // Tap anywhere else on the screen to close open tooltips
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.tooltip-text.mobile-visible').forEach(text => {
+            text.classList.remove('mobile-visible');
+        });
+    });
 });
 // --- POWER-USER KEYBOARD SHORTCUTS (MLS) ---
 document.addEventListener('keydown', (e) => {
@@ -2727,6 +2951,102 @@ window.renderPowerRankingsTable = function(teamScores) {
         out.style.display = 'block';
         out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 50);
+};
+
+window.runGlobalInjuryAudit = async function(btn) {
+    const outputEl = document.getElementById('injuryAuditOutput');
+    const origText = btn.innerHTML;
+    btn.innerHTML = "Scanning Leagues...";
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
+    outputEl.innerHTML = "";
+
+    try {
+        if (!State.leagues || State.leagues.length === 0) {
+            outputEl.innerHTML = `<span class="mls-error-text">No leagues synced.</span>`;
+            return;
+        }
+
+        // Fetch global player map to check current injury status
+        const playerMapRes = await fetch('https://api.sleeper.app/v1/players/nfl');
+        const playerMap = await playerMapRes.json();
+
+        let auditResults = [];
+
+        for (let league of State.leagues) {
+            if (!league.leagueId || league.leagueId.startsWith('manual_')) continue;
+
+            const rostersRes = await fetch(`https://api.sleeper.app/v1/league/${league.leagueId}/rosters`);
+            const rosters = await rostersRes.json();
+            
+            // Resolve User ID
+            const userRes = await fetch(`https://api.sleeper.app/v1/user/${league.username}`);
+            const userData = await userRes.json();
+            const userId = userData.user_id;
+
+            const myRoster = rosters.find(r => r.owner_id === userId);
+            if (!myRoster) continue;
+
+            const starters = myRoster.starters || [];
+            const reserve = myRoster.reserve || [];
+            const allPlayers = myRoster.players || [];
+            let leagueIssues = [];
+
+            allPlayers.forEach(pId => {
+                let p = playerMap[pId];
+                if (!p) return;
+
+                let isInjured = p.injury_status === "Out" || ["IR", "PUP", "NFI", "Suspended"].includes(p.status);
+                
+                if (isInjured) {
+                    let isStarting = starters.includes(pId);
+                    let isBench = !isStarting && !reserve.includes(pId);
+
+                    if (isStarting) {
+                        leagueIssues.push({ name: `${p.first_name} ${p.last_name}`, status: p.injury_status || p.status, location: "Starting Lineup" });
+                    } else if (isBench) {
+                        leagueIssues.push({ name: `${p.first_name} ${p.last_name}`, status: p.injury_status || p.status, location: "Active Bench (Move to IR)" });
+                    }
+                }
+            });
+
+            if (leagueIssues.length > 0) {
+                auditResults.push({ leagueName: league.name, format: league.formatBadge || "", issues: leagueIssues });
+            }
+        }
+
+        if (auditResults.length === 0) {
+            outputEl.innerHTML = `<div class="scout-result-card" style="justify-content:center; color:var(--primary-green);">All clear! No injured players found in active slots across your leagues.</div>`;
+        } else {
+            let html = "";
+            auditResults.forEach(res => {
+                html += `<div style="font-weight:bold; color:#fca5a5; margin: 1rem 0 0.5rem 0;">${res.leagueName} <span style="color:var(--text-muted); font-size: 0.75rem; font-weight: normal;">${res.format}</span></div>`;
+                res.issues.forEach(issue => {
+                    html += `
+                    <div class="scout-result-card" style="border-color: #ef4444;">
+                        <div>
+                            <div class="mls-item-name">${issue.name}</div>
+                            <div class="mls-meta-row">
+                                <span style="color: #fca5a5; font-weight: bold;">${issue.status}</span>
+                            </div>
+                        </div>
+                        <div class="mls-text-right">
+                            <span class="badge" style="background:var(--avoid-bg); color:#fca5a5; border:1px solid var(--avoid-border);">${issue.location}</span>
+                        </div>
+                    </div>`;
+                });
+            });
+            outputEl.innerHTML = html;
+        }
+
+    } catch (err) {
+        console.error(err);
+        outputEl.innerHTML = `<span class="mls-error-text">Failed to run audit. Check console for details.</span>`;
+    } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    }
 };
 })();
 // Add this helper function at the bottom of mls.js

@@ -164,7 +164,7 @@
         </div>
     </div>
     <!-- ADD/SYNC LEAGUE -->
-    <section class="settings-card">
+    <section id="setupSyncCard" class="settings-card">
        <header class="card-header">
     <h3>
         <span>Add/Sync League</span>
@@ -197,7 +197,7 @@
 </div>
         
         <div class="button-row-dual">
-            <button class="btn btn-blue" onclick="addAndSyncLeague(this)">Sync Sleeper</button>
+            <button id="mainSyncBtn" class="btn btn-blue" onclick="addAndSyncLeague(this)">Sync Sleeper</button>
             <button class="btn btn-purple" onclick="createManualLeague()">Create Manual</button>
         </div>
 
@@ -240,6 +240,20 @@
         </div>
         
         <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
+    </section>
+
+    <!-- MANAGE LEAGUES -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3>Manage Leagues</h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Reorder how your leagues appear in the header dropdown, or delete old ones to keep things clean.</span>
+            </div>
+        </header>
+        <div id="leagueManagerContainer" class="flex-column gap-2">
+            <!-- Injected by JS -->
+        </div>
     </section>
 
     <!-- ADD PLAYER MANUALLY -->
@@ -319,13 +333,16 @@
         </header>
         
         <div class="rankings-card-body">
-            <div class="input-group" style="margin-bottom: 0.5rem;">
+            <div class="input-group" style="margin-bottom: 0;">
                 <label for="rosRankingSetSelect">Ranking Set for this League</label>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('ros', this)" aria-label="Select ROS Ranking Set">
                     </select>
                     <button id="rosDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('ros')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
+            </div>
+            <div style="text-align: right; margin-bottom: 0.75rem;">
+                <button class="btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('ros')">Apply this set to all leagues</button>
             </div>
             <div id="rosNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
                 <label for="rosNewSetName">New Set Name (optional)</label>
@@ -434,7 +451,7 @@
     <section class="settings-card">
         <header class="card-header">
             <h3>
-                <span>Active Roster <span class="header-subtitle">(Sorted by ROS)</span></span>
+                <span id="rosterLeagueHeader">Active Roster</span> <span id="rosterFormatBadge" class="header-subtitle">(Sorted by ROS)</span>
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
@@ -443,7 +460,6 @@
         </header>
         
         <button id="rosterSyncBtn" class="btn btn-primary mb-3" style="display: none;" onclick="syncActiveLeague()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
             Sync Sleeper Waivers & Trades
         </button>
         
@@ -509,13 +525,16 @@
         </header>
         
         <div class="rankings-card-body">
-            <div class="input-group" style="margin-bottom: 0.5rem;">
+            <div class="input-group" style="margin-bottom: 0;">
                 <label for="weeklyRankingSetSelect">Ranking Set for this League</label>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <select id="weeklyRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('weekly', this)" aria-label="Select Weekly Ranking Set">
                     </select>
                     <button id="weeklyDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('weekly')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
+            </div>
+            <div style="text-align: right; margin-bottom: 0.75rem;">
+                <button class="btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('weekly')">Apply this set to all leagues</button>
             </div>
             <div id="weeklyNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
                 <label for="weeklyNewSetName">New Set Name (optional)</label>
@@ -633,6 +652,25 @@
             </div>
         </div>
     </section>
+
+    <!-- GLOBAL INJURY AUDITOR -->
+    <section class="settings-card danger-card">
+        <header class="card-header">
+            <h3><span class="text-danger">Global Injury Auditor</span></h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Scans all synced leagues to find 'Out' or 'IR' players left in starting lineups or taking up active bench spots.</span>
+            </div>
+        </header>
+        <div class="info-banner" style="display: flex; margin-bottom: 1rem; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
+            <div style="display: flex; gap: 0.5rem;">
+                <div class="info-banner-icon" style="background: #ef4444; color: white;">i</div>
+                <div><strong>Sleeper Sync Required:</strong> This tool only audits leagues synced via Sleeper on the Setup tab.</div>
+            </div>
+        </div>
+        <button class="btn btn-danger" onclick="runGlobalInjuryAudit(this)">Run Global Audit</button>
+        <div id="injuryAuditOutput" class="scout-output-container"></div>
+    </section>
 </div>
         
         <!-- SCOUT TAB -->
@@ -646,6 +684,7 @@
     </div>
     <button class="close-banner-btn" onclick="dismissBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem; margin-left: 0.75rem; flex-shrink: 0;">✕</button>
 </div>
+
     <!-- WAIVER WIRE ASSISTANT -->
     <section class="settings-card">
         <header class="card-header">
