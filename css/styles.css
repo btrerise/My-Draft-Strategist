@@ -957,6 +957,20 @@ body {
 .bye-badge { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid #f97316; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
 .status-badge { font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; background-color: #102a1e; color: #4ade80; border: 1px solid #34A853; }
 
+/* Dashboard Status Icons */
+.status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.status-good { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.status-warn { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.status-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
 /* --- TOOLTIPS (Refined for Dark Mode) --- */
 .tooltip, .tooltip-container { position: relative; display: inline-flex; align-items: center; cursor: help; 
                              user-select: none;

@@ -74,8 +74,8 @@
     
     <div class="menu-nav-links">
         <button class="nav-btn" data-drawer-target="setup" onclick="navigateFromDrawer('setup')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            Setup
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            Dashboard
         </button>
         <button class="nav-btn" data-drawer-target="roster" onclick="navigateFromDrawer('roster')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
@@ -173,6 +173,41 @@
             <button class="close-banner-btn" onclick="dismissDraftStrategistHandoff()" aria-label="Dismiss" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
         </div>
     </div>
+    <!-- COMMAND CENTER DASHBOARD -->
+    <section id="dashboardCommandCenter" class="settings-card highlight-card" style="display: none;">
+        <header class="card-header">
+            <h3>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span>League Command Center</span>
+            </h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">At-a-glance status of all your synced leagues. Click 'Optimize All Lineups' to update every roster instantly based on your latest uploaded weekly rankings.</span>
+            </div>
+        </header>
+        
+        <button id="optimizeAllBtn" class="btn btn-primary mb-3" onclick="optimizeAllLineups(this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Optimize All Lineups
+        </button>
+
+        <div class="table-responsive">
+            <table class="sos-grid" style="width: 100%; text-align: left;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding-left: 0.5rem;">League</th>
+                        <th>Rankings</th>
+                        <th>Lineup</th>
+                        <th>Settings</th>
+                    </tr>
+                </thead>
+                <tbody id="dashboardMatrixBody">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     <!-- ADD/SYNC LEAGUE -->
     <section id="setupSyncCard" class="settings-card">
        <header class="card-header">
@@ -224,94 +259,69 @@
         <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; margin-bottom: 0;">Finds and syncs every league for this username -- just the username above is needed, no League ID.</p>
     </section>
 
-    <!-- ACTIVE LEAGUE REQUIREMENTS -->
+    <!-- ADVANCED SETTINGS ACCORDIONS -->
     <section class="settings-card">
-        <header class="card-header" style="border-bottom: none; margin-bottom: 0.25rem; padding-bottom: 0;">
-    <h3>
-        <span>Active League Requirements</span>
-    </h3>
-    <div class="tooltip-container">
-        <div class="tooltip-icon">i</div>
-        <span class="tooltip-text">These numbers dictate how many players are assigned to each starting slot on the Lineup page. They auto-populate during Sleeper sync.</span>
-    </div>
-</header>
+        <header class="card-header" style="border-bottom: none; padding-bottom: 0;">
+            <h3><span>Advanced Settings</span></h3>
+        </header>
         
-        <div id="activeLeagueReqTitle" class="league-req-subtitle">(Select a League)</div>
-        
-        <div class="roster-grid mb-4">
-            <div class="input-group"><label for="reqQB">QB</label><input type="number" id="reqQB" class="form-input text-center" value="1" aria-label="QB lineup slots"></div>
-            <div class="input-group"><label for="reqRB">RB</label><input type="number" id="reqRB" class="form-input text-center" value="2" aria-label="RB lineup slots"></div>
-            <div class="input-group"><label for="reqWR">WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
-            <div class="input-group"><label for="reqTE">TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
-            <div class="input-group"><label for="reqFLEX">FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
-            <div class="input-group"><label for="reqSFLEX">SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
-            <div class="input-group"><label for="reqK">K</label><input type="number" id="reqK" class="form-input text-center" value="1" aria-label="K lineup slots"></div>
-            <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
-        </div>
-        
-        <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
-    </section>
-
-    <!-- MANAGE LEAGUES -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3>Manage Leagues</h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Reorder how your leagues appear in the header dropdown, or delete old ones to keep things clean.</span>
+        <details class="sos-details-accordion">
+            <summary class="sos-summary">Active League Requirements</summary>
+            <div style="padding-top: 1rem;">
+                <div class="tooltip-container" style="display: block; margin-bottom: 0.75rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">These numbers dictate how many players are assigned to each starting slot. They auto-populate during Sleeper sync.</span>
+                </div>
+                <div id="activeLeagueReqTitle" class="league-req-subtitle">(Select a League)</div>
+                <div class="roster-grid mb-4">
+                    <div class="input-group"><label for="reqQB">QB</label><input type="number" id="reqQB" class="form-input text-center" value="1" aria-label="QB lineup slots"></div>
+                    <div class="input-group"><label for="reqRB">RB</label><input type="number" id="reqRB" class="form-input text-center" value="2" aria-label="RB lineup slots"></div>
+                    <div class="input-group"><label for="reqWR">WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
+                    <div class="input-group"><label for="reqTE">TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
+                    <div class="input-group"><label for="reqFLEX">FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
+                    <div class="input-group"><label for="reqSFLEX">SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
+                    <div class="input-group"><label for="reqK">K</label><input type="number" id="reqK" class="form-input text-center" value="1" aria-label="K lineup slots"></div>
+                    <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
+                </div>
+                <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
             </div>
-        </header>
-        <div id="leagueManagerContainer" class="flex-column gap-2">
-            <!-- Injected by JS -->
-        </div>
-    </section>
+        </details>
 
-    <!-- ADD PLAYER MANUALLY -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3>Add Player Manually</h3>
-        </header>
-        
-        <div class="manual-player-grid">
-            <input type="text" id="manualName" class="form-input" placeholder="Player Name" aria-label="Type in player name">
-            <select id="manualPos" class="form-input" aria-label="Type in player's position">
-                <option value="QB">QB</option>
-                <option value="RB">RB</option>
-                <option value="WR">WR</option>
-                <option value="TE">TE</option>
-                <option value="K">K</option>
-                <option value="DEF">DEF</option>
-            </select>
-            <input type="text" id="manualTeam" class="form-input" placeholder="Team" aria-label="Type in player's team">
-        </div>
-        
-        <button class="btn btn-primary mt-2" onclick="addManualPlayer()">Add Player to Active Roster</button>
-        <div id="manualAddMsg" class="manual-add-feedback"></div>
-    </section>
-    
-    <!-- BACKUP & RESTORE -->
-    <section class="settings-card">
-        <header class="card-header">
-            <h3>Backup & Restore</h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Download all your leagues, rankings, and settings as a file. Use Import to restore that file on this or another device/browser.</span>
+        <details class="sos-details-accordion">
+            <summary class="sos-summary">Add Player Manually</summary>
+            <div style="padding-top: 1rem;">
+                <div class="manual-player-grid">
+                    <input type="text" id="manualName" class="form-input" placeholder="Player Name" aria-label="Type in player name">
+                    <select id="manualPos" class="form-input" aria-label="Type in player's position">
+                        <option value="QB">QB</option>
+                        <option value="RB">RB</option>
+                        <option value="WR">WR</option>
+                        <option value="TE">TE</option>
+                        <option value="K">K</option>
+                        <option value="DEF">DEF</option>
+                    </select>
+                    <input type="text" id="manualTeam" class="form-input" placeholder="Team" aria-label="Type in player's team">
+                </div>
+                <button class="btn btn-primary mt-2" onclick="addManualPlayer()">Add Player to Active Roster</button>
+                <div id="manualAddMsg" class="manual-add-feedback"></div>
             </div>
-        </header>
-        <div class="flex-column gap-2">
-            <button class="btn btn-primary" onclick="exportMlsSettings()">Export Backup</button>
-            <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" onchange="importMlsSettings(this)">
-            <button class="btn btn-secondary" onclick="document.getElementById('mlsImportFileInput').click()">Import Backup</button>
-        </div>
-    </section>
+        </details>
+        
+        <details class="sos-details-accordion">
+            <summary class="sos-summary">Backup & Restore</summary>
+            <div style="padding-top: 1rem;" class="flex-column gap-2">
+                <button class="btn btn-primary" onclick="exportMlsSettings()">Export Backup</button>
+                <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" onchange="importMlsSettings(this)">
+                <button class="btn btn-secondary" onclick="document.getElementById('mlsImportFileInput').click()">Import Backup</button>
+            </div>
+        </details>
 
-    <!-- DANGER ZONE -->
-    <section class="settings-card danger-card">
-        <header class="card-header">
-            <h3 class="text-danger">Danger Zone</h3>
-        </header>
-        <p class="card-desc">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
-        <button class="btn btn-danger" onclick="factoryReset()">Factory Reset App Data</button>
+        <details class="sos-details-accordion" style="border-color: rgba(239, 68, 68, 0.4); background: linear-gradient(135deg, rgba(239, 68, 68, 0.03), transparent);">
+            <summary class="sos-summary" style="color: #ef4444;">Danger Zone</summary>
+            <div style="padding-top: 1rem;">
+                <p class="card-desc">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
+                <button class="btn btn-danger" onclick="factoryReset()">Factory Reset App Data</button>
+            </div>
+        </details>
     </section>
     <div class="hero-kofi">
             <a href="https://ko-fi.com/btrerise" target="_blank" class="kofi-link">
@@ -982,6 +992,10 @@
 
    <!-- BOTTOM HYBRID NAVIGATION -->
 <nav class="nav-bar" aria-label="Lineup Bottom Navigation">
+    <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Dashboard</span>
+    </button>
     <button class="nav-btn" data-target="roster" onclick="showTab('roster')">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
         <span>Roster</span>

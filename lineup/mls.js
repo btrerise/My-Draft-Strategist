@@ -455,30 +455,94 @@
     }
 
     function renderLeagueManager() {
-        const container = document.getElementById('leagueManagerContainer');
-        if (!container) return;
+        const cmdCenter = document.getElementById('dashboardCommandCenter');
+        const tbody = document.getElementById('dashboardMatrixBody');
+        
+        if (!cmdCenter || !tbody) return;
+
         if (State.leagues.length === 0) {
-            container.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">No leagues synced yet.</div>`;
+            cmdCenter.style.display = 'none';
             return;
         }
-        
+
+        cmdCenter.style.display = 'block';
         let html = "";
+        
         State.leagues.forEach((l, index) => {
-            let formatText = l.formatBadge ? `<span style="color:var(--text-muted); font-size: 0.75rem;">${l.formatBadge}</span>` : "";
+            // --- Rankings Status Check ---
+            let wDate = null;
+            let wSet = l.weeklyRankingSetId ? State.rankingSets.weekly.find(s => s.id === l.weeklyRankingSetId) : null;
+            if (wSet) wDate = wSet.updatedAt;
+            else if (l.weeklyRankingsUpdatedAt) wDate = l.weeklyRankingsUpdatedAt;
+            
+            let wFresh = getRankingsFreshness(wDate, 6);
+            let wIsStale = !wFresh || wFresh.isStale;
+
+            let rankIcon = wIsStale 
+                ? `<span class="status-icon status-warn tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Weekly Rankings Stale or Missing</span></span>`
+                : `<span class="status-icon status-good tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Weekly Rankings Fresh</span></span>`;
+
+            // --- Lineup Match Check ---
+            let starters = State.manualStartersMap[l.leagueId] || [];
+            let optStarterIds = starters.filter(s => s.player).map(s => s.player.id);
+            let sleeperStarters = (l.sleeperStarters || []).filter(id => id && id !== "0");
+            
+            let isMatch = false;
+            let isSetup = optStarterIds.length > 0;
+            
+            if (isSetup && sleeperStarters.length > 0) {
+                let sleeperSet = new Set(sleeperStarters);
+                let optSet = new Set(optStarterIds);
+                isMatch = sleeperSet.size === optSet.size && [...sleeperSet].every(id => optSet.has(id));
+            } else if (isSetup && l.leagueId.startsWith('manual_')) {
+                isMatch = true; 
+            }
+
+            let lineupIcon = '';
+            if (!isSetup) {
+                lineupIcon = `<span class="status-icon tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span class="tooltip-text">Not Optimized Yet</span></span>`;
+            } else if (isMatch) {
+                lineupIcon = `<span class="status-icon status-good tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
+            } else {
+                lineupIcon = `<span class="status-icon status-danger tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Action Required: Differs from Sleeper Lineup</span></span>`;
+            }
+
+            // --- Early Game Check ---
+            let hasEarly = false;
+            if (isSetup) {
+                hasEarly = starters.some(s => s.player && isEarlyPlayer(s.player.team));
+            }
+            let earlyIcon = hasEarly ? `<span class="badge early-badge tooltip-container" style="padding: 2px 4px; font-size: 0.6rem; margin-left: 6px; cursor: help;">EARLY<span class="tooltip-text">Starter has an Early Game</span></span>` : '';
+
+            // --- Layout ---
+            let formatText = l.formatBadge ? `<div style="color:var(--text-muted); font-size: 0.75rem; margin-top: 2px; font-weight: normal;">${l.formatBadge}</div>` : "";
+            let activeStyle = l.leagueId === State.activeLeagueId ? 'background: rgba(16, 185, 129, 0.08);' : '';
+            let activeIndicator = l.leagueId === State.activeLeagueId ? `<div style="width: 3px; height: 100%; background: var(--primary-green); position: absolute; left: 0; top: 0;"></div>` : '';
+
             html += `
-            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15); padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border);">
-                <div style="display: flex; flex-direction: column;">
-                    <strong style="color: var(--text-main); font-size: 0.9rem;">${l.name}</strong>
-                    ${formatText}
-                </div>
-                <div style="display: flex; gap: 0.4rem;">
-                    <button class="mls-btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
-                    <button class="mls-btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
-                    <button class="mls-btn-sm btn-danger" style="padding: 0.2rem 0.5rem; margin-left: 0.5rem;" onclick="deleteLeagueManager('${l.leagueId}')">✕</button>
-                </div>
-            </div>`;
+            <tr style="position: relative; ${activeStyle}">
+                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); position: relative; cursor: pointer;" onclick="switchActiveLeague('${l.leagueId}')">
+                    ${activeIndicator}
+                    <div style="padding-left: 6px;">
+                        <strong style="color: var(--text-main); font-size: 0.9rem;">${l.name}</strong>
+                        ${formatText}
+                    </div>
+                </td>
+                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: center;">
+                    ${rankIcon}
+                </td>
+                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap;">
+                    ${lineupIcon} ${earlyIcon}
+                </td>
+                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap;">
+                    <button class="btn-sm btn-secondary" style="padding: 0.3rem 0.5rem;" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+                    <button class="btn-sm btn-secondary" style="padding: 0.3rem 0.5rem;" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                    <button class="btn-sm btn-danger" style="padding: 0.3rem 0.5rem; margin-left: 0.3rem;" onclick="deleteLeagueManager('${l.leagueId}')">✕</button>
+                </td>
+            </tr>`;
         });
-        container.innerHTML = html;
+
+        tbody.innerHTML = html;
     }
 
     window.moveLeague = function(index, direction) {
@@ -2706,6 +2770,50 @@ function applyMarketSettingsToUI() {
         renderLineupUI();
     };
 
+    window.optimizeAllLineups = function(btn) {
+        if (!State.leagues || State.leagues.length === 0) return;
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Optimizing All...`;
+        btn.disabled = true;
+        btn.style.opacity = '0.8';
+
+        // Brief timeout ensures the UI button state updates before locking the main thread
+        setTimeout(() => {
+            const originalActiveId = State.activeLeagueId;
+            
+            // Temporarily suppress single-toast spam
+            let tempToast = window.showToast;
+            window.showToast = function(){}; 
+            
+            State.leagues.forEach(l => {
+                State.activeLeagueId = l.leagueId;
+                
+                // Manually hydrate rankings for this specific league so the optimizer uses the correct set
+                ['ros', 'weekly'].forEach(type => {
+                    const cfg = RANKING_TYPE_CONFIG[type];
+                    const setId = l[cfg.leagueSetIdKey];
+                    const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+
+                    if (set) State[cfg.stateKey] = [...set.data];
+                    else if (Array.isArray(l[cfg.leagueLegacyDataKey]) && l[cfg.leagueLegacyDataKey].length > 0) State[cfg.stateKey] = [...l[cfg.leagueLegacyDataKey]];
+                    else State[cfg.stateKey] = [];
+                });
+
+                window.optimizeLineup(true); 
+            });
+
+            // Restore original state and reactivate toasts
+            window.showToast = tempToast; 
+            switchActiveLeague(originalActiveId); 
+            
+            if (window.showToast) window.showToast(`Successfully optimized ${State.leagues.length} lineups!`);
+            
+            btn.innerHTML = origText;
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }, 50);
+    };
+
     function renderLineupUI() {
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
@@ -2833,6 +2941,9 @@ function applyMarketSettingsToUI() {
                 </div>`; 
         }
         benchContainer.innerHTML = benchHTML;
+
+        // Auto-update the dashboard matrix in the background so status icons stay live
+        if (typeof renderLeagueManager === 'function') renderLeagueManager();
     }
     // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS & MOBILE TOOLTIPS ---
 document.addEventListener('DOMContentLoaded', () => {
