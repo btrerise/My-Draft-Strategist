@@ -2102,7 +2102,6 @@ function parseExcel(file) {
     }
 
     // --- 5-COLOR AFFINITY SYSTEM ---
-    // --- 5-COLOR AFFINITY SYSTEM ---
     window.cycleAffinity = function(e, id) {
         e.preventDefault();
         e.stopPropagation();

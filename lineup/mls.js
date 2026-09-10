@@ -16,6 +16,34 @@
         "NYJ": 12, "PHI": 5, "PIT": 9, "SEA": 10, "SF": 9, "TB": 11, "TEN": 5, "WAS": 14
     };
 
+    // Per-type field/key mapping shared by the Named Ranking Sets feature (see the full
+    // explanation further down, near saveRankingsAsSet) -- keeping ROS and Weekly's parallel
+    // state keys, localStorage keys, and DOM element ids in one lookup table instead of two
+    // near-duplicate code paths. Declared up here (rather than next to its main usage) because
+    // switchActiveLeague(), just below, already needs it during page load.
+    const RANKING_TYPE_CONFIG = {
+        ros: {
+            stateKey: 'rosRankings', updatedAtKey: 'rosRankingsUpdatedAt',
+            leagueLegacyDataKey: 'rosRankings', leagueLegacyUpdatedKey: 'rosRankingsUpdatedAt',
+            leagueSetIdKey: 'rosRankingSetId', setsKey: 'ros',
+            localStorageSetsKey: 'mls_ranking_sets_ros',
+            globalDataKey: 'mds_season_ros', globalUpdatedKey: 'mds_season_ros_updated',
+            selectId: 'rosRankingSetSelect', nameInputWrapId: 'rosNewSetNameWrap',
+            nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn',
+            label: 'ROS', staleAfterDays: 14
+        },
+        weekly: {
+            stateKey: 'weeklyRankings', updatedAtKey: 'weeklyRankingsUpdatedAt',
+            leagueLegacyDataKey: 'weeklyRankings', leagueLegacyUpdatedKey: 'weeklyRankingsUpdatedAt',
+            leagueSetIdKey: 'weeklyRankingSetId', setsKey: 'weekly',
+            localStorageSetsKey: 'mls_ranking_sets_weekly',
+            globalDataKey: 'mds_season_weekly', globalUpdatedKey: 'mds_season_weekly_updated',
+            selectId: 'weeklyRankingSetSelect', nameInputWrapId: 'weeklyNewSetNameWrap',
+            nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn',
+            label: 'Weekly', staleAfterDays: 6
+        }
+    };
+
     // --- STATE MANAGEMENT ---
     const State = {
         leagues: JSON.parse(localStorage.getItem('mds_season_leagues')) || [],
@@ -54,20 +82,20 @@
 
     // --- DRAWER & SWIPE LOGIC ---
     window.toggleDrawer = function() {
-    const drawer = document.getElementById('drawer');
-    const overlay = document.getElementById('drawerOverlay');
-    const hamburgerBtn = document.querySelector('.hamburger-btn'); // Grab the button
-    
-    if (!drawer || !overlay) return;
-    
-    const isOpen = drawer.classList.toggle('open');
-    overlay.style.display = isOpen ? 'block' : 'none';
-    
-    // Announce the new state to screen readers
-    if (hamburgerBtn) {
-        hamburgerBtn.setAttribute('aria-expanded', isOpen);
-    }
-};
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('drawerOverlay');
+        const hamburgerBtn = document.querySelector('.hamburger-btn');
+
+        if (!drawer || !overlay) return;
+
+        const isOpen = drawer.classList.toggle('open');
+        overlay.style.display = isOpen ? 'block' : 'none';
+
+        // Announce the new state to screen readers
+        if (hamburgerBtn) {
+            hamburgerBtn.setAttribute('aria-expanded', isOpen);
+        }
+    };
 
     window.navigateFromDrawer = function(tabId) {
         document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
@@ -81,12 +109,15 @@
     const mainAppEl = document.getElementById('mainApp');
     if (mainAppEl) {
         mainAppEl.addEventListener('touchstart', e => { State.touchStartX = e.changedTouches[0].screenX; }, {passive: true});
-        // --- NEW: Pass 'e' to handleSwipe ---
+        // handleSwipe needs the event itself (not just the recorded X positions) so it can tell
+        // whether the touch ended inside a scrollable/interactive element and skip the tab swipe.
         mainAppEl.addEventListener('touchend', e => { State.touchEndX = e.changedTouches[0].screenX; handleSwipe(e); }, {passive: true});
     }
 
     function handleSwipe(e) {
-        // --- NEW: Prevent tab swipe if touching tables, grids, or inputs ---
+        // Skip the tab-swipe gesture entirely if the touch happened over a scrollable table,
+        // grid, or form control -- otherwise a horizontal scroll/drag inside those elements
+        // gets misread as a request to switch tabs.
         if (e && e.target && e.target.closest('.roster-container-wrapper, .lineup-container-wrapper, .sos-table-wrapper, select, input, textarea')) {
             return; 
         }
@@ -120,34 +151,37 @@
 
     // --- NAVIGATION LOGIC ---
     window.showTab = function(tabId, skipHistory = false) {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    const targetTab = document.getElementById(tabId + 'Tab');
-    if (targetTab) targetTab.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        const targetTab = document.getElementById(tabId + 'Tab');
+        if (targetTab) targetTab.classList.add('active');
 
-    document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
-    const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
-    if (activeNavBtn) activeNavBtn.classList.add('active');
-    
-    if (tabId === 'lineup') window.optimizeLineup(false);
-    if (tabId === 'roster') loadRosterTab();
-    if (tabId === 'setup') refreshLeagueDropdown();
-    window.scrollTo(0, 0);
+        document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
+        const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
+        if (activeNavBtn) activeNavBtn.classList.add('active');
 
-    if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
+        if (tabId === 'lineup') window.optimizeLineup(false);
+        if (tabId === 'roster') loadRosterTab();
+        if (tabId === 'setup') refreshLeagueDropdown();
+        window.scrollTo(0, 0);
 
-    // --- NEW: Push to browser history so the back button works ---
-    if (!skipHistory) {
-        history.pushState({ tab: tabId }, '', `#${tabId}`);
-    }
-};
-// --- NEW: Catch the native back button ---
-window.addEventListener('popstate', (e) => {
-    if (e.state && e.state.tab) {
-        window.showTab(e.state.tab, true); 
-    } else {
-        window.showTab('setup', true);
-    }
-});
+        if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
+
+        // Push to browser history (unless explicitly skipped, e.g. when we're the ones
+        // responding to a popstate event below) so the native back button works.
+        if (!skipHistory) {
+            history.pushState({ tab: tabId }, '', `#${tabId}`);
+        }
+    };
+
+    // Catches the native back/forward button and replays it as a tab switch, passing
+    // skipHistory=true so we don't push a duplicate entry back onto the history stack.
+    window.addEventListener('popstate', (e) => {
+        if (e.state && e.state.tab) {
+            window.showTab(e.state.tab, true);
+        } else {
+            window.showTab('setup', true);
+        }
+    });
     
     // --- BACKUP & RESTORE ---
     // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in mds.js -- see that
@@ -389,9 +423,9 @@ window.addEventListener('popstate', (e) => {
                     ${formatText}
                 </div>
                 <div style="display: flex; gap: 0.4rem;">
-                    <button class="btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
-                    <button class="btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
-                    <button class="btn-sm btn-danger" style="padding: 0.2rem 0.5rem; margin-left: 0.5rem;" onclick="deleteLeagueManager('${l.leagueId}')">✕</button>
+                    <button class="mls-btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+                    <button class="mls-btn-sm btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                    <button class="mls-btn-sm btn-danger" style="padding: 0.2rem 0.5rem; margin-left: 0.5rem;" onclick="deleteLeagueManager('${l.leagueId}')">✕</button>
                 </div>
             </div>`;
         });
@@ -515,23 +549,23 @@ window.addEventListener('popstate', (e) => {
         if (nextBtn) nextBtn.disabled = false;
     }
     function saveActiveLeagueState() {
-    let league = getActiveLeague();
-    if (league) {
-        // Only sync the legacy per-league copy when this league ISN'T using a named ranking
-        // set -- once a set is assigned, its data lives once in State.rankingSets (referenced
-        // by id, not copied per league), so writing a full copy here on every save would
-        // silently reintroduce the exact duplication named ranking sets exist to avoid.
-        if (!league.rosRankingSetId) {
-            league.rosRankings = [...State.rosRankings];
-            league.rosRankingsUpdatedAt = State.rosRankingsUpdatedAt;
+        let league = getActiveLeague();
+        if (league) {
+            // Only sync the legacy per-league copy when this league ISN'T using a named ranking
+            // set -- once a set is assigned, its data lives once in State.rankingSets (referenced
+            // by id, not copied per league), so writing a full copy here on every save would
+            // silently reintroduce the exact duplication named ranking sets exist to avoid.
+            if (!league.rosRankingSetId) {
+                league.rosRankings = [...State.rosRankings];
+                league.rosRankingsUpdatedAt = State.rosRankingsUpdatedAt;
+            }
+            if (!league.weeklyRankingSetId) {
+                league.weeklyRankings = [...State.weeklyRankings];
+                league.weeklyRankingsUpdatedAt = State.weeklyRankingsUpdatedAt;
+            }
         }
-        if (!league.weeklyRankingSetId) {
-            league.weeklyRankings = [...State.weeklyRankings];
-            league.weeklyRankingsUpdatedAt = State.weeklyRankingsUpdatedAt;
-        }
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
     }
-    localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-}
     function loadActiveLeagueData() {
         let league = getActiveLeague();
         if (!league) return;
@@ -1337,28 +1371,9 @@ window.addEventListener('popstate', (e) => {
     // "Unassigned Upload (legacy)" option in the dropdown until the user picks or creates a
     // real named set for that league -- nothing is silently discarded, but nothing is silently
     // promoted into the new system either.
-    const RANKING_TYPE_CONFIG = {
-        ros: {
-            stateKey: 'rosRankings', updatedAtKey: 'rosRankingsUpdatedAt',
-            leagueLegacyDataKey: 'rosRankings', leagueLegacyUpdatedKey: 'rosRankingsUpdatedAt',
-            leagueSetIdKey: 'rosRankingSetId', setsKey: 'ros',
-            localStorageSetsKey: 'mls_ranking_sets_ros',
-            globalDataKey: 'mds_season_ros', globalUpdatedKey: 'mds_season_ros_updated',
-            selectId: 'rosRankingSetSelect', nameInputWrapId: 'rosNewSetNameWrap',
-            nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn',
-            label: 'ROS', staleAfterDays: 14
-        },
-        weekly: {
-            stateKey: 'weeklyRankings', updatedAtKey: 'weeklyRankingsUpdatedAt',
-            leagueLegacyDataKey: 'weeklyRankings', leagueLegacyUpdatedKey: 'weeklyRankingsUpdatedAt',
-            leagueSetIdKey: 'weeklyRankingSetId', setsKey: 'weekly',
-            localStorageSetsKey: 'mls_ranking_sets_weekly',
-            globalDataKey: 'mds_season_weekly', globalUpdatedKey: 'mds_season_weekly_updated',
-            selectId: 'weeklyRankingSetSelect', nameInputWrapId: 'weeklyNewSetNameWrap',
-            nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn',
-            label: 'Weekly', staleAfterDays: 6
-        }
-    };
+    //
+    // RANKING_TYPE_CONFIG itself lives up with the other top-of-file constants, since
+    // switchActiveLeague() (defined well above this section) needs it too.
 
     // Called after a successful upload or auto-fetch with the freshly parsed data. Updates the
     // currently-selected set in place if one's selected in the dropdown; otherwise creates a new
@@ -2136,7 +2151,7 @@ function applyMarketSettingsToUI() {
                 parsed.push({
                     name: nameStr.trim(),
                     cleanName: normalizeName(nameStr.trim()),
-                    marketVal: numVal, // Added missing comma
+                    marketVal: numVal,
                     pos: posStr
                 });
             }
@@ -2565,7 +2580,14 @@ function applyMarketSettingsToUI() {
         for (let i = 0; i < reqs.SFLEX; i++) {
             let slotLabel = `SFLEX${i+1}`;
             let lockedIndex = pool.findIndex(p => p.isLocked && ['QB', 'RB', 'WR', 'TE'].includes(p.pos));
-            if (lockedIndex !== -1) { starters.push({ slot: slotLabel, player: pool.splice(lockedIndex, 1)[0], usedFlex: !['QB'].includes(pool[lockedIndex]?.pos) }); continue; }
+            if (lockedIndex !== -1) {
+                let lockedPlayer = pool.splice(lockedIndex, 1)[0];
+                // Read pos off the player we just removed, not off pool[lockedIndex] -- after
+                // splice() that index now holds a different (or no) element, since everything
+                // after the removed slot shifts down by one.
+                starters.push({ slot: slotLabel, player: lockedPlayer, usedFlex: lockedPlayer.pos !== 'QB' });
+                continue;
+            }
 
             let bestQBIdx = pool.findIndex(p => p.pos === 'QB' && p.posRank !== 999);
             if (bestQBIdx !== -1) {
@@ -2678,8 +2700,8 @@ function applyMarketSettingsToUI() {
                         </div>
                     </div>
                     <div class="mls-row-actions">
-                        <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
-                        <button class="btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>
+                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                        <button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>
                     </div>
                 </div>`;
             } else {
@@ -2726,7 +2748,7 @@ function applyMarketSettingsToUI() {
                         </div>
                     </div>
                     <div class="mls-row-actions">
-                        <button class="btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
                     </div>
                 </div>`;
             });
@@ -3099,15 +3121,17 @@ window.runGlobalInjuryAudit = async function(btn) {
         btn.style.opacity = "1";
     }
 };
-})();
-// Add this helper function at the bottom of mls.js
-function loadSheetJS(callback) {
-    if (typeof XLSX !== 'undefined') {
-        callback();
-    } else {
-        const script = document.createElement('script');
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-        script.onload = callback;
-        document.head.appendChild(script);
+    // Lazy-loads the SheetJS (XLSX) library on first use, so pages that never upload an .xlsx
+    // ranking file don't pay for it. Kept inside the module (rather than as a bare global) like
+    // every other helper here, since this file isn't shared with any other page.
+    function loadSheetJS(callback) {
+        if (typeof XLSX !== 'undefined') {
+            callback();
+        } else {
+            const script = document.createElement('script');
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+            script.onload = callback;
+            document.head.appendChild(script);
+        }
     }
-}
+})();

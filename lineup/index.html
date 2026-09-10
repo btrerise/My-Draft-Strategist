@@ -125,7 +125,7 @@
         
         <div class="header-controls">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <button id="prevLeagueBtn" class="btn-sm btn-secondary" onclick="cycleLeague(-1)" aria-label="Previous League" style="padding: 0.4rem 0.6rem; flex-shrink: 0;" disabled>
+                <button id="prevLeagueBtn" class="mls-btn-sm btn-secondary" onclick="cycleLeague(-1)" aria-label="Previous League" style="padding: 0.4rem 0.6rem; flex-shrink: 0;" disabled>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
                 
@@ -133,7 +133,7 @@
                     <option value="">No Leagues</option>
                 </select>
 
-                <button id="nextLeagueBtn" class="btn-sm btn-secondary" onclick="cycleLeague(1)" aria-label="Next League" style="padding: 0.4rem 0.6rem; flex-shrink: 0;" disabled>
+                <button id="nextLeagueBtn" class="mls-btn-sm btn-secondary" onclick="cycleLeague(1)" aria-label="Next League" style="padding: 0.4rem 0.6rem; flex-shrink: 0;" disabled>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
             </div>
@@ -151,7 +151,7 @@
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
             <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </div>
-        <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'ds_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+        <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'mls_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
     </div>
     <!-- DRAFT STRATEGIST CROSS-PROMO -->
     <div class="guide-banner" id="draftBanner" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4); padding: 0.75rem 1rem;">
@@ -169,7 +169,7 @@
             <div id="handoffBannerText"><strong>Roster found from My Draft Strategist.</strong></div>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-shrink: 0; margin-left: 0.75rem;">
-            <button class="btn btn-primary btn-sm" onclick="importDraftStrategistRoster()">Import as New League</button>
+            <button class="btn btn-primary mls-btn-sm" onclick="importDraftStrategistRoster()">Import as New League</button>
             <button class="close-banner-btn" onclick="dismissDraftStrategistHandoff()" aria-label="Dismiss" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
         </div>
     </div>
@@ -348,11 +348,11 @@
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('ros', this)" aria-label="Select ROS Ranking Set">
                     </select>
-                    <button id="rosDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('ros')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
+                    <button id="rosDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('ros')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
             <div style="text-align: right; margin-bottom: 0.75rem;">
-                <button class="btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('ros')">Apply this set to all leagues</button>
+                <button class="mls-btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('ros')">Apply this set to all leagues</button>
             </div>
             <div id="rosNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
                 <label for="rosNewSetName">New Set Name (optional)</label>
@@ -540,11 +540,11 @@
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <select id="weeklyRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('weekly', this)" aria-label="Select Weekly Ranking Set">
                     </select>
-                    <button id="weeklyDeleteSetBtn" class="btn btn-danger btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('weekly')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
+                    <button id="weeklyDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('weekly')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
             <div style="text-align: right; margin-bottom: 0.75rem;">
-                <button class="btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('weekly')">Apply this set to all leagues</button>
+                <button class="mls-btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('weekly')">Apply this set to all leagues</button>
             </div>
             <div id="weeklyNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
                 <label for="weeklyNewSetName">New Set Name (optional)</label>
@@ -702,7 +702,7 @@
                 <span>Waiver Wire Assistant</span>
             </h3>
             <div class="header-actions-inline">
-                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML='';">Clear</button>
+                <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML='';">Clear</button>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
                     <span class="tooltip-text">Paste a list of recommended waiver targets. The app will cross-reference the Global Sleeper Roster to tell you if they are available, and display their Weekly/ROS ranks.</span>
@@ -747,14 +747,14 @@
         <!-- Players to Buy Group -->
         <div class="trade-group-header">
             <label class="text-target-label"><span class="dot bg-target"></span> Players to Buy</label>
-            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('buyInput').value='';">Clear</button>
+            <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('buyInput').value='';">Clear</button>
         </div>
         <textarea id="buyInput" class="scout-textarea" placeholder="Players to target in trades..."></textarea>
         
         <!-- Players to Sell Group -->
         <div class="trade-group-header mt-3">
             <label class="text-avoid-label"><span class="dot bg-avoid"></span> Players to Sell / Drop</label>
-            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sellInput').value='';">Clear</button>
+            <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('sellInput').value='';">Clear</button>
         </div>
         <textarea id="sellInput" class="scout-textarea" placeholder="Players to offload..."></textarea>
         
@@ -973,6 +973,7 @@
                     <li><strong class="text-main">3:</strong> Jump to Lineup Tab</li>
                     <li><strong class="text-main">4:</strong> Jump to Scout & Trade Tab</li>
                     <li><strong class="text-main">5:</strong> Jump to Guide Tab</li>
+                    <li><strong class="text-main">Shift+Right/Left</strong> Jump between leagues</li>
                 </ul>
             </div>
         </div>

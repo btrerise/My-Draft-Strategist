@@ -802,11 +802,12 @@ body {
 }
 
 /* MDS-namespaced small button (Tracker/Queue: Pick, Taken, Undo, Save, Cancel, reorder arrows).
-   Intentionally duplicated from .btn-sm rather than reusing it: this file is shared with
-   My Lineup Strategist, which redefines .btn-sm inside its own MLS SCOUT TAB SPECIFIC STYLES
-   section further down. Because both rules share the same specificity, source order decides
-   the winner on any page loading this stylesheet -- so MDS needs its own class to avoid being
-   silently resized by an MLS-only override. Do not delete this in favor of .btn-sm. */
+   Intentionally duplicated from .btn-sm rather than reusing it, for the same reason MLS has
+   its own .mls-btn-sm below: this file is shared between both apps, and an unprefixed .btn-sm
+   used to be redefined twice in this same stylesheet (once here, once in the MLS-specific
+   section), with source order silently deciding which rule any given page got. Both apps now
+   use their own namespaced class so neither can be silently resized by the other's override.
+   Do not delete this in favor of the bare .btn-sm. */
 .mds-btn-sm {
     padding: 0.4rem 0.8rem; 
     border: none; 
@@ -1324,8 +1325,13 @@ body {
     margin-top: 1.25rem;
 }
 
-/* Small Button Utility */
-.btn-sm {
+/* MLS-namespaced small button (Setup league manager reorder/remove, Lineup swap/lock controls).
+   Renamed from a bare .btn-sm -- that selector was defined twice in this shared stylesheet
+   (once here, once in the MDS section above), and because both rules had equal specificity,
+   whichever came later in the file silently won on BOTH apps' pages. MLS now uses its own
+   namespaced class, matching the .mds-btn-sm pattern, so this sizing can never leak onto MDS's
+   buttons (or vice versa) just because someone reorders the file. Do not rename back to .btn-sm. */
+.mls-btn-sm {
     padding: 0.25rem 0.6rem;
     font-size: 0.75rem;
     width: auto !important;
