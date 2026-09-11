@@ -2121,7 +2121,73 @@ function attachScoutSuggestionHandler(outputElId) {
         await Promise.all(filesWithContext.map(f => parseSingleFile(f)));
 
         const parsedData = Object.values(combinedPlayers);
-        if (parsedData.length === 0) return;
+        if (parsedData.length === 0) {
+            if (typeof window.showToast === 'function') {
+                window.showToast("Couldn't find any players in that file. Double check the format and try again.", { isError: true });
+            }
+            return;
+        }
+
+        const type = isWeekly ? 'weekly' : 'ros';
+        const fileInputIds = filesWithContext.map(f =>
+            f.context === 'SINGLE' ? `${type}FileInput` : `${type}FileInput-${f.context}`
+        );
+
+        openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds });
+    };
+
+    // --- RANKINGS UPLOAD PREVIEW ---
+    // Holds the most recently parsed-but-not-yet-committed upload so the confirm/cancel
+    // handlers (wired to the modal's buttons) have something to act on. Only one upload
+    // can be pending at a time, which matches the UI (one modal, one active upload flow).
+    let pendingRankingsUpload = null;
+
+    function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds }) {
+        pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds };
+
+        const rankType = isWeekly ? "Weekly" : "ROS";
+        const sorted = [...parsedData].sort((a, b) => a.rank - b.rank);
+        const preview = sorted.slice(0, 5);
+
+        const titleEl = document.getElementById('rankingsPreviewTitle');
+        if (titleEl) titleEl.textContent = `Preview: ${rankType} Rankings`;
+
+        const countEl = document.getElementById('rankingsPreviewCount');
+        if (countEl) countEl.textContent = `${parsedData.length} player${parsedData.length === 1 ? '' : 's'} parsed`;
+
+        const listEl = document.getElementById('rankingsPreviewList');
+        if (listEl) {
+            listEl.innerHTML = preview.map(p =>
+                `<li><span class="rankings-preview-rank">#${p.rank}</span> ${escapeHtml(p.name)}</li>`
+            ).join('');
+        }
+
+        const noteEl = document.getElementById('rankingsPreviewNote');
+        if (noteEl) {
+            noteEl.style.display = hasNewSos ? 'block' : 'none';
+        }
+
+        const overlay = document.getElementById('rankingsPreviewOverlay');
+        if (overlay) overlay.style.display = 'flex';
+    }
+
+    window.cancelRankingsPreview = function() {
+        // Clear the file input(s) so the user can immediately reselect the same file --
+        // browsers don't fire a 'change' event if the value hasn't actually changed.
+        if (pendingRankingsUpload && pendingRankingsUpload.fileInputIds) {
+            pendingRankingsUpload.fileInputIds.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) input.value = '';
+            });
+        }
+        pendingRankingsUpload = null;
+        const overlay = document.getElementById('rankingsPreviewOverlay');
+        if (overlay) overlay.style.display = 'none';
+    };
+
+    window.confirmRankingsPreview = function() {
+        if (!pendingRankingsUpload) return;
+        const { parsedData, hasNewSos, isWeekly, successMsgId } = pendingRankingsUpload;
 
         if (isWeekly) saveRankingsAsSet('weekly', parsedData);
         else saveRankingsAsSet('ros', parsedData);
@@ -2144,7 +2210,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (typeof window.showToast === 'function') {
             let rankType = isWeekly ? "Weekly" : "ROS";
             let isFirstTime = !localStorage.getItem('mls_has_seen_rankings_toast');
-            
+
             if (isFirstTime) {
                 window.showToast(`${rankType} Rankings loaded! \n\nTip: We saved this as a reusable set. When you switch to another league, select it from the dropdown to apply it there too!`, { duration: 6000 });
                 localStorage.setItem('mls_has_seen_rankings_toast', 'true');
@@ -2152,6 +2218,10 @@ function attachScoutSuggestionHandler(outputElId) {
                 window.showToast(`${rankType} Rankings loaded successfully!`);
             }
         }
+
+        pendingRankingsUpload = null;
+        const overlay = document.getElementById('rankingsPreviewOverlay');
+        if (overlay) overlay.style.display = 'none';
     };
 
     window.processSingleRankingUpload = function(type, successMsgId) {
