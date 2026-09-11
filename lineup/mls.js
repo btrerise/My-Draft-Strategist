@@ -1050,7 +1050,42 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     };
 
-    async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false) {
+    // Compares two roster arrays (same shape as rosterDetails: {cleanName, name, inj, ...}) by
+    // cleanName and returns:
+    //   - added/dropped: display names for players who entered/left the roster
+    //   - newlyOut: display names for players who were still rostered but crossed into a
+    //     HARD_OUT_STATUSES injury status they weren't in before (e.g. Q -> OUT, or nothing -> IR)
+    // Deliberately does NOT surface Q/D fluctuations, recoveries, or team/bye changes -- those
+    // are either too noisy (Q/D shift constantly) or effectively never happen mid-season (team,
+    // bye), so they'd add clutter without adding much signal to a re-sync toast.
+    function diffRosterChanges(prevRoster, newRoster) {
+        const prevMap = new Map((prevRoster || []).map(p => [p.cleanName, p]));
+        const newMap = new Map((newRoster || []).map(p => [p.cleanName, p]));
+        const added = [];
+        const dropped = [];
+        const newlyOut = [];
+        newMap.forEach((p, cleanName) => {
+            const prevP = prevMap.get(cleanName);
+            if (!prevP) {
+                added.push(p.name);
+            } else {
+                const wasHardOut = prevP.inj && HARD_OUT_STATUSES.includes(prevP.inj);
+                const isHardOut = p.inj && HARD_OUT_STATUSES.includes(p.inj);
+                if (isHardOut && !wasHardOut) newlyOut.push(`${p.name} (${p.inj})`);
+            }
+        });
+        prevMap.forEach((p, cleanName) => { if (!newMap.has(cleanName)) dropped.push(p.name); });
+        return { added, dropped, newlyOut };
+    }
+
+    // Keeps the "Added: X, Y, Z" toast readable when a big roster shuffle (or a first-time
+    // sync misclassified as a refresh) would otherwise dump a huge name list on the user.
+    function formatNameList(names) {
+        if (names.length <= 4) return names.join(', ');
+        return `${names.slice(0, 4).join(', ')} +${names.length - 4} more`;
+    }
+
+    async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false, showChangeSummary = false) {
         try {
             let userId = preloaded.userId;
             if (!userId) {
@@ -1179,6 +1214,15 @@ function attachScoutSuggestionHandler(outputElId) {
                 weeklyRankingSetId: existingLeague ? existingLeague.weeklyRankingSetId : null
             };
 
+            // Capture the "what changed" diff before existingLeague's roster is overwritten below.
+            // Only meaningful for a re-sync of a league we'd already stored a roster for --
+            // a brand-new league (existingLeague null) has nothing to diff against, and every
+            // player would show up as "Added", which isn't useful signal.
+            let rosterDiff = null;
+            if (isRefresh && showChangeSummary && existingLeague) {
+                rosterDiff = diffRosterChanges(existingLeague.roster, rosterDetails);
+            }
+
             if (existingIdx !== -1) State.leagues[existingIdx] = leagueObj;
             else State.leagues.push(leagueObj);
 
@@ -1199,6 +1243,15 @@ function attachScoutSuggestionHandler(outputElId) {
             loadRosterTab();
             
             if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
+
+            if (rosterDiff && (rosterDiff.added.length || rosterDiff.dropped.length || rosterDiff.newlyOut.length) && window.showToast) {
+                const parts = [];
+                if (rosterDiff.added.length) parts.push(`Added: ${formatNameList(rosterDiff.added)}`);
+                if (rosterDiff.dropped.length) parts.push(`Dropped: ${formatNameList(rosterDiff.dropped)}`);
+                if (rosterDiff.newlyOut.length) parts.push(`Now OUT: ${formatNameList(rosterDiff.newlyOut)}`);
+                window.showToast(parts.join(' · '));
+            }
+
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
             return true;
 
@@ -1297,7 +1350,10 @@ function attachScoutSuggestionHandler(outputElId) {
         }
         const btn = document.getElementById('rosterSyncBtn');
         if (btn) btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing...</span>`;
-        processSleeperData(league.username, league.leagueId, btn, true);
+        // showChangeSummary=true: this is a single, user-initiated re-sync, so a roster diff
+        // toast is useful signal. The bulk "import all leagues" path deliberately leaves this
+        // off (see importAllSleeperLeagues) since a diff per league would be noisy there.
+        processSleeperData(league.username, league.leagueId, btn, true, {}, false, true);
     };
 
     // --- SOS ENGINE ---
@@ -2121,7 +2177,73 @@ function attachScoutSuggestionHandler(outputElId) {
         await Promise.all(filesWithContext.map(f => parseSingleFile(f)));
 
         const parsedData = Object.values(combinedPlayers);
-        if (parsedData.length === 0) return;
+        if (parsedData.length === 0) {
+            if (typeof window.showToast === 'function') {
+                window.showToast("Couldn't find any players in that file. Double check the format and try again.", { isError: true });
+            }
+            return;
+        }
+
+        const type = isWeekly ? 'weekly' : 'ros';
+        const fileInputIds = filesWithContext.map(f =>
+            f.context === 'SINGLE' ? `${type}FileInput` : `${type}FileInput-${f.context}`
+        );
+
+        openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds });
+    };
+
+    // --- RANKINGS UPLOAD PREVIEW ---
+    // Holds the most recently parsed-but-not-yet-committed upload so the confirm/cancel
+    // handlers (wired to the modal's buttons) have something to act on. Only one upload
+    // can be pending at a time, which matches the UI (one modal, one active upload flow).
+    let pendingRankingsUpload = null;
+
+    function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds }) {
+        pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds };
+
+        const rankType = isWeekly ? "Weekly" : "ROS";
+        const sorted = [...parsedData].sort((a, b) => a.rank - b.rank);
+        const preview = sorted.slice(0, 5);
+
+        const titleEl = document.getElementById('rankingsPreviewTitle');
+        if (titleEl) titleEl.textContent = `Preview: ${rankType} Rankings`;
+
+        const countEl = document.getElementById('rankingsPreviewCount');
+        if (countEl) countEl.textContent = `${parsedData.length} player${parsedData.length === 1 ? '' : 's'} parsed`;
+
+        const listEl = document.getElementById('rankingsPreviewList');
+        if (listEl) {
+            listEl.innerHTML = preview.map(p =>
+                `<li><span class="rankings-preview-rank">#${p.rank}</span> ${escapeHtml(p.name)}</li>`
+            ).join('');
+        }
+
+        const noteEl = document.getElementById('rankingsPreviewNote');
+        if (noteEl) {
+            noteEl.style.display = hasNewSos ? 'block' : 'none';
+        }
+
+        const overlay = document.getElementById('rankingsPreviewOverlay');
+        if (overlay) overlay.style.display = 'flex';
+    }
+
+    window.cancelRankingsPreview = function() {
+        // Clear the file input(s) so the user can immediately reselect the same file --
+        // browsers don't fire a 'change' event if the value hasn't actually changed.
+        if (pendingRankingsUpload && pendingRankingsUpload.fileInputIds) {
+            pendingRankingsUpload.fileInputIds.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) input.value = '';
+            });
+        }
+        pendingRankingsUpload = null;
+        const overlay = document.getElementById('rankingsPreviewOverlay');
+        if (overlay) overlay.style.display = 'none';
+    };
+
+    window.confirmRankingsPreview = function() {
+        if (!pendingRankingsUpload) return;
+        const { parsedData, hasNewSos, isWeekly, successMsgId } = pendingRankingsUpload;
 
         if (isWeekly) saveRankingsAsSet('weekly', parsedData);
         else saveRankingsAsSet('ros', parsedData);
@@ -2144,7 +2266,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (typeof window.showToast === 'function') {
             let rankType = isWeekly ? "Weekly" : "ROS";
             let isFirstTime = !localStorage.getItem('mls_has_seen_rankings_toast');
-            
+
             if (isFirstTime) {
                 window.showToast(`${rankType} Rankings loaded! \n\nTip: We saved this as a reusable set. When you switch to another league, select it from the dropdown to apply it there too!`, { duration: 6000 });
                 localStorage.setItem('mls_has_seen_rankings_toast', 'true');
@@ -2152,6 +2274,10 @@ function attachScoutSuggestionHandler(outputElId) {
                 window.showToast(`${rankType} Rankings loaded successfully!`);
             }
         }
+
+        pendingRankingsUpload = null;
+        const overlay = document.getElementById('rankingsPreviewOverlay');
+        if (overlay) overlay.style.display = 'none';
     };
 
     window.processSingleRankingUpload = function(type, successMsgId) {

@@ -1010,6 +1010,21 @@
     </button>
 </nav>
 </main> <!-- Closes #mainApp -->
+
+<!-- Rankings Upload Preview Modal (shared by ROS & Weekly uploads) -->
+<div id="rankingsPreviewOverlay" class="mls-preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingsPreviewTitle">
+    <div class="mls-preview-modal">
+        <h3 id="rankingsPreviewTitle">Preview Rankings</h3>
+        <p id="rankingsPreviewCount" class="mls-preview-count"></p>
+        <ul id="rankingsPreviewList" class="mls-preview-list"></ul>
+        <p id="rankingsPreviewNote" class="mls-preview-note" style="display: none;">This file also includes Strength of Schedule data, which will be updated too.</p>
+        <div class="mls-preview-actions">
+            <button class="btn btn-secondary" onclick="cancelRankingsPreview()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmRankingsPreview()">Looks Good, Save It</button>
+        </div>
+    </div>
+</div>
+
 <script src="../js/utils.js" defer></script>
     <script src="mls.js" defer></script>
 </body>
