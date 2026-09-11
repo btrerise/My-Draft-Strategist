@@ -1581,12 +1581,12 @@ function attachScoutSuggestionHandler(outputElId) {
             // user see "the market" and "how I personally value this" can disagree.
             let verdictHTML = renderTradeVerdict(
                 "Your Rankings",
-                "This value isn't something you entered -- it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). It's a consistent way to compare players on your own board, not a real dollar figure.",
+                "This value isn't something you entered -- it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
                 getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
             );
             verdictHTML += renderTradeVerdict(
                 "Market Consensus",
-                "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). MDS only stores that source's overall rank, not its own internal value points, so this is MDS's estimate of market value -- not the source's official number.",
+                "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value -- not the source's official number.",
                 getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
             );
 

@@ -1464,6 +1464,8 @@ body {
     width: 14px;
     height: 14px;
     font-size: 9px;
+    text-transform: none;
+    letter-spacing: normal;
 }
 
 .trade-verdict-subnote {
