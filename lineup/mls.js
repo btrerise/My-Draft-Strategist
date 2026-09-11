@@ -59,6 +59,7 @@
         weeklyRankingsUpdatedAt: localStorage.getItem('mds_season_weekly_updated') || null,
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
         marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
+        tradeSettings: JSON.parse(localStorage.getItem('mls_trade_settings')) || { waiverAdjustment: true, waiverAdjustmentValue: 500 },
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
         manualStartersMap: JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {},
@@ -541,6 +542,7 @@ function attachScoutSuggestionHandler(outputElId) {
         generateSoSGrid();
         checkForDraftStrategistHandoff();
         applyMarketSettingsToUI();
+        applyTradeSettingsToUI();
         updatePulsePrompts();
         refreshCurrentNflWeek();
 
@@ -1577,8 +1579,16 @@ function attachScoutSuggestionHandler(outputElId) {
             // Roster tab), and one from market consensus if Market Value data has been loaded
             // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
             // user see "the market" and "how I personally value this" can disagree.
-            let verdictHTML = renderTradeVerdict("Your Rankings", getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0);
-            verdictHTML += renderTradeVerdict("Market Consensus", getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0);
+            let verdictHTML = renderTradeVerdict(
+                "Your Rankings",
+                "This value isn't something you entered -- it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). It's a consistent way to compare players on your own board, not a real dollar figure.",
+                getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
+            );
+            verdictHTML += renderTradeVerdict(
+                "Market Consensus",
+                "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). MDS only stores that source's overall rank, not its own internal value points, so this is MDS's estimate of market value -- not the source's official number.",
+                getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
+            );
 
             if (!verdictHTML) {
                 verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
@@ -1608,7 +1618,7 @@ function attachScoutSuggestionHandler(outputElId) {
     // matched flag the caller wants. Returns "" when the underlying data source isn't loaded at
     // all, or when nothing on either side matched it, so callers can concatenate freely and fall
     // back to a single prompt only when BOTH sources come back empty.
-    function renderTradeVerdict(label, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
+    function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
         if (!sourceLoaded) return "";
 
         let getTotal = getResults.reduce((sum, r) => sum + r[valueKey], 0);
@@ -1619,6 +1629,30 @@ function attachScoutSuggestionHandler(outputElId) {
             return unmatchedCount > 0
                 ? `<div class="trade-verdict-note" style="margin-bottom:1rem;">${label}: none of the players entered were found, so no value total could be calculated.</div>`
                 : "";
+        }
+
+        // --- WAIVER ADJUSTMENT ---
+        // Credits whichever side of the trade includes FEWER total players. A straight sum of
+        // player values overvalues the many-piece side of an uneven trade: consolidating value
+        // into fewer roster spots is worth something on its own, since the newly-freed bench
+        // spot(s) can be refilled off waivers. This mirrors the "waiver adjustment" concept sites
+        // like FantasyCalc apply to their own trade calculators, though the credit amount here is
+        // a flat, user-configurable estimate (see the Trade Analyzer's settings above) rather
+        // than one derived from real trade data.
+        let waiverSubnoteGet = "", waiverSubnoteGive = "";
+        if (State.tradeSettings.waiverAdjustment) {
+            let spotDiff = giveResults.length - getResults.length; // >0 = you're sending more pieces than you receive
+            let perSpot = parseFloat(State.tradeSettings.waiverAdjustmentValue) || 0;
+            if (spotDiff !== 0 && perSpot > 0) {
+                let bonus = Math.abs(spotDiff) * perSpot;
+                if (spotDiff > 0) {
+                    getTotal += bonus;
+                    waiverSubnoteGet = `<span class="trade-verdict-subnote">+${bonus.toLocaleString()} waiver adj.</span>`;
+                } else {
+                    giveTotal += bonus;
+                    waiverSubnoteGive = `<span class="trade-verdict-subnote">+${bonus.toLocaleString()} waiver adj.</span>`;
+                }
+            }
         }
 
         let diff = getTotal - giveTotal;
@@ -1645,16 +1679,24 @@ function attachScoutSuggestionHandler(outputElId) {
 
         return `
         <div class="trade-verdict-banner ${verdictClass}">
-            <div class="trade-verdict-source-label">By ${label}</div>
+            <div class="trade-verdict-source-label">
+                By ${label}
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">${methodologyText}</span>
+                </div>
+            </div>
             <div class="trade-verdict-totals">
                 <div class="trade-verdict-side">
                     <span class="trade-verdict-label">You Receive</span>
                     <span class="trade-verdict-amount">${getTotal.toLocaleString()}</span>
+                    ${waiverSubnoteGet}
                 </div>
                 <div class="trade-verdict-vs">vs</div>
                 <div class="trade-verdict-side">
                     <span class="trade-verdict-label">You Give</span>
                     <span class="trade-verdict-amount">${giveTotal.toLocaleString()}</span>
+                    ${waiverSubnoteGive}
                 </div>
             </div>
             <div class="trade-verdict-result">
@@ -2653,6 +2695,23 @@ window.updateMarketSetting = function(key, value) {
     localStorage.setItem('mls_market_settings', JSON.stringify(State.marketSettings));
     applyMarketSettingsToUI();
 };
+
+// --- TRADE ANALYZER SETTINGS (Waiver Adjustment) ---
+window.updateTradeSetting = function(key, value) {
+    State.tradeSettings[key] = value;
+    localStorage.setItem('mls_trade_settings', JSON.stringify(State.tradeSettings));
+    applyTradeSettingsToUI();
+};
+
+function applyTradeSettingsToUI() {
+    const s = State.tradeSettings;
+    const toggleEl = document.getElementById('tradeWaiverAdjustToggle');
+    const valueWrap = document.getElementById('tradeWaiverValueWrap');
+    const valueEl = document.getElementById('tradeWaiverAdjustValue');
+    if (toggleEl) toggleEl.checked = !!s.waiverAdjustment;
+    if (valueEl) valueEl.value = s.waiverAdjustmentValue;
+    if (valueWrap) valueWrap.style.display = s.waiverAdjustment ? 'block' : 'none';
+}
 
 function applyMarketSettingsToUI() {
     const s = State.marketSettings;

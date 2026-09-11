@@ -1454,6 +1454,26 @@ body {
     color: var(--text-muted);
     margin-bottom: 0.6rem;
     font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.trade-verdict-source-label .tooltip-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 9px;
+}
+
+.trade-verdict-subnote {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 500;
 }
 
 .trade-verdict-totals {
