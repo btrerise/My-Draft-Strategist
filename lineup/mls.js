@@ -1483,14 +1483,21 @@ function attachScoutSuggestionHandler(outputElId) {
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
 
+        // For the Trade Analyzer, roleLabel is "GET" (players you'd receive) or "GIVE" (players
+        // you'd send away). Returns both the card HTML and this player's market value lookup
+        // (null if unmatched/no market data) so the caller can total each side.
         const buildCard = (name, roleLabel = null) => {
             let clean = normalizeName(name);
             let rosObj = State.rosRankings.find(r => r.cleanName === clean);
             let weekObj = State.weeklyRankings.find(r => r.cleanName === clean);
+            let marketObj = type === 'trade' ? getMarketValue(clean) : null;
 
             let suggestHTML = "";
             if (!rosObj && !weekObj && type) {
-                let sourceInputId = type === 'waiver' ? 'waiverInput' : 'tradeInput';
+                // Bug fix: this used to always point at a nonexistent 'tradeInput' element for
+                // trade cards, silently no-op'ing the "Did you mean" fix-it link on both sides.
+                // Route back to whichever textarea (buyInput/sellInput) this name actually came from.
+                let sourceInputId = type === 'waiver' ? 'waiverInput' : (roleLabel === 'GIVE' ? 'sellInput' : 'buyInput');
                 let suggestion = findClosestRankedName(name);
                 if (suggestion) {
                     suggestHTML = `<div class="scout-suggest-hint">Did you mean
@@ -1504,8 +1511,8 @@ function attachScoutSuggestionHandler(outputElId) {
             let owner = rosterMap[clean];
             let statusHTML = "";
             
-            if (roleLabel === "SELL") {
-                if (owner === "You") statusHTML = `<div class="scout-status status-owned">On Your Roster<br>(Ready to Sell)</div>`;
+            if (roleLabel === "GIVE") {
+                if (owner === "You") statusHTML = `<div class="scout-status status-owned">On Your Roster<br>(Ready to Send)</div>`;
                 else if (owner) statusHTML = `<div class="scout-status status-avail">Already Dropped<br>/ Traded</div>`;
                 else statusHTML = `<div class="scout-status status-avail">Not on your<br>roster</div>`;
             } else {
@@ -1514,35 +1521,130 @@ function attachScoutSuggestionHandler(outputElId) {
                 else statusHTML = `<div class="scout-status status-owned">Rostered by:<br>${owner}</div>`;
             }
 
-            let roleTag = roleLabel ? `<span class="badge" style="background:#112233;">${roleLabel} Target</span>` : "";
+            let roleTag = roleLabel ? `<span class="badge" style="background:#112233;">${roleLabel === "GET" ? "Receiving" : "Giving"}</span>` : "";
 
-            return `
-            <div class="scout-result-card">
-                <div>
-                    <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-                        ${displayName} ${roleTag}
+            // Market value badge only shows on the Trade Analyzer, and only once market data has
+            // actually been loaded -- stays silent otherwise so the card looks unchanged for
+            // anyone not using the value feature.
+            let valueHTML = "";
+            if (type === 'trade' && State.marketRankings.length > 0) {
+                valueHTML = marketObj
+                    ? `<span>Value: <strong class="mls-stat-value">${marketObj.value.toLocaleString()}</strong> <span style="color:var(--text-muted);">(Mkt #${marketObj.rank})</span></span>`
+                    : `<span style="color:var(--text-muted);">No Market Value</span>`;
+            }
+
+            return {
+                html: `
+                <div class="scout-result-card">
+                    <div>
+                        <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                            ${displayName} ${roleTag}
+                        </div>
+                        <div class="mls-meta-row">
+                            <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
+                            <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
+                            ${valueHTML}
+                        </div>
+                        ${suggestHTML}
                     </div>
-                    <div class="mls-meta-row">
-                        <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
-                        <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
-                    </div>
-                    ${suggestHTML}
-                </div>
-                <div class="mls-text-right">${statusHTML}</div>
-            </div>`;
+                    <div class="mls-text-right">${statusHTML}</div>
+                </div>`,
+                value: marketObj ? marketObj.value : 0,
+                matched: !!marketObj
+            };
         };
 
         let html = "";
-        if (targetNames.length > 0) {
-            html += type === 'trade' ? `<div style="font-weight:bold; color:#4ade80; margin-bottom:0.5rem;">Buy Targets</div>` : "";
-            targetNames.forEach(n => html += buildCard(n, type === 'trade' ? "BUY" : null));
-        }
-        
-        if (sellNames.length > 0) {
-            html += `<div style="font-weight:bold; color:#fca5a5; margin:1rem 0 0.5rem 0;">Sell / Drop Candidates</div>`;
-            sellNames.forEach(n => html += buildCard(n, "SELL"));
+
+        if (type === 'trade') {
+            // --- TRADE FAIRNESS VERDICT ---
+            // Sums each side's market value (see marketRankToValue/getMarketValue above) and
+            // renders a banner ahead of the two player lists. Only rendered once Market Value
+            // data is actually loaded -- with none loaded, the Trade Analyzer still works as a
+            // pure roster/ownership lookup, same as before this feature existed.
+            if (State.marketRankings.length > 0) {
+                let getResults = targetNames.map(n => buildCard(n, "GET"));
+                let giveResults = sellNames.map(n => buildCard(n, "GIVE"));
+
+                let getTotal = getResults.reduce((sum, r) => sum + r.value, 0);
+                let giveTotal = giveResults.reduce((sum, r) => sum + r.value, 0);
+                let unmatchedCount = getResults.concat(giveResults).filter(r => !r.matched).length;
+
+                if (getTotal > 0 || giveTotal > 0) {
+                    let diff = getTotal - giveTotal;
+                    let biggerSide = Math.max(getTotal, giveTotal, 1); // avoid div-by-zero
+                    let swingPct = (Math.abs(diff) / biggerSide) * 100;
+
+                    // Within 10% of the larger side's value counts as a fair trade -- outside
+                    // that, it clearly favors whoever's receiving more value.
+                    let verdictClass, verdictText;
+                    if (swingPct < 10) {
+                        verdictClass = "verdict-fair";
+                        verdictText = "Fair Trade";
+                    } else if (diff > 0) {
+                        verdictClass = "verdict-favor-you";
+                        verdictText = "Favors You";
+                    } else {
+                        verdictClass = "verdict-favor-them";
+                        verdictText = "Favors Them";
+                    }
+
+                    let unmatchedNote = unmatchedCount > 0
+                        ? `<div class="trade-verdict-note">${unmatchedCount} player${unmatchedCount > 1 ? 's' : ''} not found in Market Value data, excluded from totals.</div>`
+                        : "";
+
+                    html += `
+                    <div class="trade-verdict-banner ${verdictClass}">
+                        <div class="trade-verdict-totals">
+                            <div class="trade-verdict-side">
+                                <span class="trade-verdict-label">You Receive</span>
+                                <span class="trade-verdict-amount">${getTotal.toLocaleString()}</span>
+                            </div>
+                            <div class="trade-verdict-vs">vs</div>
+                            <div class="trade-verdict-side">
+                                <span class="trade-verdict-label">You Give</span>
+                                <span class="trade-verdict-amount">${giveTotal.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div class="trade-verdict-result">
+                            ${verdictText}
+                            <span class="trade-verdict-diff">(${diff >= 0 ? '+' : ''}${diff.toLocaleString()} pts${biggerSide > 1 ? `, ${swingPct.toFixed(0)}%` : ''})</span>
+                        </div>
+                        ${unmatchedNote}
+                    </div>`;
+                } else if (unmatchedCount > 0) {
+                    html += `<div class="trade-verdict-note" style="margin-bottom:1rem;">None of the ${unmatchedCount} player${unmatchedCount > 1 ? 's' : ''} entered were found in your loaded Market Value data, so no value total could be calculated.</div>`;
+                }
+
+                if (targetNames.length > 0) {
+                    html += `<div style="font-weight:bold; color:#4ade80; margin-bottom:0.5rem;">You Receive</div>`;
+                    getResults.forEach(r => html += r.html);
+                }
+                if (sellNames.length > 0) {
+                    html += `<div style="font-weight:bold; color:#fca5a5; margin:1rem 0 0.5rem 0;">You Give Up</div>`;
+                    giveResults.forEach(r => html += r.html);
+                }
+
+                outputEl.innerHTML = html;
+                return;
+            }
+
+            // No Market Value data loaded -- fall back to the plain ownership-lookup view.
+            if (targetNames.length > 0) {
+                html += `<div style="font-weight:bold; color:#4ade80; margin-bottom:0.5rem;">You Receive</div>`;
+                targetNames.forEach(n => html += buildCard(n, "GET").html);
+            }
+            if (sellNames.length > 0) {
+                html += `<div style="font-weight:bold; color:#fca5a5; margin:1rem 0 0.5rem 0;">You Give Up</div>`;
+                sellNames.forEach(n => html += buildCard(n, "GIVE").html);
+            }
+            html += `<div class="trade-verdict-note" style="margin-top:0.75rem;">Load Market Value data (Positional Power Rankings section below) to get a value total and fairness verdict.</div>`;
+            outputEl.innerHTML = html;
+            return;
         }
 
+        // Waiver path (unchanged)
+        targetNames.forEach(n => html += buildCard(n, null).html);
         outputEl.innerHTML = html;
     };
 
@@ -2606,6 +2708,30 @@ function applyMarketSettingsToUI() {
         }
     }
 
+    // --- TRADE VALUE CURVE ---
+    // Converts a market-consensus overall rank (State.marketRankings, same data the Market
+    // Disconnect Engine uses) into an approximate point value for the Trade Analyzer's side
+    // totals. Raw rank isn't summable in a meaningful way -- the value gap between rank #1 and
+    // #2 is enormous compared to the gap between #150 and #151, exactly like how KTC/FantasyCalc's
+    // own dollar-style trade values are NOT linear with rank. This exponential decay approximates
+    // that shape from rank alone, since fetchMarketConsensusData/parseMarketData only capture
+    // overallRank, not raw value points. Decay factor is tuned so rank #1 ~= 10000 and value
+    // trails off to near-zero by the deep bench (~rank 300+), mirroring typical dynasty charts.
+    function marketRankToValue(rank) {
+        if (!rank || rank < 1) return 0;
+        return Math.round(10000 * Math.pow(0.982, rank - 1));
+    }
+
+    // Looks up a player's market value by clean name. Returns null if no Market Value data is
+    // loaded at all, or if this specific player isn't in it (unranked/deep bench/rookie not yet
+    // valued) -- callers distinguish "no data loaded" from "player not found" via State.marketRankings.length.
+    function getMarketValue(cleanName) {
+        if (!cleanName) return null;
+        let m = State.marketRankings.find(r => r.cleanName === cleanName);
+        if (!m) return null;
+        return { rank: m.marketVal, value: marketRankToValue(m.marketVal) };
+    }
+
     function updateMarketMetaDisplay() {
         const metaEl = document.getElementById('marketMetaDisplay');
         if (metaEl) {
@@ -2755,6 +2881,44 @@ function applyMarketSettingsToUI() {
 
         outputEl.innerHTML = html;
     };
+    // --- TEXT EXPORT (DISCORD/GROUP CHAT) ---
+    window.copyLineupAsText = function(btn) {
+        if (!State.activeLeagueId) return;
+        
+        let league = getActiveLeague();
+        let starters = State.manualStartersMap[State.activeLeagueId] || [];
+        
+        if (starters.length === 0 || !starters.some(s => s.player)) {
+            if (window.showToast) window.showToast("No players in lineup to copy.", { isError: true });
+            return;
+        }
+
+        let textLines = [];
+        let leagueName = league && league.name && !league.name.includes("Manual") ? league.name : "Optimal";
+        
+        textLines.push(`🏆 ${leagueName} Lineup\n`);
+        
+        starters.forEach(s => {
+            let cleanSlotType = s.slot.replace(/[0-9]/g, ''); 
+            
+            if (s.player) {
+                textLines.push(`${cleanSlotType}: ${s.player.name} (${s.player.team})`);
+            } else {
+                textLines.push(`${cleanSlotType}: [ Empty ]`);
+            }
+        });
+
+        const finalString = textLines.join('\n');
+        
+        navigator.clipboard.writeText(finalString).then(() => {
+            if (btn && window.flashButton) window.flashButton(btn, "Copied!");
+            if (window.showToast) window.showToast("Lineup copied to clipboard!");
+        }).catch(err => {
+            console.error("Copy failed:", err);
+            if (window.showToast) window.showToast("Failed to copy. Your browser may not support this.", { isError: true });
+        });
+    };
+
     // --- SCREENSHOT EXPORT ---
     window.exportLineup = async function() {
     if (typeof html2canvas === 'undefined') { 
