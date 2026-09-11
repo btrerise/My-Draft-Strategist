@@ -402,6 +402,11 @@ body {
     border-radius: 8px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
     -webkit-tap-highlight-color: transparent; /* Removes blue flash on mobile tap */
+    position: relative;
+    z-index: 10;
+}
+.nav-btn * {
+    pointer-events: none;
 }
 
 /* Tab Icon Animation */
@@ -2863,3 +2868,41 @@ a.nav-btn,
     right: 0;
     transform: none;
 }
+/* Player-name autocomplete dropdown */
+.autocomplete-wrap { position: relative; }
+.autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: #111827;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+.autocomplete-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+.autocomplete-item:hover, .autocomplete-item.highlighted {
+    background: rgba(16, 185, 129, 0.12);
+}
+.autocomplete-meta {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-left: 0.75rem;
+    white-space: nowrap;
+}
+
+/* "Did you mean" hint on a Scout card */
+.scout-suggest-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+.scout-suggest-link { color: #fb923c; font-weight: 600; text-decoration: underline; }
+.scout-suggest-link:hover { color: #fdba74; }
+

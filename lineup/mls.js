@@ -347,7 +347,194 @@
         }
     }
 
+// Minimal HTML-attribute escaping for safe rendering
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Consolidated Sleeper DB Cache
+let _sleeperPlayerMapCache = null;
+let _sleeperPlayerMapPromise = null;
+function getSleeperPlayerMap(options = {}) {
+    if (_sleeperPlayerMapCache && !options.forceRefresh) return Promise.resolve(_sleeperPlayerMapCache);
+    if (_sleeperPlayerMapPromise && !options.forceRefresh) return _sleeperPlayerMapPromise;
+
+    _sleeperPlayerMapPromise = fetch('https://api.sleeper.app/v1/players/nfl')
+        .then(res => res.json())
+        .then(data => {
+            _sleeperPlayerMapCache = data;
+            _sleeperPlayerMapPromise = null;
+            return data;
+        })
+        .catch(err => {
+            _sleeperPlayerMapPromise = null;
+            throw err;
+        });
+    return _sleeperPlayerMapPromise;
+}
+
+// Autocomplete Search Index
+let _playerSearchIndexPromise = null;
+function getPlayerSearchIndex() {
+    if (_playerSearchIndexPromise) return _playerSearchIndexPromise;
+    _playerSearchIndexPromise = getSleeperPlayerMap().then(map => {
+        const FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+        const index = [];
+        Object.values(map).forEach(p => {
+            if (!p.first_name || !FANTASY_POS.includes(p.position)) return;
+            const name = `${p.first_name} ${p.last_name}`.trim();
+            index.push({ name, pos: p.position, team: p.team || 'FA', searchKey: name.toLowerCase() });
+        });
+        return index;
+    });
+    return _playerSearchIndexPromise;
+}
+
+// Autocomplete Dropdown Logic
+function attachPlayerAutocomplete(inputEl, onSelect) {
+    if (!inputEl || inputEl.dataset.autocompleteAttached) return;
+    inputEl.dataset.autocompleteAttached = '1';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'autocomplete-wrap';
+    inputEl.parentNode.insertBefore(wrap, inputEl);
+    wrap.appendChild(inputEl);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'autocomplete-dropdown';
+    dropdown.setAttribute('role', 'listbox');
+    dropdown.style.display = 'none';
+    wrap.appendChild(dropdown);
+
+    let matches = [];
+    let highlightedIdx = -1;
+
+    function render() {
+        if (matches.length === 0) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+        dropdown.innerHTML = matches.map((p, i) => `
+            <div class="autocomplete-item${i === highlightedIdx ? ' highlighted' : ''}" role="option" data-idx="${i}">
+                <span>${escapeHtml(p.name)}</span>
+                <span class="autocomplete-meta">${p.pos} ·${p.team}</span>
+            </div>
+        `).join('');
+        dropdown.style.display = 'block';
+    }
+
+    function close() {
+        matches = [];
+        highlightedIdx = -1;
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+    }
+
+    function select(p) {
+        inputEl.value = p.name;
+        close();
+        if (typeof onSelect === 'function') onSelect(p);
+    }
+
+    inputEl.addEventListener('input', () => {
+        const q = inputEl.value.trim().toLowerCase();
+        highlightedIdx = -1;
+        if (q.length < 2) { close(); return; }
+        getPlayerSearchIndex().then(index => {
+            if (inputEl.value.trim().toLowerCase() !== q) return;
+            const starts = [], contains = [];
+            for (const p of index) {
+                if (p.searchKey.startsWith(q)) { starts.push(p); if (starts.length >= 8) break; }
+                else if (contains.length < 8 && p.searchKey.includes(q)) contains.push(p);
+            }
+            matches = starts.concat(contains).slice(0, 8);
+            render();
+        }).catch(() => {});
+    });
+
+    dropdown.addEventListener('mousedown', (e) => {
+        const item = e.target.closest('.autocomplete-item');
+        if (!item) return;
+        e.preventDefault();
+        select(matches[parseInt(item.dataset.idx, 10)]);
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+        if (matches.length === 0) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); highlightedIdx = Math.min(highlightedIdx + 1, matches.length - 1); render(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); highlightedIdx = Math.max(highlightedIdx - 1, 0); render(); }
+        else if (e.key === 'Enter') { if (highlightedIdx !== -1) { e.preventDefault(); select(matches[highlightedIdx]); } }
+        else if (e.key === 'Escape') { close(); }
+    });
+
+    inputEl.addEventListener('blur', () => setTimeout(close, 150));
+}
+
+// Levenshtein (edit) distance math
+function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    let prev = Array.from({ length: n + 1 }, (_, i) => i);
+    for (let i = 1; i <= m; i++) {
+        let curr = [i];
+        for (let j = 1; j <= n; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            curr.push(Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost));
+        }
+        prev = curr;
+    }
+    return prev[n];
+}
+
+// "Did you mean" Matcher
+function findClosestRankedName(inputName) {
+    const candidates = new Map();
+    (State.rosRankings || []).forEach(r => candidates.set(r.cleanName, r.name));
+    (State.weeklyRankings || []).forEach(r => candidates.set(r.cleanName, r.name));
+
+    const target = normalizeName(inputName);
+    if (!target) return null;
+
+    let best = null, bestDist = Infinity;
+    candidates.forEach((displayName, cleanName) => {
+        const dist = levenshtein(target, cleanName);
+        if (dist < bestDist) { bestDist = dist; best = displayName; }
+    });
+
+    const threshold = Math.max(2, Math.floor(target.length * 0.25));
+    return (best && bestDist > 0 && bestDist <= threshold) ? best : null;
+}
+
+function attachScoutSuggestionHandler(outputElId) {
+    const el = document.getElementById(outputElId);
+    if (!el) return;
+    el.addEventListener('click', (e) => {
+        const link = e.target.closest('.scout-suggest-link');
+        if (!link) return;
+        e.preventDefault();
+        const inputEl = document.getElementById(link.dataset.inputId);
+        if (!inputEl) return;
+        const original = link.dataset.original;
+        const idx = inputEl.value.indexOf(original);
+        if (idx !== -1) {
+            inputEl.value = inputEl.value.slice(0, idx) + link.dataset.suggested + inputEl.value.slice(idx + original.length);
+        }
+        window.runScout(link.dataset.scoutType);
+    });
+}
+
     window.onload = function() {
+        attachPlayerAutocomplete(document.getElementById('manualName'), (p) => {
+        const posEl = document.getElementById('manualPos');
+        const teamEl = document.getElementById('manualTeam');
+        if (posEl) posEl.value = p.pos;
+        if (teamEl) teamEl.value = p.team;
+        });
+        attachScoutSuggestionHandler('waiverOutput');
+        attachScoutSuggestionHandler('tradeOutput');
         populateEarlyGameDropdown();
         refreshLeagueDropdown();
         updateRankingsMetaDisplay();
@@ -915,7 +1102,7 @@
             const rosters = await rosterRes.json();
             
             if (btn) btn.innerText = "Loading Players...";
-            const playerMap = preloaded.playerMap || await (await fetch(`https://api.sleeper.app/v1/players/nfl`)).json();
+            const playerMap = preloaded.playerMap || await getSleeperPlayerMap();
 
             let myTeam = rosters.find(r => r.owner_id === userId);
             if (!myTeam && !isRefresh) throw new Error("Could not find your team in this league.");
@@ -1071,7 +1258,7 @@
             }
 
             if (btn) btn.innerText = "Loading player data...";
-            const playerMap = await (await fetch(`https://api.sleeper.app/v1/players/nfl`)).json();
+            const playerMap = await getSleeperPlayerMap();
             const preloaded = { userId, playerMap };
 
             let successCount = 0;
@@ -1244,6 +1431,16 @@
             let clean = normalizeName(name);
             let rosObj = State.rosRankings.find(r => r.cleanName === clean);
             let weekObj = State.weeklyRankings.find(r => r.cleanName === clean);
+
+            let suggestHTML = "";
+            if (!rosObj && !weekObj && type) {
+                let sourceInputId = type === 'waiver' ? 'waiverInput' : 'tradeInput';
+                let suggestion = findClosestRankedName(name);
+                if (suggestion) {
+                    suggestHTML = `<div class="scout-suggest-hint">Did you mean
+                        <a href="#" class="scout-suggest-link" data-input-id="${sourceInputId}" data-original="${escapeHtml(name)}" data-suggested="${escapeHtml(suggestion)}" data-scout-type="${type}">${escapeHtml(suggestion)}</a>?</div>`;
+                }
+            }
             
             let displayName = rosObj?.name || weekObj?.name || name;
             let wRank = weekObj ? weekObj.rank : "UR";
@@ -1273,6 +1470,7 @@
                         <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
                         <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
                     </div>
+                    ${suggestHTML}
                 </div>
                 <div class="mls-text-right">${statusHTML}</div>
             </div>`;
@@ -1326,16 +1524,13 @@
             // --- FA POSITION RESOLVER ---
             if (!window.sleeperPosByName) {
                 try {
-                    let res = await fetch('https://api.sleeper.app/v1/players/nfl');
-                    if (res.ok) {
-                        let map = await res.json();
-                        window.sleeperPosByName = {};
-                        Object.values(map).forEach(p => {
-                            if (p.first_name) {
-                                window.sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
-                            }
-                        });
-                    }
+                    let map = await getSleeperPlayerMap();
+                    window.sleeperPosByName = {};
+                    Object.values(map).forEach(p => {
+                        if (p.first_name) {
+                            window.sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
+                        }
+                    });
                 } catch(e) {
                     console.warn("Could not fetch Sleeper player map for FA positions. Falling back to cached market data.");
                 }
@@ -2080,11 +2275,7 @@
             
             formatText = `${typeKey.toUpperCase()} - ${qbKey.toUpperCase()} (PPR)`;
 
-            let sleeperMap = {};
-            let sleeperRes = await fetch('https://api.sleeper.app/v1/players/nfl');
-            if (sleeperRes.ok) {
-                sleeperMap = await sleeperRes.json();
-            }
+            let sleeperMap = await getSleeperPlayerMap();
 
             const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
             if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
@@ -3240,8 +3431,7 @@ window.runGlobalInjuryAudit = async function(btn) {
         }
 
         // Fetch global player map to check current injury status
-        const playerMapRes = await fetch('https://api.sleeper.app/v1/players/nfl');
-        const playerMap = await playerMapRes.json();
+        const playerMap = await getSleeperPlayerMap({ forceRefresh: true });
 
         let auditResults = [];
 
