@@ -1441,9 +1441,19 @@ body {
 .trade-verdict-banner {
     border-radius: 8px;
     padding: 1rem 1.25rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     border: 1px solid var(--border);
     background: var(--card-bg);
+}
+
+.trade-verdict-source-label {
+    text-align: center;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    font-weight: 700;
 }
 
 .trade-verdict-totals {
@@ -1512,6 +1522,7 @@ body {
 .verdict-favor-them .trade-verdict-result { color: #fca5a5; }
 
 .mls-stat-value { color: #fde047; }
+.mls-stat-market { color: #93c5fd; }
 
 /* MLS-namespaced small button (Setup league manager reorder/remove, Lineup swap/lock controls).
    Renamed from a bare .btn-sm -- that selector was defined twice in this shared stylesheet

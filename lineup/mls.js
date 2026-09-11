@@ -1484,13 +1484,15 @@ function attachScoutSuggestionHandler(outputElId) {
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
 
         // For the Trade Analyzer, roleLabel is "GET" (players you'd receive) or "GIVE" (players
-        // you'd send away). Returns both the card HTML and this player's market value lookup
-        // (null if unmatched/no market data) so the caller can total each side.
+        // you'd send away). Returns the card HTML plus this player's value under BOTH lenses --
+        // the user's own custom ROS rankings (primary/default) and, if loaded, market consensus
+        // (secondary/comparison) -- so the caller can total each side under each lens separately.
         const buildCard = (name, roleLabel = null) => {
             let clean = normalizeName(name);
             let rosObj = State.rosRankings.find(r => r.cleanName === clean);
             let weekObj = State.weeklyRankings.find(r => r.cleanName === clean);
-            let marketObj = type === 'trade' ? getMarketValue(clean) : null;
+            let userValueObj = (type === 'trade' && rosObj) ? { rank: rosObj.rank, value: rankToTradeValue(rosObj.rank) } : null;
+            let marketValueObj = type === 'trade' ? getMarketValue(clean) : null;
 
             let suggestHTML = "";
             if (!rosObj && !weekObj && type) {
@@ -1523,14 +1525,20 @@ function attachScoutSuggestionHandler(outputElId) {
 
             let roleTag = roleLabel ? `<span class="badge" style="background:#112233;">${roleLabel === "GET" ? "Receiving" : "Giving"}</span>` : "";
 
-            // Market value badge only shows on the Trade Analyzer, and only once market data has
-            // actually been loaded -- stays silent otherwise so the card looks unchanged for
-            // anyone not using the value feature.
+            // Value badges only show on the Trade Analyzer. "Your Value" shows whenever the
+            // player is (or isn't) in the user's own ROS rankings; "Mkt Value" only appears once
+            // Market Value data has actually been loaded, so the card looks unchanged for anyone
+            // not using that optional comparison.
             let valueHTML = "";
-            if (type === 'trade' && State.marketRankings.length > 0) {
-                valueHTML = marketObj
-                    ? `<span>Value: <strong class="mls-stat-value">${marketObj.value.toLocaleString()}</strong> <span style="color:var(--text-muted);">(Mkt #${marketObj.rank})</span></span>`
-                    : `<span style="color:var(--text-muted);">No Market Value</span>`;
+            if (type === 'trade') {
+                valueHTML += userValueObj
+                    ? `<span>Your Value: <strong class="mls-stat-value">${userValueObj.value.toLocaleString()}</strong></span>`
+                    : `<span style="color:var(--text-muted);">Your Value: Unranked</span>`;
+                if (State.marketRankings.length > 0) {
+                    valueHTML += marketValueObj
+                        ? `<span>Mkt Value: <strong class="mls-stat-market">${marketValueObj.value.toLocaleString()}</strong></span>`
+                        : `<span style="color:var(--text-muted);">Mkt Value: N/A</span>`;
+                }
             }
 
             return {
@@ -1549,96 +1557,43 @@ function attachScoutSuggestionHandler(outputElId) {
                     </div>
                     <div class="mls-text-right">${statusHTML}</div>
                 </div>`,
-                value: marketObj ? marketObj.value : 0,
-                matched: !!marketObj
+                userValue: userValueObj ? userValueObj.value : 0,
+                userMatched: !!userValueObj,
+                marketValue: marketValueObj ? marketValueObj.value : 0,
+                marketMatched: !!marketValueObj
             };
         };
 
         let html = "";
 
         if (type === 'trade') {
-            // --- TRADE FAIRNESS VERDICT ---
-            // Sums each side's market value (see marketRankToValue/getMarketValue above) and
-            // renders a banner ahead of the two player lists. Only rendered once Market Value
-            // data is actually loaded -- with none loaded, the Trade Analyzer still works as a
-            // pure roster/ownership lookup, same as before this feature existed.
-            if (State.marketRankings.length > 0) {
-                let getResults = targetNames.map(n => buildCard(n, "GET"));
-                let giveResults = sellNames.map(n => buildCard(n, "GIVE"));
+            let getResults = targetNames.map(n => buildCard(n, "GET"));
+            let giveResults = sellNames.map(n => buildCard(n, "GIVE"));
 
-                let getTotal = getResults.reduce((sum, r) => sum + r.value, 0);
-                let giveTotal = giveResults.reduce((sum, r) => sum + r.value, 0);
-                let unmatchedCount = getResults.concat(giveResults).filter(r => !r.matched).length;
+            // --- TRADE FAIRNESS VERDICT(S) ---
+            // Renders up to two independent verdicts ahead of the player lists: one from the
+            // user's own custom ROS rankings (the default/primary lens -- no third-party API
+            // needed, since ROS rankings are a core input most users already have from the
+            // Roster tab), and one from market consensus if Market Value data has been loaded
+            // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
+            // user see "the market" and "how I personally value this" can disagree.
+            let verdictHTML = renderTradeVerdict("Your Rankings", getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0);
+            verdictHTML += renderTradeVerdict("Market Consensus", getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0);
 
-                if (getTotal > 0 || giveTotal > 0) {
-                    let diff = getTotal - giveTotal;
-                    let biggerSide = Math.max(getTotal, giveTotal, 1); // avoid div-by-zero
-                    let swingPct = (Math.abs(diff) / biggerSide) * 100;
-
-                    // Within 10% of the larger side's value counts as a fair trade -- outside
-                    // that, it clearly favors whoever's receiving more value.
-                    let verdictClass, verdictText;
-                    if (swingPct < 10) {
-                        verdictClass = "verdict-fair";
-                        verdictText = "Fair Trade";
-                    } else if (diff > 0) {
-                        verdictClass = "verdict-favor-you";
-                        verdictText = "Favors You";
-                    } else {
-                        verdictClass = "verdict-favor-them";
-                        verdictText = "Favors Them";
-                    }
-
-                    let unmatchedNote = unmatchedCount > 0
-                        ? `<div class="trade-verdict-note">${unmatchedCount} player${unmatchedCount > 1 ? 's' : ''} not found in Market Value data, excluded from totals.</div>`
-                        : "";
-
-                    html += `
-                    <div class="trade-verdict-banner ${verdictClass}">
-                        <div class="trade-verdict-totals">
-                            <div class="trade-verdict-side">
-                                <span class="trade-verdict-label">You Receive</span>
-                                <span class="trade-verdict-amount">${getTotal.toLocaleString()}</span>
-                            </div>
-                            <div class="trade-verdict-vs">vs</div>
-                            <div class="trade-verdict-side">
-                                <span class="trade-verdict-label">You Give</span>
-                                <span class="trade-verdict-amount">${giveTotal.toLocaleString()}</span>
-                            </div>
-                        </div>
-                        <div class="trade-verdict-result">
-                            ${verdictText}
-                            <span class="trade-verdict-diff">(${diff >= 0 ? '+' : ''}${diff.toLocaleString()} pts${biggerSide > 1 ? `, ${swingPct.toFixed(0)}%` : ''})</span>
-                        </div>
-                        ${unmatchedNote}
-                    </div>`;
-                } else if (unmatchedCount > 0) {
-                    html += `<div class="trade-verdict-note" style="margin-bottom:1rem;">None of the ${unmatchedCount} player${unmatchedCount > 1 ? 's' : ''} entered were found in your loaded Market Value data, so no value total could be calculated.</div>`;
-                }
-
-                if (targetNames.length > 0) {
-                    html += `<div style="font-weight:bold; color:#4ade80; margin-bottom:0.5rem;">You Receive</div>`;
-                    getResults.forEach(r => html += r.html);
-                }
-                if (sellNames.length > 0) {
-                    html += `<div style="font-weight:bold; color:#fca5a5; margin:1rem 0 0.5rem 0;">You Give Up</div>`;
-                    giveResults.forEach(r => html += r.html);
-                }
-
-                outputEl.innerHTML = html;
-                return;
+            if (!verdictHTML) {
+                verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
             }
+            html += verdictHTML;
 
-            // No Market Value data loaded -- fall back to the plain ownership-lookup view.
             if (targetNames.length > 0) {
                 html += `<div style="font-weight:bold; color:#4ade80; margin-bottom:0.5rem;">You Receive</div>`;
-                targetNames.forEach(n => html += buildCard(n, "GET").html);
+                getResults.forEach(r => html += r.html);
             }
             if (sellNames.length > 0) {
                 html += `<div style="font-weight:bold; color:#fca5a5; margin:1rem 0 0.5rem 0;">You Give Up</div>`;
-                sellNames.forEach(n => html += buildCard(n, "GIVE").html);
+                giveResults.forEach(r => html += r.html);
             }
-            html += `<div class="trade-verdict-note" style="margin-top:0.75rem;">Load Market Value data (Positional Power Rankings section below) to get a value total and fairness verdict.</div>`;
+
             outputEl.innerHTML = html;
             return;
         }
@@ -1647,6 +1602,68 @@ function attachScoutSuggestionHandler(outputElId) {
         targetNames.forEach(n => html += buildCard(n, null).html);
         outputEl.innerHTML = html;
     };
+
+    // Builds one verdict banner (label + totals + Fair/Favors-You/Favors-Them) from a set of
+    // GET/GIVE card results, keyed off whichever value field ("userValue" or "marketValue") and
+    // matched flag the caller wants. Returns "" when the underlying data source isn't loaded at
+    // all, or when nothing on either side matched it, so callers can concatenate freely and fall
+    // back to a single prompt only when BOTH sources come back empty.
+    function renderTradeVerdict(label, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
+        if (!sourceLoaded) return "";
+
+        let getTotal = getResults.reduce((sum, r) => sum + r[valueKey], 0);
+        let giveTotal = giveResults.reduce((sum, r) => sum + r[valueKey], 0);
+        let unmatchedCount = getResults.concat(giveResults).filter(r => !r[matchedKey]).length;
+
+        if (getTotal === 0 && giveTotal === 0) {
+            return unmatchedCount > 0
+                ? `<div class="trade-verdict-note" style="margin-bottom:1rem;">${label}: none of the players entered were found, so no value total could be calculated.</div>`
+                : "";
+        }
+
+        let diff = getTotal - giveTotal;
+        let biggerSide = Math.max(getTotal, giveTotal, 1); // avoid div-by-zero
+        let swingPct = (Math.abs(diff) / biggerSide) * 100;
+
+        // Within 10% of the larger side's value counts as a fair trade -- outside that, it
+        // clearly favors whoever's receiving more value.
+        let verdictClass, verdictText;
+        if (swingPct < 10) {
+            verdictClass = "verdict-fair";
+            verdictText = "Fair Trade";
+        } else if (diff > 0) {
+            verdictClass = "verdict-favor-you";
+            verdictText = "Favors You";
+        } else {
+            verdictClass = "verdict-favor-them";
+            verdictText = "Favors Them";
+        }
+
+        let unmatchedNote = unmatchedCount > 0
+            ? `<div class="trade-verdict-note">${unmatchedCount} player${unmatchedCount > 1 ? 's' : ''} not found, excluded from this total.</div>`
+            : "";
+
+        return `
+        <div class="trade-verdict-banner ${verdictClass}">
+            <div class="trade-verdict-source-label">By ${label}</div>
+            <div class="trade-verdict-totals">
+                <div class="trade-verdict-side">
+                    <span class="trade-verdict-label">You Receive</span>
+                    <span class="trade-verdict-amount">${getTotal.toLocaleString()}</span>
+                </div>
+                <div class="trade-verdict-vs">vs</div>
+                <div class="trade-verdict-side">
+                    <span class="trade-verdict-label">You Give</span>
+                    <span class="trade-verdict-amount">${giveTotal.toLocaleString()}</span>
+                </div>
+            </div>
+            <div class="trade-verdict-result">
+                ${verdictText}
+                <span class="trade-verdict-diff">(${diff >= 0 ? '+' : ''}${diff.toLocaleString()} pts, ${swingPct.toFixed(0)}%)</span>
+            </div>
+            ${unmatchedNote}
+        </div>`;
+    }
 
     window.autoFindWaiverUpgrades = async function() {
         const outputEl = document.getElementById('waiverOutput');
@@ -2709,27 +2726,28 @@ function applyMarketSettingsToUI() {
     }
 
     // --- TRADE VALUE CURVE ---
-    // Converts a market-consensus overall rank (State.marketRankings, same data the Market
-    // Disconnect Engine uses) into an approximate point value for the Trade Analyzer's side
+    // Converts an overall rank -- either the user's own ROS ranking or a market-consensus rank
+    // from State.marketRankings -- into an approximate point value for the Trade Analyzer's side
     // totals. Raw rank isn't summable in a meaningful way -- the value gap between rank #1 and
     // #2 is enormous compared to the gap between #150 and #151, exactly like how KTC/FantasyCalc's
     // own dollar-style trade values are NOT linear with rank. This exponential decay approximates
-    // that shape from rank alone, since fetchMarketConsensusData/parseMarketData only capture
-    // overallRank, not raw value points. Decay factor is tuned so rank #1 ~= 10000 and value
-    // trails off to near-zero by the deep bench (~rank 300+), mirroring typical dynasty charts.
-    function marketRankToValue(rank) {
+    // that shape from rank alone. Decay factor is tuned so rank #1 ~= 10000 and value trails off
+    // to near-zero by the deep bench (~rank 300+), mirroring typical dynasty value charts. Shared
+    // by both lenses so "Your Value" and "Mkt Value" are on the same 0-10000 scale and directly
+    // comparable.
+    function rankToTradeValue(rank) {
         if (!rank || rank < 1) return 0;
         return Math.round(10000 * Math.pow(0.982, rank - 1));
     }
 
-    // Looks up a player's market value by clean name. Returns null if no Market Value data is
-    // loaded at all, or if this specific player isn't in it (unranked/deep bench/rookie not yet
-    // valued) -- callers distinguish "no data loaded" from "player not found" via State.marketRankings.length.
+    // Looks up a player's MARKET value by clean name (the optional/secondary lens -- see
+    // rankToTradeValue above). Returns null if no Market Value data is loaded at all, or if this
+    // specific player isn't in it (unranked/deep bench/rookie not yet valued).
     function getMarketValue(cleanName) {
         if (!cleanName) return null;
         let m = State.marketRankings.find(r => r.cleanName === cleanName);
         if (!m) return null;
-        return { rank: m.marketVal, value: marketRankToValue(m.marketVal) };
+        return { rank: m.marketVal, value: rankToTradeValue(m.marketVal) };
     }
 
     function updateMarketMetaDisplay() {
