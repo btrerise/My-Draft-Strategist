@@ -402,6 +402,11 @@ body {
     border-radius: 8px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
     -webkit-tap-highlight-color: transparent; /* Removes blue flash on mobile tap */
+    position: relative;
+    z-index: 10;
+}
+.nav-btn * {
+    pointer-events: none;
 }
 
 /* Tab Icon Animation */
@@ -2900,3 +2905,4 @@ a.nav-btn,
 .scout-suggest-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
 .scout-suggest-link { color: #fb923c; font-weight: 600; text-decoration: underline; }
 .scout-suggest-link:hover { color: #fdba74; }
+

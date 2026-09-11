@@ -387,7 +387,7 @@ function getPlayerSearchIndex() {
         const index = [];
         Object.values(map).forEach(p => {
             if (!p.first_name || !FANTASY_POS.includes(p.position)) return;
-            const name = `${p.first_name}${p.last_name}`.trim();
+            const name = `${p.first_name} ${p.last_name}`.trim();
             index.push({ name, pos: p.position, team: p.team || 'FA', searchKey: name.toLowerCase() });
         });
         return index;
