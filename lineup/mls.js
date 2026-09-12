@@ -2973,7 +2973,7 @@ function applyMarketSettingsToUI() {
         let textLines = [];
         let leagueName = league && league.name && !league.name.includes("Manual") ? league.name : "Optimal";
         
-        textLines.push(`🏆 ${leagueName} Lineup\n`);
+        textLines.push(`${leagueName} Lineup\n`);
         
         starters.forEach(s => {
             let cleanSlotType = s.slot.replace(/[0-9]/g, ''); 
