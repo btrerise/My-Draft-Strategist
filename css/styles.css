@@ -1120,6 +1120,10 @@ body {
 .mls-pos-badge-sizing { min-width: 26px; padding: 2px 4px; text-align: center; }
 .mls-player-row-text { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
 .mls-player-row-meta { margin-top: 3px; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+/* Sits between the name and the team/rank meta row -- holds status badges (injury, bye, early,
+   kickoff, Sleeper-mismatch) on their own line so a heavily-flagged player doesn't crowd the
+   name line or force ugly mid-word wraps on mobile. */
+.mls-player-badges-row { margin-top: 3px; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
 .mls-rank-badge { background: #1c2541; border: 1px solid var(--border); }
 .mls-row-actions { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
 .mls-stat-blue { color: #93c5fd; }

@@ -1,7 +1,7 @@
 /**
  * Fantasy Football Season & Lineup Strategist - Core Logic
  * Refactored for modular encapsulation, performance, and clean architecture.
-/mls.js */
+ */
 
 (function () {
     'use strict';
@@ -3188,13 +3188,15 @@ function applyMarketSettingsToUI() {
             let byeBadge = getByeBadgeHTML(p.team);
             let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
+            let badgesRow = [injBadge, byeBadge].filter(Boolean).join(' ');
             
             html += `
             <div class="roster-item">
                 <div class="mls-player-row-info">
                     <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                     <div class="mls-player-row-text">
-                        <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge}</div>
+                        <div class="player-name-wrap">${p.name}${byeStr}</div>
+                        ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                         <div class="mls-player-row-meta">
                             <span class="badge">${p.team}</span>
                             <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -3603,6 +3605,7 @@ function applyMarketSettingsToUI() {
                 if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
                     sleeperWarn = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; font-size: 0.65rem; margin-left: 4px;">Bench in Sleeper</span>`;
                 }
+                let badgesRow = [injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
@@ -3610,7 +3613,8 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${kickoffBadge} ${sleeperWarn}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr}</div>
+                            ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -3653,6 +3657,7 @@ function applyMarketSettingsToUI() {
                 if (validSleeperStarters.length > 0 && validSleeperStarters.includes(p.id)) {
                     sleeperWarn = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`;
                 }
+                let badgesRow = [injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">
@@ -3660,7 +3665,8 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${kickoffBadge} ${sleeperWarn}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr}</div>
+                            ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
