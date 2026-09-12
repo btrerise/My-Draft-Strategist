@@ -1,7 +1,7 @@
 /**
  * Fantasy Football Season & Lineup Strategist - Core Logic
  * Refactored for modular encapsulation, performance, and clean architecture.
- */
+/mls.js */
 
 (function () {
     'use strict';
@@ -15,6 +15,12 @@
         "LAC": 5, "LAR": 6, "LV": 10, "MIA": 6, "MIN": 6, "NE": 14, "NO": 12, "NYG": 11,
         "NYJ": 12, "PHI": 5, "PIT": 9, "SEA": 10, "SF": 9, "TB": 11, "TEN": 5, "WAS": 14
     };
+
+    // ESPN's scoreboard endpoint (see refreshGameTimes below) abbreviates a handful of teams
+    // differently than Sleeper/this app do. Washington is the current known mismatch (ESPN:
+    // "WSH", everywhere else in this app: "WAS") -- mapped here so State.gameTimesByTeam keys
+    // line up with the same team codes used by TEAM_BYES, league.roster, etc.
+    const ESPN_TEAM_ALIASES = { "WSH": "WAS" };
 
     // Per-type field/key mapping shared by the Named Ranking Sets feature (see the full
     // explanation further down, near saveRankingsAsSet) -- keeping ROS and Weekly's parallel
@@ -72,7 +78,16 @@
         // hasn't resolved yet; every consumer below treats null as "unknown" and simply skips
         // bye-week detection rather than guessing, so a slow/failed fetch degrades to the old
         // (bye-unaware) behavior instead of showing wrong information.
-        currentNflWeek: null
+        currentNflWeek: null,
+        // Not persisted -- team -> ISO kickoff timestamp for the current week, refreshed from
+        // ESPN's scoreboard endpoint (see refreshGameTimes() below) once currentNflWeek is
+        // known. Starts empty and stays empty if the fetch fails; every consumer treats a
+        // missing entry as "unknown kickoff" and skips FLEX-kickoff reordering / the kickoff
+        // badge for that player rather than guessing.
+        gameTimesByTeam: {},
+        // Which week gameTimesByTeam was last successfully fetched for, so a stale cache from
+        // an earlier week doesn't silently get reused if currentNflWeek changes mid-session.
+        gameTimesFetchedForWeek: null
     };
 
     // Refreshes State.currentNflWeek from Sleeper's public NFL state endpoint. Fire-and-forget:
@@ -85,9 +100,57 @@
             .then(data => {
                 if (data && typeof data.week === 'number') {
                     State.currentNflWeek = data.week;
+                    // Kickoff times are keyed by week, so we can't fetch them until we know
+                    // which week we're on -- chain it here rather than firing both requests
+                    // independently at page load.
+                    refreshGameTimes();
                 }
             })
             .catch(() => { /* leave State.currentNflWeek as null; see comment above */ });
+    }
+
+    // Refreshes State.gameTimesByTeam (team -> ISO kickoff timestamp) for the current NFL week
+    // from ESPN's public scoreboard endpoint. Like refreshCurrentNflWeek above, this is
+    // fire-and-forget with no loading indicator and no retry: it only powers the FLEX-kickoff
+    // optimizer and the kickoff badge, both of which degrade gracefully (no reordering, no
+    // badge) if this never resolves. Note this is an unofficial/undocumented ESPN endpoint --
+    // like the Sleeper endpoints elsewhere in this app, it could change shape or start
+    // rate-limiting without notice, which is exactly why every consumer treats a missing team
+    // entry as "unknown" instead of assuming success.
+    function refreshGameTimes() {
+        const week = State.currentNflWeek;
+        if (week == null) return;
+        if (State.gameTimesFetchedForWeek === week && Object.keys(State.gameTimesByTeam).length > 0) return;
+
+        fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (!data || !Array.isArray(data.events)) return;
+                const map = {};
+                data.events.forEach(evt => {
+                    const iso = evt.date; // ISO 8601 UTC kickoff, shared by both competitors in the event
+                    const comp = evt.competitions && evt.competitions[0];
+                    if (!iso || !comp || !Array.isArray(comp.competitors)) return;
+                    comp.competitors.forEach(c => {
+                        let abbr = c.team && c.team.abbreviation;
+                        if (!abbr) return;
+                        abbr = ESPN_TEAM_ALIASES[abbr] || abbr;
+                        map[abbr] = iso;
+                    });
+                });
+                if (Object.keys(map).length === 0) return; // treat an empty/malformed response as a failed fetch
+                State.gameTimesByTeam = map;
+                State.gameTimesFetchedForWeek = week;
+
+                // If the person is already looking at the lineup tab, refresh it so kickoff
+                // badges and FLEX ordering reflect the newly-arrived data without requiring a
+                // manual re-optimize.
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') {
+                    window.optimizeLineup(false);
+                }
+            })
+            .catch(() => { /* leave State.gameTimesByTeam as {}; see comment above */ });
     }
 
     // Statuses from Sleeper's player sync (see rosterDetails in processSleeperData) that mean
@@ -623,6 +686,27 @@ function attachScoutSuggestionHandler(outputElId) {
     function getByeBadgeHTML(team) {
         if (State.currentNflWeek == null || TEAM_BYES[team] !== State.currentNflWeek) return "";
         return `<span class="badge bye-badge">BYE</span>`;
+    }
+
+    // Formats an ISO kickoff timestamp into a short label in the person's local timezone, e.g.
+    // "Sun 1:05 PM". Returns "" for anything unparseable so callers can treat it the same as
+    // "no data" rather than rendering a broken badge.
+    function formatKickoffLabel(iso) {
+        if (!iso) return "";
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return "";
+        const weekday = d.toLocaleDateString(undefined, { weekday: 'short' });
+        const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        return `${weekday} ${time}`;
+    }
+
+    // Returns a kickoff-time badge for a team, or "" if we don't have a kickoff time for them
+    // this week (fetch hasn't resolved, team not found in this week's schedule, bye week, etc).
+    function getKickoffBadgeHTML(team) {
+        if (!team || team === "FA") return "";
+        const label = formatKickoffLabel(State.gameTimesByTeam[team]);
+        if (!label) return "";
+        return `<span class="badge kickoff-badge">${label}</span>`;
     }
 
     // --- LEAGUE & SYNC LOGIC ---
@@ -3195,6 +3279,80 @@ function applyMarketSettingsToUI() {
         renderLineupUI();
     };
 
+    // FLEX kickoff optimization: given the starters array that fillSlot()/the SFLEX loop above
+    // already produced (i.e. WHO starts is fully decided), reorders which specific players sit
+    // in strict RB/WR/TE slots vs the true FLEX slot(s), so that FLEX is always occupied by the
+    // latest-kickoff player(s) among that week's flex-eligible starters. This maximizes
+    // late-swap flexibility: the slot with the most schedule flexibility (FLEX, in most
+    // platforms' swap UIs) ends up genuinely being the one you can wait longest to lock in.
+    //
+    // This never changes the SET of starting players, never touches QB/K/DEF/SFLEX, and never
+    // puts a player in a slot whose position they don't match (a WR can never occupy an "RB"
+    // labeled slot) -- it only decides, among players who are already flex-eligible (RB/WR/TE)
+    // and already starting, which of them gets which slot label.
+    //
+    // How it works: for each position (RB/WR/TE), sort that position's starters by kickoff time
+    // ascending. Whichever `count` of them is needed to fill that position's strict slots (e.g.
+    // 2 RB slots) are exactly the `count` earliest-kickoff players at that position -- anyone
+    // left over (because they were already flex-allocated by rank) is "surplus" and gets
+    // reassigned into a FLEX-labeled slot instead, latest-kickoff first. If kickoff data isn't
+    // available for a player, they sort last (Infinity) so we never assume a game is early
+    // without evidence -- and if kickoff data isn't available at all, the sort is a no-op and
+    // slot assignments are left exactly as fillSlot() originally produced them.
+    function optimizeFlexKickoffOrder(starters) {
+        const FLEX_POSITIONS = ['RB', 'WR', 'TE'];
+        const byPos = { RB: [], WR: [], TE: [] };
+        const strictSlotCount = { RB: 0, WR: 0, TE: 0 };
+
+        starters.forEach((s, idx) => {
+            const slotType = s.slot.replace(/[0-9]/g, '');
+            if (FLEX_POSITIONS.includes(slotType)) strictSlotCount[slotType]++;
+            if (!s.player) return;
+            if (slotType !== 'FLEX' && !FLEX_POSITIONS.includes(slotType)) return;
+            if (!FLEX_POSITIONS.includes(s.player.pos)) return; // safety guard against malformed data
+            byPos[s.player.pos].push(idx);
+        });
+
+        const getKickoffMs = (idx) => {
+            const p = starters[idx].player;
+            const iso = p && p.team ? State.gameTimesByTeam[p.team] : null;
+            const ms = iso ? new Date(iso).getTime() : NaN;
+            return isNaN(ms) ? Infinity : ms;
+        };
+
+        FLEX_POSITIONS.forEach(pos => {
+            byPos[pos].sort((a, b) => getKickoffMs(a) - getKickoffMs(b));
+        });
+
+        const strictAssignees = {};
+        let flexAssignees = [];
+        FLEX_POSITIONS.forEach(pos => {
+            const indices = byPos[pos];
+            strictAssignees[pos] = indices.slice(0, strictSlotCount[pos]).map(i => starters[i].player);
+            flexAssignees.push(...indices.slice(strictSlotCount[pos]).map(i => starters[i].player));
+        });
+        // Latest kickoff first, so if there are multiple FLEX slots the very latest game lands
+        // in whichever one appears first in the lineup.
+        flexAssignees.sort((a, b) => {
+            const aMs = a.team && State.gameTimesByTeam[a.team] ? new Date(State.gameTimesByTeam[a.team]).getTime() : -Infinity;
+            const bMs = b.team && State.gameTimesByTeam[b.team] ? new Date(State.gameTimesByTeam[b.team]).getTime() : -Infinity;
+            return bMs - aMs;
+        });
+
+        const cursors = { RB: 0, WR: 0, TE: 0, FLEX: 0 };
+        starters.forEach(s => {
+            if (!s.player) return;
+            const slotType = s.slot.replace(/[0-9]/g, '');
+            if (FLEX_POSITIONS.includes(slotType)) {
+                const newPlayer = strictAssignees[slotType][cursors[slotType]++];
+                if (newPlayer) s.player = newPlayer;
+            } else if (slotType === 'FLEX') {
+                const newPlayer = flexAssignees[cursors.FLEX++];
+                if (newPlayer) s.player = newPlayer;
+            }
+        });
+    }
+
     window.optimizeLineup = function(forceReset = true, isManualAction = false) {
         let league = getActiveLeague();
         const container = document.getElementById('optimalLineupContainer');
@@ -3317,6 +3475,12 @@ function applyMarketSettingsToUI() {
             return a.posRank - b.posRank;
         });
 
+        // Reassign which specific players occupy strict RB/WR/TE slots vs the FLEX slot(s),
+        // purely by kickoff time -- who actually starts is already decided above by rank; this
+        // only relabels slots so FLEX holds the latest games. See optimizeFlexKickoffOrder for
+        // why this is safe (it never changes the set of starters, only slot labels).
+        optimizeFlexKickoffOrder(starters);
+
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = pool;
         
@@ -3433,6 +3597,7 @@ function applyMarketSettingsToUI() {
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+                let kickoffBadge = getKickoffBadgeHTML(p.team);
                 
                 let sleeperWarn = "";
                 if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
@@ -3445,7 +3610,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-${slotType}">${s.slot}</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${sleeperWarn}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${kickoffBadge} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -3482,6 +3647,7 @@ function applyMarketSettingsToUI() {
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+                let kickoffBadge = getKickoffBadgeHTML(p.team);
                 
                 let sleeperWarn = "";
                 if (validSleeperStarters.length > 0 && validSleeperStarters.includes(p.id)) {
@@ -3494,7 +3660,7 @@ function applyMarketSettingsToUI() {
                         <span class="slot-label slot-BN">BN</span>
                         <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${sleeperWarn}</div>
+                            <div class="player-name-wrap">${p.name}${byeStr} ${injBadge} ${byeBadge} ${earlyTag} ${kickoffBadge} ${sleeperWarn}</div>
                             <div class="mls-player-row-meta">
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
