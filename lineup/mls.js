@@ -66,6 +66,7 @@
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
         marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
         tradeSettings: JSON.parse(localStorage.getItem('mls_trade_settings')) || { waiverAdjustment: true, waiverAdjustmentValue: 500 },
+        syncLogs: JSON.parse(localStorage.getItem('mls_sync_logs')) || [],
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
         manualStartersMap: JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {},
@@ -608,6 +609,7 @@ function attachScoutSuggestionHandler(outputElId) {
         applyTradeSettingsToUI();
         updatePulsePrompts();
         refreshCurrentNflWeek();
+        if (typeof renderSyncLogs === 'function') renderSyncLogs();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -3504,6 +3506,53 @@ function applyMarketSettingsToUI() {
         renderLineupUI();
     };
 
+}, 50);
+    };
+
+    window.renderSyncLogs = function() {
+        const accordion = document.getElementById('syncLogAccordion');
+        const content = document.getElementById('syncLogContent');
+        const summary = document.getElementById('syncLogSummary');
+        
+        if (!accordion || !content || !summary) return;
+
+        if (!State.syncLogs || State.syncLogs.length === 0) {
+            accordion.style.display = 'none';
+            return;
+        }
+
+        accordion.style.display = 'block';
+        let totalChanges = 0;
+        let html = "";
+
+        State.syncLogs.forEach(log => {
+            let changes = [];
+            if (log.added.length) changes.push(`<span style="color: #86efac; font-weight: 500;">+ ${log.added.join(', ')}</span>`);
+            if (log.dropped.length) changes.push(`<span style="color: #9ca3af; text-decoration: line-through;">- ${log.dropped.join(', ')}</span>`);
+            if (log.newlyOut.length) changes.push(`<span style="color: #fca5a5;">Out: ${log.newlyOut.join(', ')}</span>`);
+            
+            if (changes.length > 0) {
+                totalChanges += (log.added.length + log.dropped.length + log.newlyOut.length);
+                html += `
+                <div style="background: rgba(0,0,0,0.2); padding: 0.6rem 0.8rem; border-radius: 6px; border-left: 2px solid #60a5fa;">
+                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; margin-bottom: 0.3rem;">${log.leagueName}</div>
+                    <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.2rem;">
+                        ${changes.join('')}
+                    </div>
+                </div>`;
+            }
+        });
+
+        if (totalChanges === 0) {
+            html = `<div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">No roster changes detected in the last sync.</div>`;
+            summary.innerText = `Recent Sync Logs (No Changes)`;
+        } else {
+            summary.innerText = `Recent Sync Logs (${totalChanges} Change${totalChanges === 1 ? '' : 's'})`;
+        }
+
+        content.innerHTML = html;
+    };
+
     window.optimizeAllLineups = function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
         const origText = btn.innerHTML;
@@ -3577,7 +3626,7 @@ window.syncAllLeagues = async function(btn) {
                 const preloaded = { playerMap }; 
 
                 let successCount = 0;
-                let masterDiff = { added: new Set(), dropped: new Set(), newlyOut: new Set() };
+                let newLogs = [];
                 
                 // Temporarily suppress single-toast spam during the loop
                 let tempToast = window.showToast;
@@ -3589,11 +3638,14 @@ window.syncAllLeagues = async function(btn) {
                     
                     if (result) {
                         successCount++;
-                        // If it returned our rosterDiff object, fold the changes into the master sets
-                        if (typeof result === 'object') {
-                            result.added.forEach(p => masterDiff.added.add(p));
-                            result.dropped.forEach(p => masterDiff.dropped.add(p));
-                            result.newlyOut.forEach(p => masterDiff.newlyOut.add(p));
+                        // If it returned our rosterDiff object with actual changes, log it
+                        if (typeof result === 'object' && (result.added.length || result.dropped.length || result.newlyOut.length)) {
+                            newLogs.push({
+                                leagueName: l.name,
+                                added: result.added,
+                                dropped: result.dropped,
+                                newlyOut: result.newlyOut
+                            });
                         }
                     }
                 }
@@ -3601,23 +3653,23 @@ window.syncAllLeagues = async function(btn) {
                 // Restore original toast functionality
                 window.showToast = tempToast; 
                 
-                // Convert Sets back to arrays for formatting
-                let addedArr = Array.from(masterDiff.added);
-                let droppedArr = Array.from(masterDiff.dropped);
-                let outArr = Array.from(masterDiff.newlyOut);
+                // Save logs to state and local storage
+                State.syncLogs = newLogs;
+                localStorage.setItem('mls_sync_logs', JSON.stringify(State.syncLogs));
                 
-                let parts = [];
-                // Reusing your existing formatNameList to cap visual clutter
-                if (addedArr.length) parts.push(`Added: ${formatNameList(addedArr)}`);
-                if (droppedArr.length) parts.push(`Dropped: ${formatNameList(droppedArr)}`);
-                if (outArr.length) parts.push(`Now OUT: ${formatNameList(outArr)}`);
-                
+                // Toast a simple summary
                 let summaryMsg = `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
-                if (parts.length > 0) {
-                    summaryMsg += `\n\n${parts.join(' · ')}`;
+                if (newLogs.length > 0) {
+                    summaryMsg += `\n\nChanges found in ${newLogs.length} league${newLogs.length === 1 ? '' : 's'}. Check the Sync Logs!`;
                 }
-                
                 if (window.showToast) window.showToast(summaryMsg);
+
+                // Re-render the logs accordion
+                renderSyncLogs();
+                
+                // UX: Automatically open the accordion if there were changes so they don't have to hunt for them
+                const accordion = document.getElementById('syncLogAccordion');
+                if (accordion) accordion.open = newLogs.length > 0;
                 
             } catch (err) {
                 console.error("Sync All Error:", err);
