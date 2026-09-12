@@ -3506,9 +3506,6 @@ function applyMarketSettingsToUI() {
         renderLineupUI();
     };
 
-}, 50);
-    };
-
     window.renderSyncLogs = function() {
         const accordion = document.getElementById('syncLogAccordion');
         const content = document.getElementById('syncLogContent');
