@@ -1437,6 +1437,117 @@ body {
     margin-top: 1.25rem;
 }
 
+/* Trade Analyzer -- Fairness Verdict Banner */
+.trade-verdict-banner {
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+}
+
+.trade-verdict-source-label {
+    text-align: center;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.trade-verdict-source-label .tooltip-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 9px;}
+
+.trade-verdict-source-label .tooltip-text {
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.trade-verdict-subnote {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 500;
+}
+
+.trade-verdict-totals {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.trade-verdict-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.trade-verdict-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.trade-verdict-amount {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.trade-verdict-vs {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.trade-verdict-result {
+    text-align: center;
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: 0.3px;
+}
+
+.trade-verdict-diff {
+    font-weight: 600;
+    font-size: 0.85rem;
+    opacity: 0.85;
+    margin-left: 4px;
+}
+
+.trade-verdict-note {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+}
+
+.verdict-fair { border-color: var(--dart-border); background: var(--dart-bg); }
+.verdict-fair .trade-verdict-result { color: #93c5fd; }
+
+.verdict-favor-you { border-color: var(--target-border); background: var(--target-bg); }
+.verdict-favor-you .trade-verdict-result { color: var(--primary-green); }
+
+.verdict-favor-them { border-color: var(--avoid-border); background: var(--avoid-bg); }
+.verdict-favor-them .trade-verdict-result { color: #fca5a5; }
+
+.mls-stat-value { color: #fde047; }
+.mls-stat-market { color: #93c5fd; }
+
 /* MLS-namespaced small button (Setup league manager reorder/remove, Lineup swap/lock controls).
    Renamed from a bare .btn-sm -- that selector was defined twice in this shared stylesheet
    (once here, once in the MDS section above), and because both rules had equal specificity,

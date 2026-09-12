@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- TOAST NOTIFICATIONS ---
 window.showToast = function(message, options = {}) {
   const isError = options.isError || false;
-  const duration = options.duration || (isError ? 6000 : 2500);
+  const duration = options.duration || (isError ? 6000 : 3500);
 
   let toast = document.getElementById('mds-toast');
   
