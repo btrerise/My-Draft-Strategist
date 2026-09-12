@@ -3607,15 +3607,22 @@ function applyMarketSettingsToUI() {
                 }
                 let badgesRow = [injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
 
+                // The slot badge below already spells out the position for strict slots (RB1
+                // always holds an RB, etc), so a second colored position pill there is pure
+                // duplication. It's only ambiguous for FLEX/SFLEX (could be RB/WR/TE) -- so the
+                // player's real position gets shown as plain text, and only in those cases.
+                let plainPos = (slotType === 'FLEX' || slotType === 'SFLEX')
+                    ? `<span class="mls-plain-pos">${p.pos}</span>` : '';
+
                 html += `
                 <div class="lineup-slot ${lockClass}">
                     <div class="mls-player-row-info">
-                        <span class="slot-label slot-${slotType}">${s.slot}</span>
-                        <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
+                        <span class="slot-badge slot-${slotType}">${slotType}</span>
                         <div class="mls-player-row-text">
                             <div class="player-name-wrap">${p.name}${byeStr}</div>
                             ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
+                                ${plainPos}
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
@@ -3629,7 +3636,7 @@ function applyMarketSettingsToUI() {
             } else {
                 html += `
                 <div class="lineup-slot empty">
-                    <span class="slot-label slot-${slotType}">${s.slot}</span>
+                    <span class="slot-badge slot-${slotType}">${slotType}</span>
                     <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
                 </div>`;
             }
@@ -3658,16 +3665,19 @@ function applyMarketSettingsToUI() {
                     sleeperWarn = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`;
                 }
                 let badgesRow = [injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
+                // Bench ("BN") never reveals real position the way a strict slot badge does, so
+                // always show it as plain text here -- same reasoning as the FLEX/SFLEX case above.
+                let plainPos = `<span class="mls-plain-pos">${p.pos}</span>`;
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">
                     <div class="mls-player-row-info">
-                        <span class="slot-label slot-BN">BN</span>
-                        <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
+                        <span class="slot-badge slot-BN">BN</span>
                         <div class="mls-player-row-text">
                             <div class="player-name-wrap">${p.name}${byeStr}</div>
                             ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
+                                ${plainPos}
                                 <span class="badge">${p.team}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>

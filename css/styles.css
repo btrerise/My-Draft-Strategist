@@ -1235,13 +1235,19 @@ body {
 }
 
 /* 1. Fix position badge width so it never shifts */
-.roster-item .pos-badge, 
-.lineup-slot .slot-label { 
+.roster-item .pos-badge { 
     width: 38px;
     min-width: 38px;
     flex-shrink: 0;
     text-align: center;
-    font-size: 0.8rem; /* Scaled down slightly */
+    font-size: 0.8rem;
+}
+.lineup-slot .slot-badge { 
+    width: 46px;
+    min-width: 46px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 0.68rem; /* small enough that "SFLEX" still fits at this fixed width */
 }
 /* 2. UNIVERSAL FIX: Force whatever player data is in the middle to left-align and fill space */
 .roster-item > *:not(:first-child):not(:last-child),
@@ -1250,12 +1256,38 @@ body {
     text-align: left;
 }
 
-.slot-QB { color: var(--pos-qb-border) !important; }
-.slot-RB { color: var(--pos-rb-border) !important; }
-.slot-WR { color: var(--pos-wr-border) !important; }
-.slot-TE { color: var(--pos-te-border) !important; }
-.slot-FLEX, .slot-SFLEX { color: #a855f7 !important; }
-.slot-BN, .slot-ROS { color: var(--text-muted) !important; }
+/* Consolidated slot indicator for the Lineup tab (starters + bench): replaces the old
+   plain-text slot-label ("RB1") + separate colored pos-badge pair with a single badge, styled
+   like pos-badge, showing just the slot TYPE with no player-count suffix (slotType in mls.js is
+   already digit-stripped before this renders, so "RB1"/"RB2" both just show "RB"). Fixed width
+   above keeps every row's name column starting at the same x position regardless of whether the
+   slot text is "RB" or "SFLEX".
+   The player's actual position is only shown separately (see .mls-plain-pos) when the slot type
+   itself doesn't already reveal it -- FLEX, SFLEX, and bench -- so this never duplicates info a
+   strict RB/WR/TE/QB/K/DEF slot already conveys. */
+.slot-badge {
+    display: inline-block;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-weight: bold;
+    box-sizing: border-box;
+}
+.slot-badge.slot-QB  { background-color: var(--pos-qb);  color: #fca5a5; border: 1px solid var(--pos-qb-border); }
+.slot-badge.slot-RB  { background-color: var(--pos-rb);  color: #86efac; border: 1px solid var(--pos-rb-border); }
+.slot-badge.slot-WR  { background-color: var(--pos-wr);  color: #93c5fd; border: 1px solid var(--pos-wr-border); }
+.slot-badge.slot-TE  { background-color: var(--pos-te);  color: #fde047; border: 1px solid var(--pos-te-border); }
+.slot-badge.slot-K   { background-color: var(--pos-k);   color: #e2e8f0; border: 1px solid var(--pos-k-border); }
+.slot-badge.slot-DEF { background-color: var(--pos-def); color: #e9d8fd; border: 1px solid var(--pos-def-border); }
+.slot-badge.slot-FLEX,
+.slot-badge.slot-SFLEX { background-color: rgba(168, 85, 247, 0.18); color: #d8b4fe; border: 1px solid #a855f7; }
+.slot-badge.slot-BN,
+.slot-badge.slot-ROS { background-color: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* Plain, unstyled position text -- deliberately NOT a badge, since a second colored pill here
+   is exactly the duplication the slot-badge consolidation above was meant to remove. Only
+   rendered (see mls.js) for FLEX/SFLEX/bench rows, where the slot badge alone doesn't already
+   say RB/WR/TE. */
+.mls-plain-pos { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
 
 .player-name-wrap { 
     font-weight: 600; 
@@ -1301,11 +1333,15 @@ body {
         gap: 0.4rem; 
     }
     
-    .roster-item .pos-badge, 
-    .lineup-slot .slot-label { 
+    .roster-item .pos-badge { 
         width: 32px; 
         min-width: 32px; 
         font-size: 0.7rem; 
+    }
+    .lineup-slot .slot-badge { 
+        width: 42px; 
+        min-width: 42px; 
+        font-size: 0.62rem; 
     }
     
     .player-name-wrap { 
