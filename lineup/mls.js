@@ -1339,7 +1339,7 @@ function attachScoutSuggestionHandler(outputElId) {
             }
 
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
-            return true;
+            return rosterDiff || true;
 
         } catch(err) {
             console.error(err);
@@ -3550,6 +3550,88 @@ function applyMarketSettingsToUI() {
             btn.innerHTML = origText;
             btn.disabled = false;
             btn.style.opacity = '1';
+        }, 50);
+    };
+
+window.syncAllLeagues = async function(btn) {
+        if (!State.leagues || State.leagues.length === 0) return;
+        
+        // Filter out manual leagues — only sync Sleeper connections
+        const sleeperLeagues = State.leagues.filter(l => l.leagueId && !l.leagueId.startsWith('manual_') && l.username && l.username !== "Manual");
+        
+        if (sleeperLeagues.length === 0) {
+            if (window.showToast) window.showToast("No Sleeper-synced leagues to refresh.", { isError: true });
+            return;
+        }
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing All...`;
+        btn.disabled = true;
+        btn.style.opacity = '0.8';
+
+        // Brief timeout ensures UI button state updates before locking the main thread
+        setTimeout(async () => {
+            try {
+                // Preload the heavy player map ONCE to save massive API bandwidth
+                const playerMap = await getSleeperPlayerMap();
+                const preloaded = { playerMap }; 
+
+                let successCount = 0;
+                let masterDiff = { added: new Set(), dropped: new Set(), newlyOut: new Set() };
+                
+                // Temporarily suppress single-toast spam during the loop
+                let tempToast = window.showToast;
+                window.showToast = function(){}; 
+
+                for (let l of sleeperLeagues) {
+                    // isRefresh = true, suppressErrorToast = true, showChangeSummary = true
+                    let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true);
+                    
+                    if (result) {
+                        successCount++;
+                        // If it returned our rosterDiff object, fold the changes into the master sets
+                        if (typeof result === 'object') {
+                            result.added.forEach(p => masterDiff.added.add(p));
+                            result.dropped.forEach(p => masterDiff.dropped.add(p));
+                            result.newlyOut.forEach(p => masterDiff.newlyOut.add(p));
+                        }
+                    }
+                }
+
+                // Restore original toast functionality
+                window.showToast = tempToast; 
+                
+                // Convert Sets back to arrays for formatting
+                let addedArr = Array.from(masterDiff.added);
+                let droppedArr = Array.from(masterDiff.dropped);
+                let outArr = Array.from(masterDiff.newlyOut);
+                
+                let parts = [];
+                // Reusing your existing formatNameList to cap visual clutter
+                if (addedArr.length) parts.push(`Added: ${formatNameList(addedArr)}`);
+                if (droppedArr.length) parts.push(`Dropped: ${formatNameList(droppedArr)}`);
+                if (outArr.length) parts.push(`Now OUT: ${formatNameList(outArr)}`);
+                
+                let summaryMsg = `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
+                if (parts.length > 0) {
+                    summaryMsg += `\n\n${parts.join(' · ')}`;
+                }
+                
+                if (window.showToast) window.showToast(summaryMsg);
+                
+            } catch (err) {
+                console.error("Sync All Error:", err);
+                if (window.showToast) window.showToast("An error occurred while syncing leagues.", { isError: true });
+            } finally {
+                btn.innerHTML = origText;
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                
+                // Refresh data states natively
+                if (typeof renderLeagueManager === 'function') renderLeagueManager();
+                if (typeof loadRosterTab === 'function') loadRosterTab();
+                if (typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+            }
         }, 50);
     };
 
