@@ -66,6 +66,7 @@
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
         marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
         tradeSettings: JSON.parse(localStorage.getItem('mls_trade_settings')) || { waiverAdjustment: true, waiverAdjustmentValue: 500 },
+        syncLogs: JSON.parse(localStorage.getItem('mls_sync_logs')) || [],
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
         manualStartersMap: JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {},
@@ -608,6 +609,7 @@ function attachScoutSuggestionHandler(outputElId) {
         applyTradeSettingsToUI();
         updatePulsePrompts();
         refreshCurrentNflWeek();
+        if (typeof renderSyncLogs === 'function') renderSyncLogs();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -1339,7 +1341,7 @@ function attachScoutSuggestionHandler(outputElId) {
             }
 
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
-            return true;
+            return rosterDiff || true;
 
         } catch(err) {
             console.error(err);
@@ -3504,6 +3506,50 @@ function applyMarketSettingsToUI() {
         renderLineupUI();
     };
 
+    window.renderSyncLogs = function() {
+        const accordion = document.getElementById('syncLogAccordion');
+        const content = document.getElementById('syncLogContent');
+        const summary = document.getElementById('syncLogSummary');
+        
+        if (!accordion || !content || !summary) return;
+
+        if (!State.syncLogs || State.syncLogs.length === 0) {
+            accordion.style.display = 'none';
+            return;
+        }
+
+        accordion.style.display = 'block';
+        let totalChanges = 0;
+        let html = "";
+
+        State.syncLogs.forEach(log => {
+            let changes = [];
+            if (log.added.length) changes.push(`<span style="color: #86efac; font-weight: 500;">+ ${log.added.join(', ')}</span>`);
+            if (log.dropped.length) changes.push(`<span style="color: #9ca3af; text-decoration: line-through;">- ${log.dropped.join(', ')}</span>`);
+            if (log.newlyOut.length) changes.push(`<span style="color: #fca5a5;">Out: ${log.newlyOut.join(', ')}</span>`);
+            
+            if (changes.length > 0) {
+                totalChanges += (log.added.length + log.dropped.length + log.newlyOut.length);
+                html += `
+                <div style="background: rgba(0,0,0,0.2); padding: 0.6rem 0.8rem; border-radius: 6px; border-left: 2px solid #60a5fa;">
+                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; margin-bottom: 0.3rem;">${log.leagueName}</div>
+                    <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.2rem;">
+                        ${changes.join('')}
+                    </div>
+                </div>`;
+            }
+        });
+
+        if (totalChanges === 0) {
+            html = `<div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">No roster changes detected in the last sync.</div>`;
+            summary.innerText = `Recent Sync Logs (No Changes)`;
+        } else {
+            summary.innerText = `Recent Sync Logs (${totalChanges} Change${totalChanges === 1 ? '' : 's'})`;
+        }
+
+        content.innerHTML = html;
+    };
+
     window.optimizeAllLineups = function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
         const origText = btn.innerHTML;
@@ -3550,6 +3596,91 @@ function applyMarketSettingsToUI() {
             btn.innerHTML = origText;
             btn.disabled = false;
             btn.style.opacity = '1';
+        }, 50);
+    };
+
+window.syncAllLeagues = async function(btn) {
+        if (!State.leagues || State.leagues.length === 0) return;
+        
+        // Filter out manual leagues — only sync Sleeper connections
+        const sleeperLeagues = State.leagues.filter(l => l.leagueId && !l.leagueId.startsWith('manual_') && l.username && l.username !== "Manual");
+        
+        if (sleeperLeagues.length === 0) {
+            if (window.showToast) window.showToast("No Sleeper-synced leagues to refresh.", { isError: true });
+            return;
+        }
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing All...`;
+        btn.disabled = true;
+        btn.style.opacity = '0.8';
+
+        // Brief timeout ensures UI button state updates before locking the main thread
+        setTimeout(async () => {
+            try {
+                // Preload the heavy player map ONCE to save massive API bandwidth
+                const playerMap = await getSleeperPlayerMap();
+                const preloaded = { playerMap }; 
+
+                let successCount = 0;
+                let newLogs = [];
+                
+                // Temporarily suppress single-toast spam during the loop
+                let tempToast = window.showToast;
+                window.showToast = function(){}; 
+
+                for (let l of sleeperLeagues) {
+                    // isRefresh = true, suppressErrorToast = true, showChangeSummary = true
+                    let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true);
+                    
+                    if (result) {
+                        successCount++;
+                        // If it returned our rosterDiff object with actual changes, log it
+                        if (typeof result === 'object' && (result.added.length || result.dropped.length || result.newlyOut.length)) {
+                            newLogs.push({
+                                leagueName: l.name,
+                                added: result.added,
+                                dropped: result.dropped,
+                                newlyOut: result.newlyOut
+                            });
+                        }
+                    }
+                }
+
+                // Restore original toast functionality
+                window.showToast = tempToast; 
+                
+                // Save logs to state and local storage
+                State.syncLogs = newLogs;
+                localStorage.setItem('mls_sync_logs', JSON.stringify(State.syncLogs));
+                
+                // Toast a simple summary
+                let summaryMsg = `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
+                if (newLogs.length > 0) {
+                    summaryMsg += `\n\nChanges found in ${newLogs.length} league${newLogs.length === 1 ? '' : 's'}. Check the Sync Logs!`;
+                }
+                if (window.showToast) window.showToast(summaryMsg);
+
+                // Re-render the logs accordion
+                renderSyncLogs();
+                
+                // UX: Automatically open the accordion if there were changes so they don't have to hunt for them
+                const accordion = document.getElementById('syncLogAccordion');
+                if (accordion) accordion.open = newLogs.length > 0;
+                
+            } catch (err) {
+                console.error("Sync All Error:", err);
+                if (window.showToast) window.showToast("An error occurred while syncing leagues.", { isError: true });
+            } finally {
+                btn.innerHTML = origText;
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                
+                // Refresh data states natively
+                if (typeof renderLeagueManager === 'function') renderLeagueManager();
+                if (typeof loadRosterTab === 'function') loadRosterTab();
+                if (typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+            }
         }, 50);
     };
 
