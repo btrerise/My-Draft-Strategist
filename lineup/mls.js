@@ -3611,8 +3611,11 @@ function applyMarketSettingsToUI() {
                 // always holds an RB, etc), so a second colored position pill there is pure
                 // duplication. It's only ambiguous for FLEX/SFLEX (could be RB/WR/TE) -- so the
                 // player's real position gets shown as plain text, and only in those cases.
-                let plainPos = (slotType === 'FLEX' || slotType === 'SFLEX')
-                    ? `<span class="mls-plain-pos">${p.pos}</span>` : '';
+                // Now shown on every row regardless of slot type (previously only FLEX/SFLEX/
+                // bench, where the slot badge alone doesn't reveal it) -- for consistency, per
+                // Benton, and so every row's meta line starts with the same kind of element
+                // instead of some starting with plain text and others starting with the team badge.
+                let plainPos = `<span class="mls-plain-pos pos-text-${p.pos.toLowerCase()}">${p.pos}</span>`;
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
@@ -3666,8 +3669,8 @@ function applyMarketSettingsToUI() {
                 }
                 let badgesRow = [injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
                 // Bench ("BN") never reveals real position the way a strict slot badge does, so
-                // always show it as plain text here -- same reasoning as the FLEX/SFLEX case above.
-                let plainPos = `<span class="mls-plain-pos">${p.pos}</span>`;
+                // always show it as plain text here -- same reasoning as the starters block above.
+                let plainPos = `<span class="mls-plain-pos pos-text-${p.pos.toLowerCase()}">${p.pos}</span>`;
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass}">

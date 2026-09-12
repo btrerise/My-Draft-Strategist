@@ -1284,16 +1284,23 @@ body {
 .slot-badge.slot-ROS { background-color: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
 
 /* Plain, unstyled position text -- deliberately NOT a badge, since a second colored pill here
-   is exactly the duplication the slot-badge consolidation above was meant to remove. Only
-   rendered (see mls.js) for FLEX/SFLEX/bench rows, where the slot badge alone doesn't already
-   say RB/WR/TE. */
-.mls-plain-pos { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
+   is exactly the duplication the slot-badge consolidation above was meant to remove. Shown on
+   every row (see mls.js) so every row's meta line has the same leading element -- color comes
+   from the existing .pos-text-* utility (extended below with K/DEF) so it matches the
+   corresponding slot-badge/pos-badge color without a second color palette to maintain. Small
+   left padding matches the kickoff-badge's own inset, so its text starts at the same x as the
+   name and kickoff lines above it rather than being thrown off by the badge's padding. */
+.mls-plain-pos { font-size: 0.75rem; font-weight: 600; padding-left: 4px; }
 
 .player-name-wrap { 
     font-weight: 600; 
     color: var(--text-main); 
     line-height: 1.3; 
     font-size: 0.95rem; 
+    /* Matches .mls-plain-pos's left padding below, so the name text and the position text on
+       the meta line start at the same x -- both are plain text with no badge chrome to offset
+       them, but the kickoff badge above still has its own small inset, hence the 4px here. */
+    padding-left: 4px;
 }
 
 .team-chip { 
@@ -2075,6 +2082,8 @@ body {
 .pos-text-rb { color: var(--pos-rb-border) !important; }
 .pos-text-wr { color: var(--pos-wr-border) !important; }
 .pos-text-te { color: var(--pos-te-border) !important; }
+.pos-text-k { color: var(--pos-k-border) !important; }
+.pos-text-def { color: var(--pos-def-border) !important; }
 
 /* Subtitle styling for headers */
 .header-subtitle {
