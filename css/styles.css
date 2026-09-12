@@ -1463,7 +1463,9 @@ body {
 .trade-verdict-source-label .tooltip-icon {
     width: 14px;
     height: 14px;
-    font-size: 9px;
+    font-size: 9px;}
+
+.trade-verdict-source-label .tooltip-text {
     text-transform: none;
     letter-spacing: normal;
 }
