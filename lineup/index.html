@@ -186,10 +186,16 @@
             </div>
         </header>
         
-        <button id="optimizeAllBtn" class="btn btn-primary mb-3" onclick="optimizeAllLineups(this)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            Optimize All Lineups
-        </button>
+        <div class="button-row-dual mb-3">
+            <button id="syncAllBtn" class="btn btn-blue" onclick="syncAllLeagues(this)" title="Syncs waivers and trades across all your Sleeper leagues">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
+                Sync All Leagues
+            </button>
+            <button id="optimizeAllBtn" class="btn btn-primary" onclick="optimizeAllLineups(this)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Optimize All Lineups
+            </button>
+        </div>
 
         <div class="table-responsive custom-scrollbar" style="max-height: 400px; overflow-y: auto;">
             <table class="sos-grid" style="width: 100%; text-align: left; position: relative;">
