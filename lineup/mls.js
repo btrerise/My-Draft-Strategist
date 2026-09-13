@@ -432,6 +432,18 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// Parses an HTML string into a DocumentFragment using a detached <template>, then swaps
+// it into `container` in one operation. The parsing happens off-DOM (the template's
+// content is never attached to the live tree), and the fragment's children are moved
+// into place in a single call -- avoids the container sitting attached-but-empty
+// mid-rebuild the way `container.innerHTML = html` does.
+function renderHTMLInto(container, html) {
+    if (!container) return;
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    container.replaceChildren(template.content);
+}
+
 // Consolidated Sleeper DB Cache
 let _sleeperPlayerMapCache = null;
 let _sleeperPlayerMapPromise = null;
@@ -3929,7 +3941,7 @@ window.syncAllLeagues = async function(btn) {
                 </div>`;
             }
         });
-        container.innerHTML = html;
+        renderHTMLInto(container, html);
 
         let benchHTML = "";
         if (benchPool.length > 0) {
@@ -3983,7 +3995,7 @@ window.syncAllLeagues = async function(btn) {
                     [ No bench players available ]
                 </div>`; 
         }
-        benchContainer.innerHTML = benchHTML;
+        renderHTMLInto(benchContainer, benchHTML);
 
         // Auto-update the dashboard matrix in the background so status icons stay live
         if (typeof renderLeagueManager === 'function') renderLeagueManager();
