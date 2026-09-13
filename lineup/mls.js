@@ -1723,26 +1723,39 @@ function attachScoutSuggestionHandler(outputElId) {
             let getResults = targetNames.map(n => buildCard(n, "GET"));
             let giveResults = sellNames.map(n => buildCard(n, "GIVE"));
 
-            // --- TRADE FAIRNESS VERDICT(S) ---
-            // Renders up to two independent verdicts ahead of the player lists: one from the
-            // user's own custom ROS rankings (the default/primary lens -- no third-party API
-            // needed, since ROS rankings are a core input most users already have from the
-            // Roster tab), and one from market consensus if Market Value data has been loaded
-            // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
-            // user see "the market" and "how I personally value this" can disagree.
-            let verdictHTML = renderTradeVerdict(
-                "Your Rankings",
-                "This value isn't something you entered -- it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
-                getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
-            );
-            verdictHTML += renderTradeVerdict(
-                "Market Consensus",
-                "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value -- not the source's official number.",
-                getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
-            );
+            // A "trade" with only one side filled in isn't a trade -- it's an incomplete
+            // comparison, but renderTradeVerdict below has no way to know that (an empty side
+            // just totals to 0, which reads as a real, decisive "Favors You"/"Favors Them"
+            // verdict). Catch it here instead of letting a misleading banner through; the
+            // per-player cards below still render normally either way, since checking one
+            // side's value on its own is still useful.
+            let isOneSided = (targetNames.length === 0) !== (sellNames.length === 0);
 
-            if (!verdictHTML) {
-                verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
+            let verdictHTML;
+            if (isOneSided) {
+                verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Enter players on both sides to get a fairness verdict -- right now only one side has players.</div>`;
+            } else {
+                // --- TRADE FAIRNESS VERDICT(S) ---
+                // Renders up to two independent verdicts ahead of the player lists: one from the
+                // user's own custom ROS rankings (the default/primary lens -- no third-party API
+                // needed, since ROS rankings are a core input most users already have from the
+                // Roster tab), and one from market consensus if Market Value data has been loaded
+                // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
+                // user see "the market" and "how I personally value this" can disagree.
+                verdictHTML = renderTradeVerdict(
+                    "Your Rankings",
+                    "This value isn't something you entered -- it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
+                    getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
+                );
+                verdictHTML += renderTradeVerdict(
+                    "Market Consensus",
+                    "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value -- not the source's official number.",
+                    getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
+                );
+
+                if (!verdictHTML) {
+                    verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
+                }
             }
             html += verdictHTML;
 
@@ -2735,12 +2748,24 @@ function attachScoutSuggestionHandler(outputElId) {
             loadSheetJS(() => {            
                 const reader = new FileReader();
                 reader.onload = e => {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
-                    Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+                        Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
+                    } catch (err) {
+                        console.error("Error reading Excel file:", err);
+                        if (window.showToast) window.showToast(`Couldn't read "${file.name}" -- it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
+                    }
+                };
+                reader.onerror = () => {
+                    console.error("Error reading file:", file.name);
+                    if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                 };
                 reader.readAsArrayBuffer(file);
+            }, () => {
+                console.error("Failed to load SheetJS library");
+                if (window.showToast) window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
             });
         } else if (filename.endsWith('.numbers')) {
             if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
