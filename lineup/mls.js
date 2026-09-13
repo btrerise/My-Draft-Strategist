@@ -1211,7 +1211,7 @@ function attachScoutSuggestionHandler(outputElId) {
         return `${names.slice(0, 4).join(', ')} +${names.length - 4} more`;
     }
 
-    async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false, showChangeSummary = false) {
+    async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false, showChangeSummary = false, skipSave = false) {
         try {
             let userId = preloaded.userId;
             if (!userId) {
@@ -1353,8 +1353,13 @@ function attachScoutSuggestionHandler(outputElId) {
             else State.leagues.push(leagueObj);
 
             State.activeLeagueId = leagueId;
-            localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-            localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+            // Bulk callers (importAllSleeperLeagues, syncAllLeagues) pass skipSave=true and
+            // write to localStorage once after their loop finishes, instead of every iteration
+            // serializing the entire State.leagues array to disk.
+            if (!skipSave) {
+                localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+                localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+            }
 
             if (!isRefresh) {
                 const nLeagueNameEl = document.getElementById('newLeagueName');
@@ -1444,9 +1449,13 @@ function attachScoutSuggestionHandler(outputElId) {
             let failCount = 0;
             for (let i = 0; i < leagues.length; i++) {
                 if (btn) btn.innerText = `Syncing ${i + 1}/${leagues.length}...`;
-                const ok = await processSleeperData(username, leagues[i].league_id, null, true, preloaded, true);
+                const ok = await processSleeperData(username, leagues[i].league_id, null, true, preloaded, true, false, true);
                 if (ok) successCount++; else failCount++;
             }
+
+            // Single write after the loop instead of one localStorage.setItem per league.
+            localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+            localStorage.setItem('mds_season_active_league', State.activeLeagueId);
 
             refreshLeagueDropdown();
             if (State.leagues.length > 0 && !State.activeLeagueId) {
@@ -3750,8 +3759,8 @@ window.syncAllLeagues = async function(btn) {
                 window.showToast = function(){}; 
 
                 for (let l of sleeperLeagues) {
-                    // isRefresh = true, suppressErrorToast = true, showChangeSummary = true
-                    let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true);
+                    // isRefresh = true, suppressErrorToast = true, showChangeSummary = true, skipSave = true
+                    let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true, true);
                     
                     if (result) {
                         successCount++;
@@ -3769,7 +3778,11 @@ window.syncAllLeagues = async function(btn) {
 
                 // Restore original toast functionality
                 window.showToast = tempToast; 
-                
+
+                // Single write after the loop instead of one localStorage.setItem per league.
+                localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+                localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+
                 // Save logs to state and local storage
                 State.syncLogs = newLogs;
                 localStorage.setItem('mls_sync_logs', JSON.stringify(State.syncLogs));
