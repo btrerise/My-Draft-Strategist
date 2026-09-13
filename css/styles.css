@@ -1054,6 +1054,10 @@ body {
    unlike bye/inj/early this isn't a warning, just a fact the person can use to verify FLEX
    kickoff ordering at a glance. */
 .kickoff-badge { background: rgba(96, 165, 250, 0.15); color: #93c5fd; border: 1px solid #60a5fa; padding: 1px 4px; font-size: 0.65rem; font-weight: 600; margin-left: 4px; }
+/* Once kickoff has passed (see getKickoffBadgeHTML in mls.js), the badge swaps from the clock
+   time to "Started" -- a deeper, more solid blue so it visually reads as "locked in" rather
+   than "upcoming", pairing with the auto-lock indicator icon used on that same row. */
+.kickoff-started { background: rgba(59, 130, 246, 0.28); color: #bfdbfe; border-color: #3b82f6; }
 .status-badge { font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; background-color: #102a1e; color: #4ade80; border: 1px solid #34A853; }
 
 /* Dashboard Status Icons */
