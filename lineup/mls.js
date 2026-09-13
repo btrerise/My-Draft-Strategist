@@ -66,7 +66,6 @@
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
         marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
         tradeSettings: JSON.parse(localStorage.getItem('mls_trade_settings')) || { waiverAdjustment: true, waiverAdjustmentValue: 500 },
-        syncLogs: JSON.parse(localStorage.getItem('mls_sync_logs')) || [],
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
         manualStartersMap: JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {},
@@ -609,7 +608,6 @@ function attachScoutSuggestionHandler(outputElId) {
         applyTradeSettingsToUI();
         updatePulsePrompts();
         refreshCurrentNflWeek();
-        if (typeof renderSyncLogs === 'function') renderSyncLogs();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {
             State.activeLeagueId = State.leagues[0].leagueId;
@@ -704,11 +702,39 @@ function attachScoutSuggestionHandler(outputElId) {
 
     // Returns a kickoff-time badge for a team, or "" if we don't have a kickoff time for them
     // this week (fetch hasn't resolved, team not found in this week's schedule, bye week, etc).
+    // Once kickoff has passed, shows "Started" instead of the (now-stale) clock time -- this is
+    // also the visual cue that pairs with the auto-lock behavior below (see hasKickedOff and
+    // optimizeLineup's autoLocked handling).
     function getKickoffBadgeHTML(team) {
         if (!team || team === "FA") return "";
-        const label = formatKickoffLabel(State.gameTimesByTeam[team]);
+        const iso = State.gameTimesByTeam[team];
+        if (!iso) return "";
+        const kickoffMs = new Date(iso).getTime();
+        if (isNaN(kickoffMs)) return "";
+        if (Date.now() >= kickoffMs) return `<span class="badge kickoff-badge kickoff-started">Started</span>`;
+        const label = formatKickoffLabel(iso);
         if (!label) return "";
         return `<span class="badge kickoff-badge">${label}</span>`;
+    }
+
+    // True once a player's team has kicked off this week per State.gameTimesByTeam, false if
+    // that game hasn't started yet OR we simply don't have kickoff data for them (never assume
+    // a game has started without evidence -- see refreshGameTimes' graceful-degradation notes).
+    function hasKickedOff(player) {
+        if (!player || !player.team) return false;
+        const iso = State.gameTimesByTeam[player.team];
+        if (!iso) return false;
+        const ms = new Date(iso).getTime();
+        return !isNaN(ms) && Date.now() >= ms;
+    }
+
+    // Sleeper's own snapshot of who's actually starting, as of the last sync -- the ground
+    // truth for "did this player actually get started in real life" once their game has
+    // kicked off, independent of anything this app previously recommended. Shared by
+    // renderLineupUI (the "matches Sleeper" banner / per-player mismatch badges) and
+    // optimizeLineup (auto-lock, below) so both read the exact same filtered list.
+    function getValidSleeperStarterIds(league) {
+        return (league && league.sleeperStarters) ? league.sleeperStarters.filter(id => id && id !== "0") : [];
     }
 
     // --- LEAGUE & SYNC LOGIC ---
@@ -1341,7 +1367,7 @@ function attachScoutSuggestionHandler(outputElId) {
             }
 
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
-            return rosterDiff || true;
+            return true;
 
         } catch(err) {
             console.error(err);
@@ -3310,6 +3336,11 @@ function applyMarketSettingsToUI() {
 
         starters.forEach((s, idx) => {
             const slotType = s.slot.replace(/[0-9]/g, '');
+            // Locked players (manually locked, or auto-locked because their game already
+            // kicked off -- see optimizeLineup) are pinned exactly where fillSlot put them.
+            // Their slot doesn't count toward strictSlotCount either, since it's not available
+            // for the unpinned pool below to be reassigned into.
+            if (s.player && s.player.isLocked) return;
             if (FLEX_POSITIONS.includes(slotType)) strictSlotCount[slotType]++;
             if (!s.player) return;
             if (slotType !== 'FLEX' && !FLEX_POSITIONS.includes(slotType)) return;
@@ -3346,6 +3377,7 @@ function applyMarketSettingsToUI() {
         const cursors = { RB: 0, WR: 0, TE: 0, FLEX: 0 };
         starters.forEach(s => {
             if (!s.player) return;
+            if (s.player.isLocked) return; // pinned above -- leave exactly as fillSlot placed them
             const slotType = s.slot.replace(/[0-9]/g, '');
             if (FLEX_POSITIONS.includes(slotType)) {
                 const newPlayer = strictAssignees[slotType][cursors[slotType]++];
@@ -3387,9 +3419,26 @@ function applyMarketSettingsToUI() {
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
         let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 };
 
+        // Auto-lock: once a player's game has kicked off, their roster spot is frozen in real
+        // life whether or not the person ever touches this tool again this week -- re-running
+        // the optimizer (say, after a late rankings update) shouldn't be able to bench them or
+        // have optimizeFlexKickoffOrder shuffle their slot. This never overrides a starter's
+        // status *before* kickoff -- it only pins players who (a) have already kicked off AND
+        // (b) were already established as a starter, checked against two sources: Sleeper's own
+        // last-synced starting lineup (the ground truth for what actually happened in real
+        // life, and the only signal available the very first time this is run in a given week)
+        // and this app's own previous optimizer output (a fallback for when Sleeper data is
+        // stale or missing). A bench player whose game has already passed is NOT auto-locked --
+        // they were never started, so there's nothing to preserve.
+        let sleeperStarterIds = getValidSleeperStarterIds(league);
+        let prevStarters = State.manualStartersMap[State.activeLeagueId] || [];
+        let prevStartingIds = new Set(prevStarters.filter(s => s.player).map(s => s.player.id));
+
         let scoredRoster = league.roster.map(p => {
             let rObj = activeDataSet.find(rk => rk.cleanName === p.cleanName);
-            return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, isLocked: locks.includes(p.id) };
+            let manualLocked = locks.includes(p.id);
+            let autoLocked = !manualLocked && hasKickedOff(p) && (sleeperStarterIds.includes(p.id) || prevStartingIds.has(p.id));
+            return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
         let pool = [...scoredRoster];
@@ -3506,50 +3555,6 @@ function applyMarketSettingsToUI() {
         renderLineupUI();
     };
 
-    window.renderSyncLogs = function() {
-        const accordion = document.getElementById('syncLogAccordion');
-        const content = document.getElementById('syncLogContent');
-        const summary = document.getElementById('syncLogSummary');
-        
-        if (!accordion || !content || !summary) return;
-
-        if (!State.syncLogs || State.syncLogs.length === 0) {
-            accordion.style.display = 'none';
-            return;
-        }
-
-        accordion.style.display = 'block';
-        let totalChanges = 0;
-        let html = "";
-
-        State.syncLogs.forEach(log => {
-            let changes = [];
-            if (log.added.length) changes.push(`<span style="color: #86efac; font-weight: 500;">+ ${log.added.join(', ')}</span>`);
-            if (log.dropped.length) changes.push(`<span style="color: #9ca3af; text-decoration: line-through;">- ${log.dropped.join(', ')}</span>`);
-            if (log.newlyOut.length) changes.push(`<span style="color: #fca5a5;">Out: ${log.newlyOut.join(', ')}</span>`);
-            
-            if (changes.length > 0) {
-                totalChanges += (log.added.length + log.dropped.length + log.newlyOut.length);
-                html += `
-                <div style="background: rgba(0,0,0,0.2); padding: 0.6rem 0.8rem; border-radius: 6px; border-left: 2px solid #60a5fa;">
-                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; margin-bottom: 0.3rem;">${log.leagueName}</div>
-                    <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.2rem;">
-                        ${changes.join('')}
-                    </div>
-                </div>`;
-            }
-        });
-
-        if (totalChanges === 0) {
-            html = `<div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">No roster changes detected in the last sync.</div>`;
-            summary.innerText = `Recent Sync Logs (No Changes)`;
-        } else {
-            summary.innerText = `Recent Sync Logs (${totalChanges} Change${totalChanges === 1 ? '' : 's'})`;
-        }
-
-        content.innerHTML = html;
-    };
-
     window.optimizeAllLineups = function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
         const origText = btn.innerHTML;
@@ -3599,91 +3604,6 @@ function applyMarketSettingsToUI() {
         }, 50);
     };
 
-window.syncAllLeagues = async function(btn) {
-        if (!State.leagues || State.leagues.length === 0) return;
-        
-        // Filter out manual leagues — only sync Sleeper connections
-        const sleeperLeagues = State.leagues.filter(l => l.leagueId && !l.leagueId.startsWith('manual_') && l.username && l.username !== "Manual");
-        
-        if (sleeperLeagues.length === 0) {
-            if (window.showToast) window.showToast("No Sleeper-synced leagues to refresh.", { isError: true });
-            return;
-        }
-
-        const origText = btn.innerHTML;
-        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing All...`;
-        btn.disabled = true;
-        btn.style.opacity = '0.8';
-
-        // Brief timeout ensures UI button state updates before locking the main thread
-        setTimeout(async () => {
-            try {
-                // Preload the heavy player map ONCE to save massive API bandwidth
-                const playerMap = await getSleeperPlayerMap();
-                const preloaded = { playerMap }; 
-
-                let successCount = 0;
-                let newLogs = [];
-                
-                // Temporarily suppress single-toast spam during the loop
-                let tempToast = window.showToast;
-                window.showToast = function(){}; 
-
-                for (let l of sleeperLeagues) {
-                    // isRefresh = true, suppressErrorToast = true, showChangeSummary = true
-                    let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true);
-                    
-                    if (result) {
-                        successCount++;
-                        // If it returned our rosterDiff object with actual changes, log it
-                        if (typeof result === 'object' && (result.added.length || result.dropped.length || result.newlyOut.length)) {
-                            newLogs.push({
-                                leagueName: l.name,
-                                added: result.added,
-                                dropped: result.dropped,
-                                newlyOut: result.newlyOut
-                            });
-                        }
-                    }
-                }
-
-                // Restore original toast functionality
-                window.showToast = tempToast; 
-                
-                // Save logs to state and local storage
-                State.syncLogs = newLogs;
-                localStorage.setItem('mls_sync_logs', JSON.stringify(State.syncLogs));
-                
-                // Toast a simple summary
-                let summaryMsg = `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
-                if (newLogs.length > 0) {
-                    summaryMsg += `\n\nChanges found in ${newLogs.length} league${newLogs.length === 1 ? '' : 's'}. Check the Sync Logs!`;
-                }
-                if (window.showToast) window.showToast(summaryMsg);
-
-                // Re-render the logs accordion
-                renderSyncLogs();
-                
-                // UX: Automatically open the accordion if there were changes so they don't have to hunt for them
-                const accordion = document.getElementById('syncLogAccordion');
-                if (accordion) accordion.open = newLogs.length > 0;
-                
-            } catch (err) {
-                console.error("Sync All Error:", err);
-                if (window.showToast) window.showToast("An error occurred while syncing leagues.", { isError: true });
-            } finally {
-                btn.innerHTML = origText;
-                btn.disabled = false;
-                btn.style.opacity = '1';
-                
-                // Refresh data states natively
-                if (typeof renderLeagueManager === 'function') renderLeagueManager();
-                if (typeof loadRosterTab === 'function') loadRosterTab();
-                if (typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
-            }
-        }, 50);
-    };
-
     function renderLineupUI() {
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
@@ -3692,8 +3612,12 @@ window.syncAllLeagues = async function(btn) {
         let league = getActiveLeague();
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         let benchPool = State.manualBenchMap[State.activeLeagueId] || [];
-        let validSleeperStarters = (league && league.sleeperStarters) ? league.sleeperStarters.filter(id => id && id !== "0") : [];
+        let validSleeperStarters = getValidSleeperStarterIds(league);
         let optimizedStarterIds = starters.filter(s => s.player).map(s => s.player.id);
+        // The season-long manual lock list -- used only to distinguish "manually locked" from
+        // "auto-locked because the game already started" so the right lock control renders (see
+        // lockControl below); toggleLock itself remains the single source of truth for this list.
+        let locksList = State.lockedPlayersMap[State.activeLeagueId] || [];
 
         let html = "";
         
@@ -3719,6 +3643,16 @@ window.syncAllLeagues = async function(btn) {
                     : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.6;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
                 let lockClass = p.isLocked ? "locked" : "";
                 if (State.swapSourceId === p.id) lockClass += " swapping";
+
+                // Auto-locked (game already started -- see hasKickedOff/optimizeLineup) gets a
+                // non-interactive indicator instead of the normal toggle button. Letting someone
+                // click it would call toggleLock(), which -- since this player was never added to
+                // the season-long lock list -- would actually CREATE a manual lock rather than
+                // clear anything, the opposite of what tapping a "locked" icon implies. There's
+                // simply nothing to toggle once a game has already kicked off.
+                let lockControl = (p.autoLocked && !locksList.includes(p.id))
+                    ? `<span class="mls-btn-sm" title="Game in progress -- slot locked automatically" style="padding:0 4px; display:inline-flex; cursor: default;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>`
+                    : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>`;
 
                 let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
                 let flexStr = p.flexRank !== 999 ? `#${p.flexRank}` : "-";
@@ -3764,7 +3698,7 @@ window.syncAllLeagues = async function(btn) {
                     </div>
                     <div class="mls-row-actions">
                         <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
-                        <button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>
+                        ${lockControl}
                     </div>
                 </div>`;
             } else {
