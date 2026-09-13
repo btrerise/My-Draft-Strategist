@@ -1410,7 +1410,13 @@ function attachScoutSuggestionHandler(outputElId) {
         const username = document.getElementById('sleeperUsername')?.value.trim() || "";
         const leagueId = document.getElementById('sleeperLeagueId')?.value.trim() || "";
         if (!username || !leagueId) { if (window.showToast) window.showToast("Please enter both Sleeper Username and League ID to sync.", { isError: true }); return; }
-        if (btn) { btn.innerText = "Syncing..."; btn.style.backgroundColor = "var(--accent-color, #8b5cf6)"; }
+        // Just the label changes here -- flashButton (called inside processSleeperData once
+        // the sync finishes) handles the actual color flash and restores the button to its
+        // "Sync Sleeper" text afterward. Previously this line also force-set an inline
+        // background color, which flashButton would then capture as the color to restore to
+        // once its flash finished -- permanently overriding the button's real ".btn-blue" CSS
+        // color with this purple for the rest of the session after the first sync.
+        if (btn) { btn.innerText = "Syncing..."; }
         processSleeperData(username, leagueId, btn, false);
     };
 
@@ -3351,41 +3357,40 @@ function applyMarketSettingsToUI() {
         rosterListEl.innerHTML = html;
     }
 
+    // Core lock/unlock mechanics shared by toggleLock (the manual lock icon) and the
+    // keep-swaps-sticky logic in initiateSwap below. Updates both the season-long lock list
+    // AND each player object's isLocked flag directly in the starters/bench arrays, since
+    // renderLineupUI reads that flag off the object rather than re-checking the list. Returns
+    // the player's name (for callers that want to reference it, e.g. in a toast).
+    function setPlayerLockState(playerId, isLocked) {
+        if (!State.activeLeagueId) return null;
+        let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
+        let idx = locks.indexOf(playerId);
+        if (isLocked && idx === -1) locks.push(playerId);
+        else if (!isLocked && idx !== -1) locks.splice(idx, 1);
+        State.lockedPlayersMap[State.activeLeagueId] = locks;
+        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
+
+        let starters = State.manualStartersMap[State.activeLeagueId] || [];
+        let bench = State.manualBenchMap[State.activeLeagueId] || [];
+        let playerName = null;
+        starters.forEach(s => {
+            if (s.player && s.player.id === playerId) { s.player.isLocked = isLocked; playerName = s.player.name; }
+        });
+        bench.forEach(p => {
+            if (p.id === playerId) { p.isLocked = isLocked; playerName = p.name; }
+        });
+        State.manualStartersMap[State.activeLeagueId] = starters;
+        State.manualBenchMap[State.activeLeagueId] = bench;
+        return playerName;
+    }
+
     window.toggleLock = function(playerId) {
         if (!State.activeLeagueId) return;
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
-        
-        // Track whether we are actively locking or unlocking
         let isLocking = !locks.includes(playerId);
-        
-        if (locks.includes(playerId)) locks = locks.filter(id => id !== playerId);
-        else locks.push(playerId);
-        
-        State.lockedPlayersMap[State.activeLeagueId] = locks;
-        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
-        
-        let starters = State.manualStartersMap[State.activeLeagueId] || [];
-        let bench = State.manualBenchMap[State.activeLeagueId] || [];
-        
-        let playerName = 'Player'; // Fallback
-        
-        starters.forEach(s => { 
-            if (s.player && s.player.id === playerId) {
-                s.player.isLocked = locks.includes(playerId);
-                playerName = s.player.name; // Extract name
-            } 
-        });
-        bench.forEach(p => { 
-            if (p.id === playerId) {
-                p.isLocked = locks.includes(playerId);
-                playerName = p.name; // Extract name
-            } 
-        });
-        
-        State.manualStartersMap[State.activeLeagueId] = starters;
-        State.manualBenchMap[State.activeLeagueId] = bench;
-        
-        // Use backticks to evaluate the variables dynamically
+        let playerName = setPlayerLockState(playerId, isLocking) || 'Player';
+
         if (typeof window.showToast === 'function') {
             window.showToast(`${playerName} is ${isLocking ? 'locked' : 'unlocked'}`);
         }
@@ -3473,6 +3478,19 @@ function applyMarketSettingsToUI() {
             State.manualBenchMap[State.activeLeagueId] = bench;
             localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
             localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+
+            // Keep this swap "sticky" across the next sync. optimizeLineup's full recompute
+            // (forced on every Sleeper sync) only protects locked players -- without this, a
+            // manual swap into (or within) the starting lineup would silently get reverted
+            // back to whatever the rankings alone would have picked. Whoever ends up starting
+            // gets locked; whoever ends up on the bench gets unlocked, in case they carried a
+            // lock over from before this swap (otherwise their old lock would just force them
+            // straight back into a starting slot on the next recompute, undoing the swap).
+            let newStarterIds = new Set(starters.filter(s => s.player).map(s => s.player.id));
+            [p1Obj, p2Obj].forEach(p => {
+                if (p) setPlayerLockState(p.id, newStarterIds.has(p.id));
+            });
+
             State.swapSourceId = null;
         }
         renderLineupUI();
@@ -3858,7 +3876,12 @@ window.syncAllLeagues = async function(btn) {
                 let tempToast = window.showToast;
                 window.showToast = function(){}; 
 
-                for (let l of sleeperLeagues) {
+                for (let i = 0; i < sleeperLeagues.length; i++) {
+                    let l = sleeperLeagues[i];
+                    // Mirrors importAllSleeperLeagues' per-league progress text below, instead
+                    // of a static "Syncing All..." for the whole loop regardless of how many
+                    // leagues or how long it takes.
+                    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing ${i + 1}/${sleeperLeagues.length}...`;
                     // isRefresh = true, suppressErrorToast = true, showChangeSummary = true, skipSave = true
                     let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true, true);
                     
@@ -3929,7 +3952,8 @@ window.syncAllLeagues = async function(btn) {
         let optimizedStarterIds = starters.filter(s => s.player).map(s => s.player.id);
         // The season-long manual lock list -- used only to distinguish "manually locked" from
         // "auto-locked because the game already started" so the right lock control renders (see
-        // lockControl below); toggleLock itself remains the single source of truth for this list.
+        // lockControl below). Written via setPlayerLockState, by toggleLock (the lock icon) and
+        // by initiateSwap (keeping a manual swap sticky across the next full recompute).
         let locksList = State.lockedPlayersMap[State.activeLeagueId] || [];
 
         let html = "";
