@@ -3455,6 +3455,26 @@ function applyMarketSettingsToUI() {
         window.optimizeLineup(true);
     };
 
+    // True if `pos` is allowed to occupy a slot of type `slotType` ('QB', 'RB', 'WR', 'TE',
+    // 'FLEX', 'SFLEX', 'K', or 'DEF' -- i.e. a starter slot label with its trailing number
+    // stripped, same convention used everywhere else in this file). Mirrors the exact
+    // eligibility rules fillSlot()/the SFLEX loop use when building the lineup in the first
+    // place, so a manual swap can never produce a slot/position combination the optimizer
+    // itself would never have created.
+    function slotAcceptsPos(slotType, pos) {
+        switch (slotType) {
+            case 'QB': return pos === 'QB';
+            case 'RB': return pos === 'RB';
+            case 'WR': return pos === 'WR';
+            case 'TE': return pos === 'TE';
+            case 'FLEX': return ['RB', 'WR', 'TE'].includes(pos);
+            case 'SFLEX': return ['QB', 'RB', 'WR', 'TE'].includes(pos);
+            case 'K': return pos === 'K';
+            case 'DEF': return pos === 'DEF';
+            default: return false;
+        }
+    }
+
     window.initiateSwap = function(playerId) {
         if (State.swapSourceId === null) { State.swapSourceId = playerId; } 
         else if (State.swapSourceId === playerId) { State.swapSourceId = null; } 
@@ -3468,6 +3488,24 @@ function applyMarketSettingsToUI() {
 
             let p1Obj = (p1StarterIdx !== -1) ? starters[p1StarterIdx].player : bench[p1BenchIdx];
             let p2Obj = (p2StarterIdx !== -1) ? starters[p2StarterIdx].player : bench[p2BenchIdx];
+
+            // Reject the swap up front if either player would land in a starter slot their
+            // position doesn't fit (e.g. a bench DEF swapped into a QB slot). Bench slots have
+            // no position identity of their own, so a player moving TO the bench never fails
+            // this check -- only a move INTO a starter slot is constrained.
+            let p1TargetSlotType = p2StarterIdx !== -1 ? starters[p2StarterIdx].slot.replace(/[0-9]/g, '') : null;
+            let p2TargetSlotType = p1StarterIdx !== -1 ? starters[p1StarterIdx].slot.replace(/[0-9]/g, '') : null;
+            let p1Fits = !p1TargetSlotType || slotAcceptsPos(p1TargetSlotType, p1Obj.pos);
+            let p2Fits = !p2TargetSlotType || slotAcceptsPos(p2TargetSlotType, p2Obj.pos);
+
+            if (!p1Fits || !p2Fits) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(`Can't swap ${p1Obj.name} (${p1Obj.pos}) with ${p2Obj.name} (${p2Obj.pos}) -- that position doesn't fit that slot.`, { isError: true });
+                }
+                State.swapSourceId = null;
+                renderLineupUI();
+                return;
+            }
 
             if (p1StarterIdx !== -1 && p2StarterIdx !== -1) { starters[p1StarterIdx].player = p2Obj; starters[p2StarterIdx].player = p1Obj; } 
             else if (p1StarterIdx !== -1 && p2BenchIdx !== -1) { starters[p1StarterIdx].player = p2Obj; bench[p2BenchIdx] = p1Obj; }
@@ -3974,6 +4012,16 @@ window.syncAllLeagues = async function(btn) {
         // taking up space on the common case where nobody has manually locked anyone.
         if (locksList.length > 0) {
             html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" onclick="unlockAllPlayers()" title="Clears season-long manual locks in this league only -- does not affect players auto-locked because their game already started">Unlock All (${locksList.length})</button></div>`;
+        }
+
+        // While a swap is pending, the source player's row gets an amber highlight (see
+        // lockClass below) but nothing else on screen says what to actually do next --
+        // this spells it out instead of leaving it to be inferred from one highlighted row.
+        if (State.swapSourceId) {
+            let swapSourcePlayer = (starters.find(s => s.player && s.player.id === State.swapSourceId) || {}).player
+                || benchPool.find(p => p.id === State.swapSourceId);
+            let swapSourceName = swapSourcePlayer ? swapSourcePlayer.name : 'this player';
+            html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: #f59e0b;">Tap another player's ⇄ to swap with ${escapeHtml(swapSourceName)}, or tap Cancel to stop.</div>`;
         }
 
         starters.forEach(s => {
