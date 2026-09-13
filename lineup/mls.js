@@ -69,6 +69,16 @@
         syncLogs: JSON.parse(localStorage.getItem('mls_sync_logs')) || [],
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
+        // Per-league, per-week list of player ids the person has explicitly told the auto-lock
+        // feature (see optimizeLineup) to back off of -- the failsafe for when gameTimesByTeam
+        // or Sleeper's synced starters turn out to be wrong about a specific player. Deliberately
+        // NOT part of lockedPlayersMap: that list is a season-long, user-curated set of "always
+        // start this player" decisions, while this is a narrow, week-scoped correction for one
+        // player's auto-detected state. Shape: { [leagueId]: { week: N, ids: [...] } } -- the
+        // week is stored alongside the ids so a stale override from a prior week (which would no
+        // longer make sense once gameTimesByTeam has moved on) is ignored rather than silently
+        // carried forward; see isAutoLockOverridden below.
+        autoLockOverridesMap: JSON.parse(localStorage.getItem('mls_autolock_overrides_map')) || {},
         manualStartersMap: JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {},
         manualBenchMap: JSON.parse(localStorage.getItem('mds_season_manual_bench')) || {},
         swapSourceId: null,
@@ -3283,6 +3293,64 @@ function applyMarketSettingsToUI() {
         renderLineupUI();
     };
 
+    // True if the person has explicitly overridden auto-lock for this player this week (see
+    // window.overrideAutoLock below). Scoped to the current week -- an override from a prior
+    // week is stale (that week's kickoff data no longer applies) and is ignored here rather than
+    // needing to be manually cleaned up.
+    function isAutoLockOverridden(leagueId, playerId) {
+        let entry = State.autoLockOverridesMap[leagueId];
+        if (!entry || entry.week !== State.currentNflWeek) return false;
+        return entry.ids.includes(playerId);
+    }
+
+    // The failsafe for auto-lock (see optimizeLineup): if gameTimesByTeam or Sleeper's synced
+    // starters ever get a specific player wrong -- a postponed/rescheduled game, a stale sync,
+    // etc -- this lets the person pull that ONE player back into normal (unlocked) territory so
+    // the optimizer will freely reconsider them again, without touching anything else about the
+    // lineup or affecting the season-long manual lock list.
+    window.overrideAutoLock = function(playerId) {
+        if (!State.activeLeagueId) return;
+        let starters = State.manualStartersMap[State.activeLeagueId] || [];
+        let bench = State.manualBenchMap[State.activeLeagueId] || [];
+        let found = starters.find(s => s.player && s.player.id === playerId);
+        let playerName = found ? found.player.name : (bench.find(p => p.id === playerId) || {}).name || 'This player';
+
+        if (!window.confirm(`${playerName}'s game shows as already started. Only override this if that's wrong -- doing so lets the optimizer freely move or bench them again.`)) return;
+
+        let entry = State.autoLockOverridesMap[State.activeLeagueId];
+        if (!entry || entry.week !== State.currentNflWeek) entry = { week: State.currentNflWeek, ids: [] };
+        if (!entry.ids.includes(playerId)) entry.ids.push(playerId);
+        State.autoLockOverridesMap[State.activeLeagueId] = entry;
+        localStorage.setItem('mls_autolock_overrides_map', JSON.stringify(State.autoLockOverridesMap));
+
+        if (typeof window.showToast === 'function') {
+            window.showToast("Auto-lock removed -- re-optimizing");
+        }
+        window.optimizeLineup(true);
+    };
+
+    // Bulk-clears the season-long MANUAL lock list for the active league only -- deliberately
+    // does not touch auto-locks (see optimizeLineup/overrideAutoLock above): a player whose game
+    // has genuinely already kicked off should stay pinned even after this, since un-pinning them
+    // would let the optimizer bench or reshuffle someone who's already locked into that outcome
+    // in real life. This is for clearing out manual picks made earlier in the season/week, not
+    // for correcting auto-lock mistakes -- overrideAutoLock (the per-player control on an
+    // auto-locked row) is the right tool for that instead.
+    window.unlockAllPlayers = function() {
+        if (!State.activeLeagueId) return;
+        let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
+        if (locks.length === 0) return;
+        if (!window.confirm(`Unlock all ${locks.length} manually locked player(s) in this league?`)) return;
+
+        State.lockedPlayersMap[State.activeLeagueId] = [];
+        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
+
+        if (typeof window.showToast === 'function') {
+            window.showToast("All manual locks cleared -- re-optimizing");
+        }
+        window.optimizeLineup(true);
+    };
+
     window.initiateSwap = function(playerId) {
         if (State.swapSourceId === null) { State.swapSourceId = playerId; } 
         else if (State.swapSourceId === playerId) { State.swapSourceId = null; } 
@@ -3439,7 +3507,8 @@ function applyMarketSettingsToUI() {
         let scoredRoster = league.roster.map(p => {
             let rObj = activeDataSet.find(rk => rk.cleanName === p.cleanName);
             let manualLocked = locks.includes(p.id);
-            let autoLocked = !manualLocked && hasKickedOff(p) && (sleeperStarterIds.includes(p.id) || prevStartingIds.has(p.id));
+            let overridden = isAutoLockOverridden(State.activeLeagueId, p.id);
+            let autoLocked = !manualLocked && !overridden && hasKickedOff(p) && (sleeperStarterIds.includes(p.id) || prevStartingIds.has(p.id));
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
@@ -3764,6 +3833,12 @@ window.syncAllLeagues = async function(btn) {
             }
         }
 
+        // Only shown when there's actually something to clear -- avoids a dead/no-op button
+        // taking up space on the common case where nobody has manually locked anyone.
+        if (locksList.length > 0) {
+            html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" onclick="unlockAllPlayers()" title="Clears season-long manual locks in this league only -- does not affect players auto-locked because their game already started">Unlock All (${locksList.length})</button></div>`;
+        }
+
         starters.forEach(s => {
             let slotType = s.slot.replace(/[0-9]/g, '');
 
@@ -3776,13 +3851,14 @@ window.syncAllLeagues = async function(btn) {
                 if (State.swapSourceId === p.id) lockClass += " swapping";
 
                 // Auto-locked (game already started -- see hasKickedOff/optimizeLineup) gets a
-                // non-interactive indicator instead of the normal toggle button. Letting someone
-                // click it would call toggleLock(), which -- since this player was never added to
+                // distinct control instead of the normal toggle button: clicking the normal
+                // button would call toggleLock(), which -- since this player was never added to
                 // the season-long lock list -- would actually CREATE a manual lock rather than
-                // clear anything, the opposite of what tapping a "locked" icon implies. There's
-                // simply nothing to toggle once a game has already kicked off.
+                // clear anything, the opposite of what tapping a "locked" icon implies. Instead
+                // this calls overrideAutoLock(), the failsafe for when the underlying kickoff/
+                // Sleeper data turns out to be wrong about this specific player.
                 let lockControl = (p.autoLocked && !locksList.includes(p.id))
-                    ? `<span class="mls-btn-sm" title="Game in progress -- slot locked automatically" style="padding:0 4px; display:inline-flex; cursor: default;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>`
+                    ? `<button class="mls-btn-sm" title="Game in progress -- tap to override if this is wrong" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
                     : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>`;
 
                 let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
