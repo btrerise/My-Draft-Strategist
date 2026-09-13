@@ -3518,18 +3518,28 @@ function applyMarketSettingsToUI() {
         // (b) were already established as a starter, checked against two sources: Sleeper's own
         // last-synced starting lineup (the ground truth for what actually happened in real
         // life, and the only signal available the very first time this is run in a given week)
-        // and this app's own previous optimizer output (a fallback for when Sleeper data is
-        // stale or missing). A bench player whose game has already passed is NOT auto-locked --
+        // and this app's own previous optimizer output (a fallback for when Sleeper starter
+        // data is missing entirely -- see isSleeperStarter below for exactly when each source
+        // applies). A bench player whose game has already passed is NOT auto-locked --
         // they were never started, so there's nothing to preserve.
         let sleeperStarterIds = getValidSleeperStarterIds(league);
         let prevStarters = State.manualStartersMap[State.activeLeagueId] || [];
         let prevStartingIds = new Set(prevStarters.filter(s => s.player).map(s => s.player.id));
 
+        // Sleeper's synced starting lineup is the ground truth for "did this player actually
+        // start in real life." prevStartingIds (this app's own prior pick) only steps in when
+        // we have no Sleeper starter data at all -- it must NOT be OR'd in alongside real
+        // Sleeper data, or a player this app recommended starting (but who Sleeper shows on
+        // the bench) gets wrongly auto-locked into the lineup the moment their game kicks off.
+        let isSleeperStarter = p => sleeperStarterIds.length > 0
+            ? sleeperStarterIds.includes(p.id)
+            : prevStartingIds.has(p.id);
+
         let scoredRoster = league.roster.map(p => {
             let rObj = activeDataSet.find(rk => rk.cleanName === p.cleanName);
             let manualLocked = locks.includes(p.id);
             let overridden = isAutoLockOverridden(State.activeLeagueId, p.id);
-            let autoLocked = !manualLocked && !overridden && hasKickedOff(p) && (sleeperStarterIds.includes(p.id) || prevStartingIds.has(p.id));
+            let autoLocked = !manualLocked && !overridden && hasKickedOff(p) && isSleeperStarter(p);
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
