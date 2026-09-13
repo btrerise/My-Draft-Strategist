@@ -416,9 +416,10 @@
                     <div id="ros-input-wrap-K" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="rosFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                     <div id="ros-input-wrap-DEF" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="rosFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                 </div>
-                <button class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="processMultiRankings('ros', 'rosSuccessMsg')">Combine & Process Files</button>
+                <button id="rosMultiProcessBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="processMultiRankings('ros', 'rosSuccessMsg')">Combine & Process Files</button>
             </div>
 
+            <div id="rosProcessingStatus" class="mls-upload-processing"></div>
             <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
 
             <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0;">
@@ -608,9 +609,10 @@
                     <div id="weekly-input-wrap-K" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="weeklyFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                     <div id="weekly-input-wrap-DEF" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="weeklyFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                 </div>
-                <button class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="processMultiRankings('weekly', 'weeklySuccessMsg')">Combine & Process Files</button>
+                <button id="weeklyMultiProcessBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="processMultiRankings('weekly', 'weeklySuccessMsg')">Combine & Process Files</button>
             </div>
 
+            <div id="weeklyProcessingStatus" class="mls-upload-processing"></div>
             <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
         </div>
     </section>

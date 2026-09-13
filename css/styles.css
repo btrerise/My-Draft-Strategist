@@ -1777,6 +1777,20 @@ body {
     margin-top: 0.75rem;
 }
 
+/* Rankings upload in-progress indicator -- shown between file selection and the preview
+   modal appearing (or an error toast), so a slow .xlsx parse never looks like nothing
+   happened. Empty/hidden by default; setUploadStatus() in mls.js fills and toggles it. */
+.mls-upload-processing {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.75rem;
+}
+
 .file-input {
     cursor: pointer;
     padding: 0.6rem;

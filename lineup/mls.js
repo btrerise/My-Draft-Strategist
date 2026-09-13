@@ -2318,7 +2318,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     };
 
-    const parseFiles = async (filesWithContext, isWeekly, successMsgId) => {
+    const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
         let combinedPlayers = {};
         let hasNewSos = false;
 
@@ -2497,20 +2497,33 @@ function attachScoutSuggestionHandler(outputElId) {
             }
         }
 
-        await Promise.all(filesWithContext.map(f => parseSingleFile(f)));
+        const total = filesWithContext.length;
+        let completed = 0;
+        if (typeof onProgress === 'function') onProgress(completed, total);
 
-        const parsedData = Object.values(combinedPlayers);
-        if (parsedData.length === 0) {
-            if (typeof window.showToast === 'function') {
-                window.showToast("Couldn't find any players in that file. Double check the format and try again.", { isError: true });
-            }
-            return;
-        }
+        await Promise.all(filesWithContext.map(f => parseSingleFile(f).then(() => {
+            completed++;
+            if (typeof onProgress === 'function') onProgress(completed, total);
+        })));
 
         const type = isWeekly ? 'weekly' : 'ros';
         const fileInputIds = filesWithContext.map(f =>
             f.context === 'SINGLE' ? `${type}FileInput` : `${type}FileInput-${f.context}`
         );
+
+        const parsedData = Object.values(combinedPlayers);
+        if (parsedData.length === 0) {
+            // Clear the file input(s) so the failed selection doesn't linger on screen
+            // looking like it might still be "in progress" or successfully attached.
+            fileInputIds.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) input.value = '';
+            });
+            if (typeof window.showToast === 'function') {
+                window.showToast("Couldn't find any players in that file. Double check the format and try again.", { isError: true });
+            }
+            return;
+        }
 
         openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds });
     };
@@ -2603,12 +2616,47 @@ function attachScoutSuggestionHandler(outputElId) {
         if (overlay) overlay.style.display = 'none';
     };
 
+    // --- UPLOAD PROCESSING INDICATOR ---
+    // Same spinner icon already used for the Sleeper sync buttons elsewhere in the app,
+    // reused here so a rankings upload gives the same kind of "something is happening"
+    // signal instead of going silent between file-select and the preview modal appearing.
+    const UPLOAD_SPINNER_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner" style="flex-shrink:0;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>`;
+
+    // Disables a rankings section's file input(s) for the duration of a parse (type is
+    // 'ros' or 'weekly'), so a second file selection can't fire a second overlapping parse
+    // while the first is still running -- shared by both the single- and multi-file paths.
+    function setUploadInputsDisabled(type, disabled) {
+        const singleInput = document.getElementById(`${type}FileInput`);
+        if (singleInput) singleInput.disabled = disabled;
+        ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'].forEach(pos => {
+            const posInput = document.getElementById(`${type}FileInput-${pos}`);
+            if (posInput) posInput.disabled = disabled;
+        });
+    }
+
+    // Shows/hides the inline "Processing..." status line used by the single-file path
+    // (which has no button of its own to carry a spinner -- selecting a file kicks off
+    // the parse directly). The multi-file path shows its own progress on the submit
+    // button instead (see processMultiRankings), so it doesn't use this.
+    function setUploadStatus(type, isProcessing, label) {
+        const statusEl = document.getElementById(`${type}ProcessingStatus`);
+        if (!statusEl) return;
+        statusEl.innerHTML = isProcessing ? `${UPLOAD_SPINNER_SVG}<span>${escapeHtml(label || 'Processing...')}</span>` : '';
+        statusEl.style.display = isProcessing ? 'flex' : 'none';
+    }
+
     window.processSingleRankingUpload = function(type, successMsgId) {
         const fileInput = document.getElementById(`${type}FileInput`);
         if (!fileInput || !fileInput.files[0]) return;
         
         const isWeekly = type === 'weekly';
-        parseFiles([{ file: fileInput.files[0], context: 'SINGLE' }], isWeekly, successMsgId);
+        setUploadInputsDisabled(type, true);
+        setUploadStatus(type, true);
+        parseFiles([{ file: fileInput.files[0], context: 'SINGLE' }], isWeekly, successMsgId)
+            .finally(() => {
+                setUploadInputsDisabled(type, false);
+                setUploadStatus(type, false);
+            });
     };
 
     window.processMultiRankings = function(type, successMsgId) {
@@ -2628,7 +2676,20 @@ function attachScoutSuggestionHandler(outputElId) {
         }
 
         const isWeekly = type === 'weekly';
-        parseFiles(filesWithContext, isWeekly, successMsgId);
+        const btn = document.getElementById(`${type}MultiProcessBtn`);
+        const originalBtnContent = btn ? btn.innerHTML : null;
+        if (btn) btn.disabled = true;
+        setUploadInputsDisabled(type, true);
+
+        const updateProgress = (done, total) => {
+            if (btn) btn.innerHTML = `${UPLOAD_SPINNER_SVG} Processing ${done}/${total}...`;
+        };
+        updateProgress(0, filesWithContext.length);
+
+        parseFiles(filesWithContext, isWeekly, successMsgId, updateProgress).finally(() => {
+            if (btn) { btn.disabled = false; btn.innerHTML = originalBtnContent; }
+            setUploadInputsDisabled(type, false);
+        });
     };
 
     const rosFileEl = document.getElementById('rosFileInput');
