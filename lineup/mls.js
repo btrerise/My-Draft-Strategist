@@ -2343,10 +2343,27 @@ function attachScoutSuggestionHandler(outputElId) {
                             });
                         } catch (err) {
                             console.error("Error reading Excel file:", err);
+                            if (typeof window.showToast === 'function') {
+                                window.showToast(`Couldn't read "${file.name}" -- it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
+                            }
+                        }
+                        resolve();
+                    };
+                    reader.onerror = () => {
+                        console.error("Error reading file:", file.name);
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                         }
                         resolve();
                     };
                     reader.readAsArrayBuffer(file);
+                }, () => {
+                    // SheetJS itself failed to load -- see loadSheetJS's onerror above.
+                    console.error("Failed to load SheetJS library");
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
+                    }
+                    resolve();
                 });
             } else {
                 Papa.parse(file, {
@@ -4372,13 +4389,21 @@ window.runGlobalInjuryAudit = async function(btn) {
     // Lazy-loads the SheetJS (XLSX) library on first use, so pages that never upload an .xlsx
     // ranking file don't pay for it. Kept inside the module (rather than as a bare global) like
     // every other helper here, since this file isn't shared with any other page.
-    function loadSheetJS(callback) {
+    function loadSheetJS(callback, onError) {
         if (typeof XLSX !== 'undefined') {
             callback();
         } else {
             const script = document.createElement('script');
             script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
             script.onload = callback;
+            // Previously had no failure path at all: if the CDN fetch failed (offline,
+            // ad-blocker, cdnjs outage), the onload callback simply never fired and the
+            // .xlsx upload dead-ended with zero feedback -- the user just saw nothing
+            // happen. Callers now get a chance to surface that instead of hanging forever.
+            script.onerror = () => {
+                script.remove();
+                if (typeof onError === 'function') onError();
+            };
             document.head.appendChild(script);
         }
     }
