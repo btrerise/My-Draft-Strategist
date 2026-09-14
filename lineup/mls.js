@@ -3,6 +3,14 @@
  * Refactored for modular encapsulation, performance, and clean architecture.
  */
 
+// Pilot ES module extraction (see rankingsParser.js for rationale) -- this is the only
+// piece of mls.js currently split out. import statements must live at a module's top
+// level, which is why this sits above the IIFE rather than inside it; the imported
+// function is still just a normal binding the IIFE's closures can reference below.
+import { parseRankingsFiles } from './rankingsParser.js';
+import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap } from './sleeperApi.js';
+import { fetchMarketConsensusData } from './marketDataApi.js';
+
 (function () {
     'use strict';
 
@@ -106,8 +114,7 @@
     // upgrades the lineup optimizer's bye-week awareness -- if it's slow or fails, the app works
     // exactly as it did before this existed.
     function refreshCurrentNflWeek() {
-        fetch('https://api.sleeper.app/v1/state/nfl')
-            .then(res => res.ok ? res.json() : null)
+        getNflState()
             .then(data => {
                 if (data && typeof data.week === 'number') {
                     State.currentNflWeek = data.week;
@@ -432,26 +439,20 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-// Consolidated Sleeper DB Cache
-let _sleeperPlayerMapCache = null;
-let _sleeperPlayerMapPromise = null;
-function getSleeperPlayerMap(options = {}) {
-    if (_sleeperPlayerMapCache && !options.forceRefresh) return Promise.resolve(_sleeperPlayerMapCache);
-    if (_sleeperPlayerMapPromise && !options.forceRefresh) return _sleeperPlayerMapPromise;
-
-    _sleeperPlayerMapPromise = fetch('https://api.sleeper.app/v1/players/nfl')
-        .then(res => res.json())
-        .then(data => {
-            _sleeperPlayerMapCache = data;
-            _sleeperPlayerMapPromise = null;
-            return data;
-        })
-        .catch(err => {
-            _sleeperPlayerMapPromise = null;
-            throw err;
-        });
-    return _sleeperPlayerMapPromise;
+// Parses an HTML string into a DocumentFragment using a detached <template>, then swaps
+// it into `container` in one operation. The parsing happens off-DOM (the template's
+// content is never attached to the live tree), and the fragment's children are moved
+// into place in a single call -- avoids the container sitting attached-but-empty
+// mid-rebuild the way `container.innerHTML = html` does.
+function renderHTMLInto(container, html) {
+    if (!container) return;
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    container.replaceChildren(template.content);
 }
+
+// --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---
+// Moved to sleeperApi.js -- getSleeperPlayerMap is now imported at the top of this file.
 
 // Autocomplete Search Index
 let _playerSearchIndexPromise = null;
@@ -1211,18 +1212,14 @@ function attachScoutSuggestionHandler(outputElId) {
         return `${names.slice(0, 4).join(', ')} +${names.length - 4} more`;
     }
 
-    async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false, showChangeSummary = false) {
+    async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false, showChangeSummary = false, skipSave = false) {
         try {
             let userId = preloaded.userId;
             if (!userId) {
-                const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
-                if (!userRes.ok) throw new Error("User not found.");
-                userId = (await userRes.json()).user_id;
+                userId = (await getSleeperUser(username)).user_id;
             }
 
-            const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
-            if (!leagueRes.ok) throw new Error("League ID not found.");
-            const leagueData = await leagueRes.json();
+            const leagueData = await getSleeperLeague(leagueId);
             let leagueName = leagueData.name || "My League";
             
             let formatBadge = "";
@@ -1254,13 +1251,11 @@ function attachScoutSuggestionHandler(outputElId) {
             }
 
             if (btn) btn.innerText = "Mapping League...";
-            const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
-            const usersData = await usersRes.json();
+            const usersData = await getSleeperLeagueUsers(leagueId);
             let userMap = {};
             usersData.forEach(u => userMap[u.user_id] = u.display_name);
 
-            const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
-            const rosters = await rosterRes.json();
+            const rosters = await getSleeperLeagueRosters(leagueId);
             
             if (btn) btn.innerText = "Loading Players...";
             const playerMap = preloaded.playerMap || await getSleeperPlayerMap();
@@ -1353,8 +1348,13 @@ function attachScoutSuggestionHandler(outputElId) {
             else State.leagues.push(leagueObj);
 
             State.activeLeagueId = leagueId;
-            localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-            localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+            // Bulk callers (importAllSleeperLeagues, syncAllLeagues) pass skipSave=true and
+            // write to localStorage once after their loop finishes, instead of every iteration
+            // serializing the entire State.leagues array to disk.
+            if (!skipSave) {
+                localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+                localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+            }
 
             if (!isRefresh) {
                 const nLeagueNameEl = document.getElementById('newLeagueName');
@@ -1393,7 +1393,13 @@ function attachScoutSuggestionHandler(outputElId) {
         const username = document.getElementById('sleeperUsername')?.value.trim() || "";
         const leagueId = document.getElementById('sleeperLeagueId')?.value.trim() || "";
         if (!username || !leagueId) { if (window.showToast) window.showToast("Please enter both Sleeper Username and League ID to sync.", { isError: true }); return; }
-        if (btn) { btn.innerText = "Syncing..."; btn.style.backgroundColor = "var(--accent-color, #8b5cf6)"; }
+        // Just the label changes here -- flashButton (called inside processSleeperData once
+        // the sync finishes) handles the actual color flash and restores the button to its
+        // "Sync Sleeper" text afterward. Previously this line also force-set an inline
+        // background color, which flashButton would then capture as the color to restore to
+        // once its flash finished -- permanently overriding the button's real ".btn-blue" CSS
+        // color with this purple for the rest of the session after the first sync.
+        if (btn) { btn.innerText = "Syncing..."; }
         processSleeperData(username, leagueId, btn, false);
     };
 
@@ -1415,21 +1421,16 @@ function attachScoutSuggestionHandler(outputElId) {
         if (btn) { btn.innerText = "Finding your leagues..."; btn.disabled = true; btn.style.opacity = "0.7"; }
 
         try {
-            const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
-            if (!userRes.ok) throw new Error("Sleeper username not found.");
-            const userId = (await userRes.json()).user_id;
+            const userId = (await getSleeperUser(username)).user_id;
 
             // Sleeper's "current" season isn't necessarily the calendar year during the
             // offseason -- league_season (not the more general "season" field) is what
             // Sleeper's own docs describe as the active season for league membership, and
             // it shifts earlier than "season" during the transition into a new year.
-            const stateRes = await fetch(`https://api.sleeper.app/v1/state/nfl`);
-            const stateData = stateRes.ok ? await stateRes.json() : null;
+            const stateData = await getNflState();
             const season = stateData?.league_season || stateData?.season || String(new Date().getFullYear());
 
-            const leaguesRes = await fetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${season}`);
-            if (!leaguesRes.ok) throw new Error("Could not fetch leagues for this user.");
-            const leagues = await leaguesRes.json();
+            const leagues = await getSleeperUserLeagues(userId, season);
 
             if (!leagues || leagues.length === 0) {
                 if (window.showToast) window.showToast(`No ${season} NFL leagues found for that username.`, { isError: true });
@@ -1444,9 +1445,13 @@ function attachScoutSuggestionHandler(outputElId) {
             let failCount = 0;
             for (let i = 0; i < leagues.length; i++) {
                 if (btn) btn.innerText = `Syncing ${i + 1}/${leagues.length}...`;
-                const ok = await processSleeperData(username, leagues[i].league_id, null, true, preloaded, true);
+                const ok = await processSleeperData(username, leagues[i].league_id, null, true, preloaded, true, false, true);
                 if (ok) successCount++; else failCount++;
             }
+
+            // Single write after the loop instead of one localStorage.setItem per league.
+            localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+            localStorage.setItem('mds_season_active_league', State.activeLeagueId);
 
             refreshLeagueDropdown();
             if (State.leagues.length > 0 && !State.activeLeagueId) {
@@ -1696,26 +1701,39 @@ function attachScoutSuggestionHandler(outputElId) {
             let getResults = targetNames.map(n => buildCard(n, "GET"));
             let giveResults = sellNames.map(n => buildCard(n, "GIVE"));
 
-            // --- TRADE FAIRNESS VERDICT(S) ---
-            // Renders up to two independent verdicts ahead of the player lists: one from the
-            // user's own custom ROS rankings (the default/primary lens -- no third-party API
-            // needed, since ROS rankings are a core input most users already have from the
-            // Roster tab), and one from market consensus if Market Value data has been loaded
-            // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
-            // user see "the market" and "how I personally value this" can disagree.
-            let verdictHTML = renderTradeVerdict(
-                "Your Rankings",
-                "This value isn't something you entered -- it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
-                getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
-            );
-            verdictHTML += renderTradeVerdict(
-                "Market Consensus",
-                "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value -- not the source's official number.",
-                getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
-            );
+            // A "trade" with only one side filled in isn't a trade -- it's an incomplete
+            // comparison, but renderTradeVerdict below has no way to know that (an empty side
+            // just totals to 0, which reads as a real, decisive "Favors You"/"Favors Them"
+            // verdict). Catch it here instead of letting a misleading banner through; the
+            // per-player cards below still render normally either way, since checking one
+            // side's value on its own is still useful.
+            let isOneSided = (targetNames.length === 0) !== (sellNames.length === 0);
 
-            if (!verdictHTML) {
-                verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
+            let verdictHTML;
+            if (isOneSided) {
+                verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Enter players on both sides to get a fairness verdict -- right now only one side has players.</div>`;
+            } else {
+                // --- TRADE FAIRNESS VERDICT(S) ---
+                // Renders up to two independent verdicts ahead of the player lists: one from the
+                // user's own custom ROS rankings (the default/primary lens -- no third-party API
+                // needed, since ROS rankings are a core input most users already have from the
+                // Roster tab), and one from market consensus if Market Value data has been loaded
+                // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
+                // user see "the market" and "how I personally value this" can disagree.
+                verdictHTML = renderTradeVerdict(
+                    "Your Rankings",
+                    "This value isn't something you entered -- it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
+                    getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
+                );
+                verdictHTML += renderTradeVerdict(
+                    "Market Consensus",
+                    "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value -- not the source's official number.",
+                    getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
+                );
+
+                if (!verdictHTML) {
+                    verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
+                }
             }
             html += verdictHTML;
 
@@ -2297,182 +2315,33 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     };
 
-    const parseFiles = async (filesWithContext, isWeekly, successMsgId) => {
-        let combinedPlayers = {};
-        let hasNewSos = false;
+    const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
+        const { parsedData, hasNewSos, sosUpdates } = await parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress });
 
-        const parseSingleFile = (fileObj) => new Promise((resolve) => {
-            const file = fileObj.file;
-            const parseContext = fileObj.context; // 'SINGLE', 'QB', 'FLEX', etc.
-
-            if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
-                loadSheetJS(() => {
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        try {
-                            const data = new Uint8Array(e.target.result);
-                            const workbook = XLSX.read(data, { type: 'array' });
-                            workbook.SheetNames.forEach(sheetName => {
-                                const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
-                                Papa.parse(csvStr, {
-                                    header: false,
-                                    skipEmptyLines: true,
-                                    complete: results => parseRowsIntoCombined(results.data, parseContext)
-                                });
-                            });
-                        } catch (err) {
-                            console.error("Error reading Excel file:", err);
-                        }
-                        resolve();
-                    };
-                    reader.readAsArrayBuffer(file);
-                });
-            } else {
-                Papa.parse(file, {
-                    header: false,
-                    skipEmptyLines: true,
-                    complete: results => {
-                        parseRowsIntoCombined(results.data, parseContext);
-                        resolve();
-                    }
-                });
-            }
+        // The parser module returns SoS data rather than writing to State directly (it has no
+        // access to State at all -- see rankingsParser.js), so it's merged in here instead.
+        Object.entries(sosUpdates).forEach(([team, posMap]) => {
+            if (!State.sosMap[team]) State.sosMap[team] = {};
+            Object.assign(State.sosMap[team], posMap);
         });
-
-        function parseRowsIntoCombined(rows, context) {
-            if (!rows || rows.length < 1) return;
-
-            let headers = rows[0].map(h => String(h).trim().toLowerCase());
-            
-            // Check if this is a combined horizontal sheet (either old format or new 'wk1' format)
-            let isHorizontal = (context === 'SINGLE') && headers.some(h => 
-                h.includes('quarterback') || 
-                h.includes('running back') || 
-                h === 'flex' || 
-                h.includes('qb player') || 
-                h.includes('rb player') ||
-                h.includes('flex player')
-            );
-
-            if (isHorizontal) {
-                headers.forEach((h, idx) => {
-                    // Name columns end in 'player', or are exactly 'def team' for defense
-                    if (h.includes('player') || h === 'def team') {
-                        let rankColIdx = idx - 1;
-                        let isFlexCol = h.includes('flex');
-                        let posMatch = h.match(/(qb|rb|wr|te|k)\s+player/);
-                        let isDefCol = (h === 'def team');
-                        let isPosCol = (posMatch !== null) || isDefCol;
-
-                        if ((isFlexCol || isPosCol) && rankColIdx >= 0) {
-                            for (let r = 1; r < rows.length; r++) {
-                                let pName = rows[r][idx];
-                                let pRank = rows[r][rankColIdx];
-                                
-                                if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
-                                    let clean = normalizeName(pName.trim());
-                                    if (!combinedPlayers[clean]) {
-                                        combinedPlayers[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
-                                    }
-                                    let rVal = parseInt(pRank);
-                                    if (isFlexCol) {
-                                        combinedPlayers[clean].flexRank = rVal;
-                                        combinedPlayers[clean].rank = rVal;
-                                    } else {
-                                        combinedPlayers[clean].posRank = rVal;
-                                        if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = rVal;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            } else {
-            // Vertical Parsing Engine
-                let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
-                let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
-                let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
-                let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank' || h === 'positional rank');
-
-                // Include position names as valid player name headers
-                const validNameHeaders = ['player', 'name', 'player name', 'quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense', 'flex'];
-                let hasHeaders = headers.some(h => validNameHeaders.includes(h));
-                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'tier') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
-                let nameColIdx = hasHeaders ? headers.findIndex(h => validNameHeaders.includes(h)) : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
-
-                let startIndex = hasHeaders ? 1 : 0;
-
-                for (let i = startIndex; i < rows.length; i++) {
-                    let nameStr = rows[i][nameColIdx];
-                    if (nameStr && nameStr.trim()) {
-                        let clean = normalizeName(nameStr.trim());
-                        
-                        let overallRankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
-                        if (isNaN(overallRankVal)) overallRankVal = i + 1 - startIndex;
-                        
-                        let extractedPosRank = 999;
-                        if (explicitPosRankColIdx !== -1 && rows[i][explicitPosRankColIdx]) {
-                            extractedPosRank = parseInt(rows[i][explicitPosRankColIdx]);
-                            if (isNaN(extractedPosRank)) extractedPosRank = 999;
-                        }
-
-                        if (!combinedPlayers[clean]) {
-                            combinedPlayers[clean] = { name: nameStr.trim(), cleanName: clean, rank: 999, posRank: 999, flexRank: 999 };
-                        }
-
-                        // Determine where ranks go based on user UI selection
-                        if (context === 'FLEX') {
-                            combinedPlayers[clean].flexRank = overallRankVal;
-                            combinedPlayers[clean].rank = overallRankVal; 
-                        } else if (context !== 'SINGLE') {
-                            // Specific position like QB, RB
-                            combinedPlayers[clean].posRank = overallRankVal;
-                            if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = overallRankVal;
-                        } else {
-                            // Single File
-                            combinedPlayers[clean].rank = overallRankVal;
-                            if (extractedPosRank !== 999) {
-                                combinedPlayers[clean].posRank = extractedPosRank;
-                            } else if (combinedPlayers[clean].posRank === 999) {
-                                combinedPlayers[clean].posRank = overallRankVal; // Fallback
-                            }
-                            combinedPlayers[clean].flexRank = overallRankVal; 
-                        }
-
-                        // SoS Extraction
-                        if (sosColIdx !== -1 && teamColIdx !== -1 && posColIdx !== -1) {
-                            let teamStr = rows[i][teamColIdx] ? rows[i][teamColIdx].toString().trim().toUpperCase() : "";
-                            let posStr = rows[i][posColIdx] ? rows[i][posColIdx].toString().trim().toUpperCase() : "";
-                            let sosVal = rows[i][sosColIdx] ? rows[i][sosColIdx].toString().replace(/[^0-9]/g, '') : "";
-
-                            if (teamStr && posStr && sosVal && NFL_TEAMS.includes(teamStr)) {
-                                let posGroup = posStr.includes('QB') ? 'QB' : posStr.includes('RB') ? 'RB' : posStr.includes('WR') ? 'WR' : posStr.includes('TE') ? 'TE' : null;
-                                if (posGroup) {
-                                    if (!State.sosMap[teamStr]) State.sosMap[teamStr] = {};
-                                    State.sosMap[teamStr][posGroup] = sosVal;
-                                    hasNewSos = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        await Promise.all(filesWithContext.map(f => parseSingleFile(f)));
-
-        const parsedData = Object.values(combinedPlayers);
-        if (parsedData.length === 0) {
-            if (typeof window.showToast === 'function') {
-                window.showToast("Couldn't find any players in that file. Double check the format and try again.", { isError: true });
-            }
-            return;
-        }
 
         const type = isWeekly ? 'weekly' : 'ros';
         const fileInputIds = filesWithContext.map(f =>
             f.context === 'SINGLE' ? `${type}FileInput` : `${type}FileInput-${f.context}`
         );
+
+        if (parsedData.length === 0) {
+            // Clear the file input(s) so the failed selection doesn't linger on screen
+            // looking like it might still be "in progress" or successfully attached.
+            fileInputIds.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) input.value = '';
+            });
+            if (typeof window.showToast === 'function') {
+                window.showToast("Couldn't find any players in that file. Double check the format and try again.", { isError: true });
+            }
+            return;
+        }
 
         openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds });
     };
@@ -2565,12 +2434,47 @@ function attachScoutSuggestionHandler(outputElId) {
         if (overlay) overlay.style.display = 'none';
     };
 
+    // --- UPLOAD PROCESSING INDICATOR ---
+    // Same spinner icon already used for the Sleeper sync buttons elsewhere in the app,
+    // reused here so a rankings upload gives the same kind of "something is happening"
+    // signal instead of going silent between file-select and the preview modal appearing.
+    const UPLOAD_SPINNER_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner" style="flex-shrink:0;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>`;
+
+    // Disables a rankings section's file input(s) for the duration of a parse (type is
+    // 'ros' or 'weekly'), so a second file selection can't fire a second overlapping parse
+    // while the first is still running -- shared by both the single- and multi-file paths.
+    function setUploadInputsDisabled(type, disabled) {
+        const singleInput = document.getElementById(`${type}FileInput`);
+        if (singleInput) singleInput.disabled = disabled;
+        ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'].forEach(pos => {
+            const posInput = document.getElementById(`${type}FileInput-${pos}`);
+            if (posInput) posInput.disabled = disabled;
+        });
+    }
+
+    // Shows/hides the inline "Processing..." status line used by the single-file path
+    // (which has no button of its own to carry a spinner -- selecting a file kicks off
+    // the parse directly). The multi-file path shows its own progress on the submit
+    // button instead (see processMultiRankings), so it doesn't use this.
+    function setUploadStatus(type, isProcessing, label) {
+        const statusEl = document.getElementById(`${type}ProcessingStatus`);
+        if (!statusEl) return;
+        statusEl.innerHTML = isProcessing ? `${UPLOAD_SPINNER_SVG}<span>${escapeHtml(label || 'Processing...')}</span>` : '';
+        statusEl.style.display = isProcessing ? 'flex' : 'none';
+    }
+
     window.processSingleRankingUpload = function(type, successMsgId) {
         const fileInput = document.getElementById(`${type}FileInput`);
         if (!fileInput || !fileInput.files[0]) return;
         
         const isWeekly = type === 'weekly';
-        parseFiles([{ file: fileInput.files[0], context: 'SINGLE' }], isWeekly, successMsgId);
+        setUploadInputsDisabled(type, true);
+        setUploadStatus(type, true);
+        parseFiles([{ file: fileInput.files[0], context: 'SINGLE' }], isWeekly, successMsgId)
+            .finally(() => {
+                setUploadInputsDisabled(type, false);
+                setUploadStatus(type, false);
+            });
     };
 
     window.processMultiRankings = function(type, successMsgId) {
@@ -2590,7 +2494,20 @@ function attachScoutSuggestionHandler(outputElId) {
         }
 
         const isWeekly = type === 'weekly';
-        parseFiles(filesWithContext, isWeekly, successMsgId);
+        const btn = document.getElementById(`${type}MultiProcessBtn`);
+        const originalBtnContent = btn ? btn.innerHTML : null;
+        if (btn) btn.disabled = true;
+        setUploadInputsDisabled(type, true);
+
+        const updateProgress = (done, total) => {
+            if (btn) btn.innerHTML = `${UPLOAD_SPINNER_SVG} Processing ${done}/${total}...`;
+        };
+        updateProgress(0, filesWithContext.length);
+
+        parseFiles(filesWithContext, isWeekly, successMsgId, updateProgress).finally(() => {
+            if (btn) { btn.disabled = false; btn.innerHTML = originalBtnContent; }
+            setUploadInputsDisabled(type, false);
+        });
     };
 
     const rosFileEl = document.getElementById('rosFileInput');
@@ -2630,12 +2547,24 @@ function attachScoutSuggestionHandler(outputElId) {
             loadSheetJS(() => {            
                 const reader = new FileReader();
                 reader.onload = e => {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
-                    Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+                        Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
+                    } catch (err) {
+                        console.error("Error reading Excel file:", err);
+                        if (window.showToast) window.showToast(`Couldn't read "${file.name}" -- it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
+                    }
+                };
+                reader.onerror = () => {
+                    console.error("Error reading file:", file.name);
+                    if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                 };
                 reader.readAsArrayBuffer(file);
+            }, () => {
+                console.error("Failed to load SheetJS library");
+                if (window.showToast) window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
             });
         } else if (filename.endsWith('.numbers')) {
             if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
@@ -2644,75 +2573,9 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     }
     // --- SHARED MARKET-CONSENSUS FETCH ---
-    // Extracted from what used to be inline inside fetchLeagueLogsADP() so both the Scout tab's
-    // Power Rankings feature AND the ROS Rankings auto-fetch (Roster tab) can reuse the exact
-    // same, already-proven fetch/parse logic instead of duplicating it. Pure data in/out --
-    // no DOM access, no state writes -- callers handle their own UI and State updates.
-    async function fetchMarketConsensusData(source, isDynastyVal, numQbsVal, ppr, isTEP, teamCount) {
-        let parsed = [];
-        let formatText = "";
-        const isDynastyBool = isDynastyVal === 'dynasty';
-
-        // --- 1. FANTASYCALC ---
-        if (source === 'fantasycalc') {
-            const fcRes = await fetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
-            if (!fcRes.ok) throw new Error(`FantasyCalc API Error: ${fcRes.status}`);
-            const fcData = await fcRes.json();
-
-            fcData.forEach(item => {
-                if (item.player && item.player.name) {
-                    let fullName = item.player.name;
-                    let rankVal = parseFloat(item.overallRank);
-
-                    if (!isNaN(rankVal)) {
-                        parsed.push({
-                            name: fullName,
-                            cleanName: normalizeName(fullName),
-                            marketVal: rankVal,
-                            pos: item.player.position || ""
-                        });
-                    }
-                }
-            });
-            formatText = `${isDynastyVal.toUpperCase()} (${numQbsVal === '2' ? 'Superflex' : '1QB'}, PPR: ${ppr})`;
-        } 
-        
-        // --- 2. LEAGUELOGS ---
-        else if (source === 'leaguelogs') {
-            let pprKey = "ppr1";
-            let qbKey = numQbsVal === '2' ? '2qb' : '1qb';
-            let typeKey = isDynastyVal; 
-            let profileKey = `${typeKey}-${qbKey}-12t-${pprKey}`;
-            
-            formatText = `${typeKey.toUpperCase()} - ${qbKey.toUpperCase()} (PPR)`;
-
-            let sleeperMap = await getSleeperPlayerMap();
-
-            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
-            if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
-            const llMarket = await marketRes.json();
-
-            llMarket.data.forEach(item => {
-                let sId = item.sleeperPlayerId;
-                let sp = sleeperMap[sId];
-                if (!sp || !sp.first_name) return; 
-
-                let fullName = `${sp.first_name} ${sp.last_name}`;
-                let rankVal = parseFloat(item.overallRank);
-
-                if (!isNaN(rankVal)) {
-                    parsed.push({
-                        name: fullName,
-                        cleanName: normalizeName(fullName),
-                        marketVal: rankVal,
-                        pos: sp.position || ""
-                    });
-                }
-            });
-        }
-
-        return { parsed, formatText };
-    }
+    // Moved to marketDataApi.js -- fetchMarketConsensusData is now imported at the top of
+    // this file. It's still used the same way below (Scout tab's Power Rankings and the
+    // ROS Rankings auto-fetch both call it), just no longer defined in this file.
 
     // --- ROS RANKINGS AUTO-FETCH ---
     // Reuses the exact same market-consensus fetch already proven for Scout's Power Rankings.
@@ -3252,41 +3115,40 @@ function applyMarketSettingsToUI() {
         rosterListEl.innerHTML = html;
     }
 
+    // Core lock/unlock mechanics shared by toggleLock (the manual lock icon) and the
+    // keep-swaps-sticky logic in initiateSwap below. Updates both the season-long lock list
+    // AND each player object's isLocked flag directly in the starters/bench arrays, since
+    // renderLineupUI reads that flag off the object rather than re-checking the list. Returns
+    // the player's name (for callers that want to reference it, e.g. in a toast).
+    function setPlayerLockState(playerId, isLocked) {
+        if (!State.activeLeagueId) return null;
+        let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
+        let idx = locks.indexOf(playerId);
+        if (isLocked && idx === -1) locks.push(playerId);
+        else if (!isLocked && idx !== -1) locks.splice(idx, 1);
+        State.lockedPlayersMap[State.activeLeagueId] = locks;
+        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
+
+        let starters = State.manualStartersMap[State.activeLeagueId] || [];
+        let bench = State.manualBenchMap[State.activeLeagueId] || [];
+        let playerName = null;
+        starters.forEach(s => {
+            if (s.player && s.player.id === playerId) { s.player.isLocked = isLocked; playerName = s.player.name; }
+        });
+        bench.forEach(p => {
+            if (p.id === playerId) { p.isLocked = isLocked; playerName = p.name; }
+        });
+        State.manualStartersMap[State.activeLeagueId] = starters;
+        State.manualBenchMap[State.activeLeagueId] = bench;
+        return playerName;
+    }
+
     window.toggleLock = function(playerId) {
         if (!State.activeLeagueId) return;
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
-        
-        // Track whether we are actively locking or unlocking
         let isLocking = !locks.includes(playerId);
-        
-        if (locks.includes(playerId)) locks = locks.filter(id => id !== playerId);
-        else locks.push(playerId);
-        
-        State.lockedPlayersMap[State.activeLeagueId] = locks;
-        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
-        
-        let starters = State.manualStartersMap[State.activeLeagueId] || [];
-        let bench = State.manualBenchMap[State.activeLeagueId] || [];
-        
-        let playerName = 'Player'; // Fallback
-        
-        starters.forEach(s => { 
-            if (s.player && s.player.id === playerId) {
-                s.player.isLocked = locks.includes(playerId);
-                playerName = s.player.name; // Extract name
-            } 
-        });
-        bench.forEach(p => { 
-            if (p.id === playerId) {
-                p.isLocked = locks.includes(playerId);
-                playerName = p.name; // Extract name
-            } 
-        });
-        
-        State.manualStartersMap[State.activeLeagueId] = starters;
-        State.manualBenchMap[State.activeLeagueId] = bench;
-        
-        // Use backticks to evaluate the variables dynamically
+        let playerName = setPlayerLockState(playerId, isLocking) || 'Player';
+
         if (typeof window.showToast === 'function') {
             window.showToast(`${playerName} is ${isLocking ? 'locked' : 'unlocked'}`);
         }
@@ -3351,6 +3213,26 @@ function applyMarketSettingsToUI() {
         window.optimizeLineup(true);
     };
 
+    // True if `pos` is allowed to occupy a slot of type `slotType` ('QB', 'RB', 'WR', 'TE',
+    // 'FLEX', 'SFLEX', 'K', or 'DEF' -- i.e. a starter slot label with its trailing number
+    // stripped, same convention used everywhere else in this file). Mirrors the exact
+    // eligibility rules fillSlot()/the SFLEX loop use when building the lineup in the first
+    // place, so a manual swap can never produce a slot/position combination the optimizer
+    // itself would never have created.
+    function slotAcceptsPos(slotType, pos) {
+        switch (slotType) {
+            case 'QB': return pos === 'QB';
+            case 'RB': return pos === 'RB';
+            case 'WR': return pos === 'WR';
+            case 'TE': return pos === 'TE';
+            case 'FLEX': return ['RB', 'WR', 'TE'].includes(pos);
+            case 'SFLEX': return ['QB', 'RB', 'WR', 'TE'].includes(pos);
+            case 'K': return pos === 'K';
+            case 'DEF': return pos === 'DEF';
+            default: return false;
+        }
+    }
+
     window.initiateSwap = function(playerId) {
         if (State.swapSourceId === null) { State.swapSourceId = playerId; } 
         else if (State.swapSourceId === playerId) { State.swapSourceId = null; } 
@@ -3365,6 +3247,24 @@ function applyMarketSettingsToUI() {
             let p1Obj = (p1StarterIdx !== -1) ? starters[p1StarterIdx].player : bench[p1BenchIdx];
             let p2Obj = (p2StarterIdx !== -1) ? starters[p2StarterIdx].player : bench[p2BenchIdx];
 
+            // Reject the swap up front if either player would land in a starter slot their
+            // position doesn't fit (e.g. a bench DEF swapped into a QB slot). Bench slots have
+            // no position identity of their own, so a player moving TO the bench never fails
+            // this check -- only a move INTO a starter slot is constrained.
+            let p1TargetSlotType = p2StarterIdx !== -1 ? starters[p2StarterIdx].slot.replace(/[0-9]/g, '') : null;
+            let p2TargetSlotType = p1StarterIdx !== -1 ? starters[p1StarterIdx].slot.replace(/[0-9]/g, '') : null;
+            let p1Fits = !p1TargetSlotType || slotAcceptsPos(p1TargetSlotType, p1Obj.pos);
+            let p2Fits = !p2TargetSlotType || slotAcceptsPos(p2TargetSlotType, p2Obj.pos);
+
+            if (!p1Fits || !p2Fits) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(`Can't swap ${p1Obj.name} (${p1Obj.pos}) with ${p2Obj.name} (${p2Obj.pos}) -- that position doesn't fit that slot.`, { isError: true });
+                }
+                State.swapSourceId = null;
+                renderLineupUI();
+                return;
+            }
+
             if (p1StarterIdx !== -1 && p2StarterIdx !== -1) { starters[p1StarterIdx].player = p2Obj; starters[p2StarterIdx].player = p1Obj; } 
             else if (p1StarterIdx !== -1 && p2BenchIdx !== -1) { starters[p1StarterIdx].player = p2Obj; bench[p2BenchIdx] = p1Obj; }
             else if (p1BenchIdx !== -1 && p2StarterIdx !== -1) { starters[p2StarterIdx].player = p1Obj; bench[p1BenchIdx] = p2Obj; }
@@ -3374,6 +3274,19 @@ function applyMarketSettingsToUI() {
             State.manualBenchMap[State.activeLeagueId] = bench;
             localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
             localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+
+            // Keep this swap "sticky" across the next sync. optimizeLineup's full recompute
+            // (forced on every Sleeper sync) only protects locked players -- without this, a
+            // manual swap into (or within) the starting lineup would silently get reverted
+            // back to whatever the rankings alone would have picked. Whoever ends up starting
+            // gets locked; whoever ends up on the bench gets unlocked, in case they carried a
+            // lock over from before this swap (otherwise their old lock would just force them
+            // straight back into a starting slot on the next recompute, undoing the swap).
+            let newStarterIds = new Set(starters.filter(s => s.player).map(s => s.player.id));
+            [p1Obj, p2Obj].forEach(p => {
+                if (p) setPlayerLockState(p.id, newStarterIds.has(p.id));
+            });
+
             State.swapSourceId = null;
         }
         renderLineupUI();
@@ -3497,18 +3410,28 @@ function applyMarketSettingsToUI() {
         // (b) were already established as a starter, checked against two sources: Sleeper's own
         // last-synced starting lineup (the ground truth for what actually happened in real
         // life, and the only signal available the very first time this is run in a given week)
-        // and this app's own previous optimizer output (a fallback for when Sleeper data is
-        // stale or missing). A bench player whose game has already passed is NOT auto-locked --
+        // and this app's own previous optimizer output (a fallback for when Sleeper starter
+        // data is missing entirely -- see isSleeperStarter below for exactly when each source
+        // applies). A bench player whose game has already passed is NOT auto-locked --
         // they were never started, so there's nothing to preserve.
         let sleeperStarterIds = getValidSleeperStarterIds(league);
         let prevStarters = State.manualStartersMap[State.activeLeagueId] || [];
         let prevStartingIds = new Set(prevStarters.filter(s => s.player).map(s => s.player.id));
 
+        // Sleeper's synced starting lineup is the ground truth for "did this player actually
+        // start in real life." prevStartingIds (this app's own prior pick) only steps in when
+        // we have no Sleeper starter data at all -- it must NOT be OR'd in alongside real
+        // Sleeper data, or a player this app recommended starting (but who Sleeper shows on
+        // the bench) gets wrongly auto-locked into the lineup the moment their game kicks off.
+        let isSleeperStarter = p => sleeperStarterIds.length > 0
+            ? sleeperStarterIds.includes(p.id)
+            : prevStartingIds.has(p.id);
+
         let scoredRoster = league.roster.map(p => {
             let rObj = activeDataSet.find(rk => rk.cleanName === p.cleanName);
             let manualLocked = locks.includes(p.id);
             let overridden = isAutoLockOverridden(State.activeLeagueId, p.id);
-            let autoLocked = !manualLocked && !overridden && hasKickedOff(p) && (sleeperStarterIds.includes(p.id) || prevStartingIds.has(p.id));
+            let autoLocked = !manualLocked && !overridden && hasKickedOff(p) && isSleeperStarter(p);
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
@@ -3749,9 +3672,14 @@ window.syncAllLeagues = async function(btn) {
                 let tempToast = window.showToast;
                 window.showToast = function(){}; 
 
-                for (let l of sleeperLeagues) {
-                    // isRefresh = true, suppressErrorToast = true, showChangeSummary = true
-                    let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true);
+                for (let i = 0; i < sleeperLeagues.length; i++) {
+                    let l = sleeperLeagues[i];
+                    // Mirrors importAllSleeperLeagues' per-league progress text below, instead
+                    // of a static "Syncing All..." for the whole loop regardless of how many
+                    // leagues or how long it takes.
+                    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing ${i + 1}/${sleeperLeagues.length}...`;
+                    // isRefresh = true, suppressErrorToast = true, showChangeSummary = true, skipSave = true
+                    let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true, true);
                     
                     if (result) {
                         successCount++;
@@ -3769,7 +3697,11 @@ window.syncAllLeagues = async function(btn) {
 
                 // Restore original toast functionality
                 window.showToast = tempToast; 
-                
+
+                // Single write after the loop instead of one localStorage.setItem per league.
+                localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+                localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+
                 // Save logs to state and local storage
                 State.syncLogs = newLogs;
                 localStorage.setItem('mls_sync_logs', JSON.stringify(State.syncLogs));
@@ -3816,7 +3748,8 @@ window.syncAllLeagues = async function(btn) {
         let optimizedStarterIds = starters.filter(s => s.player).map(s => s.player.id);
         // The season-long manual lock list -- used only to distinguish "manually locked" from
         // "auto-locked because the game already started" so the right lock control renders (see
-        // lockControl below); toggleLock itself remains the single source of truth for this list.
+        // lockControl below). Written via setPlayerLockState, by toggleLock (the lock icon) and
+        // by initiateSwap (keeping a manual swap sticky across the next full recompute).
         let locksList = State.lockedPlayersMap[State.activeLeagueId] || [];
 
         let html = "";
@@ -3837,6 +3770,16 @@ window.syncAllLeagues = async function(btn) {
         // taking up space on the common case where nobody has manually locked anyone.
         if (locksList.length > 0) {
             html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" onclick="unlockAllPlayers()" title="Clears season-long manual locks in this league only -- does not affect players auto-locked because their game already started">Unlock All (${locksList.length})</button></div>`;
+        }
+
+        // While a swap is pending, the source player's row gets an amber highlight (see
+        // lockClass below) but nothing else on screen says what to actually do next --
+        // this spells it out instead of leaving it to be inferred from one highlighted row.
+        if (State.swapSourceId) {
+            let swapSourcePlayer = (starters.find(s => s.player && s.player.id === State.swapSourceId) || {}).player
+                || benchPool.find(p => p.id === State.swapSourceId);
+            let swapSourceName = swapSourcePlayer ? swapSourcePlayer.name : 'this player';
+            html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: #f59e0b;">Tap another player's ⇄ to swap with ${escapeHtml(swapSourceName)}, or tap Cancel to stop.</div>`;
         }
 
         starters.forEach(s => {
@@ -3916,7 +3859,7 @@ window.syncAllLeagues = async function(btn) {
                 </div>`;
             }
         });
-        container.innerHTML = html;
+        renderHTMLInto(container, html);
 
         let benchHTML = "";
         if (benchPool.length > 0) {
@@ -3970,7 +3913,7 @@ window.syncAllLeagues = async function(btn) {
                     [ No bench players available ]
                 </div>`; 
         }
-        benchContainer.innerHTML = benchHTML;
+        renderHTMLInto(benchContainer, benchHTML);
 
         // Auto-update the dashboard matrix in the background so status icons stay live
         if (typeof renderLeagueManager === 'function') renderLeagueManager();
@@ -4262,13 +4205,21 @@ window.runGlobalInjuryAudit = async function(btn) {
         for (let league of State.leagues) {
             if (!league.leagueId || league.leagueId.startsWith('manual_')) continue;
 
-            const rostersRes = await fetch(`https://api.sleeper.app/v1/league/${league.leagueId}/rosters`);
-            const rosters = await rostersRes.json();
-            
-            // Resolve User ID
-            const userRes = await fetch(`https://api.sleeper.app/v1/user/${league.username}`);
-            const userData = await userRes.json();
-            const userId = userData.user_id;
+            const rosters = await getSleeperLeagueRosters(league.leagueId);
+
+            // Resolve User ID. getSleeperUser throws on a not-found/error response (the
+            // original inline fetch here didn't check response.ok at all, so a bad username
+            // would just produce userId===undefined, myRoster staying undefined below, and
+            // this league getting silently skipped by the "if (!myRoster) continue" a few
+            // lines down). The try/catch below makes that same "skip this one league, keep
+            // scanning the rest" behavior explicit instead of leaving it to fall out of an
+            // unrelated undefined check.
+            let userId;
+            try {
+                userId = (await getSleeperUser(league.username)).user_id;
+            } catch (err) {
+                continue;
+            }
 
             const myRoster = rosters.find(r => r.owner_id === userId);
             if (!myRoster) continue;
@@ -4337,13 +4288,21 @@ window.runGlobalInjuryAudit = async function(btn) {
     // Lazy-loads the SheetJS (XLSX) library on first use, so pages that never upload an .xlsx
     // ranking file don't pay for it. Kept inside the module (rather than as a bare global) like
     // every other helper here, since this file isn't shared with any other page.
-    function loadSheetJS(callback) {
+    function loadSheetJS(callback, onError) {
         if (typeof XLSX !== 'undefined') {
             callback();
         } else {
             const script = document.createElement('script');
             script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
             script.onload = callback;
+            // Previously had no failure path at all: if the CDN fetch failed (offline,
+            // ad-blocker, cdnjs outage), the onload callback simply never fired and the
+            // .xlsx upload dead-ended with zero feedback -- the user just saw nothing
+            // happen. Callers now get a chance to surface that instead of hanging forever.
+            script.onerror = () => {
+                script.remove();
+                if (typeof onError === 'function') onError();
+            };
             document.head.appendChild(script);
         }
     }

@@ -1,7 +1,18 @@
 // --- SHARED UTILITIES ---
 
+// Cache of raw name -> normalized result. normalizeName() is called repeatedly on the
+// same player names during sorting/matching (roster syncs, rankings uploads, waiver
+// scans), so this avoids re-running the Unicode normalize + regex chain on inputs
+// we've already seen. Keyed on the raw input string, since that's what every caller
+// actually has on hand.
+const _normalizeNameCache = new Map();
+
 function normalizeName(name) {
     if (!name) return "";
+
+    const cached = _normalizeNameCache.get(name);
+    if (cached !== undefined) return cached;
+
     let n = String(name)
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -23,7 +34,9 @@ function normalizeName(name) {
         'kennethwalker': 'kenwalker'
     };
 
-    return aliasMap[n] || n;
+    const result = aliasMap[n] || n;
+    _normalizeNameCache.set(name, result);
+    return result;
 }
 
 function isNameMatch(name1, name2) {
