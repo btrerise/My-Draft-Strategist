@@ -106,7 +106,81 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
         gameTimesByTeam: {},
         // Which week gameTimesByTeam was last successfully fetched for, so a stale cache from
         // an earlier week doesn't silently get reused if currentNflWeek changes mid-session.
-        gameTimesFetchedForWeek: null
+        gameTimesFetchedForWeek: null,
+        // Not persisted -- undo/redo history for lineup edits (swaps, lock toggles, and
+        // optimizer re-runs), per league. Deliberately session-only rather than saved to
+        // localStorage: this is "undo my last few clicks," not part of the lineup itself,
+        // and most users' mental model of undo (browser, text editors, etc.) is that it
+        // doesn't survive closing the tab. Capped at MAX_UNDO_STACK_SIZE entries per league
+        // (see pushLineupUndoSnapshot) since a long session could otherwise accumulate an
+        // unbounded number of small snapshots.
+        lineupUndoStackMap: {},
+        lineupRedoStackMap: {}
+    };
+
+    const MAX_UNDO_STACK_SIZE = 20;
+
+    // Deep-copies the current lineup-relevant state for one league (starters, bench, and the
+    // manual lock list) into a plain snapshot object, suitable for pushing onto the undo/redo
+    // stacks below. JSON round-trip is fine here -- everything in these three structures is
+    // plain data (no functions, dates, etc), and the arrays involved are small (one roster's
+    // worth of players), so the cost of this is negligible even called on every lineup edit.
+    function snapshotLineupState(leagueId) {
+        return {
+            starters: JSON.parse(JSON.stringify(State.manualStartersMap[leagueId] || [])),
+            bench: JSON.parse(JSON.stringify(State.manualBenchMap[leagueId] || [])),
+            locks: JSON.parse(JSON.stringify(State.lockedPlayersMap[leagueId] || []))
+        };
+    }
+
+    function restoreLineupState(leagueId, snapshot) {
+        State.manualStartersMap[leagueId] = snapshot.starters;
+        State.manualBenchMap[leagueId] = snapshot.bench;
+        State.lockedPlayersMap[leagueId] = snapshot.locks;
+        localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
+        localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
+    }
+
+    // Called at the start of every lineup-mutating action (swap, lock toggle, unlock-all,
+    // optimizer re-run) with a snapshot of the state as it was JUST BEFORE that action, so
+    // Ctrl+Z has something to restore. Making a new edit always clears the redo stack -- the
+    // same convention as every other undo/redo system: redo only makes sense for undos you
+    // haven't since invalidated by doing something new.
+    function pushLineupUndoSnapshot(leagueId) {
+        if (!leagueId) return;
+        if (!State.lineupUndoStackMap[leagueId]) State.lineupUndoStackMap[leagueId] = [];
+        State.lineupUndoStackMap[leagueId].push(snapshotLineupState(leagueId));
+        if (State.lineupUndoStackMap[leagueId].length > MAX_UNDO_STACK_SIZE) {
+            State.lineupUndoStackMap[leagueId].shift();
+        }
+        State.lineupRedoStackMap[leagueId] = [];
+    }
+
+    window.undoLineupChange = function() {
+        const leagueId = State.activeLeagueId;
+        const undoStack = State.lineupUndoStackMap[leagueId];
+        if (!leagueId || !undoStack || undoStack.length === 0) return;
+
+        if (!State.lineupRedoStackMap[leagueId]) State.lineupRedoStackMap[leagueId] = [];
+        State.lineupRedoStackMap[leagueId].push(snapshotLineupState(leagueId));
+
+        restoreLineupState(leagueId, undoStack.pop());
+        renderLineupUI();
+        if (typeof window.showToast === 'function') window.showToast("Undid last lineup change");
+    };
+
+    window.redoLineupChange = function() {
+        const leagueId = State.activeLeagueId;
+        const redoStack = State.lineupRedoStackMap[leagueId];
+        if (!leagueId || !redoStack || redoStack.length === 0) return;
+
+        if (!State.lineupUndoStackMap[leagueId]) State.lineupUndoStackMap[leagueId] = [];
+        State.lineupUndoStackMap[leagueId].push(snapshotLineupState(leagueId));
+
+        restoreLineupState(leagueId, redoStack.pop());
+        renderLineupUI();
+        if (typeof window.showToast === 'function') window.showToast("Redid lineup change");
     };
 
     // Refreshes State.currentNflWeek from Sleeper's public NFL state endpoint. Fire-and-forget:
@@ -739,6 +813,43 @@ function attachScoutSuggestionHandler(outputElId) {
         if (!iso) return false;
         const ms = new Date(iso).getTime();
         return !isNaN(ms) && Date.now() >= ms;
+    }
+
+    // Finds the soonest-kicking-off current starter who hasn't locked yet, and renders a
+    // small status line for the top of the lineup card. The point is specifically to catch
+    // "I switched leagues to check on something and forgot I still need to set a starter
+    // here" -- so this only fires while there's a real starter slot filled with a player
+    // whose game hasn't started, not for bench players or empty slots. Returns "" (nothing
+    // rendered) once every starter with known kickoff data has already locked -- an "all
+    // clear" state doesn't need a persistent banner competing for attention.
+    function getNextLockCountdownHTML(starters) {
+        let earliestMs = null;
+        let earliestPlayer = null;
+
+        starters.forEach(s => {
+            if (!s.player || !s.player.team || hasKickedOff(s.player)) return;
+            const iso = State.gameTimesByTeam[s.player.team];
+            if (!iso) return;
+            const ms = new Date(iso).getTime();
+            if (isNaN(ms)) return;
+            if (earliestMs === null || ms < earliestMs) {
+                earliestMs = ms;
+                earliestPlayer = s.player;
+            }
+        });
+
+        if (earliestMs === null) return "";
+
+        const totalMinutes = Math.max(0, Math.round((earliestMs - Date.now()) / 60000));
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        const countdownStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        const label = formatKickoffLabel(new Date(earliestMs).toISOString());
+
+        return `<div class="lineup-lock-countdown">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>Next lock: <strong>${escapeHtml(earliestPlayer.name)}</strong> &middot; ${label} <span class="lineup-lock-countdown-time">(in ${countdownStr})</span></span>
+        </div>`;
     }
 
     // Sleeper's own snapshot of who's actually starting, as of the last sync -- the ground
@@ -3145,6 +3256,7 @@ function applyMarketSettingsToUI() {
 
     window.toggleLock = function(playerId) {
         if (!State.activeLeagueId) return;
+        pushLineupUndoSnapshot(State.activeLeagueId);
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
         let isLocking = !locks.includes(playerId);
         let playerName = setPlayerLockState(playerId, isLocking) || 'Player';
@@ -3179,6 +3291,7 @@ function applyMarketSettingsToUI() {
 
         if (!window.confirm(`${playerName}'s game shows as already started. Only override this if that's wrong -- doing so lets the optimizer freely move or bench them again.`)) return;
 
+        pushLineupUndoSnapshot(State.activeLeagueId);
         let entry = State.autoLockOverridesMap[State.activeLeagueId];
         if (!entry || entry.week !== State.currentNflWeek) entry = { week: State.currentNflWeek, ids: [] };
         if (!entry.ids.includes(playerId)) entry.ids.push(playerId);
@@ -3204,6 +3317,7 @@ function applyMarketSettingsToUI() {
         if (locks.length === 0) return;
         if (!window.confirm(`Unlock all ${locks.length} manually locked player(s) in this league?`)) return;
 
+        pushLineupUndoSnapshot(State.activeLeagueId);
         State.lockedPlayersMap[State.activeLeagueId] = [];
         localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
 
@@ -3264,6 +3378,8 @@ function applyMarketSettingsToUI() {
                 renderLineupUI();
                 return;
             }
+
+            pushLineupUndoSnapshot(State.activeLeagueId);
 
             if (p1StarterIdx !== -1 && p2StarterIdx !== -1) { starters[p1StarterIdx].player = p2Obj; starters[p2StarterIdx].player = p1Obj; } 
             else if (p1StarterIdx !== -1 && p2BenchIdx !== -1) { starters[p1StarterIdx].player = p2Obj; bench[p2BenchIdx] = p1Obj; }
@@ -3396,6 +3512,18 @@ function applyMarketSettingsToUI() {
         if (!forceReset && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
             renderLineupUI(); 
             return;
+        }
+
+        // Only the literal "Optimize Lineup" button click gets its own undo checkpoint here.
+        // unlockAllPlayers/overrideAutoLock also trigger a forceReset recompute, but they push
+        // their own snapshot before their own mutation, so their whole compound action undoes
+        // in one step -- pushing here too would double up and only undo half of it. Sync-
+        // triggered recomputes (processSleeperData's unconditional optimizeLineup(true)) are
+        // deliberately excluded from undo entirely: the roster/player pool itself just changed,
+        // so restoring an older lineup snapshot could silently reintroduce a player who was
+        // just dropped -- that's a correctness risk undo shouldn't create.
+        if (isManualAction && forceReset && State.manualStartersMap[State.activeLeagueId]) {
+            pushLineupUndoSnapshot(State.activeLeagueId);
         }
 
         let activeDataSet = State.weeklyRankings.length > 0 ? State.weeklyRankings : State.rosRankings;
@@ -3753,7 +3881,9 @@ window.syncAllLeagues = async function(btn) {
         let locksList = State.lockedPlayersMap[State.activeLeagueId] || [];
 
         let html = "";
-        
+
+        html += getNextLockCountdownHTML(starters);
+
         if (validSleeperStarters.length > 0) {
             let sleeperSet = new Set(validSleeperStarters);
             let optSet = new Set(optimizedStarterIds);
@@ -3973,6 +4103,20 @@ document.addEventListener('keydown', (e) => {
     if (e.shiftKey && e.key === 'ArrowRight') {
         e.preventDefault();
         if (typeof window.cycleLeague === 'function') window.cycleLeague(1);
+        return;
+    }
+
+    // Ctrl+Z / Cmd+Z to undo the last lineup edit (swap, lock toggle, unlock-all, or a
+    // manual "Optimize Lineup" click), Ctrl+Shift+Z or Ctrl+Y / Cmd+Shift+Z to redo --
+    // see pushLineupUndoSnapshot and undoLineupChange/redoLineupChange above for scope.
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (typeof window.undoLineupChange === 'function') window.undoLineupChange();
+        return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault();
+        if (typeof window.redoLineupChange === 'function') window.redoLineupChange();
         return;
     }
 

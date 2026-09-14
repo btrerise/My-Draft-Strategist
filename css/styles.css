@@ -135,6 +135,22 @@ body {
         #draftProfileSelect, #headerLeagueSelect { 
             max-width: 130px !important; 
         }
+
+    /* 6. Bigger, easier-to-tap prev/next league buttons on mobile. Desktop keeps the
+       original compact size (set inline via .league-nav-btn's base rule below) --
+       Shift+Arrow already covers fast league-cycling with a keyboard, so the larger
+       touch target and accent border are only needed where a fingertip has to land on
+       it precisely. 44px is the standard minimum recommended touch-target size. */
+    .league-nav-btn {
+        padding: 0.7rem 0.85rem;
+        min-width: 44px;
+        min-height: 44px;
+        border: 1.5px solid var(--primary-green);
+    }
+    .league-nav-btn svg {
+        width: 20px;
+        height: 20px;
+    }
 }
 /* --- HAMBURGER MENU & DRAWER --- */
 .menu-overlay { 
@@ -1058,6 +1074,31 @@ body {
    time to "Started" -- a deeper, more solid blue so it visually reads as "locked in" rather
    than "upcoming", pairing with the auto-lock indicator icon used on that same row. */
 .kickoff-started { background: rgba(59, 130, 246, 0.28); color: #bfdbfe; border-color: #3b82f6; }
+
+/* Lineup tab's "next lock" countdown (top of the card) -- reuses the same blue used for
+   kickoff-badge/kickoff-started above, since this is the same "kickoff time" information,
+   just summarized across the whole lineup instead of shown per-player. Deliberately not
+   red/amber: this is routine status, not a warning, so it shouldn't compete visually with
+   the "Action Required: Differs from Sleeper lineup" banner it can appear right above. */
+.lineup-lock-countdown {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #93c5fd;
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.lineup-lock-countdown-time {
+    color: #bfdbfe;
+    font-weight: 700;
+}
 .status-badge { font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; background-color: #102a1e; color: #4ade80; border: 1px solid #34A853; }
 
 /* Dashboard Status Icons */
@@ -1625,6 +1666,13 @@ body {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     letter-spacing: 0.3px;
     width: auto !important;
+}
+/* Base (desktop) size for the header's prev/next league buttons -- unchanged from what
+   used to be inline styles. The @media (max-width: 767px) block above bumps this up for
+   mobile touch targets. */
+.league-nav-btn {
+    padding: 0.4rem 0.6rem;
+    flex-shrink: 0;
 }
 /* Strength of Schedule (SoS) Grid Styles */
 .sos-table-wrapper {
