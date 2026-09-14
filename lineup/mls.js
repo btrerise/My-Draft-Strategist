@@ -3,6 +3,12 @@
  * Refactored for modular encapsulation, performance, and clean architecture.
  */
 
+// Pilot ES module extraction (see rankingsParser.js for rationale) -- this is the only
+// piece of mls.js currently split out. import statements must live at a module's top
+// level, which is why this sits above the IIFE rather than inside it; the imported
+// function is still just a normal binding the IIFE's closures can reference below.
+import { parseRankingsFiles } from './rankingsParser.js';
+
 (function () {
     'use strict';
 
@@ -444,6 +450,70 @@ function renderHTMLInto(container, html) {
     container.replaceChildren(template.content);
 }
 
+// --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---
+// Sleeper's players/nfl payload is close to 5MB, and their own docs say not to call this
+// endpoint more than once a day. Previously this was only cached in the plain JS variables
+// below (_sleeperPlayerMapCache/_sleeperPlayerMapPromise) -- gone the instant the page
+// reloads, so every single page load re-downloaded the whole ~5MB payload regardless.
+// IndexedDB persists it across reloads without the concerns a payload this size would raise
+// in localStorage: it's asynchronous (a 5MB JSON.stringify/parse on every read would be a
+// real, synchronous main-thread cost), and it isn't competing against the same ~5-10MB total
+// quota localStorage shares with everything else this app already stores there.
+const SLEEPER_PLAYER_DB_NAME = 'mls_sleeper_cache';
+const SLEEPER_PLAYER_STORE = 'players';
+const SLEEPER_PLAYER_CACHE_KEY = 'nfl_player_map';
+const SLEEPER_PLAYER_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // matches Sleeper's own "once a day" guidance
+
+function openSleeperCacheDB() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) { reject(new Error('IndexedDB not available')); return; }
+        const req = indexedDB.open(SLEEPER_PLAYER_DB_NAME, 1);
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains(SLEEPER_PLAYER_STORE)) {
+                db.createObjectStore(SLEEPER_PLAYER_STORE);
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// Returns { data, fetchedAt } or null -- null covers both "nothing cached yet" and "IndexedDB
+// isn't available/failed to open" (private-browsing restrictions in some browsers, etc). Either
+// way the caller's fallback is identical: fetch fresh from the network.
+async function getCachedSleeperPlayerMap() {
+    try {
+        const db = await openSleeperCacheDB();
+        return await new Promise((resolve, reject) => {
+            const tx = db.transaction(SLEEPER_PLAYER_STORE, 'readonly');
+            const store = tx.objectStore(SLEEPER_PLAYER_STORE);
+            const req = store.get(SLEEPER_PLAYER_CACHE_KEY);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(req.error);
+        });
+    } catch (err) {
+        return null;
+    }
+}
+
+// Fire-and-forget from the caller's perspective -- persisting the cache is a nice-to-have,
+// not required for correctness. If it fails (quota, no IndexedDB support, etc.), the in-memory
+// cache from this session still works fine; it just won't survive a page reload.
+async function setCachedSleeperPlayerMap(data) {
+    try {
+        const db = await openSleeperCacheDB();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(SLEEPER_PLAYER_STORE, 'readwrite');
+            tx.objectStore(SLEEPER_PLAYER_STORE).put({ data, fetchedAt: Date.now() }, SLEEPER_PLAYER_CACHE_KEY);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    } catch (err) {
+        console.error('Failed to persist Sleeper player cache to IndexedDB:', err);
+    }
+}
+
 // Consolidated Sleeper DB Cache
 let _sleeperPlayerMapCache = null;
 let _sleeperPlayerMapPromise = null;
@@ -451,17 +521,28 @@ function getSleeperPlayerMap(options = {}) {
     if (_sleeperPlayerMapCache && !options.forceRefresh) return Promise.resolve(_sleeperPlayerMapCache);
     if (_sleeperPlayerMapPromise && !options.forceRefresh) return _sleeperPlayerMapPromise;
 
-    _sleeperPlayerMapPromise = fetch('https://api.sleeper.app/v1/players/nfl')
-        .then(res => res.json())
-        .then(data => {
+    _sleeperPlayerMapPromise = (async () => {
+        try {
+            // forceRefresh (used by the injury-status league scanner, which wants the absolute
+            // latest data) skips straight past both the in-memory AND IndexedDB caches.
+            if (!options.forceRefresh) {
+                const cached = await getCachedSleeperPlayerMap();
+                if (cached && (Date.now() - cached.fetchedAt) < SLEEPER_PLAYER_CACHE_MAX_AGE_MS) {
+                    _sleeperPlayerMapCache = cached.data;
+                    return cached.data;
+                }
+            }
+
+            const res = await fetch('https://api.sleeper.app/v1/players/nfl');
+            const data = await res.json();
             _sleeperPlayerMapCache = data;
-            _sleeperPlayerMapPromise = null;
+            setCachedSleeperPlayerMap(data); // don't await -- this shouldn't delay callers
             return data;
-        })
-        .catch(err => {
+        } finally {
             _sleeperPlayerMapPromise = null;
-            throw err;
-        });
+        }
+    })();
+
     return _sleeperPlayerMapPromise;
 }
 
@@ -2338,199 +2419,20 @@ function attachScoutSuggestionHandler(outputElId) {
     };
 
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
-        let combinedPlayers = {};
-        let hasNewSos = false;
+        const { parsedData, hasNewSos, sosUpdates } = await parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress });
 
-        const parseSingleFile = (fileObj) => new Promise((resolve) => {
-            const file = fileObj.file;
-            const parseContext = fileObj.context; // 'SINGLE', 'QB', 'FLEX', etc.
-
-            if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
-                loadSheetJS(() => {
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        try {
-                            const data = new Uint8Array(e.target.result);
-                            const workbook = XLSX.read(data, { type: 'array' });
-                            workbook.SheetNames.forEach(sheetName => {
-                                const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
-                                Papa.parse(csvStr, {
-                                    header: false,
-                                    skipEmptyLines: true,
-                                    complete: results => parseRowsIntoCombined(results.data, parseContext)
-                                });
-                            });
-                        } catch (err) {
-                            console.error("Error reading Excel file:", err);
-                            if (typeof window.showToast === 'function') {
-                                window.showToast(`Couldn't read "${file.name}" -- it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
-                            }
-                        }
-                        resolve();
-                    };
-                    reader.onerror = () => {
-                        console.error("Error reading file:", file.name);
-                        if (typeof window.showToast === 'function') {
-                            window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
-                        }
-                        resolve();
-                    };
-                    reader.readAsArrayBuffer(file);
-                }, () => {
-                    // SheetJS itself failed to load -- see loadSheetJS's onerror above.
-                    console.error("Failed to load SheetJS library");
-                    if (typeof window.showToast === 'function') {
-                        window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
-                    }
-                    resolve();
-                });
-            } else {
-                Papa.parse(file, {
-                    header: false,
-                    skipEmptyLines: true,
-                    complete: results => {
-                        parseRowsIntoCombined(results.data, parseContext);
-                        resolve();
-                    }
-                });
-            }
+        // The parser module returns SoS data rather than writing to State directly (it has no
+        // access to State at all -- see rankingsParser.js), so it's merged in here instead.
+        Object.entries(sosUpdates).forEach(([team, posMap]) => {
+            if (!State.sosMap[team]) State.sosMap[team] = {};
+            Object.assign(State.sosMap[team], posMap);
         });
-
-        function parseRowsIntoCombined(rows, context) {
-            if (!rows || rows.length < 1) return;
-
-            let headers = rows[0].map(h => String(h).trim().toLowerCase());
-            
-            // Check if this is a combined horizontal sheet (either old format or new 'wk1' format)
-            let isHorizontal = (context === 'SINGLE') && headers.some(h => 
-                h.includes('quarterback') || 
-                h.includes('running back') || 
-                h === 'flex' || 
-                h.includes('qb player') || 
-                h.includes('rb player') ||
-                h.includes('flex player')
-            );
-
-            if (isHorizontal) {
-                headers.forEach((h, idx) => {
-                    // Name columns end in 'player', or are exactly 'def team' for defense
-                    if (h.includes('player') || h === 'def team') {
-                        let rankColIdx = idx - 1;
-                        let isFlexCol = h.includes('flex');
-                        let posMatch = h.match(/(qb|rb|wr|te|k)\s+player/);
-                        let isDefCol = (h === 'def team');
-                        let isPosCol = (posMatch !== null) || isDefCol;
-
-                        if ((isFlexCol || isPosCol) && rankColIdx >= 0) {
-                            for (let r = 1; r < rows.length; r++) {
-                                let pName = rows[r][idx];
-                                let pRank = rows[r][rankColIdx];
-                                
-                                if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
-                                    let clean = normalizeName(pName.trim());
-                                    if (!combinedPlayers[clean]) {
-                                        combinedPlayers[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
-                                    }
-                                    let rVal = parseInt(pRank);
-                                    if (isFlexCol) {
-                                        combinedPlayers[clean].flexRank = rVal;
-                                        combinedPlayers[clean].rank = rVal;
-                                    } else {
-                                        combinedPlayers[clean].posRank = rVal;
-                                        if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = rVal;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            } else {
-            // Vertical Parsing Engine
-                let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
-                let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
-                let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
-                let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank' || h === 'positional rank');
-
-                // Include position names as valid player name headers
-                const validNameHeaders = ['player', 'name', 'player name', 'quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense', 'flex'];
-                let hasHeaders = headers.some(h => validNameHeaders.includes(h));
-                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'tier') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
-                let nameColIdx = hasHeaders ? headers.findIndex(h => validNameHeaders.includes(h)) : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
-
-                let startIndex = hasHeaders ? 1 : 0;
-
-                for (let i = startIndex; i < rows.length; i++) {
-                    let nameStr = rows[i][nameColIdx];
-                    if (nameStr && nameStr.trim()) {
-                        let clean = normalizeName(nameStr.trim());
-                        
-                        let overallRankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
-                        if (isNaN(overallRankVal)) overallRankVal = i + 1 - startIndex;
-                        
-                        let extractedPosRank = 999;
-                        if (explicitPosRankColIdx !== -1 && rows[i][explicitPosRankColIdx]) {
-                            extractedPosRank = parseInt(rows[i][explicitPosRankColIdx]);
-                            if (isNaN(extractedPosRank)) extractedPosRank = 999;
-                        }
-
-                        if (!combinedPlayers[clean]) {
-                            combinedPlayers[clean] = { name: nameStr.trim(), cleanName: clean, rank: 999, posRank: 999, flexRank: 999 };
-                        }
-
-                        // Determine where ranks go based on user UI selection
-                        if (context === 'FLEX') {
-                            combinedPlayers[clean].flexRank = overallRankVal;
-                            combinedPlayers[clean].rank = overallRankVal; 
-                        } else if (context !== 'SINGLE') {
-                            // Specific position like QB, RB
-                            combinedPlayers[clean].posRank = overallRankVal;
-                            if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = overallRankVal;
-                        } else {
-                            // Single File
-                            combinedPlayers[clean].rank = overallRankVal;
-                            if (extractedPosRank !== 999) {
-                                combinedPlayers[clean].posRank = extractedPosRank;
-                            } else if (combinedPlayers[clean].posRank === 999) {
-                                combinedPlayers[clean].posRank = overallRankVal; // Fallback
-                            }
-                            combinedPlayers[clean].flexRank = overallRankVal; 
-                        }
-
-                        // SoS Extraction
-                        if (sosColIdx !== -1 && teamColIdx !== -1 && posColIdx !== -1) {
-                            let teamStr = rows[i][teamColIdx] ? rows[i][teamColIdx].toString().trim().toUpperCase() : "";
-                            let posStr = rows[i][posColIdx] ? rows[i][posColIdx].toString().trim().toUpperCase() : "";
-                            let sosVal = rows[i][sosColIdx] ? rows[i][sosColIdx].toString().replace(/[^0-9]/g, '') : "";
-
-                            if (teamStr && posStr && sosVal && NFL_TEAMS.includes(teamStr)) {
-                                let posGroup = posStr.includes('QB') ? 'QB' : posStr.includes('RB') ? 'RB' : posStr.includes('WR') ? 'WR' : posStr.includes('TE') ? 'TE' : null;
-                                if (posGroup) {
-                                    if (!State.sosMap[teamStr]) State.sosMap[teamStr] = {};
-                                    State.sosMap[teamStr][posGroup] = sosVal;
-                                    hasNewSos = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        const total = filesWithContext.length;
-        let completed = 0;
-        if (typeof onProgress === 'function') onProgress(completed, total);
-
-        await Promise.all(filesWithContext.map(f => parseSingleFile(f).then(() => {
-            completed++;
-            if (typeof onProgress === 'function') onProgress(completed, total);
-        })));
 
         const type = isWeekly ? 'weekly' : 'ros';
         const fileInputIds = filesWithContext.map(f =>
             f.context === 'SINGLE' ? `${type}FileInput` : `${type}FileInput-${f.context}`
         );
 
-        const parsedData = Object.values(combinedPlayers);
         if (parsedData.length === 0) {
             // Clear the file input(s) so the failed selection doesn't linger on screen
             // looking like it might still be "in progress" or successfully attached.
