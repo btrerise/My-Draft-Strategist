@@ -8,6 +8,8 @@
 // level, which is why this sits above the IIFE rather than inside it; the imported
 // function is still just a normal binding the IIFE's closures can reference below.
 import { parseRankingsFiles } from './rankingsParser.js';
+import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap } from './sleeperApi.js';
+import { fetchMarketConsensusData } from './marketDataApi.js';
 
 (function () {
     'use strict';
@@ -112,8 +114,7 @@ import { parseRankingsFiles } from './rankingsParser.js';
     // upgrades the lineup optimizer's bye-week awareness -- if it's slow or fails, the app works
     // exactly as it did before this existed.
     function refreshCurrentNflWeek() {
-        fetch('https://api.sleeper.app/v1/state/nfl')
-            .then(res => res.ok ? res.json() : null)
+        getNflState()
             .then(data => {
                 if (data && typeof data.week === 'number') {
                     State.currentNflWeek = data.week;
@@ -451,100 +452,7 @@ function renderHTMLInto(container, html) {
 }
 
 // --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---
-// Sleeper's players/nfl payload is close to 5MB, and their own docs say not to call this
-// endpoint more than once a day. Previously this was only cached in the plain JS variables
-// below (_sleeperPlayerMapCache/_sleeperPlayerMapPromise) -- gone the instant the page
-// reloads, so every single page load re-downloaded the whole ~5MB payload regardless.
-// IndexedDB persists it across reloads without the concerns a payload this size would raise
-// in localStorage: it's asynchronous (a 5MB JSON.stringify/parse on every read would be a
-// real, synchronous main-thread cost), and it isn't competing against the same ~5-10MB total
-// quota localStorage shares with everything else this app already stores there.
-const SLEEPER_PLAYER_DB_NAME = 'mls_sleeper_cache';
-const SLEEPER_PLAYER_STORE = 'players';
-const SLEEPER_PLAYER_CACHE_KEY = 'nfl_player_map';
-const SLEEPER_PLAYER_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // matches Sleeper's own "once a day" guidance
-
-function openSleeperCacheDB() {
-    return new Promise((resolve, reject) => {
-        if (!window.indexedDB) { reject(new Error('IndexedDB not available')); return; }
-        const req = indexedDB.open(SLEEPER_PLAYER_DB_NAME, 1);
-        req.onupgradeneeded = () => {
-            const db = req.result;
-            if (!db.objectStoreNames.contains(SLEEPER_PLAYER_STORE)) {
-                db.createObjectStore(SLEEPER_PLAYER_STORE);
-            }
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-    });
-}
-
-// Returns { data, fetchedAt } or null -- null covers both "nothing cached yet" and "IndexedDB
-// isn't available/failed to open" (private-browsing restrictions in some browsers, etc). Either
-// way the caller's fallback is identical: fetch fresh from the network.
-async function getCachedSleeperPlayerMap() {
-    try {
-        const db = await openSleeperCacheDB();
-        return await new Promise((resolve, reject) => {
-            const tx = db.transaction(SLEEPER_PLAYER_STORE, 'readonly');
-            const store = tx.objectStore(SLEEPER_PLAYER_STORE);
-            const req = store.get(SLEEPER_PLAYER_CACHE_KEY);
-            req.onsuccess = () => resolve(req.result || null);
-            req.onerror = () => reject(req.error);
-        });
-    } catch (err) {
-        return null;
-    }
-}
-
-// Fire-and-forget from the caller's perspective -- persisting the cache is a nice-to-have,
-// not required for correctness. If it fails (quota, no IndexedDB support, etc.), the in-memory
-// cache from this session still works fine; it just won't survive a page reload.
-async function setCachedSleeperPlayerMap(data) {
-    try {
-        const db = await openSleeperCacheDB();
-        await new Promise((resolve, reject) => {
-            const tx = db.transaction(SLEEPER_PLAYER_STORE, 'readwrite');
-            tx.objectStore(SLEEPER_PLAYER_STORE).put({ data, fetchedAt: Date.now() }, SLEEPER_PLAYER_CACHE_KEY);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-        });
-    } catch (err) {
-        console.error('Failed to persist Sleeper player cache to IndexedDB:', err);
-    }
-}
-
-// Consolidated Sleeper DB Cache
-let _sleeperPlayerMapCache = null;
-let _sleeperPlayerMapPromise = null;
-function getSleeperPlayerMap(options = {}) {
-    if (_sleeperPlayerMapCache && !options.forceRefresh) return Promise.resolve(_sleeperPlayerMapCache);
-    if (_sleeperPlayerMapPromise && !options.forceRefresh) return _sleeperPlayerMapPromise;
-
-    _sleeperPlayerMapPromise = (async () => {
-        try {
-            // forceRefresh (used by the injury-status league scanner, which wants the absolute
-            // latest data) skips straight past both the in-memory AND IndexedDB caches.
-            if (!options.forceRefresh) {
-                const cached = await getCachedSleeperPlayerMap();
-                if (cached && (Date.now() - cached.fetchedAt) < SLEEPER_PLAYER_CACHE_MAX_AGE_MS) {
-                    _sleeperPlayerMapCache = cached.data;
-                    return cached.data;
-                }
-            }
-
-            const res = await fetch('https://api.sleeper.app/v1/players/nfl');
-            const data = await res.json();
-            _sleeperPlayerMapCache = data;
-            setCachedSleeperPlayerMap(data); // don't await -- this shouldn't delay callers
-            return data;
-        } finally {
-            _sleeperPlayerMapPromise = null;
-        }
-    })();
-
-    return _sleeperPlayerMapPromise;
-}
+// Moved to sleeperApi.js -- getSleeperPlayerMap is now imported at the top of this file.
 
 // Autocomplete Search Index
 let _playerSearchIndexPromise = null;
@@ -1308,14 +1216,10 @@ function attachScoutSuggestionHandler(outputElId) {
         try {
             let userId = preloaded.userId;
             if (!userId) {
-                const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
-                if (!userRes.ok) throw new Error("User not found.");
-                userId = (await userRes.json()).user_id;
+                userId = (await getSleeperUser(username)).user_id;
             }
 
-            const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
-            if (!leagueRes.ok) throw new Error("League ID not found.");
-            const leagueData = await leagueRes.json();
+            const leagueData = await getSleeperLeague(leagueId);
             let leagueName = leagueData.name || "My League";
             
             let formatBadge = "";
@@ -1347,13 +1251,11 @@ function attachScoutSuggestionHandler(outputElId) {
             }
 
             if (btn) btn.innerText = "Mapping League...";
-            const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
-            const usersData = await usersRes.json();
+            const usersData = await getSleeperLeagueUsers(leagueId);
             let userMap = {};
             usersData.forEach(u => userMap[u.user_id] = u.display_name);
 
-            const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
-            const rosters = await rosterRes.json();
+            const rosters = await getSleeperLeagueRosters(leagueId);
             
             if (btn) btn.innerText = "Loading Players...";
             const playerMap = preloaded.playerMap || await getSleeperPlayerMap();
@@ -1519,21 +1421,16 @@ function attachScoutSuggestionHandler(outputElId) {
         if (btn) { btn.innerText = "Finding your leagues..."; btn.disabled = true; btn.style.opacity = "0.7"; }
 
         try {
-            const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
-            if (!userRes.ok) throw new Error("Sleeper username not found.");
-            const userId = (await userRes.json()).user_id;
+            const userId = (await getSleeperUser(username)).user_id;
 
             // Sleeper's "current" season isn't necessarily the calendar year during the
             // offseason -- league_season (not the more general "season" field) is what
             // Sleeper's own docs describe as the active season for league membership, and
             // it shifts earlier than "season" during the transition into a new year.
-            const stateRes = await fetch(`https://api.sleeper.app/v1/state/nfl`);
-            const stateData = stateRes.ok ? await stateRes.json() : null;
+            const stateData = await getNflState();
             const season = stateData?.league_season || stateData?.season || String(new Date().getFullYear());
 
-            const leaguesRes = await fetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${season}`);
-            if (!leaguesRes.ok) throw new Error("Could not fetch leagues for this user.");
-            const leagues = await leaguesRes.json();
+            const leagues = await getSleeperUserLeagues(userId, season);
 
             if (!leagues || leagues.length === 0) {
                 if (window.showToast) window.showToast(`No ${season} NFL leagues found for that username.`, { isError: true });
@@ -2676,75 +2573,9 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     }
     // --- SHARED MARKET-CONSENSUS FETCH ---
-    // Extracted from what used to be inline inside fetchLeagueLogsADP() so both the Scout tab's
-    // Power Rankings feature AND the ROS Rankings auto-fetch (Roster tab) can reuse the exact
-    // same, already-proven fetch/parse logic instead of duplicating it. Pure data in/out --
-    // no DOM access, no state writes -- callers handle their own UI and State updates.
-    async function fetchMarketConsensusData(source, isDynastyVal, numQbsVal, ppr, isTEP, teamCount) {
-        let parsed = [];
-        let formatText = "";
-        const isDynastyBool = isDynastyVal === 'dynasty';
-
-        // --- 1. FANTASYCALC ---
-        if (source === 'fantasycalc') {
-            const fcRes = await fetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
-            if (!fcRes.ok) throw new Error(`FantasyCalc API Error: ${fcRes.status}`);
-            const fcData = await fcRes.json();
-
-            fcData.forEach(item => {
-                if (item.player && item.player.name) {
-                    let fullName = item.player.name;
-                    let rankVal = parseFloat(item.overallRank);
-
-                    if (!isNaN(rankVal)) {
-                        parsed.push({
-                            name: fullName,
-                            cleanName: normalizeName(fullName),
-                            marketVal: rankVal,
-                            pos: item.player.position || ""
-                        });
-                    }
-                }
-            });
-            formatText = `${isDynastyVal.toUpperCase()} (${numQbsVal === '2' ? 'Superflex' : '1QB'}, PPR: ${ppr})`;
-        } 
-        
-        // --- 2. LEAGUELOGS ---
-        else if (source === 'leaguelogs') {
-            let pprKey = "ppr1";
-            let qbKey = numQbsVal === '2' ? '2qb' : '1qb';
-            let typeKey = isDynastyVal; 
-            let profileKey = `${typeKey}-${qbKey}-12t-${pprKey}`;
-            
-            formatText = `${typeKey.toUpperCase()} - ${qbKey.toUpperCase()} (PPR)`;
-
-            let sleeperMap = await getSleeperPlayerMap();
-
-            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
-            if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
-            const llMarket = await marketRes.json();
-
-            llMarket.data.forEach(item => {
-                let sId = item.sleeperPlayerId;
-                let sp = sleeperMap[sId];
-                if (!sp || !sp.first_name) return; 
-
-                let fullName = `${sp.first_name} ${sp.last_name}`;
-                let rankVal = parseFloat(item.overallRank);
-
-                if (!isNaN(rankVal)) {
-                    parsed.push({
-                        name: fullName,
-                        cleanName: normalizeName(fullName),
-                        marketVal: rankVal,
-                        pos: sp.position || ""
-                    });
-                }
-            });
-        }
-
-        return { parsed, formatText };
-    }
+    // Moved to marketDataApi.js -- fetchMarketConsensusData is now imported at the top of
+    // this file. It's still used the same way below (Scout tab's Power Rankings and the
+    // ROS Rankings auto-fetch both call it), just no longer defined in this file.
 
     // --- ROS RANKINGS AUTO-FETCH ---
     // Reuses the exact same market-consensus fetch already proven for Scout's Power Rankings.
@@ -4374,13 +4205,21 @@ window.runGlobalInjuryAudit = async function(btn) {
         for (let league of State.leagues) {
             if (!league.leagueId || league.leagueId.startsWith('manual_')) continue;
 
-            const rostersRes = await fetch(`https://api.sleeper.app/v1/league/${league.leagueId}/rosters`);
-            const rosters = await rostersRes.json();
-            
-            // Resolve User ID
-            const userRes = await fetch(`https://api.sleeper.app/v1/user/${league.username}`);
-            const userData = await userRes.json();
-            const userId = userData.user_id;
+            const rosters = await getSleeperLeagueRosters(league.leagueId);
+
+            // Resolve User ID. getSleeperUser throws on a not-found/error response (the
+            // original inline fetch here didn't check response.ok at all, so a bad username
+            // would just produce userId===undefined, myRoster staying undefined below, and
+            // this league getting silently skipped by the "if (!myRoster) continue" a few
+            // lines down). The try/catch below makes that same "skip this one league, keep
+            // scanning the rest" behavior explicit instead of leaving it to fall out of an
+            // unrelated undefined check.
+            let userId;
+            try {
+                userId = (await getSleeperUser(league.username)).user_id;
+            } catch (err) {
+                continue;
+            }
 
             const myRoster = rosters.find(r => r.owner_id === userId);
             if (!myRoster) continue;
