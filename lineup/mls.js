@@ -2088,11 +2088,19 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
 
-        // Default to ROS rankings for waiver wire decisions, but fallback to Weekly if needed
-        let activeRankings = State.rosRankings.length > 0 ? State.rosRankings : State.weeklyRankings;
-        let rankType = State.rosRankings.length > 0 ? "ROS" : "Weekly";
+        // Run the upgrade search against ROS and Weekly independently (rather than picking one
+        // "active" set) and render both as separate sections when both exist -- same reasoning
+        // as the Trade Analyzer's dual verdict banners (By Your Rankings / By Market Consensus):
+        // a free agent can look like a clear upgrade by season-long value while being a poor
+        // matchup this week, or vice versa, and collapsing that into one score would hide the
+        // disagreement instead of surfacing it. See computeWaiverUpgrades/renderUpgradeSection
+        // below. Only sets that actually have data get a section; if just one is uploaded, this
+        // degrades to the previous single-list behavior (now explicitly labeled by source).
+        let rankingSources = [];
+        if (State.rosRankings.length > 0) rankingSources.push({ rankings: State.rosRankings, label: "ROS" });
+        if (State.weeklyRankings.length > 0) rankingSources.push({ rankings: State.weeklyRankings, label: "Weekly" });
 
-        if (activeRankings.length === 0) {
+        if (rankingSources.length === 0) {
             outputEl.innerHTML = `<span class="mls-error-text">Please upload Rest-of-Season or Weekly rankings first.</span>`;
             return;
         }
@@ -2139,80 +2147,32 @@ function attachScoutSuggestionHandler(outputElId) {
                 return pos === posFilter;
             };
 
-            // 1. Find user's lowest-ranked players matching the position filter
-            let myRoster = league.roster.filter(p => isMatch(getPos(p.cleanName))).map(p => {
-                let rObj = activeRankings.find(rk => rk.cleanName === p.cleanName);
-                return {
-                    name: p.name,
-                    cleanName: p.cleanName,
-                    rank: rObj ? rObj.rank : 999,
-                    pos: getPos(p.cleanName)
-                };
-            });
+            // 1. Find user's lowest-ranked players matching the position filter. This part is
+            // ranking-source-independent (positions only), so it's computed once regardless of
+            // how many ranking sources we end up analyzing against.
+            let myRosterBase = league.roster.filter(p => isMatch(getPos(p.cleanName)));
 
-            if (myRoster.length === 0) {
+            if (myRosterBase.length === 0) {
                 let posLabel = posFilter === 'FLEX' ? 'FLEX (RB/WR/TE)' : posFilter;
                 outputEl.innerHTML = `<span class="mls-error-text">You have no ${posLabel} players on your roster to drop.</span>`;
                 return;
             }
 
-            // Sort descending so the absolute worst player is first
-            myRoster.sort((a, b) => b.rank - a.rank);
-            
-            let benchmarkPlayer = myRoster[0];
-            let worstRank = benchmarkPlayer.rank;
-
-            // 2. Find all Free Agents definitively matching the position filter
-            let freeAgents = activeRankings.filter(r => !rosterMap[r.cleanName] && isMatch(getPos(r.cleanName)));
-
-            // 3. Filter FA upgrades (Rank numerically lower/better than the benchmark player)
-            let upgrades = freeAgents.filter(fa => fa.rank < worstRank);
-            upgrades.sort((a, b) => a.rank - b.rank);
-
-            if (upgrades.length === 0) {
-                let posLabel = posFilter === 'FLEX' ? 'FLEX' : posFilter;
-                let benchmarkText = benchmarkPlayer.rank === 999 ? `${benchmarkPlayer.name} (Unranked)` : `${benchmarkPlayer.name} (#${benchmarkPlayer.rank})`;
-                outputEl.innerHTML = `
-                    <div class="scout-result-card" style="justify-content: center; text-align: center; padding: 1.25rem 1rem;">
-                        <div style="color: var(--text-muted); line-height: 1.5;">
-                            No free agents found ranked higher than your lowest-ranked ${posLabel} player, <strong style="color: var(--text-main);">${benchmarkText}</strong>.
-                            <div style="margin-top: 0.35rem; color: var(--primary-green); font-weight: 600;">Your roster is optimized at this position!</div>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            // Cap to top 15
-            let topUpgrades = upgrades.slice(0, 15);
-
-            let benchmarkText = benchmarkPlayer.rank === 999 ? `${benchmarkPlayer.name} (Unranked)` : `${benchmarkPlayer.name} (#${benchmarkPlayer.rank})`;
-            
-            // Collect next 2 lowest players for bench context
-            let nextCandidates = myRoster.slice(1, 3).map(p => {
-                let rText = p.rank === 999 ? "Unranked" : `#${p.rank}`;
-                return `${p.name} (${rText})`;
-            });
-            let benchContext = nextCandidates.length > 0 ? `<br><span style="color: var(--text-muted); font-size: 0.8rem;">Other bench depth in this group: ${nextCandidates.join(', ')}</span>` : '';
-
-            let html = `
-            <div style="background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 6px; border-left: 3px solid #fca5a5; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.5;">
-                <div style="color: #fca5a5; font-weight: bold; margin-bottom: 4px;">Benchmark Drop Candidate:</div>
-                Your lowest-ranked player in this position group is <strong>${benchmarkText}</strong>. Here are the top available Free Agents ranked higher than <strong>${benchmarkPlayer.name}</strong>:${benchContext}
-            </div>
-            <div style="font-weight:bold; color:var(--primary-green); margin-bottom:0.5rem;">Top Available Upgrades (Based on ${rankType})</div>`;
-
-            topUpgrades.forEach(fa => {
+            // Renders one FA suggestion card. Shared across every ranking-source section --
+            // the Wk Rank / ROS Rank line always shows both, regardless of which source is
+            // driving this particular section's benchmark/upgrade decision.
+            const renderFaCard = (fa) => {
                 let wRankObj = State.weeklyRankings.find(r => r.cleanName === fa.cleanName);
                 let rRankObj = State.rosRankings.find(r => r.cleanName === fa.cleanName);
                 let pos = getPos(fa.cleanName);
-                
+
                 let wRank = wRankObj ? wRankObj.rank : "UR";
                 let rRank = rRankObj ? rRankObj.rank : "UR";
-                
+
                 let badgeClass = pos === "UNK" ? "FLEX" : pos;
                 let displayPos = pos === "UNK" ? "FA" : pos;
 
-                html += `
+                return `
                 <div class="scout-result-card">
                     <div>
                         <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px; display:flex; align-items:center;">
@@ -2228,9 +2188,70 @@ function attachScoutSuggestionHandler(outputElId) {
                         <div class="scout-status status-avail">Free Agent<br>(Available)</div>
                     </div>
                 </div>`;
+            };
+
+            // 2. For one ranking source (ROS or Weekly), find this position group's benchmark
+            // (worst-ranked) roster player under that source, then every Free Agent that source
+            // ranks ahead of the benchmark. Kept as its own pass per source (rather than one
+            // "active" set) so ROS and Weekly can each surface their own benchmark player and
+            // upgrade list -- they won't always agree, and that disagreement is useful signal,
+            // not noise to be averaged away.
+            const computeUpgrades = (rankings) => {
+                let myRoster = myRosterBase.map(p => {
+                    let rObj = rankings.find(rk => rk.cleanName === p.cleanName);
+                    return { name: p.name, cleanName: p.cleanName, rank: rObj ? rObj.rank : 999, pos: getPos(p.cleanName) };
+                });
+                myRoster.sort((a, b) => b.rank - a.rank); // worst first
+
+                let benchmarkPlayer = myRoster[0];
+                let worstRank = benchmarkPlayer.rank;
+
+                let freeAgents = rankings.filter(r => !rosterMap[r.cleanName] && isMatch(getPos(r.cleanName)));
+                let upgrades = freeAgents.filter(fa => fa.rank < worstRank);
+                upgrades.sort((a, b) => a.rank - b.rank);
+
+                return { myRoster, benchmarkPlayer, upgrades: upgrades.slice(0, 15) };
+            };
+
+            // 3. Renders one ranking source's full section (benchmark note + upgrade cards, or
+            // a "you're set" note if it found none). Source-labeled throughout so it's always
+            // clear which ranking set produced a given call -- especially important once two
+            // sections are shown side by side and they might disagree.
+            const renderUpgradeSection = (label, { myRoster, benchmarkPlayer, upgrades }) => {
+                let posLabel = posFilter === 'FLEX' ? 'FLEX' : posFilter;
+                let benchmarkText = benchmarkPlayer.rank === 999 ? `${benchmarkPlayer.name} (Unranked)` : `${benchmarkPlayer.name} (#${benchmarkPlayer.rank})`;
+
+                if (upgrades.length === 0) {
+                    return `
+                    <div class="scout-result-card" style="justify-content: center; text-align: center; padding: 1.25rem 1rem;">
+                        <div style="color: var(--text-muted); line-height: 1.5;">
+                            By <strong>${label}</strong>: no free agents ranked higher than your lowest-ranked ${posLabel} player, <strong style="color: var(--text-main);">${benchmarkText}</strong>.
+                            <div style="margin-top: 0.35rem; color: var(--primary-green); font-weight: 600;">Your roster is optimized at this position by ${label}!</div>
+                        </div>
+                    </div>`;
+                }
+
+                let nextCandidates = myRoster.slice(1, 3).map(p => `${p.name} (${p.rank === 999 ? "Unranked" : "#" + p.rank})`);
+                let benchContext = nextCandidates.length > 0 ? `<br><span style="color: var(--text-muted); font-size: 0.8rem;">Other bench depth in this group: ${nextCandidates.join(', ')}</span>` : '';
+
+                return `
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 6px; border-left: 3px solid #fca5a5; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.5;">
+                    <div style="color: #fca5a5; font-weight: bold; margin-bottom: 4px;">Benchmark Drop Candidate (by ${label}):</div>
+                    Your lowest-ranked player in this position group is <strong>${benchmarkText}</strong>. Here are the top available Free Agents ranked higher than <strong>${benchmarkPlayer.name}</strong>:${benchContext}
+                </div>
+                <div style="font-weight:bold; color:var(--primary-green); margin-bottom:0.5rem;">Top Available Upgrades (Based on ${label})</div>
+                ${upgrades.map(renderFaCard).join('')}`;
+            };
+
+            // rankingSources holds only sources that actually have data (see above) -- with
+            // just one uploaded, this renders exactly one section, matching the tool's
+            // previous single-source behavior but now explicitly labeled by source.
+            let sectionsHtml = rankingSources.map(({ rankings, label }) => {
+                let sectionLabel = rankingSources.length > 1 ? `<div class="scout-section-divider" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.03em; color: var(--text-muted); margin: 0 0 0.5rem;">${label} Rankings</div>` : '';
+                return `<div class="waiver-rank-section" style="margin-bottom:1.5rem;">${sectionLabel}${renderUpgradeSection(label, computeUpgrades(rankings))}</div>`;
             });
 
-            outputEl.innerHTML = html;
+            outputEl.innerHTML = sectionsHtml.join('');
 
         } catch (err) {
             console.error(err);
