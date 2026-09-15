@@ -74,6 +74,18 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
         marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
         tradeSettings: JSON.parse(localStorage.getItem('mls_trade_settings')) || { waiverAdjustment: true, waiverAdjustmentValue: 500 },
+        // --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
+        // flexKickoffOptimization gates optimizeFlexKickoffOrder() (see below): when on, the
+        // optimizer reassigns which flex-eligible starters sit in strict RB/WR/TE slots vs the
+        // true FLEX slot(s) so FLEX always holds the latest kickoff(s), maximizing late-swap
+        // flexibility. Defaults to true -- this is a strict improvement for anyone using their
+        // platform's real-time swap window, but some people prefer their FLEX slot to just
+        // reflect rank order without the extra slot-shuffling, hence the escape valve. This is
+        // separate from kickoff-based auto-lock (see hasKickedOff/isSleeperStarter in
+        // optimizeLineup), which always stays on -- that one is about not silently benching an
+        // already-started player, not a strategy preference, and already has its own override
+        // mechanism (per-player overrideAutoLock + Unlock All).
+        lineupSettings: JSON.parse(localStorage.getItem('mls_lineup_settings')) || { flexKickoffOptimization: true },
         syncLogs: JSON.parse(localStorage.getItem('mls_sync_logs')) || [],
         sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
         lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
@@ -722,6 +734,7 @@ function attachScoutSuggestionHandler(outputElId) {
         checkForDraftStrategistHandoff();
         applyMarketSettingsToUI();
         applyTradeSettingsToUI();
+        applyLineupSettingsToUI();
         updatePulsePrompts();
         refreshCurrentNflWeek();
         if (typeof renderSyncLogs === 'function') renderSyncLogs();
@@ -2913,6 +2926,24 @@ window.updateTradeSetting = function(key, value) {
     applyTradeSettingsToUI();
 };
 
+// --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
+// Re-runs the optimizer (non-manual, so it won't push an undo snapshot or show a toast) so
+// toggling this reflects immediately in whatever lineup is currently on screen, rather than
+// waiting for the next sync or manual "Optimize" click.
+window.updateLineupSetting = function(key, value) {
+    State.lineupSettings[key] = value;
+    localStorage.setItem('mls_lineup_settings', JSON.stringify(State.lineupSettings));
+    applyLineupSettingsToUI();
+    if (typeof window.optimizeLineup === 'function' && State.manualStartersMap[State.activeLeagueId]) {
+        window.optimizeLineup(false);
+    }
+};
+
+function applyLineupSettingsToUI() {
+    const toggleEl = document.getElementById('flexKickoffOptimizationToggle');
+    if (toggleEl) toggleEl.checked = !!State.lineupSettings.flexKickoffOptimization;
+}
+
 function applyTradeSettingsToUI() {
     const s = State.tradeSettings;
     const toggleEl = document.getElementById('tradeWaiverAdjustToggle');
@@ -3765,8 +3796,12 @@ function applyMarketSettingsToUI() {
         // Reassign which specific players occupy strict RB/WR/TE slots vs the FLEX slot(s),
         // purely by kickoff time -- who actually starts is already decided above by rank; this
         // only relabels slots so FLEX holds the latest games. See optimizeFlexKickoffOrder for
-        // why this is safe (it never changes the set of starters, only slot labels).
-        optimizeFlexKickoffOrder(starters);
+        // why this is safe (it never changes the set of starters, only slot labels). Gated by
+        // the user-facing toggle (State.lineupSettings.flexKickoffOptimization, default on) --
+        // when off, slots are left exactly as fillSlot()/the SFLEX loop above assigned them.
+        if (State.lineupSettings.flexKickoffOptimization) {
+            optimizeFlexKickoffOrder(starters);
+        }
 
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = pool;
