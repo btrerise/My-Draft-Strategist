@@ -1716,6 +1716,8 @@ function attachScoutSuggestionHandler(outputElId) {
                     results.data.forEach(row => {
                         let teamKey = Object.keys(row).find(k => k.toLowerCase().includes('team') || k.toLowerCase().includes('tm'));
                         let team = teamKey ? row[teamKey].trim().toUpperCase() : null;
+                        const TEAM_ALIASES = { "JAC": "JAX", "WSH": "WAS" };
+                        team = TEAM_ALIASES[team] || team;
 
                         if (team && NFL_TEAMS.includes(team)) {
                             if (!State.sosMap[team]) State.sosMap[team] = {};

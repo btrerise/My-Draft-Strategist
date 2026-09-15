@@ -15,6 +15,7 @@
 // never-changing list of 32 abbreviations, so a second copy is a non-issue, and it keeps this
 // module usable/testable without mls.js's IIFE ever having to export anything just for this.
 const NFL_TEAMS = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
+const TEAM_ALIASES = { "JAC": "JAX", "WSH": "WAS" };
 
 // normalizeName and showToast live in utils.js, a plain (non-module) script loaded before
 // this one -- their top-level `function` declarations attach to `window`, so they're reached
@@ -149,7 +150,9 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
 
                         // SoS Extraction
                         if (sosColIdx !== -1 && teamColIdx !== -1 && posColIdx !== -1) {
-                            let teamStr = rows[i][teamColIdx] ? rows[i][teamColIdx].toString().trim().toUpperCase() : "";
+                            let teamStr = rows[i][teamColIdx] ? rows[i][teamColIdx].toString().trim().toUpperCase() : "";                            
+                            teamStr = TEAM_ALIASES[teamStr] || teamStr; 
+                            
                             let posStr = rows[i][posColIdx] ? rows[i][posColIdx].toString().trim().toUpperCase() : "";
                             let sosVal = rows[i][sosColIdx] ? rows[i][sosColIdx].toString().replace(/[^0-9]/g, '') : "";
 
