@@ -106,7 +106,81 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
         gameTimesByTeam: {},
         // Which week gameTimesByTeam was last successfully fetched for, so a stale cache from
         // an earlier week doesn't silently get reused if currentNflWeek changes mid-session.
-        gameTimesFetchedForWeek: null
+        gameTimesFetchedForWeek: null,
+        // Not persisted -- undo/redo history for lineup edits (swaps, lock toggles, and
+        // optimizer re-runs), per league. Deliberately session-only rather than saved to
+        // localStorage: this is "undo my last few clicks," not part of the lineup itself,
+        // and most users' mental model of undo (browser, text editors, etc.) is that it
+        // doesn't survive closing the tab. Capped at MAX_UNDO_STACK_SIZE entries per league
+        // (see pushLineupUndoSnapshot) since a long session could otherwise accumulate an
+        // unbounded number of small snapshots.
+        lineupUndoStackMap: {},
+        lineupRedoStackMap: {}
+    };
+
+    const MAX_UNDO_STACK_SIZE = 20;
+
+    // Deep-copies the current lineup-relevant state for one league (starters, bench, and the
+    // manual lock list) into a plain snapshot object, suitable for pushing onto the undo/redo
+    // stacks below. JSON round-trip is fine here -- everything in these three structures is
+    // plain data (no functions, dates, etc), and the arrays involved are small (one roster's
+    // worth of players), so the cost of this is negligible even called on every lineup edit.
+    function snapshotLineupState(leagueId) {
+        return {
+            starters: JSON.parse(JSON.stringify(State.manualStartersMap[leagueId] || [])),
+            bench: JSON.parse(JSON.stringify(State.manualBenchMap[leagueId] || [])),
+            locks: JSON.parse(JSON.stringify(State.lockedPlayersMap[leagueId] || []))
+        };
+    }
+
+    function restoreLineupState(leagueId, snapshot) {
+        State.manualStartersMap[leagueId] = snapshot.starters;
+        State.manualBenchMap[leagueId] = snapshot.bench;
+        State.lockedPlayersMap[leagueId] = snapshot.locks;
+        localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
+        localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
+    }
+
+    // Called at the start of every lineup-mutating action (swap, lock toggle, unlock-all,
+    // optimizer re-run) with a snapshot of the state as it was JUST BEFORE that action, so
+    // Ctrl+Z has something to restore. Making a new edit always clears the redo stack -- the
+    // same convention as every other undo/redo system: redo only makes sense for undos you
+    // haven't since invalidated by doing something new.
+    function pushLineupUndoSnapshot(leagueId) {
+        if (!leagueId) return;
+        if (!State.lineupUndoStackMap[leagueId]) State.lineupUndoStackMap[leagueId] = [];
+        State.lineupUndoStackMap[leagueId].push(snapshotLineupState(leagueId));
+        if (State.lineupUndoStackMap[leagueId].length > MAX_UNDO_STACK_SIZE) {
+            State.lineupUndoStackMap[leagueId].shift();
+        }
+        State.lineupRedoStackMap[leagueId] = [];
+    }
+
+    window.undoLineupChange = function() {
+        const leagueId = State.activeLeagueId;
+        const undoStack = State.lineupUndoStackMap[leagueId];
+        if (!leagueId || !undoStack || undoStack.length === 0) return;
+
+        if (!State.lineupRedoStackMap[leagueId]) State.lineupRedoStackMap[leagueId] = [];
+        State.lineupRedoStackMap[leagueId].push(snapshotLineupState(leagueId));
+
+        restoreLineupState(leagueId, undoStack.pop());
+        renderLineupUI();
+        if (typeof window.showToast === 'function') window.showToast("Undid last lineup change");
+    };
+
+    window.redoLineupChange = function() {
+        const leagueId = State.activeLeagueId;
+        const redoStack = State.lineupRedoStackMap[leagueId];
+        if (!leagueId || !redoStack || redoStack.length === 0) return;
+
+        if (!State.lineupUndoStackMap[leagueId]) State.lineupUndoStackMap[leagueId] = [];
+        State.lineupUndoStackMap[leagueId].push(snapshotLineupState(leagueId));
+
+        restoreLineupState(leagueId, redoStack.pop());
+        renderLineupUI();
+        if (typeof window.showToast === 'function') window.showToast("Redid lineup change");
     };
 
     // Refreshes State.currentNflWeek from Sleeper's public NFL state endpoint. Fire-and-forget:
@@ -242,7 +316,10 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
             return; 
         }
 
-        const swipeThreshold = 120; 
+        // 20% of viewport width, with a floor so this doesn't get too twitchy on narrow
+        // phones (e.g. 20% of a 320px-wide screen would be 64px, which is on the edge of
+        // triggering from an imprecise scroll/tap rather than a deliberate swipe).
+        const swipeThreshold = Math.max(80, window.innerWidth * 0.2);
         const activeTabBtn = document.querySelector('.nav-bar .nav-btn.active');
         if (!activeTabBtn) return;
         
@@ -278,6 +355,17 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
         document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
         const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
         if (activeNavBtn) activeNavBtn.classList.add('active');
+
+        // Announced to screen readers via the aria-live region in index.html -- covers every
+        // way a tab can change (swipe, number-key shortcuts, hamburger menu, browser back/
+        // forward), not just one of them, since they all funnel through this one function.
+        // Reads the nav button's own visible label rather than a separate hardcoded name map,
+        // so it can't drift out of sync if a tab's label is ever renamed.
+        const announcer = document.getElementById('tabChangeAnnouncer');
+        if (announcer && activeNavBtn) {
+            const label = activeNavBtn.querySelector('span');
+            if (label) announcer.textContent = `${label.textContent} tab`;
+        }
 
         if (tabId === 'lineup') window.optimizeLineup(false);
         if (tabId === 'roster') loadRosterTab();
@@ -456,9 +544,15 @@ function renderHTMLInto(container, html) {
 
 // Autocomplete Search Index
 let _playerSearchIndexPromise = null;
+// Shown at most once per outage -- getPlayerSearchIndex() is called on every autocomplete
+// keystroke, so without this a network failure would toast repeatedly as the user kept
+// typing. Resets to false on the next successful fetch, so a later, separate outage still
+// gets its own toast rather than being silenced forever by this one.
+let _playerSearchIndexErrorShown = false;
 function getPlayerSearchIndex() {
     if (_playerSearchIndexPromise) return _playerSearchIndexPromise;
     _playerSearchIndexPromise = getSleeperPlayerMap().then(map => {
+        _playerSearchIndexErrorShown = false;
         const FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
         const index = [];
         Object.values(map).forEach(p => {
@@ -467,6 +561,16 @@ function getPlayerSearchIndex() {
             index.push({ name, pos: p.position, team: p.team || 'FA', searchKey: name.toLowerCase() });
         });
         return index;
+    }).catch(err => {
+        // Clear the cached promise so the next attempt (next keystroke, or after
+        // reconnecting) actually retries instead of replaying this same rejected promise
+        // forever -- unlike a successful result, a rejection here was never being retried.
+        _playerSearchIndexPromise = null;
+        if (!_playerSearchIndexErrorShown && typeof window.showToast === 'function') {
+            _playerSearchIndexErrorShown = true;
+            window.showToast("Couldn't load player data for search. Check your connection and try again.", { isError: true });
+        }
+        throw err;
     });
     return _playerSearchIndexPromise;
 }
@@ -739,6 +843,69 @@ function attachScoutSuggestionHandler(outputElId) {
         if (!iso) return false;
         const ms = new Date(iso).getTime();
         return !isNaN(ms) && Date.now() >= ms;
+    }
+
+    // Finds every current starter who shares the single soonest upcoming kickoff moment
+    // (not just one player), and renders a small status line for the top of the lineup card.
+    // The point is specifically to catch "I switched leagues to check on something and forgot
+    // I still need to set a starter here" -- so this only fires while there's a real starter
+    // slot filled with a player whose game hasn't started, not for bench players or empty
+    // slots. Returns "" (nothing rendered) once every starter with known kickoff data has
+    // already locked -- an "all clear" state doesn't need a persistent banner competing for
+    // attention.
+    //
+    // Grouping by the exact earliest timestamp (not just showing whoever happens to be first
+    // in the starters array) matters on a slate where several starters kick off at once, e.g.
+    // a full Sunday 1pm slot -- showing only one name there would wrongly imply the others
+    // aren't also about to lock. With more than one name, the banner collapses to a count by
+    // default (so a big slate doesn't turn this into a wall of text) and expands on tap to
+    // show exactly who, without needing to scroll into the lineup below to find out.
+    function getNextLockCountdownHTML(starters) {
+        let earliestMs = null;
+        starters.forEach(s => {
+            if (!s.player || !s.player.team || hasKickedOff(s.player)) return;
+            const iso = State.gameTimesByTeam[s.player.team];
+            if (!iso) return;
+            const ms = new Date(iso).getTime();
+            if (isNaN(ms)) return;
+            if (earliestMs === null || ms < earliestMs) earliestMs = ms;
+        });
+
+        if (earliestMs === null) return "";
+
+        const lockingPlayers = starters
+            .filter(s => {
+                if (!s.player || !s.player.team || hasKickedOff(s.player)) return false;
+                const iso = State.gameTimesByTeam[s.player.team];
+                return iso && new Date(iso).getTime() === earliestMs;
+            })
+            .map(s => s.player);
+
+        const totalMinutes = Math.max(0, Math.round((earliestMs - Date.now()) / 60000));
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        const countdownStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        const label = formatKickoffLabel(new Date(earliestMs).toISOString());
+        const clockSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+
+        if (lockingPlayers.length <= 1) {
+            const p = lockingPlayers[0];
+            return `<div class="lineup-lock-countdown">
+                ${clockSvg}
+                <span>Next lock: <strong>${escapeHtml(p.name)}</strong> &middot; ${label} <span class="lineup-lock-countdown-time">(in ${countdownStr})</span></span>
+            </div>`;
+        }
+
+        const namesHTML = lockingPlayers.map(p => escapeHtml(p.name)).join(', ');
+        const chevronSvg = `<svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+        return `<div id="lockCountdownCard" class="lineup-lock-countdown-collapsible">
+            <div class="lock-countdown-header" onclick="toggleLockCountdown()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLockCountdown();}" role="button" tabindex="0" aria-expanded="false">
+                ${clockSvg}
+                <span>Next lock: <strong>${lockingPlayers.length} players</strong> &middot; ${label} <span class="lineup-lock-countdown-time">(in ${countdownStr})</span></span>
+                ${chevronSvg}
+            </div>
+            <div class="lock-countdown-detail">${namesHTML}</div>
+        </div>`;
     }
 
     // Sleeper's own snapshot of who's actually starting, as of the last sync -- the ground
@@ -1533,12 +1700,24 @@ function attachScoutSuggestionHandler(outputElId) {
             const file = e.target.files[0];
             if (!file) return;
 
+            // 'ros' included alongside 'sos'/'schedule'/'matchup' -- several exports label this
+            // column "ROS" (rest-of-season) even though it's the same team+position
+            // schedule-strength value.
+            const SOS_KEY_NAMES = ['sos', 'schedule', 'matchup', 'ros'];
+
             Papa.parse(file, {
                 header: true, skipEmptyLines: true,
-                complete: function(results) {
+                complete: async function(results) {
+                    // Rows with no recognizable Team column (e.g. a plain "Player, ROS" export)
+                    // get queued here instead of dropped -- resolved via a name lookup against
+                    // Sleeper's player map once, below, rather than per-row.
+                    const rowsNeedingNameResolution = [];
+
                     results.data.forEach(row => {
                         let teamKey = Object.keys(row).find(k => k.toLowerCase().includes('team') || k.toLowerCase().includes('tm'));
                         let team = teamKey ? row[teamKey].trim().toUpperCase() : null;
+                        const TEAM_ALIASES = { "JAC": "JAX", "WSH": "WAS" };
+                        team = TEAM_ALIASES[team] || team;
 
                         if (team && NFL_TEAMS.includes(team)) {
                             if (!State.sosMap[team]) State.sosMap[team] = {};
@@ -1553,7 +1732,7 @@ function attachScoutSuggestionHandler(outputElId) {
                                 }
                             } else {
                                 let posKey = Object.keys(row).find(k => k.toLowerCase() === 'pos' || k.toLowerCase() === 'position');
-                                let sosKey = Object.keys(row).find(k => k.toLowerCase() === 'sos' || k.toLowerCase() === 'schedule' || k.toLowerCase() === 'matchup');
+                                let sosKey = Object.keys(row).find(k => SOS_KEY_NAMES.includes(k.toLowerCase()));
                                 
                                 if (posKey && sosKey) {
                                     let posStr = row[posKey].toUpperCase();
@@ -1563,8 +1742,44 @@ function attachScoutSuggestionHandler(outputElId) {
                                     if (posGroup && sosVal) State.sosMap[team][posGroup] = sosVal;
                                 }
                             }
+                            return;
+                        }
+
+                        // No Team column found for this row -- fall back to matching by player
+                        // name against Sleeper's player map (queued, resolved in one batch below).
+                        let nameKey = Object.keys(row).find(k => ['player', 'name', 'player name'].includes(k.toLowerCase().trim()));
+                        let sosKey = Object.keys(row).find(k => SOS_KEY_NAMES.includes(k.toLowerCase()));
+                        if (nameKey && sosKey && row[nameKey] && row[nameKey].trim()) {
+                            let sosVal = row[sosKey].replace(/[^0-9]/g, '');
+                            if (sosVal) rowsNeedingNameResolution.push({ name: row[nameKey].trim(), sosVal });
                         }
                     });
+
+                    if (rowsNeedingNameResolution.length > 0) {
+                        try {
+                            const map = await getSleeperPlayerMap();
+                            const teamPosByName = {};
+                            Object.values(map).forEach(p => {
+                                if (p.first_name && p.team && ['QB', 'RB', 'WR', 'TE'].includes(p.position)) {
+                                    teamPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = { team: p.team, pos: p.position };
+                                }
+                            });
+
+                            rowsNeedingNameResolution.forEach(({ name, sosVal }) => {
+                                let match = teamPosByName[normalizeName(name)];
+                                if (match) {
+                                    if (!State.sosMap[match.team]) State.sosMap[match.team] = {};
+                                    State.sosMap[match.team][match.pos] = sosVal;
+                                }
+                            });
+                        } catch (err) {
+                            console.error("Couldn't resolve player teams for SoS file:", err);
+                            if (typeof window.showToast === 'function') {
+                                window.showToast("SoS file uploaded, but player teams couldn't be resolved. Check your connection and try again.", { isError: true });
+                            }
+                        }
+                    }
+
                     localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
                     generateSoSGrid();
                     
@@ -2228,6 +2443,14 @@ function attachScoutSuggestionHandler(outputElId) {
         updateRankingsMetaDisplay();
     };
 
+
+    window.toggleLockCountdown = function() {
+        const card = document.getElementById('lockCountdownCard');
+        if (!card) return;
+        const nowExpanded = card.classList.toggle('expanded');
+        const header = card.querySelector('.lock-countdown-header');
+        if (header) header.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+    };
 
     window.toggleRankingsCard = function(cardId) {
         const card = document.getElementById(cardId);
@@ -3145,6 +3368,7 @@ function applyMarketSettingsToUI() {
 
     window.toggleLock = function(playerId) {
         if (!State.activeLeagueId) return;
+        pushLineupUndoSnapshot(State.activeLeagueId);
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
         let isLocking = !locks.includes(playerId);
         let playerName = setPlayerLockState(playerId, isLocking) || 'Player';
@@ -3179,6 +3403,7 @@ function applyMarketSettingsToUI() {
 
         if (!window.confirm(`${playerName}'s game shows as already started. Only override this if that's wrong -- doing so lets the optimizer freely move or bench them again.`)) return;
 
+        pushLineupUndoSnapshot(State.activeLeagueId);
         let entry = State.autoLockOverridesMap[State.activeLeagueId];
         if (!entry || entry.week !== State.currentNflWeek) entry = { week: State.currentNflWeek, ids: [] };
         if (!entry.ids.includes(playerId)) entry.ids.push(playerId);
@@ -3204,6 +3429,7 @@ function applyMarketSettingsToUI() {
         if (locks.length === 0) return;
         if (!window.confirm(`Unlock all ${locks.length} manually locked player(s) in this league?`)) return;
 
+        pushLineupUndoSnapshot(State.activeLeagueId);
         State.lockedPlayersMap[State.activeLeagueId] = [];
         localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
 
@@ -3264,6 +3490,8 @@ function applyMarketSettingsToUI() {
                 renderLineupUI();
                 return;
             }
+
+            pushLineupUndoSnapshot(State.activeLeagueId);
 
             if (p1StarterIdx !== -1 && p2StarterIdx !== -1) { starters[p1StarterIdx].player = p2Obj; starters[p2StarterIdx].player = p1Obj; } 
             else if (p1StarterIdx !== -1 && p2BenchIdx !== -1) { starters[p1StarterIdx].player = p2Obj; bench[p2BenchIdx] = p1Obj; }
@@ -3396,6 +3624,18 @@ function applyMarketSettingsToUI() {
         if (!forceReset && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
             renderLineupUI(); 
             return;
+        }
+
+        // Only the literal "Optimize Lineup" button click gets its own undo checkpoint here.
+        // unlockAllPlayers/overrideAutoLock also trigger a forceReset recompute, but they push
+        // their own snapshot before their own mutation, so their whole compound action undoes
+        // in one step -- pushing here too would double up and only undo half of it. Sync-
+        // triggered recomputes (processSleeperData's unconditional optimizeLineup(true)) are
+        // deliberately excluded from undo entirely: the roster/player pool itself just changed,
+        // so restoring an older lineup snapshot could silently reintroduce a player who was
+        // just dropped -- that's a correctness risk undo shouldn't create.
+        if (isManualAction && forceReset && State.manualStartersMap[State.activeLeagueId]) {
+            pushLineupUndoSnapshot(State.activeLeagueId);
         }
 
         let activeDataSet = State.weeklyRankings.length > 0 ? State.weeklyRankings : State.rosRankings;
@@ -3753,7 +3993,9 @@ window.syncAllLeagues = async function(btn) {
         let locksList = State.lockedPlayersMap[State.activeLeagueId] || [];
 
         let html = "";
-        
+
+        html += getNextLockCountdownHTML(starters);
+
         if (validSleeperStarters.length > 0) {
             let sleeperSet = new Set(validSleeperStarters);
             let optSet = new Set(optimizedStarterIds);
@@ -3973,6 +4215,20 @@ document.addEventListener('keydown', (e) => {
     if (e.shiftKey && e.key === 'ArrowRight') {
         e.preventDefault();
         if (typeof window.cycleLeague === 'function') window.cycleLeague(1);
+        return;
+    }
+
+    // Ctrl+Z / Cmd+Z to undo the last lineup edit (swap, lock toggle, unlock-all, or a
+    // manual "Optimize Lineup" click), Ctrl+Shift+Z or Ctrl+Y / Cmd+Shift+Z to redo --
+    // see pushLineupUndoSnapshot and undoLineupChange/redoLineupChange above for scope.
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (typeof window.undoLineupChange === 'function') window.undoLineupChange();
+        return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault();
+        if (typeof window.redoLineupChange === 'function') window.redoLineupChange();
         return;
     }
 
