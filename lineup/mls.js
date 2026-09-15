@@ -1700,9 +1700,19 @@ function attachScoutSuggestionHandler(outputElId) {
             const file = e.target.files[0];
             if (!file) return;
 
+            // 'ros' included alongside 'sos'/'schedule'/'matchup' -- several exports label this
+            // column "ROS" (rest-of-season) even though it's the same team+position
+            // schedule-strength value.
+            const SOS_KEY_NAMES = ['sos', 'schedule', 'matchup', 'ros'];
+
             Papa.parse(file, {
                 header: true, skipEmptyLines: true,
-                complete: function(results) {
+                complete: async function(results) {
+                    // Rows with no recognizable Team column (e.g. a plain "Player, ROS" export)
+                    // get queued here instead of dropped -- resolved via a name lookup against
+                    // Sleeper's player map once, below, rather than per-row.
+                    const rowsNeedingNameResolution = [];
+
                     results.data.forEach(row => {
                         let teamKey = Object.keys(row).find(k => k.toLowerCase().includes('team') || k.toLowerCase().includes('tm'));
                         let team = teamKey ? row[teamKey].trim().toUpperCase() : null;
@@ -1720,7 +1730,7 @@ function attachScoutSuggestionHandler(outputElId) {
                                 }
                             } else {
                                 let posKey = Object.keys(row).find(k => k.toLowerCase() === 'pos' || k.toLowerCase() === 'position');
-                                let sosKey = Object.keys(row).find(k => k.toLowerCase() === 'sos' || k.toLowerCase() === 'schedule' || k.toLowerCase() === 'matchup');
+                                let sosKey = Object.keys(row).find(k => SOS_KEY_NAMES.includes(k.toLowerCase()));
                                 
                                 if (posKey && sosKey) {
                                     let posStr = row[posKey].toUpperCase();
@@ -1730,8 +1740,44 @@ function attachScoutSuggestionHandler(outputElId) {
                                     if (posGroup && sosVal) State.sosMap[team][posGroup] = sosVal;
                                 }
                             }
+                            return;
+                        }
+
+                        // No Team column found for this row -- fall back to matching by player
+                        // name against Sleeper's player map (queued, resolved in one batch below).
+                        let nameKey = Object.keys(row).find(k => ['player', 'name', 'player name'].includes(k.toLowerCase().trim()));
+                        let sosKey = Object.keys(row).find(k => SOS_KEY_NAMES.includes(k.toLowerCase()));
+                        if (nameKey && sosKey && row[nameKey] && row[nameKey].trim()) {
+                            let sosVal = row[sosKey].replace(/[^0-9]/g, '');
+                            if (sosVal) rowsNeedingNameResolution.push({ name: row[nameKey].trim(), sosVal });
                         }
                     });
+
+                    if (rowsNeedingNameResolution.length > 0) {
+                        try {
+                            const map = await getSleeperPlayerMap();
+                            const teamPosByName = {};
+                            Object.values(map).forEach(p => {
+                                if (p.first_name && p.team && ['QB', 'RB', 'WR', 'TE'].includes(p.position)) {
+                                    teamPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = { team: p.team, pos: p.position };
+                                }
+                            });
+
+                            rowsNeedingNameResolution.forEach(({ name, sosVal }) => {
+                                let match = teamPosByName[normalizeName(name)];
+                                if (match) {
+                                    if (!State.sosMap[match.team]) State.sosMap[match.team] = {};
+                                    State.sosMap[match.team][match.pos] = sosVal;
+                                }
+                            });
+                        } catch (err) {
+                            console.error("Couldn't resolve player teams for SoS file:", err);
+                            if (typeof window.showToast === 'function') {
+                                window.showToast("SoS file uploaded, but player teams couldn't be resolved. Check your connection and try again.", { isError: true });
+                            }
+                        }
+                    }
+
                     localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
                     generateSoSGrid();
                     

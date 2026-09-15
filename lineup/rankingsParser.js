@@ -93,7 +93,11 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 });
             } else {
                 // Vertical Parsing Engine
-                let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup');
+                // 'ros' included alongside the more obvious 'sos'/'schedule'/'matchup' names --
+                // several ranking exports label this column "ROS" (rest-of-season) even though
+                // it's the same team+position schedule-strength value, not an overall rank (the
+                // overall rank column is caught separately above via 'rank'/'overall'/'tier').
+                let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup' || h === 'ros');
                 let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
                 let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
                 let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank' || h === 'positional rank');
