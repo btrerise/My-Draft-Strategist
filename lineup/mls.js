@@ -316,7 +316,10 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
             return; 
         }
 
-        const swipeThreshold = 120; 
+        // 20% of viewport width, with a floor so this doesn't get too twitchy on narrow
+        // phones (e.g. 20% of a 320px-wide screen would be 64px, which is on the edge of
+        // triggering from an imprecise scroll/tap rather than a deliberate swipe).
+        const swipeThreshold = Math.max(80, window.innerWidth * 0.2);
         const activeTabBtn = document.querySelector('.nav-bar .nav-btn.active');
         if (!activeTabBtn) return;
         
@@ -352,6 +355,17 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
         document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
         const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
         if (activeNavBtn) activeNavBtn.classList.add('active');
+
+        // Announced to screen readers via the aria-live region in index.html -- covers every
+        // way a tab can change (swipe, number-key shortcuts, hamburger menu, browser back/
+        // forward), not just one of them, since they all funnel through this one function.
+        // Reads the nav button's own visible label rather than a separate hardcoded name map,
+        // so it can't drift out of sync if a tab's label is ever renamed.
+        const announcer = document.getElementById('tabChangeAnnouncer');
+        if (announcer && activeNavBtn) {
+            const label = activeNavBtn.querySelector('span');
+            if (label) announcer.textContent = `${label.textContent} tab`;
+        }
 
         if (tabId === 'lineup') window.optimizeLineup(false);
         if (tabId === 'roster') loadRosterTab();
@@ -530,9 +544,15 @@ function renderHTMLInto(container, html) {
 
 // Autocomplete Search Index
 let _playerSearchIndexPromise = null;
+// Shown at most once per outage -- getPlayerSearchIndex() is called on every autocomplete
+// keystroke, so without this a network failure would toast repeatedly as the user kept
+// typing. Resets to false on the next successful fetch, so a later, separate outage still
+// gets its own toast rather than being silenced forever by this one.
+let _playerSearchIndexErrorShown = false;
 function getPlayerSearchIndex() {
     if (_playerSearchIndexPromise) return _playerSearchIndexPromise;
     _playerSearchIndexPromise = getSleeperPlayerMap().then(map => {
+        _playerSearchIndexErrorShown = false;
         const FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
         const index = [];
         Object.values(map).forEach(p => {
@@ -541,6 +561,16 @@ function getPlayerSearchIndex() {
             index.push({ name, pos: p.position, team: p.team || 'FA', searchKey: name.toLowerCase() });
         });
         return index;
+    }).catch(err => {
+        // Clear the cached promise so the next attempt (next keystroke, or after
+        // reconnecting) actually retries instead of replaying this same rejected promise
+        // forever -- unlike a successful result, a rejection here was never being retried.
+        _playerSearchIndexPromise = null;
+        if (!_playerSearchIndexErrorShown && typeof window.showToast === 'function') {
+            _playerSearchIndexErrorShown = true;
+            window.showToast("Couldn't load player data for search. Check your connection and try again.", { isError: true });
+        }
+        throw err;
     });
     return _playerSearchIndexPromise;
 }

@@ -57,6 +57,10 @@
 </head>
 <body>
 
+<!-- Screen-reader-only announcement region for tab changes (see showTab in mls.js) --
+     visually hidden via .sr-only, but announced by assistive tech whenever its text changes. -->
+<div id="tabChangeAnnouncer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
 <!-- DRAWER OVERLAY -->
 <div class="menu-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
 

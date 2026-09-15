@@ -24,6 +24,14 @@
     
     --stack-color: #f97316;
 
+    /* Button accent colors -- previously hardcoded directly in .btn-blue/.btn-purple below.
+       Named for what they are (a specific button's color), not reused from --dart-border/
+       --pos-wr-border even though they currently share the same blue: those represent an
+       unrelated concept (fantasy "dart throw" / WR position color) that happens to look the
+       same today, and could reasonably change independently of what a button looks like. */
+    --btn-blue-bg: #3b82f6;
+    --btn-purple-bg: #8b5cf6;
+
     /* Positional Colors - Muted backgrounds with vibrant borders */
     --pos-qb: rgba(239, 68, 68, 0.15);   --pos-qb-border: #ef4444;
     --pos-rb: rgba(16, 185, 129, 0.15);  --pos-rb-border: #10b981;
@@ -38,6 +46,20 @@
     box-sizing: border-box; 
     margin: 0; /* Reset margins globally to prevent unwanted scrollbars */
     padding: 0;
+}
+
+/* Visually hides content while keeping it available to screen readers -- the standard,
+   widely-used pattern (as opposed to display:none, which hides it from assistive tech too). */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 body { 
@@ -866,8 +888,8 @@ body {
 .btn-secondary { background: var(--border); color: var(--text-main); }
 .btn-secondary:hover { background: #2d3748; }
 
-.btn-blue { background: #3b82f6; color: #0a0e17; }
-.btn-purple { background: #8b5cf6; color: #0a0e17; }
+.btn-blue { background: var(--btn-blue-bg); color: #0a0e17; }
+.btn-purple { background: var(--btn-purple-bg); color: #0a0e17; }
 .btn-warning { background: rgba(245, 158, 11, 0.15); color: #fde047; border: 1px solid #f59e0b; }
 .btn-warning:hover { background: rgba(245, 158, 11, 0.25); }
 .btn-danger { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid #ef4444; }
