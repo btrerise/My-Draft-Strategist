@@ -815,40 +815,66 @@ function attachScoutSuggestionHandler(outputElId) {
         return !isNaN(ms) && Date.now() >= ms;
     }
 
-    // Finds the soonest-kicking-off current starter who hasn't locked yet, and renders a
-    // small status line for the top of the lineup card. The point is specifically to catch
-    // "I switched leagues to check on something and forgot I still need to set a starter
-    // here" -- so this only fires while there's a real starter slot filled with a player
-    // whose game hasn't started, not for bench players or empty slots. Returns "" (nothing
-    // rendered) once every starter with known kickoff data has already locked -- an "all
-    // clear" state doesn't need a persistent banner competing for attention.
+    // Finds every current starter who shares the single soonest upcoming kickoff moment
+    // (not just one player), and renders a small status line for the top of the lineup card.
+    // The point is specifically to catch "I switched leagues to check on something and forgot
+    // I still need to set a starter here" -- so this only fires while there's a real starter
+    // slot filled with a player whose game hasn't started, not for bench players or empty
+    // slots. Returns "" (nothing rendered) once every starter with known kickoff data has
+    // already locked -- an "all clear" state doesn't need a persistent banner competing for
+    // attention.
+    //
+    // Grouping by the exact earliest timestamp (not just showing whoever happens to be first
+    // in the starters array) matters on a slate where several starters kick off at once, e.g.
+    // a full Sunday 1pm slot -- showing only one name there would wrongly imply the others
+    // aren't also about to lock. With more than one name, the banner collapses to a count by
+    // default (so a big slate doesn't turn this into a wall of text) and expands on tap to
+    // show exactly who, without needing to scroll into the lineup below to find out.
     function getNextLockCountdownHTML(starters) {
         let earliestMs = null;
-        let earliestPlayer = null;
-
         starters.forEach(s => {
             if (!s.player || !s.player.team || hasKickedOff(s.player)) return;
             const iso = State.gameTimesByTeam[s.player.team];
             if (!iso) return;
             const ms = new Date(iso).getTime();
             if (isNaN(ms)) return;
-            if (earliestMs === null || ms < earliestMs) {
-                earliestMs = ms;
-                earliestPlayer = s.player;
-            }
+            if (earliestMs === null || ms < earliestMs) earliestMs = ms;
         });
 
         if (earliestMs === null) return "";
+
+        const lockingPlayers = starters
+            .filter(s => {
+                if (!s.player || !s.player.team || hasKickedOff(s.player)) return false;
+                const iso = State.gameTimesByTeam[s.player.team];
+                return iso && new Date(iso).getTime() === earliestMs;
+            })
+            .map(s => s.player);
 
         const totalMinutes = Math.max(0, Math.round((earliestMs - Date.now()) / 60000));
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
         const countdownStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
         const label = formatKickoffLabel(new Date(earliestMs).toISOString());
+        const clockSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
 
-        return `<div class="lineup-lock-countdown">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            <span>Next lock: <strong>${escapeHtml(earliestPlayer.name)}</strong> &middot; ${label} <span class="lineup-lock-countdown-time">(in ${countdownStr})</span></span>
+        if (lockingPlayers.length <= 1) {
+            const p = lockingPlayers[0];
+            return `<div class="lineup-lock-countdown">
+                ${clockSvg}
+                <span>Next lock: <strong>${escapeHtml(p.name)}</strong> &middot; ${label} <span class="lineup-lock-countdown-time">(in ${countdownStr})</span></span>
+            </div>`;
+        }
+
+        const namesHTML = lockingPlayers.map(p => escapeHtml(p.name)).join(', ');
+        const chevronSvg = `<svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+        return `<div id="lockCountdownCard" class="lineup-lock-countdown-collapsible">
+            <div class="lock-countdown-header" onclick="toggleLockCountdown()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLockCountdown();}" role="button" tabindex="0" aria-expanded="false">
+                ${clockSvg}
+                <span>Next lock: <strong>${lockingPlayers.length} players</strong> &middot; ${label} <span class="lineup-lock-countdown-time">(in ${countdownStr})</span></span>
+                ${chevronSvg}
+            </div>
+            <div class="lock-countdown-detail">${namesHTML}</div>
         </div>`;
     }
 
@@ -2339,6 +2365,14 @@ function attachScoutSuggestionHandler(outputElId) {
         updateRankingsMetaDisplay();
     };
 
+
+    window.toggleLockCountdown = function() {
+        const card = document.getElementById('lockCountdownCard');
+        if (!card) return;
+        const nowExpanded = card.classList.toggle('expanded');
+        const header = card.querySelector('.lock-countdown-header');
+        if (header) header.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+    };
 
     window.toggleRankingsCard = function(cardId) {
         const card = document.getElementById(cardId);

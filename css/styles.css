@@ -1099,6 +1099,46 @@ body {
     color: #bfdbfe;
     font-weight: 700;
 }
+
+/* Collapsible variant of .lineup-lock-countdown above, used when several starters share the
+   exact same earliest kickoff moment (see getNextLockCountdownHTML) -- same pill look, just
+   stacked (header row + expandable name list) instead of a single line. Collapsed by default
+   so a big Sunday-1pm-style slate with many simultaneous locks doesn't turn this into a wall
+   of names; tapping it reveals exactly who, without having to scroll into the lineup below. */
+.lineup-lock-countdown-collapsible {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #93c5fd;
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.lock-countdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+}
+.lock-countdown-header .chevron-icon {
+    flex-shrink: 0;
+}
+.lineup-lock-countdown-collapsible.expanded .chevron-icon {
+    transform: rotate(180deg);
+}
+.lineup-lock-countdown-collapsible:not(.expanded) .lock-countdown-detail {
+    display: none;
+}
+.lock-countdown-detail {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(96, 165, 250, 0.25);
+    font-weight: 500;
+    color: #bfdbfe;
+}
 .status-badge { font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; background-color: #102a1e; color: #4ade80; border: 1px solid #34A853; }
 
 /* Dashboard Status Icons */
