@@ -1825,7 +1825,7 @@ function attachScoutSuggestionHandler(outputElId) {
     }
 
     // --- SCOUT TAB ENGINE ---
-    window.runScout = function(type) {
+    window.runScout = async function(type) {
         const inputEl = document.getElementById(type === 'waiver' ? 'waiverInput' : 'buyInput');
         const sellEl = document.getElementById('sellInput');
         const outputEl = document.getElementById(type === 'waiver' ? 'waiverOutput' : 'tradeOutput');
@@ -1841,6 +1841,37 @@ function attachScoutSuggestionHandler(outputElId) {
 
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
+
+        // --- POSITION RESOLVER FOR CARD BADGES ---
+        // Same lookup chain and same window.sleeperPosByName cache as autoFindWaiverUpgrades
+        // (reused rather than duplicated): a synced league's own globalPosMap first, then the
+        // cache, then loaded Market Value data as a last resort. Populated lazily here too --
+        // Scan Pasted List is usable without ever having run Auto-Find Upgrades first, and
+        // without a synced Sleeper league at all (per the tool's own "Sleeper Sync Required"
+        // banner, which already says position/rank still work either way) -- so this can't
+        // assume the cache exists yet.
+        if (!window.sleeperPosByName) {
+            outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Looking up player positions...</div>`;
+            try {
+                let map = await getSleeperPlayerMap();
+                window.sleeperPosByName = {};
+                Object.values(map).forEach(p => {
+                    if (p.first_name) {
+                        window.sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
+                    }
+                });
+            } catch (e) {
+                console.warn("Could not fetch Sleeper player map for position badges.");
+            }
+        }
+
+        const getPos = (cleanName) => {
+            if (league && league.globalPosMap && league.globalPosMap[cleanName]) return league.globalPosMap[cleanName];
+            if (window.sleeperPosByName && window.sleeperPosByName[cleanName]) return window.sleeperPosByName[cleanName];
+            let mPlayer = State.marketRankings.find(m => m.cleanName === cleanName);
+            if (mPlayer && mPlayer.pos) return mPlayer.pos;
+            return "UNK";
+        };
 
         // For the Trade Analyzer, roleLabel is "GET" (players you'd receive) or "GIVE" (players
         // you'd send away). Returns the card HTML plus this player's value under BOTH lenses --
@@ -1870,6 +1901,9 @@ function attachScoutSuggestionHandler(outputElId) {
             let wRank = weekObj ? weekObj.rank : "UR";
             let rRank = rosObj ? rosObj.rank : "UR";
             let owner = rosterMap[clean];
+            let pos = getPos(clean);
+            let badgeClass = pos === "UNK" ? "FLEX" : pos;
+            let displayPos = pos === "UNK" ? "FA" : pos;
             let statusHTML = "";
             
             if (roleLabel === "GIVE") {
@@ -1922,6 +1956,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 <div class="scout-result-card">
                     <div>
                         <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                            <span class="badge pos-badge ${badgeClass} mls-pos-badge-sizing">${displayPos}</span>
                             ${displayName} ${roleTag}
                         </div>
                         <div class="mls-meta-row">
@@ -2255,9 +2290,13 @@ function attachScoutSuggestionHandler(outputElId) {
                 let badgeClass = pos === "UNK" ? "FLEX" : pos;
                 let displayPos = pos === "UNK" ? "FA" : pos;
 
-                let basisLine = useFlexRank
-                    ? `<div style="font-size:0.75rem; color: var(--text-muted); margin-top:2px;">Compared by: <strong style="color: var(--text-main);">${formatBasis(fa)}</strong></div>`
-                    : '';
+                // Shows whichever number actually drove this player's inclusion -- "Pos Rank"
+                // for a single-position filter (like the QB example that prompted this), "Flex
+                // Rank" or "Pos Rank" for the FLEX filter, "Overall Rank" for the ALL filter.
+                // Always shown now (previously FLEX-only) since it's exactly the number the
+                // benchmark box above already surfaces per-player -- hiding it here just for
+                // single-position filters left the two inconsistent.
+                let basisLine = `<div style="font-size:0.75rem; color: var(--text-muted); margin-top:2px;">Compared by: <strong style="color: var(--text-main);">${formatBasis(fa)}</strong></div>`;
 
                 return `
                 <div class="scout-result-card">
