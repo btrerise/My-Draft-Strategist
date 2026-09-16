@@ -1886,11 +1886,18 @@ function attachScoutSuggestionHandler(outputElId) {
             // Analyzer, but harmless to compute unconditionally rather than threading roleLabel
             // through to gate it. Availability order puts actionable adds first (Free Agent),
             // then players already on your own roster (no action needed), then players someone
-            // else owns (blocked without a trade) last. Rank uses ROS first, falling back to
-            // Weekly when unranked by ROS -- the same default preference this file already uses
-            // elsewhere (see the Roster tab) when only one of the two is available to lean on.
+            // else owns (blocked without a trade) last.
+            //
+            // ROS and Weekly are kept as two separate sort keys rather than one merged number:
+            // substituting Weekly rank in whenever ROS is missing put both scales on the same
+            // number line, so an unranked-by-ROS player with a good Weekly rank (e.g. 75) sorted
+            // ahead of a player ROS actually ranks at 129 -- exactly backwards. ROS rank is now
+            // always the primary key (unranked-by-ROS -> Infinity, so it always sorts behind
+            // every ROS-ranked player, never in front of one), with Weekly rank only breaking
+            // ties within players who share the same ROS status.
             let availabilityOrder = !owner ? 0 : (owner === "You" ? 1 : 2);
-            let sortRank = (rRank !== "UR") ? rRank : (wRank !== "UR" ? wRank : Infinity);
+            let rosSortRank = (rRank !== "UR") ? rRank : Infinity;
+            let weekSortRank = (wRank !== "UR") ? wRank : Infinity;
 
             let roleTag = roleLabel ? `<span class="badge" style="background:#112233;">${roleLabel === "GET" ? "Receiving" : "Giving"}</span>` : "";
 
@@ -1931,7 +1938,8 @@ function attachScoutSuggestionHandler(outputElId) {
                 marketValue: marketValueObj ? marketValueObj.value : 0,
                 marketMatched: !!marketValueObj,
                 availabilityOrder,
-                sortRank
+                rosSortRank,
+                weekSortRank
             };
         };
 
@@ -1997,7 +2005,8 @@ function attachScoutSuggestionHandler(outputElId) {
         let waiverResults = targetNames.map(n => buildCard(n, null));
         waiverResults.sort((a, b) => {
             if (a.availabilityOrder !== b.availabilityOrder) return a.availabilityOrder - b.availabilityOrder;
-            return a.sortRank - b.sortRank;
+            if (a.rosSortRank !== b.rosSortRank) return a.rosSortRank - b.rosSortRank;
+            return a.weekSortRank - b.weekSortRank;
         });
         waiverResults.forEach(r => html += r.html);
         outputEl.innerHTML = html;
