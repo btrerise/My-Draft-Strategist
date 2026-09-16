@@ -1596,6 +1596,42 @@ body {
     margin-top: 1.25rem;
 }
 
+/* --- COLLAPSIBLE WAIVER UPGRADE SECTIONS (Scout tab, Auto-Find Upgrades) ---
+   Reuses .rankings-card/.rankings-card-header/.rankings-card-body (see the Roster/Lineup
+   tabs' upload cards) purely for the expand/collapse mechanics -- those classes don't require
+   .settings-card, so they work fine nested inside the Waiver Wire Assistant card without
+   double-applying its box styling. .mls-waiver-section supplies its own lighter box instead. */
+.mls-waiver-section {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.mls-waiver-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.65rem 0.9rem;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.mls-waiver-section-title {
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.mls-waiver-section-body {
+    padding: 0.9rem;
+}
+
 /* Trade Analyzer -- Fairness Verdict Banner */
 .trade-verdict-banner {
     border-radius: 8px;
