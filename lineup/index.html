@@ -712,10 +712,26 @@
         </div>
     </section>
 
-    <!-- Put this inside your Lineup Tab -->
+    <!-- Monte Carlo Simulation -->
     <section class="settings-card">
-        <button id="run-sim-btn">Run Matchup Simulator</button>
-        <div id="monte-carlo-results"></div>
+        <header class="card-header">
+            <h3>
+                <span> Matchup Simulator <span class="header-subtitle">(Simulates your lineup versus your opponent's)</span></span>                    
+                </h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Runs 10,000 simulations based on historical standard deviation to estimate win probability.</span>
+            </div>
+        </header>
+        <p class="card-desc">Evaluate your lineup's realistic boom/bust ranges against your current opponent.</p>
+        
+        <button id="run-sim-btn" class="btn btn-blue">
+            Run Matchup Simulations
+        </button>
+        
+        <!-- The results will render inside this div -->
+        <div id="monte-carlo-results" style="display: none; margin-top: 1.25rem;"></div>
+        </div>        
     </section>
 
     <!-- GLOBAL INJURY AUDITOR -->
