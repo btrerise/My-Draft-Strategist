@@ -1531,6 +1531,54 @@ body {
 /* --- MLS SCOUT TAB SPECIFIC STYLES --- */
 
 /* Info Banner Component */
+/* --- MATCHUP SIMULATOR (MONTE CARLO) RESULTS --- */
+/* Markup for this comes from monteCarloUi.js's worker.onmessage handler. */
+.simulation-card {
+    background: var(--bg-card, #151d33);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.simulation-card h3 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+}
+
+.probability-bar {
+    display: flex;
+    width: 100%;
+    height: 2rem;
+    border-radius: 6px;
+    overflow: hidden;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.probability-bar span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    overflow: hidden;
+    padding: 0 0.5rem;
+    color: #0a0e17;
+}
+
+.probability-bar span:first-child {
+    background: var(--primary-green, #10b981);
+}
+
+.probability-bar span:last-child {
+    background: var(--btn-blue-bg, #3b82f6);
+}
+
+.simulation-card small {
+    display: block;
+    margin-top: 0.6rem;
+    color: var(--text-muted);
+}
+
 .info-banner {
     background: rgba(59, 130, 246, 0.1);
     border: 1px solid rgba(59, 130, 246, 0.3);
@@ -2239,6 +2287,18 @@ body {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+}
+
+/* Scroll-shadow cue: a subtle inset shadow on the right edge, toggled by initScrollShadows()
+   in utils.js rather than always-on, so it only appears while there's actually more content
+   to scroll to and disappears once the user reaches the end. Shared by .table-responsive
+   (Command Center) and .sos-table-wrapper (Strength of Schedule grid) -- deliberately NOT
+   applied to the Positional Power Rankings heatmap, which uses overflow: visible on purpose
+   so its tooltips aren't clipped; adding this class there would require overflow-x: auto
+   and break that. */
+.table-responsive.has-scroll-shadow,
+.sos-table-wrapper.has-scroll-shadow {
+    box-shadow: inset -14px 0 10px -10px rgba(0, 0, 0, 0.5);
 }
 
 /* Map text colors to the CSS variables defined in :root */

@@ -11,9 +11,19 @@ const worker = new Worker('./worker.js');
  */
 export const runMatchupSimulation = (team1WeeklyScores, team2WeeklyScores) => {
     const simOutputDiv = document.getElementById('monte-carlo-results');
-    
-    // Show a loading state so the user knows it is crunching numbers
+
+    if (team1WeeklyScores.length === 0 || team2WeeklyScores.length === 0) {
+        if (simOutputDiv) {
+            simOutputDiv.style.display = 'block';
+            simOutputDiv.innerHTML = '<p>Not enough roster data to simulate this matchup yet.</p>';
+        }
+        return;
+    }
+
+    // Show a loading state so the user knows it is crunching numbers. The container starts
+    // as display:none in the HTML, so this also has to be the thing that reveals it.
     if (simOutputDiv) {
+        simOutputDiv.style.display = 'block';
         simOutputDiv.innerHTML = '<p>Simulating 10,000 matchups...</p>';
     }
 

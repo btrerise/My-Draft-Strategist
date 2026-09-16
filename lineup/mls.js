@@ -8,8 +8,10 @@
 // level, which is why this sits above the IIFE rather than inside it; the imported
 // function is still just a normal binding the IIFE's closures can reference below.
 import { parseRankingsFiles } from './rankingsParser.js';
-import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap } from './sleeperApi.js';
+import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from './sleeperApi.js';
 import { fetchMarketConsensusData } from './marketDataApi.js';
+import { runMatchupSimulation } from './monteCarloUi.js';
+import { getPlayerWeeklyScoreHistory } from './sleeperService.js';
 
 (function () {
     'use strict';
@@ -287,6 +289,13 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
     // js/utils.js. Calls below resolve to that shared version.
 
     // --- DRAWER & SWIPE LOGIC ---
+    // Focus trap instance for the drawer -- created lazily on first open rather than at
+    // load time, since window.createFocusTrap (from utils.js, a plain script) needs to have
+    // already run, and this module's top-level code can execute before that plain script's
+    // DOMContentLoaded-independent top-level assignment has (module scripts are deferred by
+    // spec, but this keeps the two files from having an implicit load-order dependency).
+    let drawerFocusTrap = null;
+
     window.toggleDrawer = function() {
         const drawer = document.getElementById('drawer');
         const overlay = document.getElementById('drawerOverlay');
@@ -300,6 +309,20 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
         // Announce the new state to screen readers
         if (hamburgerBtn) {
             hamburgerBtn.setAttribute('aria-expanded', isOpen);
+        }
+
+        if (isOpen) {
+            // No onEscape here: the existing document-level Escape handler below already
+            // calls toggleDrawer() when the drawer is open, which (via the isOpen === false
+            // branch) deactivates this trap on its way out. Wiring a second Escape handler
+            // through the trap itself would just be two paths to the same toggle.
+            if (typeof window.createFocusTrap === 'function') {
+                drawerFocusTrap = window.createFocusTrap(drawer);
+                drawerFocusTrap.activate();
+            }
+        } else if (drawerFocusTrap) {
+            drawerFocusTrap.deactivate();
+            drawerFocusTrap = null;
         }
     };
 
@@ -1503,6 +1526,12 @@ function attachScoutSuggestionHandler(outputElId) {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
+                // Needed by the Matchup Simulator: rosterId identifies "us" within this
+                // league's matchups endpoint response, and pprVal (already computed above for
+                // the format badge) says which of Sleeper's pts_ppr/pts_half_ppr/pts_std
+                // fields is the right one to read out of historical weekly stats.
+                rosterId: myTeam ? myTeam.roster_id : null,
+                pprVal: leagueData.scoring_settings?.rec || 0,
                 // Preserve this league's existing rankings assignment across a re-sync rather
                 // than rebuilding it from whatever happens to be currently active in State --
                 // a re-sync should only refresh roster/matchup data, not silently reassign
@@ -2762,6 +2791,10 @@ function attachScoutSuggestionHandler(outputElId) {
     // handlers (wired to the modal's buttons) have something to act on. Only one upload
     // can be pending at a time, which matches the UI (one modal, one active upload flow).
     let pendingRankingsUpload = null;
+    // Focus trap for the modal -- unlike the drawer, this overlay had no Escape handling at
+    // all before, so onEscape is wired to cancelRankingsPreview (same behavior as clicking
+    // Cancel: discards the pending upload and clears the file input for reselection).
+    let previewFocusTrap = null;
 
     function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds }) {
         pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds };
@@ -2790,6 +2823,11 @@ function attachScoutSuggestionHandler(outputElId) {
 
         const overlay = document.getElementById('rankingsPreviewOverlay');
         if (overlay) overlay.style.display = 'flex';
+
+        if (typeof window.createFocusTrap === 'function' && overlay) {
+            previewFocusTrap = window.createFocusTrap(overlay, { onEscape: () => window.cancelRankingsPreview() });
+            previewFocusTrap.activate();
+        }
     }
 
     window.cancelRankingsPreview = function() {
@@ -2804,6 +2842,7 @@ function attachScoutSuggestionHandler(outputElId) {
         pendingRankingsUpload = null;
         const overlay = document.getElementById('rankingsPreviewOverlay');
         if (overlay) overlay.style.display = 'none';
+        if (previewFocusTrap) { previewFocusTrap.deactivate(); previewFocusTrap = null; }
     };
 
     window.confirmRankingsPreview = function() {
@@ -2843,6 +2882,7 @@ function attachScoutSuggestionHandler(outputElId) {
         pendingRankingsUpload = null;
         const overlay = document.getElementById('rankingsPreviewOverlay');
         if (overlay) overlay.style.display = 'none';
+        if (previewFocusTrap) { previewFocusTrap.deactivate(); previewFocusTrap = null; }
     };
 
     // --- UPLOAD PROCESSING INDICATOR ---
@@ -4751,6 +4791,90 @@ window.runGlobalInjuryAudit = async function(btn) {
         btn.style.opacity = "1";
     }
 };
+
+// --- MATCHUP SIMULATOR (MONTE CARLO) ---
+// Bound via onclick="runMatchupSim()" on #run-sim-btn, matching this file's existing
+// convention of exposing handlers on window rather than addEventListener wiring (see
+// switchActiveLeague, addEarlyTeam, etc.) -- runMatchupSimulation itself (from
+// monteCarloUi.js) stays a pure hand-off to the Worker with no knowledge of State, matching
+// how sleeperApi.js/marketDataApi.js/rankingsParser.js are kept free of State access too.
+window.runMatchupSim = async function() {
+    const btn = document.getElementById('run-sim-btn');
+    const league = getActiveLeague();
+
+    if (!league || league.leagueId.startsWith('manual_')) {
+        if (typeof window.showToast === 'function') window.showToast("Sync a Sleeper league on the Dashboard first.", { isError: true });
+        return;
+    }
+    if (!league.rosterId) {
+        if (typeof window.showToast === 'function') window.showToast("Re-sync this league from the Dashboard to enable simulations.", { isError: true });
+        return;
+    }
+
+    const origText = btn ? btn.innerHTML : "";
+    if (btn) { btn.disabled = true; btn.innerHTML = "Simulating..."; }
+
+    try {
+        const nflState = await getNflState();
+        if (!nflState || typeof nflState.week !== 'number') {
+            throw new Error("Could not determine the current NFL week.");
+        }
+        const currentWeek = nflState.week;
+        const season = nflState.league_season || nflState.season;
+
+        if (currentWeek < 2) {
+            if (typeof window.showToast === 'function') window.showToast("Not enough completed weeks yet to estimate variance.", { isError: true });
+            return;
+        }
+
+        const matchups = await getSleeperMatchups(league.leagueId, currentWeek);
+        const myEntry = matchups.find(m => m.roster_id === league.rosterId);
+        if (!myEntry || !myEntry.matchup_id) {
+            if (typeof window.showToast === 'function') window.showToast("No matchup found for this week (bye week?).", { isError: true });
+            return;
+        }
+        const oppEntry = matchups.find(m => m.matchup_id === myEntry.matchup_id && m.roster_id !== league.rosterId);
+        if (!oppEntry) {
+            if (typeof window.showToast === 'function') window.showToast("Couldn't find an opponent for this week's matchup.", { isError: true });
+            return;
+        }
+
+        // Sleeper pads empty slots with the literal string "0" rather than omitting them.
+        const myStarters = (myEntry.starters || []).filter(id => id && id !== '0');
+        const oppStarters = (oppEntry.starters || []).filter(id => id && id !== '0');
+
+        const scoringKey = league.pprVal === 1 ? 'pts_ppr' : (league.pprVal === 0.5 ? 'pts_half_ppr' : 'pts_std');
+        const history = await getPlayerWeeklyScoreHistory(
+            [...myStarters, ...oppStarters], season, currentWeek, scoringKey
+        );
+
+        // Players with zero completed games (rookies, recent signings, bye-adjacent
+        // call-ups) get excluded rather than contributing a phantom mean-0 score to their
+        // team's total -- see getPlayerWeeklyScoreHistory's contract for why a missing week
+        // isn't the same as a 0.
+        let excludedCount = 0;
+        const toScoreArrays = (ids) => ids.reduce((arr, id) => {
+            const scores = history[id] || [];
+            if (scores.length > 0) arr.push(scores); else excludedCount++;
+            return arr;
+        }, []);
+
+        const team1WeeklyScores = toScoreArrays(myStarters);
+        const team2WeeklyScores = toScoreArrays(oppStarters);
+
+        if (excludedCount > 0 && typeof window.showToast === 'function') {
+            window.showToast(`${excludedCount} player(s) excluded from the simulation -- not enough game history yet.`);
+        }
+
+        runMatchupSimulation(team1WeeklyScores, team2WeeklyScores);
+    } catch (err) {
+        console.error(err);
+        if (typeof window.showToast === 'function') window.showToast("Failed to run the matchup simulation. Check console for details.", { isError: true });
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = origText; }
+    }
+};
+
     // Lazy-loads the SheetJS (XLSX) library on first use, so pages that never upload an .xlsx
     // ranking file don't pay for it. Kept inside the module (rather than as a bare global) like
     // every other helper here, since this file isn't shared with any other page.

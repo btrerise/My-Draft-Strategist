@@ -155,10 +155,13 @@
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
             <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </div>
-        <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'mls_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+        <button class="close-banner-btn" onclick="dismissBannerAndReveal('guideBanner', 'mls_hide_guide_banner', 'draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
     </div>
     <!-- DRAFT STRATEGIST CROSS-PROMO -->
-    <div class="guide-banner" id="draftBanner" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4); padding: 0.75rem 1rem;">
+    <!-- Starts hidden: staggered behind guideBanner so the two never stack on a first visit.
+         Revealed by dismissBannerAndReveal() above, or on load by utils.js's DOMContentLoaded
+         handler if guideBanner was already dismissed on an earlier visit. -->
+    <div class="guide-banner" id="draftBanner" style="display: none; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4); padding: 0.75rem 1rem;">
         <div onclick="window.location.href='../'" role="button" tabindex="0" aria-label="Switch to My Draft Strategist" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='../';}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer; color: var(--primary-green);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
             <span style="font-size: 0.9rem;">Mocking or prepping for a draft? Try <strong>My Draft Strategist</strong></span>
@@ -710,8 +713,6 @@
                 <!-- Chips inject here -->
             </div>
         </div>
-    </section>
-
     <!-- Monte Carlo Simulation -->
     <section class="settings-card">
         <header class="card-header">
@@ -725,13 +726,12 @@
         </header>
         <p class="card-desc">Evaluate your lineup's realistic boom/bust ranges against your current opponent.</p>
         
-        <button id="run-sim-btn" class="btn btn-blue">
+        <button id="run-sim-btn" class="btn btn-blue" onclick="runMatchupSim()">
             Run Matchup Simulations
         </button>
         
         <!-- The results will render inside this div -->
         <div id="monte-carlo-results" style="display: none; margin-top: 1.25rem;"></div>
-        </div>        
     </section>
 
     <!-- GLOBAL INJURY AUDITOR -->

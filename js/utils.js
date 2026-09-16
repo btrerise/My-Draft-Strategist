@@ -82,12 +82,135 @@ function injectFeedbackForm() {
 }
 
 // Automatically run this when the page loads
+// --- FOCUS TRAPPING FOR OVERLAYS ---
+// Shared by the hamburger drawer and the rankings preview modal (both in mls.js) so a
+// keyboard user Tabbing through an open overlay stays inside it instead of tabbing into the
+// page behind it -- previously neither one did this, despite the preview modal's markup
+// already declaring role="dialog" aria-modal="true", a promise the JS wasn't keeping.
+//
+// Focusable elements are queried fresh every time the trap engages (open, and every Tab
+// press) rather than cached once at open-time, because the drawer's feedback form is
+// injected asynchronously into #shared-feedback-container and its inputs need to be
+// included once they exist.
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function getFocusableElements(container) {
+    return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR))
+        .filter(el => el.offsetParent !== null); // skip anything hidden (display:none ancestor)
+}
+
+/**
+ * Creates a focus trap scoped to `container`. Returns { activate, deactivate }; activate()
+ * remembers what had focus beforehand, moves focus to the first focusable element inside
+ * the container, and keeps Tab/Shift+Tab cycling within it. deactivate() removes that
+ * listener and restores focus to whatever had it before activate() was called, so closing
+ * an overlay puts a keyboard user right back where they were (e.g. the hamburger button).
+ *
+ * @param {HTMLElement} container
+ * @param {{ onEscape?: Function }} [options] - onEscape, if given, is called (with no
+ *   arguments) when Escape is pressed while the trap is active, instead of the trap doing
+ *   anything itself with that key -- the caller decides what "close" means for it.
+ */
+window.createFocusTrap = function(container, options = {}) {
+    let previouslyFocused = null;
+    let active = false;
+
+    function handleKeydown(e) {
+        if (e.key === 'Escape' && typeof options.onEscape === 'function') {
+            options.onEscape();
+            return;
+        }
+        if (e.key !== 'Tab') return;
+
+        const focusable = getFocusableElements(container);
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+
+    return {
+        activate() {
+            if (active) return;
+            active = true;
+            previouslyFocused = document.activeElement;
+            container.addEventListener('keydown', handleKeydown);
+
+            const focusable = getFocusableElements(container);
+            if (focusable.length > 0) focusable[0].focus();
+        },
+        deactivate() {
+            if (!active) return;
+            active = false;
+            container.removeEventListener('keydown', handleKeydown);
+            if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+                previouslyFocused.focus();
+            }
+            previouslyFocused = null;
+        }
+    };
+};
+
 document.addEventListener('DOMContentLoaded', injectFeedbackForm);
+
+// --- SCROLL-SHADOW CUE FOR WIDE TABLES ---
+// Toggles .has-scroll-shadow (styles.css) on/off based on actual scroll position, rather
+// than a static always-on shadow -- a shadow that's still showing after the user has
+// scrolled all the way to the right would be actively misleading (implying there's more to
+// see when there isn't). Applies to .table-responsive (Command Center) and .sos-table-wrapper
+// (SoS grid) only; the Power Rankings heatmap intentionally doesn't use overflow-x: auto
+// (see its own comment in mls.js -- tooltips would get clipped), so it's excluded here too.
+function initScrollShadows() {
+    const SCROLL_SHADOW_SELECTOR = '.table-responsive, .sos-table-wrapper';
+
+    function updateShadow(el) {
+        const hasOverflow = el.scrollWidth > el.clientWidth + 1;
+        const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+        el.classList.toggle('has-scroll-shadow', hasOverflow && !atEnd);
+    }
+
+    const containers = Array.from(document.querySelectorAll(SCROLL_SHADOW_SELECTOR));
+    containers.forEach(el => {
+        updateShadow(el);
+        el.addEventListener('scroll', () => updateShadow(el), { passive: true });
+
+        // Both containers' inner tables are (re)built dynamically after load -- the Command
+        // Center table on league/week changes, the SoS grid whenever new SoS data is
+        // uploaded -- which can change scrollWidth without ever firing a 'scroll' event.
+        // A MutationObserver re-checks whenever that inner content actually changes, rather
+        // than this needing every render call site to remember to re-run the check itself.
+        if (window.MutationObserver) {
+            new MutationObserver(() => updateShadow(el)).observe(el, { childList: true, subtree: true });
+        }
+    });
+
+    window.addEventListener('resize', () => containers.forEach(updateShadow));
+}
+document.addEventListener('DOMContentLoaded', initScrollShadows);
 function dismissBanner(bannerId, storageKey) {
     const banner = document.getElementById(bannerId);
     if (banner) banner.style.display = 'none';
     if (storageKey) localStorage.setItem(storageKey, 'true');
 }
+
+// Dismisses one banner and, in the same action, reveals a second banner that's staggered
+// behind it -- used so the MLS dashboard's guide banner and cross-promo banner don't both
+// stack on first load. nextBanner only appears once its own dismiss flag says it hasn't
+// already been dismissed on some earlier visit (e.g. before this staggering existed).
+window.dismissBannerAndReveal = function(bannerId, storageKey, nextBannerId, nextStorageKey) {
+    dismissBanner(bannerId, storageKey);
+    if (localStorage.getItem(nextStorageKey) === 'true') return;
+    const nextBanner = document.getElementById(nextBannerId);
+    if (nextBanner) nextBanner.style.display = 'flex';
+};
 
 // Hide on load if previously dismissed
 document.addEventListener('DOMContentLoaded', () => {
@@ -100,11 +223,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Check all your app banners
-    checkAndHideBanner('guideBanner', 'ds_hide_guide_banner');
+    // NOTE: 'guideBanner' was previously checked against 'ds_hide_guide_banner' -- a leftover
+    // from before app-scoped storage keys (see the localStorage key scoping principle) -- while
+    // its own dismiss button has always written 'mls_hide_guide_banner'. That mismatch meant
+    // dismissing the guide banner never actually stuck across reloads; fixed to check the same
+    // key the button writes.
+    checkAndHideBanner('guideBanner', 'mls_hide_guide_banner');
     checkAndHideBanner('mlsBanner', 'ds_hide_mls_banner');
     checkAndHideBanner('draftBanner', 'mls_hide_draft_banner');
     checkAndHideBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner');
     checkAndHideBanner('installCard', 'ds_hide_install_banner');
+
+    // Staggered reveal: draftBanner starts hidden (see its inline style in index.html) so it
+    // never stacks with guideBanner on a first visit. Once guideBanner has been dismissed
+    // (whether just now or on some earlier visit), and draftBanner itself hasn't been
+    // dismissed, draftBanner takes its place.
+    if (localStorage.getItem('mls_hide_guide_banner') === 'true' && localStorage.getItem('mls_hide_draft_banner') !== 'true') {
+        const draftBanner = document.getElementById('draftBanner');
+        if (draftBanner) draftBanner.style.display = 'flex';
+    }
 });
 // --- TOAST NOTIFICATIONS ---
 window.showToast = function(message, options = {}) {
