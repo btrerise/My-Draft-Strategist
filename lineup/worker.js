@@ -24,7 +24,7 @@ function simulatePlayerScore(mean, stdDev) {
 // Listen for messages from the main UI thread
 self.onmessage = function(e) {
     // Expecting payload: { team1: [{mean, stdDev}], team2: [{mean, stdDev}], iterations: 10000 }
-    const { team1, team2, iterations = 10000 } = e.data;
+    const { team1, team2, iterations = 10000, fallbackCount = 0 } = e.data;
     
     let team1Wins = 0;
     let team2Wins = 0;
@@ -64,6 +64,7 @@ self.onmessage = function(e) {
         team1WinProb: Number(team1WinProb),
         team2WinProb: Number(team2WinProb),
         ties,
-        iterations
+        iterations,
+        fallbackCount
     });
 };

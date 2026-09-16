@@ -31,20 +31,31 @@ export const runMatchupSimulation = (team1WeeklyScores, team2WeeklyScores) => {
     const team1Profiles = team1WeeklyScores.map(getPlayerVarianceProfile);
     const team2Profiles = team2WeeklyScores.map(getPlayerVarianceProfile);
 
+    // Early in the season (or for a player who just changed teams, returned from injury,
+    // etc.) some players won't have enough games for a directly-measured standard deviation --
+    // getPlayerVarianceProfile floors those to an estimated volatility instead of 0 (see its
+    // own comment for why). Surfacing the count here keeps that estimate from being presented
+    // with the same confidence as a full-sample number.
+    const fallbackCount = [...team1Profiles, ...team2Profiles].filter(p => p.usedFallback).length;
+
     // 3. Send the formatted payload to the background Web Worker
     worker.postMessage({
         team1: team1Profiles,
         team2: team2Profiles,
-        iterations: 10000
+        iterations: 10000,
+        fallbackCount
     });
 };
 
 // 4. Listen for the Web Worker to finish and update the UI
 worker.onmessage = function(e) {
-    const { team1WinProb, team2WinProb, ties } = e.data;
+    const { team1WinProb, team2WinProb, ties, fallbackCount } = e.data;
     const simOutputDiv = document.getElementById('monte-carlo-results');
     
     if (simOutputDiv) {
+        const fallbackNote = fallbackCount > 0
+            ? `<small class="sim-fallback-note">${fallbackCount} player(s) don't have enough completed games yet, so their week-to-week range is an early-season estimate, not a measured one.</small>`
+            : '';
         // Output the results. You can style this beautifully with your CSS later.
         simOutputDiv.innerHTML = `
             <div class="simulation-card">
@@ -54,6 +65,7 @@ worker.onmessage = function(e) {
                     <span style="width: ${team2WinProb}%">Opponent: ${team2WinProb}%</span>
                 </div>
                 <small>${ties} ties in 10,000 simulations</small>
+                ${fallbackNote}
             </div>
         `;
     }
