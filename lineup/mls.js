@@ -1882,6 +1882,16 @@ function attachScoutSuggestionHandler(outputElId) {
                 else statusHTML = `<div class="scout-status status-owned">Rostered by:<br>${owner}</div>`;
             }
 
+            // Availability/rank fields for the Waiver path's sort below -- unused by the Trade
+            // Analyzer, but harmless to compute unconditionally rather than threading roleLabel
+            // through to gate it. Availability order puts actionable adds first (Free Agent),
+            // then players already on your own roster (no action needed), then players someone
+            // else owns (blocked without a trade) last. Rank uses ROS first, falling back to
+            // Weekly when unranked by ROS -- the same default preference this file already uses
+            // elsewhere (see the Roster tab) when only one of the two is available to lean on.
+            let availabilityOrder = !owner ? 0 : (owner === "You" ? 1 : 2);
+            let sortRank = (rRank !== "UR") ? rRank : (wRank !== "UR" ? wRank : Infinity);
+
             let roleTag = roleLabel ? `<span class="badge" style="background:#112233;">${roleLabel === "GET" ? "Receiving" : "Giving"}</span>` : "";
 
             // Value badges only show on the Trade Analyzer. "Your Value" shows whenever the
@@ -1919,7 +1929,9 @@ function attachScoutSuggestionHandler(outputElId) {
                 userValue: userValueObj ? userValueObj.value : 0,
                 userMatched: !!userValueObj,
                 marketValue: marketValueObj ? marketValueObj.value : 0,
-                marketMatched: !!marketValueObj
+                marketMatched: !!marketValueObj,
+                availabilityOrder,
+                sortRank
             };
         };
 
@@ -1978,8 +1990,16 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
 
-        // Waiver path (unchanged)
-        targetNames.forEach(n => html += buildCard(n, null).html);
+        // Waiver path: sorted by availability (Free Agent first, then On Your Roster, then
+        // Rostered by someone else), then by rank ascending within each group -- previously
+        // this just listed results in whatever order they were pasted, which buried actionable
+        // pickups (actual free agents) among names that aren't addable at all.
+        let waiverResults = targetNames.map(n => buildCard(n, null));
+        waiverResults.sort((a, b) => {
+            if (a.availabilityOrder !== b.availabilityOrder) return a.availabilityOrder - b.availabilityOrder;
+            return a.sortRank - b.sortRank;
+        });
+        waiverResults.forEach(r => html += r.html);
         outputEl.innerHTML = html;
     };
 
@@ -2158,9 +2178,63 @@ function attachScoutSuggestionHandler(outputElId) {
                 return;
             }
 
-            // Renders one FA suggestion card. Shared across every ranking-source section --
-            // the Wk Rank / ROS Rank line always shows both, regardless of which source is
-            // driving this particular section's benchmark/upgrade decision.
+            // Whether this position group is a cross-position comparison (FLEX = RB/WR/TE
+            // pooled together) or a single specific position. Only the cross-position case has
+            // the "WR posRank 82 vs TE posRank 25" ambiguity the comparator below resolves.
+            const useFlexRank = (posFilter === 'FLEX');
+
+            // Safe field accessor -- treats a missing/undefined field the same as the parser's
+            // own "not populated" sentinel (999), so callers never have to special-case objects
+            // that came from a different upload path (single-file vs per-position vs no data).
+            const rankFieldOf = (obj, field) => (obj && obj[field] !== undefined && obj[field] !== null) ? obj[field] : 999;
+
+            // Compares two players for "who's the better FLEX-eligible asset." Mirrors
+            // optimizeLineup's fillSlot(useFlexRank=true) compare convention exactly (see that
+            // function) rather than inventing a new one: prefer each player's flexRank -- a
+            // genuinely cross-position number, populated whenever rankings came from a combined
+            // Flex sheet/column/file -- over their posRank, which is only comparable within the
+            // same position. A WR's WR-only rank of 82 isn't necessarily worse than a TE's
+            // TE-only rank of 25 the way the raw numbers might suggest, since position pools
+            // aren't the same depth; flexRank is this tool's way of actually knowing which is
+            // true. When posFilter narrows to one specific position, everyone being compared
+            // already shares that position, so posRank alone is the right (and only necessary)
+            // comparison. When neither player has flex data at all, this can only fall back to
+            // raw posRank -- the same known limit the lineup optimizer itself already has.
+            const comparePlayers = (a, b) => {
+                if (!useFlexRank) {
+                    let aVal = rankFieldOf(a, 'posRank') !== 999 ? rankFieldOf(a, 'posRank') : rankFieldOf(a, 'rank');
+                    let bVal = rankFieldOf(b, 'posRank') !== 999 ? rankFieldOf(b, 'posRank') : rankFieldOf(b, 'rank');
+                    return aVal - bVal;
+                }
+                let aFlex = rankFieldOf(a, 'flexRank'), bFlex = rankFieldOf(b, 'flexRank');
+                if (aFlex !== 999 && bFlex !== 999) return aFlex - bFlex;
+                if (aFlex !== 999) return -1;
+                if (bFlex !== 999) return 1;
+                return rankFieldOf(a, 'posRank') - rankFieldOf(b, 'posRank');
+            };
+
+            // Which number actually decided a given player's place in the comparison above, so
+            // the UI can label it plainly (Flex Rank / Pos Rank / Overall Rank) instead of one
+            // ambiguous "Rank" -- makes the FLEX-mode comparison's basis visible rather than hidden.
+            const compareBasis = (obj) => {
+                if (posFilter === 'ALL') return { label: 'Overall Rank', value: rankFieldOf(obj, 'rank') };
+                if (useFlexRank) {
+                    if (rankFieldOf(obj, 'flexRank') !== 999) return { label: 'Flex Rank', value: rankFieldOf(obj, 'flexRank') };
+                    if (rankFieldOf(obj, 'posRank') !== 999) return { label: 'Pos Rank', value: rankFieldOf(obj, 'posRank') };
+                    return { label: 'Overall Rank', value: rankFieldOf(obj, 'rank') };
+                }
+                if (rankFieldOf(obj, 'posRank') !== 999) return { label: 'Pos Rank', value: rankFieldOf(obj, 'posRank') };
+                return { label: 'Overall Rank', value: rankFieldOf(obj, 'rank') };
+            };
+            const formatBasis = (obj) => {
+                let b = compareBasis(obj);
+                return b.value === 999 ? 'Unranked' : `${b.label} #${b.value}`;
+            };
+
+            // Renders one FA suggestion card. Wk Rank / ROS Rank always show each source's plain
+            // overall rank for general context, regardless of which source or metric is driving
+            // this particular section's decision; the "Compared by" line (FLEX mode only) makes
+            // that decision-driving number explicit instead of leaving it implicit.
             const renderFaCard = (fa) => {
                 let wRankObj = State.weeklyRankings.find(r => r.cleanName === fa.cleanName);
                 let rRankObj = State.rosRankings.find(r => r.cleanName === fa.cleanName);
@@ -2171,6 +2245,10 @@ function attachScoutSuggestionHandler(outputElId) {
 
                 let badgeClass = pos === "UNK" ? "FLEX" : pos;
                 let displayPos = pos === "UNK" ? "FA" : pos;
+
+                let basisLine = useFlexRank
+                    ? `<div style="font-size:0.75rem; color: var(--text-muted); margin-top:2px;">Compared by: <strong style="color: var(--text-main);">${formatBasis(fa)}</strong></div>`
+                    : '';
 
                 return `
                 <div class="scout-result-card">
@@ -2183,6 +2261,7 @@ function attachScoutSuggestionHandler(outputElId) {
                             <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
                             <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
                         </div>
+                        ${basisLine}
                     </div>
                     <div class="mls-text-right">
                         <div class="scout-status status-avail">Free Agent<br>(Available)</div>
@@ -2191,24 +2270,26 @@ function attachScoutSuggestionHandler(outputElId) {
             };
 
             // 2. For one ranking source (ROS or Weekly), find this position group's benchmark
-            // (worst-ranked) roster player under that source, then every Free Agent that source
-            // ranks ahead of the benchmark. Kept as its own pass per source (rather than one
-            // "active" set) so ROS and Weekly can each surface their own benchmark player and
-            // upgrade list -- they won't always agree, and that disagreement is useful signal,
-            // not noise to be averaged away.
+            // (worst) roster player under that source using comparePlayers, then every Free
+            // Agent that source ranks ahead of the benchmark by the same comparison. Kept as its
+            // own pass per source (rather than one "active" set) so ROS and Weekly can each
+            // surface their own benchmark player and upgrade list -- they won't always agree,
+            // and that disagreement is useful signal, not noise to be averaged away.
             const computeUpgrades = (rankings) => {
                 let myRoster = myRosterBase.map(p => {
                     let rObj = rankings.find(rk => rk.cleanName === p.cleanName);
-                    return { name: p.name, cleanName: p.cleanName, rank: rObj ? rObj.rank : 999, pos: getPos(p.cleanName) };
+                    return {
+                        name: p.name, cleanName: p.cleanName, pos: getPos(p.cleanName),
+                        rank: rankFieldOf(rObj, 'rank'), posRank: rankFieldOf(rObj, 'posRank'), flexRank: rankFieldOf(rObj, 'flexRank')
+                    };
                 });
-                myRoster.sort((a, b) => b.rank - a.rank); // worst first
+                myRoster.sort(comparePlayers); // ascending -- best first, worst last
 
-                let benchmarkPlayer = myRoster[0];
-                let worstRank = benchmarkPlayer.rank;
+                let benchmarkPlayer = myRoster[myRoster.length - 1];
 
                 let freeAgents = rankings.filter(r => !rosterMap[r.cleanName] && isMatch(getPos(r.cleanName)));
-                let upgrades = freeAgents.filter(fa => fa.rank < worstRank);
-                upgrades.sort((a, b) => a.rank - b.rank);
+                let upgrades = freeAgents.filter(fa => comparePlayers(fa, benchmarkPlayer) < 0);
+                upgrades.sort(comparePlayers);
 
                 return { myRoster, benchmarkPlayer, upgrades: upgrades.slice(0, 15) };
             };
@@ -2219,7 +2300,7 @@ function attachScoutSuggestionHandler(outputElId) {
             // sections are shown side by side and they might disagree.
             const renderUpgradeSection = (label, { myRoster, benchmarkPlayer, upgrades }) => {
                 let posLabel = posFilter === 'FLEX' ? 'FLEX' : posFilter;
-                let benchmarkText = benchmarkPlayer.rank === 999 ? `${benchmarkPlayer.name} (Unranked)` : `${benchmarkPlayer.name} (#${benchmarkPlayer.rank})`;
+                let benchmarkText = `${benchmarkPlayer.name} (${formatBasis(benchmarkPlayer)})`;
 
                 if (upgrades.length === 0) {
                     return `
@@ -2231,7 +2312,8 @@ function attachScoutSuggestionHandler(outputElId) {
                     </div>`;
                 }
 
-                let nextCandidates = myRoster.slice(1, 3).map(p => `${p.name} (${p.rank === 999 ? "Unranked" : "#" + p.rank})`);
+                let n = myRoster.length;
+                let nextCandidates = myRoster.slice(Math.max(0, n - 3), n - 1).reverse().map(p => `${p.name} (${formatBasis(p)})`);
                 let benchContext = nextCandidates.length > 0 ? `<br><span style="color: var(--text-muted); font-size: 0.8rem;">Other bench depth in this group: ${nextCandidates.join(', ')}</span>` : '';
 
                 return `
@@ -2243,15 +2325,39 @@ function attachScoutSuggestionHandler(outputElId) {
                 ${upgrades.map(renderFaCard).join('')}`;
             };
 
-            // rankingSources holds only sources that actually have data (see above) -- with
-            // just one uploaded, this renders exactly one section, matching the tool's
-            // previous single-source behavior but now explicitly labeled by source.
-            let sectionsHtml = rankingSources.map(({ rankings, label }) => {
-                let sectionLabel = rankingSources.length > 1 ? `<div class="scout-section-divider" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.03em; color: var(--text-muted); margin: 0 0 0.5rem;">${label} Rankings</div>` : '';
-                return `<div class="waiver-rank-section" style="margin-bottom:1.5rem;">${sectionLabel}${renderUpgradeSection(label, computeUpgrades(rankings))}</div>`;
-            });
+            // rankingSources holds only sources that actually have data (see above). With two
+            // sources, each gets wrapped in its own independently-collapsible card (reusing
+            // .rankings-card/toggleRankingsCard from the Roster/Lineup tabs' upload cards) so a
+            // long ROS list doesn't force scrolling past it to reach the Weekly one on mobile --
+            // both start expanded since the person just asked to see these results. With only
+            // one source uploaded, that chrome would just add a click for no benefit, so it
+            // renders flat instead, same layout as before.
+            let outputHtml;
+            if (rankingSources.length > 1) {
+                outputHtml = rankingSources.map(({ rankings, label }) => {
+                    let computed = computeUpgrades(rankings);
+                    let sectionId = `waiverUpgradeSection${label}`;
+                    let countBadge = computed.upgrades.length > 0
+                        ? `<span style="color: var(--primary-green);">${computed.upgrades.length} upgrade${computed.upgrades.length === 1 ? '' : 's'}</span>`
+                        : `<span style="color: var(--text-muted);">No upgrades</span>`;
 
-            outputEl.innerHTML = sectionsHtml.join('');
+                    return `
+                    <div class="rankings-card mls-waiver-section expanded" id="${sectionId}">
+                        <div class="rankings-card-header mls-waiver-section-header" onclick="toggleRankingsCard('${sectionId}')" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle ${label} Rankings results" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('${sectionId}');}">
+                            <span class="mls-waiver-section-title">${label} Rankings &middot; ${countBadge}</span>
+                            <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                        <div class="rankings-card-body mls-waiver-section-body">
+                            ${renderUpgradeSection(label, computed)}
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                let { rankings, label } = rankingSources[0];
+                outputHtml = renderUpgradeSection(label, computeUpgrades(rankings));
+            }
+
+            outputEl.innerHTML = outputHtml;
 
         } catch (err) {
             console.error(err);
