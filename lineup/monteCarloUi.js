@@ -40,7 +40,7 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     // as display:none in the HTML, so this also has to be the thing that reveals it.
     if (simOutputDiv) {
         simOutputDiv.style.display = 'block';
-        simOutputDiv.innerHTML = '<p>Simulating 10,000 matchups...</p>';
+        simOutputDiv.innerHTML = `<p style="display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating 10,000 matchups...</p>`;
     }
 
     // 2. Map each player's raw historical scores into the Variance Profile we built in
@@ -74,6 +74,14 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
 // the card's description in index.html) is the point -- a bare mean would just be a projection
 // with extra steps. A player whose range came from statsEngine's small-sample fallback gets a
 // "~" so it doesn't read with the same confidence as a directly-measured one.
+function renderPosBadge(pos) {
+    return pos ? `<span class="pos-badge ${pos}">${pos}</span>` : '';
+}
+
+function renderRookieBadge(isRookie) {
+    return isRookie ? `<span class="badge-rookie">R</span>` : '';
+}
+
 function renderPlayerList(profiles) {
     const rows = profiles
         .slice()
@@ -83,8 +91,8 @@ function renderPlayerList(profiles) {
             return `
             <li class="sim-player-row">
                 <div class="sim-player-info">
-                    <span class="sim-player-name">${p.name}${p.pos ? ` <span class="sim-player-pos">${p.pos}</span>` : ''}</span>
-                    <span class="sim-player-boombust">Bust (&lt;50% of avg): ${bustRate}% &nbsp;&bull;&nbsp; Boom (&gt;150% of avg): ${boomRate}%</span>
+                    <span class="sim-player-name">${renderPosBadge(p.pos)} ${p.name}${renderRookieBadge(p.isRookie)}</span>
+                    <span class="sim-player-boombust"><span class="sim-bust">Bust: ${bustRate}%</span> &nbsp;&bull;&nbsp; <span class="sim-boom">Boom: ${boomRate}%</span></span>
                 </div>
                 <span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.mean} avg)</span></span>
             </li>`;
@@ -101,8 +109,8 @@ function renderBenchInsights(benchInsights) {
 
     const rows = benchInsights.map(b => `
         <li class="sim-bench-row">
-            <strong>${b.benchName}</strong> <span class="sim-player-pos">${b.benchPos}</span> (bench) outscored
-            <strong>${b.starterName}</strong> <span class="sim-player-pos">${b.starterPos}</span> (starting) in
+            <strong>${b.benchName}</strong> ${renderPosBadge(b.benchPos)}${renderRookieBadge(b.benchIsRookie)} (bench) outscored
+            <strong>${b.starterName}</strong> ${renderPosBadge(b.starterPos)}${renderRookieBadge(b.starterIsRookie)} (starting) in
             <strong>${b.benchWinPct}%</strong> of simulated weeks.
         </li>`).join('');
 

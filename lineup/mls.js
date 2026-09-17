@@ -4813,7 +4813,10 @@ window.runMatchupSim = async function() {
     }
 
     const origText = btn ? btn.innerHTML : "";
-    if (btn) { btn.disabled = true; btn.innerHTML = "Simulating..."; }
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating...</span>`;
+    }
 
     try {
         const nflState = await getNflState();
@@ -4877,7 +4880,10 @@ window.runMatchupSim = async function() {
         const toPlayerObj = (id) => {
             const p = playerMap[id] || {};
             const name = p.first_name ? `${p.first_name} ${p.last_name}` : (p.last_name || id);
-            return { id, name, pos: p.position || '', weeklyScores: history[id] || [] };
+            // years_exp is Sleeper's own experience counter (0 for a player's rookie season) --
+            // more reliable than inferring "rookie" from a lack of game history, which would
+            // also catch a 2nd-year player coming back from an injury-lost season.
+            return { id, name, pos: p.position || '', weeklyScores: history[id] || [], isRookie: p.years_exp === 0 };
         };
 
         // Players with zero completed games (rookies, recent signings, bye-adjacent
@@ -4929,14 +4935,20 @@ window.runMatchupSim = async function() {
                 const weakestStarter = team1Players.find(p => p.id === weakestStarterId);
                 const benchWinPct = getProbabilityBeats(benchProfile, team1ProfilesById[weakestStarterId]);
 
+                // Only worth flagging if the bench player is actually favored -- anything at
+                // or below 50% just confirms the current starter is the right call, which
+                // isn't an actionable "you should consider this swap" insight.
+                if (benchWinPct <= 50) return;
+
                 benchInsights.push({
-                    benchName: benchPlayer.name, benchPos: benchPlayer.pos,
-                    starterName: weakestStarter.name, starterPos: weakestStarter.pos,
+                    benchName: benchPlayer.name, benchPos: benchPlayer.pos, benchIsRookie: benchPlayer.isRookie,
+                    starterName: weakestStarter.name, starterPos: weakestStarter.pos, starterIsRookie: weakestStarter.isRookie,
                     benchWinPct
                 });
             });
 
             benchInsights.sort((a, b) => b.benchWinPct - a.benchWinPct);
+            benchInsights.splice(5); // top 5 by margin -- the rest would just be noise
         }
 
         runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights });
