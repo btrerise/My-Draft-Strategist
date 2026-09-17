@@ -96,7 +96,7 @@ function renderPlayerList(profiles) {
                     <span class="sim-player-name">${renderPosBadge(p.pos)} ${p.name}${renderRookieBadge(p.isRookie)}</span>
                     <span class="sim-player-boombust"><span class="sim-bust">Bust: ${bustRate}%</span> &nbsp;&bull;&nbsp; <span class="sim-boom">Boom: ${boomRate}%</span></span>
                 </div>
-                <span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.mean} avg)</span></span>
+                <span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.mean} ${p.usingProjection ? 'proj' : 'avg'})</span></span>
             </li>`;
         })
         .join('');
@@ -133,7 +133,7 @@ worker.onmessage = function(e) {
             ? `<small class="sim-fallback-note">~ marks ${fallbackCount} player(s) without enough completed games yet -- their range is an early-season estimate, not a measured one.</small>`
             : '';
         const projectionNote = projectionCount > 0
-            ? `<small class="sim-projection-note">${projectionCount} player(s) use Sleeper's projection for this week's specific matchup instead of a season-long average.</small>`
+            ? `<small class="sim-projection-note">${projectionCount} player(s)' ranges reflect Sleeper's official projection for this week -- accounting for this week's specific matchup, injury status, and other factors.</small>`
             : '';
         const lineupNote = lastLineupDiffersFromSleeper
             ? `<small class="sim-lineup-note">Simulating your proposed lineup from this tool -- it differs from what's currently synced to Sleeper.</small>`

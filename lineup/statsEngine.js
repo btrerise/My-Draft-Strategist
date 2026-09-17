@@ -57,43 +57,55 @@ export function standardNormalCDF(z) {
     return 0.5 * (1 + erf(z / Math.SQRT2));
 }
 
-// Boom/bust thresholds are defined relative to the player's OWN mean (half of it for bust,
-// 1.5x for boom) rather than a fixed point total, so they mean the same thing for a
-// low-scoring kicker as for a high-scoring WR1 -- "scored less than half of what they
-// normally score" vs. an absolute number that would flag almost every kicker as constantly
-// busting and almost no WR1 as ever busting.
+// Absolute, position-specific point thresholds for Boom/Bust, matching a commonly-used FF
+// boom/bust framework rather than a threshold derived from each player's own average. This
+// means "boom" is the same real accomplishment (e.g. 20+ points from a WR) whether it's your
+// league's elite WR1 or your flex-streaming WR3 -- a relative-to-self threshold would instead
+// call a bench player's mediocre-but-above-their-own-average week a "boom," which isn't how
+// anyone actually uses the term. K and DEF aren't part of that published framework, so those
+// two positions fall back to the relative-to-mean approach below rather than a fabricated
+// absolute number with no source behind it. These are applied as published, without any
+// per-scoring-format rescaling -- introducing our own scaling guess for half-PPR/standard
+// leagues would turn "the recognized standard" into "our modified version of it."
+const POSITION_BOOM_BUST_THRESHOLDS = {
+    QB: { boom: 24, bust: 12 },
+    RB: { boom: 20, bust: 7 },
+    WR: { boom: 20, bust: 7.5 },
+    TE: { boom: 15, bust: 5.5 }
+};
+
+// Boom/bust thresholds for positions outside that framework (K, DEF) are defined relative to
+// the player's OWN mean (half of it for bust, 1.5x for boom) rather than a fixed point total,
+// so they mean the same thing for a low-scoring kicker as for a high-scoring one.
 const DEFAULT_BUST_MULTIPLIER = 0.5;
 const DEFAULT_BOOM_MULTIPLIER = 1.5;
 
 /**
  * Given a player's variance profile and their actual weekly scores, returns how often (as a
- * %) they scored below a "bust" threshold or above a "boom" threshold.
+ * %) they scored below a "bust" threshold or above a "boom" threshold. Thresholds come from
+ * POSITION_BOOM_BUST_THRESHOLDS when the player's position is in that table; otherwise (K,
+ * DEF) they're derived from the player's own mean instead (see that table's comment).
  *
- * This is computed empirically -- counted directly from weeklyScores -- whenever there's
- * enough sample, rather than derived from the normal-distribution assumption used elsewhere
- * in this file. That's a deliberate departure: bustThreshold and boomThreshold are, by
- * construction, equidistant from the mean (mean - 0.5*mean == 1.5*mean - mean), and a
- * symmetric normal distribution assigns *identical* probability to two thresholds equidistant
- * from its center -- so a normal-model version of this function would always report bustRate
- * === boomRate for every player, always, regardless of their real volatility. That's not a
- * bug in the normal-model math; it's what symmetric thresholds under a symmetric distribution
- * necessarily produce. Real fantasy scoring isn't symmetric either -- it's floored at 0 but can
- * spike well past 2x on a big week -- so a player's own game log captures that real skew in a
- * way the model never could. The normal-model estimate is kept only as a fallback for players
- * without enough games to count from directly (mirrors getPlayerVarianceProfile's own
- * reliability bar, so a player isn't "reliable" over there but "estimated" over here).
+ * The rate itself is computed empirically -- counted directly from weeklyScores -- whenever
+ * there's enough sample, rather than derived from the normal-distribution assumption used
+ * elsewhere in this file. Real fantasy scoring isn't symmetric -- it's floored at 0 but can
+ * spike well past 2x on a big week -- so a player's own game log captures real skew in a way
+ * a symmetric normal model never could. The normal-model estimate is kept only as a fallback
+ * for players without enough games to count from directly (mirrors getPlayerVarianceProfile's
+ * own reliability bar, so a player isn't "reliable" over there but "estimated" over here).
  *
- * @param {{mean: number, stdDev: number}} profile
+ * @param {{mean: number, stdDev: number, pos: string}} profile
  * @param {Array<number>} weeklyScores - the same array getPlayerVarianceProfile was built from
  * @param {Object} [options]
- * @param {number} [options.bustMultiplier=0.5] - bust threshold, as a fraction of mean
- * @param {number} [options.boomMultiplier=1.5] - boom threshold, as a multiple of mean
+ * @param {number} [options.bustMultiplier=0.5] - K/DEF-only bust threshold, as a fraction of mean
+ * @param {number} [options.boomMultiplier=1.5] - K/DEF-only boom threshold, as a multiple of mean
  */
 export function getBoomBustRates(profile, weeklyScores, options = {}) {
     const { bustMultiplier = DEFAULT_BUST_MULTIPLIER, boomMultiplier = DEFAULT_BOOM_MULTIPLIER } = options;
-    const { mean, stdDev } = profile;
-    const bustThreshold = mean * bustMultiplier;
-    const boomThreshold = mean * boomMultiplier;
+    const { mean, stdDev, pos } = profile;
+    const positionThresholds = POSITION_BOOM_BUST_THRESHOLDS[pos];
+    const bustThreshold = positionThresholds ? positionThresholds.bust : mean * bustMultiplier;
+    const boomThreshold = positionThresholds ? positionThresholds.boom : mean * boomMultiplier;
 
     if (weeklyScores && weeklyScores.length >= MIN_RELIABLE_GAMES) {
         const n = weeklyScores.length;
