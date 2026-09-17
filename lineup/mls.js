@@ -4869,7 +4869,7 @@ window.runMatchupSim = async function() {
         const benchIds = benchPool.map(p => p.id).filter(id => id && id !== '0');
 
         const scoringKey = league.pprVal === 1 ? 'pts_ppr' : (league.pprVal === 0.5 ? 'pts_half_ppr' : 'pts_std');
-        const history = await getPlayerWeeklyScoreHistory(
+        const { blended: history, currentSeasonOnly } = await getPlayerWeeklyScoreHistory(
             [...myStarters, ...oppStarters, ...benchIds], season, currentWeek, scoringKey,
             { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES }
         );
@@ -4898,7 +4898,7 @@ window.runMatchupSim = async function() {
             // more reliable than inferring "rookie" from a lack of game history, which would
             // also catch a 2nd-year player coming back from an injury-lost season.
             return {
-                id, name, pos: p.position || '', weeklyScores: history[id] || [],
+                id, name, pos: p.position || '', weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
                 isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id)
             };
         };
@@ -4935,10 +4935,10 @@ window.runMatchupSim = async function() {
 
             const benchObjs = toPlayerObjs(benchIds);
             const team1ProfilesById = {};
-            team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores); });
+            team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean }); });
 
             benchObjs.forEach(benchPlayer => {
-                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores);
+                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores, { projectedMean: benchPlayer.projectedMean });
                 const eligibleStarterIds = starterSlotTypes
                     .filter(s => slotAcceptsPos(s.slotType, benchPlayer.pos))
                     .map(s => s.id)
@@ -4968,7 +4968,7 @@ window.runMatchupSim = async function() {
             benchInsights.splice(5); // top 5 by margin -- the rest would just be noise
         }
 
-        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights });
+        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, currentWeek });
     } catch (err) {
         console.error(err);
         if (typeof window.showToast === 'function') window.showToast("Failed to run the matchup simulation. Check console for details.", { isError: true });

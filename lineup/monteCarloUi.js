@@ -14,8 +14,8 @@ let lastBenchInsights = [];
 
 /**
  * Triggers the Monte Carlo simulation and handles the DOM update.
- * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[]}>} team1Players
- * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[]}>} team2Players
+ * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[], currentSeasonScores: number[]}>} team1Players
+ * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[], currentSeasonScores: number[]}>} team2Players
  * @param {Object} [options]
  * @param {boolean} [options.lineupDiffersFromSleeper] - true when team1Players reflects an
  *   in-app lineup edit (a swap made in this tool) that hasn't been pushed to Sleeper yet, so
@@ -23,9 +23,11 @@ let lastBenchInsights = [];
  * @param {Array<{benchName, benchPos, starterName, starterPos, benchWinPct}>} [options.benchInsights]
  *   - precomputed bench-vs-starter comparisons (slot-eligibility already applied by the
  *   caller); this module only renders them, it doesn't compute or validate the matchups.
+ * @param {number} [options.currentWeek] - the current NFL week, passed straight through to
+ *   getBoomBustRates' tier 2 gate (see statsEngine.js).
  */
 export const runMatchupSimulation = (team1Players, team2Players, options = {}) => {
-    const { lineupDiffersFromSleeper = false, benchInsights = [] } = options;
+    const { lineupDiffersFromSleeper = false, benchInsights = [], currentWeek = null } = options;
     const simOutputDiv = document.getElementById('monte-carlo-results');
 
     if (team1Players.length === 0 || team2Players.length === 0) {
@@ -44,8 +46,16 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     }
 
     // 2. Map each player's raw historical scores into the Variance Profile we built in
-    // Chunk 2, keeping their name/position attached alongside it.
-    const toProfile = (player) => ({ ...player, ...getPlayerVarianceProfile(player.weeklyScores, { projectedMean: player.projectedMean }) });
+    // Chunk 2, keeping their name/position attached alongside it, and compute Boom/Bust right
+    // here (rather than at render time) so getBoomBustRates' tiered logic has currentWeek and
+    // currentSeasonScores available via this same closure.
+    const toProfile = (player) => {
+        const profile = { ...player, ...getPlayerVarianceProfile(player.weeklyScores, { projectedMean: player.projectedMean }) };
+        const boomBust = getBoomBustRates(profile, player.weeklyScores, {
+            currentSeasonScores: player.currentSeasonScores, currentWeek
+        });
+        return { ...profile, ...boomBust };
+    };
     const team1Profiles = team1Players.map(toProfile);
     const team2Profiles = team2Players.map(toProfile);
     lastTeam1Profiles = team1Profiles;
@@ -88,17 +98,14 @@ function renderPlayerList(profiles) {
     const rows = profiles
         .slice()
         .sort((a, b) => b.mean - a.mean)
-        .map(p => {
-            const { bustRate, boomRate } = getBoomBustRates(p, p.weeklyScores);
-            return `
+        .map(p => `
             <li class="sim-player-row">
                 <div class="sim-player-info">
                     <span class="sim-player-name">${renderPosBadge(p.pos)} ${p.name}${renderRookieBadge(p.isRookie)}</span>
-                    <span class="sim-player-boombust"><span class="sim-bust">Bust: ${bustRate}%</span> &nbsp;&bull;&nbsp; <span class="sim-boom">Boom: ${boomRate}%</span></span>
+                    <span class="sim-player-boombust"><span class="sim-bust">Bust: ${p.bustRate}%</span> &nbsp;&bull;&nbsp; <span class="sim-boom">Boom: ${p.boomRate}%</span></span>
                 </div>
                 <span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.mean} ${p.usingProjection ? 'proj' : 'avg'})</span></span>
-            </li>`;
-        })
+            </li>`)
         .join('');
     return `<ul class="sim-player-list">${rows}</ul>`;
 }

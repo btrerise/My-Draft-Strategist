@@ -64,16 +64,17 @@ async function buildScoreHistory(playerIds, season, startWeek, endWeek, scoringK
 }
 
 /**
- * Builds { [playerId]: [week1Score, week2Score, ...] } for every id in playerIds, covering
- * weeks 1 through (throughWeek - 1) of the current season -- i.e. every completed week so
- * far. The current/in-progress week is deliberately excluded since its score isn't final yet.
+ * Builds two views of a player's weekly scores: `currentSeasonOnly` (weeks 1 through
+ * throughWeek - 1 of the current season -- i.e. every completed week so far, with the
+ * in-progress week excluded since its score isn't final yet) and `blended` (the same, plus
+ * last season's scores appended for anyone whose current-season sample is still short).
  *
- * Early in a season (or for anyone with a short current-season sample -- an IR return, a
- * recent trade, etc.), a handful of games isn't enough for a meaningful standard deviation.
- * For those players only, this supplements with last season's weekly scores -- veterans get
- * a real measured sample again instead of falling straight to statsEngine's flat estimate;
- * rookies and first-year players simply have no prior season on Sleeper, so this is a no-op
- * for them and they fall through to that estimate exactly as before.
+ * Both views are returned, rather than just the merged one, because callers don't all want
+ * the same trade-off: the Monte Carlo mean/stdDev is fine leaning on blended data (some
+ * historical basis beats none for a stable estimate), but Boom/Bust specifically needs to
+ * know which games actually happened THIS season -- see statsEngine.js's tiered
+ * getBoomBustRates, which prefers currentSeasonOnly once the season has matured enough that
+ * last year's role isn't the best available signal for a player's role today.
  *
  * @param {Array<string>} playerIds
  * @param {string|number} season
@@ -87,26 +88,31 @@ async function buildScoreHistory(playerIds, season, startWeek, endWeek, scoringK
  *   must be at least this long before prior-season data is skipped for them; matches
  *   statsEngine.js's own reliability threshold so a player isn't measured as "reliable" here
  *   but then flagged as a fallback estimate there, or vice versa.
- * @returns {Promise<Object>} a week is silently skipped for a player if they have no entry
- *   that week (bye, DNP, not yet in the league, etc.) rather than counted as a 0 -- a 0 would
- *   understate that player's real variance/mean.
+ * @returns {Promise<{blended: Object, currentSeasonOnly: Object}>} a week is silently skipped
+ *   for a player if they have no entry that week (bye, DNP, not yet in the league, etc.)
+ *   rather than counted as a 0 -- a 0 would understate that player's real variance/mean.
  */
 export async function getPlayerWeeklyScoreHistory(playerIds, season, throughWeek, scoringKey = 'pts_ppr', options = {}) {
     const { minGamesBeforeSupplementing = 3 } = options;
 
-    const currentSeasonHistory = await buildScoreHistory(playerIds, season, 1, throughWeek - 1, scoringKey);
+    const currentSeasonOnly = await buildScoreHistory(playerIds, season, 1, throughWeek - 1, scoringKey);
 
-    const needsSupplement = playerIds.filter(id => currentSeasonHistory[id].length < minGamesBeforeSupplementing);
-    if (needsSupplement.length === 0) return currentSeasonHistory;
+    // blended starts as a copy of currentSeasonOnly's arrays -- supplementation below appends
+    // to these copies, never the originals, so currentSeasonOnly stays an untouched record of
+    // "what actually happened this year" even for players who get supplemented.
+    const blended = {};
+    playerIds.forEach(id => { blended[id] = [...currentSeasonOnly[id]]; });
 
-    const priorSeason = String(Number(season) - 1);
-    const priorSeasonHistory = await buildScoreHistory(needsSupplement, priorSeason, 1, REGULAR_SEASON_WEEKS, scoringKey);
+    const needsSupplement = playerIds.filter(id => currentSeasonOnly[id].length < minGamesBeforeSupplementing);
+    if (needsSupplement.length > 0) {
+        const priorSeason = String(Number(season) - 1);
+        const priorSeasonHistory = await buildScoreHistory(needsSupplement, priorSeason, 1, REGULAR_SEASON_WEEKS, scoringKey);
+        needsSupplement.forEach(id => {
+            blended[id] = [...blended[id], ...priorSeasonHistory[id]];
+        });
+    }
 
-    needsSupplement.forEach(id => {
-        currentSeasonHistory[id] = [...currentSeasonHistory[id], ...priorSeasonHistory[id]];
-    });
-
-    return currentSeasonHistory;
+    return { blended, currentSeasonOnly };
 }
 
 /**
