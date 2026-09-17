@@ -45,7 +45,7 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
 
     // 2. Map each player's raw historical scores into the Variance Profile we built in
     // Chunk 2, keeping their name/position attached alongside it.
-    const toProfile = (player) => ({ ...player, ...getPlayerVarianceProfile(player.weeklyScores) });
+    const toProfile = (player) => ({ ...player, ...getPlayerVarianceProfile(player.weeklyScores, { projectedMean: player.projectedMean }) });
     const team1Profiles = team1Players.map(toProfile);
     const team2Profiles = team2Players.map(toProfile);
     lastTeam1Profiles = team1Profiles;
@@ -59,13 +59,15 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     // own comment for why). Surfacing the count here keeps that estimate from being presented
     // with the same confidence as a full-sample number.
     const fallbackCount = [...team1Profiles, ...team2Profiles].filter(p => p.usedFallback).length;
+    const projectionCount = [...team1Profiles, ...team2Profiles].filter(p => p.usingProjection).length;
 
     // 3. Send the formatted payload to the background Web Worker
     worker.postMessage({
         team1: team1Profiles,
         team2: team2Profiles,
         iterations: 10000,
-        fallbackCount
+        fallbackCount,
+        projectionCount
     });
 };
 
@@ -87,7 +89,7 @@ function renderPlayerList(profiles) {
         .slice()
         .sort((a, b) => b.mean - a.mean)
         .map(p => {
-            const { bustRate, boomRate } = getBoomBustRates(p);
+            const { bustRate, boomRate } = getBoomBustRates(p, p.weeklyScores);
             return `
             <li class="sim-player-row">
                 <div class="sim-player-info">
@@ -123,12 +125,15 @@ function renderBenchInsights(benchInsights) {
 
 // 4. Listen for the Web Worker to finish and update the UI
 worker.onmessage = function(e) {
-    const { team1WinProb, team2WinProb, ties, fallbackCount } = e.data;
+    const { team1WinProb, team2WinProb, ties, fallbackCount, projectionCount } = e.data;
     const simOutputDiv = document.getElementById('monte-carlo-results');
     
     if (simOutputDiv) {
         const fallbackNote = fallbackCount > 0
             ? `<small class="sim-fallback-note">~ marks ${fallbackCount} player(s) without enough completed games yet -- their range is an early-season estimate, not a measured one.</small>`
+            : '';
+        const projectionNote = projectionCount > 0
+            ? `<small class="sim-projection-note">${projectionCount} player(s) use Sleeper's projection for this week's specific matchup instead of a season-long average.</small>`
             : '';
         const lineupNote = lastLineupDiffersFromSleeper
             ? `<small class="sim-lineup-note">Simulating your proposed lineup from this tool -- it differs from what's currently synced to Sleeper.</small>`
@@ -151,6 +156,7 @@ worker.onmessage = function(e) {
                 </div>
                 <small>${ties} ties in 10,000 simulations</small>
                 ${fallbackNote}
+                ${projectionNote}
                 ${lineupNote}
                 <div class="sim-team-columns">
                     <div class="sim-team-column">

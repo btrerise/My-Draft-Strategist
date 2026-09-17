@@ -66,20 +66,49 @@ const DEFAULT_BUST_MULTIPLIER = 0.5;
 const DEFAULT_BOOM_MULTIPLIER = 1.5;
 
 /**
- * Given a player's variance profile, returns how often (as a %) their simulated score would
- * fall below a "bust" threshold or above a "boom" threshold, per the normal-distribution
- * assumption above.
+ * Given a player's variance profile and their actual weekly scores, returns how often (as a
+ * %) they scored below a "bust" threshold or above a "boom" threshold.
+ *
+ * This is computed empirically -- counted directly from weeklyScores -- whenever there's
+ * enough sample, rather than derived from the normal-distribution assumption used elsewhere
+ * in this file. That's a deliberate departure: bustThreshold and boomThreshold are, by
+ * construction, equidistant from the mean (mean - 0.5*mean == 1.5*mean - mean), and a
+ * symmetric normal distribution assigns *identical* probability to two thresholds equidistant
+ * from its center -- so a normal-model version of this function would always report bustRate
+ * === boomRate for every player, always, regardless of their real volatility. That's not a
+ * bug in the normal-model math; it's what symmetric thresholds under a symmetric distribution
+ * necessarily produce. Real fantasy scoring isn't symmetric either -- it's floored at 0 but can
+ * spike well past 2x on a big week -- so a player's own game log captures that real skew in a
+ * way the model never could. The normal-model estimate is kept only as a fallback for players
+ * without enough games to count from directly (mirrors getPlayerVarianceProfile's own
+ * reliability bar, so a player isn't "reliable" over there but "estimated" over here).
+ *
  * @param {{mean: number, stdDev: number}} profile
+ * @param {Array<number>} weeklyScores - the same array getPlayerVarianceProfile was built from
  * @param {Object} [options]
  * @param {number} [options.bustMultiplier=0.5] - bust threshold, as a fraction of mean
  * @param {number} [options.boomMultiplier=1.5] - boom threshold, as a multiple of mean
  */
-export function getBoomBustRates(profile, options = {}) {
+export function getBoomBustRates(profile, weeklyScores, options = {}) {
     const { bustMultiplier = DEFAULT_BUST_MULTIPLIER, boomMultiplier = DEFAULT_BOOM_MULTIPLIER } = options;
     const { mean, stdDev } = profile;
     const bustThreshold = mean * bustMultiplier;
     const boomThreshold = mean * boomMultiplier;
 
+    if (weeklyScores && weeklyScores.length >= MIN_RELIABLE_GAMES) {
+        const n = weeklyScores.length;
+        const bustCount = weeklyScores.filter(s => s < bustThreshold).length;
+        const boomCount = weeklyScores.filter(s => s > boomThreshold).length;
+        return {
+            bustRate: Number((bustCount / n * 100).toFixed(1)),
+            boomRate: Number((boomCount / n * 100).toFixed(1)),
+            bustThreshold: Number(bustThreshold.toFixed(2)),
+            boomThreshold: Number(boomThreshold.toFixed(2)),
+            isEstimated: false
+        };
+    }
+
+    // --- Fallback for small samples: symmetric normal-model estimate ---
     // A 0 stdDev means the "distribution" is a single fixed point at mean -- it's either
     // always or never past a threshold, never sometimes, so the CDF math below (which
     // divides by stdDev) doesn't apply.
@@ -88,7 +117,8 @@ export function getBoomBustRates(profile, options = {}) {
             bustRate: mean < bustThreshold ? 100 : 0,
             boomRate: mean > boomThreshold ? 100 : 0,
             bustThreshold: Number(bustThreshold.toFixed(2)),
-            boomThreshold: Number(boomThreshold.toFixed(2))
+            boomThreshold: Number(boomThreshold.toFixed(2)),
+            isEstimated: true
         };
     }
 
@@ -99,7 +129,8 @@ export function getBoomBustRates(profile, options = {}) {
         bustRate: Number(bustRate.toFixed(1)),
         boomRate: Number(boomRate.toFixed(1)),
         bustThreshold: Number(bustThreshold.toFixed(2)),
-        boomThreshold: Number(boomThreshold.toFixed(2))
+        boomThreshold: Number(boomThreshold.toFixed(2)),
+        isEstimated: true
     };
 }
 
@@ -149,11 +180,23 @@ const FALLBACK_CV = 0.40;
 /**
  * Generates the full variance profile for a player to be used in the Monte Carlo simulation.
  * @param {Array} weeklyScores - Array of fantasy points scored in each week (e.g., [14.2, 8.5, 22.1])
+ * @param {Object} [options]
+ * @param {number|null} [options.projectedMean] - a matchup-specific projection (e.g. Sleeper's
+ *   own weekly projection, which factors in this week's opponent, injury designation, bye
+ *   weeks, etc.) to use as the distribution's center instead of the flat trailing average of
+ *   weeklyScores. Volatility (stdDev) is still measured from real history regardless -- a
+ *   single projected number is a point estimate, not a distribution, so it has nothing to say
+ *   about spread. Omitted/null when no projection is available, which is the common case for
+ *   deep bench/waiver-tier players Sleeper doesn't bother projecting.
  */
-export const getPlayerVarianceProfile = (weeklyScores) => {
-    const mean = calculateMean(weeklyScores);
+export const getPlayerVarianceProfile = (weeklyScores, options = {}) => {
+    const { projectedMean = null } = options;
+    const historicalMean = calculateMean(weeklyScores);
     const sampleStdDev = calculateStandardDeviation(weeklyScores);
     const gamesPlayed = weeklyScores ? weeklyScores.length : 0;
+
+    const usingProjection = typeof projectedMean === 'number';
+    const mean = usingProjection ? projectedMean : historicalMean;
 
     const usedFallback = gamesPlayed < MIN_RELIABLE_GAMES;
     const stdDev = usedFallback ? Math.max(sampleStdDev, mean * FALLBACK_CV) : sampleStdDev;
@@ -165,6 +208,7 @@ export const getPlayerVarianceProfile = (weeklyScores) => {
         floor: Number(Math.max(0, mean - stdDev).toFixed(2)),
         ceiling: Number((mean + stdDev).toFixed(2)),
         gamesPlayed,
-        usedFallback
+        usedFallback,
+        usingProjection
     };
 };

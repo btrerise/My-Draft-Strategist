@@ -111,23 +111,16 @@ export async function getPlayerWeeklyScoreHistory(playerIds, season, throughWeek
 
 /**
  * Fetches current week projections to serve as the baseline for the Monte Carlo simulations.
+ * Deliberately NOT cached like getWeekStats -- a completed week's stats are immutable once
+ * posted, but a projection is live data that Sleeper updates through the week as inactives,
+ * injury designations, and depth-chart news come in. Caching it the same way would mean a
+ * projection fetched Tuesday morning never refreshing by kickoff.
  */
 export async function getWeeklyProjections(season = '2026', week) {
-    const cacheKey = `projections_${season}_w${week}`;
-    
-    const cachedProjections = await getCachedData(cacheKey);
-    if (cachedProjections) {
-        console.log(`Loaded Week ${week} projections from cache.`);
-        return cachedProjections;
-    }
-
     try {
         const response = await fetch(`${SLEEPER_BASE_URL}/projections/nfl/regular/${season}/${week}`);
         if (!response.ok) throw new Error('Failed to fetch weekly projections');
-        
-        const data = await response.json();
-        await cacheData(cacheKey, data);
-        return data;
+        return await response.json();
     } catch (error) {
         console.error('Sleeper API Error:', error);
         return null;

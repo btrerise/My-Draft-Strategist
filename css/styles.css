@@ -1582,6 +1582,10 @@ body {
     color: #93c5fd !important;
 }
 
+.sim-projection-note {
+    color: #86efac !important;
+}
+
 .sim-team-columns {
     display: flex;
     gap: 1.25rem;

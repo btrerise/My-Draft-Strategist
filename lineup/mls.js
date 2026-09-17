@@ -11,7 +11,7 @@ import { parseRankingsFiles } from './rankingsParser.js';
 import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from './sleeperApi.js';
 import { fetchMarketConsensusData } from './marketDataApi.js';
 import { runMatchupSimulation } from './monteCarloUi.js';
-import { getPlayerWeeklyScoreHistory } from './sleeperService.js';
+import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from './sleeperService.js';
 import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './statsEngine.js';
 
 (function () {
@@ -4877,13 +4877,30 @@ window.runMatchupSim = async function() {
         // Needed to show names/positions next to each player's projected range in the
         // results panel -- the pipeline up to this point only deals in Sleeper player IDs.
         const playerMap = await getSleeperPlayerMap();
+
+        // Sleeper's own weekly projection factors in this week's specific matchup, injury
+        // designation, byes, etc. -- a better center-of-distribution estimate for THIS week
+        // than a flat trailing average across every week played so far. A missing/failed
+        // fetch (or a player Sleeper simply doesn't bother projecting -- common for deep
+        // bench/waiver-tier guys) just means projectedMean stays null and that player falls
+        // back to their historical average, exactly as before.
+        const projections = await getWeeklyProjections(season, currentWeek);
+        const getProjectedMean = (id) => {
+            const proj = projections && projections[id];
+            const val = proj ? proj[scoringKey] : undefined;
+            return typeof val === 'number' ? val : null;
+        };
+
         const toPlayerObj = (id) => {
             const p = playerMap[id] || {};
             const name = p.first_name ? `${p.first_name} ${p.last_name}` : (p.last_name || id);
             // years_exp is Sleeper's own experience counter (0 for a player's rookie season) --
             // more reliable than inferring "rookie" from a lack of game history, which would
             // also catch a 2nd-year player coming back from an injury-lost season.
-            return { id, name, pos: p.position || '', weeklyScores: history[id] || [], isRookie: p.years_exp === 0 };
+            return {
+                id, name, pos: p.position || '', weeklyScores: history[id] || [],
+                isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id)
+            };
         };
 
         // Players with zero completed games (rookies, recent signings, bye-adjacent
