@@ -1,5 +1,5 @@
 // monteCarloUi.js
-import { getPlayerVarianceProfile } from './statsEngine.js';
+import { getPlayerVarianceProfile, getBoomBustRates } from './statsEngine.js';
 
 // 1. Initialize the Web Worker
 const worker = new Worker('./worker.js');
@@ -10,6 +10,7 @@ const worker = new Worker('./worker.js');
 let lastTeam1Profiles = [];
 let lastTeam2Profiles = [];
 let lastLineupDiffersFromSleeper = false;
+let lastBenchInsights = [];
 
 /**
  * Triggers the Monte Carlo simulation and handles the DOM update.
@@ -19,9 +20,12 @@ let lastLineupDiffersFromSleeper = false;
  * @param {boolean} [options.lineupDiffersFromSleeper] - true when team1Players reflects an
  *   in-app lineup edit (a swap made in this tool) that hasn't been pushed to Sleeper yet, so
  *   the result is disclosed as "your proposed lineup" rather than implying it's what's live.
+ * @param {Array<{benchName, benchPos, starterName, starterPos, benchWinPct}>} [options.benchInsights]
+ *   - precomputed bench-vs-starter comparisons (slot-eligibility already applied by the
+ *   caller); this module only renders them, it doesn't compute or validate the matchups.
  */
 export const runMatchupSimulation = (team1Players, team2Players, options = {}) => {
-    const { lineupDiffersFromSleeper = false } = options;
+    const { lineupDiffersFromSleeper = false, benchInsights = [] } = options;
     const simOutputDiv = document.getElementById('monte-carlo-results');
 
     if (team1Players.length === 0 || team2Players.length === 0) {
@@ -47,6 +51,7 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     lastTeam1Profiles = team1Profiles;
     lastTeam2Profiles = team2Profiles;
     lastLineupDiffersFromSleeper = lineupDiffersFromSleeper;
+    lastBenchInsights = benchInsights;
 
     // Early in the season (or for a player who just changed teams, returned from injury,
     // etc.) some players won't have enough games for a directly-measured standard deviation --
@@ -73,13 +78,39 @@ function renderPlayerList(profiles) {
     const rows = profiles
         .slice()
         .sort((a, b) => b.mean - a.mean)
-        .map(p => `
+        .map(p => {
+            const { bustRate, boomRate } = getBoomBustRates(p);
+            return `
             <li class="sim-player-row">
-                <span class="sim-player-name">${p.name}${p.pos ? ` <span class="sim-player-pos">${p.pos}</span>` : ''}</span>
+                <div class="sim-player-info">
+                    <span class="sim-player-name">${p.name}${p.pos ? ` <span class="sim-player-pos">${p.pos}</span>` : ''}</span>
+                    <span class="sim-player-boombust">Bust (&lt;50% of avg): ${bustRate}% &nbsp;&bull;&nbsp; Boom (&gt;150% of avg): ${boomRate}%</span>
+                </div>
                 <span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.mean} avg)</span></span>
-            </li>`)
+            </li>`;
+        })
         .join('');
     return `<ul class="sim-player-list">${rows}</ul>`;
+}
+
+// Bench comparisons the caller found no sensible starter to weigh against (see mls.js's
+// runMatchupSim) never make it into benchInsights at all -- so anything that does arrive
+// here is worth showing, and this only decides how to lay out however many there are.
+function renderBenchInsights(benchInsights) {
+    if (!benchInsights || benchInsights.length === 0) return '';
+
+    const rows = benchInsights.map(b => `
+        <li class="sim-bench-row">
+            <strong>${b.benchName}</strong> <span class="sim-player-pos">${b.benchPos}</span> (bench) outscored
+            <strong>${b.starterName}</strong> <span class="sim-player-pos">${b.starterPos}</span> (starting) in
+            <strong>${b.benchWinPct}%</strong> of simulated weeks.
+        </li>`).join('');
+
+    return `
+        <div class="sim-bench-insights">
+            <h4>Lineup Insights</h4>
+            <ul class="sim-bench-list">${rows}</ul>
+        </div>`;
 }
 
 // 4. Listen for the Web Worker to finish and update the UI
@@ -123,6 +154,7 @@ worker.onmessage = function(e) {
                         ${renderPlayerList(lastTeam2Profiles)}
                     </div>
                 </div>
+                ${renderBenchInsights(lastBenchInsights)}
             </div>
         `;
     }

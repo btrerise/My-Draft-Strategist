@@ -12,7 +12,7 @@ import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, g
 import { fetchMarketConsensusData } from './marketDataApi.js';
 import { runMatchupSimulation } from './monteCarloUi.js';
 import { getPlayerWeeklyScoreHistory } from './sleeperService.js';
-import { MIN_RELIABLE_GAMES } from './statsEngine.js';
+import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './statsEngine.js';
 
 (function () {
     'use strict';
@@ -4857,9 +4857,17 @@ window.runMatchupSim = async function() {
         const lineupDiffersFromSleeper = usingLocalLineup &&
             (myStarters.length !== sleeperMyStarters.length || !myStarters.every(id => sleeperMyStarters.includes(id)));
 
+        // Bench comparisons only make sense against the in-app lineup -- there's no bench
+        // context at all for Sleeper's raw current-week starters (myEntry.starters is just a
+        // flat list of IDs with no slot assignment), and manualBenchMap is itself an in-app-only
+        // concept. localStarters carries each player's slot (e.g. "RB1", "FLEX2"), needed below
+        // to figure out which bench players are even eligible to replace which starter.
+        const benchPool = usingLocalLineup ? (State.manualBenchMap[league.leagueId] || []) : [];
+        const benchIds = benchPool.map(p => p.id).filter(id => id && id !== '0');
+
         const scoringKey = league.pprVal === 1 ? 'pts_ppr' : (league.pprVal === 0.5 ? 'pts_half_ppr' : 'pts_std');
         const history = await getPlayerWeeklyScoreHistory(
-            [...myStarters, ...oppStarters], season, currentWeek, scoringKey,
+            [...myStarters, ...oppStarters, ...benchIds], season, currentWeek, scoringKey,
             { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES }
         );
 
@@ -4890,7 +4898,48 @@ window.runMatchupSim = async function() {
             window.showToast(`${excludedCount} player(s) excluded from the simulation -- not enough game history yet.`);
         }
 
-        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper });
+        // "Bench Player Y outscored Starting Player Z X% of the time" -- for each bench
+        // player with enough history, find the starters slotAcceptsPos actually allows them
+        // to replace (same eligibility the swap UI itself enforces, see slotAcceptsPos's own
+        // comment), then compare against the weakest of those -- the one an actual lineup
+        // swap would target -- rather than every eligible starter, which would just restate
+        // the obvious for anyone but the weakest link.
+        const benchInsights = [];
+        if (benchPool.length > 0) {
+            const starterSlotTypes = localStarters
+                .filter(s => s.player)
+                .map(s => ({ id: s.player.id, slotType: s.slot.replace(/[0-9]/g, '') }));
+
+            const benchObjs = toPlayerObjs(benchIds);
+            const team1ProfilesById = {};
+            team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores); });
+
+            benchObjs.forEach(benchPlayer => {
+                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores);
+                const eligibleStarterIds = starterSlotTypes
+                    .filter(s => slotAcceptsPos(s.slotType, benchPlayer.pos))
+                    .map(s => s.id)
+                    .filter(id => team1ProfilesById[id]); // must have a valid profile too
+
+                if (eligibleStarterIds.length === 0) return;
+
+                const weakestStarterId = eligibleStarterIds.reduce((weakestId, id) =>
+                    team1ProfilesById[id].mean < team1ProfilesById[weakestId].mean ? id : weakestId
+                );
+                const weakestStarter = team1Players.find(p => p.id === weakestStarterId);
+                const benchWinPct = getProbabilityBeats(benchProfile, team1ProfilesById[weakestStarterId]);
+
+                benchInsights.push({
+                    benchName: benchPlayer.name, benchPos: benchPlayer.pos,
+                    starterName: weakestStarter.name, starterPos: weakestStarter.pos,
+                    benchWinPct
+                });
+            });
+
+            benchInsights.sort((a, b) => b.benchWinPct - a.benchWinPct);
+        }
+
+        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights });
     } catch (err) {
         console.error(err);
         if (typeof window.showToast === 'function') window.showToast("Failed to run the matchup simulation. Check console for details.", { isError: true });

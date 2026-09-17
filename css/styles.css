@@ -1613,14 +1613,26 @@ body {
     justify-content: space-between;
     align-items: baseline;
     gap: 0.5rem;
-    padding: 0.4rem 0;
+    padding: 0.5rem 0;
     border-bottom: 1px solid var(--border);
     font-size: 0.85rem;
 }
 
 .sim-player-row:last-child { border-bottom: none; }
 
+.sim-player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
 .sim-player-name { font-weight: 500; }
+
+.sim-player-boombust {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
 
 .sim-player-pos {
     color: var(--text-muted);
@@ -1631,10 +1643,45 @@ body {
 .sim-player-range {
     white-space: nowrap;
     color: var(--text-muted);
+    flex-shrink: 0;
 }
 
 .sim-player-mean {
     font-size: 0.75rem;
+}
+
+.sim-bench-insights {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.sim-bench-insights h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.sim-bench-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sim-bench-row {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.sim-bench-row strong {
+    color: var(--text-main);
+    font-weight: 600;
 }
 
 .info-banner {
