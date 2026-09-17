@@ -9,13 +9,19 @@ const worker = new Worker('./worker.js');
 // postMessage, and re-attached to the per-player breakdown once the worker responds.
 let lastTeam1Profiles = [];
 let lastTeam2Profiles = [];
+let lastLineupDiffersFromSleeper = false;
 
 /**
  * Triggers the Monte Carlo simulation and handles the DOM update.
  * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[]}>} team1Players
  * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[]}>} team2Players
+ * @param {Object} [options]
+ * @param {boolean} [options.lineupDiffersFromSleeper] - true when team1Players reflects an
+ *   in-app lineup edit (a swap made in this tool) that hasn't been pushed to Sleeper yet, so
+ *   the result is disclosed as "your proposed lineup" rather than implying it's what's live.
  */
-export const runMatchupSimulation = (team1Players, team2Players) => {
+export const runMatchupSimulation = (team1Players, team2Players, options = {}) => {
+    const { lineupDiffersFromSleeper = false } = options;
     const simOutputDiv = document.getElementById('monte-carlo-results');
 
     if (team1Players.length === 0 || team2Players.length === 0) {
@@ -40,6 +46,7 @@ export const runMatchupSimulation = (team1Players, team2Players) => {
     const team2Profiles = team2Players.map(toProfile);
     lastTeam1Profiles = team1Profiles;
     lastTeam2Profiles = team2Profiles;
+    lastLineupDiffersFromSleeper = lineupDiffersFromSleeper;
 
     // Early in the season (or for a player who just changed teams, returned from injury,
     // etc.) some players won't have enough games for a directly-measured standard deviation --
@@ -84,6 +91,9 @@ worker.onmessage = function(e) {
         const fallbackNote = fallbackCount > 0
             ? `<small class="sim-fallback-note">~ marks ${fallbackCount} player(s) without enough completed games yet -- their range is an early-season estimate, not a measured one.</small>`
             : '';
+        const lineupNote = lastLineupDiffersFromSleeper
+            ? `<small class="sim-lineup-note">Simulating your proposed lineup from this tool -- it differs from what's currently synced to Sleeper.</small>`
+            : '';
 
         // Labels live in a legend above the bar rather than inside each colored segment --
         // text inside a segment gets clipped whenever that side's share is small (a heavy
@@ -102,6 +112,7 @@ worker.onmessage = function(e) {
                 </div>
                 <small>${ties} ties in 10,000 simulations</small>
                 ${fallbackNote}
+                ${lineupNote}
                 <div class="sim-team-columns">
                     <div class="sim-team-column">
                         <h4>Your Team</h4>

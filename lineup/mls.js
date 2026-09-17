@@ -4841,8 +4841,21 @@ window.runMatchupSim = async function() {
         }
 
         // Sleeper pads empty slots with the literal string "0" rather than omitting them.
-        const myStarters = (myEntry.starters || []).filter(id => id && id !== '0');
+        const sleeperMyStarters = (myEntry.starters || []).filter(id => id && id !== '0');
         const oppStarters = (oppEntry.starters || []).filter(id => id && id !== '0');
+
+        // Simulate the lineup the person is actually looking at in this tool, not necessarily
+        // what's live on Sleeper -- State.manualStartersMap is the same in-app editable lineup
+        // the optimizer/swap UI already reads and writes (see renderLineupUI), so a swap made
+        // here but not yet pushed to Sleeper is reflected immediately. Only the opponent's side
+        // has to come from Sleeper, since there's no in-app editing of their roster.
+        const localStarters = State.manualStartersMap[league.leagueId] || [];
+        const localStarterIds = localStarters.filter(s => s.player).map(s => s.player.id).filter(id => id && id !== '0');
+        const usingLocalLineup = localStarterIds.length > 0;
+        const myStarters = usingLocalLineup ? localStarterIds : sleeperMyStarters;
+
+        const lineupDiffersFromSleeper = usingLocalLineup &&
+            (myStarters.length !== sleeperMyStarters.length || !myStarters.every(id => sleeperMyStarters.includes(id)));
 
         const scoringKey = league.pprVal === 1 ? 'pts_ppr' : (league.pprVal === 0.5 ? 'pts_half_ppr' : 'pts_std');
         const history = await getPlayerWeeklyScoreHistory(
@@ -4877,7 +4890,7 @@ window.runMatchupSim = async function() {
             window.showToast(`${excludedCount} player(s) excluded from the simulation -- not enough game history yet.`);
         }
 
-        runMatchupSimulation(team1Players, team2Players);
+        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper });
     } catch (err) {
         console.error(err);
         if (typeof window.showToast === 'function') window.showToast("Failed to run the matchup simulation. Check console for details.", { isError: true });

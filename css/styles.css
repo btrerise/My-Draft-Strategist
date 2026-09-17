@@ -1578,6 +1578,10 @@ body {
     color: #fbbf24 !important;
 }
 
+.sim-lineup-note {
+    color: #93c5fd !important;
+}
+
 .sim-team-columns {
     display: flex;
     gap: 1.25rem;
