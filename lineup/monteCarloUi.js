@@ -4,15 +4,21 @@ import { getPlayerVarianceProfile } from './statsEngine.js';
 // 1. Initialize the Web Worker
 const worker = new Worker('./worker.js');
 
+// The worker only ever needs to report back win/loss/tie counts -- it has no reason to know
+// player names or positions, so those are kept here rather than round-tripped through
+// postMessage, and re-attached to the per-player breakdown once the worker responds.
+let lastTeam1Profiles = [];
+let lastTeam2Profiles = [];
+
 /**
  * Triggers the Monte Carlo simulation and handles the DOM update.
- * @param {Array} team1WeeklyScores - Array of arrays containing historical scores for Team 1's active players.
- * @param {Array} team2WeeklyScores - Array of arrays containing historical scores for Team 2's active players.
+ * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[]}>} team1Players
+ * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[]}>} team2Players
  */
-export const runMatchupSimulation = (team1WeeklyScores, team2WeeklyScores) => {
+export const runMatchupSimulation = (team1Players, team2Players) => {
     const simOutputDiv = document.getElementById('monte-carlo-results');
 
-    if (team1WeeklyScores.length === 0 || team2WeeklyScores.length === 0) {
+    if (team1Players.length === 0 || team2Players.length === 0) {
         if (simOutputDiv) {
             simOutputDiv.style.display = 'block';
             simOutputDiv.innerHTML = '<p>Not enough roster data to simulate this matchup yet.</p>';
@@ -27,9 +33,13 @@ export const runMatchupSimulation = (team1WeeklyScores, team2WeeklyScores) => {
         simOutputDiv.innerHTML = '<p>Simulating 10,000 matchups...</p>';
     }
 
-    // 2. Map the raw historical scores into the Variance Profiles we built in Chunk 2
-    const team1Profiles = team1WeeklyScores.map(getPlayerVarianceProfile);
-    const team2Profiles = team2WeeklyScores.map(getPlayerVarianceProfile);
+    // 2. Map each player's raw historical scores into the Variance Profile we built in
+    // Chunk 2, keeping their name/position attached alongside it.
+    const toProfile = (player) => ({ ...player, ...getPlayerVarianceProfile(player.weeklyScores) });
+    const team1Profiles = team1Players.map(toProfile);
+    const team2Profiles = team2Players.map(toProfile);
+    lastTeam1Profiles = team1Profiles;
+    lastTeam2Profiles = team2Profiles;
 
     // Early in the season (or for a player who just changed teams, returned from injury,
     // etc.) some players won't have enough games for a directly-measured standard deviation --
@@ -47,6 +57,24 @@ export const runMatchupSimulation = (team1WeeklyScores, team2WeeklyScores) => {
     });
 };
 
+// Renders one team's starters as a name/position/projected-range list. floor-ceiling is shown
+// rather than just the mean, since "realistic boom/bust range" (the feature's own pitch, per
+// the card's description in index.html) is the point -- a bare mean would just be a projection
+// with extra steps. A player whose range came from statsEngine's small-sample fallback gets a
+// "~" so it doesn't read with the same confidence as a directly-measured one.
+function renderPlayerList(profiles) {
+    const rows = profiles
+        .slice()
+        .sort((a, b) => b.mean - a.mean)
+        .map(p => `
+            <li class="sim-player-row">
+                <span class="sim-player-name">${p.name}${p.pos ? ` <span class="sim-player-pos">${p.pos}</span>` : ''}</span>
+                <span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.mean} avg)</span></span>
+            </li>`)
+        .join('');
+    return `<ul class="sim-player-list">${rows}</ul>`;
+}
+
 // 4. Listen for the Web Worker to finish and update the UI
 worker.onmessage = function(e) {
     const { team1WinProb, team2WinProb, ties, fallbackCount } = e.data;
@@ -54,18 +82,36 @@ worker.onmessage = function(e) {
     
     if (simOutputDiv) {
         const fallbackNote = fallbackCount > 0
-            ? `<small class="sim-fallback-note">${fallbackCount} player(s) don't have enough completed games yet, so their week-to-week range is an early-season estimate, not a measured one.</small>`
+            ? `<small class="sim-fallback-note">~ marks ${fallbackCount} player(s) without enough completed games yet -- their range is an early-season estimate, not a measured one.</small>`
             : '';
-        // Output the results. You can style this beautifully with your CSS later.
+
+        // Labels live in a legend above the bar rather than inside each colored segment --
+        // text inside a segment gets clipped whenever that side's share is small (a heavy
+        // favorite reduces the underdog's segment to a sliver too narrow for its own label).
+        // The legend is always full-width regardless of how lopsided the result is.
         simOutputDiv.innerHTML = `
             <div class="simulation-card">
                 <h3>Matchup Simulation</h3>
+                <div class="probability-bar-legend">
+                    <span class="legend-you">Your Team: ${team1WinProb}%</span>
+                    <span class="legend-opp">Opponent: ${team2WinProb}%</span>
+                </div>
                 <div class="probability-bar">
-                    <span style="width: ${team1WinProb}%">Your Team: ${team1WinProb}%</span>
-                    <span style="width: ${team2WinProb}%">Opponent: ${team2WinProb}%</span>
+                    <span class="bar-you" style="width: ${team1WinProb}%"></span>
+                    <span class="bar-opp" style="width: ${team2WinProb}%"></span>
                 </div>
                 <small>${ties} ties in 10,000 simulations</small>
                 ${fallbackNote}
+                <div class="sim-team-columns">
+                    <div class="sim-team-column">
+                        <h4>Your Team</h4>
+                        ${renderPlayerList(lastTeam1Profiles)}
+                    </div>
+                    <div class="sim-team-column">
+                        <h4>Opponent</h4>
+                        ${renderPlayerList(lastTeam2Profiles)}
+                    </div>
+                </div>
             </div>
         `;
     }

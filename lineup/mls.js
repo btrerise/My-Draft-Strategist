@@ -12,6 +12,7 @@ import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, g
 import { fetchMarketConsensusData } from './marketDataApi.js';
 import { runMatchupSimulation } from './monteCarloUi.js';
 import { getPlayerWeeklyScoreHistory } from './sleeperService.js';
+import { MIN_RELIABLE_GAMES } from './statsEngine.js';
 
 (function () {
     'use strict';
@@ -4845,28 +4846,38 @@ window.runMatchupSim = async function() {
 
         const scoringKey = league.pprVal === 1 ? 'pts_ppr' : (league.pprVal === 0.5 ? 'pts_half_ppr' : 'pts_std');
         const history = await getPlayerWeeklyScoreHistory(
-            [...myStarters, ...oppStarters], season, currentWeek, scoringKey
+            [...myStarters, ...oppStarters], season, currentWeek, scoringKey,
+            { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES }
         );
 
+        // Needed to show names/positions next to each player's projected range in the
+        // results panel -- the pipeline up to this point only deals in Sleeper player IDs.
+        const playerMap = await getSleeperPlayerMap();
+        const toPlayerObj = (id) => {
+            const p = playerMap[id] || {};
+            const name = p.first_name ? `${p.first_name} ${p.last_name}` : (p.last_name || id);
+            return { id, name, pos: p.position || '', weeklyScores: history[id] || [] };
+        };
+
         // Players with zero completed games (rookies, recent signings, bye-adjacent
-        // call-ups) get excluded rather than contributing a phantom mean-0 score to their
-        // team's total -- see getPlayerWeeklyScoreHistory's contract for why a missing week
-        // isn't the same as a 0.
+        // call-ups with no prior season either) get excluded rather than contributing a
+        // phantom mean-0 score to their team's total -- see getPlayerWeeklyScoreHistory's
+        // contract for why a missing week isn't the same as a 0.
         let excludedCount = 0;
-        const toScoreArrays = (ids) => ids.reduce((arr, id) => {
-            const scores = history[id] || [];
-            if (scores.length > 0) arr.push(scores); else excludedCount++;
+        const toPlayerObjs = (ids) => ids.reduce((arr, id) => {
+            const playerObj = toPlayerObj(id);
+            if (playerObj.weeklyScores.length > 0) arr.push(playerObj); else excludedCount++;
             return arr;
         }, []);
 
-        const team1WeeklyScores = toScoreArrays(myStarters);
-        const team2WeeklyScores = toScoreArrays(oppStarters);
+        const team1Players = toPlayerObjs(myStarters);
+        const team2Players = toPlayerObjs(oppStarters);
 
         if (excludedCount > 0 && typeof window.showToast === 'function') {
             window.showToast(`${excludedCount} player(s) excluded from the simulation -- not enough game history yet.`);
         }
 
-        runMatchupSimulation(team1WeeklyScores, team2WeeklyScores);
+        runMatchupSimulation(team1Players, team2Players);
     } catch (err) {
         console.error(err);
         if (typeof window.showToast === 'function') window.showToast("Failed to run the matchup simulation. Check console for details.", { isError: true });

@@ -47,7 +47,10 @@ export const calculateStandardDeviation = (scores) => {
 // here only as a floor, not a measurement. getPlayerVarianceProfile reports usedFallback so
 // callers can label these players' ranges as estimated rather than implying it's the same rigor
 // as a full-sample standard deviation.
-const MIN_RELIABLE_GAMES = 3;
+// Exported so other modules (e.g. sleeperService.js's prior-season supplementation) use the
+// exact same "is this sample big enough" threshold rather than a second hardcoded copy that
+// could silently drift out of sync with this one.
+export const MIN_RELIABLE_GAMES = 3;
 const FALLBACK_CV = 0.40;
 
 /**
