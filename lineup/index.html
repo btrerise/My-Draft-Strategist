@@ -220,9 +220,9 @@
             </table>
         </div>
         <!-- RECENT SYNC LOGS -->
-        <details class="sos-details-accordion" id="syncLogAccordion" style="display: none; margin-top: 1rem; border-color: rgba(59, 130, 246, 0.3); background: rgba(0,0,0,0.15);">
+        <details class="sos-details-accordion mt-4" id="syncLogAccordion" style="display: none; border-color: rgba(59, 130, 246, 0.3); background: rgba(0,0,0,0.15);">
             <summary class="sos-summary" style="color: #60a5fa;" id="syncLogSummary">Recent Sync Logs</summary>
-            <div id="syncLogContent" style="padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div id="syncLogContent" class="stack stack-sm pt-3">
                 <!-- Populated by JS -->
             </div>
         </details>
@@ -251,7 +251,7 @@
         </div>
         
         <div class="input-group">
-    <label class="flex-label" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+    <label class="flex-label">
         <span>Sleeper League ID (Optional)</span>
         <div class="tooltip-container">
             <div class="tooltip-icon">i</div>
@@ -266,49 +266,51 @@
             <button class="btn btn-purple" onclick="createManualLeague()">Create Manual</button>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0;">
-            <div style="flex: 1; height: 1px; background: var(--border);"></div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">or</span>
-            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+        <div class="or-divider">
+            <div class="divider-line"></div>
+            <span>or</span>
+            <div class="divider-line"></div>
         </div>
 
         <button id="importAllLeaguesBtn" class="btn btn-secondary" style="width: 100%;" onclick="importAllSleeperLeagues(this)" title="Uses only the Sleeper Username above (League ID not needed) to find and sync every league you're in for the current season.">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             Import All My Leagues
         </button>
-        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; margin-bottom: 0;">Finds and syncs every league for this username -- just the username above is needed, no League ID.</p>
+        <p class="text-helper mt-2">Finds and syncs every league for this username -- just the username above is needed, no League ID.</p>
+    </section>
+
+    <!-- ACTIVE LEAGUE REQUIREMENTS -->
+    <!-- Elevated out of the Advanced Settings accordion list: this is a primary, frequently-
+         needed configuration (it drives lineup slot assignment for whichever league is
+         selected), not a secondary setting someone should have to expand a menu to find. -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3><span>Active League Requirements</span></h3>
+        </header>
+        <p class="card-desc">These numbers dictate how many players are assigned to each starting slot. They auto-populate during Sleeper sync.</p>
+        <div id="activeLeagueReqTitle" class="league-req-subtitle">(Select a League)</div>
+        <div class="roster-grid mb-4">
+            <div class="input-group"><label for="reqQB">QB</label><input type="number" id="reqQB" class="form-input text-center" value="1" aria-label="QB lineup slots"></div>
+            <div class="input-group"><label for="reqRB">RB</label><input type="number" id="reqRB" class="form-input text-center" value="2" aria-label="RB lineup slots"></div>
+            <div class="input-group"><label for="reqWR">WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
+            <div class="input-group"><label for="reqTE">TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
+            <div class="input-group"><label for="reqFLEX">FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
+            <div class="input-group"><label for="reqSFLEX">SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
+            <div class="input-group"><label for="reqK">K</label><input type="number" id="reqK" class="form-input text-center" value="1" aria-label="K lineup slots"></div>
+            <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
     </section>
 
     <!-- ADVANCED SETTINGS ACCORDIONS -->
     <section class="settings-card">
-        <header class="card-header" style="border-bottom: none; padding-bottom: 0;">
+        <header class="card-header card-header-flush">
             <h3><span>Advanced Settings</span></h3>
         </header>
-        
-        <details class="sos-details-accordion">
-            <summary class="sos-summary">Active League Requirements</summary>
-            <div style="padding-top: 1rem;">
-                <div class="tooltip-container" style="display: block; margin-bottom: 0.75rem;">
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">These numbers dictate how many players are assigned to each starting slot. They auto-populate during Sleeper sync.</span>
-                </div>
-                <div id="activeLeagueReqTitle" class="league-req-subtitle">(Select a League)</div>
-                <div class="roster-grid mb-4">
-                    <div class="input-group"><label for="reqQB">QB</label><input type="number" id="reqQB" class="form-input text-center" value="1" aria-label="QB lineup slots"></div>
-                    <div class="input-group"><label for="reqRB">RB</label><input type="number" id="reqRB" class="form-input text-center" value="2" aria-label="RB lineup slots"></div>
-                    <div class="input-group"><label for="reqWR">WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
-                    <div class="input-group"><label for="reqTE">TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
-                    <div class="input-group"><label for="reqFLEX">FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
-                    <div class="input-group"><label for="reqSFLEX">SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
-                    <div class="input-group"><label for="reqK">K</label><input type="number" id="reqK" class="form-input text-center" value="1" aria-label="K lineup slots"></div>
-                    <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
-                </div>
-                <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
-            </div>
-        </details>
 
         <details class="sos-details-accordion">
             <summary class="sos-summary">Add Player Manually</summary>
-            <div style="padding-top: 1rem;">
+            <div class="accordion-body">
                 <div class="manual-player-grid">
                     <input type="text" id="manualName" class="form-input" placeholder="Player Name" aria-label="Type in player name">
                     <select id="manualPos" class="form-input" aria-label="Type in player's position">
@@ -328,16 +330,16 @@
         
         <details class="sos-details-accordion">
             <summary class="sos-summary">Backup & Restore</summary>
-            <div style="padding-top: 1rem;" class="flex-column gap-2">
+            <div class="accordion-body flex-column gap-2">
                 <button class="btn btn-primary" onclick="exportMlsSettings()">Export Backup</button>
                 <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" onchange="importMlsSettings(this)">
                 <button class="btn btn-secondary" onclick="document.getElementById('mlsImportFileInput').click()">Import Backup</button>
             </div>
         </details>
 
-        <details class="sos-details-accordion" style="border-color: rgba(239, 68, 68, 0.4); background: linear-gradient(135deg, rgba(239, 68, 68, 0.03), transparent);">
-            <summary class="sos-summary" style="color: #ef4444;">Danger Zone</summary>
-            <div style="padding-top: 1rem;">
+        <details class="sos-details-accordion danger-card">
+            <summary class="sos-summary text-danger">Danger Zone</summary>
+            <div class="accordion-body">
                 <p class="card-desc">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
                 <button class="btn btn-danger" onclick="factoryReset()">Factory Reset App Data</button>
             </div>
@@ -831,25 +833,29 @@
         </div>
         <textarea id="sellInput" class="scout-textarea" placeholder="Players you'd send away..."></textarea>
 
-        <!-- Waiver Adjustment Settings -->
-        <div class="toggle-row" style="padding: 0.4rem 0; border: none; background: none; margin-top: 0.5rem;">
-            <div class="toggle-info">
-                <span class="toggle-title" style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
-                    Waiver Adjustment
-                    <div class="tooltip-container">
-                        <div class="tooltip-icon">i</div>
-                        <span class="tooltip-text">Trading away more players than you receive frees up bench spot(s) you can refill from waivers -- that's worth something on its own, and a plain sum of player values doesn't capture it. When on, whichever side of the trade has fewer total players gets a flat credit per "extra" roster spot it's worth. This is a flat estimate (see the value below).</span>
-                    </div>
-                </span>
+        <!-- Waiver Adjustment Settings: grouped into its own sub-section, set apart from the
+             Get/Give textareas above, rather than running the toggle+input straight into the
+             card body. -->
+        <div class="settings-subsection">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <span class="toggle-title">
+                        Waiver Adjustment
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Trading away more players than you receive frees up bench spot(s) you can refill from waivers -- that's worth something on its own, and a plain sum of player values doesn't capture it. When on, whichever side of the trade has fewer total players gets a flat credit per "extra" roster spot it's worth. This is a flat estimate (see the value below).</span>
+                        </div>
+                    </span>
+                </div>
+                <input type="checkbox" id="tradeWaiverAdjustToggle" class="toggle-switch" checked onchange="updateTradeSetting('waiverAdjustment', this.checked)" aria-label="Toggle Waiver Adjustment">
             </div>
-            <input type="checkbox" id="tradeWaiverAdjustToggle" class="toggle-switch" checked onchange="updateTradeSetting('waiverAdjustment', this.checked)" aria-label="Toggle Waiver Adjustment">
-        </div>
-        <div class="input-group mb-3" id="tradeWaiverValueWrap">
-            <label for="tradeWaiverAdjustValue">Waiver Adjustment Value (per open roster spot)</label>
-            <input type="number" id="tradeWaiverAdjustValue" class="form-input" value="500" min="0" step="50" onchange="updateTradeSetting('waiverAdjustmentValue', this.value)" aria-label="Waiver adjustment value per roster spot">
+            <div class="input-group" id="tradeWaiverValueWrap">
+                <label for="tradeWaiverAdjustValue">Waiver Adjustment Value (per open roster spot)</label>
+                <input type="number" id="tradeWaiverAdjustValue" class="form-input" value="500" min="0" step="50" onchange="updateTradeSetting('waiverAdjustmentValue', this.value)" aria-label="Waiver adjustment value per roster spot">
+            </div>
         </div>
 
-        <button class="btn btn-purple mt-2" onclick="runScout('trade')">Analyze Trade</button>
+        <button class="btn btn-purple mt-4" onclick="runScout('trade')">Analyze Trade</button>
         
         <div id="tradeOutput" class="scout-output-container"></div>
     </section>

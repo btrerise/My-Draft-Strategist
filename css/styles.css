@@ -39,6 +39,19 @@
     --pos-te: rgba(245, 158, 11, 0.15);  --pos-te-border: #f59e0b;
     --pos-k: rgba(167, 139, 250, 0.15);   --pos-k-border: #a78bfa; /* Sleeper Kicker Lavender */
     --pos-def: rgba(146, 93, 72, 0.15);   --pos-def-border: #925d48; /* Sleeper DEF Rust */
+
+    /* Spacing scale -- a token version of the ad-hoc rem values (0.4rem, 0.6rem, 0.85rem...)
+       scattered through inline styles. Named .mt-*/.mb-*/.gap-* utilities below and the
+       .stack/.cluster layout primitives are built on these so vertical/horizontal rhythm
+       stays consistent instead of every element picking its own number. Values match what
+       was already in use most often, so existing spacing mostly doesn't visibly shift --
+       this is about giving those values one shared source, not a visual redesign. */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
 }
 
 /* --- GLOBAL RESETS --- */
@@ -728,6 +741,8 @@ body {
 .flex-label {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    width: 100%;
 }
 .form-input { 
     width: 100%; 
@@ -1016,13 +1031,67 @@ body {
 
 /* --- UTILITIES --- */
 .flex-column { display: flex; flex-direction: column; }
-.gap-2 { gap: 0.75rem; }
-.mt-2 { margin-top: 0.5rem; }
-.mt-4 { margin-top: 1rem; }
-.mb-1 { margin-bottom: 0.25rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-3 { margin-bottom: 0.75rem; }
-.mb-4 { margin-bottom: 1rem; }
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-3); }
+.gap-3 { gap: var(--space-4); }
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); } /* was referenced (trade-group-header, Save Manual SoS button) but never defined -- those margins were silently no-ops until now */
+.mt-4 { margin-top: var(--space-4); }
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.pt-3 { padding-top: var(--space-3); }
+
+/* --- LAYOUT PRIMITIVES --- */
+/* .stack: vertical rhythm for a run of same-kind items, replacing ad-hoc
+   "display:flex; flex-direction:column; gap:0.5rem" inline styles. Pair with a size
+   modifier for the gap. */
+.stack { display: flex; flex-direction: column; }
+.stack-xs { gap: var(--space-1); }
+.stack-sm { gap: var(--space-2); }
+.stack-md { gap: var(--space-4); }
+.stack-lg { gap: var(--space-5); }
+
+/* .cluster: a horizontal run of items that wraps instead of overflowing, replacing ad-hoc
+   "display:flex; align-items:center; gap:...rem" inline styles used for icon+label rows,
+   button rows, and similar. */
+.cluster { display: flex; flex-wrap: wrap; align-items: center; }
+.cluster-sm { gap: var(--space-2); }
+.cluster-md { gap: var(--space-4); }
+
+/* Small text-level helper for the many "font-size: 0.75rem; color: var(--text-muted)"
+   inline captions/hints scattered through the markup. */
+.text-helper { font-size: 0.75rem; color: var(--text-muted); }
+
+/* Padding for a <details> body, replacing the repeated inline style="padding-top: 1rem;"
+   used on every accordion's content wrapper. */
+.accordion-body { padding-top: var(--space-4); }
+
+/* Modifier for a .card-header that sits directly above a list of accordions/sub-sections
+   rather than a card's main content -- no divider needed underneath it. */
+.card-header-flush { border-bottom: none; padding-bottom: 0; }
+
+/* The "or" separator row used between two alternative inputs (e.g. upload a file / auto-fetch
+   instead). Was three inline-styled divs repeated wherever this pattern appears. */
+.or-divider { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; }
+.or-divider .divider-line { flex: 1; height: 1px; background: var(--border); }
+.or-divider span { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+
+/* Groups related settings (e.g. Trade Analyzer's Waiver Adjustment) into their own visually
+   distinct sub-section, set off from the primary inputs above it with a border/background,
+   rather than letting a toggle+input run directly into a card's main content. */
+.settings-subsection {
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.settings-subsection .toggle-row { padding: 0; border: none; background: none; margin-bottom: var(--space-3); }
+.settings-subsection .input-group:last-child { margin-bottom: 0; }
 .text-green { color: var(--primary-green); }
 .text-blue { color: #60a5fa; }
 .border-none { border: none; }
