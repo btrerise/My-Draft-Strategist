@@ -629,7 +629,7 @@ body {
     background: linear-gradient(90deg, rgba(16, 185, 129, 0.1), rgba(19, 27, 44, 0.9));
     border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: 8px;
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 1rem;
     margin-bottom: 1.5rem;
     display: flex;
     justify-content: space-between;
@@ -665,7 +665,7 @@ body {
     padding: 1.5rem; 
     border-radius: 12px; 
     border: 1px solid var(--border); 
-    margin-bottom: 1.25rem; 
+    margin-bottom: var(--space-4); /* was 1.25rem -- tightened per feedback that card-to-card spacing felt too loose */
     box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
 }
 .highlight-card {
@@ -1034,6 +1034,7 @@ body {
 .gap-1 { gap: var(--space-1); }
 .gap-2 { gap: var(--space-3); }
 .gap-3 { gap: var(--space-4); }
+.mt-0 { margin-top: 0; }
 .mt-1 { margin-top: var(--space-1); }
 .mt-2 { margin-top: var(--space-2); }
 .mt-3 { margin-top: var(--space-3); } /* was referenced (trade-group-header, Save Manual SoS button) but never defined -- those margins were silently no-ops until now */
@@ -1043,24 +1044,32 @@ body {
 .mb-2 { margin-bottom: var(--space-2); }
 .mb-3 { margin-bottom: var(--space-3); }
 .mb-4 { margin-bottom: var(--space-4); }
+.ml-3 { margin-left: var(--space-3); }
+.mr-2 { margin-right: var(--space-2); }
 .pt-3 { padding-top: var(--space-3); }
+.pl-2 { padding-left: var(--space-2); }
+.pl-6 { padding-left: var(--space-6); }
 
 /* --- LAYOUT PRIMITIVES --- */
 /* .stack: vertical rhythm for a run of same-kind items, replacing ad-hoc
    "display:flex; flex-direction:column; gap:0.5rem" inline styles. Pair with a size
-   modifier for the gap. */
+   modifier for the gap -- same xs/sm/md/lg scale as .cluster below, both keyed to the
+   --space-* tokens, so a "sm" gap means the same thing whether the items stack or run
+   horizontally. */
 .stack { display: flex; flex-direction: column; }
 .stack-xs { gap: var(--space-1); }
 .stack-sm { gap: var(--space-2); }
-.stack-md { gap: var(--space-4); }
-.stack-lg { gap: var(--space-5); }
+.stack-md { gap: var(--space-3); }
+.stack-lg { gap: var(--space-4); }
 
 /* .cluster: a horizontal run of items that wraps instead of overflowing, replacing ad-hoc
    "display:flex; align-items:center; gap:...rem" inline styles used for icon+label rows,
    button rows, and similar. */
 .cluster { display: flex; flex-wrap: wrap; align-items: center; }
+.cluster-xs { gap: var(--space-1); }
 .cluster-sm { gap: var(--space-2); }
-.cluster-md { gap: var(--space-4); }
+.cluster-md { gap: var(--space-3); }
+.cluster-lg { gap: var(--space-4); }
 
 /* Small text-level helper for the many "font-size: 0.75rem; color: var(--text-muted)"
    inline captions/hints scattered through the markup. */
@@ -1092,6 +1101,42 @@ body {
 }
 .settings-subsection .toggle-row { padding: 0; border: none; background: none; margin-bottom: var(--space-3); }
 .settings-subsection .input-group:last-child { margin-bottom: 0; }
+
+/* A .toggle-row that needs to sit flush inside another container (a settings-grid cell,
+   paired with a dropdown) instead of looking like its own bordered card -- was three
+   identical inline overrides (padding/border/background stripped, font-size shrunk). */
+.toggle-row-flush { padding: 0; border: none; background: none; }
+.toggle-row-flush .toggle-title { font-size: 0.85rem; }
+
+/* Same rationale as .roster-grid .input-group above: a grid's own gap already handles
+   spacing between cells, so an input-group inside a settings-grid shouldn't add its own
+   bottom margin on top of it. */
+.settings-grid .input-group { margin-bottom: 0; }
+/* Bottom-aligns a grid cell's content with its sibling (e.g. a toggle lining up with an
+   adjacent dropdown's baseline). */
+.input-group-end { display: flex; flex-direction: column; justify-content: flex-end; }
+
+/* The collapsible "upload one file per position" panel -- identical markup duplicated for
+   ROS and Weekly rankings uploads. */
+.multi-upload-panel {
+    display: none;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+/* The row of position checkboxes inside a .multi-upload-panel -- also duplicated for ROS
+   and Weekly. */
+.pos-checkbox-row { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4); }
+.pos-checkbox-label { display: flex; align-items: center; gap: var(--space-1); font-size: 0.85rem; cursor: pointer; }
+
+/* Smaller variant of .close-banner-btn for banners with less vertical room. */
+.close-banner-btn-sm { font-size: 0.85rem; padding: var(--space-1); }
+
+/* A .mls-btn-sm styled to read as a plain inline text link rather than a button. */
+.btn-link-inline { background: none; padding: 0; color: var(--primary-green); }
 .text-green { color: var(--primary-green); }
 .text-blue { color: #60a5fa; }
 .border-none { border: none; }
