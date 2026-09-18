@@ -41,8 +41,8 @@
     --pos-def: rgba(146, 93, 72, 0.15);   --pos-def-border: #925d48; /* Sleeper DEF Rust */
 
     /* Spacing scale -- a token version of the ad-hoc rem values (0.4rem, 0.6rem, 0.85rem...)
-       scattered through inline styles. Named .mt-*/.mb-*/.gap-* utilities below and the
-       .stack/.cluster layout primitives are built on these so vertical/horizontal rhythm
+       scattered through inline styles. The margin/padding/gap utilities below, and the
+       .stack/.cluster layout primitives, are built on these so vertical/horizontal rhythm
        stays consistent instead of every element picking its own number. Values match what
        was already in use most often, so existing spacing mostly doesn't visibly shift --
        this is about giving those values one shared source, not a visual redesign. */
@@ -1065,7 +1065,15 @@ body {
 /* .cluster: a horizontal run of items that wraps instead of overflowing, replacing ad-hoc
    "display:flex; align-items:center; gap:...rem" inline styles used for icon+label rows,
    button rows, and similar. */
-.cluster { display: flex; flex-wrap: wrap; align-items: center; }
+/* .cluster: a horizontal run of items, replacing ad-hoc "display:flex; align-items:center;
+   gap:...rem" inline styles used for icon+label rows, button rows, and similar. Every inline
+   style this replaced had no flex-wrap set (i.e. nowrap), including rows with a <select> or
+   a margin-left:auto push-to-edge element that only render correctly unwrapped -- so nowrap
+   is the default here too, matching what was actually there before. Opt into wrapping
+   explicitly with .cluster-wrap for a row of purely reflowable content (e.g. icon + long
+   text) where wrapping is actually desired on narrow screens. */
+.cluster { display: flex; align-items: center; }
+.cluster-wrap { flex-wrap: wrap; }
 .cluster-xs { gap: var(--space-1); }
 .cluster-sm { gap: var(--space-2); }
 .cluster-md { gap: var(--space-3); }
