@@ -155,10 +155,13 @@
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
             <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </div>
-        <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'mls_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+        <button class="close-banner-btn" onclick="dismissBannerAndReveal('guideBanner', 'mls_hide_guide_banner', 'draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
     </div>
     <!-- DRAFT STRATEGIST CROSS-PROMO -->
-    <div class="guide-banner" id="draftBanner" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4); padding: 0.75rem 1rem;">
+    <!-- Starts hidden: staggered behind guideBanner so the two never stack on a first visit.
+         Revealed by dismissBannerAndReveal() above, or on load by utils.js's DOMContentLoaded
+         handler if guideBanner was already dismissed on an earlier visit. -->
+    <div class="guide-banner" id="draftBanner" style="display: none; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4); padding: 0.75rem 1rem;">
         <div onclick="window.location.href='../'" role="button" tabindex="0" aria-label="Switch to My Draft Strategist" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='../';}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer; color: var(--primary-green);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
             <span style="font-size: 0.9rem;">Mocking or prepping for a draft? Try <strong>My Draft Strategist</strong></span>
@@ -345,7 +348,7 @@
                 <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" width="274" height="36" />
             </a>
         </div>
-    <div class="app-version">My Lineup Strategist v2.6.1</div>
+    <div class="app-version">My Lineup Strategist v2.7</div>
 </div>
 
         <!-- ROSTER TAB -->
@@ -712,6 +715,27 @@
         </div>
     </section>
 
+    <!-- Monte Carlo Simulation -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3>
+                <span> Matchup Simulator <span class="header-subtitle">(Simulates your lineup versus your opponent's)</span></span>                    
+                </h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Runs 10,000 simulations based on historical data, Sleeper's weekly projections, and estimated variance. This is meant for exploring possibilities, not as start/sit advice -- it can't know about a role change, coaching change, or opportunity shift that hasn't shown up in the data yet.</span>
+            </div>
+        </header>
+        <p class="card-desc">Evaluate your lineup's realistic boom/bust ranges against your current opponent. Boom/Bust thresholds are position-specific -- see the User Guide for the exact numbers.</p>
+        
+        <button id="run-sim-btn" class="btn btn-blue" onclick="runMatchupSim()">
+            Run Matchup Simulations
+        </button>
+        
+        <!-- The results will render inside this div -->
+        <div id="monte-carlo-results" style="display: none; margin-top: 1.25rem;"></div>
+    </section>
+
     <!-- GLOBAL INJURY AUDITOR -->
     <section class="settings-card danger-card">
         <header class="card-header">
@@ -1006,31 +1030,48 @@
                 <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. Select teams playing in early windows (TNF, London) under <strong class="text-main">Early Games</strong> to flag them with an <span class="badge early-badge">EARLY</span> badge across your lineup before roster locks.</p>
             </div>
 
-            <!-- Step 4 -->
+            <!-- Step 4 (NEW) -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">4</span> Scout & Waivers</h4>
+                <h4 class="step-title"><span class="step-num blue-step">4</span> Matchup Simulator</h4>
+                <p class="step-desc">Found on the <strong class="text-main">Lineup</strong> tab, this runs 10,000 simulated matchups between your starting lineup and your current Sleeper opponent's, using each player's own week-to-week variance rather than just their season average. If you swap a player in the Lineup Optimizer before running it, the simulation reflects your in-app lineup -- even if you haven't pushed that change to Sleeper yet -- so you can test "what if I started X instead of Y" before committing to it.</p>
+                <p class="step-desc mt-2">Each player's expected score comes from whichever of these is available, in order: Sleeper's own weekly projection for this specific matchup (factors in opponent, injury designation, etc.), this season's actual scores, and last season's scores as a supplement when this season's sample is still small -- last season's influence fades out as your current-season sample grows, rather than being used indefinitely.</p>
+                <p class="step-desc mt-2"><strong class="text-main">Boom/Bust thresholds</strong> are fixed point totals, not relative to any one player's own average, so "boom" means the same real accomplishment whether it's your WR1 or your flex streamer:</p>
+                <ul class="guide-list" style="list-style-type: none; padding-left: 2.2rem;">
+                    <li><strong class="text-main">QB:</strong> Boom 24+ pts &nbsp;/&nbsp; Bust &lt;12 pts</li>
+                    <li><strong class="text-main">RB:</strong> Boom 20+ pts &nbsp;/&nbsp; Bust &lt;7 pts</li>
+                    <li><strong class="text-main">WR:</strong> Boom 20+ pts &nbsp;/&nbsp; Bust &lt;7.5 pts</li>
+                    <li><strong class="text-main">TE:</strong> Boom 15+ pts &nbsp;/&nbsp; Bust &lt;5.5 pts</li>
+                    <li><strong class="text-main">K / DEF:</strong> no widely-used standard exists for these, so Boom/Bust is instead based on each player's own average (50%/150% of it).</li>
+                </ul>
+                <p class="step-desc mt-2">A <span class="badge-rookie">R</span> badge flags rookies, and a <strong class="text-main">~</strong> before a player's range means there wasn't enough game history yet to measure their variance directly -- it's an early-season estimate, not a measured one. The <strong class="text-main">Lineup Insights</strong> section (when shown) flags bench players projected to outscore the weakest starter they're eligible to replace.</p>
+                <p class="step-desc mt-2"><em class="text-muted">This is meant for exploring possibilities, not as start/sit advice. It's built on historical data, projections, and estimated variance -- it has no way to know about a role change, coaching change, or opportunity shift that hasn't shown up in the data yet.</em></p>
+            </div>
+
+            <!-- Step 5 (Previously Step 4) -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">5</span> Scout & Waivers</h4>
                 <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. Paste waiver wire recommendations or trade targets. The app cross-references your <strong class="text-main">Sleeper Sync</strong> data to show whether players are available on waivers, on your roster, or owned by opponents, alongside side-by-side Weekly and ROS ranks. The Trade Analyzer tells you who owns each player and totals up each side's value using your own custom ROS Rankings from the Roster tab, and if you've also loaded Market Value data from the Trade Finder section, it shows a second verdict from market consensus for comparison. The values used for your ROS Rankings are estimated by converting your ROS Rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more; rank #1 player is around 10,000, and the values decay from there at ~1.8% per rank. It's a way to help compare players on your own board; not intended to be an exact evaluation of your rankings.</p>
             </div>
 
-            <!-- Step 5 -->
+            <!-- Step 6 (Previously Step 5) -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">5</span> Trade Finder & Market Disconnects</h4>
+                <h4 class="step-title"><span class="step-num blue-step">6</span> Trade Finder & Market Disconnects</h4>
                 <p class="step-desc">Pull live market consensus values from <strong class="text-main">FantasyCalc</strong> or <strong class="text-main">LeagueLogs</strong> (or upload a market CSV). Use the Trade Finder to filter by flat rank gaps or percentage shifts to instantly uncover high-value buy-low targets and overvalued sell-high assets relative to your custom ROS board.</p>
-            </div>
-
-            <!-- Step 6 (NEW) -->
-            <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">6</span> Positional Power Rankings</h4>
-                <p class="step-desc">Found on the <strong class="text-main">Scout</strong> tab, this tool evaluates every team's positional strength based on your custom ROS rankings or live market data. It generates a heatmap table of your league's rosters—hover or tap on any positional rank to see the specific players driving that score. Use this to quickly find ideal trade partners who are strong where you are weak!</p>
             </div>
 
             <!-- Step 7 (Previously Step 6) -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">7</span> Exporting & Sharing</h4>
+                <h4 class="step-title"><span class="step-num blue-step">7</span> Positional Power Rankings</h4>
+                <p class="step-desc">Found on the <strong class="text-main">Scout</strong> tab, this tool evaluates every team's positional strength based on your custom ROS rankings or live market data. It generates a heatmap table of your league's rosters—hover or tap on any positional rank to see the specific players driving that score. Use this to quickly find ideal trade partners who are strong where you are weak!</p>
+            </div>
+
+            <!-- Step 8 (Previously Step 7) -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">8</span> Exporting & Sharing</h4>
                 <p class="step-desc">Once your lineup is finalized, tap the <strong class="text-main">Export</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media!</p>
             </div>
 
-            <!-- Step 8: Shortcuts (Previously Step 7) -->
+            <!-- Step 9: Shortcuts (Previously Step 8) -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">✦</span> Keyboard Shortcuts</h4>
                 <p class="step-desc">Navigate the app instantly with your keyboard (active when not typing in a text box):</p>

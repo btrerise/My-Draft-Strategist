@@ -8,8 +8,11 @@
 // level, which is why this sits above the IIFE rather than inside it; the imported
 // function is still just a normal binding the IIFE's closures can reference below.
 import { parseRankingsFiles } from './rankingsParser.js';
-import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap } from './sleeperApi.js';
+import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from './sleeperApi.js';
 import { fetchMarketConsensusData } from './marketDataApi.js';
+import { runMatchupSimulation } from './monteCarloUi.js';
+import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from './sleeperService.js';
+import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './statsEngine.js';
 
 (function () {
     'use strict';
@@ -287,6 +290,13 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
     // js/utils.js. Calls below resolve to that shared version.
 
     // --- DRAWER & SWIPE LOGIC ---
+    // Focus trap instance for the drawer -- created lazily on first open rather than at
+    // load time, since window.createFocusTrap (from utils.js, a plain script) needs to have
+    // already run, and this module's top-level code can execute before that plain script's
+    // DOMContentLoaded-independent top-level assignment has (module scripts are deferred by
+    // spec, but this keeps the two files from having an implicit load-order dependency).
+    let drawerFocusTrap = null;
+
     window.toggleDrawer = function() {
         const drawer = document.getElementById('drawer');
         const overlay = document.getElementById('drawerOverlay');
@@ -300,6 +310,20 @@ import { fetchMarketConsensusData } from './marketDataApi.js';
         // Announce the new state to screen readers
         if (hamburgerBtn) {
             hamburgerBtn.setAttribute('aria-expanded', isOpen);
+        }
+
+        if (isOpen) {
+            // No onEscape here: the existing document-level Escape handler below already
+            // calls toggleDrawer() when the drawer is open, which (via the isOpen === false
+            // branch) deactivates this trap on its way out. Wiring a second Escape handler
+            // through the trap itself would just be two paths to the same toggle.
+            if (typeof window.createFocusTrap === 'function') {
+                drawerFocusTrap = window.createFocusTrap(drawer);
+                drawerFocusTrap.activate();
+            }
+        } else if (drawerFocusTrap) {
+            drawerFocusTrap.deactivate();
+            drawerFocusTrap = null;
         }
     };
 
@@ -1503,6 +1527,12 @@ function attachScoutSuggestionHandler(outputElId) {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
+                // Needed by the Matchup Simulator: rosterId identifies "us" within this
+                // league's matchups endpoint response, and pprVal (already computed above for
+                // the format badge) says which of Sleeper's pts_ppr/pts_half_ppr/pts_std
+                // fields is the right one to read out of historical weekly stats.
+                rosterId: myTeam ? myTeam.roster_id : null,
+                pprVal: leagueData.scoring_settings?.rec || 0,
                 // Preserve this league's existing rankings assignment across a re-sync rather
                 // than rebuilding it from whatever happens to be currently active in State --
                 // a re-sync should only refresh roster/matchup data, not silently reassign
@@ -2762,6 +2792,10 @@ function attachScoutSuggestionHandler(outputElId) {
     // handlers (wired to the modal's buttons) have something to act on. Only one upload
     // can be pending at a time, which matches the UI (one modal, one active upload flow).
     let pendingRankingsUpload = null;
+    // Focus trap for the modal -- unlike the drawer, this overlay had no Escape handling at
+    // all before, so onEscape is wired to cancelRankingsPreview (same behavior as clicking
+    // Cancel: discards the pending upload and clears the file input for reselection).
+    let previewFocusTrap = null;
 
     function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds }) {
         pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds };
@@ -2790,6 +2824,11 @@ function attachScoutSuggestionHandler(outputElId) {
 
         const overlay = document.getElementById('rankingsPreviewOverlay');
         if (overlay) overlay.style.display = 'flex';
+
+        if (typeof window.createFocusTrap === 'function' && overlay) {
+            previewFocusTrap = window.createFocusTrap(overlay, { onEscape: () => window.cancelRankingsPreview() });
+            previewFocusTrap.activate();
+        }
     }
 
     window.cancelRankingsPreview = function() {
@@ -2804,6 +2843,7 @@ function attachScoutSuggestionHandler(outputElId) {
         pendingRankingsUpload = null;
         const overlay = document.getElementById('rankingsPreviewOverlay');
         if (overlay) overlay.style.display = 'none';
+        if (previewFocusTrap) { previewFocusTrap.deactivate(); previewFocusTrap = null; }
     };
 
     window.confirmRankingsPreview = function() {
@@ -2843,6 +2883,7 @@ function attachScoutSuggestionHandler(outputElId) {
         pendingRankingsUpload = null;
         const overlay = document.getElementById('rankingsPreviewOverlay');
         if (overlay) overlay.style.display = 'none';
+        if (previewFocusTrap) { previewFocusTrap.deactivate(); previewFocusTrap = null; }
     };
 
     // --- UPLOAD PROCESSING INDICATOR ---
@@ -4751,6 +4792,191 @@ window.runGlobalInjuryAudit = async function(btn) {
         btn.style.opacity = "1";
     }
 };
+
+// --- MATCHUP SIMULATOR (MONTE CARLO) ---
+// Bound via onclick="runMatchupSim()" on #run-sim-btn, matching this file's existing
+// convention of exposing handlers on window rather than addEventListener wiring (see
+// switchActiveLeague, addEarlyTeam, etc.) -- runMatchupSimulation itself (from
+// monteCarloUi.js) stays a pure hand-off to the Worker with no knowledge of State, matching
+// how sleeperApi.js/marketDataApi.js/rankingsParser.js are kept free of State access too.
+window.runMatchupSim = async function() {
+    const btn = document.getElementById('run-sim-btn');
+    const league = getActiveLeague();
+
+    if (!league || league.leagueId.startsWith('manual_')) {
+        if (typeof window.showToast === 'function') window.showToast("Sync a Sleeper league on the Dashboard first.", { isError: true });
+        return;
+    }
+    if (!league.rosterId) {
+        if (typeof window.showToast === 'function') window.showToast("Re-sync this league from the Dashboard to enable simulations.", { isError: true });
+        return;
+    }
+
+    const origText = btn ? btn.innerHTML : "";
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating...</span>`;
+    }
+
+    try {
+        const nflState = await getNflState();
+        if (!nflState || typeof nflState.week !== 'number') {
+            throw new Error("Could not determine the current NFL week.");
+        }
+        const currentWeek = nflState.week;
+        const season = nflState.league_season || nflState.season;
+
+        if (currentWeek < 2) {
+            if (typeof window.showToast === 'function') window.showToast("Not enough completed weeks yet to estimate variance.", { isError: true });
+            return;
+        }
+
+        const matchups = await getSleeperMatchups(league.leagueId, currentWeek);
+        const myEntry = matchups.find(m => m.roster_id === league.rosterId);
+        if (!myEntry || !myEntry.matchup_id) {
+            if (typeof window.showToast === 'function') window.showToast("No matchup found for this week (bye week?).", { isError: true });
+            return;
+        }
+        const oppEntry = matchups.find(m => m.matchup_id === myEntry.matchup_id && m.roster_id !== league.rosterId);
+        if (!oppEntry) {
+            if (typeof window.showToast === 'function') window.showToast("Couldn't find an opponent for this week's matchup.", { isError: true });
+            return;
+        }
+
+        // Sleeper pads empty slots with the literal string "0" rather than omitting them.
+        const sleeperMyStarters = (myEntry.starters || []).filter(id => id && id !== '0');
+        const oppStarters = (oppEntry.starters || []).filter(id => id && id !== '0');
+
+        // Simulate the lineup the person is actually looking at in this tool, not necessarily
+        // what's live on Sleeper -- State.manualStartersMap is the same in-app editable lineup
+        // the optimizer/swap UI already reads and writes (see renderLineupUI), so a swap made
+        // here but not yet pushed to Sleeper is reflected immediately. Only the opponent's side
+        // has to come from Sleeper, since there's no in-app editing of their roster.
+        const localStarters = State.manualStartersMap[league.leagueId] || [];
+        const localStarterIds = localStarters.filter(s => s.player).map(s => s.player.id).filter(id => id && id !== '0');
+        const usingLocalLineup = localStarterIds.length > 0;
+        const myStarters = usingLocalLineup ? localStarterIds : sleeperMyStarters;
+
+        const lineupDiffersFromSleeper = usingLocalLineup &&
+            (myStarters.length !== sleeperMyStarters.length || !myStarters.every(id => sleeperMyStarters.includes(id)));
+
+        // Bench comparisons only make sense against the in-app lineup -- there's no bench
+        // context at all for Sleeper's raw current-week starters (myEntry.starters is just a
+        // flat list of IDs with no slot assignment), and manualBenchMap is itself an in-app-only
+        // concept. localStarters carries each player's slot (e.g. "RB1", "FLEX2"), needed below
+        // to figure out which bench players are even eligible to replace which starter.
+        const benchPool = usingLocalLineup ? (State.manualBenchMap[league.leagueId] || []) : [];
+        const benchIds = benchPool.map(p => p.id).filter(id => id && id !== '0');
+
+        const scoringKey = league.pprVal === 1 ? 'pts_ppr' : (league.pprVal === 0.5 ? 'pts_half_ppr' : 'pts_std');
+        const { blended: history, currentSeasonOnly } = await getPlayerWeeklyScoreHistory(
+            [...myStarters, ...oppStarters, ...benchIds], season, currentWeek, scoringKey,
+            { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES }
+        );
+
+        // Needed to show names/positions next to each player's projected range in the
+        // results panel -- the pipeline up to this point only deals in Sleeper player IDs.
+        const playerMap = await getSleeperPlayerMap();
+
+        // Sleeper's own weekly projection factors in this week's specific matchup, injury
+        // designation, byes, etc. -- a better center-of-distribution estimate for THIS week
+        // than a flat trailing average across every week played so far. A missing/failed
+        // fetch (or a player Sleeper simply doesn't bother projecting -- common for deep
+        // bench/waiver-tier guys) just means projectedMean stays null and that player falls
+        // back to their historical average, exactly as before.
+        const projections = await getWeeklyProjections(season, currentWeek);
+        const getProjectedMean = (id) => {
+            const proj = projections && projections[id];
+            const val = proj ? proj[scoringKey] : undefined;
+            return typeof val === 'number' ? val : null;
+        };
+
+        const toPlayerObj = (id) => {
+            const p = playerMap[id] || {};
+            const name = p.first_name ? `${p.first_name} ${p.last_name}` : (p.last_name || id);
+            // years_exp is Sleeper's own experience counter (0 for a player's rookie season) --
+            // more reliable than inferring "rookie" from a lack of game history, which would
+            // also catch a 2nd-year player coming back from an injury-lost season.
+            return {
+                id, name, pos: p.position || '', weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
+                isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id)
+            };
+        };
+
+        // Players with zero completed games (rookies, recent signings, bye-adjacent
+        // call-ups with no prior season either) get excluded rather than contributing a
+        // phantom mean-0 score to their team's total -- see getPlayerWeeklyScoreHistory's
+        // contract for why a missing week isn't the same as a 0.
+        let excludedCount = 0;
+        const toPlayerObjs = (ids) => ids.reduce((arr, id) => {
+            const playerObj = toPlayerObj(id);
+            if (playerObj.weeklyScores.length > 0) arr.push(playerObj); else excludedCount++;
+            return arr;
+        }, []);
+
+        const team1Players = toPlayerObjs(myStarters);
+        const team2Players = toPlayerObjs(oppStarters);
+
+        if (excludedCount > 0 && typeof window.showToast === 'function') {
+            window.showToast(`${excludedCount} player(s) excluded from the simulation -- not enough game history yet.`);
+        }
+
+        // "Bench Player Y outscored Starting Player Z X% of the time" -- for each bench
+        // player with enough history, find the starters slotAcceptsPos actually allows them
+        // to replace (same eligibility the swap UI itself enforces, see slotAcceptsPos's own
+        // comment), then compare against the weakest of those -- the one an actual lineup
+        // swap would target -- rather than every eligible starter, which would just restate
+        // the obvious for anyone but the weakest link.
+        const benchInsights = [];
+        if (benchPool.length > 0) {
+            const starterSlotTypes = localStarters
+                .filter(s => s.player)
+                .map(s => ({ id: s.player.id, slotType: s.slot.replace(/[0-9]/g, '') }));
+
+            const benchObjs = toPlayerObjs(benchIds);
+            const team1ProfilesById = {};
+            team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean }); });
+
+            benchObjs.forEach(benchPlayer => {
+                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores, { projectedMean: benchPlayer.projectedMean });
+                const eligibleStarterIds = starterSlotTypes
+                    .filter(s => slotAcceptsPos(s.slotType, benchPlayer.pos))
+                    .map(s => s.id)
+                    .filter(id => team1ProfilesById[id]); // must have a valid profile too
+
+                if (eligibleStarterIds.length === 0) return;
+
+                const weakestStarterId = eligibleStarterIds.reduce((weakestId, id) =>
+                    team1ProfilesById[id].mean < team1ProfilesById[weakestId].mean ? id : weakestId
+                );
+                const weakestStarter = team1Players.find(p => p.id === weakestStarterId);
+                const benchWinPct = getProbabilityBeats(benchProfile, team1ProfilesById[weakestStarterId]);
+
+                // Only worth flagging if the bench player is actually favored -- anything at
+                // or below 50% just confirms the current starter is the right call, which
+                // isn't an actionable "you should consider this swap" insight.
+                if (benchWinPct <= 50) return;
+
+                benchInsights.push({
+                    benchName: benchPlayer.name, benchPos: benchPlayer.pos, benchIsRookie: benchPlayer.isRookie,
+                    starterName: weakestStarter.name, starterPos: weakestStarter.pos, starterIsRookie: weakestStarter.isRookie,
+                    benchWinPct
+                });
+            });
+
+            benchInsights.sort((a, b) => b.benchWinPct - a.benchWinPct);
+            benchInsights.splice(5); // top 5 by margin -- the rest would just be noise
+        }
+
+        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, currentWeek });
+    } catch (err) {
+        console.error(err);
+        if (typeof window.showToast === 'function') window.showToast("Failed to run the matchup simulation. Check console for details.", { isError: true });
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = origText; }
+    }
+};
+
     // Lazy-loads the SheetJS (XLSX) library on first use, so pages that never upload an .xlsx
     // ranking file don't pay for it. Kept inside the module (rather than as a bare global) like
     // every other helper here, since this file isn't shared with any other page.

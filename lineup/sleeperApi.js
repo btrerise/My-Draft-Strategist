@@ -58,6 +58,20 @@ export async function getSleeperUserLeagues(userId, season) {
     return res.json();
 }
 
+/**
+ * Fetches one league's matchups for a given week: one entry per roster, each with
+ * roster_id, matchup_id (rosters sharing a matchup_id are paired against each other that
+ * week), starters, players, and points. Throws "Could not fetch matchups for this
+ * league/week." on a non-ok response -- matches getSleeperLeague's pattern, since a failure
+ * here (e.g. week hasn't been scheduled yet) is worth surfacing rather than silently
+ * treating as empty.
+ */
+export async function getSleeperMatchups(leagueId, week) {
+    const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`);
+    if (!res.ok) throw new Error("Could not fetch matchups for this league/week.");
+    return res.json();
+}
+
 // --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---
 // Sleeper's players/nfl payload is close to 5MB, and their own docs say not to call this
 // endpoint more than once a day. Previously this was only cached in the plain JS variables
