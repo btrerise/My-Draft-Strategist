@@ -1889,7 +1889,8 @@ function attachScoutSuggestionHandler(outputElId) {
                 if (valueEl) valueEl.value = dynamic.value;
                 if (hintEl) {
                     hintEl.style.display = 'block';
-                    hintEl.innerText = `Auto-calculated from the top available free agents in this league (${dynamic.source}).`;
+                    let playerList = dynamic.players.map(p => p.name).join(', ');
+                    hintEl.innerText = `${dynamic.source} top available: ${playerList} -- avg ${dynamic.rawAverage.toLocaleString()}, credited at ${Math.round(WAIVER_ADJUSTMENT_DISCOUNT * 100)}% = ${dynamic.value.toLocaleString()}.`;
                 }
             } else if (hintEl) {
                 hintEl.style.display = 'block';
@@ -3330,33 +3331,44 @@ function applyMarketSettingsToUI() {
     // somewhere in the league), and null if neither lens has ANY free agent to price -- the
     // caller falls back to the existing flat/manual value in that case, exactly as before this
     // existed.
+
+    // How much of the top-free-agent average actually gets credited as one open roster spot's
+    // worth. Crediting the full average of the BEST remaining free agents overstates it --  a
+    // real waiver claim essentially never lands the single best player still out there, since
+    // every other team in the league gets a shot at the same short list. This scales the raw
+    // average down to a more representative fraction of it; it's one constant specifically so
+    // it's a one-line change if it still feels off once this has run against a few more leagues.
+    const WAIVER_ADJUSTMENT_DISCOUNT = 0.3;
+
     function getDynamicWaiverAdjustmentValue() {
         let league = getActiveLeague();
         if (!league || !league.globalRosterMap) return null;
         let rosterMap = league.globalRosterMap;
 
-        // Averages rankToTradeValue over the best (lowest-numbered) up-to-3 free agents in a
-        // ranking list. A sentinel rank of 999 means "not actually ranked" (rankingsParser's
-        // own placeholder for an unpopulated field) rather than a real deep-bench rank, so
-        // those are excluded rather than priced as if genuinely 999th -- same reasoning as
-        // rankFieldOf elsewhere in this file.
-        const topFreeAgentAvg = (rankings, rankField) => {
-            let freeAgents = rankings
-                .filter(r => !rosterMap[r.cleanName] && r[rankField] && r[rankField] < 999)
-                .sort((a, b) => a[rankField] - b[rankField])
-                .slice(0, 3);
+        // Sentinel rank of 999 means "not actually ranked" (rankingsParser's own placeholder
+        // for an unpopulated field) rather than a real deep-bench rank, so those are excluded
+        // rather than priced as if genuinely 999th -- same reasoning as rankFieldOf elsewhere
+        // in this file. Returns the actual free-agent records used (name + rank + value), not
+        // just the final number, so the caller can show its work rather than a bare figure.
+        const topFreeAgents = (rankings, rankField) => rankings
+            .filter(r => !rosterMap[r.cleanName] && r[rankField] && r[rankField] < 999)
+            .sort((a, b) => a[rankField] - b[rankField])
+            .slice(0, 3)
+            .map(r => ({ name: r.name, rank: r[rankField], value: rankToTradeValue(r[rankField]) }));
+
+        const buildResult = (freeAgents, source) => {
             if (freeAgents.length === 0) return null;
-            let sum = freeAgents.reduce((total, r) => total + rankToTradeValue(r[rankField]), 0);
-            return Math.round(sum / freeAgents.length);
+            let rawAverage = Math.round(freeAgents.reduce((total, fa) => total + fa.value, 0) / freeAgents.length);
+            return { value: Math.round(rawAverage * WAIVER_ADJUSTMENT_DISCOUNT), rawAverage, source, players: freeAgents };
         };
 
         if (State.rosRankings.length > 0) {
-            let value = topFreeAgentAvg(State.rosRankings, 'rank');
-            if (value !== null) return { value, source: 'ROS Rankings' };
+            let result = buildResult(topFreeAgents(State.rosRankings, 'rank'), 'ROS Rankings');
+            if (result) return result;
         }
         if (State.marketRankings.length > 0) {
-            let value = topFreeAgentAvg(State.marketRankings, 'marketVal');
-            if (value !== null) return { value, source: 'Market Consensus' };
+            let result = buildResult(topFreeAgents(State.marketRankings, 'marketVal'), 'Market Consensus');
+            if (result) return result;
         }
         return null;
     }
