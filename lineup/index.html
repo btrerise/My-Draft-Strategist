@@ -891,7 +891,7 @@
         </h3>
         <div class="tooltip-container">
             <div class="tooltip-icon">i</div>
-            <span class="tooltip-text">Upload a market CSV or pull live market values to compare consensus against your custom ROS rankings and instantly expose buy-low/sell-high candidates.</span>
+            <span class="tooltip-text">Upload a market CSV or pull live market values to compare consensus against your custom ROS rankings and instantly expose buy-low/sell-high candidates. Use Rank Basis below to compare Overall rank or within-position rank -- Positional Rank is the more accurate choice for Superflex/TE Premium leagues, where market data prices whole positions differently than a standard board does.</span>
         </div>
     </header>
     
@@ -965,7 +965,7 @@
     <div id="marketSuccessMsg" class="success-feedback" style="display:none;">Market Data Loaded Successfully!</div>
 
     <!-- Filter / Control Bar -->
-    <div class="settings-grid mb-3" style="align-items: center; margin-top: 1rem;">
+    <div class="settings-grid mb-2" style="align-items: center; margin-top: 1rem;">
         <div class="input-group" style="margin-bottom: 0;">
             <label for="disconnectMode">Filter Mode</label>
             <select id="disconnectMode" class="form-input" onchange="toggleDisconnectMode()">
@@ -974,8 +974,21 @@
             </select>
         </div>
         <div class="input-group" style="margin-bottom: 0;">
-            <label for="disconnectThreshold">Minimum Rank Gap</label>
+            <label for="disconnectRankBasis">Rank Basis</label>
+            <select id="disconnectRankBasis" class="form-input" onchange="toggleDisconnectRankBasis()" aria-label="Compare using Overall rank or within-position rank">
+                <option value="overall">Overall Rank</option>
+                <option value="positional">Positional Rank (QB vs QB, RB vs RB, etc.)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="settings-grid mb-3">
+        <div class="input-group" style="margin-bottom: 0;">
+            <label for="disconnectThreshold" id="thresholdLabel">Minimum Rank Gap</label>
             <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
+            <small id="disconnectGapHint" style="display:none; color: var(--text-muted); font-size: 0.78rem; margin-top: 0.35rem; line-height: 1.3;">
+                A 10-spot gap is common for Overall rank, but huge for a single position -- try 2-4 instead.
+            </small>
         </div>
     </div>
 
@@ -1056,7 +1069,7 @@
             <!-- Step 6 (Previously Step 5) -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">6</span> Trade Finder & Market Disconnects</h4>
-                <p class="step-desc">Pull live market consensus values from <strong class="text-main">FantasyCalc</strong> or <strong class="text-main">LeagueLogs</strong> (or upload a market CSV). Use the Trade Finder to filter by flat rank gaps or percentage shifts to instantly uncover high-value buy-low targets and overvalued sell-high assets relative to your custom ROS board.</p>
+                <p class="step-desc">Pull live market consensus values from <strong class="text-main">FantasyCalc</strong> or <strong class="text-main">LeagueLogs</strong> (or upload a market CSV). Use the Trade Finder to filter by flat rank gaps or percentage shifts to instantly uncover high-value buy-low targets and overvalued sell-high assets relative to your custom ROS board. <strong class="text-main">Rank Basis</strong> controls what those gaps are measured against: Overall compares each player's rank across the whole player pool, while Positional Rank compares them only against others at their own position (QB vs QB, RB vs RB, etc.). Positional Rank is the better choice in Superflex or TE Premium leagues -- those formats make market consensus price entire positions differently than a standard board would, which can otherwise flag a fairly-valued player (e.g. a top QB in a Superflex league) as a false buy-low or sell-high. One thing to know: positional gaps run much smaller than overall ones -- a 10-spot Overall gap is a reasonable default, but a 10-spot gap within a single position is enormous, so lower the Minimum Rank Gap (2-4 is a good starting point) when you switch to Positional Rank.</p>
             </div>
 
             <!-- Step 7 (Previously Step 6) -->

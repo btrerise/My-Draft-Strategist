@@ -2972,19 +2972,39 @@ function attachScoutSuggestionHandler(outputElId) {
         marketFileEl.addEventListener('change', () => processMarketUpload('marketFileInput', 'marketSuccessMsg'));
     }
 
-    window.toggleDisconnectMode = function() {
+    // Shared by both the Filter Mode and Rank Basis dropdowns below, since the right threshold
+    // label/default depends on BOTH of them together (e.g. "Minimum Rank Gap" needs a much
+    // smaller default under Positional Rank than under Overall Rank, but "Min Percentage
+    // Shift" doesn't change with rank basis at all -- a percentage shift means the same thing
+    // regardless of how big the underlying pool is). Previously this label swap silently
+    // no-op'd on every call: it looked up a #thresholdLabel element that didn't exist in the
+    // markup, and the early-return guard for a missing label meant the threshold VALUE reset
+    // never ran either. Fixed by adding that id to the label in the markup.
+    function updateDisconnectThresholdUI() {
         const mode = document.getElementById('disconnectMode')?.value;
+        const isPositional = document.getElementById('disconnectRankBasis')?.value === 'positional';
         const label = document.getElementById('thresholdLabel');
         const input = document.getElementById('disconnectThreshold');
+        const hint = document.getElementById('disconnectGapHint');
         if (!label || !input) return;
+
+        if (hint) hint.style.display = isPositional ? 'block' : 'none';
 
         if (mode === 'percent') {
             label.innerText = "Min Percentage Shift (%)";
             input.value = "20";
         } else {
-            label.innerText = "Minimum Rank Gap";
-            input.value = "10";
+            label.innerText = isPositional ? "Minimum Rank Gap (within position)" : "Minimum Rank Gap";
+            input.value = isPositional ? "3" : "10";
         }
+    }
+
+    window.toggleDisconnectMode = function() {
+        updateDisconnectThresholdUI();
+    };
+
+    window.toggleDisconnectRankBasis = function() {
+        updateDisconnectThresholdUI();
     };
 
     function processMarketUpload(fileInputId, successMsgId) {
@@ -3266,6 +3286,28 @@ function applyMarketSettingsToUI() {
         return { rank: m.marketVal, value: rankToTradeValue(m.marketVal) };
     }
 
+    // Ranks each market player within their own position group (QB1, QB2, RB1, RB2, ...)
+    // instead of across the whole player pool. Market data only ships an overall marketVal --
+    // there's no positional rank field to read directly -- so this derives one the same way
+    // the auto-fetch-ROS-from-market flow above already does (see its own posCounters loop):
+    // sort by marketVal ascending, then count up within each position group as they're
+    // encountered. Used by the Trade Finder's "Positional Rank" basis (see
+    // runMarketDisconnectAnalysis) to compare a player against others at their own position
+    // rather than the full pool -- the fix for Superflex/TEP leagues, where market consensus
+    // prices whole positions differently than a standard (non-SF) ROS board does, which
+    // otherwise shows up as a false buy-low/sell-high on Overall rank alone.
+    function getMarketPositionalRanks(marketRankings) {
+        let sorted = [...marketRankings].sort((a, b) => a.marketVal - b.marketVal);
+        let posCounters = {};
+        let posRankMap = {};
+        sorted.forEach(p => {
+            const posKey = (p.pos || '').toUpperCase();
+            posCounters[posKey] = (posCounters[posKey] || 0) + 1;
+            posRankMap[p.cleanName] = posCounters[posKey];
+        });
+        return posRankMap;
+    }
+
     function updateMarketMetaDisplay() {
         const metaEl = document.getElementById('marketMetaDisplay');
         if (metaEl) {
@@ -3294,6 +3336,13 @@ function applyMarketSettingsToUI() {
         const mode = document.getElementById('disconnectMode')?.value || 'flat';
         const threshold = parseFloat(document.getElementById('disconnectThreshold')?.value) || 10;
         const posFilter = document.getElementById('disconnectPosFilter')?.value || 'ALL';
+        const rankBasis = document.getElementById('disconnectRankBasis')?.value || 'overall';
+        const isPositional = rankBasis === 'positional';
+
+        // Positional mode needs each market player's rank WITHIN their own position, which
+        // market data doesn't ship directly -- computed once per run (see
+        // getMarketPositionalRanks) rather than re-deriving it per player below.
+        const marketPosRanks = isPositional ? getMarketPositionalRanks(State.marketRankings) : null;
 
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
@@ -3307,8 +3356,29 @@ function applyMarketSettingsToUI() {
             let userObj = State.rosRankings.find(r => r.cleanName === m.cleanName);
             if (!userObj) return; // Skip if user didn't rank this player
 
-            let userRank = userObj.rank;
-            let marketVal = m.marketVal;
+            // Positional Rank compares a player's rank WITHIN their own position (QB vs QB, RB
+            // vs RB, ...) instead of across the whole player pool. This is the fix for the
+            // classic Superflex false-positive: market consensus fetched for an SF league
+            // prices QBs as a scarce, premium position overall, while a ROS board built without
+            // SF weighting in mind ranks everyone on raw points -- so a fairly-valued QB1 (e.g.
+            // Josh Allen) reads as a market "sell high" purely from that format mismatch, not a
+            // real value gap. A player's rank relative to their OWN position holds up far
+            // better across formats than their overall rank does, since SF/TEP mostly re-price
+            // whole positions rather than reshuffling players within them.
+            let userRank, marketVal;
+            if (isPositional) {
+                userRank = userObj.posRank;
+                marketVal = marketPosRanks[m.cleanName];
+                // Skip anyone missing a real positional rank on either side -- a user rankings
+                // file with no Pos Rank column (and never uploaded as a position-specific file
+                // either) leaves posRank at its 999 sentinel, and a market player with no
+                // recognized position never got one either; comparing against that placeholder
+                // would fabricate a "disconnect" that isn't real.
+                if (!userRank || userRank >= 999 || !marketVal) return;
+            } else {
+                userRank = userObj.rank;
+                marketVal = m.marketVal;
+            }
 
             let delta = 0;
             let isSignificant = false;
@@ -3349,7 +3419,9 @@ function applyMarketSettingsToUI() {
                     marketVal: marketVal,
                     delta: delta,
                     type: tradeType,
-                    owner: owner
+                    owner: owner,
+                    pos: m.pos, // carried through so rendering can label positional ranks (e.g. "QB #12") rather than an ambiguous bare number
+                    isPositional
                 });
             }
         });
@@ -3360,6 +3432,13 @@ function applyMarketSettingsToUI() {
         if (analysisList.length === 0) {
             outputEl.innerHTML = `<div class="scout-result-card" style="justify-content:center; color:var(--text-muted);">No significant market disconnects found matching your threshold. Try adjusting the filter limit.</div>`;
             return;
+        }
+
+        // A bare "#12" is ambiguous once it can mean either an overall rank or a within-position
+        // rank -- prefixing the position (e.g. "QB #12") only for Positional Rank results keeps
+        // Overall Rank results looking exactly as they always have.
+        function formatDisconnectRank(rank, pos, isPositionalResult) {
+            return (isPositionalResult && pos) ? `${pos} #${rank}` : `#${rank}`;
         }
 
         let html = "";
@@ -3378,8 +3457,8 @@ function applyMarketSettingsToUI() {
                     <div>
                         <div class="mls-item-name">${item.name}</div>
                         <div class="mls-meta-row">
-                            <span>Your Board: <strong class="mls-stat-green">#${item.userRank}</strong></span>
-                            <span>Market: <strong class="mls-stat-blue">#${item.marketVal}</strong></span>
+                            <span>Your Board: <strong class="mls-stat-green">${formatDisconnectRank(item.userRank, item.pos, item.isPositional)}</strong></span>
+                            <span>Market: <strong class="mls-stat-blue">${formatDisconnectRank(item.marketVal, item.pos, item.isPositional)}</strong></span>
                         </div>
                     </div>
                     <div class="mls-text-right">
@@ -3401,8 +3480,8 @@ function applyMarketSettingsToUI() {
                     <div>
                         <div class="mls-item-name">${item.name}</div>
                         <div class="mls-meta-row">
-                            <span>Your Board: <strong class="mls-stat-red">#${item.userRank}</strong></span>
-                            <span>Market: <strong class="mls-stat-blue">#${item.marketVal}</strong></span>
+                            <span>Your Board: <strong class="mls-stat-red">${formatDisconnectRank(item.userRank, item.pos, item.isPositional)}</strong></span>
+                            <span>Market: <strong class="mls-stat-blue">${formatDisconnectRank(item.marketVal, item.pos, item.isPositional)}</strong></span>
                         </div>
                     </div>
                     <div class="mls-text-right">
