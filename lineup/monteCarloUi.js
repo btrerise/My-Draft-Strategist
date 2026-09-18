@@ -12,6 +12,51 @@ let lastTeam2Profiles = [];
 let lastLineupDiffersFromSleeper = false;
 let lastBenchInsights = [];
 
+// --- PROGRESS ANIMATION ---
+// 10,000 iterations of simple arithmetic finishes in a handful of milliseconds -- correct
+// behavior, but a swap that happens too fast to perceive reads as "did this even run?" to
+// someone who doesn't know that (this came up directly in user feedback). This animates a
+// counter up toward the real 10,000-iteration total over a fixed short window, purely to make
+// genuinely-fast, genuinely-real work perceptible -- it never claims a result before the
+// worker's actual result has arrived: if the worker is somehow still running when the
+// animation reaches its target, the counter holds at the target rather than lying that a
+// result exists yet. A new run cancels any animation still in flight from a previous one, so
+// clicking "Run" again doesn't leave two competing counters or reveal a stale result.
+const PROGRESS_ANIMATION_MS = 700;
+const SIMULATION_ITERATIONS = 10000;
+let animationFrameId = null;
+let animationDone = false;
+let pendingResult = null;
+
+function renderProgress(simOutputDiv, count) {
+    if (!simOutputDiv) return;
+    simOutputDiv.innerHTML = `<p style="display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating matchups... ${count.toLocaleString()} / ${SIMULATION_ITERATIONS.toLocaleString()}</p>`;
+}
+
+function startProgressAnimation(simOutputDiv) {
+    if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+    animationDone = false;
+    pendingResult = null;
+
+    const startTime = performance.now();
+    function tick() {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(1, elapsed / PROGRESS_ANIMATION_MS);
+        renderProgress(simOutputDiv, Math.floor(progress * SIMULATION_ITERATIONS));
+
+        if (progress < 1) {
+            animationFrameId = requestAnimationFrame(tick);
+        } else {
+            animationFrameId = null;
+            animationDone = true;
+            // The real result may already have arrived while the animation was still playing
+            // out -- reveal it now that the minimum perceptible duration has elapsed.
+            if (pendingResult) renderResults(pendingResult);
+        }
+    }
+    tick();
+}
+
 /**
  * Triggers the Monte Carlo simulation and handles the DOM update.
  * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[], currentSeasonScores: number[]}>} team1Players
@@ -42,7 +87,7 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     // as display:none in the HTML, so this also has to be the thing that reveals it.
     if (simOutputDiv) {
         simOutputDiv.style.display = 'block';
-        simOutputDiv.innerHTML = `<p style="display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating 10,000 matchups...</p>`;
+        startProgressAnimation(simOutputDiv);
     }
 
     // 2. Map each player's raw historical scores into the Variance Profile we built in
@@ -130,11 +175,13 @@ function renderBenchInsights(benchInsights) {
         </div>`;
 }
 
-// 4. Listen for the Web Worker to finish and update the UI
-worker.onmessage = function(e) {
-    const { team1WinProb, team2WinProb, ties, fallbackCount, projectionCount } = e.data;
+// Renders the final simulation output -- called either immediately (if the progress
+// animation has already finished by the time the worker responds) or once the animation
+// catches up (see startProgressAnimation above).
+function renderResults(data) {
+    const { team1WinProb, team2WinProb, ties, fallbackCount, projectionCount } = data;
     const simOutputDiv = document.getElementById('monte-carlo-results');
-    
+
     if (simOutputDiv) {
         const fallbackNote = fallbackCount > 0
             ? `<small class="sim-fallback-note">~ marks ${fallbackCount} player(s) without enough completed games yet -- their range is an early-season estimate, not a measured one.</small>`
@@ -178,6 +225,17 @@ worker.onmessage = function(e) {
                 ${renderBenchInsights(lastBenchInsights)}
             </div>
         `;
+    }
+}
+
+// 4. Listen for the Web Worker to finish
+worker.onmessage = function(e) {
+    if (animationDone) {
+        renderResults(e.data);
+    } else {
+        // Animation is still playing -- hold the real result until it catches up rather than
+        // revealing it early (see startProgressAnimation's own comment for why).
+        pendingResult = e.data;
     }
 };
 
