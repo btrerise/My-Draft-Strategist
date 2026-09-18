@@ -1872,6 +1872,31 @@ function attachScoutSuggestionHandler(outputElId) {
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
 
+        // --- DYNAMIC WAIVER ADJUSTMENT ---
+        // Recomputed fresh on every trade check, rather than saved once and left stale, so it
+        // always reflects this league's own current free-agent pool. See
+        // getDynamicWaiverAdjustmentValue's own comment for the ROS -> Market -> flat-default
+        // tiering. Updates the visible field (and the hint beneath it) so the number driving
+        // the verdict is never hidden -- same "explain the methodology" principle as the
+        // verdict banners themselves.
+        if (type === 'trade' && State.tradeSettings.waiverAdjustment) {
+            let dynamic = getDynamicWaiverAdjustmentValue();
+            const valueEl = document.getElementById('tradeWaiverAdjustValue');
+            const hintEl = document.getElementById('tradeWaiverAdjustHint');
+            if (dynamic) {
+                State.tradeSettings.waiverAdjustmentValue = dynamic.value;
+                localStorage.setItem('mls_trade_settings', JSON.stringify(State.tradeSettings));
+                if (valueEl) valueEl.value = dynamic.value;
+                if (hintEl) {
+                    hintEl.style.display = 'block';
+                    hintEl.innerText = `Auto-calculated from the top available free agents in this league (${dynamic.source}).`;
+                }
+            } else if (hintEl) {
+                hintEl.style.display = 'block';
+                hintEl.innerText = `No free agent data to auto-calculate this yet (sync a league and load rankings) -- using the value above.`;
+            }
+        }
+
         // --- POSITION RESOLVER FOR CARD BADGES ---
         // Same lookup chain and same window.sleeperPosByName cache as autoFindWaiverUpgrades
         // (reused rather than duplicated): a synced league's own globalPosMap first, then the
@@ -3284,6 +3309,56 @@ function applyMarketSettingsToUI() {
         let m = State.marketRankings.find(r => r.cleanName === cleanName);
         if (!m) return null;
         return { rank: m.marketVal, value: rankToTradeValue(m.marketVal) };
+    }
+
+    // --- DYNAMIC WAIVER ADJUSTMENT VALUE ---
+    // The Trade Analyzer's waiver-adjustment credit (see renderTradeVerdict above) used to be
+    // a single flat number, manually typed in and easy to forget about. League depth varies
+    // enormously -- a shallow 10-team league's best streamable free agent is worth far more
+    // than a deep 14-team dynasty league's -- so one flat number can't fit every league synced
+    // in this tool. A separate maintained rating (updated through the season) would fix that
+    // more precisely, but would also mean a second stat this app has to keep current -- not
+    // something to take on right now. Instead, this reuses data the app already keeps current
+    // for other reasons: the active league's own free-agent pool, priced on the exact same
+    // rankToTradeValue curve the trade totals themselves already use, so the adjustment stays
+    // apples-to-apples with the rest of the verdict rather than being a differently-scaled
+    // number bolted on.
+    //
+    // Tiered the same way the trade verdict's two lenses already are: custom ROS rankings
+    // first (the primary lens everywhere else in this tool), market consensus if that comes up
+    // completely empty (e.g. every ROS-ranked player at this position happens to be rostered
+    // somewhere in the league), and null if neither lens has ANY free agent to price -- the
+    // caller falls back to the existing flat/manual value in that case, exactly as before this
+    // existed.
+    function getDynamicWaiverAdjustmentValue() {
+        let league = getActiveLeague();
+        if (!league || !league.globalRosterMap) return null;
+        let rosterMap = league.globalRosterMap;
+
+        // Averages rankToTradeValue over the best (lowest-numbered) up-to-3 free agents in a
+        // ranking list. A sentinel rank of 999 means "not actually ranked" (rankingsParser's
+        // own placeholder for an unpopulated field) rather than a real deep-bench rank, so
+        // those are excluded rather than priced as if genuinely 999th -- same reasoning as
+        // rankFieldOf elsewhere in this file.
+        const topFreeAgentAvg = (rankings, rankField) => {
+            let freeAgents = rankings
+                .filter(r => !rosterMap[r.cleanName] && r[rankField] && r[rankField] < 999)
+                .sort((a, b) => a[rankField] - b[rankField])
+                .slice(0, 3);
+            if (freeAgents.length === 0) return null;
+            let sum = freeAgents.reduce((total, r) => total + rankToTradeValue(r[rankField]), 0);
+            return Math.round(sum / freeAgents.length);
+        };
+
+        if (State.rosRankings.length > 0) {
+            let value = topFreeAgentAvg(State.rosRankings, 'rank');
+            if (value !== null) return { value, source: 'ROS Rankings' };
+        }
+        if (State.marketRankings.length > 0) {
+            let value = topFreeAgentAvg(State.marketRankings, 'marketVal');
+            if (value !== null) return { value, source: 'Market Consensus' };
+        }
+        return null;
     }
 
     // Ranks each market player within their own position group (QB1, QB2, RB1, RB2, ...)
