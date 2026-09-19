@@ -128,7 +128,7 @@
         </div>
         
         <div class="header-controls">
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="cluster cluster-sm">
                 <button id="prevLeagueBtn" class="mls-btn-sm btn-secondary league-nav-btn" onclick="cycleLeague(-1)" aria-label="Previous League" disabled>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
@@ -149,35 +149,35 @@
         <!-- Dashboard TAB -->
 <div id="setupTab" class="tab-content active">
     <!-- Info & Guide Banner Shortcut -->
-    <div class="guide-banner" id="guideBanner" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem;">
-        <div onclick="showTab('guide')" role="button" tabindex="0" aria-label="Read the User Guide" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('guide');}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
+    <div class="guide-banner" id="guideBanner">
+        <div class="cluster cluster-md" onclick="showTab('guide')" role="button" tabindex="0" aria-label="Read the User Guide" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('guide');}" style="flex-grow: 1; cursor: pointer;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
-            <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+            <svg class="guide-arrow mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </div>
-        <button class="close-banner-btn" onclick="dismissBannerAndReveal('guideBanner', 'mls_hide_guide_banner', 'draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+        <button class="close-banner-btn close-banner-btn-sm" onclick="dismissBannerAndReveal('guideBanner', 'mls_hide_guide_banner', 'draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner">✕</button>
     </div>
     <!-- DRAFT STRATEGIST CROSS-PROMO -->
     <!-- Starts hidden: staggered behind guideBanner so the two never stack on a first visit.
          Revealed by dismissBannerAndReveal() above, or on load by utils.js's DOMContentLoaded
          handler if guideBanner was already dismissed on an earlier visit. -->
-    <div class="guide-banner" id="draftBanner" style="display: none; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4); padding: 0.75rem 1rem;">
-        <div onclick="window.location.href='../'" role="button" tabindex="0" aria-label="Switch to My Draft Strategist" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='../';}" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer; color: var(--primary-green);">
+    <div class="guide-banner" id="draftBanner" style="display: none; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4);">
+        <div class="cluster cluster-md" onclick="window.location.href='../'" role="button" tabindex="0" aria-label="Switch to My Draft Strategist" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='../';}" style="flex-grow: 1; cursor: pointer; color: var(--primary-green);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
             <span style="font-size: 0.9rem;">Mocking or prepping for a draft? Try <strong>My Draft Strategist</strong></span>
-            <svg class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+            <svg class="guide-arrow mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </div>
-        <button class="close-banner-btn" onclick="dismissBanner('draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+        <button class="close-banner-btn close-banner-btn-sm" onclick="dismissBanner('draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner">✕</button>
     </div>
     <!-- DRAFT STRATEGIST ROSTER HANDOFF -->
     <div class="info-banner" id="handoffBanner" style="display: none; justify-content: space-between; align-items: flex-start;">
-        <div style="display: flex; gap: 0.5rem;">
+        <div class="cluster cluster-sm">
             <div class="info-banner-icon">i</div>
             <div id="handoffBannerText"><strong>Roster found from My Draft Strategist.</strong></div>
         </div>
-        <div style="display: flex; gap: 0.5rem; flex-shrink: 0; margin-left: 0.75rem;">
+        <div class="cluster cluster-sm ml-3" style="flex-shrink: 0;">
             <button class="btn btn-primary mls-btn-sm" onclick="importDraftStrategistRoster()">Import as New League</button>
-            <button class="close-banner-btn" onclick="dismissDraftStrategistHandoff()" aria-label="Dismiss" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+            <button class="close-banner-btn close-banner-btn-sm" onclick="dismissDraftStrategistHandoff()" aria-label="Dismiss">✕</button>
         </div>
     </div>
     <!-- COMMAND CENTER DASHBOARD -->
@@ -208,7 +208,7 @@
             <table class="sos-grid" style="width: 100%; text-align: left; position: relative;">
                 <thead style="position: sticky; top: 0; z-index: 10; background: var(--card-bg); box-shadow: 0 1px 0 var(--border);">
                     <tr>
-                        <th style="text-align: left; padding-left: 0.5rem;">League</th>
+                        <th class="pl-2" style="text-align: left;">League</th>
                         <th>Rankings</th>
                         <th>Lineup</th>
                         <th>Settings</th>
@@ -220,9 +220,9 @@
             </table>
         </div>
         <!-- RECENT SYNC LOGS -->
-        <details class="sos-details-accordion" id="syncLogAccordion" style="display: none; margin-top: 1rem; border-color: rgba(59, 130, 246, 0.3); background: rgba(0,0,0,0.15);">
+        <details class="sos-details-accordion mt-4" id="syncLogAccordion" style="display: none; border-color: rgba(59, 130, 246, 0.3); background: rgba(0,0,0,0.15);">
             <summary class="sos-summary" style="color: #60a5fa;" id="syncLogSummary">Recent Sync Logs</summary>
-            <div id="syncLogContent" style="padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div id="syncLogContent" class="stack stack-sm pt-3">
                 <!-- Populated by JS -->
             </div>
         </details>
@@ -251,7 +251,7 @@
         </div>
         
         <div class="input-group">
-    <label class="flex-label" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+    <label class="flex-label">
         <span>Sleeper League ID (Optional)</span>
         <div class="tooltip-container">
             <div class="tooltip-icon">i</div>
@@ -266,49 +266,51 @@
             <button class="btn btn-purple" onclick="createManualLeague()">Create Manual</button>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0;">
-            <div style="flex: 1; height: 1px; background: var(--border);"></div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">or</span>
-            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+        <div class="or-divider">
+            <div class="divider-line"></div>
+            <span>or</span>
+            <div class="divider-line"></div>
         </div>
 
         <button id="importAllLeaguesBtn" class="btn btn-secondary" style="width: 100%;" onclick="importAllSleeperLeagues(this)" title="Uses only the Sleeper Username above (League ID not needed) to find and sync every league you're in for the current season.">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             Import All My Leagues
         </button>
-        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; margin-bottom: 0;">Finds and syncs every league for this username -- just the username above is needed, no League ID.</p>
+        <p class="text-helper mt-2">Finds and syncs every league for this username -- just the username above is needed, no League ID.</p>
+    </section>
+
+    <!-- ACTIVE LEAGUE REQUIREMENTS -->
+    <!-- Elevated out of the Advanced Settings accordion list: this is a primary, frequently-
+         needed configuration (it drives lineup slot assignment for whichever league is
+         selected), not a secondary setting someone should have to expand a menu to find. -->
+    <section class="settings-card">
+        <header class="card-header">
+            <h3><span>Active League Requirements</span></h3>
+        </header>
+        <p class="card-desc">These numbers dictate how many players are assigned to each starting slot. They auto-populate during Sleeper sync.</p>
+        <div id="activeLeagueReqTitle" class="league-req-subtitle">(Select a League)</div>
+        <div class="roster-grid mb-4">
+            <div class="input-group"><label for="reqQB">QB</label><input type="number" id="reqQB" class="form-input text-center" value="1" aria-label="QB lineup slots"></div>
+            <div class="input-group"><label for="reqRB">RB</label><input type="number" id="reqRB" class="form-input text-center" value="2" aria-label="RB lineup slots"></div>
+            <div class="input-group"><label for="reqWR">WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
+            <div class="input-group"><label for="reqTE">TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
+            <div class="input-group"><label for="reqFLEX">FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
+            <div class="input-group"><label for="reqSFLEX">SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
+            <div class="input-group"><label for="reqK">K</label><input type="number" id="reqK" class="form-input text-center" value="1" aria-label="K lineup slots"></div>
+            <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
     </section>
 
     <!-- ADVANCED SETTINGS ACCORDIONS -->
     <section class="settings-card">
-        <header class="card-header" style="border-bottom: none; padding-bottom: 0;">
+        <header class="card-header card-header-flush">
             <h3><span>Advanced Settings</span></h3>
         </header>
-        
-        <details class="sos-details-accordion">
-            <summary class="sos-summary">Active League Requirements</summary>
-            <div style="padding-top: 1rem;">
-                <div class="tooltip-container" style="display: block; margin-bottom: 0.75rem;">
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">These numbers dictate how many players are assigned to each starting slot. They auto-populate during Sleeper sync.</span>
-                </div>
-                <div id="activeLeagueReqTitle" class="league-req-subtitle">(Select a League)</div>
-                <div class="roster-grid mb-4">
-                    <div class="input-group"><label for="reqQB">QB</label><input type="number" id="reqQB" class="form-input text-center" value="1" aria-label="QB lineup slots"></div>
-                    <div class="input-group"><label for="reqRB">RB</label><input type="number" id="reqRB" class="form-input text-center" value="2" aria-label="RB lineup slots"></div>
-                    <div class="input-group"><label for="reqWR">WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
-                    <div class="input-group"><label for="reqTE">TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
-                    <div class="input-group"><label for="reqFLEX">FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
-                    <div class="input-group"><label for="reqSFLEX">SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
-                    <div class="input-group"><label for="reqK">K</label><input type="number" id="reqK" class="form-input text-center" value="1" aria-label="K lineup slots"></div>
-                    <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
-                </div>
-                <button class="btn btn-primary" onclick="saveRequirements(this)">Save Requirements</button>
-            </div>
-        </details>
 
         <details class="sos-details-accordion">
             <summary class="sos-summary">Add Player Manually</summary>
-            <div style="padding-top: 1rem;">
+            <div class="accordion-body">
                 <div class="manual-player-grid">
                     <input type="text" id="manualName" class="form-input" placeholder="Player Name" aria-label="Type in player name">
                     <select id="manualPos" class="form-input" aria-label="Type in player's position">
@@ -328,16 +330,16 @@
         
         <details class="sos-details-accordion">
             <summary class="sos-summary">Backup & Restore</summary>
-            <div style="padding-top: 1rem;" class="flex-column gap-2">
+            <div class="accordion-body flex-column gap-2">
                 <button class="btn btn-primary" onclick="exportMlsSettings()">Export Backup</button>
                 <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" onchange="importMlsSettings(this)">
                 <button class="btn btn-secondary" onclick="document.getElementById('mlsImportFileInput').click()">Import Backup</button>
             </div>
         </details>
 
-        <details class="sos-details-accordion" style="border-color: rgba(239, 68, 68, 0.4); background: linear-gradient(135deg, rgba(239, 68, 68, 0.03), transparent);">
-            <summary class="sos-summary" style="color: #ef4444;">Danger Zone</summary>
-            <div style="padding-top: 1rem;">
+        <details class="sos-details-accordion danger-card">
+            <summary class="sos-summary text-danger">Danger Zone</summary>
+            <div class="accordion-body">
                 <p class="card-desc">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
                 <button class="btn btn-danger" onclick="factoryReset()">Factory Reset App Data</button>
             </div>
@@ -362,7 +364,7 @@
     <section class="settings-card rankings-card" id="rosRankingsCard">
         <header class="card-header rankings-card-header" onclick="toggleRankingsCard('rosRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Rest-of-Season Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('rosRankingsCard');}">
             <h3><span>Rest-of-Season (ROS) Rankings</span></h3>
-            <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div class="cluster cluster-sm">
                 <span id="rosHeaderFreshness" class="header-freshness"></span>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
@@ -373,25 +375,25 @@
         </header>
         
         <div class="rankings-card-body">
-            <div class="input-group" style="margin-bottom: 0;">
+            <div class="input-group mb-0">
                 <label for="rosRankingSetSelect">Ranking Set for this League</label>
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <div class="cluster cluster-sm">
                     <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('ros', this)" aria-label="Select ROS Ranking Set">
                     </select>
                     <button id="rosDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('ros')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
-            <div style="text-align: right; margin-bottom: 0.75rem;">
-                <button class="mls-btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('ros')">Apply this set to all leagues</button>
+            <div class="mb-3" style="text-align: right;">
+                <button class="mls-btn-sm btn-link-inline" onclick="applyRankingSetToAll('ros')">Apply this set to all leagues</button>
             </div>
-            <div id="rosNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
+            <div id="rosNewSetNameWrap" class="input-group mb-3">
                 <label for="rosNewSetName">New Set Name (optional)</label>
                 <input type="text" id="rosNewSetName" class="form-input" placeholder="e.g. Dynasty PPR 2026">
             </div>
 
             <div id="rosMetaDisplay" class="status-badge-meta"></div>
 
-            <div class="input-group" style="margin-bottom: 0.75rem;">
+            <div class="input-group mb-3">
                 <label for="rosUploadMode">Upload Format</label>
                 <select id="rosUploadMode" class="form-input" onchange="toggleUploadMode('ros')" aria-label="Select Upload Format">
                     <option value="single">Single File (All Positions)</option>
@@ -403,36 +405,36 @@
                 <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
             </div>
 
-            <div id="rosMultiMode" style="display: none; background: rgba(0,0,0,0.15); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: block; margin-bottom: 0.75rem;">Check the positions you want to upload:</label>
-                <div style="display: flex; flex-wrap: wrap; gap: 0.85rem; margin-bottom: 1rem;">
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'QB')"> QB</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'RB')"> RB</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'WR')"> WR</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'TE')"> TE</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'FLEX')"> FLEX</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'K')"> K</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('ros', 'DEF')"> DEF</label>
+            <div id="rosMultiMode" class="multi-upload-panel">
+                <label class="mb-3" style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: block;">Check the positions you want to upload:</label>
+                <div class="pos-checkbox-row">
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'QB')"> QB</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'RB')"> RB</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'WR')"> WR</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'TE')"> TE</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'FLEX')"> FLEX</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'K')"> K</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'DEF')"> DEF</label>
                 </div>
                 <div id="rosPosInputsContainer">
-                    <div id="ros-input-wrap-QB" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="rosFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-RB" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="rosFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-WR" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="rosFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-TE" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="rosFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-FLEX" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="rosFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-K" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="rosFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-DEF" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="rosFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-QB" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="rosFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-RB" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="rosFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-WR" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="rosFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-TE" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="rosFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-FLEX" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="rosFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-K" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="rosFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-DEF" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="rosFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                 </div>
-                <button id="rosMultiProcessBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="processMultiRankings('ros', 'rosSuccessMsg')">Combine & Process Files</button>
+                <button id="rosMultiProcessBtn" class="btn btn-primary mt-2" style="width: 100%;" onclick="processMultiRankings('ros', 'rosSuccessMsg')">Combine & Process Files</button>
             </div>
 
             <div id="rosProcessingStatus" class="mls-upload-processing"></div>
             <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
 
-            <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0;">
-                <div style="flex: 1; height: 1px; background: var(--border);"></div>
-                <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">or auto-fetch market value</span>
-                <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            <div class="or-divider">
+                <div class="divider-line"></div>
+                <span>or auto-fetch market value</span>
+                <div class="divider-line"></div>
             </div>
 
             <div class="input-group">
@@ -444,14 +446,14 @@
             </div>
 
             <div class="settings-grid mb-2">
-                <div class="input-group" style="margin-bottom: 0;">
+                <div class="input-group">
                     <label for="rosMarketType">League Type</label>
                     <select id="rosMarketType" class="form-input" onchange="updateMarketSetting('type', this.value)" aria-label="League Type">
                         <option value="redraft">Redraft</option>
                         <option value="dynasty">Dynasty</option>
                     </select>
                 </div>
-                <div class="input-group" style="margin-bottom: 0;">
+                <div class="input-group">
                     <label for="rosMarketQbs">QB Format</label>
                     <select id="rosMarketQbs" class="form-input" onchange="updateMarketSetting('qbs', this.value)" aria-label="QB Format">
                         <option value="1">1QB</option>
@@ -462,7 +464,7 @@
 
             <div id="rosFantasycalcSpecificControls">
                 <div class="settings-grid mb-3" style="align-items: center;">
-                    <div class="input-group" style="margin-bottom: 0;">
+                    <div class="input-group">
                         <label for="rosMarketPpr">PPR Scoring</label>
                         <select id="rosMarketPpr" class="form-input" onchange="updateMarketSetting('ppr', this.value)" aria-label="PPR Scoring">
                             <option value="1">Full PPR (1.0)</option>
@@ -470,10 +472,10 @@
                             <option value="0">Standard (0)</option>
                         </select>
                     </div>
-                    <div class="input-group" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: flex-end;">
-                        <div class="toggle-row" style="padding: 0.4rem 0; border: none; background: none; margin-top: 1rem;">
+                    <div class="input-group input-group-end">
+                        <div class="toggle-row toggle-row-flush">
                             <div class="toggle-info">
-                                <span class="toggle-title" style="font-size: 0.85rem;">TE Premium (TEP)</span>
+                                <span class="toggle-title">TE Premium (TEP)</span>
                             </div>
                             <input type="checkbox" id="rosMarketTep" class="toggle-switch" onchange="updateMarketSetting('tep', this.checked)" aria-label="Toggle Tight End Premium">
                         </div>
@@ -555,7 +557,7 @@
     <section class="settings-card rankings-card" id="weeklyRankingsCard">
         <header class="card-header rankings-card-header" onclick="toggleRankingsCard('weeklyRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Weekly Matchup Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('weeklyRankingsCard');}">
             <h3><span>Weekly Matchup Rankings</span></h3>
-            <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div class="cluster cluster-sm">
                 <span id="weeklyHeaderFreshness" class="header-freshness"></span>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
@@ -566,25 +568,25 @@
         </header>
         
         <div class="rankings-card-body">
-            <div class="input-group" style="margin-bottom: 0;">
+            <div class="input-group mb-0">
                 <label for="weeklyRankingSetSelect">Ranking Set for this League</label>
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <div class="cluster cluster-sm">
                     <select id="weeklyRankingSetSelect" class="form-input" style="flex: 1;" onchange="onRankingSetSelectChange('weekly', this)" aria-label="Select Weekly Ranking Set">
                     </select>
                     <button id="weeklyDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('weekly')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
-            <div style="text-align: right; margin-bottom: 0.75rem;">
-                <button class="mls-btn-sm" style="background: none; color: var(--primary-green); padding: 0; font-size: 0.75rem;" onclick="applyRankingSetToAll('weekly')">Apply this set to all leagues</button>
+            <div class="mb-3" style="text-align: right;">
+                <button class="mls-btn-sm btn-link-inline" onclick="applyRankingSetToAll('weekly')">Apply this set to all leagues</button>
             </div>
-            <div id="weeklyNewSetNameWrap" class="input-group" style="display: flex; margin-bottom: 0.75rem;">
+            <div id="weeklyNewSetNameWrap" class="input-group mb-3">
                 <label for="weeklyNewSetName">New Set Name (optional)</label>
                 <input type="text" id="weeklyNewSetName" class="form-input" placeholder="e.g. Week 5 Rankings">
             </div>
 
             <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
 
-            <div class="input-group" style="margin-bottom: 0.75rem;">
+            <div class="input-group mb-3">
                 <label for="weeklyUploadMode">Upload Format</label>
                 <select id="weeklyUploadMode" class="form-input" onchange="toggleUploadMode('weekly')" aria-label="Select Upload Format">
                     <option value="single">Single File (All Positions)</option>
@@ -596,27 +598,27 @@
                 <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
             </div>
 
-            <div id="weeklyMultiMode" style="display: none; background: rgba(0,0,0,0.15); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: block; margin-bottom: 0.75rem;">Check the positions you want to upload:</label>
-                <div style="display: flex; flex-wrap: wrap; gap: 0.85rem; margin-bottom: 1rem;">
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'QB')"> QB</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'RB')"> RB</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'WR')"> WR</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'TE')"> TE</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'FLEX')"> FLEX</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'K')"> K</label>
-                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer;"><input type="checkbox" onchange="togglePosInput('weekly', 'DEF')"> DEF</label>
+            <div id="weeklyMultiMode" class="multi-upload-panel">
+                <label class="mb-3" style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: block;">Check the positions you want to upload:</label>
+                <div class="pos-checkbox-row">
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'QB')"> QB</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'RB')"> RB</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'WR')"> WR</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'TE')"> TE</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'FLEX')"> FLEX</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'K')"> K</label>
+                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'DEF')"> DEF</label>
                 </div>
                 <div id="weeklyPosInputsContainer">
-                    <div id="weekly-input-wrap-QB" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="weeklyFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-RB" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="weeklyFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-WR" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="weeklyFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-TE" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="weeklyFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-FLEX" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="weeklyFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-K" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="weeklyFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-DEF" class="input-group" style="display: none; margin-bottom: 0.5rem;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="weeklyFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-QB" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="weeklyFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-RB" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="weeklyFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-WR" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="weeklyFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-TE" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="weeklyFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-FLEX" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="weeklyFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-K" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="weeklyFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-DEF" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="weeklyFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                 </div>
-                <button id="weeklyMultiProcessBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="processMultiRankings('weekly', 'weeklySuccessMsg')">Combine & Process Files</button>
+                <button id="weeklyMultiProcessBtn" class="btn btn-primary mt-2" style="width: 100%;" onclick="processMultiRankings('weekly', 'weeklySuccessMsg')">Combine & Process Files</button>
             </div>
 
             <div id="weeklyProcessingStatus" class="mls-upload-processing"></div>
@@ -652,9 +654,9 @@
         </div>
 
         <!-- FLEX Kickoff Optimization Setting -->
-        <div class="toggle-row" style="padding: 0.4rem 0; border: none; background: none; margin-top: 0.5rem;">
+        <div class="toggle-row toggle-row-flush mt-2">
             <div class="toggle-info">
-                <span class="toggle-title" style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                <span class="toggle-title">
                     FLEX Kickoff Optimization
                     <div class="tooltip-container">
                         <div class="tooltip-icon">i</div>
@@ -733,7 +735,7 @@
         </button>
         
         <!-- The results will render inside this div -->
-        <div id="monte-carlo-results" style="display: none; margin-top: 1.25rem;"></div>
+        <div id="monte-carlo-results" class="mt-4" style="display: none;"></div>
     </section>
 
     <!-- GLOBAL INJURY AUDITOR -->
@@ -745,8 +747,8 @@
                 <span class="tooltip-text">Scans all synced leagues to find 'Out' or 'IR' players left in starting lineups or taking up active bench spots.</span>
             </div>
         </header>
-        <div class="info-banner" style="display: flex; margin-bottom: 1rem; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
-            <div style="display: flex; gap: 0.5rem;">
+        <div class="info-banner mb-4" style="display: flex; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
+            <div class="cluster cluster-sm">
                 <div class="info-banner-icon" style="background: #ef4444; color: white;">i</div>
                 <div><strong>Sleeper Sync Required:</strong> This tool only audits leagues synced via Sleeper on the Dashboard.</div>
             </div>
@@ -761,11 +763,11 @@
     
     <!-- INFO BANNER -->
     <div class="info-banner" id="sleeperSyncBanner" style="display: flex; justify-content: space-between; align-items: flex-start;">
-    <div style="display: flex; gap: 0.5rem;">
+    <div class="cluster cluster-sm">
         <div class="info-banner-icon">i</div>
         <div><strong>Sleeper Sync Required:</strong> To see exactly which team owns a player or if they are a Free Agent, you must sync a Sleeper league on the Dashboard. Otherwise, this tool will only display the player's Weekly/ROS ranks.</div>
     </div>
-    <button class="close-banner-btn" onclick="dismissBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem; margin-left: 0.75rem; flex-shrink: 0;">✕</button>
+    <button class="close-banner-btn close-banner-btn-sm ml-3" onclick="dismissBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner')" aria-label="Dismiss Banner" style="flex-shrink: 0;">✕</button>
 </div>
 
     <!-- WAIVER WIRE ASSISTANT -->
@@ -785,7 +787,7 @@
         
         <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
         
-        <div class="input-group mt-3" style="margin-bottom: 0.75rem;">
+        <div class="input-group mt-3 mb-3">
             <label for="waiverPosFilter">Auto-Find Target Position</label>
             <select id="waiverPosFilter" class="form-input" aria-label="Filter waiver upgrades by position">
                 <option value="FLEX" selected>FLEX (RB/WR/TE) - Recommended</option>
@@ -831,25 +833,30 @@
         </div>
         <textarea id="sellInput" class="scout-textarea" placeholder="Players you'd send away..."></textarea>
 
-        <!-- Waiver Adjustment Settings -->
-        <div class="toggle-row" style="padding: 0.4rem 0; border: none; background: none; margin-top: 0.5rem;">
-            <div class="toggle-info">
-                <span class="toggle-title" style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
-                    Waiver Adjustment
-                    <div class="tooltip-container">
-                        <div class="tooltip-icon">i</div>
-                        <span class="tooltip-text">Trading away more players than you receive frees up bench spot(s) you can refill from waivers -- that's worth something on its own, and a plain sum of player values doesn't capture it. When on, whichever side of the trade has fewer total players gets a flat credit per "extra" roster spot it's worth. This is a flat estimate (see the value below).</span>
-                    </div>
-                </span>
+        <!-- Waiver Adjustment Settings: grouped into its own sub-section, set apart from the
+             Get/Give textareas above, rather than running the toggle+input straight into the
+             card body. -->
+        <div class="settings-subsection">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <span class="toggle-title">
+                        Waiver Adjustment
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Trading away more players than you receive frees up bench spot(s) you can refill from waivers -- that's worth something on its own, and a plain sum of player values doesn't capture it. When on, whichever side of the trade has fewer total players gets a flat credit per "extra" roster spot it's worth. This is a flat estimate (see the value below).</span>
+                        </div>
+                    </span>
+                </div>
+                <input type="checkbox" id="tradeWaiverAdjustToggle" class="toggle-switch" checked onchange="updateTradeSetting('waiverAdjustment', this.checked)" aria-label="Toggle Waiver Adjustment">
             </div>
-            <input type="checkbox" id="tradeWaiverAdjustToggle" class="toggle-switch" checked onchange="updateTradeSetting('waiverAdjustment', this.checked)" aria-label="Toggle Waiver Adjustment">
-        </div>
-        <div class="input-group mb-3" id="tradeWaiverValueWrap">
-            <label for="tradeWaiverAdjustValue">Waiver Adjustment Value (per open roster spot)</label>
-            <input type="number" id="tradeWaiverAdjustValue" class="form-input" value="500" min="0" step="50" onchange="updateTradeSetting('waiverAdjustmentValue', this.value)" aria-label="Waiver adjustment value per roster spot">
+            <div class="input-group" id="tradeWaiverValueWrap">
+                <label for="tradeWaiverAdjustValue">Waiver Adjustment Value (per open roster spot)</label>
+                <input type="number" id="tradeWaiverAdjustValue" class="form-input" value="500" min="0" step="50" onchange="updateTradeSetting('waiverAdjustmentValue', this.value)" aria-label="Waiver adjustment value per roster spot">
+                <small id="tradeWaiverAdjustHint" class="text-helper mt-1" style="display: none;"></small>
+            </div>
         </div>
 
-        <button class="btn btn-purple mt-2" onclick="runScout('trade')">Analyze Trade</button>
+        <button class="btn btn-purple mt-4" onclick="runScout('trade')">Analyze Trade</button>
         
         <div id="tradeOutput" class="scout-output-container"></div>
     </section>
@@ -864,9 +871,9 @@
         </div>
     </header>
     
-    <div style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+    <p class="card-desc">
         See how you stack up against the rest of the league. Hover or tap on any positional rank to see the players driving that score. Find teams who are strong where you are weak to identify ideal trade partners.
-    </div>
+    </p>
 
     <div class="input-group mb-3">
         <label for="powerRankingsSource">Rankings Source</label>
@@ -878,7 +885,7 @@
 
     <button class="btn btn-purple" style="width: 100%;" onclick="runPositionalStrength()">Calculate League Strengths</button>
 
-    <div id="powerRankingsOutput" style="margin-top: 1rem; display: none;">
+    <div id="powerRankingsOutput" class="mt-4" style="display: none;">
         <!-- The heatmap table injects here -->
     </div>
 </section>
@@ -914,14 +921,14 @@
 
     <!-- Common Settings (Dynasty/Redraft & QB Format) -->
     <div class="settings-grid mb-2">
-        <div class="input-group" style="margin-bottom: 0;">
+        <div class="input-group">
             <label for="marketType">League Type</label>
             <select id="marketType" class="form-input" onchange="updateMarketSetting('type', this.value)" aria-label="League Type">
                 <option value="redraft">Redraft</option>
                 <option value="dynasty">Dynasty</option>
             </select>
         </div>
-        <div class="input-group" style="margin-bottom: 0;">
+        <div class="input-group">
             <label for="marketQbs">QB Format</label>
             <select id="marketQbs" class="form-input" onchange="updateMarketSetting('qbs', this.value)" aria-label="QB Format">
                 <option value="1">1QB</option>
@@ -933,7 +940,7 @@
     <!-- FantasyCalc Specific Controls (PPR & TEP) -->
     <div id="fantasycalcSpecificControls">
         <div class="settings-grid mb-3" style="align-items: center;">
-            <div class="input-group" style="margin-bottom: 0;">
+            <div class="input-group">
                 <label for="marketPpr">PPR Scoring</label>
                 <select id="marketPpr" class="form-input" onchange="updateMarketSetting('ppr', this.value)" aria-label="PPR Scoring">
                     <option value="1">Full PPR (1.0)</option>
@@ -941,10 +948,10 @@
                     <option value="0">Standard (0)</option>
                 </select>
             </div>
-            <div class="input-group" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: flex-end;">
-                <div class="toggle-row" style="padding: 0.4rem 0; border: none; background: none; margin-top: 1rem;">
+            <div class="input-group input-group-end">
+                <div class="toggle-row toggle-row-flush">
                     <div class="toggle-info">
-                        <span class="toggle-title" style="font-size: 0.85rem;">TE Premium (TEP)</span>
+                        <span class="toggle-title">TE Premium (TEP)</span>
                     </div>
                     <input type="checkbox" id="marketTep" class="toggle-switch" onchange="updateMarketSetting('tep', this.checked)" aria-label="Toggle Tight End Premium">
                 </div>
@@ -954,7 +961,7 @@
     
         <button id="fetchAdpBtn" class="btn btn-purple" onclick="fetchLeagueLogsADP(this)">Fetch Market Value</button>
         
-        <div class="leaguelogs-attribution" style="margin-top: 0;">
+        <div class="leaguelogs-attribution mt-0">
             <a href="https://fantasycalc.com" target="_blank" rel="noopener" id="attributionLink">
                 <span>Powered by</span>
                 <em id="attributionBrand">FantasyCalc</em>
@@ -965,15 +972,15 @@
     <div id="marketSuccessMsg" class="success-feedback" style="display:none;">Market Data Loaded Successfully!</div>
 
     <!-- Filter / Control Bar -->
-    <div class="settings-grid mb-2" style="align-items: center; margin-top: 1rem;">
-        <div class="input-group" style="margin-bottom: 0;">
+    <div class="settings-grid mb-2 mt-4" style="align-items: center;">
+        <div class="input-group">
             <label for="disconnectMode">Filter Mode</label>
             <select id="disconnectMode" class="form-input" onchange="toggleDisconnectMode()">
                 <option value="flat">Flat Rank Gap (e.g., 10+ spots)</option>
                 <option value="percent">Percentage Shift (e.g., 20%+ value delta)</option>
             </select>
         </div>
-        <div class="input-group" style="margin-bottom: 0;">
+        <div class="input-group">
             <label for="disconnectRankBasis">Rank Basis</label>
             <select id="disconnectRankBasis" class="form-input" onchange="toggleDisconnectRankBasis()" aria-label="Compare using Overall rank or within-position rank">
                 <option value="overall">Overall Rank</option>
@@ -983,10 +990,10 @@
     </div>
 
     <div class="settings-grid mb-3">
-        <div class="input-group" style="margin-bottom: 0;">
+        <div class="input-group">
             <label for="disconnectThreshold" id="thresholdLabel">Minimum Rank Gap</label>
             <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
-            <small id="disconnectGapHint" style="display:none; color: var(--text-muted); font-size: 0.78rem; margin-top: 0.35rem; line-height: 1.3;">
+            <small id="disconnectGapHint" class="text-helper mt-1" style="display:none; line-height: 1.3;">
                 A 10-spot gap is common for Overall rank, but huge for a single position -- try 2-4 instead.
             </small>
         </div>
@@ -1049,7 +1056,7 @@
                 <p class="step-desc">Found on the <strong class="text-main">Lineup</strong> tab, this runs 10,000 simulated matchups between your starting lineup and your current Sleeper opponent's, using each player's own week-to-week variance rather than just their season average. If you swap a player in the Lineup Optimizer before running it, the simulation reflects your in-app lineup -- even if you haven't pushed that change to Sleeper yet -- so you can test "what if I started X instead of Y" before committing to it.</p>
                 <p class="step-desc mt-2">Each player's expected score comes from whichever of these is available, in order: Sleeper's own weekly projection for this specific matchup (factors in opponent, injury designation, etc.), this season's actual scores, and last season's scores as a supplement when this season's sample is still small -- last season's influence fades out as your current-season sample grows, rather than being used indefinitely.</p>
                 <p class="step-desc mt-2"><strong class="text-main">Boom/Bust thresholds</strong> are fixed point totals, not relative to any one player's own average, so "boom" means the same real accomplishment whether it's your WR1 or your flex streamer:</p>
-                <ul class="guide-list" style="list-style-type: none; padding-left: 2.2rem;">
+                <ul class="guide-list pl-6" style="list-style-type: none;">
                     <li><strong class="text-main">QB:</strong> Boom 24+ pts &nbsp;/&nbsp; Bust &lt;12 pts</li>
                     <li><strong class="text-main">RB:</strong> Boom 20+ pts &nbsp;/&nbsp; Bust &lt;7 pts</li>
                     <li><strong class="text-main">WR:</strong> Boom 20+ pts &nbsp;/&nbsp; Bust &lt;7.5 pts</li>
@@ -1088,7 +1095,7 @@
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">✦</span> Keyboard Shortcuts</h4>
                 <p class="step-desc">Navigate the app instantly with your keyboard (active when not typing in a text box):</p>
-                <ul class="guide-list" style="list-style-type: none; padding-left: 2.2rem;">
+                <ul class="guide-list pl-6" style="list-style-type: none;">
                     <li><strong class="text-main">1:</strong> Jump to Dashboard</li>
                     <li><strong class="text-main">2:</strong> Jump to Roster & Optimizer Tab</li>
                     <li><strong class="text-main">3:</strong> Jump to Lineup Tab</li>
