@@ -11,6 +11,7 @@ let lastTeam1Profiles = [];
 let lastTeam2Profiles = [];
 let lastLineupDiffersFromSleeper = false;
 let lastBenchInsights = [];
+let lastWaiverInsights = [];
 
 // --- PROGRESS ANIMATION ---
 // 10,000 iterations of simple arithmetic finishes in a handful of milliseconds -- correct
@@ -59,8 +60,8 @@ function startProgressAnimation(simOutputDiv) {
 
 /**
  * Triggers the Monte Carlo simulation and handles the DOM update.
- * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[], currentSeasonScores: number[]}>} team1Players
- * @param {Array<{id: string, name: string, pos: string, weeklyScores: number[], currentSeasonScores: number[]}>} team2Players
+ * @param {Array<{id: string, name: string, pos: string, team: string, weeklyScores: number[], currentSeasonScores: number[], actualScore: (number|null)}>} team1Players
+ * @param {Array<{id: string, name: string, pos: string, team: string, weeklyScores: number[], currentSeasonScores: number[], actualScore: (number|null)}>} team2Players
  * @param {Object} [options]
  * @param {boolean} [options.lineupDiffersFromSleeper] - true when team1Players reflects an
  *   in-app lineup edit (a swap made in this tool) that hasn't been pushed to Sleeper yet, so
@@ -68,11 +69,14 @@ function startProgressAnimation(simOutputDiv) {
  * @param {Array<{benchName, benchPos, starterName, starterPos, benchWinPct}>} [options.benchInsights]
  *   - precomputed bench-vs-starter comparisons (slot-eligibility already applied by the
  *   caller); this module only renders them, it doesn't compute or validate the matchups.
+ * @param {Array<{faName, faPos, starterName, starterPos, faWinPct}>} [options.waiverInsights]
+ *   - same idea as benchInsights, sourced from available free agents instead of the bench;
+ *   only populated when the Waiver Insights toggle is on (see mls.js's runMatchupSim).
  * @param {number} [options.currentWeek] - the current NFL week, passed straight through to
  *   getBoomBustRates' tier 2 gate (see statsEngine.js).
  */
 export const runMatchupSimulation = (team1Players, team2Players, options = {}) => {
-    const { lineupDiffersFromSleeper = false, benchInsights = [], currentWeek = null } = options;
+    const { lineupDiffersFromSleeper = false, benchInsights = [], waiverInsights = [], currentWeek = null } = options;
     const simOutputDiv = document.getElementById('monte-carlo-results');
 
     if (team1Players.length === 0 || team2Players.length === 0) {
@@ -93,9 +97,12 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     // 2. Map each player's raw historical scores into the Variance Profile we built in
     // Chunk 2, keeping their name/position attached alongside it, and compute Boom/Bust right
     // here (rather than at render time) so getBoomBustRates' tiered logic has currentWeek and
-    // currentSeasonScores available via this same closure.
+    // currentSeasonScores available via this same closure. actualScore (this week's real,
+    // already-recorded result, once a player's game has started) takes priority inside
+    // getPlayerVarianceProfile itself -- see its own comment -- so it's just passed through
+    // here alongside projectedMean rather than branched on in this module.
     const toProfile = (player) => {
-        const profile = { ...player, ...getPlayerVarianceProfile(player.weeklyScores, { projectedMean: player.projectedMean }) };
+        const profile = { ...player, ...getPlayerVarianceProfile(player.weeklyScores, { projectedMean: player.projectedMean, actualScore: player.actualScore }) };
         const boomBust = getBoomBustRates(profile, player.weeklyScores, {
             currentSeasonScores: player.currentSeasonScores, currentWeek
         });
@@ -107,6 +114,7 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     lastTeam2Profiles = team2Profiles;
     lastLineupDiffersFromSleeper = lineupDiffersFromSleeper;
     lastBenchInsights = benchInsights;
+    lastWaiverInsights = waiverInsights;
 
     // Early in the season (or for a player who just changed teams, returned from injury,
     // etc.) some players won't have enough games for a directly-measured standard deviation --
@@ -115,6 +123,7 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     // with the same confidence as a full-sample number.
     const fallbackCount = [...team1Profiles, ...team2Profiles].filter(p => p.usedFallback).length;
     const projectionCount = [...team1Profiles, ...team2Profiles].filter(p => p.usingProjection).length;
+    const actualCount = [...team1Profiles, ...team2Profiles].filter(p => p.isActual).length;
 
     // 3. Send the formatted payload to the background Web Worker
     worker.postMessage({
@@ -122,7 +131,8 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
         team2: team2Profiles,
         iterations: 10000,
         fallbackCount,
-        projectionCount
+        projectionCount,
+        actualCount
     });
 };
 
@@ -143,14 +153,27 @@ function renderPlayerList(profiles) {
     const rows = profiles
         .slice()
         .sort((a, b) => b.mean - a.mean)
-        .map(p => `
+        .map(p => {
+            // A player whose real game has already produced stats this week has nothing left
+            // to project -- their bust/boom rate isn't a probability anymore (see
+            // getBoomBustRates' isActual handling), and a floor-ceiling range around a known
+            // result would just be a confusing way to display a single fixed number. Show the
+            // actual result plainly instead.
+            const statsHTML = p.isActual
+                ? `<span class="sim-player-boombust"><span class="sim-final-tag">Final</span></span>`
+                : `<span class="sim-player-boombust"><span class="sim-bust">Bust: ${p.bustRate}%</span> &nbsp;&bull;&nbsp; <span class="sim-boom">Boom: ${p.boomRate}%</span></span>`;
+            const rangeHTML = p.isActual
+                ? `<span class="sim-player-range">${p.mean} <span class="sim-player-mean">pts (actual)</span></span>`
+                : `<span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.mean} ${p.usingProjection ? 'proj' : 'avg'})</span></span>`;
+            return `
             <li class="sim-player-row">
                 <div class="sim-player-info">
                     <span class="sim-player-name">${renderPosBadge(p.pos)} ${p.name}${renderRookieBadge(p.isRookie)}</span>
-                    <span class="sim-player-boombust"><span class="sim-bust">Bust: ${p.bustRate}%</span> &nbsp;&bull;&nbsp; <span class="sim-boom">Boom: ${p.boomRate}%</span></span>
+                    ${statsHTML}
                 </div>
-                <span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.mean} ${p.usingProjection ? 'proj' : 'avg'})</span></span>
-            </li>`)
+                ${rangeHTML}
+            </li>`;
+        })
         .join('');
     return `<ul class="sim-player-list">${rows}</ul>`;
 }
@@ -175,11 +198,32 @@ function renderBenchInsights(benchInsights) {
         </div>`;
 }
 
+// Free-agent comparisons that beat your weakest eligible starter at their position -- same
+// shape and same ">50% win probability" bar as renderBenchInsights above, just sourced from
+// available waivers instead of your own bench. Only ever receives anything when the Waiver
+// Insights toggle is on (see mls.js's runMatchupSim).
+function renderWaiverInsights(waiverInsights) {
+    if (!waiverInsights || waiverInsights.length === 0) return '';
+
+    const rows = waiverInsights.map(w => `
+        <li class="sim-bench-row">
+            <strong>${w.faName}</strong> ${renderPosBadge(w.faPos)} (available) outscored
+            <strong>${w.starterName}</strong> ${renderPosBadge(w.starterPos)}${renderRookieBadge(w.starterIsRookie)} (starting) in
+            <strong>${w.faWinPct}%</strong> of simulated weeks.
+        </li>`).join('');
+
+    return `
+        <div class="sim-bench-insights">
+            <h4>Waiver Insights</h4>
+            <ul class="sim-bench-list">${rows}</ul>
+        </div>`;
+}
+
 // Renders the final simulation output -- called either immediately (if the progress
 // animation has already finished by the time the worker responds) or once the animation
 // catches up (see startProgressAnimation above).
 function renderResults(data) {
-    const { team1WinProb, team2WinProb, ties, fallbackCount, projectionCount } = data;
+    const { team1WinProb, team2WinProb, ties, fallbackCount, projectionCount, actualCount } = data;
     const simOutputDiv = document.getElementById('monte-carlo-results');
 
     if (simOutputDiv) {
@@ -188,6 +232,9 @@ function renderResults(data) {
             : '';
         const projectionNote = projectionCount > 0
             ? `<small class="sim-projection-note">${projectionCount} player(s)' ranges reflect Sleeper's official projection for this week -- accounting for this week's specific matchup, injury status, and other factors.</small>`
+            : '';
+        const actualNote = actualCount > 0
+            ? `<small class="sim-actual-note">${actualCount} player(s) marked "Final" have already played this week -- their real score is used instead of a projection.</small>`
             : '';
         const lineupNote = lastLineupDiffersFromSleeper
             ? `<small class="sim-lineup-note">Simulating your proposed lineup from this tool -- it differs from what's currently synced to Sleeper.</small>`
@@ -209,6 +256,7 @@ function renderResults(data) {
                     <span class="bar-opp" style="width: ${team2WinProb}%"></span>
                 </div>
                 <small>${ties} ties in 10,000 simulations</small>
+                ${actualNote}
                 ${fallbackNote}
                 ${projectionNote}
                 ${lineupNote}
@@ -223,6 +271,7 @@ function renderResults(data) {
                     </div>
                 </div>
                 ${renderBenchInsights(lastBenchInsights)}
+                ${renderWaiverInsights(lastWaiverInsights)}
             </div>
         `;
     }

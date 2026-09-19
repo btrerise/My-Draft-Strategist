@@ -730,12 +730,34 @@
         </header>
         <p class="card-desc">Evaluate your lineup's realistic boom/bust ranges against your current opponent. Boom/Bust thresholds are position-specific -- see the User Guide for the exact numbers.</p>
         
-        <button id="run-sim-btn" class="btn btn-blue" onclick="runMatchupSim()">
+        <div class="settings-subsection">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <span class="toggle-title">
+                        Waiver Insights
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">When on, also compares your weakest eligible starter at each position against the best available free agent there -- the same idea as the Lineup Insights bench comparison, pointed at waivers instead of your bench.</span>
+                        </div>
+                    </span>
+                </div>
+                <input type="checkbox" id="waiverInsightsToggle" class="toggle-switch" onchange="updateSimSetting('waiverInsights', this.checked)" aria-label="Toggle Waiver Insights">
+            </div>
+        </div>
+
+        <button id="run-sim-btn" class="btn btn-blue mt-4" onclick="runMatchupSim()">
             Run Matchup Simulations
         </button>
         
         <!-- The results will render inside this div -->
         <div id="monte-carlo-results" class="mt-4" style="display: none;"></div>
+
+        <div class="settings-subsection mt-4">
+            <label for="simPlayerSearch">Look Up a Specific Player</label>
+            <p class="text-helper mb-2">Search any NFL player to see their standalone boom/bust range for this week -- handy for checking out a "sleeper" someone recommended before you add them.</p>
+            <input type="text" id="simPlayerSearch" class="form-input" placeholder="Search a player name..." autocomplete="off" aria-label="Search for a player to simulate">
+            <div id="simPlayerLookupResult" class="mt-3" style="display: none;"></div>
+        </div>
     </section>
 
     <!-- GLOBAL INJURY AUDITOR -->
