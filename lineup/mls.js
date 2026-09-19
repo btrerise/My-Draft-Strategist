@@ -224,12 +224,16 @@ import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } fro
     // like the Sleeper endpoints elsewhere in this app, it could change shape or start
     // rate-limiting without notice, which is exactly why every consumer treats a missing team
     // entry as "unknown" instead of assuming success.
+    // Returns the underlying fetch promise (rather than truly firing-and-forgetting) so a
+    // caller that specifically needs kickoff data to be current -- like runMatchupSim's
+    // actual-score check below -- can await it; existing fire-and-forget callers are
+    // unaffected since they simply don't await the return value.
     function refreshGameTimes() {
         const week = State.currentNflWeek;
-        if (week == null) return;
-        if (State.gameTimesFetchedForWeek === week && Object.keys(State.gameTimesByTeam).length > 0) return;
+        if (week == null) return Promise.resolve();
+        if (State.gameTimesFetchedForWeek === week && Object.keys(State.gameTimesByTeam).length > 0) return Promise.resolve();
 
-        fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
+        return fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
             .then(res => res.ok ? res.json() : null)
             .then(data => {
                 if (!data || !Array.isArray(data.events)) return;
@@ -5034,6 +5038,17 @@ window.runMatchupSim = async function() {
             return;
         }
 
+        // Needed for the actual-score check below (hasKickedOff) to be trustworthy for THIS
+        // specific week -- State.currentNflWeek could still be null (first load) or stale
+        // (background refresh hasn't caught up) at the moment this runs, and hasKickedOff
+        // silently returns false for a team it has no data for, which would just make every
+        // player fall back to their projection rather than error -- safe, but defeats the
+        // point of checking at all. Syncing here and awaiting the fetch (see refreshGameTimes'
+        // own comment on why it's awaitable) means this Run always uses kickoff data for the
+        // actual week it's simulating, not whatever the last background refresh happened to be.
+        State.currentNflWeek = currentWeek;
+        await refreshGameTimes();
+
         const matchups = await getSleeperMatchups(league.leagueId, currentWeek);
         const myEntry = matchups.find(m => m.roster_id === league.rosterId);
         if (!myEntry || !myEntry.matchup_id) {
@@ -5102,26 +5117,28 @@ window.runMatchupSim = async function() {
             // also catch a 2nd-year player coming back from an injury-lost season.
             //
             // actualScore: this week's real, already-recorded score, once this player's game
-            // has actually started producing stats -- most relevant for Thursday Night, but
-            // just as real for the Sunday early slate once it's wrapped up, or checking win
-            // odds ahead of Sunday/Monday night with the early games already final. Pulled
-            // from this roster's own players_points on the matchup entry passed in (see
-            // getSleeperMatchups' own comment).
+            // has actually started -- most relevant for Thursday Night, but just as real for
+            // the Sunday early slate once it's wrapped up, or checking win odds ahead of
+            // Sunday/Monday night with the early games already final.
             //
-            // Sleeper pre-populates players_points with 0 for every starter on the roster
-            // before kickoff, not just the ones who've actually played -- so presence alone
-            // isn't the right signal (confirmed the hard way: an earlier version checked only
-            // "is this a number," and every not-yet-played starter got treated as a final 0).
-            // Requiring a POSITIVE value is what actually distinguishes "hasn't played" from
-            // "played and scored something." The one thing this can't distinguish is a player
-            // who truly played and scored exactly 0 (a shut-out kicker, a zero-target WR in a
-            // blowout) -- that rare case just falls back to their normal projection/history
-            // instead of locking at 0, which is a far smaller problem than the one this fixes.
+            // Whether a game has started is checked directly via hasKickedOff (the same
+            // kickoff-time data already powering the lineup tab's kickoff badges and FLEX
+            // auto-lock), NOT by looking at whether players_points is a positive number.
+            // Points alone can't tell "hasn't played" apart from "played and scored": Sleeper
+            // pre-populates players_points with 0 for every starter before kickoff, but a
+            // real, already-played result can ALSO legitimately be 0 or negative (e.g. DJ
+            // Moore's -0.1 in a real game he exited early from injury) -- so a value-based
+            // check would either treat every pre-game player as final, or wrongly discard a
+            // genuine low/negative result depending on which way it's biased. Kickoff time is
+            // the actual fact being asked about ("has this game happened yet"); points were
+            // never the right signal for that question, just a proxy that broke on both ends.
             const actualPts = matchupEntry && matchupEntry.players_points ? matchupEntry.players_points[id] : undefined;
+            const playerTeam = p.team || '';
+            const actualScore = (typeof actualPts === 'number' && hasKickedOff({ team: playerTeam })) ? actualPts : null;
             return {
-                id, name, pos: p.position || '', team: p.team || '', weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
+                id, name, pos: p.position || '', team: playerTeam, weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
                 isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id),
-                actualScore: (typeof actualPts === 'number' && actualPts > 0) ? actualPts : null
+                actualScore
             };
         };
 

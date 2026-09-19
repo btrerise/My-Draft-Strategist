@@ -82,11 +82,25 @@ function simulateTeamScore(players, stackGroups) {
     let total = 0;
     for (let i = 0; i < players.length; i++) {
         const p = players[i];
+
+        // A locked-in player (stdDev === 0, an actual already-played result -- see
+        // getPlayerVarianceProfile's actualScore handling in statsEngine.js) is a real
+        // recorded fact, not a random draw, so it's added as-is with no floor: a real game
+        // can legitimately produce a negative fantasy score (a lost fumble, a pick-six, an
+        // injury-shortened outing with more penalty than production), and clamping that up to
+        // 0 would silently overwrite a true result with a wrong one. The 0-floor below exists
+        // specifically to keep an unbounded SIMULATED draw from wandering into an unrealistic
+        // deep negative -- it was never meant to apply to a number that already happened.
+        if (p.stdDev === 0) {
+            total += p.mean;
+            continue;
+        }
+
         const z = sharedShocks[i] !== null
             ? Math.sqrt(QB_STACK_CORRELATION) * sharedShocks[i] + Math.sqrt(1 - QB_STACK_CORRELATION) * randomNormal()
             : randomNormal();
-        // Clamp the lowest possible score to 0 so players don't end up with -15 points
-        // unless you use leagues with extreme negative penalties.
+        // Clamp the lowest possible SIMULATED score to 0 so players don't end up with -15
+        // points unless you use leagues with extreme negative penalties.
         total += Math.max(0, p.mean + p.stdDev * z);
     }
     return total;
