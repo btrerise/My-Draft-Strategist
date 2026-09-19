@@ -65,6 +65,13 @@ export async function getSleeperUserLeagues(userId, season) {
  * league/week." on a non-ok response -- matches getSleeperLeague's pattern, since a failure
  * here (e.g. week hasn't been scheduled yet) is worth surfacing rather than silently
  * treating as empty.
+ *
+ * Also carries players_points -- { player_id: pointsSoFarThisWeek }, covering every player
+ * on that roster (not just starters), populated as real stats come in during that roster's
+ * games and simply absent for a player whose game hasn't started yet. The Monte Carlo
+ * simulation (mls.js's runMatchupSim) reads this to use a player's actual in-progress or
+ * final score instead of their pre-game projection once it exists -- Sleeper's own UI keeps
+ * showing the projection after the fact purely for comparison, not as a live estimate.
  */
 export async function getSleeperMatchups(leagueId, week) {
     const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`);

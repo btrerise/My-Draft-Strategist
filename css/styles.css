@@ -1708,6 +1708,18 @@ body {
     color: #86efac !important;
 }
 
+.sim-actual-note {
+    color: #93c5fd !important;
+}
+
+.sim-final-tag {
+    color: #93c5fd;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+}
+
 .sim-team-columns {
     display: flex;
     gap: 1.25rem;

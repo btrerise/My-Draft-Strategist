@@ -166,7 +166,16 @@ export function getBoomBustRates(profile, weeklyScores, options = {}) {
         bustMultiplier = DEFAULT_BUST_MULTIPLIER, boomMultiplier = DEFAULT_BOOM_MULTIPLIER,
         currentSeasonScores = null, currentWeek = null
     } = options;
-    const { mean, stdDev, pos, usingProjection } = profile;
+    const { mean, stdDev, pos, usingProjection, isActual } = profile;
+
+    // Once a player has actually played, "how often would they bust/boom" isn't a forward
+    // projection anymore -- it already happened, once, for real. None of the four tiers below
+    // are meaningful questions to ask about a fixed, already-known result, so this skips them
+    // entirely rather than computing a number that would look like a probability but isn't one.
+    if (isActual) {
+        return { bustRate: null, boomRate: null, bustThreshold: null, boomThreshold: null, isEstimated: false, tier: 'actual' };
+    }
+
     const positionThresholds = POSITION_BOOM_BUST_THRESHOLDS[pos];
     const bustThreshold = positionThresholds ? positionThresholds.bust : mean * bustMultiplier;
     const boomThreshold = positionThresholds ? positionThresholds.boom : mean * boomMultiplier;
@@ -246,9 +255,37 @@ const FALLBACK_CV = 0.40;
  *   single projected number is a point estimate, not a distribution, so it has nothing to say
  *   about spread. Omitted/null when no projection is available, which is the common case for
  *   deep bench/waiver-tier players Sleeper doesn't bother projecting.
+ * @param {number|null} [options.actualScore] - this week's real, already-recorded fantasy
+ *   score, once this player's real game has started producing live stats (most obviously
+ *   Thursday Night, but just as relevant for the Sunday early slate once it's wrapped up, or
+ *   checking win odds ahead of Sunday/Monday night with the early games already final).
+ *   Sleeper itself keeps the pre-game projection visible even after real stats exist, purely
+ *   for comparison -- it's not still a live estimate at that point, and simulating a
+ *   distribution around it would just be wrong once a real result exists. actualScore takes
+ *   priority over BOTH projectedMean and the historical trailing average whenever it's
+ *   present, short-circuiting the rest of this function entirely.
  */
 export const getPlayerVarianceProfile = (weeklyScores, options = {}) => {
-    const { projectedMean = null } = options;
+    const { projectedMean = null, actualScore = null } = options;
+
+    // stdDev collapses to 0 here on purpose: there's no more uncertainty about a game that's
+    // already been played. That single change is enough to make every downstream consumer --
+    // the Monte Carlo worker's draws, floor/ceiling display, getProbabilityBeats' bench
+    // comparisons -- treat this player as a fixed number rather than a distribution, with no
+    // separate "locked" code path needed anywhere else in the pipeline.
+    if (typeof actualScore === 'number') {
+        return {
+            mean: Number(actualScore.toFixed(2)),
+            stdDev: 0,
+            floor: Number(actualScore.toFixed(2)),
+            ceiling: Number(actualScore.toFixed(2)),
+            gamesPlayed: weeklyScores ? weeklyScores.length : 0,
+            usedFallback: false,
+            usingProjection: false,
+            isActual: true
+        };
+    }
+
     const historicalMean = calculateMean(weeklyScores);
     const sampleStdDev = calculateStandardDeviation(weeklyScores);
     const gamesPlayed = weeklyScores ? weeklyScores.length : 0;
@@ -267,6 +304,7 @@ export const getPlayerVarianceProfile = (weeklyScores, options = {}) => {
         ceiling: Number((mean + stdDev).toFixed(2)),
         gamesPlayed,
         usedFallback,
-        usingProjection
+        usingProjection,
+        isActual: false
     };
 };

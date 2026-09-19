@@ -1890,7 +1890,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 if (hintEl) {
                     hintEl.style.display = 'block';
                     let playerList = dynamic.players.map(p => p.name).join(', ');
-                    hintEl.innerText = `${dynamic.source} top available: ${playerList} -- avg ${dynamic.rawAverage.toLocaleString()}, credited at ${Math.round(WAIVER_ADJUSTMENT_DISCOUNT * 100)}% = ${dynamic.value.toLocaleString()}.`;
+                    hintEl.innerText = `${dynamic.source} top available: ${playerList} -- avg ${dynamic.value.toLocaleString()}.`;
                 }
             } else if (hintEl) {
                 hintEl.style.display = 'block';
@@ -3367,14 +3367,12 @@ function applyMarketSettingsToUI() {
     // caller falls back to the existing flat/manual value in that case, exactly as before this
     // existed.
 
-    // How much of the top-free-agent average actually gets credited as one open roster spot's
-    // worth. Crediting the full average of the BEST remaining free agents overstates it --  a
-    // real waiver claim essentially never lands the single best player still out there, since
-    // every other team in the league gets a shot at the same short list. This scales the raw
-    // average down to a more representative fraction of it; it's one constant specifically so
-    // it's a one-line change if it still feels off once this has run against a few more leagues.
-    const WAIVER_ADJUSTMENT_DISCOUNT = 0.3;
-
+    // An earlier version of this applied a flat discount to the raw top-3 average, because
+    // that average was coming out far too high -- turned out the real cause was draft picks
+    // (see isDraftPickName above) getting counted as "available free agents," since a pick is
+    // never present in globalRosterMap and looked identical to a genuinely unrostered player.
+    // With picks properly excluded from the pool below, the raw average of the actual top
+    // free agents is the intended number on its own -- no separate discount needed on top of it.
     function getDynamicWaiverAdjustmentValue() {
         let league = getActiveLeague();
         if (!league || !league.globalRosterMap) return null;
@@ -3397,8 +3395,8 @@ function applyMarketSettingsToUI() {
 
         const buildResult = (freeAgents, source) => {
             if (freeAgents.length === 0) return null;
-            let rawAverage = Math.round(freeAgents.reduce((total, fa) => total + fa.value, 0) / freeAgents.length);
-            return { value: Math.round(rawAverage * WAIVER_ADJUSTMENT_DISCOUNT), rawAverage, source, players: freeAgents };
+            let value = Math.round(freeAgents.reduce((total, fa) => total + fa.value, 0) / freeAgents.length);
+            return { value, source, players: freeAgents };
         };
 
         if (State.rosRankings.length > 0) {
@@ -5096,15 +5094,27 @@ window.runMatchupSim = async function() {
             return typeof val === 'number' ? val : null;
         };
 
-        const toPlayerObj = (id) => {
+        const toPlayerObj = (id, matchupEntry) => {
             const p = playerMap[id] || {};
             const name = p.first_name ? `${p.first_name} ${p.last_name}` : (p.last_name || id);
             // years_exp is Sleeper's own experience counter (0 for a player's rookie season) --
             // more reliable than inferring "rookie" from a lack of game history, which would
             // also catch a 2nd-year player coming back from an injury-lost season.
+            //
+            // actualScore: this week's real, already-recorded score, once this player's game
+            // has actually started producing stats -- most relevant for Thursday Night, but
+            // just as real for the Sunday early slate once it's wrapped up, or checking win
+            // odds ahead of Sunday/Monday night with the early games already final. Pulled
+            // from this roster's own players_points on the matchup entry passed in (see
+            // getSleeperMatchups' own comment) -- absent (not just 0) means that player's game
+            // hasn't produced a stat yet, so it's read as "no actual score" rather than "scored
+            // zero." getPlayerVarianceProfile (statsEngine.js) gives this priority over
+            // projectedMean whenever it's present.
+            const actualPts = matchupEntry && matchupEntry.players_points ? matchupEntry.players_points[id] : undefined;
             return {
-                id, name, pos: p.position || '', weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
-                isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id)
+                id, name, pos: p.position || '', team: p.team || '', weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
+                isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id),
+                actualScore: typeof actualPts === 'number' ? actualPts : null
             };
         };
 
@@ -5113,14 +5123,14 @@ window.runMatchupSim = async function() {
         // phantom mean-0 score to their team's total -- see getPlayerWeeklyScoreHistory's
         // contract for why a missing week isn't the same as a 0.
         let excludedCount = 0;
-        const toPlayerObjs = (ids) => ids.reduce((arr, id) => {
-            const playerObj = toPlayerObj(id);
+        const toPlayerObjs = (ids, matchupEntry) => ids.reduce((arr, id) => {
+            const playerObj = toPlayerObj(id, matchupEntry);
             if (playerObj.weeklyScores.length > 0) arr.push(playerObj); else excludedCount++;
             return arr;
         }, []);
 
-        const team1Players = toPlayerObjs(myStarters);
-        const team2Players = toPlayerObjs(oppStarters);
+        const team1Players = toPlayerObjs(myStarters, myEntry);
+        const team2Players = toPlayerObjs(oppStarters, oppEntry);
 
         if (excludedCount > 0 && typeof window.showToast === 'function') {
             window.showToast(`${excludedCount} player(s) excluded from the simulation -- not enough game history yet.`);
@@ -5138,12 +5148,12 @@ window.runMatchupSim = async function() {
                 .filter(s => s.player)
                 .map(s => ({ id: s.player.id, slotType: s.slot.replace(/[0-9]/g, '') }));
 
-            const benchObjs = toPlayerObjs(benchIds);
+            const benchObjs = toPlayerObjs(benchIds, myEntry);
             const team1ProfilesById = {};
-            team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean }); });
+            team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean, actualScore: p.actualScore }); });
 
             benchObjs.forEach(benchPlayer => {
-                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores, { projectedMean: benchPlayer.projectedMean });
+                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores, { projectedMean: benchPlayer.projectedMean, actualScore: benchPlayer.actualScore });
                 const eligibleStarterIds = starterSlotTypes
                     .filter(s => slotAcceptsPos(s.slotType, benchPlayer.pos))
                     .map(s => s.id)
