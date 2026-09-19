@@ -1244,6 +1244,49 @@ body {
     font-weight: 700;
 }
 
+.lineup-injury-warning {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.sim-lookup-card {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--space-4);
+}
+.sim-lookup-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+.sim-lookup-range {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+.sim-lookup-injury-flag {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #93c5fd;
+    margin-bottom: var(--space-2);
+}
+.sim-lookup-injury-flag.is-excluded {
+    color: #fca5a5;
+}
+
 /* Collapsible variant of .lineup-lock-countdown above, used when several starters share the
    exact same earliest kickoff moment (see getNextLockCountdownHTML) -- same pill look, just
    stacked (header row + expandable name list) instead of a single line. Collapsed by default

@@ -77,6 +77,7 @@ import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } fro
         marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
         marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
         tradeSettings: JSON.parse(localStorage.getItem('mls_trade_settings')) || { waiverAdjustment: true, waiverAdjustmentValue: 500 },
+        simSettings: JSON.parse(localStorage.getItem('mls_sim_settings')) || { waiverInsights: false },
         // --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
         // flexKickoffOptimization gates optimizeFlexKickoffOrder() (see below): when on, the
         // optimizer reassigns which flex-eligible starters sit in strict RB/WR/TE slots vs the
@@ -279,6 +280,51 @@ import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } fro
         const onBye = State.currentNflWeek != null && TEAM_BYES[p.team] === State.currentNflWeek;
         const hardOut = p.inj && HARD_OUT_STATUSES.includes(p.inj);
         return onBye || hardOut;
+    }
+
+    // Canonical short injury-status code for a raw Sleeper player object -- 'Q', 'D', 'OUT',
+    // 'IR', 'SUS', 'PUP', 'NFI', or null if healthy/no concern. Mirrors the same
+    // classification already used for the roster-details injury badge (see rosterDetails in
+    // processSleeperData) so "what counts as Doubtful/Out/IR" can't silently drift between
+    // the two -- kept as its own function rather than merged into that inline block since that
+    // block's job is building a display badge, not answering a yes/no eligibility question.
+    function getShortInjuryStatus(p) {
+        if (!p) return null;
+        let inj = null;
+        if (p.injury_status && p.injury_status !== "None" && p.injury_status !== "Active") inj = p.injury_status;
+        else if (p.status && ['Suspended', 'PUP', 'IR', 'NFI', 'Did Not Report'].includes(p.status)) inj = p.status;
+        if (!inj) return null;
+
+        const iUpper = inj.toUpperCase();
+        if (iUpper.includes('QUESTIONABLE')) return 'Q';
+        if (iUpper.includes('DOUBTFUL')) return 'D';
+        if (iUpper.includes('OUT')) return 'OUT';
+        if (iUpper.includes('SUSPENDED')) return 'SUS';
+        if (iUpper.includes('IR') || iUpper.includes('INJURED RESERVE')) return 'IR';
+        if (iUpper.includes('PUP')) return 'PUP';
+        if (iUpper.includes('NFI')) return 'NFI';
+        if (iUpper.includes('DID NOT REPORT') || iUpper === 'DNR') return 'DNR';
+        return inj;
+    }
+
+    // Statuses that mean a player has a real, non-trivial chance of not actually taking the
+    // field this week -- specifically the ones the Monte Carlo simulator and its Lineup
+    // Insights bench comparisons should never simulate as if they're playing normally.
+    // Deliberately a SEPARATE, stricter list from HARD_OUT_STATUSES above: that one exists for
+    // the lineup optimizer's "should I auto-start this person" decision and intentionally
+    // leaves Doubtful in play there (still a game-time call, worth trusting rankings over) --
+    // but simulating a distribution around a normal week's variance isn't a start/sit call,
+    // it's an implicit claim that this player is taking the field at all, which Doubtful
+    // specifically hasn't been decided yet, and Out/IR/PUP/NFI/Suspended/DNR already answer as
+    // no. NFI is included alongside the PUP/Suspended/DNR grouping Benton asked for -- it's the
+    // same "not injury-related but definitely not playing" category HARD_OUT_STATUSES already
+    // treats identically to PUP, so leaving it out here looked more like an oversight than a
+    // deliberate choice; flag if that's not what's wanted.
+    const SIM_EXCLUDE_STATUSES = ['D', 'OUT', 'IR', 'PUP', 'SUS', 'NFI', 'DNR'];
+
+    function isExcludedFromSimulation(p) {
+        const shortInj = getShortInjuryStatus(p);
+        return shortInj !== null && SIM_EXCLUDE_STATUSES.includes(shortInj);
     }
 
     // --- UTILITY HELPERS ---
@@ -615,6 +661,31 @@ function getPlayerSearchIndex() {
     return _playerSearchIndexPromise;
 }
 
+// Reverse index (normalized clean name -> Sleeper player id), built lazily off the same full
+// player map getPlayerSearchIndex draws from -- but keyed the other direction, since anywhere
+// this app only has a player by NAME (a rankings file, market data, the autocomplete result
+// above) needs their Sleeper id to pull real weekly score history from. Waiver Insights'
+// free-agent candidates and the standalone player-lookup search both go through this.
+let _cleanNameToIdPromise = null;
+function getCleanNameToIdIndex() {
+    if (_cleanNameToIdPromise) return _cleanNameToIdPromise;
+    _cleanNameToIdPromise = getSleeperPlayerMap().then(map => {
+        const index = {};
+        Object.entries(map).forEach(([id, p]) => {
+            if (!p.first_name) return;
+            const clean = normalizeName(`${p.first_name} ${p.last_name}`);
+            // First match wins on a rare exact-name collision -- not worth a disambiguation
+            // UI for how infrequently two active, fantasy-relevant players share one name.
+            if (!index[clean]) index[clean] = id;
+        });
+        return index;
+    }).catch(err => {
+        _cleanNameToIdPromise = null;
+        throw err;
+    });
+    return _cleanNameToIdPromise;
+}
+
 // Autocomplete Dropdown Logic
 function attachPlayerAutocomplete(inputEl, onSelect) {
     if (!inputEl || inputEl.dataset.autocompleteAttached) return;
@@ -753,6 +824,9 @@ function attachScoutSuggestionHandler(outputElId) {
         if (posEl) posEl.value = p.pos;
         if (teamEl) teamEl.value = p.team;
         });
+        attachPlayerAutocomplete(document.getElementById('simPlayerSearch'), (p) => {
+            window.lookupSimPlayer(p);
+        });
         attachScoutSuggestionHandler('waiverOutput');
         attachScoutSuggestionHandler('tradeOutput');
         populateEarlyGameDropdown();
@@ -763,6 +837,7 @@ function attachScoutSuggestionHandler(outputElId) {
         applyMarketSettingsToUI();
         applyTradeSettingsToUI();
         applyLineupSettingsToUI();
+        applySimSettingsToUI();
         updatePulsePrompts();
         refreshCurrentNflWeek();
         if (typeof renderSyncLogs === 'function') renderSyncLogs();
@@ -946,6 +1021,35 @@ function attachScoutSuggestionHandler(outputElId) {
                 ${chevronSvg}
             </div>
             <div class="lock-countdown-detail">${namesHTML}</div>
+        </div>`;
+    }
+
+    // Flags any CURRENT STARTER carrying one of the statuses SIM_EXCLUDE_STATUSES treats as a
+    // real chance of not taking the field (Doubtful, Out, IR, PUP, Suspended, NFI, Did Not
+    // Report). The Monte Carlo simulator already quietly excludes these players from its own
+    // math, but "quietly" is the problem for someone who hasn't run a simulation recently --
+    // a starter slot burned on someone who isn't playing is a mistake worth surfacing directly
+    // on the Lineup tab itself, not just implied by a simulator result elsewhere. Recommends a
+    // swap rather than picking one FOR the user -- that's exactly what the swap UI immediately
+    // below this banner is for.
+    function getLineupInjuryWarningHTML(starters) {
+        const flagged = starters.filter(s => s.player && SIM_EXCLUDE_STATUSES.includes(s.player.inj));
+        if (flagged.length === 0) return "";
+
+        const warnSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+
+        if (flagged.length === 1) {
+            const p = flagged[0].player;
+            return `<div class="lineup-injury-warning">
+                ${warnSvg}
+                <span><strong>${escapeHtml(p.name)}</strong> is <strong>${escapeHtml(p.inj)}</strong> and currently in your starting lineup -- consider swapping in a bench player.</span>
+            </div>`;
+        }
+
+        const namesHTML = flagged.map(s => `${escapeHtml(s.player.name)} (${escapeHtml(s.player.inj)})`).join(', ');
+        return `<div class="lineup-injury-warning">
+            ${warnSvg}
+            <span><strong>${flagged.length} starters</strong> are Doubtful, Out, IR, or otherwise unlikely to play: ${namesHTML} -- consider swapping them out.</span>
         </div>`;
     }
 
@@ -1495,30 +1599,13 @@ function attachScoutSuggestionHandler(outputElId) {
                 myTeam.players.forEach(id => {
                     let p = playerMap[id];
                     if (p) {
-                        let inj = null;
-                        if (p.injury_status && p.injury_status !== "None" && p.injury_status !== "Active") inj = p.injury_status;
-                        else if (p.status && ['Suspended', 'PUP', 'IR', 'NFI'].includes(p.status)) inj = p.status;
-                        
-                        let shortInj = null;
-                        if (inj) {
-                            let iUpper = inj.toUpperCase();
-                            if (iUpper.includes('QUESTIONABLE')) shortInj = 'Q';
-                            else if (iUpper.includes('DOUBTFUL')) shortInj = 'D';
-                            else if (iUpper.includes('OUT')) shortInj = 'OUT';
-                            else if (iUpper.includes('SUSPENDED')) shortInj = 'SUS';
-                            else if (iUpper.includes('IR') || iUpper.includes('INJURED RESERVE')) shortInj = 'IR';
-                            else if (iUpper.includes('PUP')) shortInj = 'PUP';
-                            else if (iUpper.includes('NFI')) shortInj = 'NFI';
-                            else shortInj = inj;
-                        }
-
                         rosterDetails.push({
                             id: id,
                             name: `${p.first_name} ${p.last_name}`,
                             cleanName: normalizeName(`${p.first_name} ${p.last_name}`),
                             pos: p.position || "FLEX",
                             team: p.team || "FA",
-                            inj: shortInj
+                            inj: getShortInjuryStatus(p)
                         });
                     }
                 });
@@ -3226,6 +3313,101 @@ window.updateLineupSetting = function(key, value) {
     }
 };
 
+// Just a persisted toggle -- unlike lineup/trade settings, nothing here needs to trigger a
+// re-render on its own; it's only read the next time runMatchupSim actually runs.
+window.updateSimSetting = function(key, value) {
+    State.simSettings[key] = value;
+    localStorage.setItem('mls_sim_settings', JSON.stringify(State.simSettings));
+};
+
+function applySimSettingsToUI() {
+    const toggleEl = document.getElementById('waiverInsightsToggle');
+    if (toggleEl) toggleEl.checked = !!State.simSettings.waiverInsights;
+}
+
+// Standalone "look up any player" search -- separate from the team-vs-team matchup
+// simulation above it, by design (Benton's own call: simpler to reason about, and this is
+// meant for evaluating someone you DON'T own yet -- "a podcaster mentioned this guy as a
+// sleeper" -- not for slotting them into your current lineup). Reuses the app's one existing
+// player autocomplete (attachPlayerAutocomplete) so this didn't need its own search UI, and
+// the same getPlayerVarianceProfile everything else in the simulator is built on, just fed a
+// single player's own history instead of a whole roster's.
+//
+// Scope note: unlike runMatchupSim, this does NOT check for an already-played actual score --
+// that would need a live per-week stat lookup independent of any specific roster's matchup
+// entry (Sleeper's matchup data is scoped per fantasy roster, and this player isn't
+// necessarily on one), which isn't wired up anywhere in this app yet. For "should I add this
+// person" -- the actual use case here -- a projection/history-based range is the right level
+// of fidelity anyway; a live in-game update matters far less than it does for "will I win
+// this specific matchup right now."
+window.lookupSimPlayer = async function(p) {
+    const resultEl = document.getElementById('simPlayerLookupResult');
+    if (!resultEl) return;
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `<p class="text-helper">Looking up ${escapeHtml(p.name)}...</p>`;
+
+    try {
+        const nflState = await getNflState();
+        if (!nflState) {
+            resultEl.innerHTML = `<p class="text-helper">Couldn't reach Sleeper right now -- try again in a moment.</p>`;
+            return;
+        }
+        const currentWeek = nflState.week;
+        const season = nflState.league_season || nflState.season;
+
+        const nameToId = await getCleanNameToIdIndex();
+        const id = nameToId[normalizeName(p.name)];
+        if (!id) {
+            resultEl.innerHTML = `<p class="text-helper">Couldn't find a Sleeper record for ${escapeHtml(p.name)}.</p>`;
+            return;
+        }
+
+        const playerMap = await getSleeperPlayerMap();
+        const rawPlayer = playerMap[id] || {};
+
+        // This lookup isn't tied to any one league (that's the point -- checking out someone
+        // you don't own yet), so there's no single "the" league scoring format to read.
+        // Full PPR is the most common default across mainstream platforms and matches this
+        // app's own fallback elsewhere.
+        const scoringKey = 'pts_ppr';
+
+        const { blended } = await getPlayerWeeklyScoreHistory([id], season, currentWeek, scoringKey, { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES });
+        const weeklyScores = blended[id] || [];
+
+        if (weeklyScores.length === 0) {
+            resultEl.innerHTML = `<p class="text-helper">${escapeHtml(p.name)} doesn't have enough game history yet to estimate a range (rookie, recent signing, or long-term injury).</p>`;
+            return;
+        }
+
+        const projections = await getWeeklyProjections(season, currentWeek);
+        const proj = projections && projections[id];
+        const projectedMean = (proj && typeof proj[scoringKey] === 'number') ? proj[scoringKey] : null;
+
+        const profile = getPlayerVarianceProfile(weeklyScores, { projectedMean });
+        const shortInj = getShortInjuryStatus(rawPlayer);
+        const isExcluded = shortInj !== null && SIM_EXCLUDE_STATUSES.includes(shortInj);
+
+        const injuryHTML = shortInj
+            ? `<div class="sim-lookup-injury-flag${isExcluded ? ' is-excluded' : ''}">Status: ${escapeHtml(shortInj)}${isExcluded ? ' -- unlikely to play this week' : ''}</div>`
+            : '';
+
+        resultEl.innerHTML = `
+            <div class="sim-lookup-card">
+                <div class="sim-lookup-header">
+                    ${rawPlayer.position ? `<span class="pos-badge ${escapeHtml(rawPlayer.position)}">${escapeHtml(rawPlayer.position)}</span>` : ''}
+                    <strong>${escapeHtml(p.name)}</strong>
+                    <span class="text-helper">${escapeHtml(rawPlayer.team || 'FA')}</span>
+                </div>
+                ${injuryHTML}
+                <div class="sim-lookup-range">${profile.usedFallback ? '~' : ''}${profile.floor}&ndash;${profile.ceiling} pts <span class="text-helper">(${profile.mean} ${projectedMean !== null ? 'proj' : 'avg'})</span></div>
+                <p class="text-helper mt-1">Standalone estimate -- not run against any specific matchup or lineup.</p>
+            </div>`;
+    } catch (err) {
+        console.error(err);
+        resultEl.innerHTML = `<p class="text-helper">Something went wrong looking that player up.</p>`;
+    }
+};
+
 function applyLineupSettingsToUI() {
     const toggleEl = document.getElementById('flexKickoffOptimizationToggle');
     if (toggleEl) toggleEl.checked = !!State.lineupSettings.flexKickoffOptimization;
@@ -3412,6 +3594,51 @@ function applyMarketSettingsToUI() {
             if (result) return result;
         }
         return null;
+    }
+
+    // Same free-agent identification as getDynamicWaiverAdjustmentValue above (custom
+    // rankings first, market consensus fallback, draft picks and rostered players excluded)
+    // but grouped BY POSITION instead of taken as one flat top-N -- Waiver Insights (see
+    // runMatchupSim) needs a real candidate at whichever position a starter might actually be
+    // replaced at, not just whichever position happens to dominate the very top of the
+    // rankings overall. perPositionLimit candidates per position, ROS-ranked positions never
+    // touch market data at all; a position ROS has literally nothing left to offer at falls
+    // back to market consensus for that position only (mirroring the same per-tier fallback,
+    // just applied position-by-position instead of to the whole list at once).
+    function getTopWaiverCandidatesByPosition(rosterMap, perPositionLimit) {
+        // Rankings files carry a name and a rank, not a position -- window.sleeperPosByName
+        // (populated during Sleeper sync) is the same position lookup the Waiver Wire
+        // Assistant already relies on for this exact reason; market data ships its own pos
+        // field as a fallback for a player Sleeper's sync hasn't covered.
+        const getPos = (cleanName) => {
+            if (window.sleeperPosByName && window.sleeperPosByName[cleanName]) return window.sleeperPosByName[cleanName];
+            const mPlayer = State.marketRankings.find(m => m.cleanName === cleanName);
+            return (mPlayer && mPlayer.pos) ? mPlayer.pos : null;
+        };
+
+        const groupByPosition = (rankings, rankField) => {
+            const byPosition = {};
+            rankings
+                .filter(r => !rosterMap[r.cleanName] && r[rankField] && r[rankField] < 999 && !isDraftPickName(r.name))
+                .forEach(r => {
+                    const pos = getPos(r.cleanName);
+                    if (!pos) return; // can't even assign a position -- skip rather than guess
+                    if (!byPosition[pos]) byPosition[pos] = [];
+                    byPosition[pos].push({ name: r.name, cleanName: r.cleanName, pos, rank: r[rankField] });
+                });
+            Object.values(byPosition).forEach(list => list.sort((a, b) => a.rank - b.rank));
+            return byPosition;
+        };
+
+        const rosByPos = State.rosRankings.length > 0 ? groupByPosition(State.rosRankings, 'rank') : {};
+        const marketByPos = State.marketRankings.length > 0 ? groupByPosition(State.marketRankings, 'marketVal') : {};
+
+        const results = [];
+        new Set([...Object.keys(rosByPos), ...Object.keys(marketByPos)]).forEach(pos => {
+            const list = (rosByPos[pos] && rosByPos[pos].length > 0) ? rosByPos[pos] : (marketByPos[pos] || []);
+            results.push(...list.slice(0, perPositionLimit));
+        });
+        return results;
     }
 
     // Ranks each market player within their own position group (QB1, QB2, RB1, RB2, ...)
@@ -4453,6 +4680,7 @@ window.syncAllLeagues = async function(btn) {
         let html = "";
 
         html += getNextLockCountdownHTML(starters);
+        html += getLineupInjuryWarningHTML(starters);
 
         if (validSleeperStarters.length > 0) {
             let sleeperSet = new Set(validSleeperStarters);
@@ -5032,6 +5260,7 @@ window.runMatchupSim = async function() {
         }
         const currentWeek = nflState.week;
         const season = nflState.league_season || nflState.season;
+        const rosterMap = league.globalRosterMap || {}; // needed by Waiver Insights below, to exclude anyone already rostered in this league
 
         if (currentWeek < 2) {
             if (typeof window.showToast === 'function') window.showToast("Not enough completed weeks yet to estimate variance.", { isError: true });
@@ -5145,9 +5374,19 @@ window.runMatchupSim = async function() {
         // Players with zero completed games (rookies, recent signings, bye-adjacent
         // call-ups with no prior season either) get excluded rather than contributing a
         // phantom mean-0 score to their team's total -- see getPlayerWeeklyScoreHistory's
-        // contract for why a missing week isn't the same as a 0.
+        // contract for why a missing week isn't the same as a 0. Doubtful/Out/IR players are
+        // excluded the same way and for a related reason: every profile this pipeline builds
+        // implicitly assumes its subject is taking the field, and that's exactly what those
+        // three statuses mean isn't a safe assumption right now (see isExcludedFromSimulation's
+        // own comment on why this list is stricter than the lineup optimizer's). Applied here,
+        // in the one place all three roster arrays (team1, team2, and the bench pool used for
+        // Lineup Insights) are built, rather than only on team1/team2, so a Doubtful/Out/IR
+        // bench player can't be suggested as a "swap in" pick either.
         let excludedCount = 0;
+        let injuryExcludedCount = 0;
         const toPlayerObjs = (ids, matchupEntry) => ids.reduce((arr, id) => {
+            const rawPlayer = playerMap[id] || {};
+            if (isExcludedFromSimulation(rawPlayer)) { injuryExcludedCount++; return arr; }
             const playerObj = toPlayerObj(id, matchupEntry);
             if (playerObj.weeklyScores.length > 0) arr.push(playerObj); else excludedCount++;
             return arr;
@@ -5156,8 +5395,13 @@ window.runMatchupSim = async function() {
         const team1Players = toPlayerObjs(myStarters, myEntry);
         const team2Players = toPlayerObjs(oppStarters, oppEntry);
 
-        if (excludedCount > 0 && typeof window.showToast === 'function') {
-            window.showToast(`${excludedCount} player(s) excluded from the simulation -- not enough game history yet.`);
+        if (typeof window.showToast === 'function') {
+            const exclusionNotes = [];
+            if (excludedCount > 0) exclusionNotes.push(`${excludedCount} without enough game history yet`);
+            if (injuryExcludedCount > 0) exclusionNotes.push(`${injuryExcludedCount} listed as Doubtful, Out, or IR`);
+            if (exclusionNotes.length > 0) {
+                window.showToast(`${exclusionNotes.join(' and ')} excluded from the simulation.`);
+            }
         }
 
         // "Bench Player Y outscored Starting Player Z X% of the time" -- for each bench
@@ -5165,41 +5409,56 @@ window.runMatchupSim = async function() {
         // to replace (same eligibility the swap UI itself enforces, see slotAcceptsPos's own
         // comment), then compare against the weakest of those -- the one an actual lineup
         // swap would target -- rather than every eligible starter, which would just restate
-        // the obvious for anyone but the weakest link.
+        // the obvious for anyone but the weakest link. starterSlotTypes/team1ProfilesById are
+        // computed once here (rather than nested inside the bench-only block below) since
+        // Waiver Insights, right after, needs the exact same "which starter would this
+        // replace" eligibility and profile lookup, just sourced from a different candidate
+        // pool.
+        const starterSlotTypes = localStarters
+            .filter(s => s.player)
+            .map(s => ({ id: s.player.id, slotType: s.slot.replace(/[0-9]/g, '') }));
+
+        const team1ProfilesById = {};
+        team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean, actualScore: p.actualScore }); });
+
+        // Given a candidate's own variance profile and position, finds the weakest eligible
+        // starter they could replace and returns the win probability against that starter --
+        // shared by both Lineup Insights (bench) and Waiver Insights (free agents) below,
+        // since the eligibility rule and "compare against the weakest link" logic is identical
+        // either way; only where the candidate came from differs.
+        const compareAgainstWeakestStarter = (candidateProfile, candidatePos) => {
+            const eligibleStarterIds = starterSlotTypes
+                .filter(s => slotAcceptsPos(s.slotType, candidatePos))
+                .map(s => s.id)
+                .filter(id => team1ProfilesById[id]); // must have a valid profile too
+            if (eligibleStarterIds.length === 0) return null;
+
+            const weakestStarterId = eligibleStarterIds.reduce((weakestId, id) =>
+                team1ProfilesById[id].mean < team1ProfilesById[weakestId].mean ? id : weakestId
+            );
+            const weakestStarter = team1Players.find(p => p.id === weakestStarterId);
+            const winPct = getProbabilityBeats(candidateProfile, team1ProfilesById[weakestStarterId]);
+            return { weakestStarter, winPct };
+        };
+
         const benchInsights = [];
         if (benchPool.length > 0) {
-            const starterSlotTypes = localStarters
-                .filter(s => s.player)
-                .map(s => ({ id: s.player.id, slotType: s.slot.replace(/[0-9]/g, '') }));
-
             const benchObjs = toPlayerObjs(benchIds, myEntry);
-            const team1ProfilesById = {};
-            team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean, actualScore: p.actualScore }); });
 
             benchObjs.forEach(benchPlayer => {
                 const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores, { projectedMean: benchPlayer.projectedMean, actualScore: benchPlayer.actualScore });
-                const eligibleStarterIds = starterSlotTypes
-                    .filter(s => slotAcceptsPos(s.slotType, benchPlayer.pos))
-                    .map(s => s.id)
-                    .filter(id => team1ProfilesById[id]); // must have a valid profile too
-
-                if (eligibleStarterIds.length === 0) return;
-
-                const weakestStarterId = eligibleStarterIds.reduce((weakestId, id) =>
-                    team1ProfilesById[id].mean < team1ProfilesById[weakestId].mean ? id : weakestId
-                );
-                const weakestStarter = team1Players.find(p => p.id === weakestStarterId);
-                const benchWinPct = getProbabilityBeats(benchProfile, team1ProfilesById[weakestStarterId]);
+                const result = compareAgainstWeakestStarter(benchProfile, benchPlayer.pos);
+                if (!result) return;
 
                 // Only worth flagging if the bench player is actually favored -- anything at
                 // or below 50% just confirms the current starter is the right call, which
                 // isn't an actionable "you should consider this swap" insight.
-                if (benchWinPct <= 50) return;
+                if (result.winPct <= 50) return;
 
                 benchInsights.push({
                     benchName: benchPlayer.name, benchPos: benchPlayer.pos, benchIsRookie: benchPlayer.isRookie,
-                    starterName: weakestStarter.name, starterPos: weakestStarter.pos, starterIsRookie: weakestStarter.isRookie,
-                    benchWinPct
+                    starterName: result.weakestStarter.name, starterPos: result.weakestStarter.pos, starterIsRookie: result.weakestStarter.isRookie,
+                    benchWinPct: result.winPct
                 });
             });
 
@@ -5207,7 +5466,57 @@ window.runMatchupSim = async function() {
             benchInsights.splice(5); // top 5 by margin -- the rest would just be noise
         }
 
-        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, currentWeek });
+        // --- WAIVER INSIGHTS ---
+        // Same comparison as Lineup Insights above, pointed at available free agents instead
+        // of your bench. Off by default (see the toggle in the Matchup Simulator card) since
+        // it costs an extra round trip this function wouldn't otherwise make: free-agent
+        // candidates come from a rankings file (a name and a rank -- no Sleeper id, no weekly
+        // score history), so getting them into the same win-probability math as everyone else
+        // here means resolving each one's Sleeper id and fetching their history separately,
+        // rather than reusing the one batched history fetch already done above for your
+        // roster and your opponent's.
+        const waiverInsights = [];
+        if (State.simSettings.waiverInsights) {
+            try {
+                const nameToIdIndex = await getCleanNameToIdIndex();
+                const candidates = getTopWaiverCandidatesByPosition(rosterMap, 3)
+                    .map(c => ({ ...c, id: nameToIdIndex[c.cleanName] }))
+                    .filter(c => c.id && !isExcludedFromSimulation(playerMap[c.id]));
+
+                if (candidates.length > 0) {
+                    const candidateIds = candidates.map(c => c.id);
+                    const { blended: waiverHistory } = await getPlayerWeeklyScoreHistory(
+                        candidateIds, season, currentWeek, scoringKey, { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES }
+                    );
+
+                    candidates.forEach(c => {
+                        const weeklyScores = waiverHistory[c.id] || [];
+                        if (weeklyScores.length === 0) return; // same "not enough history" bar as everyone else
+
+                        const rawPlayer = playerMap[c.id] || {};
+                        const profile = getPlayerVarianceProfile(weeklyScores, { projectedMean: getProjectedMean(c.id) });
+                        const result = compareAgainstWeakestStarter(profile, rawPlayer.position || c.pos);
+                        if (!result || result.winPct <= 50) return;
+
+                        waiverInsights.push({
+                            faName: c.name, faPos: rawPlayer.position || c.pos,
+                            starterName: result.weakestStarter.name, starterPos: result.weakestStarter.pos, starterIsRookie: result.weakestStarter.isRookie,
+                            faWinPct: result.winPct
+                        });
+                    });
+
+                    waiverInsights.sort((a, b) => b.faWinPct - a.faWinPct);
+                    waiverInsights.splice(5);
+                }
+            } catch (err) {
+                // Waiver Insights is a bonus layer on top of the main simulation -- a failure
+                // here (a rankings/market fetch hiccup, an unresolvable name) shouldn't take
+                // down the matchup simulation itself, just quietly skip this part.
+                console.error('Waiver Insights failed:', err);
+            }
+        }
+
+        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, waiverInsights, currentWeek });
     } catch (err) {
         console.error(err);
         if (typeof window.showToast === 'function') window.showToast("Failed to run the matchup simulation. Check console for details.", { isError: true });

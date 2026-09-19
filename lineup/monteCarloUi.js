@@ -11,6 +11,7 @@ let lastTeam1Profiles = [];
 let lastTeam2Profiles = [];
 let lastLineupDiffersFromSleeper = false;
 let lastBenchInsights = [];
+let lastWaiverInsights = [];
 
 // --- PROGRESS ANIMATION ---
 // 10,000 iterations of simple arithmetic finishes in a handful of milliseconds -- correct
@@ -68,11 +69,14 @@ function startProgressAnimation(simOutputDiv) {
  * @param {Array<{benchName, benchPos, starterName, starterPos, benchWinPct}>} [options.benchInsights]
  *   - precomputed bench-vs-starter comparisons (slot-eligibility already applied by the
  *   caller); this module only renders them, it doesn't compute or validate the matchups.
+ * @param {Array<{faName, faPos, starterName, starterPos, faWinPct}>} [options.waiverInsights]
+ *   - same idea as benchInsights, sourced from available free agents instead of the bench;
+ *   only populated when the Waiver Insights toggle is on (see mls.js's runMatchupSim).
  * @param {number} [options.currentWeek] - the current NFL week, passed straight through to
  *   getBoomBustRates' tier 2 gate (see statsEngine.js).
  */
 export const runMatchupSimulation = (team1Players, team2Players, options = {}) => {
-    const { lineupDiffersFromSleeper = false, benchInsights = [], currentWeek = null } = options;
+    const { lineupDiffersFromSleeper = false, benchInsights = [], waiverInsights = [], currentWeek = null } = options;
     const simOutputDiv = document.getElementById('monte-carlo-results');
 
     if (team1Players.length === 0 || team2Players.length === 0) {
@@ -110,6 +114,7 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     lastTeam2Profiles = team2Profiles;
     lastLineupDiffersFromSleeper = lineupDiffersFromSleeper;
     lastBenchInsights = benchInsights;
+    lastWaiverInsights = waiverInsights;
 
     // Early in the season (or for a player who just changed teams, returned from injury,
     // etc.) some players won't have enough games for a directly-measured standard deviation --
@@ -193,6 +198,27 @@ function renderBenchInsights(benchInsights) {
         </div>`;
 }
 
+// Free-agent comparisons that beat your weakest eligible starter at their position -- same
+// shape and same ">50% win probability" bar as renderBenchInsights above, just sourced from
+// available waivers instead of your own bench. Only ever receives anything when the Waiver
+// Insights toggle is on (see mls.js's runMatchupSim).
+function renderWaiverInsights(waiverInsights) {
+    if (!waiverInsights || waiverInsights.length === 0) return '';
+
+    const rows = waiverInsights.map(w => `
+        <li class="sim-bench-row">
+            <strong>${w.faName}</strong> ${renderPosBadge(w.faPos)} (available) outscored
+            <strong>${w.starterName}</strong> ${renderPosBadge(w.starterPos)}${renderRookieBadge(w.starterIsRookie)} (starting) in
+            <strong>${w.faWinPct}%</strong> of simulated weeks.
+        </li>`).join('');
+
+    return `
+        <div class="sim-bench-insights">
+            <h4>Waiver Insights</h4>
+            <ul class="sim-bench-list">${rows}</ul>
+        </div>`;
+}
+
 // Renders the final simulation output -- called either immediately (if the progress
 // animation has already finished by the time the worker responds) or once the animation
 // catches up (see startProgressAnimation above).
@@ -245,6 +271,7 @@ function renderResults(data) {
                     </div>
                 </div>
                 ${renderBenchInsights(lastBenchInsights)}
+                ${renderWaiverInsights(lastWaiverInsights)}
             </div>
         `;
     }
