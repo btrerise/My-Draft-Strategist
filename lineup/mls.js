@@ -1937,8 +1937,25 @@ function attachScoutSuggestionHandler(outputElId) {
             let clean = normalizeName(name);
             let rosObj = State.rosRankings.find(r => r.cleanName === clean);
             let weekObj = State.weeklyRankings.find(r => r.cleanName === clean);
-            let userValueObj = (type === 'trade' && rosObj) ? { rank: rosObj.rank, value: rankToTradeValue(rosObj.rank) } : null;
             let marketValueObj = type === 'trade' ? getMarketValue(clean) : null;
+
+            // Rookie draft picks (2027 1st, 2026 2nd, etc.) are dynasty trade assets that a
+            // Rest-of-Season rankings file has no reason to include -- ROS rankings project
+            // real games this season, and a pick isn't a player who plays any of them. Without
+            // this, "Your Rankings" would show every pick as a flat 0/Unranked, which distorts
+            // whichever side of a trade holds picks under that lens even though Market
+            // Consensus (when loaded) already prices them correctly. When ROS has no match, this
+            // looks like a pick, and Market Value does have it, borrow the market value as this
+            // line item's "Your Value" too -- flagged (fromMarket) so the card can disclose that
+            // this particular number isn't actually from the user's own rankings.
+            let userValueObj = null;
+            if (type === 'trade') {
+                if (rosObj) {
+                    userValueObj = { rank: rosObj.rank, value: rankToTradeValue(rosObj.rank) };
+                } else if (isDraftPickName(name) && marketValueObj) {
+                    userValueObj = { rank: marketValueObj.rank, value: marketValueObj.value, fromMarket: true };
+                }
+            }
 
             let suggestHTML = "";
             if (!rosObj && !weekObj && type) {
@@ -1998,7 +2015,7 @@ function attachScoutSuggestionHandler(outputElId) {
             let valueHTML = "";
             if (type === 'trade') {
                 valueHTML += userValueObj
-                    ? `<span>Your Value: <strong class="mls-stat-value">${userValueObj.value.toLocaleString()}</strong></span>`
+                    ? `<span>Your Value: <strong class="mls-stat-value">${userValueObj.value.toLocaleString()}</strong>${userValueObj.fromMarket ? ' <span style="color:var(--text-muted); font-size:0.75em;">(mkt -- no ROS value for picks)</span>' : ''}</span>`
                     : `<span style="color:var(--text-muted);">Your Value: Unranked</span>`;
                 if (State.marketRankings.length > 0) {
                     valueHTML += marketValueObj
@@ -2391,7 +2408,11 @@ function attachScoutSuggestionHandler(outputElId) {
 
                 let benchmarkPlayer = myRoster[myRoster.length - 1];
 
-                let freeAgents = rankings.filter(r => !rosterMap[r.cleanName] && isMatch(getPos(r.cleanName)));
+                // Excludes draft picks the same way getDynamicWaiverAdjustmentValue does (see
+                // its own comment on isDraftPickName) -- otherwise a pick in a dynasty market
+                // file would slip through here too whenever posFilter is 'ALL', since getPos()
+                // resolving to "UNK" for a pick still passes isMatch('ALL').
+                let freeAgents = rankings.filter(r => !rosterMap[r.cleanName] && isMatch(getPos(r.cleanName)) && !isDraftPickName(r.name));
                 let upgrades = freeAgents.filter(fa => comparePlayers(fa, benchmarkPlayer) < 0);
                 upgrades.sort(comparePlayers);
 
@@ -3302,6 +3323,20 @@ function applyMarketSettingsToUI() {
         return Math.round(10000 * Math.pow(0.982, rank - 1));
     }
 
+    // Detects a rookie draft pick asset ("2027 1st (Early)", "2026 2nd", "2025 3rd Round",
+    // etc.) by shape -- a draft year plus a round ordinal -- rather than by trusting any one
+    // market source's internal "position" field, which isn't consistently documented across
+    // FantasyCalc/LeagueLogs and isn't worth taking on faith. No real NFL player's name will
+    // ever contain both a 4-digit year and a round ordinal, so this is a safe, source-agnostic
+    // classifier. Used to keep picks out of contexts where they're not actually a fit: they're
+    // never "rostered" in globalRosterMap (nobody's Sleeper roster contains a pick), so without
+    // this they'd look identical to a genuinely available free-agent player -- and picks aren't
+    // available via waivers at all, so that's a real mismatch, not just an edge case.
+    function isDraftPickName(name) {
+        if (!name) return false;
+        return /\b(19|20)\d{2}\b/.test(name) && /\b(1st|2nd|3rd|4th)\b/i.test(name);
+    }
+
     // Looks up a player's MARKET value by clean name (the optional/secondary lens -- see
     // rankToTradeValue above). Returns null if no Market Value data is loaded at all, or if this
     // specific player isn't in it (unranked/deep bench/rookie not yet valued).
@@ -3348,10 +3383,14 @@ function applyMarketSettingsToUI() {
         // Sentinel rank of 999 means "not actually ranked" (rankingsParser's own placeholder
         // for an unpopulated field) rather than a real deep-bench rank, so those are excluded
         // rather than priced as if genuinely 999th -- same reasoning as rankFieldOf elsewhere
-        // in this file. Returns the actual free-agent records used (name + rank + value), not
-        // just the final number, so the caller can show its work rather than a bare figure.
+        // in this file. Draft picks are excluded too: they're never present in globalRosterMap
+        // (nobody's Sleeper roster contains a pick), so without this check every pick in a
+        // dynasty market file would look exactly like an available free-agent player -- and
+        // unlike a real free agent, you can't actually go pick one up off waivers. Returns the
+        // actual free-agent records used (name + rank + value), not just the final number, so
+        // the caller can show its work rather than a bare figure.
         const topFreeAgents = (rankings, rankField) => rankings
-            .filter(r => !rosterMap[r.cleanName] && r[rankField] && r[rankField] < 999)
+            .filter(r => !rosterMap[r.cleanName] && r[rankField] && r[rankField] < 999 && !isDraftPickName(r.name))
             .sort((a, b) => a[rankField] - b[rankField])
             .slice(0, 3)
             .map(r => ({ name: r.name, rank: r[rankField], value: rankToTradeValue(r[rankField]) }));
