@@ -5106,15 +5106,22 @@ window.runMatchupSim = async function() {
             // just as real for the Sunday early slate once it's wrapped up, or checking win
             // odds ahead of Sunday/Monday night with the early games already final. Pulled
             // from this roster's own players_points on the matchup entry passed in (see
-            // getSleeperMatchups' own comment) -- absent (not just 0) means that player's game
-            // hasn't produced a stat yet, so it's read as "no actual score" rather than "scored
-            // zero." getPlayerVarianceProfile (statsEngine.js) gives this priority over
-            // projectedMean whenever it's present.
+            // getSleeperMatchups' own comment).
+            //
+            // Sleeper pre-populates players_points with 0 for every starter on the roster
+            // before kickoff, not just the ones who've actually played -- so presence alone
+            // isn't the right signal (confirmed the hard way: an earlier version checked only
+            // "is this a number," and every not-yet-played starter got treated as a final 0).
+            // Requiring a POSITIVE value is what actually distinguishes "hasn't played" from
+            // "played and scored something." The one thing this can't distinguish is a player
+            // who truly played and scored exactly 0 (a shut-out kicker, a zero-target WR in a
+            // blowout) -- that rare case just falls back to their normal projection/history
+            // instead of locking at 0, which is a far smaller problem than the one this fixes.
             const actualPts = matchupEntry && matchupEntry.players_points ? matchupEntry.players_points[id] : undefined;
             return {
                 id, name, pos: p.position || '', team: p.team || '', weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
                 isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id),
-                actualScore: typeof actualPts === 'number' ? actualPts : null
+                actualScore: (typeof actualPts === 'number' && actualPts > 0) ? actualPts : null
             };
         };
 
