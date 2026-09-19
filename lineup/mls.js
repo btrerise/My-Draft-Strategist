@@ -11,6 +11,7 @@ import { parseRankingsFiles } from './rankingsParser.js';
 import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from './sleeperApi.js';
 import { fetchMarketConsensusData } from './marketDataApi.js';
 import { runMatchupSimulation } from './monteCarloUi.js';
+import { renderTradeVerdictHTML, renderPlayerCardHTML, renderPowerRankingsTableHTML } from './view.js';
 import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from './sleeperService.js';
 import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './statsEngine.js';
 
@@ -2116,22 +2117,7 @@ function attachScoutSuggestionHandler(outputElId) {
             }
 
             return {
-                html: `
-                <div class="scout-result-card">
-                    <div>
-                        <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-                            <span class="badge pos-badge ${badgeClass} mls-pos-badge-sizing">${displayPos}</span>
-                            ${displayName} ${roleTag}
-                        </div>
-                        <div class="mls-meta-row">
-                            <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
-                            <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
-                            ${valueHTML}
-                        </div>
-                        ${suggestHTML}
-                    </div>
-                    <div class="mls-text-right">${statusHTML}</div>
-                </div>`,
+                html: renderPlayerCardHTML({ badgeClass, displayPos, displayName, roleTag, wRank, rRank, valueHTML, suggestHTML, statusHTML }),
                 userValue: userValueObj ? userValueObj.value : 0,
                 userMatched: !!userValueObj,
                 marketValue: marketValueObj ? marketValueObj.value : 0,
@@ -2211,22 +2197,18 @@ function attachScoutSuggestionHandler(outputElId) {
         outputEl.innerHTML = html;
     };
 
-    // Builds one verdict banner (label + totals + Fair/Favors-You/Favors-Them) from a set of
-    // GET/GIVE card results, keyed off whichever value field ("userValue" or "marketValue") and
-    // matched flag the caller wants. Returns "" when the underlying data source isn't loaded at
-    // all, or when nothing on either side matched it, so callers can concatenate freely and fall
-    // back to a single prompt only when BOTH sources come back empty.
-    function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
-        if (!sourceLoaded) return "";
-
+    // Pure trade-value math -- given already-priced GET/GIVE results under one lens (custom
+    // rankings or market consensus), computes the verdict (fair/favors-you/favors-them), the
+    // point swing, and the waiver-adjustment bonus if that setting's on. Deliberately returns
+    // plain data, no HTML -- renderTradeVerdictHTML (view.js) is the only thing that turns
+    // this into markup, so this math is testable on its own and isn't tied to one template.
+    function computeTradeVerdict(getResults, giveResults, valueKey, matchedKey, waiverAdjustment, waiverAdjustmentValue) {
         let getTotal = getResults.reduce((sum, r) => sum + r[valueKey], 0);
         let giveTotal = giveResults.reduce((sum, r) => sum + r[valueKey], 0);
         let unmatchedCount = getResults.concat(giveResults).filter(r => !r[matchedKey]).length;
 
         if (getTotal === 0 && giveTotal === 0) {
-            return unmatchedCount > 0
-                ? `<div class="trade-verdict-note" style="margin-bottom:1rem;">${label}: none of the players entered were found, so no value total could be calculated.</div>`
-                : "";
+            return { empty: true, unmatchedCount };
         }
 
         // --- WAIVER ADJUSTMENT ---
@@ -2237,18 +2219,18 @@ function attachScoutSuggestionHandler(outputElId) {
         // like FantasyCalc apply to their own trade calculators, though the credit amount here is
         // a flat, user-configurable estimate (see the Trade Analyzer's settings above) rather
         // than one derived from real trade data.
-        let waiverSubnoteGet = "", waiverSubnoteGive = "";
-        if (State.tradeSettings.waiverAdjustment) {
+        let waiverBonusGet = 0, waiverBonusGive = 0;
+        if (waiverAdjustment) {
             let spotDiff = giveResults.length - getResults.length; // >0 = you're sending more pieces than you receive
-            let perSpot = parseFloat(State.tradeSettings.waiverAdjustmentValue) || 0;
+            let perSpot = parseFloat(waiverAdjustmentValue) || 0;
             if (spotDiff !== 0 && perSpot > 0) {
                 let bonus = Math.abs(spotDiff) * perSpot;
                 if (spotDiff > 0) {
                     getTotal += bonus;
-                    waiverSubnoteGet = `<span class="trade-verdict-subnote">+${bonus.toLocaleString()} waiver adj.</span>`;
+                    waiverBonusGet = bonus;
                 } else {
                     giveTotal += bonus;
-                    waiverSubnoteGive = `<span class="trade-verdict-subnote">+${bonus.toLocaleString()} waiver adj.</span>`;
+                    waiverBonusGive = bonus;
                 }
             }
         }
@@ -2271,38 +2253,24 @@ function attachScoutSuggestionHandler(outputElId) {
             verdictText = "Favors Them";
         }
 
-        let unmatchedNote = unmatchedCount > 0
-            ? `<div class="trade-verdict-note">${unmatchedCount} player${unmatchedCount > 1 ? 's' : ''} not found, excluded from this total.</div>`
-            : "";
+        return { empty: false, getTotal, giveTotal, waiverBonusGet, waiverBonusGive, diff, swingPct, verdictClass, verdictText, unmatchedCount };
+    }
 
-        return `
-        <div class="trade-verdict-banner ${verdictClass}">
-            <div class="trade-verdict-source-label">
-                By ${label}
-                <div class="tooltip-container">
-                    <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">${methodologyText}</span>
-                </div>
-            </div>
-            <div class="trade-verdict-totals">
-                <div class="trade-verdict-side">
-                    <span class="trade-verdict-label">You Receive</span>
-                    <span class="trade-verdict-amount">${getTotal.toLocaleString()}</span>
-                    ${waiverSubnoteGet}
-                </div>
-                <div class="trade-verdict-vs">vs</div>
-                <div class="trade-verdict-side">
-                    <span class="trade-verdict-label">You Give</span>
-                    <span class="trade-verdict-amount">${giveTotal.toLocaleString()}</span>
-                    ${waiverSubnoteGive}
-                </div>
-            </div>
-            <div class="trade-verdict-result">
-                ${verdictText}
-                <span class="trade-verdict-diff">(${diff >= 0 ? '+' : ''}${diff.toLocaleString()} pts, ${swingPct.toFixed(0)}%)</span>
-            </div>
-            ${unmatchedNote}
-        </div>`;
+    // Builds one verdict banner (label + totals + Fair/Favors-You/Favors-Them) from a set of
+    // GET/GIVE card results, keyed off whichever value field ("userValue" or "marketValue") and
+    // matched flag the caller wants. Returns "" when the underlying data source isn't loaded at
+    // all, or when nothing on either side matched it, so callers can concatenate freely and fall
+    // back to a single prompt only when BOTH sources come back empty. Thin orchestrator now --
+    // computeTradeVerdict does the actual math, renderTradeVerdictHTML (view.js) does the actual
+    // markup; this just supplies State's current trade settings to the former and hands its
+    // result to the latter.
+    function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
+        if (!sourceLoaded) return "";
+        const verdictData = computeTradeVerdict(
+            getResults, giveResults, valueKey, matchedKey,
+            State.tradeSettings.waiverAdjustment, State.tradeSettings.waiverAdjustmentValue
+        );
+        return renderTradeVerdictHTML(label, methodologyText, verdictData, sourceLoaded);
     }
 
     window.autoFindWaiverUpgrades = async function() {
@@ -5021,103 +4989,9 @@ window.runPositionalStrength = function() {
 window.renderPowerRankingsTable = function(teamScores) {
     let out = document.getElementById('powerRankingsOutput');
     if (!out) return;
-    
-    let totalTeams = teamScores.length;
 
-    // Hardcoded hex values prevent CSS root variables from clashing
-    const getRankColor = (rank) => {
-        if (rank <= Math.ceil(totalTeams / 3)) return '#4ade80'; // Top Tier (Green)
-        if (rank > Math.floor(totalTeams * 2 / 3)) return '#fca5a5'; // Bottom Tier (Red)
-        return 'var(--text-main, #f8fafc)'; // Middle Tier (Neutral)
-    };
+    out.innerHTML = renderPowerRankingsTableHTML(teamScores);
 
-    // Helper to generate the nested player tooltips
-    const buildTooltip = (players, posName, isRightEdge = false) => {
-        let shiftStyle = isRightEdge ? "right: 0; left: auto; transform: translateY(-4px);" : "";
-        let html = `<div class="tooltip-text" style="width: 220px; font-weight: normal; z-index: 1005; ${shiftStyle}">`;
-        html += `<div style="font-weight: 700; color: var(--text-main); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border);">${posName} Room</div>`;
-        
-        if (players.length === 0) {
-            html += `<div style="color: var(--text-muted); font-style: italic; font-size: 0.8rem;">No players rostered.</div>`;
-        } else {
-            // Show up to the top 6 players at the position
-            let listHtml = players.slice(0, 6).map(p => `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 12px; font-size: 0.8rem;">
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">${p.name}</span>
-                    <span style="color: var(--text-muted); font-weight: 600; flex-shrink: 0;">#${p.rank}</span>
-                </div>
-            `).join('');
-            
-            html += listHtml;
-            if (players.length > 6) {
-                html += `<div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 6px; text-align: center;">+ ${players.length - 6} more</div>`;
-            }
-        }
-        return html + `</div>`;
-    };
-
-    // Note: We use overflow: visible here so the tooltips don't get clipped by the scroll container
-    let html = `
-        <div style="overflow: visible; border-radius: 6px; border: 1px solid var(--border-color, #334155); margin-top: 15px;">
-        <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem;">
-            <thead>
-                <tr style="border-bottom: 2px solid var(--border-color, #334155); color: var(--text-muted, #94a3b8); font-size: 0.8rem; text-transform: uppercase;">
-                    <th style="padding: 12px 10px; text-align: left;">Manager</th>
-                    <th class="mls-table-header-cell">Ovr</th>
-                    <th class="mls-table-header-cell">QB</th>
-                    <th class="mls-table-header-cell">RB</th>
-                    <th class="mls-table-header-cell">WR</th>
-                    <th class="mls-table-header-cell">TE</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    teamScores.forEach(t => {
-        let isYou = t.owner === "You" ? "font-weight: bold; background: rgba(147, 197, 253, 0.08);" : "";
-        
-        html += `
-            <tr style="border-bottom: 1px solid var(--border-color, #334155); ${isYou}">
-                <td style="padding: 12px 10px; text-align: left; color: var(--text-main, #f8fafc);">${t.owner}</td>
-                
-                <td style="padding: 12px 10px; font-weight: 800; color: ${getRankColor(t.overallRank)};">
-                    ${t.overallRank}
-                </td>
-                
-                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.qbRank)};">
-                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
-                        <span class="mls-dotted-underline">${t.qbRank}</span>
-                        ${buildTooltip(t.players.QB, 'QB')}
-                    </div>
-                </td>
-                
-                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.rbRank)};">
-                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
-                        <span class="mls-dotted-underline">${t.rbRank}</span>
-                        ${buildTooltip(t.players.RB, 'RB')}
-                    </div>
-                </td>
-                
-                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.wrRank)};">
-                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
-                        <span class="mls-dotted-underline">${t.wrRank}</span>
-                        ${buildTooltip(t.players.WR, 'WR', true)}
-                    </div>
-                </td>
-                
-                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.teRank)};">
-                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
-                        <span class="mls-dotted-underline">${t.teRank}</span>
-                        ${buildTooltip(t.players.TE, 'TE', true)}
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
-
-    html += `</tbody></table></div>`;
-    out.innerHTML = html;
-    
     out.style.display = 'none';
     setTimeout(() => {
         out.style.display = 'block';
