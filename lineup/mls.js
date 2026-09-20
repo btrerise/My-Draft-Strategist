@@ -395,6 +395,17 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         return shortInj !== null && SIM_EXCLUDE_STATUSES.includes(shortInj);
     }
 
+    // Best Ball leagues have no weekly lineup to set and (almost always) no IR slot, so every
+    // tool whose whole premise is "you need to go move somebody" has to sit them out. The
+    // formatBadge string is the only place this is recorded -- processSleeperData stamps
+    // "Best Ball" into it from leagueData.settings.best_ball, and the raw setting isn't kept
+    // on the league object afterwards. Factored out of the three near-identical inline copies
+    // that had accumulated (dashboard matrix, optimizeAllLineups' skip + its count) so a
+    // fourth caller can't drift from them.
+    function isBestBallLeague(l) {
+        return !!(l && l.formatBadge && l.formatBadge.toLowerCase().includes("best ball"));
+    }
+
     // --- UTILITY HELPERS ---
     // normalizeName intentionally NOT redeclared here -- it previously shadowed the
     // shared, alias-aware version in js/utils.js (loaded before this file), which caused
@@ -1254,8 +1265,24 @@ function attachScoutSuggestionHandler(outputElId) {
     // on the Lineup tab itself, not just implied by a simulator result elsewhere. Recommends a
     // swap rather than picking one FOR the user -- that's exactly what the swap UI immediately
     // below this banner is for.
-    function getLineupInjuryWarningHTML(starters) {
-        const flagged = starters.filter(s => s.player && SIM_EXCLUDE_STATUSES.includes(s.player.inj));
+    //
+    // Suppressed entirely in Best Ball, for the same reason the Global Injury Auditor skips
+    // those leagues: there's no lineup to set there, so "consider swapping in a bench player"
+    // is advice the format doesn't let anyone act on. The lineup shown for a Best Ball league
+    // is this tool's own projection of what will auto-start, not a decision the person makes.
+    //
+    // A starter whose game has already kicked off is dropped from the warning too, for the
+    // reason the Global Injury Auditor excludes them: the roster spot is locked on essentially
+    // every platform, so there's no swap left to make. Unlike the auditor, nothing is said
+    // about the omission -- that tool summarizes leagues the person isn't looking at, whereas
+    // here the player's own row is a few pixels below this banner already carrying both their
+    // injury badge and a "Started"/"Final" kickoff badge. Repeating it would be noise.
+    function getLineupInjuryWarningHTML(starters, league) {
+        if (isBestBallLeague(league)) return "";
+
+        const flagged = starters.filter(s => s.player
+            && SIM_EXCLUDE_STATUSES.includes(s.player.inj)
+            && !hasKickedOff(s.player));
         if (flagged.length === 0) return "";
 
         const warnSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
@@ -1331,7 +1358,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 : `<span class="status-icon status-good tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Weekly Rankings Fresh</span></span>`;
 
             // --- Lineup Match Check ---
-            let isBestBall = l.formatBadge && l.formatBadge.toLowerCase().includes("best ball");
+            let isBestBall = isBestBallLeague(l);
             let starters = State.manualStartersMap[l.leagueId] || [];
             let optStarterIds = starters.filter(s => s.player).map(s => s.player.id);
             let sleeperStarters = (l.sleeperStarters || []).filter(id => id && id !== "0");
@@ -1817,6 +1844,12 @@ function attachScoutSuggestionHandler(outputElId) {
             });
 
             let rosterDetails = [];
+            // Sleeper lists taxi-squad players in their own array but ALSO leaves them in
+            // `players`, so without this they'd be indistinguishable from real bench depth --
+            // eligible to be slotted as starters by the optimizer and counted as active bench
+            // by the Global Injury Auditor, neither of which is true of a taxi player. Empty
+            // on leagues with no taxi squad configured, hence the fallback.
+            const taxiIds = new Set((myTeam && myTeam.taxi) || []);
             if (myTeam && myTeam.players) {
                 myTeam.players.forEach(id => {
                     let p = playerMap[id];
@@ -1827,7 +1860,8 @@ function attachScoutSuggestionHandler(outputElId) {
                             cleanName: normalizeName(`${p.first_name} ${p.last_name}`),
                             pos: p.position || "FLEX",
                             team: p.team || "FA",
-                            inj: getShortInjuryStatus(p)
+                            inj: getShortInjuryStatus(p),
+                            isTaxi: taxiIds.has(id)
                         });
                     }
                 });
@@ -5164,7 +5198,15 @@ function applyMarketSettingsToUI() {
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? rObj.posTier : null, flexTier: rObj ? rObj.flexTier : null, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
-        let pool = [...scoredRoster];
+        // Taxi-squad players are held out of the starter pool entirely rather than merely
+        // deprioritized the way isUnavailableThisWeek handles byes and hard-out statuses.
+        // That mechanism has a deliberate last-resort fallback that will start an unavailable
+        // player rather than leave a slot empty -- correct for an Out RB (you get his zero
+        // either way), wrong for a taxi player, whom the platform will not let you start at
+        // all. A healthy, well-ranked rookie sitting on taxi is exactly the case that fallback
+        // would otherwise promote into the lineup. They rejoin the bench pool after slotting.
+        let taxiPlayers = scoredRoster.filter(p => p.isTaxi);
+        let pool = scoredRoster.filter(p => !p.isTaxi);
         let starters = [];
 
         // Finds the best index in `pool` matching `matchFn`, using `compareFn` to rank
@@ -5244,12 +5286,22 @@ function applyMarketSettingsToUI() {
         for (let i = 0; i < (reqs.K || 0); i++) fillSlot(`K${i+1}`, pos => pos === 'K', false);
         for (let i = 0; i < (reqs.DEF || 0); i++) fillSlot(`DEF${i+1}`, pos => pos === 'DEF', false);
 
-        pool.sort((a, b) => {
+        const benchOrder = (a, b) => {
             if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
             if (a.flexRank !== 999 && b.flexRank === 999) return -1;
             if (a.flexRank === 999 && b.flexRank !== 999) return 1;
             return a.posRank - b.posRank;
-        });
+        };
+        pool.sort(benchOrder);
+
+        // Taxi players land beneath the entire real bench regardless of how well they're
+        // ranked -- "Bench Priorities" is a list of who you'd turn to this week, and a taxi
+        // player isn't an option at any rank. Sorted among themselves by the same comparator
+        // so the group still reads best-to-worst internally. Appended after the sort rather
+        // than folded into the comparator so this ordering can't be undone by a future change
+        // to how the bench itself is ranked.
+        taxiPlayers.sort(benchOrder);
+        pool.push(...taxiPlayers);
 
         // Reassign which specific players occupy strict RB/WR/TE slots vs the FLEX slot(s),
         // purely by kickoff time -- who actually starts is already decided above by rank; this
@@ -5342,7 +5394,7 @@ function applyMarketSettingsToUI() {
             window.showToast = function(){}; 
             
             State.leagues.forEach(l => {
-                let isBestBall = l.formatBadge && l.formatBadge.toLowerCase().includes("best ball");
+                let isBestBall = isBestBallLeague(l);
                 if (isBestBall) return; // Skip optimizing Best Ball leagues
 
                 State.activeLeagueId = l.leagueId;
@@ -5365,7 +5417,7 @@ function applyMarketSettingsToUI() {
             window.showToast = tempToast; 
             switchActiveLeague(originalActiveId); 
             
-            let managedLeaguesCount = State.leagues.filter(l => !(l.formatBadge && l.formatBadge.toLowerCase().includes("best ball"))).length;
+            let managedLeaguesCount = State.leagues.filter(l => !isBestBallLeague(l)).length;
             
             if (window.showToast) window.showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
             
@@ -5488,7 +5540,7 @@ window.syncAllLeagues = async function(btn) {
         let html = "";
 
         html += getNextLockCountdownHTML(starters);
-        html += getLineupInjuryWarningHTML(starters);
+        html += getLineupInjuryWarningHTML(starters, league);
 
         if (validSleeperStarters.length > 0) {
             let sleeperSet = new Set(validSleeperStarters);
@@ -5601,7 +5653,16 @@ window.syncAllLeagues = async function(btn) {
         let benchHTML = "";
         if (benchPool.length > 0) {
             benchContainer.classList.remove('bench-empty-state');
+            // optimizeLineup guarantees every taxi player sits at the tail of benchPool, so the
+            // divider only ever needs to be emitted once, at the first one encountered. Driven
+            // off the data rather than a precomputed count so a bench with no taxi players
+            // renders byte-for-byte as it did before this existed.
+            let taxiDividerShown = false;
             benchPool.forEach(p => {
+                if (p.isTaxi && !taxiDividerShown) {
+                    taxiDividerShown = true;
+                    benchHTML += `<div class="bench-taxi-divider"><span>Taxi Squad</span></div>`;
+                }
                 let lockClass = State.swapSourceId === p.id ? "swapping" : "";
                 let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
                 let flexStr = p.flexRank !== 999 ? `#${p.flexRank}${tierTag(p.flexTier)}` : "-";
@@ -5614,20 +5675,37 @@ window.syncAllLeagues = async function(btn) {
                 let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
                 let kickoffBadge = getGameInfoHTML(p.team);
+                // Kept even though the divider above already labels the group: the divider
+                // scrolls off, and these rows get screenshotted and pasted into league chats.
+                let taxiBadge = p.isTaxi ? `<span class="badge taxi-badge">TAXI</span>` : "";
 
                 let sleeperWarn = "";
                 if (validSleeperStarters.length > 0 && validSleeperStarters.includes(p.id)) {
                     sleeperWarn = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`;
                 }
-                let badgesRow = [injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
+                let badgesRow = [injBadge, taxiBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
                 // Bench ("BN") never reveals real position the way a strict slot badge does, so
                 // always show it as plain text here -- same reasoning as the starters block above.
                 let plainPos = `<span class="mls-plain-pos pos-text-${p.pos.toLowerCase()}">${p.pos}</span>`;
 
+                // "TX" rather than "BN" in the slot column, so the distinction survives even
+                // where the badges row is dense -- same fixed 46px slot badge, no layout shift.
+                const slotCode = p.isTaxi ? 'TX' : 'BN';
+
+                // No swap control on a taxi row. The whole point of the flag is that this
+                // player can't be started, so offering the button would be an invitation to
+                // build a lineup Sleeper will reject -- and since swapping is the only way a
+                // bench player reaches the starters here, withholding it is also what actually
+                // enforces the exclusion in the UI, not just in the optimizer's own slotting.
+                const rowActions = p.isTaxi
+                    ? getPlayerPointsHTML(p)
+                    : `${getPlayerPointsHTML(p)}
+                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>`;
+
                 benchHTML += `
-                <div class="lineup-slot ${lockClass}">
+                <div class="lineup-slot ${lockClass} ${p.isTaxi ? 'taxi-row' : ''}">
                     <div class="mls-player-row-info">
-                        <span class="slot-badge slot-BN">BN</span>
+                        <span class="slot-badge slot-${slotCode}">${slotCode}</span>
                         <div class="mls-player-row-text">
                             <div class="player-name-wrap">${p.name}${byeStr}</div>
                             ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
@@ -5639,8 +5717,7 @@ window.syncAllLeagues = async function(btn) {
                         </div>
                     </div>
                     <div class="mls-row-actions">
-                        ${getPlayerPointsHTML(p)}
-                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                        ${rowActions}
                     </div>
                 </div>`;
             });
@@ -5939,6 +6016,58 @@ window.renderPowerRankingsTable = function(teamScores) {
     }, 50);
 };
 
+// A player this audit considers a genuine problem to leave in an active slot. Deliberately
+// narrower than HARD_OUT_STATUSES / getShortInjuryStatus's full vocabulary: Questionable and
+// Doubtful players are game-time calls you may well still want rostered and even started, so
+// flagging them here would bury the real "this guy is definitively not playing, go move him"
+// signal this tool exists to surface. Shared by the Sleeper and manual-league paths below so
+// the two can't drift on what counts as injured.
+function isAuditOut(p) {
+    if (!p) return false;
+    return p.injury_status === "Out" || ["IR", "PUP", "NFI", "Suspended"].includes(p.status);
+}
+
+// Clean name -> raw Sleeper player entries, built over a player map the caller already has in
+// hand (the audit's own force-refreshed one) rather than the session-cached indexes near the
+// top of this file -- an injury audit specifically wants today's statuses, not whatever was
+// cached when some earlier feature first needed a name lookup.
+//
+// Values are ARRAYS of candidates, unlike getCleanNameToIdIndex's first-match-wins: manual
+// players carry a position and team the caller can disambiguate with (see resolveManualPlayer),
+// and picking a retired namesake here wouldn't just mislabel a row, it would report the wrong
+// injury status for somebody's actual starter.
+function buildCleanNameCandidateIndex(playerMap) {
+    const FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+    const index = {};
+    Object.entries(playerMap).forEach(([id, p]) => {
+        if (!p || !p.first_name || !FANTASY_POS.includes(p.position)) return;
+        const clean = normalizeName(`${p.first_name} ${p.last_name}`);
+        (index[clean] = index[clean] || []).push({ ...p, id });
+    });
+    return index;
+}
+
+// Best guess at which real NFL player a manually-entered roster entry refers to. Returns null
+// when nothing matches at all -- manual entries are free text (typos, nicknames, team defenses
+// written any number of ways), so "no match" is an expected outcome, not an error, and the
+// caller reports the count rather than silently pretending those players were audited.
+function resolveManualPlayer(p, candidateIndex) {
+    const candidates = candidateIndex[p.cleanName];
+    if (!candidates || candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+
+    // Ordered tiebreakers, most trustworthy first. The manual "team" field defaults to FA and
+    // the position dropdown defaults to FLEX, so neither is worth matching on when it is still
+    // sitting at that default -- hence the guards.
+    const team = p.team && p.team !== "FA" ? p.team : null;
+    const pos = p.pos && p.pos !== "FLEX" ? p.pos : null;
+    return (team && candidates.find(c => c.team === team))
+        || (pos && candidates.find(c => c.position === pos && c.team))
+        || (pos && candidates.find(c => c.position === pos))
+        || candidates.find(c => c.team)
+        || candidates[0];
+}
+
 window.runGlobalInjuryAudit = async function(btn) {
     const outputEl = document.getElementById('injuryAuditOutput');
     const origText = btn.innerHTML;
@@ -5955,11 +6084,120 @@ window.runGlobalInjuryAudit = async function(btn) {
 
         // Fetch global player map to check current injury status
         const playerMap = await getSleeperPlayerMap({ forceRefresh: true });
+        // Only built if a manual league actually turns up -- it is a full pass over every
+        // player Sleeper knows about, not worth doing for an all-Sleeper set of leagues.
+        let candidateIndex = null;
+
+        // The locked-player filter below is only as good as the kickoff data behind it, and
+        // State.currentNflWeek/gameTimesByTeam can be null on a fresh load or stale if the
+        // background refresh hasn't caught up -- so this Run gets current data rather than
+        // whatever happened to be cached. Failure is deliberately swallowed: hasKickedOff
+        // returns false for a team it has no data for, so a dead ESPN/Sleeper endpoint just
+        // means nothing gets filtered and the audit reports everything, exactly as it did
+        // before this filter existed. Losing the whole audit over it would be far worse.
+        try {
+            const nflState = await getNflState();
+            if (nflState && typeof nflState.week === 'number') {
+                State.currentNflWeek = nflState.week;
+                await refreshGameTimes();
+            }
+        } catch (err) { /* see above -- degrade to "nothing is locked" */ }
 
         let auditResults = [];
+        let scannedSleeper = 0;
+        let scannedManual = 0;
+        let skippedBestBall = 0;
+        // Injured players whose game has already kicked off: real problems, but ones no
+        // platform will let you fix this week. Collected rather than dropped so the notice at
+        // the top can account for them -- silently omitting them would look like the audit
+        // missed an obvious IR starter sitting right there on the Lineup tab.
+        let lockedOut = [];
 
         for (let league of State.leagues) {
-            if (!league.leagueId || league.leagueId.startsWith('manual_')) continue;
+            if (!league.leagueId) continue;
+
+            // Nothing to act on in a Best Ball league: lineups are scored automatically, and
+            // they do not hand you an IR slot to stash an Out player in either -- so every row
+            // this audit could produce for one would be a chore the format does not allow.
+            if (isBestBallLeague(league)) { skippedBestBall++; continue; }
+
+            // Draft-Strategist-handoff leagues count as manual here for the same reason
+            // isFullyMappedLeague groups them: they're a locally-stored roster of your own
+            // players with no Sleeper league behind them. Previously only 'manual_' was
+            // checked and a handoff league fell through to the Sleeper branch below, where
+            // getSleeperLeagueRosters('handoff_...') threw and took the whole audit down with
+            // it rather than just skipping that one league.
+            const isManual = league.leagueId.startsWith('manual_') || league.leagueId.startsWith('handoff_');
+
+            // Manually added leagues: Sleeper has no roster for them, but it still knows the
+            // injury status of the actual NFL players on them, matched by name. There is no
+            // Sleeper lineup to compare against, so "starting" means the lineup as it stands in
+            // this tool (the optimizer's output on the Lineup tab), and an injured bench player
+            // is reported as-is rather than as "Move to IR" -- whether the real league even has
+            // an IR slot isn't something we can know from here.
+            if (isManual) {
+                const roster = league.roster || [];
+                if (roster.length === 0) continue;
+
+                if (!candidateIndex) candidateIndex = buildCleanNameCandidateIndex(playerMap);
+                scannedManual++;
+
+                const localStarters = State.manualStartersMap[league.leagueId] || [];
+                const starterIds = new Set(localStarters.filter(s => s.player).map(s => s.player.id));
+                // A league whose lineup has never been optimized has no starter/bench split at
+                // all, so every injured player there is reported neutrally as "On Roster"
+                // instead of being miscast as a benching that has already been handled.
+                const lineupIsSet = starterIds.size > 0;
+
+                let leagueIssues = [];
+                let unmatched = 0;
+
+                roster.forEach(rp => {
+                    // Team defenses are keyed by team abbreviation in Sleeper's player map, and
+                    // the manual entry's name for one is free text ("Eagles", "Philadelphia
+                    // D/ST"), so they're resolved off the team code instead of by name. One
+                    // that can't be resolved is dropped rather than counted as unmatched: a
+                    // D/ST has no injury designation to report, so telling the person it went
+                    // unchecked would be noise about nothing.
+                    let match;
+                    if (rp.pos === 'DEF') {
+                        const def = rp.team ? playerMap[rp.team] : null;
+                        if (!def || def.position !== 'DEF') return;
+                        match = def;
+                    } else {
+                        match = resolveManualPlayer(rp, candidateIndex);
+                        if (!match) { unmatched++; return; }
+                    }
+                    if (!isAuditOut(match)) return;
+
+                    // Sleeper's team code, not the manually-typed one -- the manual entry's
+                    // team defaults to FA and can go stale after a trade, and a wrong team here
+                    // means either a locked player reported as fixable or a fixable one hidden.
+                    if (hasKickedOff({ team: match.team })) {
+                        lockedOut.push({ leagueName: league.name, name: rp.name });
+                        return;
+                    }
+
+                    const location = !lineupIsSet ? "On Roster"
+                        : (starterIds.has(rp.id) ? "Starting Lineup" : "Bench");
+                    leagueIssues.push({
+                        name: rp.name,
+                        status: match.injury_status || match.status,
+                        location
+                    });
+                });
+
+                // Unmatched names are surfaced even when nothing else is wrong -- otherwise a
+                // league full of typo'd names would render as a clean bill of health.
+                if (leagueIssues.length > 0 || unmatched > 0) {
+                    auditResults.push({
+                        leagueName: league.name,
+                        format: league.leagueId.startsWith('handoff_') ? "Imported Roster" : "Manual League",
+                        issues: leagueIssues, unmatched: unmatched
+                    });
+                }
+                continue;
+            }
 
             const rosters = await getSleeperLeagueRosters(league.leagueId);
 
@@ -5979,9 +6217,15 @@ window.runGlobalInjuryAudit = async function(btn) {
 
             const myRoster = rosters.find(r => r.owner_id === userId);
             if (!myRoster) continue;
+            scannedSleeper++;
 
             const starters = myRoster.starters || [];
             const reserve = myRoster.reserve || [];
+            // Sleeper's roster object lists taxi-squad players in their own array, but ALSO
+            // leaves them in `players` alongside everyone else -- same as `reserve` -- so both
+            // have to be subtracted explicitly to arrive at the actual active bench. Absent on
+            // leagues with no taxi squad configured, hence the fallback.
+            const taxi = myRoster.taxi || [];
             const allPlayers = myRoster.players || [];
             let leagueIssues = [];
 
@@ -5989,11 +6233,25 @@ window.runGlobalInjuryAudit = async function(btn) {
                 let p = playerMap[pId];
                 if (!p) return;
 
-                let isInjured = p.injury_status === "Out" || ["IR", "PUP", "NFI", "Suspended"].includes(p.status);
-                
-                if (isInjured) {
+                if (isAuditOut(p)) {
                     let isStarting = starters.includes(pId);
-                    let isBench = !isStarting && !reserve.includes(pId);
+                    // A taxi player is excluded for the same reason a reserve player is: they
+                    // aren't occupying an active roster spot, so there's no move to prompt.
+                    // Dynasty taxi squads are also where an injured rookie is *supposed* to
+                    // sit, which made this the one slot most likely to generate a standing
+                    // false positive week after week.
+                    let isBench = !isStarting && !reserve.includes(pId) && !taxi.includes(pId);
+
+                    // Once a player's team has kicked off, their roster spot is frozen on
+                    // essentially every platform -- they can't be benched, and they can't be
+                    // stashed on IR either. Reporting them would be handing the person a to-do
+                    // they're unable to complete. Checked here rather than up front so someone
+                    // already correctly parked on reserve or taxi (neither starting nor active
+                    // bench) never counts toward the locked-out notice.
+                    if ((isStarting || isBench) && hasKickedOff({ team: p.team })) {
+                        lockedOut.push({ leagueName: league.name, name: `${p.first_name} ${p.last_name}` });
+                        return;
+                    }
 
                     if (isStarting) {
                         leagueIssues.push({ name: `${p.first_name} ${p.last_name}`, status: p.injury_status || p.status, location: "Starting Lineup" });
@@ -6008,28 +6266,75 @@ window.runGlobalInjuryAudit = async function(btn) {
             }
         }
 
+        // States what was and wasn't covered, so a Best Ball league going unreported reads as a
+        // deliberate exclusion rather than the audit having quietly missed it.
+        const scanParts = [];
+        if (scannedSleeper > 0) scanParts.push(`${scannedSleeper} Sleeper league${scannedSleeper === 1 ? '' : 's'}`);
+        if (scannedManual > 0) scanParts.push(`${scannedManual} manual league${scannedManual === 1 ? '' : 's'}`);
+        let summaryLine = scanParts.length > 0 ? `Scanned ${scanParts.join(' and ')}` : `No auditable leagues found`;
+        if (skippedBestBall > 0) summaryLine += ` · Skipped ${skippedBestBall} Best Ball league${skippedBestBall === 1 ? '' : 's'}`;
+        const summaryHTML = `<div style="color:var(--text-muted); font-size:0.75rem; margin-bottom:0.75rem;">${escapeHtml(summaryLine)}</div>`;
+
+        // Rendered AFTER the results in both branches below, never before: everything in this
+        // notice is a dead end the person can't act on this week, so it sits underneath the
+        // roster moves they can actually go make rather than pushing them down the page.
+        //
+        // It names names on purpose. A bare count would leave the person wondering which player
+        // it meant and re-checking the roster by hand -- the whole point of listing them is so
+        // they can confirm at a glance that the IR starter they already know about is the one
+        // being excluded, not some other problem going unreported.
+        let lockedHTML = "";
+        if (lockedOut.length > 0) {
+            const one = lockedOut.length === 1;
+            const namesHTML = lockedOut
+                .map(l => `${escapeHtml(l.name)} <span style="opacity:0.7;">(${escapeHtml(l.leagueName)})</span>`)
+                .join(', ');
+            lockedHTML = `
+            <div class="info-banner" style="display:flex; margin-top: 1.25rem; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color:#fcd34d;">
+                <div class="cluster cluster-sm">
+                    <div class="info-banner-icon" style="background:#f59e0b; color:white;">i</div>
+                    <div><strong>${lockedOut.length} injured player${one ? '' : 's'} excluded (game already started):</strong> ${namesHTML}. Most platforms lock a roster spot once that player's game kicks off, so ${one ? 'this one' : 'these'} can't be moved until next week.</div>
+                </div>
+            </div>`;
+        }
+
         if (auditResults.length === 0) {
-            outputEl.innerHTML = `<div class="scout-result-card" style="justify-content:center; color:var(--primary-green);">All clear! No injured players found in active slots across your leagues.</div>`;
+            // Wording has to shift in both of these cases -- a flat "All clear!" is a claim
+            // about rosters that were actually examined, and it reads as either a
+            // contradiction (directly under a notice listing injured starters) or an outright
+            // false negative (when nothing was examined at all).
+            const clearText = scannedSleeper + scannedManual === 0
+                ? `Nothing to audit. Best Ball leagues are skipped, and no other leagues were found.`
+                : (lockedOut.length > 0
+                    ? `Nothing actionable. Every injured player found is already locked in for this week.`
+                    : `All clear! No injured players found in active slots across your leagues.`);
+            outputEl.innerHTML = summaryHTML +
+                `<div class="scout-result-card" style="justify-content:center; color:var(--primary-green);">${clearText}</div>` +
+                lockedHTML;
         } else {
-            let html = "";
+            let html = summaryHTML;
             auditResults.forEach(res => {
-                html += `<div style="font-weight:bold; color:#fca5a5; margin: 1rem 0 0.5rem 0;">${res.leagueName} <span style="color:var(--text-muted); font-size: 0.75rem; font-weight: normal;">${res.format}</span></div>`;
+                html += `<div style="font-weight:bold; color:#fca5a5; margin: 1rem 0 0.5rem 0;">${escapeHtml(res.leagueName)} <span style="color:var(--text-muted); font-size: 0.75rem; font-weight: normal;">${escapeHtml(res.format)}</span></div>`;
+                if (res.unmatched > 0) {
+                    const one = res.unmatched === 1;
+                    html += `<div style="color:var(--text-muted); font-size:0.75rem; font-style:italic; margin-bottom:0.5rem;">${res.unmatched} player${one ? '' : 's'} could not be matched to Sleeper's player database and ${one ? 'was' : 'were'} not checked. Re-add ${one ? 'that player' : 'those players'} using their full name to include them here.</div>`;
+                }
                 res.issues.forEach(issue => {
                     html += `
                     <div class="scout-result-card" style="border-color: #ef4444;">
                         <div>
-                            <div class="mls-item-name">${issue.name}</div>
+                            <div class="mls-item-name">${escapeHtml(issue.name)}</div>
                             <div class="mls-meta-row">
-                                <span style="color: #fca5a5; font-weight: bold;">${issue.status}</span>
+                                <span style="color: #fca5a5; font-weight: bold;">${escapeHtml(issue.status)}</span>
                             </div>
                         </div>
                         <div class="mls-text-right">
-                            <span class="badge" style="background:var(--avoid-bg); color:#fca5a5; border:1px solid var(--avoid-border);">${issue.location}</span>
+                            <span class="badge" style="background:var(--avoid-bg); color:#fca5a5; border:1px solid var(--avoid-border);">${escapeHtml(issue.location)}</span>
                         </div>
                     </div>`;
                 });
             });
-            outputEl.innerHTML = html;
+            outputEl.innerHTML = html + lockedHTML;
         }
 
     } catch (err) {
@@ -6126,7 +6431,15 @@ window.runMatchupSim = async function() {
         // flat list of IDs with no slot assignment), and manualBenchMap is itself an in-app-only
         // concept. localStarters carries each player's slot (e.g. "RB1", "FLEX2"), needed below
         // to figure out which bench players are even eligible to replace which starter.
-        const benchPool = usingLocalLineup ? (State.manualBenchMap[league.leagueId] || []) : [];
+        // Taxi players live in manualBenchMap alongside real bench depth (see optimizeLineup),
+        // but Lineup Insights' entire output is "swap this bench player in for that starter" --
+        // a move the platform won't allow for someone on taxi. Filtered here rather than in
+        // isExcludedFromSimulation, which answers a different question ("is this player likely
+        // to take the field"): a healthy taxi rookie would pass that check and still be an
+        // illegal suggestion.
+        const benchPool = usingLocalLineup
+            ? (State.manualBenchMap[league.leagueId] || []).filter(p => !p.isTaxi)
+            : [];
         const benchIds = benchPool.map(p => p.id).filter(id => id && id !== '0');
 
         const scoringKey = getLeagueScoringKey(league);

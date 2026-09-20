@@ -1210,6 +1210,13 @@ body {
    early-badge's yellow (early kickoff) so all three read as different kinds of "heads up". */
 .bye-badge { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid #f97316; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
 
+/* Taxi squad. Deliberately borrows .badge-rookie's exact violet rather than introducing a
+   seventh badge hue: taxi slots exist to stash rookies, so the two read as the same family of
+   "roster status, informational" -- unlike inj/bye/early, nothing here needs acting on. The
+   violet used by .slot-badge.slot-FLEX is a different, lighter shade, and the two can never
+   collide on one row anyway (a taxi row's slot badge is always TX, never FLEX). */
+.taxi-badge { background: #281442; color: #e9d8fd; border: 1px solid #9f7aea; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
+
 /* Kickoff-time badge (see getKickoffBadgeHTML() in mls.js) -- neutral/informational blue, since
    unlike bye/inj/early this isn't a warning, just a fact the person can use to verify FLEX
    kickoff ordering at a glance. */
@@ -1516,9 +1523,40 @@ body {
     background: rgba(245, 158, 11, 0.1); 
 }
 
-.lineup-slot.empty { 
-    border: 1px dashed var(--border); 
-    background: rgba(255, 255, 255, 0.01); 
+.lineup-slot.empty {
+    border: 1px dashed var(--border);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+/* Taxi-squad rows at the foot of the bench. Recedes via a flatter background and a dashed
+   border -- the same "not in play" language .lineup-slot.empty already uses -- rather than
+   via opacity, which would also wash out the TAXI and injury badges these rows exist to
+   show. Everything on the row stays at full contrast; only its container steps back. */
+.lineup-slot.taxi-row {
+    border: 1px dashed var(--border);
+    background: rgba(0, 0, 0, 0.32);
+}
+
+/* Separates real bench depth from the taxi squad below it. A rule with an inset label rather
+   than a full section header: the taxi group belongs to the bench list visually (same rows,
+   same card) and a second heading here would imply a second card's worth of importance. */
+.bench-taxi-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 1rem 0 0.6rem;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.bench-taxi-divider::before,
+.bench-taxi-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
 }
 
 /* 1. Fix position badge width so it never shifts */
@@ -1569,6 +1607,11 @@ body {
 .slot-badge.slot-SFLEX { background-color: rgba(168, 85, 247, 0.18); color: #d8b4fe; border: 1px solid #a855f7; }
 .slot-badge.slot-BN,
 .slot-badge.slot-ROS { background-color: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
+/* Taxi squad, at the foot of the bench list. Same muted greys as .slot-BN rather than a new
+   hue, because a taxi player is a quieter version of a bench player, not a different kind of
+   alert -- the dashed border carries the whole distinction, reading as "parked, not in play"
+   against every other slot badge's solid one. */
+.slot-badge.slot-TX { background-color: rgba(148, 163, 184, 0.06); color: var(--text-muted); border: 1px dashed var(--border); }
 
 /* Plain, unstyled position text -- deliberately NOT a badge, since a second colored pill here
    is exactly the duplication the slot-badge consolidation above was meant to remove. Shown on

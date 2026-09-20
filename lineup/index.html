@@ -766,13 +766,13 @@
             <h3><span class="text-danger">Global Injury Auditor</span></h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Scans all synced leagues to find 'Out' or 'IR' players left in starting lineups or taking up active bench spots.</span>
+                <span class="tooltip-text">Scans all your leagues to find 'Out' or 'IR' players left in starting lineups or taking up active bench spots. Best Ball leagues are skipped (no lineup to set, no IR slot), as are players whose games have already kicked off, since their roster spots are locked.</span>
             </div>
         </header>
         <div class="info-banner mb-4" style="display: flex; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
             <div class="cluster cluster-sm">
                 <div class="info-banner-icon" style="background: #ef4444; color: white;">i</div>
-                <div><strong>Sleeper Sync Required:</strong> This tool only audits leagues synced via Sleeper on the Dashboard.</div>
+                <div><strong>How this works:</strong> Sleeper-synced leagues are checked against your real Sleeper roster. Manually added leagues are checked against Sleeper's injury database by player name, using the lineup set here in the optimizer. Best Ball leagues are skipped.</div>
             </div>
         </div>
         <button class="btn btn-danger" onclick="runGlobalInjuryAudit(this)">Run Global Audit</button>
