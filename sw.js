@@ -1,5 +1,5 @@
 // Service Worker with Dynamic Runtime Caching for Root and /lineup/ apps
-const CACHE_NAME = 'draft-strategist-v2.7.3';  // Update this version to force cache refresh
+const CACHE_NAME = 'draft-strategist-v2.7.4';  // Update this version to force cache refresh
 
 // Core assets to pre-cache immediately on install
 const PRECACHE_ASSETS = [
@@ -10,7 +10,8 @@ const PRECACHE_ASSETS = [
     '/js/utils.js',
     '/lineup/',
     '/lineup/index.html',
-    '/lineup/mls.js'
+    '/lineup/mls.js',
+    '/lineup/waiverScanner.js'
 ];
 
 self.addEventListener('install', (event) => {

@@ -802,31 +802,72 @@
                 <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML='';">Clear</button>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">Paste a list of recommended waiver targets. The app will cross-reference the Global Sleeper Roster to tell you if they are available, and display their Weekly/ROS ranks.</span>
+                    <span class="tooltip-text">Auto-Find scans every player nobody in this league has rostered, sorted by your Weekly or ROS rankings. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules -- "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Or paste your own list of targets below -- available players get the same check.</span>
                 </div>
             </div>
         </header>
-        
-        <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
-        
-        <div class="input-group mt-3 mb-3">
-            <label for="waiverPosFilter">Auto-Find Target Position</label>
-            <select id="waiverPosFilter" class="form-input" aria-label="Filter waiver upgrades by position">
-                <option value="FLEX" selected>FLEX (RB/WR/TE) - Recommended</option>
-                <option value="ALL">All Positions</option>
-                <option value="QB">QB Only</option>
-                <option value="RB">RB Only</option>
-                <option value="WR">WR Only</option>
-                <option value="TE">TE Only</option>
-            </select>
+
+        <div class="input-group mb-2">
+            <label id="waiverCompareLabel">Compare Against</label>
+            <div class="mls-segmented" id="waiverCompareToggle" role="group" aria-labelledby="waiverCompareLabel">
+                <button type="button" class="mls-segmented-btn active" data-compare="lineup" aria-pressed="true" onclick="setWaiverCompare('lineup')">Starting Lineup</button>
+                <button type="button" class="mls-segmented-btn" data-compare="roster" aria-pressed="false" onclick="setWaiverCompare('roster')">Whole Roster</button>
+            </div>
+            <small id="waiverCompareHint" class="text-helper mt-1">Free agents who would crack your current starting lineup this week, and who they would replace.</small>
         </div>
 
-        <div class="button-row-dual">
-            <button class="btn btn-primary" onclick="autoFindWaiverUpgrades()">Auto-Find Upgrades</button>
-            <button class="btn btn-purple" onclick="runScout('waiver')">Scan Pasted List</button>
+        <div class="settings-grid mb-2">
+            <div class="input-group">
+                <label for="waiverScanBasis">Rank By</label>
+                <select id="waiverScanBasis" class="form-input" onchange="updateWaiverScanSetting('basis', this.value)" aria-label="Sort available players by Weekly or ROS rank">
+                    <option value="weekly">Weekly Rank</option>
+                    <option value="ros">ROS Rank</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="waiverScanPos">Position</label>
+                <select id="waiverScanPos" class="form-input" onchange="updateWaiverScanSetting('pos', this.value)" aria-label="Filter available players by position">
+                    <option value="FLEX">FLEX (RB/WR/TE)</option>
+                    <option value="ALL">All (grouped by position)</option>
+                    <option value="QB">QB</option>
+                    <option value="RB">RB</option>
+                    <option value="WR">WR</option>
+                    <option value="TE">TE</option>
+                    <option value="K">K</option>
+                    <option value="DEF">DEF</option>
+                </select>
+            </div>
         </div>
-        
-        <div id="waiverOutput" class="scout-output-container"></div>
+
+        <div class="settings-grid mb-3" style="align-items: center;">
+            <div class="input-group">
+                <label for="waiverScanLimit">Show Top</label>
+                <select id="waiverScanLimit" class="form-input" onchange="updateWaiverScanSetting('limit', parseInt(this.value, 10))" aria-label="Number of players to show">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="30">30</option>
+                </select>
+            </div>
+            <div class="input-group input-group-end" id="waiverScanStartersOnlyWrap">
+                <div class="toggle-row toggle-row-flush">
+                    <div class="toggle-info">
+                        <span class="toggle-title">Only Would-Starts</span>
+                    </div>
+                    <input type="checkbox" id="waiverScanStartersOnly" class="toggle-switch" onchange="updateWaiverScanSetting('startersOnly', this.checked)" aria-label="Only show players who would crack your starting lineup">
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%;" onclick="autoFindWaiverUpgrades(this)">Auto-Find</button>
+
+        <hr class="card-divider">
+        <div class="divider-text">OR CHECK YOUR OWN LIST</div>
+
+        <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
+        <button class="btn btn-purple mt-3" style="width: 100%;" onclick="runScout('waiver')">Scan Pasted List</button>
+
+        <div id="waiverOutput" class="scout-output-container" aria-live="polite"></div>
     </section>
     
     <!-- Trade Analyzer -->
@@ -1092,7 +1133,7 @@
             <!-- Step 5 (Previously Step 4) -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">5</span> Scout & Waivers</h4>
-                <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. Paste waiver wire recommendations or trade targets. The app cross-references your <strong class="text-main">Sleeper Sync</strong> data to show whether players are available on waivers, on your roster, or owned by opponents, alongside side-by-side Weekly and ROS ranks. The Trade Analyzer tells you who owns each player and totals up each side's value using your own custom ROS Rankings from the Roster tab, and if you've also loaded Market Value data from the Trade Finder section, it shows a second verdict from market consensus for comparison. The values used for your ROS Rankings are estimated by converting your ROS Rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more; rank #1 player is around 10,000, and the values decay from there at ~1.8% per rank. It's a way to help compare players on your own board; not intended to be an exact evaluation of your rankings.</p>
+                <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. Paste waiver wire recommendations or trade targets. The app cross-references your <strong class="text-main">Sleeper Sync</strong> data to show whether players are available on waivers, on your roster, or owned by opponents, alongside side-by-side Weekly and ROS ranks. The Waiver Wire Assistant's Auto-Find lists the top available players by your Weekly or ROS rankings, with each one's weekly positional and FLEX rank. Compare them against your Starting Lineup (would he start this week, and who would he replace?) or your Whole Roster (is he better than your weakest player at the position?). Pasted lists get the same Would Start check. The Trade Analyzer tells you who owns each player and totals up each side's value using your own custom ROS Rankings from the Roster tab, and if you've also loaded Market Value data from the Trade Finder section, it shows a second verdict from market consensus for comparison. The values used for your ROS Rankings are estimated by converting your ROS Rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more; rank #1 player is around 10,000, and the values decay from there at ~1.8% per rank. It's a way to help compare players on your own board; not intended to be an exact evaluation of your rankings.</p>
             </div>
 
             <!-- Step 6 (Previously Step 5) -->
@@ -1158,6 +1199,15 @@
         <p id="rankingsPreviewCount" class="mls-preview-count"></p>
         <ul id="rankingsPreviewList" class="mls-preview-list"></ul>
         <p id="rankingsPreviewNote" class="mls-preview-note" style="display: none;">This file also includes Strength of Schedule data, which will be updated too.</p>
+        <div id="rankingsPreviewDerived" class="mls-preview-derived" style="display: none;">
+            <div class="mls-preview-derived-title">Positional ranks will be derived</div>
+            <p class="mls-preview-derived-body"></p>
+        </div>
+        <div id="rankingsPreviewUnmatched" class="mls-preview-unmatched" style="display: none;">
+            <div class="mls-preview-unmatched-title"></div>
+            <div class="mls-preview-unmatched-list"></div>
+            <p class="mls-preview-unmatched-hint">Players are matched by name, so these stay unranked everywhere in the app -- including your lineup and waiver scans. Team defenses are often named differently than Sleeper names them. You can still save this file; renaming them to match Sleeper fixes it.</p>
+        </div>
         <div class="mls-preview-actions">
             <button class="btn btn-secondary" onclick="cancelRankingsPreview()">Cancel</button>
             <button class="btn btn-primary" onclick="confirmRankingsPreview()">Looks Good, Save It</button>
