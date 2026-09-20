@@ -598,12 +598,12 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             let payload;
             try {
                 payload = JSON.parse(e.target.result);
             } catch (err) {
-                if (window.showToast) window.showToast("That file isn't valid JSON -- couldn't read it as a backup.", { isError: true });
+                if (window.showToast) window.showToast("That file isn't valid JSON - couldn't read it as a backup.", { isError: true });
                 fileInput.value = "";
                 return;
             }
@@ -616,9 +616,9 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
 
             const keyCount = Object.keys(payload.data).length;
             const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
-            const confirmMsg = `This will REPLACE your current My Lineup Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately. Continue?`;
+            const confirmMsg = `This replaces your current My Lineup Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately.`;
 
-            if (!window.confirm(confirmMsg)) {
+            if (!await window.showConfirm(confirmMsg, { title: 'Restore from backup?', confirmText: 'Replace My Data', danger: true })) {
                 fileInput.value = "";
                 return;
             }
@@ -632,8 +632,8 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         reader.readAsText(file);
     };
 
-    window.factoryReset = function() {
-        if (window.confirm("DANGER ZONE\n\nAre you sure you want to clear ALL leagues, cached rankings, custom SoS data, and settings?\n\n(My Draft Strategist data is not affected.)\n\nThis cannot be undone.")) {
+    window.factoryReset = async function() {
+        if (await window.showConfirm("This clears every league, cached ranking set, custom SoS grid, and setting in My Lineup Strategist.\n\nMy Draft Strategist data is not affected. This cannot be undone.", { title: 'Factory reset this app?', confirmText: 'Factory Reset', danger: true })) {
             getMlsOwnedKeys().forEach(k => localStorage.removeItem(k));
             window.location.reload();
         }
@@ -1112,7 +1112,7 @@ function attachScoutSuggestionHandler(outputElId) {
             return `<div class="mls-pts mls-pts-final" title="Final score. Sleeper's pre-game projection shown below."><span class="mls-pts-main">${fmt(actualRaw)}</span><span class="mls-pts-sub">${sub}</span></div>`;
         }
         if (projVal !== null) {
-            return `<div class="mls-pts" title="Sleeper's projection for this week. Informational only -- the optimizer uses your rankings."><span class="mls-pts-main">${fmt(projVal)}</span><span class="mls-pts-sub">proj</span></div>`;
+            return `<div class="mls-pts" title="Sleeper's projection for this week. Informational only; the optimizer uses your rankings."><span class="mls-pts-main">${fmt(projVal)}</span><span class="mls-pts-sub">proj</span></div>`;
         }
         if (projLoaded) {
             return `<div class="mls-pts mls-pts-none" title="Sleeper doesn't have a projection for this player."><span class="mls-pts-main">&mdash;</span><span class="mls-pts-sub">proj</span></div>`;
@@ -1291,14 +1291,14 @@ function attachScoutSuggestionHandler(outputElId) {
             const p = flagged[0].player;
             return `<div class="lineup-injury-warning">
                 ${warnSvg}
-                <span><strong>${escapeHtml(p.name)}</strong> is <strong>${escapeHtml(p.inj)}</strong> and currently in your starting lineup -- consider swapping in a bench player.</span>
+                <span><strong>${escapeHtml(p.name)}</strong> is <strong>${escapeHtml(p.inj)}</strong> and currently in your starting lineup - consider swapping in a bench player.</span>
             </div>`;
         }
 
         const namesHTML = flagged.map(s => `${escapeHtml(s.player.name)} (${escapeHtml(s.player.inj)})`).join(', ');
         return `<div class="lineup-injury-warning">
             ${warnSvg}
-            <span><strong>${flagged.length} starters</strong> are Doubtful, Out, IR, or otherwise unlikely to play: ${namesHTML} -- consider swapping them out.</span>
+            <span><strong>${flagged.length} starters</strong> are Doubtful, Out, IR, or otherwise unlikely to play: ${namesHTML} - consider swapping them out.</span>
         </div>`;
     }
 
@@ -1432,8 +1432,8 @@ function attachScoutSuggestionHandler(outputElId) {
         refreshLeagueDropdown();
     };
 
-    window.deleteLeagueManager = function(leagueId) {
-        if (!window.confirm("Are you sure you want to remove this league?")) return;
+    window.deleteLeagueManager = async function(leagueId) {
+        if (!await window.showConfirm("This removes the league and its saved settings from the app. You can sync it again from Sleeper later.", { title: 'Remove this league?', confirmText: 'Remove League', danger: true })) return;
         State.leagues = State.leagues.filter(l => l.leagueId !== leagueId);
         if (State.activeLeagueId === leagueId) {
             State.activeLeagueId = State.leagues.length > 0 ? State.leagues[0].leagueId : null;
@@ -1725,10 +1725,10 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     };
 
-    window.deletePlayer = function(playerId) {
+    window.deletePlayer = async function(playerId) {
         let league = getActiveLeague();
         if (!league) return;
-        if (window.confirm("Remove player from active roster?")) {
+        if (await window.showConfirm("This takes the player off your active roster in this league. You can add them back from the Roster tab.", { title: 'Remove player?', confirmText: 'Remove', danger: true })) {
             let pToRemove = league.roster.find(p => p.id === playerId);
             if (pToRemove && league.globalRosterMap) { delete league.globalRosterMap[pToRemove.cleanName]; }
             league.roster = league.roster.filter(p => p.id !== playerId);
@@ -2019,7 +2019,7 @@ function attachScoutSuggestionHandler(outputElId) {
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
 
             const summary = failCount > 0
-                ? `Imported ${successCount} league${successCount === 1 ? '' : 's'} (${failCount} failed -- check console for details).`
+                ? `Imported ${successCount} league${successCount === 1 ? '' : 's'} (${failCount} failed - check console for details).`
                 : `Imported ${successCount} league${successCount === 1 ? '' : 's'}!`;
             if (window.showToast) window.showToast(summary, { isError: failCount > 0 });
 
@@ -2257,11 +2257,11 @@ function attachScoutSuggestionHandler(outputElId) {
                 if (hintEl) {
                     hintEl.style.display = 'block';
                     let playerList = dynamic.players.map(p => p.name).join(', ');
-                    hintEl.innerText = `${dynamic.source} top available: ${playerList} -- avg ${dynamic.value.toLocaleString()}.`;
+                    hintEl.innerText = `${dynamic.source} top available: ${playerList} - avg ${dynamic.value.toLocaleString()}.`;
                 }
             } else if (hintEl) {
                 hintEl.style.display = 'block';
-                hintEl.innerText = `No free agent data to auto-calculate this yet (sync a league and load rankings) -- using the value above.`;
+                hintEl.innerText = `No free agent data to auto-calculate this yet (sync a league and load rankings) - using the value above.`;
             }
         }
 
@@ -2397,7 +2397,7 @@ function attachScoutSuggestionHandler(outputElId) {
             let valueHTML = "";
             if (type === 'trade') {
                 valueHTML += userValueObj
-                    ? `<span>Your Value: <strong class="mls-stat-value">${userValueObj.value.toLocaleString()}</strong>${userValueObj.fromMarket ? ' <span style="color:var(--text-muted); font-size:0.75em;">(mkt -- no ROS value for picks)</span>' : ''}</span>`
+                    ? `<span>Your Value: <strong class="mls-stat-value">${userValueObj.value.toLocaleString()}</strong>${userValueObj.fromMarket ? ' <span style="color:var(--text-muted); font-size:0.75em;">(mkt - no ROS value for picks)</span>' : ''}</span>`
                     : `<span style="color:var(--text-muted);">Your Value: Unranked</span>`;
                 if (State.marketRankings.length > 0) {
                     valueHTML += marketValueObj
@@ -2450,7 +2450,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
             let verdictHTML;
             if (isOneSided) {
-                verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Enter players on both sides to get a fairness verdict -- right now only one side has players.</div>`;
+                verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Enter players on both sides to get a fairness verdict; right now only one side has players.</div>`;
             } else {
                 // --- TRADE FAIRNESS VERDICT(S) ---
                 // Renders up to two independent verdicts ahead of the player lists: one from the
@@ -2461,12 +2461,12 @@ function attachScoutSuggestionHandler(outputElId) {
                 // user see "the market" and "how I personally value this" can disagree.
                 verdictHTML = renderTradeVerdict(
                     "Your Rankings",
-                    "This value isn't something you entered -- it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
+                    "This value isn't something you entered; it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
                     getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
                 );
                 verdictHTML += renderTradeVerdict(
                     "Market Consensus",
-                    "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value -- not the source's official number.",
+                    "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value - not the source's official number.",
                     getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
                 );
 
@@ -2782,17 +2782,17 @@ function attachScoutSuggestionHandler(outputElId) {
         if (derivedPos && flexNotable) return {
             title: 'Position and FLEX ranks will be derived',
             short: 'position ranks (WR1, RB2, ...) or FLEX ranks',
-            detail: `This file is one overall list with no positional rank column and no FLEX list, so both are derived from its order -- positions by ordering each position group, FLEX by ordering RB/WR/TE. ${typeName} exports usually include both; re-exporting with a "Pos Rank" column and a FLEX list (or uploading per-position files) would use your source's own numbers.`
+            detail: `This file is one overall list with no positional rank column and no FLEX list, so both are derived from its order - positions by ordering each position group, FLEX by ordering RB/WR/TE. ${typeName} exports usually include both; re-exporting with a "Pos Rank" column and a FLEX list (or uploading per-position files) would use your source's own numbers.`
         };
         if (derivedPos) return {
             title: 'Position ranks will be derived',
             short: 'position ranks (WR1, RB2, ...)',
-            detail: `This file has no positional rank column, so position ranks are derived by ordering each position group by overall rank. ${typeName} exports usually include one -- re-exporting with a "Pos Rank" column, or uploading per-position files, would use your source's own numbers.`
+            detail: `This file has no positional rank column, so position ranks are derived by ordering each position group by overall rank. ${typeName} exports usually include one; re-exporting with a "Pos Rank" column, or uploading per-position files, would use your source's own numbers.`
         };
         return {
             title: 'FLEX ranks will be derived',
             short: 'FLEX ranks',
-            detail: 'Position ranks come straight from this file\'s own positional rank column. It has no FLEX list, though, so FLEX ranks are derived by ordering your RB/WR/TE by overall rank. Weekly exports usually include a FLEX list -- if yours does, re-export with it (or upload it as the FLEX file in per-position mode) to use your source\'s numbers.'
+            detail: 'Position ranks come straight from this file\'s own positional rank column. It has no FLEX list, though, so FLEX ranks are derived by ordering your RB/WR/TE by overall rank. Weekly exports usually include a FLEX list; if yours does, re-export with it (or upload it as the FLEX file in per-position mode) to use your source\'s numbers.'
         };
     }
 
@@ -2912,9 +2912,9 @@ function attachScoutSuggestionHandler(outputElId) {
             case 'bench':
                 return { pill: pill('mls-verdict-bench', 'Bench'), line: waiverCompareLine(player, verdict.bubble, verdict.bubbleSlotType, 'Would need to pass', ctx.checkDisplay, ctx.checkLabel) };
             case 'unavailable':
-                return { pill: pill('mls-verdict-out', onBye ? 'Bye' : 'Out'), line: onBye ? 'On bye this week -- a stash, not a start.' : `Listed ${escapeHtml(player.inj || 'out')} -- can't start this week.` };
+                return { pill: pill('mls-verdict-out', onBye ? 'Bye' : 'Out'), line: onBye ? 'On bye this week - a stash, not a start.' : `Listed ${escapeHtml(player.inj || 'out')} - can't start this week.` };
             case 'kickedOff':
-                return { pill: pill('mls-verdict-out', 'Played'), line: 'His game already kicked off -- no help this week.' };
+                return { pill: pill('mls-verdict-out', 'Played'), line: 'His game already kicked off - no help this week.' };
             case 'locked':
                 return { pill: pill('mls-verdict-bench', 'Locked'), line: `Every ${player.pos}-eligible lineup spot is locked (manual lock or game started).` };
             case 'noTeam':
@@ -3012,7 +3012,7 @@ function attachScoutSuggestionHandler(outputElId) {
     async function runAllLeaguesSearch(names, outputEl) {
         const leagues = State.leagues || [];
         if (leagues.length === 0) {
-            outputEl.innerHTML = `<span class="mls-error-text">No leagues yet -- sync a Sleeper league on the Dashboard first.</span>`;
+            outputEl.innerHTML = `<span class="mls-error-text">No leagues yet - sync a Sleeper league on the Dashboard first.</span>`;
             return;
         }
 
@@ -3100,10 +3100,10 @@ function attachScoutSuggestionHandler(outputElId) {
 
         const notes = [];
         if (unmapped > 0) {
-            notes.push(`${plural(unmapped, 'league')} here ${unmapped === 1 ? "isn't" : "aren't"} Sleeper-synced, so ${unmapped === 1 ? 'it' : 'they'} can only say whether a player is on your own roster -- not whether he's available.`);
+            notes.push(`${plural(unmapped, 'league')} here ${unmapped === 1 ? "isn't" : "aren't"} Sleeper-synced, so ${unmapped === 1 ? 'it' : 'they'} can only say whether a player is on your own roster - not whether he's available.`);
         }
         if (activeLeague && (State.rosRankings.length > 0 || State.weeklyRankings.length > 0)) {
-            notes.push(`Wk/ROS ranks come from the rankings loaded for <strong>${escapeHtml(activeLeague.name)}</strong> (your active league) -- only the ownership rows below are per-league.`);
+            notes.push(`Wk/ROS ranks come from the rankings loaded for <strong>${escapeHtml(activeLeague.name)}</strong> (your active league); only the ownership rows below are per-league.`);
         }
         notes.push(`Ownership is from your last sync of each league. Re-run <strong>Sync All</strong> on the Dashboard if a recent add or drop is missing.`);
 
@@ -3150,7 +3150,7 @@ function attachScoutSuggestionHandler(outputElId) {
                     suggestHTML = `<div class="scout-suggest-hint">Did you mean
                         <a href="#" class="scout-suggest-link" data-input-id="waiverInput" data-original="${escapeHtml(res.name)}" data-suggested="${escapeHtml(suggestion)}" data-scout-type="waiver">${escapeHtml(suggestion)}</a>?</div>`;
                 } else if (!res.meta) {
-                    suggestHTML = `<div class="scout-suggest-hint">No Sleeper player matched this name -- check the spelling.</div>`;
+                    suggestHTML = `<div class="scout-suggest-hint">No Sleeper player matched this name - check the spelling.</div>`;
                 }
             }
 
@@ -3208,7 +3208,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
         let league = getActiveLeague();
         if (!league || !league.globalRosterMap || !league.roster || league.roster.length === 0) {
-            outputEl.innerHTML = `<span class="mls-error-text">Sync a Sleeper league on the Dashboard first -- Auto-Find needs your league's rosters to know who's available.</span>`;
+            outputEl.innerHTML = `<span class="mls-error-text">Sync a Sleeper league on the Dashboard first; Auto-Find needs your league's rosters to know who's available.</span>`;
             return;
         }
 
@@ -3224,7 +3224,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 outputEl.innerHTML = `<span class="mls-error-text">Upload Weekly (Lineup tab) or ROS (Roster tab) rankings first.</span>`;
                 return;
             }
-            basisNote = `No ${basis === 'ros' ? 'ROS' : 'Weekly'} rankings loaded for this league -- scanned by ${other === 'ros' ? 'ROS' : 'Weekly'} rank instead.`;
+            basisNote = `No ${basis === 'ros' ? 'ROS' : 'Weekly'} rankings loaded for this league - scanned by ${other === 'ros' ? 'ROS' : 'Weekly'} rank instead.`;
             basis = other;
             scanRankings = otherRankings;
         }
@@ -3316,7 +3316,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 <div class="mls-scan-benchmark">
                     <div class="mls-scan-benchmark-title">Drop candidate (by ${basisName}):</div>
                     Your weakest ${groupName(g)} is <strong>${escapeHtml(bench.name)}</strong> (${rankText(bench)}).
-                    ${upgrades.length ? `Available players ranked ahead of him:` : `<div class="mls-scan-benchmark-ok">No available ${groupName(g)} ranks ahead of him -- you're set here by ${basisName}.</div>`}
+                    ${upgrades.length ? `Available players ranked ahead of him:` : `<div class="mls-scan-benchmark-ok">No available ${groupName(g)} ranks ahead of him; you're set here by ${basisName}.</div>`}
                     ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(', ')}</div>` : ''}
                 </div>`;
                 const cards = upgrades.map(fa => {
@@ -3334,9 +3334,9 @@ function attachScoutSuggestionHandler(outputElId) {
             // Summary: what was scanned, what it was compared against, and any caveats.
             const notes = [];
             if (basisNote) notes.push(basisNote);
-            if (mode === 'lineup' && playedExcluded > 0) notes.push(`${playedExcluded} player${playedExcluded === 1 ? "'s game has" : "s' games have"} already kicked off this week, so ${playedExcluded === 1 ? 'he was' : 'they were'} left out -- everyone below can still help you this week. Switch to Whole Roster to include ${playedExcluded === 1 ? 'him' : 'them'}.`);
-            if (mode === 'lineup' && allPlayed) notes.push(`Every available player's game has already kicked off this week, so they're shown anyway -- treat these as adds for next week.`);
-            if (mode === 'lineup' && !ctx.lineupReady) notes.push(`Couldn't build a starting lineup for this league yet, so there's no Would Start check -- open the Lineup tab and tap Optimize Lineup.`);
+            if (mode === 'lineup' && playedExcluded > 0) notes.push(`${playedExcluded} player${playedExcluded === 1 ? "'s game has" : "s' games have"} already kicked off this week, so ${playedExcluded === 1 ? 'he was' : 'they were'} left out; everyone below can still help you this week. Switch to Whole Roster to include ${playedExcluded === 1 ? 'him' : 'them'}.`);
+            if (mode === 'lineup' && allPlayed) notes.push(`Every available player's game has already kicked off this week, so they're shown anyway - treat these as adds for next week.`);
+            if (mode === 'lineup' && !ctx.lineupReady) notes.push(`Couldn't build a starting lineup for this league yet, so there's no Would Start check - open the Lineup tab and tap Optimize Lineup.`);
             else if (!ctx.checkIsWeekly) notes.push(`No Weekly rankings loaded, so the Would Start check uses ROS ranks (same as the optimizer) and Wk Pos/Flex show "UR".`);
             // Named per set (Weekly / ROS, plus the saved set's name when there is one): with
             // several sets loaded, "a rankings file you loaded" left it unclear which one to fix.
@@ -3347,7 +3347,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 return `Your ${rankingSetLabel(type)} don't include ${wording.short}, so those were derived from the file's order.`;
             };
             [derivedNote(ctx.wkDisplay, 'weekly'), derivedNote(ctx.rosDisplay, 'ros')].forEach(n => { if (n) notes.push(n); });
-            if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference -- renaming them in your rankings file to match Sleeper brings them back.`);
+            if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference; renaming them in your rankings file to match Sleeper brings them back.`);
 
             const weekText = State.currentNflWeek ? `Week ${State.currentNflWeek} ` : '';
             const compareText = mode === 'roster'
@@ -3543,7 +3543,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
     };
 
-    window.applyRankingSetToAll = function(type) {
+    window.applyRankingSetToAll = async function(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const selectEl = document.getElementById(cfg.selectId);
         const val = selectEl ? selectEl.value : null;
@@ -3557,7 +3557,7 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
 
-        if (!window.confirm("Apply this ranking set to ALL of your synced leagues?")) return;
+        if (!await window.showConfirm("Every league you've synced will be pointed at this ranking set, replacing whatever each one uses now.", { title: 'Apply to all leagues?', confirmText: 'Apply to All' })) return;
 
         State.leagues.forEach(l => {
             l[cfg.leagueSetIdKey] = val;
@@ -3569,7 +3569,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
     // Deletes the currently-selected named set entirely. Any league referencing it (not just
     // the active one) falls back to unassigned, since the data it pointed to no longer exists.
-    window.deleteRankingSet = function(type) {
+    window.deleteRankingSet = async function(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const selectEl = document.getElementById(cfg.selectId);
         const setId = selectEl ? selectEl.value : null;
@@ -3578,7 +3578,7 @@ function attachScoutSuggestionHandler(outputElId) {
         const set = State.rankingSets[cfg.setsKey].find(s => s.id === setId);
         if (!set) return;
 
-        if (!window.confirm(`Delete "${set.name}"? Any league using this set will need a new one selected. This can't be undone.`)) return;
+        if (!await window.showConfirm("Any league using this set will need a new one selected. This can't be undone.", { title: `Delete "${set.name}"?`, confirmText: 'Delete Set', danger: true })) return;
 
         State.rankingSets[cfg.setsKey] = State.rankingSets[cfg.setsKey].filter(s => s.id !== setId);
         localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
@@ -3783,7 +3783,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 if (derivedEl && wording) {
                     derivedEl.querySelector('.mls-preview-derived-title').textContent = wording.title;
                     derivedEl.querySelector('.mls-preview-derived-body').textContent =
-                        `${wording.detail} Either way the ordering is sound -- it just means those numbers are this app's reading of your list, and tiers stay on the ranks your file published.`;
+                        `${wording.detail} Either way the ordering is sound; it just means those numbers are this app's reading of your list, and tiers stay on the ranks your file published.`;
                     derivedEl.style.display = 'block';
                 }
             }).catch(err => console.warn('Rankings file check skipped:', err));
@@ -3993,7 +3993,7 @@ function attachScoutSuggestionHandler(outputElId) {
                         Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
                     } catch (err) {
                         console.error("Error reading Excel file:", err);
-                        if (window.showToast) window.showToast(`Couldn't read "${file.name}" -- it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
+                        if (window.showToast) window.showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
                     }
                 };
                 reader.onerror = () => {
@@ -4061,7 +4061,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
         } catch (error) {
             console.error("Error auto-fetching ROS rankings:", error);
-            let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block requests containing the word 'logs' -- try pausing yours.)" : "";
+            let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block requests containing the word 'logs' - try pausing yours.)" : "";
             if (window.showToast) window.showToast(`Could not auto-fetch ROS rankings.\n\n${error.message}${adBlockerTip}`, { isError: true });
         } finally {
             btn.innerText = origText;
@@ -4178,7 +4178,7 @@ window.lookupSimPlayer = async function(p) {
     try {
         const nflState = await getNflState();
         if (!nflState) {
-            resultEl.innerHTML = `<p class="text-helper">Couldn't reach Sleeper right now -- try again in a moment.</p>`;
+            resultEl.innerHTML = `<p class="text-helper">Couldn't reach Sleeper right now - try again in a moment.</p>`;
             return;
         }
         const currentWeek = nflState.week;
@@ -4217,7 +4217,7 @@ window.lookupSimPlayer = async function(p) {
         const isExcluded = shortInj !== null && SIM_EXCLUDE_STATUSES.includes(shortInj);
 
         const injuryHTML = shortInj
-            ? `<div class="sim-lookup-injury-flag${isExcluded ? ' is-excluded' : ''}">Status: ${escapeHtml(shortInj)}${isExcluded ? ' -- unlikely to play this week' : ''}</div>`
+            ? `<div class="sim-lookup-injury-flag${isExcluded ? ' is-excluded' : ''}">Status: ${escapeHtml(shortInj)}${isExcluded ? ' - unlikely to play this week' : ''}</div>`
             : '';
 
         resultEl.innerHTML = `
@@ -4229,7 +4229,7 @@ window.lookupSimPlayer = async function(p) {
                 </div>
                 ${injuryHTML}
                 <div class="sim-lookup-range">${profile.usedFallback ? '~' : ''}${profile.floor}&ndash;${profile.ceiling} pts <span class="text-helper">(${profile.mean} ${projectedMean !== null ? 'proj' : 'avg'})</span></div>
-                <p class="text-helper mt-1">Standalone estimate -- not run against any specific matchup or lineup.</p>
+                <p class="text-helper mt-1">Standalone estimate - not run against any specific matchup or lineup.</p>
             </div>`;
     } catch (err) {
         console.error(err);
@@ -4917,14 +4917,14 @@ function applyMarketSettingsToUI() {
     // etc -- this lets the person pull that ONE player back into normal (unlocked) territory so
     // the optimizer will freely reconsider them again, without touching anything else about the
     // lineup or affecting the season-long manual lock list.
-    window.overrideAutoLock = function(playerId) {
+    window.overrideAutoLock = async function(playerId) {
         if (!State.activeLeagueId) return;
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         let bench = State.manualBenchMap[State.activeLeagueId] || [];
         let found = starters.find(s => s.player && s.player.id === playerId);
         let playerName = found ? found.player.name : (bench.find(p => p.id === playerId) || {}).name || 'This player';
 
-        if (!window.confirm(`${playerName}'s game shows as already started. Only override this if that's wrong -- doing so lets the optimizer freely move or bench them again.`)) return;
+        if (!await window.showConfirm(`${playerName}'s game shows as already started. Only override this if that's wrong; doing so lets the optimizer freely move or bench them again.`, { title: 'Override the auto-lock?', confirmText: 'Override Lock' })) return;
 
         pushLineupUndoSnapshot(State.activeLeagueId);
         let entry = State.autoLockOverridesMap[State.activeLeagueId];
@@ -4934,7 +4934,7 @@ function applyMarketSettingsToUI() {
         localStorage.setItem('mls_autolock_overrides_map', JSON.stringify(State.autoLockOverridesMap));
 
         if (typeof window.showToast === 'function') {
-            window.showToast("Auto-lock removed -- re-optimizing");
+            window.showToast("Auto-lock removed - re-optimizing");
         }
         window.optimizeLineup(true);
     };
@@ -4946,18 +4946,18 @@ function applyMarketSettingsToUI() {
     // in real life. This is for clearing out manual picks made earlier in the season/week, not
     // for correcting auto-lock mistakes -- overrideAutoLock (the per-player control on an
     // auto-locked row) is the right tool for that instead.
-    window.unlockAllPlayers = function() {
+    window.unlockAllPlayers = async function() {
         if (!State.activeLeagueId) return;
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
         if (locks.length === 0) return;
-        if (!window.confirm(`Unlock all ${locks.length} manually locked player(s) in this league?`)) return;
+        if (!await window.showConfirm(`This clears all ${locks.length} manual lock${locks.length === 1 ? '' : 's'} in this league. Players auto-locked because their game already started stay locked.`, { title: 'Unlock all locked players?', confirmText: 'Unlock All' })) return;
 
         pushLineupUndoSnapshot(State.activeLeagueId);
         State.lockedPlayersMap[State.activeLeagueId] = [];
         localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
 
         if (typeof window.showToast === 'function') {
-            window.showToast("All manual locks cleared -- re-optimizing");
+            window.showToast("All manual locks cleared - re-optimizing");
         }
         window.optimizeLineup(true);
     };
@@ -5007,7 +5007,7 @@ function applyMarketSettingsToUI() {
 
             if (!p1Fits || !p2Fits) {
                 if (typeof window.showToast === 'function') {
-                    window.showToast(`Can't swap ${p1Obj.name} (${p1Obj.pos}) with ${p2Obj.name} (${p2Obj.pos}) -- that position doesn't fit that slot.`, { isError: true });
+                    window.showToast(`Can't swap ${p1Obj.name} (${p1Obj.pos}) with ${p2Obj.name} (${p2Obj.pos}); that position doesn't fit that slot.`, { isError: true });
                 }
                 State.swapSourceId = null;
                 renderLineupUI();
@@ -5557,7 +5557,7 @@ window.syncAllLeagues = async function(btn) {
         // Only shown when there's actually something to clear -- avoids a dead/no-op button
         // taking up space on the common case where nobody has manually locked anyone.
         if (locksList.length > 0) {
-            html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" onclick="unlockAllPlayers()" title="Clears season-long manual locks in this league only -- does not affect players auto-locked because their game already started">Unlock All (${locksList.length})</button></div>`;
+            html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" onclick="unlockAllPlayers()" title="Clears season-long manual locks in this league only - does not affect players auto-locked because their game already started">Unlock All (${locksList.length})</button></div>`;
         }
 
         // While a swap is pending, the source player's row gets an amber highlight (see
@@ -5589,7 +5589,7 @@ window.syncAllLeagues = async function(btn) {
                 // this calls overrideAutoLock(), the failsafe for when the underlying kickoff/
                 // Sleeper data turns out to be wrong about this specific player.
                 let lockControl = (p.autoLocked && !locksList.includes(p.id))
-                    ? `<button class="mls-btn-sm" title="Game in progress -- tap to override if this is wrong" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
+                    ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
                     : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>`;
 
                 let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";

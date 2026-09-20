@@ -304,10 +304,10 @@
         if (btnElement) flashButton(btnElement, "Settings Saved");
     };
 
-    window.resetPicksOnly = function() {
+    window.resetPicksOnly = async function() {
         let draft = getActiveDraft();
         if (!draft) return;
-        if (window.confirm(`Reset draft picks for '${draft.name}' back to pick 1.01?`)) {
+        if (await window.showConfirm(`This puts '${draft.name}' back at pick 1.01. Your rankings and settings aren't affected.`, { title: 'Reset draft picks?', confirmText: 'Reset Picks', danger: true })) {
             draft.draftedPlayers = [];
             draft.myTeam = [];
             draft.rawDraftPicks = [];
@@ -364,12 +364,12 @@
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             let payload;
             try {
                 payload = JSON.parse(e.target.result);
             } catch (err) {
-                if (window.showToast) window.showToast("That file isn't valid JSON -- couldn't read it as a backup.", { isError: true });
+                if (window.showToast) window.showToast("That file isn't valid JSON - couldn't read it as a backup.", { isError: true });
                 fileInput.value = "";
                 return;
             }
@@ -382,9 +382,9 @@
 
             const keyCount = Object.keys(payload.data).length;
             const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
-            const confirmMsg = `This will REPLACE your current My Draft Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately. Continue?`;
+            const confirmMsg = `This replaces your current My Draft Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately.`;
 
-            if (!window.confirm(confirmMsg)) {
+            if (!await window.showConfirm(confirmMsg, { title: 'Restore from backup?', confirmText: 'Replace My Data', danger: true })) {
                 fileInput.value = "";
                 return;
             }
@@ -400,8 +400,8 @@
         reader.readAsText(file);
     };
 
-    window.hardReset = function() {
-        if (window.confirm("WARNING: This will delete ALL My Draft Strategist data including saved drafts, custom rankings, and settings. (My Lineup Strategist data is not affected.)")) {
+    window.hardReset = async function() {
+        if (await window.showConfirm("This deletes every saved draft, custom ranking set, and setting in My Draft Strategist.\n\nMy Lineup Strategist data is not affected. This can't be undone.", { title: 'Delete all My Draft Strategist data?', confirmText: 'Delete Everything', danger: true })) {
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
             getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
             window.location.reload();

@@ -222,8 +222,13 @@ body {
     overflow-x: hidden; 
 }
 
-/* --- RANKINGS UPLOAD PREVIEW MODAL (MLS only) --- */
-.mls-preview-overlay {
+/* --- MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (MLS only) --- */
+/* The .mds-modal-overlay / .mds-modal pair is the generic backdrop-and-card treatment, also
+   used by the shared confirm dialog (showConfirm in utils.js). The .mls-preview-* selectors
+   alongside them are the original names this markup shipped with, kept so the preview modal
+   in lineup/index.html needs no change. */
+.mls-preview-overlay,
+.mds-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -239,7 +244,8 @@ body {
     padding: 1.5rem;
 }
 
-.mls-preview-modal {
+.mls-preview-modal,
+.mds-modal {
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -251,7 +257,8 @@ body {
     padding: 1.5rem;
 }
 
-.mls-preview-modal h3 {
+.mls-preview-modal h3,
+.mds-modal h3 {
     margin: 0 0 0.5rem 0;
     font-size: 1.1rem;
 }
@@ -301,14 +308,37 @@ body {
     margin: 0 0 1rem 0;
 }
 
-.mls-preview-actions {
+.mls-preview-actions,
+.mds-modal-actions {
     display: flex;
     gap: 0.75rem;
 }
 
-.mls-preview-actions .btn {
+.mls-preview-actions .btn,
+.mds-modal-actions .btn {
     width: auto;
     flex: 1;
+}
+
+/* --- SHARED IN-APP CONFIRM DIALOG (showConfirm in utils.js) --- */
+/* Used by MDS, MLS and T-Score in place of window.confirm(). The backdrop and card chrome are
+   the generalized .mds-modal-overlay/.mds-modal pair above (same rules the rankings preview
+   modal uses), so only the message body and the button row are specific to this dialog. */
+.mds-confirm-body p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    margin: 0 0 0.75rem 0;
+}
+
+.mds-confirm-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* The preview modal's own content blocks each carry a bottom margin, so .mls-preview-actions
+   needs no top spacing of its own; the confirm dialog's body doesn't, so it adds one here. */
+.mds-modal-actions {
+    margin-top: 1.25rem;
 }
 
 .hamburger-menu.open { 

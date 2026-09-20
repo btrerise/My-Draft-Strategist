@@ -228,16 +228,16 @@ function renderResults(data) {
 
     if (simOutputDiv) {
         const fallbackNote = fallbackCount > 0
-            ? `<small class="sim-fallback-note">~ marks ${fallbackCount} player(s) without enough completed games yet -- their range is an early-season estimate, not a measured one.</small>`
+            ? `<small class="sim-fallback-note">~ marks ${fallbackCount} player(s) without enough completed games yet; their range is an early-season estimate, not a measured one.</small>`
             : '';
         const projectionNote = projectionCount > 0
-            ? `<small class="sim-projection-note">${projectionCount} player(s)' ranges reflect Sleeper's official projection for this week -- accounting for this week's specific matchup, injury status, and other factors.</small>`
+            ? `<small class="sim-projection-note">${projectionCount} player(s)' ranges reflect Sleeper's official projection for this week - accounting for this week's specific matchup, injury status, and other factors.</small>`
             : '';
         const actualNote = actualCount > 0
-            ? `<small class="sim-actual-note">${actualCount} player(s) marked "Final" have already played this week -- their real score is used instead of a projection.</small>`
+            ? `<small class="sim-actual-note">${actualCount} player(s) marked "Final" have already played this week; their real score is used instead of a projection.</small>`
             : '';
         const lineupNote = lastLineupDiffersFromSleeper
-            ? `<small class="sim-lineup-note">Simulating your proposed lineup from this tool -- it differs from what's currently synced to Sleeper.</small>`
+            ? `<small class="sim-lineup-note">Simulating your proposed lineup from this tool; it differs from what's currently synced to Sleeper.</small>`
             : '';
 
         // Labels live in a legend above the bar rather than inside each colored segment --
