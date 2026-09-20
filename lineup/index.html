@@ -802,7 +802,7 @@
                 <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML='';">Clear</button>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">Auto-Find scans every player nobody in this league has rostered, sorted by your Weekly or ROS rankings. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules -- "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Or paste your own list of targets below -- available players get the same check.</span>
+                    <span class="tooltip-text">Auto-Find scans every player nobody in this league has rostered, sorted by your Weekly or ROS rankings. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules -- "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Or paste your own list of targets below -- available players get the same check. Switch "Search In" to All My Leagues and the same pasted list is checked against every league you've synced at once, showing where each player is a free agent, where you already own him, and who has him everywhere else.</span>
                 </div>
             </div>
         </header>
@@ -864,8 +864,17 @@
         <hr class="card-divider">
         <div class="divider-text">OR CHECK YOUR OWN LIST</div>
 
+        <div class="input-group mb-2">
+            <label id="waiverScopeLabel">Search In</label>
+            <div class="mls-segmented" id="waiverScopeToggle" role="group" aria-labelledby="waiverScopeLabel">
+                <button type="button" class="mls-segmented-btn active" data-scope="league" aria-pressed="true" onclick="setWaiverScope('league')">This League</button>
+                <button type="button" class="mls-segmented-btn" data-scope="all" aria-pressed="false" onclick="setWaiverScope('all')">All My Leagues</button>
+            </div>
+            <small id="waiverScopeHint" class="text-helper mt-1">Checks these players against the league you have active, with the same Would Start verdict as Auto-Find.</small>
+        </div>
+
         <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
-        <button class="btn btn-purple mt-3" style="width: 100%;" onclick="runScout('waiver')">Scan Pasted List</button>
+        <button id="waiverScanBtn" class="btn btn-purple mt-3" style="width: 100%;" onclick="runScout('waiver')">Scan Pasted List</button>
 
         <div id="waiverOutput" class="scout-output-container" aria-live="polite"></div>
     </section>
@@ -1133,7 +1142,7 @@
             <!-- Step 5 (Previously Step 4) -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">5</span> Scout & Waivers</h4>
-                <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. Paste waiver wire recommendations or trade targets. The app cross-references your <strong class="text-main">Sleeper Sync</strong> data to show whether players are available on waivers, on your roster, or owned by opponents, alongside side-by-side Weekly and ROS ranks. The Waiver Wire Assistant's Auto-Find lists the top available players by your Weekly or ROS rankings, with each one's weekly positional and FLEX rank. Compare them against your Starting Lineup (would he start this week, and who would he replace?) or your Whole Roster (is he better than your weakest player at the position?). Pasted lists get the same Would Start check. The Trade Analyzer tells you who owns each player and totals up each side's value using your own custom ROS Rankings from the Roster tab, and if you've also loaded Market Value data from the Trade Finder section, it shows a second verdict from market consensus for comparison. The values used for your ROS Rankings are estimated by converting your ROS Rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more; rank #1 player is around 10,000, and the values decay from there at ~1.8% per rank. It's a way to help compare players on your own board; not intended to be an exact evaluation of your rankings.</p>
+                <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. Paste waiver wire recommendations or trade targets. The app cross-references your <strong class="text-main">Sleeper Sync</strong> data to show whether players are available on waivers, on your roster, or owned by opponents, alongside side-by-side Weekly and ROS ranks. The Waiver Wire Assistant's Auto-Find lists the top available players by your Weekly or ROS rankings, with each one's weekly positional and FLEX rank. Compare them against your Starting Lineup (would he start this week, and who would he replace?) or your Whole Roster (is he better than your weakest player at the position?). Pasted lists get the same Would Start check, and the <strong class="text-main">Search In</strong> toggle above the paste box will run that same list against <em>every</em> league you have synced at once -- one card per player showing where he is a free agent, where he is already on your roster, and who owns him in the rest, with a Switch button to jump straight to any of them. The Trade Analyzer tells you who owns each player and totals up each side's value using your own custom ROS Rankings from the Roster tab, and if you've also loaded Market Value data from the Trade Finder section, it shows a second verdict from market consensus for comparison. The values used for your ROS Rankings are estimated by converting your ROS Rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more; rank #1 player is around 10,000, and the values decay from there at ~1.8% per rank. It's a way to help compare players on your own board; not intended to be an exact evaluation of your rankings.</p>
             </div>
 
             <!-- Step 6 (Previously Step 5) -->

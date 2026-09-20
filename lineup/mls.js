@@ -109,7 +109,10 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         // Waiver Wire Assistant Auto-Find controls (Scout tab). compare: 'lineup' (would he
         // start?) | 'roster' (drop-candidate upgrade); basis: 'weekly' | 'ros' (scan order); pos:
         // a position, 'FLEX', or 'ALL' (grouped by position); limit: rows per group.
-        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false }, JSON.parse(localStorage.getItem('mls_waiver_scan_settings')) || {}),
+        // scope ('league' | 'all') belongs to the Scan Pasted List half of the tool, not
+        // Auto-Find -- it rides in this same object purely so it persists under the one
+        // localStorage key the rest of the Waiver Wire Assistant's settings already use.
+        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false, scope: 'league' }, JSON.parse(localStorage.getItem('mls_waiver_scan_settings')) || {}),
         // --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
         // flexKickoffOptimization gates optimizeFlexKickoffOrder() (see below): when on, the
         // optimizer reassigns which flex-eligible starters sit in strict RB/WR/TE slots vs the
@@ -2179,6 +2182,13 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
 
+        // All-leagues search is a different question ("where is this guy?") than the rest of
+        // this function answers ("what would he do for THIS lineup?"), so it forks here rather
+        // than threading a scope flag through buildCard's lineup/verdict logic below.
+        if (type === 'waiver' && State.waiverScanSettings.scope === 'all') {
+            return runAllLeaguesSearch(targetNames, outputEl);
+        }
+
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
 
@@ -2619,6 +2629,28 @@ function attachScoutSuggestionHandler(outputElId) {
         if (hint) hint.innerText = s.compare === 'roster'
             ? 'Free agents ranked ahead of your weakest rostered player at each position (your drop candidate).'
             : 'Free agents who would crack your current starting lineup this week, and who they would replace.';
+
+        // --- SCAN PASTED LIST: SEARCH IN (This League | All My Leagues) ---
+        // Only the pasted-list half of the card reads this; Auto-Find is always single-league
+        // (it's driven by one league's lineup/roster, which has no cross-league equivalent).
+        const allLeagues = s.scope === 'all';
+        document.querySelectorAll('#waiverScopeToggle [data-scope]').forEach(b => {
+            const on = (b.dataset.scope === 'all') === allLeagues;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        const scopeHint = document.getElementById('waiverScopeHint');
+        if (scopeHint) scopeHint.innerText = allLeagues
+            ? "Checks every league you've synced at once: where each player is a free agent, where you already own him, and who has him elsewhere."
+            : 'Checks these players against the league you have active, with the same Would Start verdict as Auto-Find.';
+        // The button label doubles as the reminder of which mode is armed -- the results
+        // below it look different enough between the two that "Scan Pasted List" alone would
+        // leave someone guessing which one they just ran.
+        set('waiverScanBtn', 'innerText', allLeagues ? 'Search All My Leagues' : 'Scan Pasted List');
+        const waiverInput = document.getElementById('waiverInput');
+        if (waiverInput) waiverInput.placeholder = allLeagues
+            ? 'Paste the players to look up... (e.g. Isiah Pacheco, Puka Nacua)'
+            : 'Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)';
     }
 
     // Everything a waiver card needs, built once per scan: positions/teams/injuries from Sleeper,
@@ -2885,6 +2917,254 @@ function attachScoutSuggestionHandler(outputElId) {
     window.setWaiverCompare = function(mode) {
         window.updateWaiverScanSetting('compare', mode === 'roster' ? 'roster' : 'lineup');
     };
+
+    // Flipping scope clears any results already on screen: a single-league scan and an
+    // all-leagues search answer different questions, and leaving the old cards up under a
+    // toggle that now says something else is the kind of mismatch that gets misread.
+    window.setWaiverScope = function(scope) {
+        window.updateWaiverScanSetting('scope', scope === 'all' ? 'all' : 'league');
+        const out = document.getElementById('waiverOutput');
+        if (out) out.innerHTML = '';
+    };
+
+    // --- ALL-LEAGUES PLAYER SEARCH (Scout tab: Scan Pasted List -> "All My Leagues") ---
+    // Answers "where does this player stand across everything I'm in?" -- one card per player,
+    // one row per league. Ownership is a pure read over the globalRosterMaps already stored on
+    // State.leagues -- no per-league fetch, so ten leagues cost the same as one. The only
+    // network call is the shared Sleeper player map (cached in IndexedDB for a day, and
+    // optional -- see the try/catch below). What that stored data can't do is notice a
+    // transaction made since the last sync, which is why the summary points at Sync All rather
+    // than quietly refetching every league behind a paste.
+    //
+    // Deliberately NOT given the Would Start verdict that the single-league scan carries: that
+    // check needs one league's optimized lineup, locks and manual starters (see
+    // buildWaiverContext), all of which are per-league state that only exists for whichever
+    // league is currently active. Pointing it at ten leagues at once would mean rebuilding all
+    // of that ten times over for a question this view isn't asking.
+
+    // A league can only report "Free Agent" if its roster map covers the WHOLE league. A
+    // Sleeper sync writes every team's players into globalRosterMap, so a missing name there
+    // genuinely means unrostered. Manual and Draft-Strategist-handoff leagues only ever store
+    // your own players, so a missing name means "not on your roster" -- a strictly weaker claim
+    // that gets its own neutral status instead of being reported as an available add.
+    function isFullyMappedLeague(l) {
+        return !!(l && l.leagueId && !l.leagueId.startsWith('manual_') && !l.leagueId.startsWith('handoff_')
+            && l.username && l.username !== 'Manual' && l.globalRosterMap);
+    }
+
+    const LEAGUE_SEARCH_STATUS = {
+        free:    { cls: 'status-avail',       label: 'Free Agent' },
+        mine:    { cls: 'status-mine',        label: 'On Your Roster' },
+        taken:   { cls: 'status-owned',       label: 'Rostered' },
+        unknown: { cls: 'mls-status-unknown', label: 'Not Yours' }
+    };
+
+    // "Switch" on a league row. No re-render needed here: switchActiveLeague already re-runs
+    // runScout('waiver') whenever the textarea still has names in it, which lands right back on
+    // this view with the newly-active league's rankings behind the Wk/ROS numbers. All this
+    // adds is scrolling the results back into view -- switchActiveLeague jumps the page to the
+    // top, which would otherwise leave the person staring at the Dashboard banner. The delay
+    // lets that smooth scroll-to-top start before overriding it, matching how the Positional
+    // Power Rankings table scrolls itself into view after rendering.
+    window.scoutGoToLeague = function(leagueId) {
+        if (!leagueId || leagueId === State.activeLeagueId) return;
+        window.switchActiveLeague(leagueId);
+        setTimeout(() => {
+            const out = document.getElementById('waiverOutput');
+            if (out) out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 60);
+    };
+
+    async function runAllLeaguesSearch(names, outputEl) {
+        const leagues = State.leagues || [];
+        if (leagues.length === 0) {
+            outputEl.innerHTML = `<span class="mls-error-text">No leagues yet -- sync a Sleeper league on the Dashboard first.</span>`;
+            return;
+        }
+
+        outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Searching ${leagues.length} league${leagues.length === 1 ? '' : 's'}...</div>`;
+
+        // Needed specifically for the players this view is best at finding: someone unrostered
+        // in every league has no globalPosMap entry anywhere to read a position off, and an
+        // unlabelled card is the one case a "he's available in 3 leagues" answer can't afford.
+        let meta = {};
+        try {
+            meta = await getSleeperMetaByName();
+        } catch (e) {
+            console.warn('All-leagues search: Sleeper player map unavailable, falling back to league/market positions.', e);
+        }
+
+        const mappedCount = leagues.filter(isFullyMappedLeague).length;
+
+        const getPos = (clean) => {
+            for (const l of leagues) {
+                if (l.globalPosMap && l.globalPosMap[clean]) return l.globalPosMap[clean];
+            }
+            if (meta[clean]) return meta[clean].pos;
+            const m = State.marketRankings.find(r => r.cleanName === clean);
+            return (m && m.pos) ? m.pos : 'UNK';
+        };
+
+        // Deduped on the normalized name, so the same player pasted twice -- or under two
+        // spellings that normalize together -- produces one card rather than two identical ones.
+        const seen = new Set();
+        const results = [];
+
+        names.forEach(name => {
+            const clean = normalizeName(name);
+            if (!clean || seen.has(clean)) return;
+            seen.add(clean);
+
+            const rosObj = State.rosRankings.find(r => r.cleanName === clean);
+            const weekObj = State.weeklyRankings.find(r => r.cleanName === clean);
+            const m = meta[clean] || null;
+
+            const rows = leagues.map(l => {
+                const owner = (l.globalRosterMap || {})[clean];
+                let status;
+                if (owner === 'You') status = 'mine';
+                else if (owner) status = 'taken';
+                else if (isFullyMappedLeague(l)) status = 'free';
+                else status = 'unknown';
+                return { league: l, owner, status };
+            });
+
+            const counts = { free: 0, mine: 0, taken: 0, unknown: 0 };
+            rows.forEach(r => counts[r.status]++);
+
+            // Free agents first -- the only rows that are actionable today -- then leagues you
+            // already own him in, then blocked, then the ones that can't say. Sorted by name
+            // inside each group so a card's row order is stable between searches.
+            const ORDER = { free: 0, mine: 1, taken: 2, unknown: 3 };
+            rows.sort((a, b) => (ORDER[a.status] - ORDER[b.status])
+                || String(a.league.name || '').localeCompare(String(b.league.name || '')));
+
+            results.push({
+                clean, name, rosObj, weekObj, meta: m, rows, counts,
+                displayName: (rosObj && rosObj.name) || (weekObj && weekObj.name) || name,
+                pos: getPos(clean)
+            });
+        });
+
+        if (results.length === 0) {
+            outputEl.innerHTML = `<span class="mls-error-text">Please enter at least one player name.</span>`;
+            return;
+        }
+
+        // Most actionable first: whoever is sitting on the most waiver wires. Ties fall back to
+        // ROS then Weekly rank, matching how the single-league scan breaks its own ties.
+        results.sort((a, b) => {
+            if (a.counts.free !== b.counts.free) return b.counts.free - a.counts.free;
+            const ar = a.rosObj ? a.rosObj.rank : Infinity, br = b.rosObj ? b.rosObj.rank : Infinity;
+            if (ar !== br) return ar - br;
+            return (a.weekObj ? a.weekObj.rank : Infinity) - (b.weekObj ? b.weekObj.rank : Infinity);
+        });
+
+        const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+        const activeLeague = getActiveLeague();
+        const unmapped = leagues.length - mappedCount;
+
+        const notes = [];
+        if (unmapped > 0) {
+            notes.push(`${plural(unmapped, 'league')} here ${unmapped === 1 ? "isn't" : "aren't"} Sleeper-synced, so ${unmapped === 1 ? 'it' : 'they'} can only say whether a player is on your own roster -- not whether he's available.`);
+        }
+        if (activeLeague && (State.rosRankings.length > 0 || State.weeklyRankings.length > 0)) {
+            notes.push(`Wk/ROS ranks come from the rankings loaded for <strong>${escapeHtml(activeLeague.name)}</strong> (your active league) -- only the ownership rows below are per-league.`);
+        }
+        notes.push(`Ownership is from your last sync of each league. Re-run <strong>Sync All</strong> on the Dashboard if a recent add or drop is missing.`);
+
+        let html = `<div class="mls-scan-summary">Searched <strong>${plural(leagues.length, 'league')}</strong> for <strong>${plural(results.length, 'player')}</strong>.`;
+        html += `<ul class="mls-scan-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+
+        results.forEach(res => {
+            const badgeClass = res.pos === 'UNK' ? 'FLEX' : res.pos;
+            const displayPos = res.pos === 'UNK' ? 'FA' : res.pos;
+            const wRank = res.weekObj ? res.weekObj.rank : 'UR';
+            const rRank = res.rosObj ? res.rosObj.rank : 'UR';
+
+            const teamTag = res.meta && res.meta.team
+                ? ` <span class="mls-league-search-team">${escapeHtml(res.meta.team)}</span>` : '';
+            const injTag = res.meta && res.meta.inj
+                ? ` <span class="badge inj-badge">${escapeHtml(res.meta.inj)}</span>` : '';
+
+            // Headline pill. "Free in X of Y" counts only the leagues that can actually answer
+            // the availability question (see isFullyMappedLeague), so the denominator never
+            // implies a manual league said "taken" when it simply couldn't say.
+            let pillCls, pillText;
+            if (mappedCount === 0) {
+                pillCls = res.counts.mine > 0 ? 'status-mine' : 'mls-status-unknown';
+                pillText = res.counts.mine > 0 ? `Yours in ${res.counts.mine}` : 'No synced leagues';
+            } else {
+                pillCls = res.counts.free > 0 ? 'status-avail' : (res.counts.mine > 0 ? 'status-mine' : 'status-owned');
+                pillText = `Free in ${res.counts.free} of ${mappedCount}`;
+            }
+
+            const breakdown = [];
+            if (res.counts.free) breakdown.push(`<span class="mls-nowrap"><strong class="mls-stat-green">${res.counts.free}</strong> available</span>`);
+            if (res.counts.mine) breakdown.push(`<span class="mls-nowrap"><strong class="mls-stat-blue">${res.counts.mine}</strong> on your roster</span>`);
+            if (res.counts.taken) breakdown.push(`<span class="mls-nowrap"><strong class="mls-stat-red">${res.counts.taken}</strong> rostered by someone else</span>`);
+            if (res.counts.unknown) breakdown.push(`<span class="mls-nowrap">${res.counts.unknown} not synced</span>`);
+
+            // Same "Did you mean" fix-it link as the single-league scan, routed back through the
+            // same textarea -- attachScoutSuggestionHandler('waiverOutput') is already wired, and
+            // re-running runScout('waiver') lands back here while the toggle is still on All My
+            // Leagues.
+            let suggestHTML = '';
+            if (!res.rosObj && !res.weekObj) {
+                const suggestion = findClosestRankedName(res.name);
+                if (suggestion) {
+                    suggestHTML = `<div class="scout-suggest-hint">Did you mean
+                        <a href="#" class="scout-suggest-link" data-input-id="waiverInput" data-original="${escapeHtml(res.name)}" data-suggested="${escapeHtml(suggestion)}" data-scout-type="waiver">${escapeHtml(suggestion)}</a>?</div>`;
+                } else if (!res.meta) {
+                    suggestHTML = `<div class="scout-suggest-hint">No Sleeper player matched this name -- check the spelling.</div>`;
+                }
+            }
+
+            const rowsHTML = res.rows.map(r => {
+                const conf = LEAGUE_SEARCH_STATUS[r.status];
+                const label = r.status === 'taken' ? `Rostered by: ${escapeHtml(r.owner)}` : conf.label;
+                const isActive = r.league.leagueId === State.activeLeagueId;
+                const activeTag = isActive ? ` <span class="mls-league-search-active">Active</span>` : '';
+                const goTo = isActive ? '' :
+                    `<button class="btn btn-secondary mls-btn-sm" onclick="scoutGoToLeague('${r.league.leagueId}')" title="Make this your active league">Switch</button>`;
+                const format = r.league.formatBadge
+                    ? `<div class="mls-league-search-format">${escapeHtml(r.league.formatBadge)}</div>` : '';
+                return `
+                <div class="mls-league-search-row mls-league-search-${r.status}">
+                    <div class="mls-league-search-meta">
+                        <div class="mls-league-search-league">${escapeHtml(r.league.name || 'Unnamed League')}${activeTag}</div>
+                        ${format}
+                    </div>
+                    <div class="mls-league-search-actions">
+                        <span class="scout-status ${conf.cls}">${label}</span>
+                        ${goTo}
+                    </div>
+                </div>`;
+            }).join('');
+
+            html += `
+            <div class="mls-league-search-card">
+                <div class="mls-league-search-head">
+                    <div class="mls-scan-main">
+                        <div class="mls-league-search-name">
+                            <span class="badge pos-badge ${badgeClass} mls-pos-badge-sizing">${displayPos}</span>
+                            ${escapeHtml(res.displayName)}${teamTag}${injTag}
+                        </div>
+                        <div class="mls-meta-row mls-scan-ranks">
+                            <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong>${tierTag(res.weekObj?.tier)}${posRankTag(res.weekObj, 'mls-stat-blue')}</span>
+                            <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong>${tierTag(res.rosObj?.tier)}${posRankTag(res.rosObj, 'mls-stat-green')}</span>
+                        </div>
+                        ${breakdown.length ? `<div class="mls-scan-verdict">${breakdown.join(' <span class="mls-rank-sep">&middot;</span> ')}</div>` : ''}
+                        ${suggestHTML}
+                    </div>
+                    <div class="mls-text-right"><div class="scout-status ${pillCls} mls-nowrap">${pillText}</div></div>
+                </div>
+                <div class="mls-league-search-rows">${rowsHTML}</div>
+            </div>`;
+        });
+
+        outputEl.innerHTML = html;
+    }
 
     window.autoFindWaiverUpgrades = async function(btn) {
         const outputEl = document.getElementById('waiverOutput');

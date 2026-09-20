@@ -3726,6 +3726,91 @@ a.nav-btn,
 .mls-segmented-btn:focus-visible { outline: 2px solid var(--primary-green); outline-offset: -2px; }
 .mls-nowrap { white-space: nowrap; }
 
+/* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
+   One card per player, with a per-league ownership row beneath the header. Markup comes from
+   runAllLeaguesSearch in mls.js. The card is deliberately its own box rather than a
+   .scout-result-card: those are single-line summaries, while each of these carries a variable
+   number of league rows and needs a header/body split to stay readable at five-plus leagues. */
+.mls-league-search-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+.mls-league-search-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+.mls-league-search-name {
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.mls-league-search-team { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+
+/* Rows sit on a slightly recessed panel so the per-league list reads as the card's body
+   rather than as more header content. */
+.mls-league-search-rows {
+    background: rgba(0, 0, 0, 0.15);
+    border-top: 1px solid var(--border);
+}
+.mls-league-search-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    border-left: 3px solid transparent;
+}
+.mls-league-search-row + .mls-league-search-row { border-top: 1px solid var(--border); }
+/* Only the actionable row gets a colored edge -- marking every status would turn the list
+   into a stripe chart and bury the one row worth acting on. */
+.mls-league-search-free { border-left-color: var(--primary-green); }
+.mls-league-search-meta { min-width: 0; }
+.mls-league-search-league { font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
+.mls-league-search-format { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+.mls-league-search-active {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--primary-green);
+    border: 1px solid var(--target-border);
+    background: var(--target-bg);
+    border-radius: 999px;
+    padding: 1px 6px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+.mls-league-search-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+/* Neutral fourth state alongside status-avail/owned/mine: a league that structurally can't
+   answer the availability question (manual or handoff leagues store only your own players). */
+.mls-status-unknown {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+}
+
+@media (max-width: 520px) {
+    /* At phone width the status pill plus a Switch button crowds the league name off its
+       line; stacking the row keeps both the name and its format badge fully readable. */
+    .mls-league-search-row { align-items: flex-start; flex-direction: column; }
+    .mls-league-search-actions { width: 100%; justify-content: space-between; }
+}
+
 /* Unmatched-name warning inside the rankings upload preview modal (see openRankingsPreview). */
 .mls-preview-unmatched { background: rgba(252, 165, 165, 0.08); border: 1px solid var(--avoid-border); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
 .mls-preview-unmatched-title { color: #fca5a5; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
