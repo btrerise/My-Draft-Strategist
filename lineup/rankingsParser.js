@@ -25,6 +25,15 @@ function normalizeName(name) {
     return window.normalizeName(name);
 }
 
+// Optional tier cell -> number, accepting "2", "Tier 2", "T2" (anything with a digit in it).
+// null (not 999) when absent or unparseable: unlike rank there's no "unranked" sentinel to keep
+// consistent, and a missing tier just means nothing gets displayed.
+function parseTier(cell) {
+    if (cell === undefined || cell === null) return null;
+    const m = String(cell).match(/\d+/);
+    return m ? parseInt(m[0], 10) : null;
+}
+
 /**
  * Parses one uploaded file (CSV or XLSX) and merges any player rank/SoS data it contains
  * into the shared accumulators. Resolves once parsing finishes -- it never rejects, since a
@@ -80,12 +89,30 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                                         combinedPlayers[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
                                     }
                                     let rVal = parseInt(pRank);
+                                    // Tier lives in a sibling column named for the same section
+                                    // ("QB Tier", "DEF Tier", "FLEX Tier"), found by header name
+                                    // rather than offset since the columns between a section's
+                                    // player and tier vary (Team/Opponent/Total/Matchup/...).
+                                    // Sections without one (K, and FLEX in current exports) get null.
+                                    let sectionKey = isFlexCol ? 'flex' : (isDefCol ? 'def' : posMatch[1]);
+                                    let tierIdx = headers.indexOf(sectionKey + ' tier');
+                                    let tVal = tierIdx !== -1 ? parseTier(rows[r][tierIdx]) : null;
+                                    // Same lockstep rule as the vertical parser below: a tier field is
+                                    // overwritten whenever its rank counterpart is, even with null, so a
+                                    // stale tier never sits beside a rank from a different section.
+                                    let p = combinedPlayers[clean];
                                     if (isFlexCol) {
-                                        combinedPlayers[clean].flexRank = rVal;
-                                        combinedPlayers[clean].rank = rVal;
+                                        p.flexRank = rVal;
+                                        p.flexTier = tVal;
+                                        p.rank = rVal;
+                                        p.tier = tVal;
                                     } else {
-                                        combinedPlayers[clean].posRank = rVal;
-                                        if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = rVal;
+                                        p.posRank = rVal;
+                                        p.posTier = tVal;
+                                        if (p.rank === 999) {
+                                            p.rank = rVal;
+                                            p.tier = tVal;
+                                        }
                                     }
                                 }
                             }
@@ -97,7 +124,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 // 'ros' included alongside the more obvious 'sos'/'schedule'/'matchup' names --
                 // several ranking exports label this column "ROS" (rest-of-season) even though
                 // it's the same team+position schedule-strength value, not an overall rank (the
-                // overall rank column is caught separately above via 'rank'/'overall'/'tier').
+                // overall rank column is caught separately below via 'rank'/'overall').
                 let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup' || h === 'ros');
                 let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
                 let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
@@ -106,7 +133,13 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 // Include position names as valid player name headers
                 const validNameHeaders = ['player', 'name', 'player name', 'quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense', 'flex'];
                 let hasHeaders = headers.some(h => validNameHeaders.includes(h));
-                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'tier') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
+                // 'tier' used to be accepted here as a rank column, which meant a file with both
+                // a Rank and a Tier column could have the Tier values read as ranks (whichever
+                // column came first won). Tier is now its own optional field (tierColIdx below);
+                // a file with only a Tier column falls back to row order for rank, same as a file
+                // with no rank column at all.
+                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
+                let tierColIdx = hasHeaders ? headers.findIndex(h => h === 'tier') : -1;
                 let nameColIdx = hasHeaders ? headers.findIndex(h => validNameHeaders.includes(h)) : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
 
                 let startIndex = hasHeaders ? 1 : 0;
@@ -129,23 +162,42 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                             combinedPlayers[clean] = { name: nameStr.trim(), cleanName: clean, rank: 999, posRank: 999, flexRank: 999 };
                         }
 
-                        // Determine where ranks go based on user UI selection
+                        let tierVal = tierColIdx !== -1 ? parseTier(rows[i][tierColIdx]) : null;
+
+                        // Determine where ranks go based on user UI selection. Each tier field
+                        // (tier / posTier / flexTier) is written in exactly the same branches as
+                        // its rank counterpart (rank / posRank / flexRank), so a tier always
+                        // describes the same list its rank came from -- a WR's tier in the WR file
+                        // is not the same thing as their tier in a FLEX file. It's overwritten
+                        // even when null, so a stale tier never sits beside a replaced rank.
+                        let p = combinedPlayers[clean];
                         if (context === 'FLEX') {
-                            combinedPlayers[clean].flexRank = overallRankVal;
-                            combinedPlayers[clean].rank = overallRankVal;
+                            p.flexRank = overallRankVal;
+                            p.flexTier = tierVal;
+                            p.rank = overallRankVal;
+                            p.tier = tierVal;
                         } else if (context !== 'SINGLE') {
                             // Specific position like QB, RB
-                            combinedPlayers[clean].posRank = overallRankVal;
-                            if (combinedPlayers[clean].rank === 999) combinedPlayers[clean].rank = overallRankVal;
-                        } else {
-                            // Single File
-                            combinedPlayers[clean].rank = overallRankVal;
-                            if (extractedPosRank !== 999) {
-                                combinedPlayers[clean].posRank = extractedPosRank;
-                            } else if (combinedPlayers[clean].posRank === 999) {
-                                combinedPlayers[clean].posRank = overallRankVal; // Fallback
+                            p.posRank = overallRankVal;
+                            p.posTier = tierVal;
+                            if (p.rank === 999) {
+                                p.rank = overallRankVal;
+                                p.tier = tierVal;
                             }
-                            combinedPlayers[clean].flexRank = overallRankVal;
+                        } else {
+                            // Single File: the Tier column describes the overall list. An explicit
+                            // Pos Rank column has no matching tier, so posTier is null in that case.
+                            p.rank = overallRankVal;
+                            p.tier = tierVal;
+                            if (extractedPosRank !== 999) {
+                                p.posRank = extractedPosRank;
+                                p.posTier = null;
+                            } else if (p.posRank === 999) {
+                                p.posRank = overallRankVal; // Fallback
+                                p.posTier = tierVal;
+                            }
+                            p.flexRank = overallRankVal;
+                            p.flexTier = tierVal;
                         }
 
                         // SoS Extraction

@@ -33,6 +33,33 @@ import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } fro
     // line up with the same team codes used by TEAM_BYES, league.roster, etc.
     const ESPN_TEAM_ALIASES = { "WSH": "WAS" };
 
+    // Small muted "(T2)" suffix for a rank shown on a player card, when the rankings file that
+    // rank came from also had a Tier column (see rankingsParser.js). Returns "" for a missing tier
+    // -- the common case, since Tier is an optional column -- so callers can append it
+    // unconditionally and cards for tier-less rankings look exactly as they always have.
+    const tierTag = (tier) => (Number.isFinite(tier) && tier > 0)
+        ? ` <span class="mls-tier" title="Tier ${tier}">(T${tier})</span>`
+        : '';
+
+    // Second rank for the Scout tab's cards: the player's position rank (and its tier), shown
+    // after their overall "Rank" so it's clear which number is which. On flex-style weekly sheets
+    // the overall rank is really a FLEX rank for RB/WR/TE, so the position rank is the only place
+    // their position tier can show. Returns "" when there's no position rank, or when it would just
+    // repeat the overall one (a QB, or a file with no separate Pos Rank column, where posRank falls
+    // back to the overall rank) -- unless the tiers differ, in which case it still has something to say.
+    const posRankTag = (obj, colorClass) => {
+        if (!obj || obj.posRank === undefined || obj.posRank === null || obj.posRank === 999) return '';
+        if (obj.posRank === obj.rank && (obj.posTier ?? null) === (obj.tier ?? null)) return '';
+        return ` <span class="mls-rank-sep">&middot;</span> Pos: <strong class="${colorClass}">#${obj.posRank}</strong>${tierTag(obj.posTier)}`;
+    };
+
+    // How long the Lineup tab's per-player projected/final points data (see refreshLineupStats)
+    // is reused before a re-render is allowed to refetch it. Deliberately short-ish rather than
+    // live: this is a companion view refreshed when the person opens or interacts with the tab,
+    // not a scoreboard that updates itself through Sunday.
+    const LINEUP_STATS_TTL_MS = 2 * 60 * 1000;
+    const LINEUP_PROJECTION_TTL_MS = 5 * 60 * 1000;
+
     // Per-type field/key mapping shared by the Named Ranking Sets feature (see the full
     // explanation further down, near saveRankingsAsSet) -- keeping ROS and Weekly's parallel
     // state keys, localStorage keys, and DOM element ids in one lookup table instead of two
@@ -123,6 +150,26 @@ import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } fro
         // Which week gameTimesByTeam was last successfully fetched for, so a stale cache from
         // an earlier week doesn't silently get reused if currentNflWeek changes mid-session.
         gameTimesFetchedForWeek: null,
+        // Not persisted -- team -> { opp, home, state } for the current week, from the same ESPN
+        // scoreboard response as gameTimesByTeam. state is ESPN's 'pre' | 'in' | 'post'; 'post'
+        // is the only thing that counts as a finished game (kickoff having passed doesn't). Empty
+        // whenever gameTimesByTeam is; consumers treat a missing entry as unknown.
+        gamesByTeam: {},
+        // Epoch ms of the last scoreboard fetch attempt (success or not), so a game-in-progress
+        // refresh (see gameStatusMayBeStale) can't fire on every single re-render.
+        gameTimesFetchedAt: 0,
+        // Not persisted -- the season Sleeper's state endpoint reported alongside currentNflWeek.
+        // Needed to build the projections URL; null until refreshCurrentNflWeek resolves.
+        currentNflSeason: null,
+        // Not persisted -- Sleeper's weekly projections for the Lineup tab's per-player display.
+        // data is { playerId: { pts_ppr, ... } } or null if never fetched; week guards against a
+        // stale week's numbers being shown after currentNflWeek moves on.
+        lineupProjections: { week: null, data: null, fetchedAt: 0 },
+        // Not persisted -- leagueId -> { week, points, fetchedAt, finalKey }: this roster's
+        // players_points from Sleeper's matchups endpoint. finalKey records which teams' games
+        // were final when it was fetched, so a game finishing afterwards forces a refetch.
+        lineupActualPoints: {},
+        lineupStatsRefreshing: false,
         // Not persisted -- undo/redo history for lineup edits (swaps, lock toggles, and
         // optimizer re-runs), per league. Deliberately session-only rather than saved to
         // localStorage: this is "undo my last few clicks," not part of the lineup itself,
@@ -208,6 +255,7 @@ import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } fro
             .then(data => {
                 if (data && typeof data.week === 'number') {
                     State.currentNflWeek = data.week;
+                    State.currentNflSeason = data.league_season || data.season || null;
                     // Kickoff times are keyed by week, so we can't fetch them until we know
                     // which week we're on -- chain it here rather than firing both requests
                     // independently at page load.
@@ -232,26 +280,38 @@ import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } fro
     function refreshGameTimes() {
         const week = State.currentNflWeek;
         if (week == null) return Promise.resolve();
-        if (State.gameTimesFetchedForWeek === week && Object.keys(State.gameTimesByTeam).length > 0) return Promise.resolve();
+        if (State.gameTimesFetchedForWeek === week && Object.keys(State.gameTimesByTeam).length > 0 && !gameStatusMayBeStale()) return Promise.resolve();
 
+        State.gameTimesFetchedAt = Date.now();
         return fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
             .then(res => res.ok ? res.json() : null)
             .then(data => {
                 if (!data || !Array.isArray(data.events)) return;
                 const map = {};
+                const games = {};
                 data.events.forEach(evt => {
                     const iso = evt.date; // ISO 8601 UTC kickoff, shared by both competitors in the event
                     const comp = evt.competitions && evt.competitions[0];
                     if (!iso || !comp || !Array.isArray(comp.competitors)) return;
-                    comp.competitors.forEach(c => {
-                        let abbr = c.team && c.team.abbreviation;
+                    const abbrs = comp.competitors.map(c => {
+                        const abbr = c.team && c.team.abbreviation;
+                        return abbr ? (ESPN_TEAM_ALIASES[abbr] || abbr) : null;
+                    });
+                    const gameState = (evt.status && evt.status.type && evt.status.type.state)
+                        || (comp.status && comp.status.type && comp.status.type.state) || null;
+                    comp.competitors.forEach((c, i) => {
+                        const abbr = abbrs[i];
                         if (!abbr) return;
-                        abbr = ESPN_TEAM_ALIASES[abbr] || abbr;
                         map[abbr] = iso;
+                        // The game has exactly two competitors, so the opponent is whichever
+                        // entry isn't this one.
+                        const opp = abbrs.find((_, j) => j !== i) || null;
+                        games[abbr] = { opp, home: c.homeAway === 'home', state: gameState };
                     });
                 });
                 if (Object.keys(map).length === 0) return; // treat an empty/malformed response as a failed fetch
                 State.gameTimesByTeam = map;
+                State.gamesByTeam = games;
                 State.gameTimesFetchedForWeek = week;
 
                 // If the person is already looking at the lineup tab, refresh it so kickoff
@@ -937,13 +997,15 @@ function attachScoutSuggestionHandler(outputElId) {
     // this week (fetch hasn't resolved, team not found in this week's schedule, bye week, etc).
     // Once kickoff has passed, shows "Started" instead of the (now-stale) clock time -- this is
     // also the visual cue that pairs with the auto-lock behavior below (see hasKickedOff and
-    // optimizeLineup's autoLocked handling).
+    // optimizeLineup's autoLocked handling). Once ESPN reports the game over it says "Final"
+    // instead, matching the final score shown on the row (see getPlayerPointsHTML).
     function getKickoffBadgeHTML(team) {
         if (!team || team === "FA") return "";
         const iso = State.gameTimesByTeam[team];
         if (!iso) return "";
         const kickoffMs = new Date(iso).getTime();
         if (isNaN(kickoffMs)) return "";
+        if (isGameFinal(team)) return `<span class="badge kickoff-badge kickoff-started">Final</span>`;
         if (Date.now() >= kickoffMs) return `<span class="badge kickoff-badge kickoff-started">Started</span>`;
         const label = formatKickoffLabel(iso);
         if (!label) return "";
@@ -959,6 +1021,157 @@ function attachScoutSuggestionHandler(outputElId) {
         if (!iso) return false;
         const ms = new Date(iso).getTime();
         return !isNaN(ms) && Date.now() >= ms;
+    }
+
+    // True only when ESPN says the team's game is over -- unlike hasKickedOff, which is just
+    // "kickoff time has passed" and stays true through the whole game. Unknown is false.
+    function isGameFinal(team) {
+        const g = team && State.gamesByTeam[team];
+        return !!g && g.state === 'post';
+    }
+
+    // True when the cached scoreboard can't be trusted to reflect current game state: some game
+    // has kicked off but was last seen as not-yet-final, and the cache is older than
+    // LINEUP_STATS_TTL_MS. Used by refreshGameTimes to decide whether its once-per-week cache is
+    // still good -- before this, a page left open from Sunday morning would never learn that
+    // any game had finished.
+    function gameStatusMayBeStale() {
+        if (Date.now() - State.gameTimesFetchedAt < LINEUP_STATS_TTL_MS) return false;
+        return Object.keys(State.gamesByTeam).some(team => State.gamesByTeam[team].state !== 'post' && hasKickedOff({ team }));
+    }
+
+    // Sleeper's projection key for a league's scoring format. Only reception scoring is
+    // distinguished (matching how league.pprVal is derived at sync time) -- bonus/premium
+    // scoring such as TE premium isn't reflected in Sleeper's precomputed pts_* fields.
+    function getLeagueScoringKey(league) {
+        return league.pprVal === 1 ? 'pts_ppr' : (league.pprVal === 0.5 ? 'pts_half_ppr' : 'pts_std');
+    }
+
+    // "@ PHI" / "vs KC" for a player's team this week, or "" when there's no game data for them
+    // (fetch hasn't resolved, bye week, free agent).
+    function getOpponentHTML(team) {
+        const g = team && State.gamesByTeam[team];
+        if (!g || !g.opp) return "";
+        return `<span class="mls-opp">${g.home ? 'vs' : '@'} ${escapeHtml(g.opp)}</span>`;
+    }
+
+    // The kickoff badge plus the opponent, kept together as one unit on the row's badge line so
+    // a wrapping line can't split "Sun 1:25 PM" from "vs MIA". "" whenever the kickoff badge is
+    // (both come from the same scoreboard response, so one is never present without the other).
+    function getGameInfoHTML(team) {
+        const badge = getKickoffBadgeHTML(team);
+        if (!badge) return "";
+        return `<span class="mls-game-info">${badge}${getOpponentHTML(team)}</span>`;
+    }
+
+    // The single points figure shown at the right of a Lineup row: Sleeper's projection until the
+    // player's game is final, then the real score with the projection kept alongside for
+    // comparison. Deliberately no in-progress score -- see refreshLineupStats. Returns "" when
+    // there's nothing meaningful to show (bye, free agent, projections not loaded yet), and a
+    // dash when projections did load but Sleeper doesn't project this player.
+    function getPlayerPointsHTML(p) {
+        const week = State.currentNflWeek;
+        if (week == null || !p.team || p.team === "FA" || TEAM_BYES[p.team] === week) return "";
+
+        const fmt = (n) => n.toFixed(1);
+        const proj = State.lineupProjections;
+        const projLoaded = proj.week === week && !!proj.data;
+        const league = getActiveLeague();
+        const projRaw = projLoaded && league && proj.data[p.id] ? proj.data[p.id][getLeagueScoringKey(league)] : undefined;
+        const projVal = typeof projRaw === 'number' ? projRaw : null;
+
+        // Only trust the cached points for a team whose game was already final when they were
+        // fetched (finalKey) -- otherwise a game that finished afterwards would show a partial
+        // score as if it were the final one, until the next refetch.
+        const actualEntry = State.lineupActualPoints[State.activeLeagueId];
+        const actualRaw = isGameFinal(p.team) && actualEntry && actualEntry.week === week && actualEntry.finalKey.split(',').includes(p.team)
+            ? actualEntry.points[p.id] : undefined;
+
+        if (typeof actualRaw === 'number') {
+            const sub = projVal !== null ? `proj ${fmt(projVal)}` : 'final';
+            return `<div class="mls-pts mls-pts-final" title="Final score. Sleeper's pre-game projection shown below."><span class="mls-pts-main">${fmt(actualRaw)}</span><span class="mls-pts-sub">${sub}</span></div>`;
+        }
+        if (projVal !== null) {
+            return `<div class="mls-pts" title="Sleeper's projection for this week. Informational only -- the optimizer uses your rankings."><span class="mls-pts-main">${fmt(projVal)}</span><span class="mls-pts-sub">proj</span></div>`;
+        }
+        if (projLoaded) {
+            return `<div class="mls-pts mls-pts-none" title="Sleeper doesn't have a projection for this player."><span class="mls-pts-main">&mdash;</span><span class="mls-pts-sub">proj</span></div>`;
+        }
+        return "";
+    }
+
+    // Loads what the Lineup tab's projected/final points and opponent display needs, then
+    // re-renders once if anything new arrived. Called at the end of every renderLineupUI; the
+    // in-flight flag plus each source's own freshness check keep that from looping or hammering
+    // the APIs (a re-render caused by fresh data finds everything fresh and does nothing).
+    //
+    // Refresh-on-render, not live: projections are refetched at most every 5 minutes and final
+    // scores every 2, and only when the person is already opening or interacting with the tab.
+    // This is a companion to the Sleeper app, not a scoreboard -- nothing polls on a timer, and
+    // in-progress scores are intentionally never shown (only a game ESPN reports as final).
+    // Every failure path just leaves the display as it was.
+    function refreshLineupStats() {
+        if (State.lineupStatsRefreshing) return;
+        const league = getActiveLeague();
+        const week = State.currentNflWeek;
+        if (!league || !league.leagueId || week == null) return;
+
+        State.lineupStatsRefreshing = true;
+        (async () => {
+            let changed = false;
+            try {
+                // Scoreboard first: it decides which games are final, and is what the actual-
+                // points fetch below is keyed on. It re-renders the tab itself if it fetched.
+                await refreshGameTimes();
+
+                const proj = State.lineupProjections;
+                if (State.currentNflSeason && (proj.week !== week || Date.now() - proj.fetchedAt > LINEUP_PROJECTION_TTL_MS)) {
+                    const data = await getWeeklyProjections(State.currentNflSeason, week);
+                    if (data) {
+                        State.lineupProjections = { week, data, fetchedAt: Date.now() };
+                        changed = true;
+                    } else {
+                        // Keep whatever we had, but stamp the attempt so a failing endpoint
+                        // isn't retried on every render.
+                        State.lineupProjections = { ...proj, fetchedAt: Date.now() };
+                    }
+                }
+
+                const lineupPlayers = [
+                    ...(State.manualStartersMap[league.leagueId] || []).map(s => s.player).filter(Boolean),
+                    ...(State.manualBenchMap[league.leagueId] || [])
+                ];
+                const finalKey = [...new Set(lineupPlayers.map(p => p.team).filter(isGameFinal))].sort().join(',');
+                const cached = State.lineupActualPoints[league.leagueId];
+                const actualsStale = !cached || cached.week !== week || cached.finalKey !== finalKey
+                    || Date.now() - cached.fetchedAt > LINEUP_STATS_TTL_MS;
+                if (finalKey && actualsStale) {
+                    try {
+                        const matchups = await getSleeperMatchups(league.leagueId, week);
+                        const mine = matchups.find(m => m.roster_id === league.rosterId);
+                        if (mine && mine.players_points) {
+                            State.lineupActualPoints[league.leagueId] = { week, points: mine.players_points, fetchedAt: Date.now(), finalKey };
+                            changed = true;
+                        }
+                    } catch (err) {
+                        /* keep any earlier points; the next render retries */
+                    }
+                }
+            } catch (err) {
+                /* leave the display as it was; see comment above */
+            } finally {
+                State.lineupStatsRefreshing = false;
+            }
+
+            const activeTab = document.querySelector('.tab-content.active');
+            if (changed && activeTab && activeTab.id === 'lineupTab') {
+                renderLineupUI(); // renders whichever league is active now, and re-checks its data
+            } else if (State.activeLeagueId !== league.leagueId) {
+                // Switched leagues mid-fetch: that league's own render was skipped by the
+                // in-flight guard above, so give it its turn now.
+                refreshLineupStats();
+            }
+        })();
     }
 
     // Finds every current starter who shares the single soonest upcoming kickoff moment
@@ -2124,8 +2337,8 @@ function attachScoutSuggestionHandler(outputElId) {
                             ${displayName} ${roleTag}
                         </div>
                         <div class="mls-meta-row">
-                            <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
-                            <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
+                            <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong>${tierTag(weekObj?.tier)}${posRankTag(weekObj, 'mls-stat-blue')}</span>
+                            <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong>${tierTag(rosObj?.tier)}${posRankTag(rosObj, 'mls-stat-green')}</span>
                             ${valueHTML}
                         </div>
                         ${suggestHTML}
@@ -2424,19 +2637,22 @@ function attachScoutSuggestionHandler(outputElId) {
             // Which number actually decided a given player's place in the comparison above, so
             // the UI can label it plainly (Flex Rank / Pos Rank / Overall Rank) instead of one
             // ambiguous "Rank" -- makes the FLEX-mode comparison's basis visible rather than hidden.
+            // tier follows the same field the value came from (tier/posTier/flexTier mirror
+            // rank/posRank/flexRank -- see rankingsParser.js), so it's shown alongside the number
+            // it actually describes.
             const compareBasis = (obj) => {
-                if (posFilter === 'ALL') return { label: 'Overall Rank', value: rankFieldOf(obj, 'rank') };
+                if (posFilter === 'ALL') return { label: 'Overall Rank', value: rankFieldOf(obj, 'rank'), tier: obj?.tier };
                 if (useFlexRank) {
-                    if (rankFieldOf(obj, 'flexRank') !== 999) return { label: 'Flex Rank', value: rankFieldOf(obj, 'flexRank') };
-                    if (rankFieldOf(obj, 'posRank') !== 999) return { label: 'Pos Rank', value: rankFieldOf(obj, 'posRank') };
-                    return { label: 'Overall Rank', value: rankFieldOf(obj, 'rank') };
+                    if (rankFieldOf(obj, 'flexRank') !== 999) return { label: 'Flex Rank', value: rankFieldOf(obj, 'flexRank'), tier: obj?.flexTier };
+                    if (rankFieldOf(obj, 'posRank') !== 999) return { label: 'Pos Rank', value: rankFieldOf(obj, 'posRank'), tier: obj?.posTier };
+                    return { label: 'Overall Rank', value: rankFieldOf(obj, 'rank'), tier: obj?.tier };
                 }
-                if (rankFieldOf(obj, 'posRank') !== 999) return { label: 'Pos Rank', value: rankFieldOf(obj, 'posRank') };
-                return { label: 'Overall Rank', value: rankFieldOf(obj, 'rank') };
+                if (rankFieldOf(obj, 'posRank') !== 999) return { label: 'Pos Rank', value: rankFieldOf(obj, 'posRank'), tier: obj?.posTier };
+                return { label: 'Overall Rank', value: rankFieldOf(obj, 'rank'), tier: obj?.tier };
             };
             const formatBasis = (obj) => {
                 let b = compareBasis(obj);
-                return b.value === 999 ? 'Unranked' : `${b.label} #${b.value}`;
+                return b.value === 999 ? 'Unranked' : `${b.label} #${b.value}${tierTag(b.tier)}`;
             };
 
             // Renders one FA suggestion card. Wk Rank / ROS Rank always show each source's plain
@@ -2470,8 +2686,8 @@ function attachScoutSuggestionHandler(outputElId) {
                             ${fa.name}
                         </div>
                         <div class="mls-meta-row">
-                            <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong></span>
-                            <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong></span>
+                            <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong>${tierTag(wRankObj?.tier)}${posRankTag(wRankObj, 'mls-stat-blue')}</span>
+                            <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong>${tierTag(rRankObj?.tier)}${posRankTag(rRankObj, 'mls-stat-green')}</span>
                         </div>
                         ${basisLine}
                     </div>
@@ -2492,7 +2708,8 @@ function attachScoutSuggestionHandler(outputElId) {
                     let rObj = rankings.find(rk => rk.cleanName === p.cleanName);
                     return {
                         name: p.name, cleanName: p.cleanName, pos: getPos(p.cleanName),
-                        rank: rankFieldOf(rObj, 'rank'), posRank: rankFieldOf(rObj, 'posRank'), flexRank: rankFieldOf(rObj, 'flexRank')
+                        rank: rankFieldOf(rObj, 'rank'), posRank: rankFieldOf(rObj, 'posRank'), flexRank: rankFieldOf(rObj, 'flexRank'),
+                        tier: rObj?.tier, posTier: rObj?.posTier, flexTier: rObj?.flexTier
                     };
                 });
                 myRoster.sort(comparePlayers); // ascending -- best first, worst last
@@ -2951,7 +3168,7 @@ function attachScoutSuggestionHandler(outputElId) {
         const listEl = document.getElementById('rankingsPreviewList');
         if (listEl) {
             listEl.innerHTML = preview.map(p =>
-                `<li><span class="rankings-preview-rank">#${p.rank}</span> ${escapeHtml(p.name)}</li>`
+                `<li><span class="rankings-preview-rank">#${p.rank}</span> ${escapeHtml(p.name)}${tierTag(p.tier)}</li>`
             ).join('');
         }
 
@@ -3771,6 +3988,13 @@ function applyMarketSettingsToUI() {
                     name: userObj.name,
                     cleanName: userObj.cleanName,
                     userRank: userRank,
+                    userTier: isPositional ? userObj.posTier : userObj.tier, // matches whichever rank userRank is
+                    // The "other" rank for the same player, so the card shows both: the overall rank
+                    // when the headline number is positional, the position rank (see posRankTag) when
+                    // it's overall.
+                    userAltHTML: isPositional
+                        ? (userObj.rank < 999 ? ` <span class="mls-rank-sep">&middot;</span> Ovr: <strong>#${userObj.rank}</strong>${tierTag(userObj.tier)}` : '')
+                        : posRankTag(userObj, ''),
                     marketVal: marketVal,
                     delta: delta,
                     type: tradeType,
@@ -3812,7 +4036,7 @@ function applyMarketSettingsToUI() {
                     <div>
                         <div class="mls-item-name">${item.name}</div>
                         <div class="mls-meta-row">
-                            <span>Your Board: <strong class="mls-stat-green">${formatDisconnectRank(item.userRank, item.pos, item.isPositional)}</strong></span>
+                            <span>Your Board: <strong class="mls-stat-green">${formatDisconnectRank(item.userRank, item.pos, item.isPositional)}</strong>${tierTag(item.userTier)}${item.userAltHTML}</span>
                             <span>Market: <strong class="mls-stat-blue">${formatDisconnectRank(item.marketVal, item.pos, item.isPositional)}</strong></span>
                         </div>
                     </div>
@@ -3835,7 +4059,7 @@ function applyMarketSettingsToUI() {
                     <div>
                         <div class="mls-item-name">${item.name}</div>
                         <div class="mls-meta-row">
-                            <span>Your Board: <strong class="mls-stat-red">${formatDisconnectRank(item.userRank, item.pos, item.isPositional)}</strong></span>
+                            <span>Your Board: <strong class="mls-stat-red">${formatDisconnectRank(item.userRank, item.pos, item.isPositional)}</strong>${tierTag(item.userTier)}${item.userAltHTML}</span>
                             <span>Market: <strong class="mls-stat-blue">${formatDisconnectRank(item.marketVal, item.pos, item.isPositional)}</strong></span>
                         </div>
                     </div>
@@ -3903,7 +4127,10 @@ function applyMarketSettingsToUI() {
     
     const buttons = container.querySelectorAll('.swap-btn, .lock-btn');
     buttons.forEach(b => b.style.display = 'none');
-    
+    // The on-screen projected/final points and opponent aren't part of the exported image.
+    const screenOnly = container.querySelectorAll('.mls-pts, .mls-opp');
+    screenOnly.forEach(e => e.style.display = 'none');
+
     try {
         const canvas = await html2canvas(container, { 
             backgroundColor: '#1c2541', 
@@ -3931,6 +4158,7 @@ function applyMarketSettingsToUI() {
         if (window.showToast) window.showToast("Export failed. Please try again.", { isError: true });
     } finally {
         buttons.forEach(b => b.style.display = 'inline-block');
+        screenOnly.forEach(e => e.style.display = '');
         exportBtn.innerText = origText;
     }
 };
@@ -3976,7 +4204,9 @@ function applyMarketSettingsToUI() {
             return { 
                 ...p, 
                 rosRank: rObj ? rObj.rank : 999,
-                posRank: rObj ? rObj.posRank : 999 
+                posRank: rObj ? rObj.posRank : 999,
+                rosTier: rObj ? rObj.tier : null,
+                posTier: rObj ? rObj.posTier : null
             };
         });
 
@@ -3988,8 +4218,8 @@ function applyMarketSettingsToUI() {
 
         let html = "";
         displayRoster.forEach(p => {
-            let ovrStr = p.rosRank !== 999 ? `#${p.rosRank}` : "-";
-            let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
+            let ovrStr = p.rosRank !== 999 ? `#${p.rosRank}${tierTag(p.rosTier)}` : "-";
+            let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
             let rankBadge = (p.rosRank !== 999 || p.posRank !== 999) ? `Ovr: ${ovrStr} | Pos: ${posStr}` : "Unranked";
             let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
             let byeBadge = getByeBadgeHTML(p.team);
@@ -4353,7 +4583,7 @@ function applyMarketSettingsToUI() {
             let manualLocked = locks.includes(p.id);
             let overridden = isAutoLockOverridden(State.activeLeagueId, p.id);
             let autoLocked = !manualLocked && !overridden && hasKickedOff(p) && isSleeperStarter(p);
-            return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, isLocked: manualLocked || autoLocked, autoLocked };
+            return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? rObj.posTier : null, flexTier: rObj ? rObj.flexTier : null, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
         let pool = [...scoredRoster];
@@ -4732,18 +4962,18 @@ window.syncAllLeagues = async function(btn) {
                     ? `<button class="mls-btn-sm" title="Game in progress -- tap to override if this is wrong" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
                     : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>`;
 
-                let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
-                let flexStr = p.flexRank !== 999 ? `#${p.flexRank}` : "-";
+                let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
+                let flexStr = p.flexRank !== 999 ? `#${p.flexRank}${tierTag(p.flexTier)}` : "-";
                 let rankBadge = (p.posRank !== 999 || p.flexRank !== 999)
                     ? (['QB', 'K', 'DEF'].includes(p.pos) || p.flexRank === 999 ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${flexStr}`)
                     : "Unranked";
-                
+
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
-                let kickoffBadge = getKickoffBadgeHTML(p.team);
-                
+                let kickoffBadge = getGameInfoHTML(p.team);
+
                 let sleeperWarn = "";
                 if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
                     sleeperWarn = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; font-size: 0.65rem; margin-left: 4px;">Bench in Sleeper</span>`;
@@ -4775,6 +5005,7 @@ window.syncAllLeagues = async function(btn) {
                         </div>
                     </div>
                     <div class="mls-row-actions">
+                        ${getPlayerPointsHTML(p)}
                         <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
                         ${lockControl}
                     </div>
@@ -4794,18 +5025,18 @@ window.syncAllLeagues = async function(btn) {
             benchContainer.classList.remove('bench-empty-state');
             benchPool.forEach(p => {
                 let lockClass = State.swapSourceId === p.id ? "swapping" : "";
-                let posStr = p.posRank !== 999 ? `#${p.posRank}` : "-";
-                let flexStr = p.flexRank !== 999 ? `#${p.flexRank}` : "-";
+                let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
+                let flexStr = p.flexRank !== 999 ? `#${p.flexRank}${tierTag(p.flexTier)}` : "-";
                 let rankBadge = (p.posRank !== 999 || p.flexRank !== 999)
                     ? (['QB', 'K', 'DEF'].includes(p.pos) || p.flexRank === 999 ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${flexStr}`)
                     : "Unranked";
-                
+
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
-                let kickoffBadge = getKickoffBadgeHTML(p.team);
-                
+                let kickoffBadge = getGameInfoHTML(p.team);
+
                 let sleeperWarn = "";
                 if (validSleeperStarters.length > 0 && validSleeperStarters.includes(p.id)) {
                     sleeperWarn = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`;
@@ -4830,6 +5061,7 @@ window.syncAllLeagues = async function(btn) {
                         </div>
                     </div>
                     <div class="mls-row-actions">
+                        ${getPlayerPointsHTML(p)}
                         <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
                     </div>
                 </div>`;
@@ -4845,6 +5077,10 @@ window.syncAllLeagues = async function(btn) {
 
         // Auto-update the dashboard matrix in the background so status icons stay live
         if (typeof renderLeagueManager === 'function') renderLeagueManager();
+
+        // Fills in projections/final scores/opponents if they're missing or stale; a no-op
+        // (and no re-render) when everything's already fresh. See refreshLineupStats.
+        refreshLineupStats();
     }
     // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS & MOBILE TOOLTIPS ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -4975,7 +5211,7 @@ window.runPositionalStrength = function() {
         if (teamScoresMap[owner] && ['QB', 'RB', 'WR', 'TE'].includes(pos)) {
             teamScoresMap[owner].scores[pos] += powerValue;
             teamScoresMap[owner].total += powerValue;
-            teamScoresMap[owner].players[pos].push({ name: actualName, rank: rank });
+            teamScoresMap[owner].players[pos].push({ name: actualName, rank: rank, tier: data?.tier });
         }
     });
 
@@ -5044,7 +5280,7 @@ window.renderPowerRankingsTable = function(teamScores) {
             let listHtml = players.slice(0, 6).map(p => `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 12px; font-size: 0.8rem;">
                     <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">${p.name}</span>
-                    <span style="color: var(--text-muted); font-weight: 600; flex-shrink: 0;">#${p.rank}</span>
+                    <span style="color: var(--text-muted); font-weight: 600; flex-shrink: 0;">#${p.rank}${tierTag(p.tier)}</span>
                 </div>
             `).join('');
             
@@ -5315,7 +5551,7 @@ window.runMatchupSim = async function() {
         const benchPool = usingLocalLineup ? (State.manualBenchMap[league.leagueId] || []) : [];
         const benchIds = benchPool.map(p => p.id).filter(id => id && id !== '0');
 
-        const scoringKey = league.pprVal === 1 ? 'pts_ppr' : (league.pprVal === 0.5 ? 'pts_half_ppr' : 'pts_std');
+        const scoringKey = getLeagueScoringKey(league);
         const { blended: history, currentSeasonOnly } = await getPlayerWeeklyScoreHistory(
             [...myStarters, ...oppStarters, ...benchIds], season, currentWeek, scoringKey,
             { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES }

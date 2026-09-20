@@ -1386,7 +1386,7 @@ body {
 .mls-tooltip-center { display: flex; justify-content: center; width: 100%; }
 .mls-dotted-underline { border-bottom: 1px dotted currentColor; cursor: pointer; }
 .mls-error-text { color: var(--error-color, #fca5a5); }
-.mls-meta-row { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 0.8rem; }
+.mls-meta-row { font-size: 0.8rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; }
 .mls-text-right { text-align: right; }
 .mls-player-row-info { display: flex; align-items: center; gap: 0.6rem; overflow: hidden; }
 .mls-pos-badge-sizing { min-width: 26px; padding: 2px 4px; text-align: center; }
@@ -1397,6 +1397,21 @@ body {
    name line or force ugly mid-word wraps on mobile. */
 .mls-player-badges-row { margin-top: 3px; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
 .mls-rank-badge { background: #1c2541; border: 1px solid var(--border); }
+/* Optional tier shown beside a rank on player cards ("#12 (T3)") -- see tierTag in mls.js. */
+.mls-tier { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+.mls-rank-sep { opacity: 0.5; }
+/* Opponent ("@ PHI" / "vs KC") shown right after the kickoff badge on the Lineup row's badge line
+   (see getGameInfoHTML in mls.js) -- plain text rather than another badge. The wrapper keeps the
+   two together if the line wraps. */
+.mls-game-info { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.mls-opp { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
+/* Projected (or, once the game is final, actual) points at the right edge of a Lineup row: the
+   number on top, a small caption under it saying which it is. Lives inside .mls-row-actions
+   rather than as its own flex child of .lineup-slot, since that layout stretches any middle child. */
+.mls-pts { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; min-width: 2.2rem; margin-right: 0.15rem; }
+.mls-pts-main { font-weight: 700; font-size: 0.95rem; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.mls-pts-sub { font-size: 0.6rem; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mls-pts-none .mls-pts-main { color: var(--text-muted); font-weight: 400; }
 .mls-row-actions { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
 .mls-stat-blue { color: #93c5fd; }
 .mls-stat-green { color: #86efac; }
