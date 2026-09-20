@@ -488,7 +488,10 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         const activeTabBtn = document.querySelector('.nav-bar .nav-btn.active');
         if (!activeTabBtn) return;
         
-        const tabs = ['setup', 'roster', 'lineup', 'scout', 'guide'];
+        // 'guide' is deliberately left out of the swipe order -- it's still reachable from
+        // the drawer, but swiping from Scout into a wall of documentation reads as a
+        // misfire rather than a tab change. Scout is the last swipeable tab.
+        const tabs = ['setup', 'roster', 'lineup', 'scout'];
         const currentIdx = tabs.indexOf(activeTabBtn.getAttribute('data-target'));
         
         if (State.touchEndX < State.touchStartX - swipeThreshold) {
