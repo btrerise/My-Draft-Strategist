@@ -239,3 +239,53 @@ export function renderPowerRankingsTableHTML(teamScores) {
     html += `</tbody></table></div>`;
     return html;
 }
+
+/**
+ * Renders the Recent Sync Logs accordion content: one card per league with any roster
+ * changes (additions, drops, newly-flagged-Out players) since the last sync, plus the
+ * summary line the accordion's own <summary> shows. Pairs with window.renderSyncLogs
+ * (mls.js), which owns the DOM guard clauses (missing elements, no logs at all -> hide the
+ * whole accordion) and the actual writes -- this function only turns a syncLogs array into
+ * the two strings that go into it.
+ *
+ * The "how many total changes" count lives here rather than in mls.js: unlike the trade
+ * verdict's waiver-adjustment bonus or a player card's ownership status, this isn't a
+ * business rule with its own meaning independent of the display -- it's just a tally that
+ * exists to answer "what does the summary line say," so keeping it next to the template that
+ * actually uses it doesn't hide any real decision-making from mls.js.
+ *
+ * @param {Array<{leagueName, added: string[], dropped: string[], newlyOut: string[]}>} syncLogs
+ * @returns {{contentHTML: string, summaryText: string}}
+ */
+export function renderSyncLogsHTML(syncLogs) {
+    let totalChanges = 0;
+    let html = "";
+
+    syncLogs.forEach(log => {
+        const changes = [];
+        if (log.added.length) changes.push(`<span style="color: #86efac; font-weight: 500;">+ ${log.added.join(', ')}</span>`);
+        if (log.dropped.length) changes.push(`<span style="color: #9ca3af; text-decoration: line-through;">- ${log.dropped.join(', ')}</span>`);
+        if (log.newlyOut.length) changes.push(`<span style="color: #fca5a5;">Out: ${log.newlyOut.join(', ')}</span>`);
+
+        if (changes.length > 0) {
+            totalChanges += (log.added.length + log.dropped.length + log.newlyOut.length);
+            html += `
+                <div style="background: rgba(0,0,0,0.2); padding: 0.6rem 0.8rem; border-radius: 6px; border-left: 2px solid #60a5fa;">
+                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; margin-bottom: 0.3rem;">${log.leagueName}</div>
+                    <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.2rem;">
+                        ${changes.join('')}
+                    </div>
+                </div>`;
+        }
+    });
+
+    let summaryText;
+    if (totalChanges === 0) {
+        html = `<div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">No roster changes detected in the last sync.</div>`;
+        summaryText = `Recent Sync Logs (No Changes)`;
+    } else {
+        summaryText = `Recent Sync Logs (${totalChanges} Change${totalChanges === 1 ? '' : 's'})`;
+    }
+
+    return { contentHTML: html, summaryText };
+}

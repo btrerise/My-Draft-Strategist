@@ -11,7 +11,7 @@ import { parseRankingsFiles } from './rankingsParser.js';
 import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from './sleeperApi.js';
 import { fetchMarketConsensusData } from './marketDataApi.js';
 import { runMatchupSimulation } from './monteCarloUi.js';
-import { renderTradeVerdictHTML, renderPlayerCardHTML, renderPowerRankingsTableHTML } from './view.js';
+import { renderTradeVerdictHTML, renderPlayerCardHTML, renderPowerRankingsTableHTML, renderSyncLogsHTML } from './view.js';
 import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from './sleeperService.js';
 import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './statsEngine.js';
 
@@ -4446,7 +4446,7 @@ function applyMarketSettingsToUI() {
         const accordion = document.getElementById('syncLogAccordion');
         const content = document.getElementById('syncLogContent');
         const summary = document.getElementById('syncLogSummary');
-        
+
         if (!accordion || !content || !summary) return;
 
         if (!State.syncLogs || State.syncLogs.length === 0) {
@@ -4455,35 +4455,9 @@ function applyMarketSettingsToUI() {
         }
 
         accordion.style.display = 'block';
-        let totalChanges = 0;
-        let html = "";
-
-        State.syncLogs.forEach(log => {
-            let changes = [];
-            if (log.added.length) changes.push(`<span style="color: #86efac; font-weight: 500;">+ ${log.added.join(', ')}</span>`);
-            if (log.dropped.length) changes.push(`<span style="color: #9ca3af; text-decoration: line-through;">- ${log.dropped.join(', ')}</span>`);
-            if (log.newlyOut.length) changes.push(`<span style="color: #fca5a5;">Out: ${log.newlyOut.join(', ')}</span>`);
-            
-            if (changes.length > 0) {
-                totalChanges += (log.added.length + log.dropped.length + log.newlyOut.length);
-                html += `
-                <div style="background: rgba(0,0,0,0.2); padding: 0.6rem 0.8rem; border-radius: 6px; border-left: 2px solid #60a5fa;">
-                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; margin-bottom: 0.3rem;">${log.leagueName}</div>
-                    <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.2rem;">
-                        ${changes.join('')}
-                    </div>
-                </div>`;
-            }
-        });
-
-        if (totalChanges === 0) {
-            html = `<div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">No roster changes detected in the last sync.</div>`;
-            summary.innerText = `Recent Sync Logs (No Changes)`;
-        } else {
-            summary.innerText = `Recent Sync Logs (${totalChanges} Change${totalChanges === 1 ? '' : 's'})`;
-        }
-
-        content.innerHTML = html;
+        const { contentHTML, summaryText } = renderSyncLogsHTML(State.syncLogs);
+        summary.innerText = summaryText;
+        content.innerHTML = contentHTML;
     };
 
     window.optimizeAllLineups = function(btn) {
