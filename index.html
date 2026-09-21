@@ -25,11 +25,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Draft Strategist">
 
-    <!-- PapaParse & SheetJS -->
+    <!-- PapaParse: kept eager. It's small and it's needed by the primary onboarding path
+         (uploading or pasting a rankings CSV), so it's usually wanted within seconds of load.
+         html2canvas (~200KB, screenshot export only) and SheetJS (.xlsx upload only) are both
+         loaded on first use instead - see loadScriptOnce in js/utils.js. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
-        <!-- HTML2Canvas for MDS Team -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-    
+
     <link rel="stylesheet" href="css/styles.css">
     <meta property="og:title" content="My Draft Strategist - Lineup & Draft Tools">
     <meta property="og:description" content="Fantasy football draft and lineup tools allowing use of custom rankings.">
@@ -838,7 +839,13 @@
     </button>
 </nav>
 <script src="js/utils.js" defer></script>
-    <script src="../t-score/tscore_data.js" defer></script> 
+    <!-- Was "../t-score/..." -- this file sits at the site root, so that walked above it.
+         It only ever worked because browsers clamp a leading ".." at the origin root, which
+         silently turns it back into "/t-score/...". That clamp stops covering for it the
+         moment the site is served from a subdirectory (a staging path, a project-style
+         GitHub Pages URL, or a Live Server session rooted a level up), where it would
+         resolve to a sibling folder and 404. Same file, spelled correctly. -->
+    <script src="t-score/tscore_data.js" defer></script>
     <script src="js/mds.js" defer></script>
 </body>
 </html>
