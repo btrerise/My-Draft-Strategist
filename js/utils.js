@@ -7,6 +7,26 @@
 // actually has on hand.
 const _normalizeNameCache = new Map();
 
+// Known cross-platform name mismatches, mapping the variant spelling to the canonical one.
+// Hoisted to module scope from inside normalizeName and isNameMatch, which each declared their
+// own identical copy of this object literal -- meaning a fresh 11-key object was allocated on
+// every cache miss and on every isNameMatch call. Building an index over Sleeper's ~11,000
+// -player map (mls.js does this in several places) is thousands of those allocations for an
+// object that never changes.
+const NAME_ALIASES = {
+    'kennygainwell': 'kennethgainwell',
+    'gabedavis': 'gabrieldavis',
+    'joshpalmer': 'joshuapalmer',
+    'mitchtrubisky': 'mitchelltrubisky',
+    'tankdell': 'nathanieldell',
+    'hollywoodbrown': 'marquisebrown',
+    'scottymiller': 'scottmiller',
+    'djchark': 'djcharkjr',
+    'jeffwilson': 'jefferywilson',
+    'nicholassingleton': 'nicksingleton',
+    'kennethwalker': 'kenwalker'
+};
+
 function normalizeName(name) {
     if (!name) return "";
 
@@ -18,50 +38,28 @@ function normalizeName(name) {
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
         .replace(/[^a-z]/g, '')
-        .replace(/(jr|sr|iii|ii|iv|v)$/, ''); 
+        .replace(/(jr|sr|iii|ii|iv|v)$/, '');
 
-    const aliasMap = {
-        'kennygainwell': 'kennethgainwell',
-        'gabedavis': 'gabrieldavis',
-        'joshpalmer': 'joshuapalmer',
-        'mitchtrubisky': 'mitchelltrubisky',
-        'tankdell': 'nathanieldell',
-        'hollywoodbrown': 'marquisebrown',
-        'scottymiller': 'scottmiller',
-        'djchark': 'djcharkjr',
-        'jeffwilson': 'jefferywilson',
-        'nicholassingleton': 'nicksingleton',
-        'kennethwalker': 'kenwalker'
-    };
-
-    const result = aliasMap[n] || n;
+    const result = NAME_ALIASES[n] || n;
     _normalizeNameCache.set(name, result);
     return result;
 }
 
+// NOTE: normalizeName already applies NAME_ALIASES, so by the time n1/n2 exist here they are
+// both canonical -- and since no alias VALUE is also an alias KEY, NAME_ALIASES[n1] is always
+// undefined at this point. The two lookups below are therefore unreachable in practice and the
+// function is equivalent to comparing the two normalized names. They're kept because they cost
+// nothing and would start mattering again the moment someone adds an alias whose value is
+// itself another alias's key, which is an easy thing to do to the table above by accident.
 function isNameMatch(name1, name2) {
     if (!name1 || !name2) return false;
     let n1 = normalizeName(name1);
     let n2 = normalizeName(name2);
-    
+
     if (n1 === n2) return true;
 
-    const aliasMap = {
-        'kennygainwell': 'kennethgainwell',
-        'gabedavis': 'gabrieldavis',
-        'joshpalmer': 'joshuapalmer',
-        'mitchtrubisky': 'mitchelltrubisky',
-        'tankdell': 'nathanieldell',
-        'hollywoodbrown': 'marquisebrown',
-        'scottymiller': 'scottmiller',
-        'djchark': 'djcharkjr',
-        'jeffwilson': 'jefferywilson',
-        'nicholassingleton': 'nicksingleton',
-        'kennethwalker': 'kenwalker'
-    };
-
-    if (aliasMap[n1] === n2 || aliasMap[n2] === n1) return true;
-    if (aliasMap[n1] && aliasMap[n1] === aliasMap[n2]) return true;
+    if (NAME_ALIASES[n1] === n2 || NAME_ALIASES[n2] === n1) return true;
+    if (NAME_ALIASES[n1] && NAME_ALIASES[n1] === NAME_ALIASES[n2]) return true;
 
     return false;
 }
@@ -402,6 +400,56 @@ window.showToast = function(message, options = {}) {
   toast.hideTimeout = setTimeout(() => {
     toast.classList.remove('show');
   }, duration);
+};
+
+// --- ON-DEMAND SCRIPT LOADING ---
+// Loads a third-party script the first time something actually needs it, and returns the same
+// promise on every later call so a second request never triggers a second download.
+//
+// Both apps previously loaded html2canvas (~200KB) from a <script defer> tag on every single
+// page load, for a screenshot-export button most sessions never press. `defer` kept it off the
+// critical rendering path, but it still cost the download, the parse and the memory on a phone
+// every time either app opened. mls.js already had exactly this pattern for SheetJS
+// (loadSheetJS, used only when someone uploads an .xlsx) -- this generalizes it so the same
+// reasoning can apply to any heavy, rarely-used dependency, and so both apps share one copy.
+//
+// `globalName` is what the script defines on window; an already-present global short-circuits
+// the whole thing, which also means this is safe if a <script> tag for the same library is
+// ever added back.
+const _loadedScriptPromises = new Map();
+window.loadScriptOnce = function(src, globalName) {
+    if (globalName && typeof window[globalName] !== 'undefined') return Promise.resolve();
+    if (_loadedScriptPromises.has(src)) return _loadedScriptPromises.get(src);
+
+    const promise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => resolve();
+        // Clear the cached promise on failure so a later attempt (after reconnecting, or
+        // after an ad-blocker is paused) genuinely retries instead of replaying this
+        // rejection forever. Same reasoning as getPlayerSearchIndex's error path in mls.js.
+        script.onerror = () => {
+            script.remove();
+            _loadedScriptPromises.delete(src);
+            reject(new Error(`Failed to load ${src}`));
+        };
+        document.head.appendChild(script);
+    });
+
+    _loadedScriptPromises.set(src, promise);
+    return promise;
+};
+
+// Convenience wrapper for the one library both apps lazy-load. Resolves true when html2canvas
+// is ready to call, false when it couldn't be fetched -- callers surface that as a toast
+// rather than silently doing nothing.
+window.ensureHtml2Canvas = async function() {
+    try {
+        await window.loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas');
+        return typeof html2canvas !== 'undefined';
+    } catch (err) {
+        return false;
+    }
 };
 
 // --- FLASH BUTTON FEEDBACK ---

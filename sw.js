@@ -1,5 +1,33 @@
 // Service Worker with Dynamic Runtime Caching for Root and /lineup/ apps
-const CACHE_NAME = 'draft-strategist-v2.7.8';  // Update this version to force cache refresh
+//
+// CACHING STRATEGY (changed in v2.8.0)
+// -----------------------------------
+// This used to be network-first for EVERY same-origin GET, with the cache consulted only
+// when the network threw. That made the precache list below almost pointless: the assets were
+// downloaded and stored on install, and then every subsequent page load still waited on the
+// network for each of them anyway, using the cache purely as an offline backstop. On the
+// connection this app is actually used on -- a phone, mid-draft or minutes before kickoff,
+// often on congested stadium or cellular data -- that meant waiting on the network for a
+// ~6,700-line mls.js and a ~3,900-line styles.css before anything could render.
+//
+// Now the strategy is split by request type:
+//
+//   * Navigations (HTML documents) stay NETWORK-FIRST. The document is the thing that
+//     references everything else, so fetching it fresh is how a deploy gets picked up at all.
+//     It's also the smallest of these requests. Falls back to cache, then to the app shell.
+//
+//   * Static assets (CSS, JS, images, fonts) are STALE-WHILE-REVALIDATE. The cached copy is
+//     returned immediately -- no network wait on the render-blocking path -- while a fresh
+//     copy is fetched in the background and stored for next time. A returning visitor gets an
+//     instant paint; a deploy is picked up on the following load at the latest.
+//
+//   * Anything else same-origin keeps the old network-first behavior.
+//
+// DEPLOY NOTE: because assets are served from cache first, bumping CACHE_NAME on every deploy
+// is now load-bearing rather than optional. The activate handler deletes every cache whose key
+// doesn't match, so a bump forces all clients onto the new files on their next load instead of
+// letting stale-while-revalidate take an extra visit to catch up.
+const CACHE_NAME = 'draft-strategist-v2.8.0';  // Update this version on EVERY deploy - see note above
 
 // Core assets to pre-cache immediately on install
 const PRECACHE_ASSETS = [
@@ -13,6 +41,10 @@ const PRECACHE_ASSETS = [
     '/lineup/mls.js',
     '/lineup/waiverScanner.js'
 ];
+
+// Extensions served straight from cache while refreshing behind the scenes. Deliberately
+// excludes .html (see the navigation branch below) and anything that could be a data endpoint.
+const STATIC_ASSET_RE = /\.(css|js|mjs|png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|otf)$/i;
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -39,39 +71,71 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// Stores a successful response without blocking whatever is waiting on the response itself.
+// Cache writes are best-effort: a failure here (quota, storage disabled) must never turn into
+// a failed page load, which is why nothing awaits this.
+function cachePut(request, response) {
+    if (!response || response.status !== 200) return;
+    const copy = response.clone();
+    caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+}
+
+// Last-resort HTML fallback when a navigation can't be served from network or its own cache
+// entry -- e.g. a deep link opened offline that was never visited before. `accept` can be
+// absent on some requests, hence the guard (the previous code called .includes() on it
+// directly and would throw on a null header).
+function htmlFallback(request) {
+    const accept = request.headers.get('accept') || '';
+    if (request.mode === 'navigate' || accept.includes('text/html')) {
+        return caches.match('/index.html');
+    }
+    return undefined;
+}
+
 self.addEventListener('fetch', (event) => {
     // Only handle GET requests
     if (event.request.method !== 'GET') return;
 
-    // Skip cross-origin requests (like Sleeper and LeagueLogs APIs) from failing the offline shell,
-    // or let them attempt network-first without crashing app shell caching.
+    // Skip cross-origin requests (like Sleeper and LeagueLogs APIs) so they go straight to the
+    // network untouched -- they must never be served from, or written to, the app shell cache.
     const url = new URL(event.request.url);
     if (url.origin !== self.location.origin) {
         return;
     }
 
+    const isNavigation = event.request.mode === 'navigate';
+    const isStaticAsset = !isNavigation && STATIC_ASSET_RE.test(url.pathname);
+
+    if (isStaticAsset) {
+        // --- STALE-WHILE-REVALIDATE ---
+        event.respondWith(
+            caches.match(event.request).then((cached) => {
+                const networkFetch = fetch(event.request)
+                    .then((response) => {
+                        cachePut(event.request, response);
+                        return response;
+                    })
+                    .catch(() => cached);
+
+                // Cached copy wins the race when there is one; the fetch above still runs to
+                // completion in the background so the next load gets the fresh bytes.
+                return cached || networkFetch;
+            })
+        );
+        return;
+    }
+
+    // --- NETWORK-FIRST (navigations, and anything not recognised as a static asset) ---
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                // If valid response, clone it and store it in the runtime cache
-                if (response && response.status === 200) {
-                    let responseToCache = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseToCache);
-                    });
-                }
+                cachePut(event.request, response);
                 return response;
             })
             .catch(() => {
                 // Fallback to cache if network fails (offline mode)
                 return caches.match(event.request).then((cachedResponse) => {
-                    if (cachedResponse) {
-                        return cachedResponse;
-                    }
-                    // Optional fallback for HTML pages if direct path match fails
-                    if (event.request.headers.get('accept').includes('text/html')) {
-                        return caches.match('/index.html');
-                    }
+                    return cachedResponse || htmlFallback(event.request);
                 });
             })
     );

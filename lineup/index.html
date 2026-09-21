@@ -13,10 +13,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- PapaParse for CSV reading -->
+    <!-- PapaParse for CSV reading. Kept eager: it's small and the rankings upload is the
+         primary onboarding path. html2canvas (~200KB, screenshot export only) and SheetJS
+         (.xlsx upload only) load on first use instead - see loadScriptOnce in js/utils.js. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
-    <!-- html2canvas for Screenshot Export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 
     <link rel="stylesheet" href="../css/styles.css">
     <meta property="og:title" content=" My Lineup Strategist | My Draft Strategist">

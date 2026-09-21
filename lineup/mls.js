@@ -418,6 +418,37 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
     // of mds.js's local copy. Both now consolidated into the single shared version in
     // js/utils.js. Calls below resolve to that shared version.
 
+    // --- RANKINGS LOOKUP INDEX ---
+    // cleanName -> ranking row, for the three big rankings arrays (ROS, Weekly, Market). Nearly
+    // every consumer of these arrays looks players up by cleanName, and nearly all of them were
+    // doing it with `arr.find(r => r.cleanName === x)` from inside a loop -- O(n x m) work. The
+    // worst case was runMarketDisconnectAnalysis, which scanned all of rosRankings once per
+    // market entry: ~250,000 comparisons for two ~500-row lists.
+    //
+    // Cached in a WeakMap keyed on the ARRAY ITSELF rather than on a State field name, which is
+    // what makes this safe to hold onto: every assignment to State.rosRankings /
+    // weeklyRankings / marketRankings in this file creates a brand-new array (either a
+    // [...spread] or a []), and nothing anywhere mutates one of these arrays in place. So a
+    // rankings swap -- switching leagues, loading a named set, uploading a file -- produces a
+    // different array identity that simply misses the cache and rebuilds. There is no
+    // invalidation to remember to call, and no way for a stale index to be handed back.
+    //
+    // First entry wins, matching the .find() calls this replaces.
+    const _rankingIndexCache = new WeakMap();
+    const EMPTY_RANKING_INDEX = new Map(); // shared; callers only ever read from an index
+    function rankingIndex(arr) {
+        if (!Array.isArray(arr) || arr.length === 0) return EMPTY_RANKING_INDEX;
+        let idx = _rankingIndexCache.get(arr);
+        if (!idx) {
+            idx = new Map();
+            arr.forEach(r => {
+                if (r && r.cleanName && !idx.has(r.cleanName)) idx.set(r.cleanName, r);
+            });
+            _rankingIndexCache.set(arr, idx);
+        }
+        return idx;
+    }
+
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at
     // load time, since window.createFocusTrap (from utils.js, a plain script) needs to have
@@ -2291,10 +2322,16 @@ function attachScoutSuggestionHandler(outputElId) {
             }
         }
 
+        // Indexed once for this whole Scout run -- getPos and buildCard below are both called
+        // per player, and each was scanning a full rankings array on every call.
+        const marketIndex = rankingIndex(State.marketRankings);
+        const rosIndex = rankingIndex(State.rosRankings);
+        const weeklyIndex = rankingIndex(State.weeklyRankings);
+
         const getPos = (cleanName) => {
             if (league && league.globalPosMap && league.globalPosMap[cleanName]) return league.globalPosMap[cleanName];
             if (window.sleeperPosByName && window.sleeperPosByName[cleanName]) return window.sleeperPosByName[cleanName];
-            let mPlayer = State.marketRankings.find(m => m.cleanName === cleanName);
+            let mPlayer = marketIndex.get(cleanName);
             if (mPlayer && mPlayer.pos) return mPlayer.pos;
             return "UNK";
         };
@@ -2305,8 +2342,8 @@ function attachScoutSuggestionHandler(outputElId) {
         // (secondary/comparison) -- so the caller can total each side under each lens separately.
         const buildCard = (name, roleLabel = null) => {
             let clean = normalizeName(name);
-            let rosObj = State.rosRankings.find(r => r.cleanName === clean);
-            let weekObj = State.weeklyRankings.find(r => r.cleanName === clean);
+            let rosObj = rosIndex.get(clean);
+            let weekObj = weeklyIndex.get(clean);
             let marketValueObj = type === 'trade' ? getMarketValue(clean) : null;
 
             // Rookie draft picks (2027 1st, 2026 2nd, etc.) are dynasty trade assets that a
@@ -2702,10 +2739,13 @@ function attachScoutSuggestionHandler(outputElId) {
             console.warn('Waiver scan: Sleeper player map unavailable, falling back to league/market positions.', e);
         }
 
+        // getPos is called once per free agent in the scan, so the market fallback is indexed
+        // rather than re-scanned each time.
+        const marketIndex = rankingIndex(State.marketRankings);
         const getPos = (clean) => {
             if (league.globalPosMap && league.globalPosMap[clean]) return league.globalPosMap[clean];
             if (meta[clean]) return meta[clean].pos;
-            const m = State.marketRankings.find(r => r.cleanName === clean);
+            const m = marketIndex.get(clean);
             return (m && m.pos) ? m.pos : 'UNK';
         };
 
@@ -3033,12 +3073,18 @@ function attachScoutSuggestionHandler(outputElId) {
 
         const mappedCount = leagues.filter(isFullyMappedLeague).length;
 
+        // All three rankings arrays are indexed once for the whole search -- getPos runs per
+        // searched name, and the two lookups in the names loop below do as well.
+        const marketIndex = rankingIndex(State.marketRankings);
+        const rosIndex = rankingIndex(State.rosRankings);
+        const weeklyIndex = rankingIndex(State.weeklyRankings);
+
         const getPos = (clean) => {
             for (const l of leagues) {
                 if (l.globalPosMap && l.globalPosMap[clean]) return l.globalPosMap[clean];
             }
             if (meta[clean]) return meta[clean].pos;
-            const m = State.marketRankings.find(r => r.cleanName === clean);
+            const m = marketIndex.get(clean);
             return (m && m.pos) ? m.pos : 'UNK';
         };
 
@@ -3052,8 +3098,8 @@ function attachScoutSuggestionHandler(outputElId) {
             if (!clean || seen.has(clean)) return;
             seen.add(clean);
 
-            const rosObj = State.rosRankings.find(r => r.cleanName === clean);
-            const weekObj = State.weeklyRankings.find(r => r.cleanName === clean);
+            const rosObj = rosIndex.get(clean);
+            const weekObj = weeklyIndex.get(clean);
             const m = meta[clean] || null;
 
             const rows = leagues.map(l => {
@@ -4360,7 +4406,12 @@ function applyMarketSettingsToUI() {
     // specific player isn't in it (unranked/deep bench/rookie not yet valued).
     function getMarketValue(cleanName) {
         if (!cleanName) return null;
-        let m = State.marketRankings.find(r => r.cleanName === cleanName);
+        // Unlike the other converted sites, this one can't hoist its index to a caller -- it's
+        // a single-player helper called from several different loops. rankingIndex's WeakMap
+        // covers that case: the index is built on the first call for a given rankings array and
+        // every later call reuses it, so a loop over N players costs one build instead of N
+        // scans, without the callers needing to know this function has an index at all.
+        let m = rankingIndex(State.marketRankings).get(cleanName);
         if (!m) return null;
         return { rank: m.marketVal, value: rankToTradeValue(m.marketVal) };
     }
@@ -4442,9 +4493,10 @@ function applyMarketSettingsToUI() {
         // (populated during Sleeper sync) is the same position lookup the Waiver Wire
         // Assistant already relies on for this exact reason; market data ships its own pos
         // field as a fallback for a player Sleeper's sync hasn't covered.
+        const marketIndex = rankingIndex(State.marketRankings);
         const getPos = (cleanName) => {
             if (window.sleeperPosByName && window.sleeperPosByName[cleanName]) return window.sleeperPosByName[cleanName];
-            const mPlayer = State.marketRankings.find(m => m.cleanName === cleanName);
+            const mPlayer = marketIndex.get(cleanName);
             return (mPlayer && mPlayer.pos) ? mPlayer.pos : null;
         };
 
@@ -4536,11 +4588,16 @@ function applyMarketSettingsToUI() {
 
         let analysisList = [];
 
+        // Built once, outside the loop. This lookup used to be a full scan of rosRankings for
+        // every single market entry -- with two ~500-row lists that's ~250,000 comparisons to
+        // produce one report, and it was the most expensive single operation left in this file.
+        const rosIndex = rankingIndex(State.rosRankings);
+
         State.marketRankings.forEach(m => {
             if (posFilter !== 'ALL') {
-                if (!m.pos || !m.pos.includes(posFilter)) return; 
+                if (!m.pos || !m.pos.includes(posFilter)) return;
             }
-            let userObj = State.rosRankings.find(r => r.cleanName === m.cleanName);
+            let userObj = rosIndex.get(m.cleanName);
             if (!userObj) return; // Skip if user didn't rank this player
 
             // Positional Rank compares a player's rank WITHIN their own position (QB vs QB, RB
@@ -4728,11 +4785,15 @@ function applyMarketSettingsToUI() {
 
     // --- SCREENSHOT EXPORT ---
     window.exportLineup = async function() {
-    if (typeof html2canvas === 'undefined') { 
-        if (window.showToast) window.showToast("Screenshot library loading. Please try again in a moment.", { isError: true });
-        return; 
+    // Fetched on first use rather than on every page load -- see loadScriptOnce in utils.js.
+    // The old message here ("loading, try again in a moment") was a symptom of the eager
+    // <script defer> tag: the only thing the user could do was wait and re-press. Now the
+    // press itself starts the download and the export continues once it lands.
+    if (!(await window.ensureHtml2Canvas())) {
+        if (window.showToast) window.showToast("Couldn't load the screenshot library. Check your connection and try again.", { isError: true });
+        return;
     }
-    
+
     const container = document.getElementById('optimalLineupContainer');
     const exportBtn = document.getElementById('exportBtn');
     if (!container || !exportBtn) return;
@@ -4814,9 +4875,10 @@ function applyMarketSettingsToUI() {
             return;
         }
         
+        const rosIndex = rankingIndex(State.rosRankings);
         let displayRoster = league.roster.map(p => {
-            let rObj = State.rosRankings.find(rk => rk.cleanName === p.cleanName);
-            return { 
+            let rObj = rosIndex.get(p.cleanName);
+            return {
                 ...p, 
                 rosRank: rObj ? rObj.rank : 999,
                 posRank: rObj ? rObj.posRank : 999,
@@ -5126,12 +5188,26 @@ function applyMarketSettingsToUI() {
         });
     }
 
-    window.optimizeLineup = function(forceReset = true, isManualAction = false) {
+    // opts.batch marks a call made as one iteration of a multi-league run (optimizeAllLineups).
+    // In batch mode this function computes and stores the lineup in State exactly as normal,
+    // but performs neither of its two localStorage writes nor its render -- the batch caller
+    // writes once and renders once after the whole loop. Each of those writes serializes the
+    // ENTIRE per-league map (every league's starters, every league's bench), so doing them
+    // per-iteration meant N leagues cost N full serializations of all N leagues' lineups, and
+    // N full renders to display only the last one.
+    window.optimizeLineup = function(forceReset = true, isManualAction = false, opts = {}) {
+        const batch = !!opts.batch;
         let league = getActiveLeague();
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
 
         if (!league || !league.roster || league.roster.length === 0) {
+            // A batch iteration must not paint this empty state: State.activeLeagueId is
+            // pointing at some other league mid-loop, so an empty-rostered league partway
+            // through the batch would stamp "Welcome to the Lineup Optimizer" over whatever
+            // the Lineup tab was legitimately showing for the league the person is actually
+            // on. Nothing to compute for this league either way, so just leave.
+            if (batch) return;
             if (container) {
                 container.innerHTML = `
                 <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
@@ -5193,9 +5269,16 @@ function applyMarketSettingsToUI() {
             ? sleeperStarterIds.includes(p.id)
             : prevStartingIds.has(p.id);
 
+        // Indexed once per run rather than scanned per roster player. Matters most under
+        // Optimize All, which runs this whole function once per league.
+        const rankIdx = rankingIndex(activeDataSet);
+        // locks is a small array (manually locked players in this league), but it's checked
+        // once per roster player, so a Set costs nothing and keeps the loop body uniform.
+        const lockSet = new Set(locks);
+
         let scoredRoster = league.roster.map(p => {
-            let rObj = activeDataSet.find(rk => rk.cleanName === p.cleanName);
-            let manualLocked = locks.includes(p.id);
+            let rObj = rankIdx.get(p.cleanName);
+            let manualLocked = lockSet.has(p.id);
             let overridden = isAutoLockOverridden(State.activeLeagueId, p.id);
             let autoLocked = !manualLocked && !overridden && hasKickedOff(p) && isSleeperStarter(p);
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? rObj.posTier : null, flexTier: rObj ? rObj.flexTier : null, isLocked: manualLocked || autoLocked, autoLocked };
@@ -5318,10 +5401,15 @@ function applyMarketSettingsToUI() {
 
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = pool;
-        
-        localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
-        localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
-        
+
+        // Batch runs defer both writes to the caller -- see the note on this function's
+        // signature. State above is updated either way, so a batch that somehow failed to
+        // flush would lose the run, not corrupt it.
+        if (!batch) {
+            localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
+            localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+        }
+
         if (isManualAction) {
             let hasOptimizedBefore = localStorage.getItem('mls_has_optimized');
             if (!hasOptimizedBefore) {
@@ -5333,8 +5421,11 @@ function applyMarketSettingsToUI() {
                 if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
             }
         }
-        
-        renderLineupUI();
+
+        // A batch iteration renders nothing: State.activeLeagueId is pointing at a league the
+        // person isn't looking at, and the next iteration is about to move it again. The batch
+        // caller restores the real active league and renders once at the end.
+        if (!batch) renderLineupUI();
     };
 
     window.renderSyncLogs = function() {
@@ -5413,13 +5504,23 @@ function applyMarketSettingsToUI() {
                     else State[cfg.stateKey] = [];
                 });
 
-                window.optimizeLineup(true); 
+                window.optimizeLineup(true, false, { batch: true });
             });
 
-            // Restore original state and reactivate toasts
-            window.showToast = tempToast; 
-            switchActiveLeague(originalActiveId); 
-            
+            // Single flush for the whole run. Each optimizeLineup call above deliberately
+            // skipped these two writes (see its `batch` option): they serialize the entire
+            // per-league map every time, so leaving them in the loop meant N leagues paid for
+            // N serializations of all N leagues' lineups rather than one.
+            localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
+            localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+
+            // Restore original state and reactivate toasts. switchActiveLeague re-hydrates the
+            // real active league's rankings (the loop above left State.rosRankings/
+            // weeklyRankings pointing at whichever league happened to be last) and calls
+            // optimizeLineup(false), which is the single render for the entire batch.
+            window.showToast = tempToast;
+            switchActiveLeague(originalActiveId);
+
             let managedLeaguesCount = State.leagues.filter(l => !isBestBallLeague(l)).length;
             
             if (window.showToast) window.showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
@@ -5524,11 +5625,17 @@ window.syncAllLeagues = async function(btn) {
         }, 50);
     };
 
+    // Note on the renderLeagueManager() call at the tail of this function: it rebuilds a row
+    // for EVERY league in the app, which is correct after a single interactive lineup edit (a
+    // swap or a lock toggle genuinely changes that league's "matches Sleeper" status), but is
+    // pure waste when many lineups are computed in a row. Batch callers (optimizeAllLineups)
+    // therefore don't call this function at all per league -- see optimizeLineup's `batch`
+    // option -- rather than calling it and suppressing half its work.
     function renderLineupUI() {
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
         if (!container || !benchContainer) return;
-        
+
         let league = getActiveLeague();
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         let benchPool = State.manualBenchMap[State.activeLeagueId] || [];
@@ -6116,6 +6223,44 @@ window.runGlobalInjuryAudit = async function(btn) {
         // missed an obvious IR starter sitting right there on the Lineup tab.
         let lockedOut = [];
 
+        // --- PREFETCH EVERY LEAGUE'S NETWORK DATA IN PARALLEL ---
+        // The loop below used to `await getSleeperLeagueRosters(...)` and
+        // `await getSleeperUser(...)` inside itself, one league at a time. Ten Sleeper leagues
+        // meant twenty strictly serialized round-trips before a single result appeared, with
+        // no progress indication -- the audit read as a hang rather than as work. Nothing in
+        // the loop depends on a previous league's response, so there was never a reason to
+        // serialize them; fetched together, the whole set costs roughly one round-trip of
+        // wall time.
+        //
+        // The username lookup is also deduplicated. Most people use the same Sleeper account
+        // for every league they're in, so the old code re-fetched an identical user record
+        // once per league.
+        const isSleeperAuditLeague = (l) => !!l.leagueId
+            && !isBestBallLeague(l)
+            && !l.leagueId.startsWith('manual_')
+            && !l.leagueId.startsWith('handoff_');
+
+        const rostersByLeagueId = new Map();
+        const userIdByUsername = new Map();
+        const sleeperAuditLeagues = State.leagues.filter(isSleeperAuditLeague);
+
+        if (sleeperAuditLeagues.length > 0) {
+            const uniqueUsernames = [...new Set(sleeperAuditLeagues.map(l => l.username).filter(Boolean))];
+            const [rosterResults, userIdResults] = await Promise.all([
+                // Promise.all, not allSettled: a failed roster fetch rejects out to this
+                // function's own catch and surfaces as an audit error, which is exactly what
+                // happened before when the bare await inside the loop threw. Keeping that
+                // deliberately -- quietly dropping a league would make an unscanned league
+                // indistinguishable from a clean one.
+                Promise.all(sleeperAuditLeagues.map(l => getSleeperLeagueRosters(l.leagueId))),
+                // Per-username catch, mirroring the try/catch this replaces: a bad username
+                // skips the leagues that use it and the rest of the audit carries on.
+                Promise.all(uniqueUsernames.map(u => getSleeperUser(u).then(d => d.user_id).catch(() => null)))
+            ]);
+            sleeperAuditLeagues.forEach((l, i) => rostersByLeagueId.set(l.leagueId, rosterResults[i]));
+            uniqueUsernames.forEach((u, i) => userIdByUsername.set(u, userIdResults[i]));
+        }
+
         for (let league of State.leagues) {
             if (!league.leagueId) continue;
 
@@ -6202,21 +6347,24 @@ window.runGlobalInjuryAudit = async function(btn) {
                 continue;
             }
 
-            const rosters = await getSleeperLeagueRosters(league.leagueId);
+            // Both of these were network calls made here, one league at a time; they're now
+            // read from the parallel prefetch above. The safety check covers the case where
+            // this loop's own skip conditions and isSleeperAuditLeague's ever drift apart --
+            // without it, a league the prefetch didn't cover would throw on rosters.find below.
+            const rosters = rostersByLeagueId.get(league.leagueId);
+            if (!rosters) continue;
 
             // Resolve User ID. getSleeperUser throws on a not-found/error response (the
             // original inline fetch here didn't check response.ok at all, so a bad username
             // would just produce userId===undefined, myRoster staying undefined below, and
             // this league getting silently skipped by the "if (!myRoster) continue" a few
-            // lines down). The try/catch below makes that same "skip this one league, keep
-            // scanning the rest" behavior explicit instead of leaving it to fall out of an
-            // unrelated undefined check.
-            let userId;
-            try {
-                userId = (await getSleeperUser(league.username)).user_id;
-            } catch (err) {
-                continue;
-            }
+            // lines down). The prefetch's per-username catch stores null for that case,
+            // preserving the same "skip this one league, keep scanning the rest" behavior.
+            // A league with no username at all was never fetched, so it reads back undefined
+            // and skips here too -- previously it reached getSleeperUser(undefined), threw,
+            // and hit the same continue.
+            const userId = userIdByUsername.get(league.username);
+            if (userId === null || userId === undefined) continue;
 
             const myRoster = rosters.find(r => r.owner_id === userId);
             if (!myRoster) continue;

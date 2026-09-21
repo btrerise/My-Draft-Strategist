@@ -6,6 +6,118 @@
 (function () {
     'use strict';
 
+    // --- DRAFT PLAYER-POOL STORAGE (v2) ---
+    // Each draft profile remembers its own player pool, so switching profiles restores the
+    // rankings that profile was drafted with. That pool used to live INLINE inside each draft
+    // object in `ds_drafts` -- which meant every save serialized every profile's entire pool,
+    // whether or not it had changed. At ~600 players per pool and three profiles, a single
+    // pick wrote roughly half a megabyte synchronously, and the cost grew with the number of
+    // profiles rather than with the size of the change.
+    //
+    // The pools now live under their own `ds_players_<draftId>` keys, written only when the
+    // pool itself actually changes (see savePlayerPool). `ds_drafts` keeps the small,
+    // frequently-changing parts -- settings, picks, roster, queue -- and is the only thing a
+    // pick has to rewrite.
+    //
+    // Both the `ds_` prefix scan behind Backup/Restore and the one behind Hard Reset pick the
+    // new keys up automatically, so neither needed changing.
+    const DRAFT_POOL_KEY_PREFIX = 'ds_players_';
+    const STORAGE_VERSION_KEY = 'ds_storage_version';
+    const PREMIGRATION_BACKUP_KEY = 'ds_drafts_premigration_backup';
+    const CURRENT_STORAGE_VERSION = '2';
+
+    const draftPoolKey = (draftId) => DRAFT_POOL_KEY_PREFIX + draftId;
+
+    // Reads a draft's pool, checking the v2 key first and falling back to an inline v1 copy.
+    // The fallback is what makes the migration below safe to fail: if it can't complete (quota
+    // exhausted mid-write, storage disabled), the inline copies are still there and still
+    // authoritative, so the app keeps working in the old format rather than losing rankings.
+    function readDraftPlayerPool(draft) {
+        if (!draft) return null;
+        try {
+            const raw = localStorage.getItem(draftPoolKey(draft.draftId));
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch (e) {
+            console.warn('Could not read saved player pool for draft', draft.draftId, e);
+        }
+        if (Array.isArray(draft.players) && draft.players.length > 0) return draft.players;
+        return null;
+    }
+
+    // The single place State.players gets persisted. Writes the global pool (the fallback for
+    // a profile that has none of its own) and the active profile's pool together, so the two
+    // can't drift apart -- every site that used to call setItem('ds_players', ...) directly
+    // now calls this instead.
+    function savePlayerPool() {
+        try {
+            const serialized = JSON.stringify(State.players);
+            localStorage.setItem('ds_players', serialized);
+            if (State.activeDraftId) localStorage.setItem(draftPoolKey(State.activeDraftId), serialized);
+        } catch (e) {
+            console.error('Could not save player pool (storage may be full):', e);
+            if (window.showToast) window.showToast("Couldn't save your rankings - browser storage may be full.", { isError: true });
+        }
+    }
+
+    // One-time move of inline pools out to their own keys. Ordered so that an interruption at
+    // any point leaves readable data: the backup is taken first, then every pool is written to
+    // its own key, and only then is the slimmed ds_drafts written. If the process dies before
+    // that last write, both copies exist and readDraftPlayerPool prefers the new one; if it
+    // dies before the pools are written, the inline copies are untouched and the version
+    // marker is never set, so the migration simply runs again next load.
+    function migrateDraftStorage() {
+        if (localStorage.getItem(STORAGE_VERSION_KEY) === CURRENT_STORAGE_VERSION) return;
+
+        try {
+            const raw = localStorage.getItem('ds_drafts');
+            if (!raw) {
+                // Nothing to migrate (new install). Mark it so this never runs again.
+                localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION);
+                return;
+            }
+
+            const drafts = JSON.parse(raw);
+            if (!Array.isArray(drafts)) {
+                localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION);
+                return;
+            }
+
+            // Safety net, written before anything is modified and never overwritten if one
+            // already exists (so a second, partial run can't clobber the original snapshot).
+            if (!localStorage.getItem(PREMIGRATION_BACKUP_KEY)) {
+                localStorage.setItem(PREMIGRATION_BACKUP_KEY, raw);
+            }
+
+            let moved = 0;
+            drafts.forEach(d => {
+                if (!d || !d.draftId) return;
+                if (Array.isArray(d.players) && d.players.length > 0) {
+                    // Don't overwrite a pool that's already been written out -- on a re-run
+                    // after a partial migration, the existing key is the newer copy.
+                    if (!localStorage.getItem(draftPoolKey(d.draftId))) {
+                        localStorage.setItem(draftPoolKey(d.draftId), JSON.stringify(d.players));
+                    }
+                    moved++;
+                }
+                delete d.players;
+            });
+
+            localStorage.setItem('ds_drafts', JSON.stringify(drafts));
+            localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION);
+            if (moved > 0) console.log(`Draft storage migrated to v2 (${moved} player pool(s) moved out of ds_drafts).`);
+        } catch (e) {
+            // Deliberately swallowed. The version marker stays unset so this retries on the
+            // next load, and every read path still falls back to the inline copies, so a
+            // failed migration costs performance -- not data.
+            console.error('Draft storage migration deferred:', e);
+        }
+    }
+
+    migrateDraftStorage();
+
     // --- STATE MANAGEMENT ---
     const State = {
         players: JSON.parse(localStorage.getItem('ds_players')) || [],
@@ -60,17 +172,54 @@
         return State.drafts.find(d => d.draftId === State.activeDraftId) || State.drafts[0];
     }
 
+    // PERSISTENCE ONLY -- deliberately does NOT render. This used to end with renderBoard() +
+    // renderDraftMatrix() + renderDraftRecap(), which meant every one of the dozen callers
+    // below repainted the entire app whether or not anything visible had changed, and meant
+    // the grid and recap rendered TWICE per mutation, since renderBoard() already calls both
+    // of them itself at its tail. It also silently defeated saveSettings' own `skipRender`
+    // flag, which could never actually skip a render while the save it wrapped performed one.
+    //
+    // Callers that genuinely need the UI updated now say so, either by calling renderBoard()
+    // themselves (several already did, and were paying for the duplicate) or via
+    // saveAndRenderDraftState() below. renderBoard() stays the single full-render entry point
+    // -- it still fans out to the grid and recap -- so a mutation is now one save and one
+    // paint instead of one call that always did both, twice.
     function saveActiveDraftState() {
         let activeDraft = getActiveDraft();
-        if (activeDraft) {
-            // Save current rankings specifically to this draft
-            activeDraft.players = [...State.players]; 
+        // This used to do `activeDraft.players = [...State.players]` here, which is what put
+        // every profile's whole pool into the ds_drafts blob below. Pools now live under their
+        // own keys and are written by savePlayerPool() when they actually change -- see the
+        // storage notes at the top of this file. The delete keeps a v1-format draft (one whose
+        // migration was deferred) from silently re-persisting its inline copy.
+        if (activeDraft && activeDraft.players) {
+            // Only reachable when the migration was deferred (it failed, so the drafts loaded
+            // in v1 format). Rescue the inline pool to its own key BEFORE dropping it, or this
+            // write would slim the draft down and take the only copy with it -- leaving the
+            // profile to fall back to the shared global pool, i.e. silently inheriting
+            // whichever rankings another profile last loaded. Guarded so it can never
+            // overwrite a key that already holds the newer copy.
+            try {
+                if (Array.isArray(activeDraft.players) && activeDraft.players.length > 0
+                    && !localStorage.getItem(draftPoolKey(activeDraft.draftId))) {
+                    localStorage.setItem(draftPoolKey(activeDraft.draftId), JSON.stringify(activeDraft.players));
+                }
+                delete activeDraft.players;
+            } catch (e) {
+                // Couldn't write the rescue copy, so keep the inline one rather than dropping
+                // both. ds_drafts stays fat for now; the migration retries on the next load.
+                console.warn('Deferred pool rescue failed; keeping inline copy for now.', e);
+            }
         }
         localStorage.setItem('ds_drafts', JSON.stringify(State.drafts));
         localStorage.setItem('ds_active_draft_id', State.activeDraftId || '');
+    }
+
+    // The common "I changed draft state and the screen needs to reflect it" pairing. Exists so
+    // the intent is visible at the call site rather than being an invisible side effect of
+    // saving -- and so the sites that DON'T need a paint can simply not call it.
+    function saveAndRenderDraftState() {
+        saveActiveDraftState();
         renderBoard();
-        renderDraftMatrix();
-        renderDraftRecap();
     }
 
     function refreshDraftDropdown() {
@@ -91,10 +240,16 @@
 
         let draft = getActiveDraft();
         if (draft) {
-            // Load the rankings for this draft, fallback to global if none exist yet
-            State.players = draft.players && draft.players.length > 0 ? [...draft.players] : JSON.parse(localStorage.getItem('ds_players')) || [];
-            localStorage.setItem('ds_players', JSON.stringify(State.players));
-            
+            // Load the rankings for this draft, fallback to global if none exist yet.
+            // readDraftPlayerPool checks this draft's own key first and falls back to an
+            // inline v1 copy, so a profile saved before the storage migration still restores.
+            const savedPool = readDraftPlayerPool(draft);
+            State.players = savedPool ? [...savedPool] : (JSON.parse(localStorage.getItem('ds_players')) || []);
+            // Persists under BOTH the global key and this draft's own key, which also means a
+            // profile that fell through to the global fallback now has a pool of its own and
+            // won't inherit whatever another profile loads next.
+            savePlayerPool();
+
             initSettingsUI();
             if (draft.username === "Manual" && State.autoSyncTimer) {
                 window.toggleAutoSync(false);
@@ -312,7 +467,7 @@
             draft.myTeam = [];
             draft.rawDraftPicks = [];
             draft.totalPicks = 0;
-            saveActiveDraftState();
+            saveAndRenderDraftState();
             
             // The timeout ensures the heavy DOM render doesn't swallow the animation
             setTimeout(() => {
@@ -335,7 +490,12 @@
     }
 
     window.exportMdsSettings = function() {
-        const keys = getMdsOwnedKeys();
+        // The pre-migration snapshot is deliberately left out of backups: it's a one-time,
+        // device-local recovery artifact roughly the size of the old ds_drafts blob, so
+        // including it would near-double every backup file forever to carry a copy of data
+        // the export already contains in its current form. Hard Reset still clears it, since
+        // that path uses getMdsOwnedKeys() unfiltered.
+        const keys = getMdsOwnedKeys().filter(k => k !== PREMIGRATION_BACKUP_KEY);
         const data = {};
         keys.forEach(k => data[k] = localStorage.getItem(k));
 
@@ -391,6 +551,12 @@
 
             // Clear existing MDS keys first so a restore from an older backup (missing keys
             // that exist now) doesn't leave stale data mixed in from the current session.
+            //
+            // This clear-then-write order is also what makes restoring a PRE-MIGRATION backup
+            // work: such a file has no ds_storage_version key, so wiping the current one and
+            // not restoring it leaves the marker unset, and migrateDraftStorage() converts the
+            // restored v1 drafts on the reload below. A post-migration backup carries the
+            // marker and its own ds_players_<draftId> keys, so it restores as-is.
             getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
             Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
 
@@ -512,7 +678,7 @@ window.addEventListener('popstate', (e) => {
         p.isEditing = false;
 
         State.players.sort((a, b) => a.rank - b.rank);
-        localStorage.setItem('ds_players', JSON.stringify(State.players));
+        savePlayerPool();
         renderBoard();
     };
 
@@ -547,7 +713,13 @@ window.addEventListener('popstate', (e) => {
                 BENCH: parseInt(getVal('limitBENCH')) || 5,
                 TOTAL: 15
             },
-            players: [...State.players],
+            // No inline `players` -- a new manual draft still starts from whatever rankings are
+            // currently loaded, but that pool is written to its own ds_players_<draftId> key by
+            // the savePlayerPool() call below instead of being embedded here. (Leaving it
+            // embedded would still have worked, via saveActiveDraftState's rescue path for
+            // v1-format drafts, but that path exists for deferred migrations -- routing a
+            // routine "create a draft" through it would mean building the copy and then
+            // immediately re-serializing it to move it back out.)
             draftedPlayers: [],
             myTeam: [],
             rawDraftPicks: [],
@@ -557,7 +729,9 @@ window.addEventListener('popstate', (e) => {
 
         State.drafts.push(newDraft);
         State.activeDraftId = newId;
-        saveActiveDraftState();
+        // After activeDraftId is set, so the pool lands under the NEW draft's key.
+        savePlayerPool();
+        saveAndRenderDraftState();
 
         if (nameInput) nameInput.value = "";
         refreshDraftDropdown();
@@ -565,8 +739,45 @@ window.addEventListener('popstate', (e) => {
         if (window.showToast) window.showToast(`Manual Draft '${draftName}' created!`);
     };
 
+    // --- SESSION CACHE FOR SLEEPER'S STATIC DRAFT METADATA ---
+    // The live-draft poll calls processSleeperDraftData every 3 seconds, and that function
+    // hits FIVE endpoints: user, draft, league, league users, and picks. Only the last one
+    // actually changes while a draft is running -- your user id, the draft's team/round
+    // settings, the league's roster positions and the league's member list are all fixed for
+    // the duration. Re-fetching them 20 times a minute was ~80 redundant requests per minute
+    // against Sleeper's rate limit, and four extra round-trips of latency on every tick.
+    //
+    // Keyed by URL, so switching drafts or usernames simply misses and fetches fresh. Session
+    // -only (a plain Map, not localStorage): this is about not re-asking within one sitting,
+    // not about persisting anything.
+    const _sleeperMetaCache = new Map();
+
+    // `force` bypasses and overwrites the cache -- passed for any sync the person triggered
+    // themselves, so an explicit "Sync" button press is always a genuine refresh and gives
+    // them a way to pick up a mid-session change (a renamed team, a newly-set draft order).
+    //
+    // `shouldCache` guards against freezing an incomplete answer for the whole session. A
+    // draft fetched before its order is set has a null draft_order, and a league whose members
+    // haven't loaded returns an empty array; caching either would mean the column headers
+    // never appear no matter how long the poll ran. Returning them uncached lets the next tick
+    // try again, which is exactly the old behavior for those cases.
+    async function fetchSleeperMeta(url, { force = false, required = false, errorMsg = '', shouldCache = () => true } = {}) {
+        if (!force && _sleeperMetaCache.has(url)) return _sleeperMetaCache.get(url);
+
+        const res = await fetch(url);
+        if (!res.ok) {
+            if (required) throw new Error(errorMsg);
+            return null;
+        }
+        const data = await res.json();
+        if (shouldCache(data)) _sleeperMetaCache.set(url, data);
+        return data;
+    }
+
     async function processSleeperDraftData(username, draftId, btn, isSilent = false) {
         let originalBtnHTML = null;
+        // A silent call is the 3s poll; anything else is the person asking for a sync.
+        const forceMeta = !isSilent;
         
         // 1. Capture the original button state and apply the loading spinner
         if (!isSilent && btn) {
@@ -577,12 +788,17 @@ window.addEventListener('popstate', (e) => {
         }
 
         try {
-            const userRes = await fetch(`https://api.sleeper.app/v1/user/${username}`);
-            if (!userRes.ok) throw new Error("Could not find Sleeper User.");
-            const userId = (await userRes.json()).user_id;
-            const draftRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`);
-            if (!draftRes.ok) throw new Error("Could not fetch Draft ID details.");
-            const dInfo = await draftRes.json();
+            const userData = await fetchSleeperMeta(`https://api.sleeper.app/v1/user/${username}`, {
+                force: forceMeta, required: true, errorMsg: "Could not find Sleeper User.",
+                shouldCache: (d) => !!(d && d.user_id)
+            });
+            const userId = userData.user_id;
+            const dInfo = await fetchSleeperMeta(`https://api.sleeper.app/v1/draft/${draftId}`, {
+                force: forceMeta, required: true, errorMsg: "Could not fetch Draft ID details.",
+                // Don't freeze a draft whose order hasn't been set yet -- draft_order arrives
+                // later and is what draftSlotNames (the grid's column headers) is built from.
+                shouldCache: (d) => !!(d && d.draft_order)
+            });
             let draftName = document.getElementById('newDraftName')?.value.trim() || "";
             let fetchedLeague = null;
             let draftSlotNames = {}; // NEW: Store our mapped team names
@@ -591,20 +807,23 @@ window.addEventListener('popstate', (e) => {
                 let currentUsername = document.getElementById('sleeperUsername')?.value.trim() || username || draftName || "";
                 
                 try {
-                    const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}`);
-                    if (leagueRes.ok) {
-                        fetchedLeague = await leagueRes.json();
-                        if (!draftName) draftName = fetchedLeague.name;
-                    }
+                    fetchedLeague = await fetchSleeperMeta(`https://api.sleeper.app/v1/league/${dInfo.league_id}`, {
+                        force: forceMeta, shouldCache: (d) => !!(d && d.roster_positions)
+                    });
+                    if (fetchedLeague && !draftName) draftName = fetchedLeague.name;
 
                     // NEW: Fetch league users to map to the draft board columns
-                    const usersRes = await fetch(`https://api.sleeper.app/v1/league/${dInfo.league_id}/users`);
-                    if (usersRes.ok) {
-                        const leagueUsers = await usersRes.json();
+                    const leagueUsers = await fetchSleeperMeta(`https://api.sleeper.app/v1/league/${dInfo.league_id}/users`, {
+                        force: forceMeta, shouldCache: (d) => Array.isArray(d) && d.length > 0
+                    });
+                    if (leagueUsers) {
                         // dInfo.draft_order maps user_id to slot number (e.g., {"12345": 1})
                         if (dInfo.draft_order) {
+                            // Indexed rather than scanned per slot -- this is a small list, but
+                            // the lookup was inside the loop over every draft slot.
+                            const userById = new Map(leagueUsers.map(u => [u.user_id, u]));
                             for (const [uid, slot] of Object.entries(dInfo.draft_order)) {
-                                let user = leagueUsers.find(u => u.user_id === uid);
+                                let user = userById.get(uid);
                                 if (user) {
                                     // Prefer custom Team Name, fallback to Display Name
                                     draftSlotNames[slot] = user.metadata?.team_name || user.display_name;
@@ -667,13 +886,35 @@ window.addEventListener('popstate', (e) => {
             let sleeperMyTeam = [];
 
             if (picksData && picksData.length > 0) {
+                // Two indexes over the player pool, built once for the whole picks loop. This
+                // loop runs on every sync that found a new pick, and each iteration used to
+                // scan the entire pool by sleeperId -- O(picks x players), which at pick 180
+                // of a 600-player pool is over 100k comparisons per tick and grows as the
+                // draft goes on.
+                //
+                // The name index is keyed on normalizeName rather than searched with
+                // isNameMatch, because isNameMatch IS normalizeName on both sides plus an
+                // alias check, and normalizeName already applies that same alias map -- so a
+                // normalized-key lookup resolves exactly the pairs the linear scan did. New
+                // players synthesized below are added to both indexes so a later pick for the
+                // same player still finds them, matching the old scan's behavior (it saw
+                // State.players grow as it went).
+                const bySleeperId = new Map();
+                const byCleanName = new Map();
+                const normFn = (typeof normalizeName === 'function') ? normalizeName : (s) => String(s || '').toLowerCase();
+                State.players.forEach(p => {
+                    if (p.sleeperId !== undefined && p.sleeperId !== null && !bySleeperId.has(p.sleeperId)) bySleeperId.set(p.sleeperId, p);
+                    const clean = normFn(p.name);
+                    if (clean && !byCleanName.has(clean)) byCleanName.set(clean, p);
+                });
+
                 picksData.forEach(pick => {
-                    let matchedPlayer = State.players.find(p => p.sleeperId === pick.player_id);
-                    
+                    let matchedPlayer = bySleeperId.get(pick.player_id);
+
                     // Fallback 1: Try matching by name if ID fails
                     if (!matchedPlayer && pick.metadata) {
                         let fullName = `${pick.metadata.first_name} ${pick.metadata.last_name}`;
-                        matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, fullName) : p.name.toLowerCase() === fullName.toLowerCase());
+                        matchedPlayer = byCleanName.get(normFn(fullName));
                     }
 
                     // Fallback 2: Player genuinely isn't in the uploaded rankings. Create them on the fly.
@@ -708,6 +949,16 @@ window.addEventListener('popstate', (e) => {
                         };
                         
                         State.players.push(matchedPlayer);
+                        // Keep the lookup indexes in step with the pool they index, so a later
+                        // pick referring to this same player resolves to the object we just
+                        // created instead of synthesizing a second copy of him. The previous
+                        // linear scan got this for free by re-scanning a growing State.players
+                        // on every iteration.
+                        if (matchedPlayer.sleeperId !== undefined && matchedPlayer.sleeperId !== null && !bySleeperId.has(matchedPlayer.sleeperId)) {
+                            bySleeperId.set(matchedPlayer.sleeperId, matchedPlayer);
+                        }
+                        const newClean = normFn(matchedPlayer.name);
+                        if (newClean && !byCleanName.has(newClean)) byCleanName.set(newClean, matchedPlayer);
                         State._needsPlayerSave = true; // Flag to save the database later
                     }
 
@@ -723,6 +974,34 @@ window.addEventListener('popstate', (e) => {
             let manualDrafted = existingDraft ? existingDraft.draftedPlayers.filter(id => !sleeperDrafted.includes(id)) : [];
             let manualMyTeam = existingDraft ? existingDraft.myTeam.filter(id => !sleeperMyTeam.includes(id)) : [];
 
+            // Did this sync actually change anything? During a live draft the 3s poll below
+            // calls this function 20 times a minute, and on the large majority of those ticks
+            // nobody has picked since the last one -- the response is byte-for-byte what we
+            // already have. A full repaint of the pool, grid and recap for an identical board
+            // is pure waste, and it lands precisely when the person is under a pick clock.
+            //
+            // Pick count is the signal: Sleeper's picks array only ever grows during a draft,
+            // so a changed length means a new pick and an identical length means nothing
+            // happened. Deliberately NOT a deep comparison -- that would cost more than the
+            // render it's trying to avoid. A manual (non-Sleeper) pick made in this tool
+            // between ticks renders through its own draftPlayer() call, not this one.
+            let picksChanged = !existingDraft || (existingDraft.totalPicks || 0) !== (picksData ? picksData.length : 0);
+
+            // Nothing new on a silent tick: stop here, before rebuilding draftObj, replacing
+            // this draft in State.drafts, saving and repainting. Everything below would
+            // reproduce what State already holds, by definition of picksChanged. A
+            // user-initiated sync (isSilent === false) never takes this path
+            // -- it always runs through and refreshes settings, limits and slot names, since
+            // those CAN change without the pick count moving.
+            //
+            // _needsPlayerSave vetoes the shortcut: the picks loop above synthesizes players
+            // who aren't in the uploaded rankings, and that flag means one was created and
+            // hasn't been written to ds_players yet. Bailing out with it still pending would
+            // leave a player who exists in memory but not on disk, so let the full path run
+            // and flush him. In practice this is rare -- the tick that first sees his pick has
+            // a changed pick count anyway -- but it costs one comparison to be certain.
+            if (!picksChanged && isSilent && !State._needsPlayerSave) return;
+
                         let draftObj = {
                 draftId: draftId,
                 leagueId: dInfo.league_id || null,
@@ -730,7 +1009,11 @@ window.addEventListener('popstate', (e) => {
                 username: username,
                 settings: draftSettings,
                 limits: draftLimits,
-                players: [...State.players],
+                // No `players` here any more: this object is rebuilt and re-serialized on
+                // every sync that finds a pick, and embedding the whole pool in it was the
+                // other half of what made ds_drafts so expensive to write. The pool lives
+                // under its own key and is saved by savePlayerPool() below when a player is
+                // actually added -- see the storage notes at the top of this file.
                 draftedPlayers: Array.from(new Set([...sleeperDrafted, ...manualDrafted])),
                 myTeam: Array.from(new Set([...sleeperMyTeam, ...manualMyTeam])),
                 rawDraftPicks: picksData || [],
@@ -747,11 +1030,18 @@ window.addEventListener('popstate', (e) => {
             
             // If we generated unranked players on the fly, save the updated master list
             if (State._needsPlayerSave) {
-                localStorage.setItem('ds_players', JSON.stringify(State.players));
+                savePlayerPool();
                 delete State._needsPlayerSave;
             }
             
+            // Reached only when there's genuinely something new, or when the person asked for
+            // this sync themselves -- the unchanged-silent-tick case returned above, which is
+            // what keeps a board nobody has touched from being re-saved and repainted 20 times
+            // a minute. The save itself is now cheap (ds_drafts no longer carries the player
+            // pools -- see the storage notes at the top of this file), so what's being avoided
+            // here is mostly the full repaint of the pool, grid and recap.
             saveActiveDraftState();
+            renderBoard();
 
             if (!isSilent) {
                 const nameInput = document.getElementById('newDraftName');
@@ -907,7 +1197,7 @@ window.addEventListener('popstate', (e) => {
         if (!draft.draftedPlayers.includes(id)) {
             draft.draftedPlayers.push(id);
             if (isMine) draft.myTeam.push(id);
-            saveActiveDraftState();
+            saveAndRenderDraftState();
 
             let p = State.players.find(x => x.id === id);
             if (p && typeof window.showToast === 'function') window.showToast(`${p.name} drafted`);
@@ -919,7 +1209,7 @@ window.addEventListener('popstate', (e) => {
         if (!draft) return;
         draft.draftedPlayers = draft.draftedPlayers.filter(pId => pId !== id);
         draft.myTeam = draft.myTeam.filter(pId => pId !== id);
-        saveActiveDraftState();
+        saveAndRenderDraftState();
 
         let p = State.players.find(x => x.id === id);
         if (p && typeof window.showToast === 'function') window.showToast(`${p.name} returned to pool`);
@@ -1002,11 +1292,24 @@ window.addEventListener('popstate', (e) => {
         renderBoard();
     };
 
-    function getCallOutStyle(playerName) {
+    // Reads and parses the three call-out lists ONCE, for a caller that is about to style many
+    // player cards. getCallOutStyle below used to do this itself on every single call -- and
+    // it's called once per player card from buildPlayerCardHTML -- so rendering a 600-player
+    // pool meant 1,800 synchronous localStorage reads and 1,800 throwaway arrays, on a
+    // function wired to a debounced keystroke handler. The lists are identical for every card
+    // in a given render, so this is pure repeated work with no per-player input.
+    function getCallOutLists() {
+        const parse = (key) => (localStorage.getItem(key) || "")
+            .split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+        return { targets: parse('ds_targets'), avoids: parse('ds_avoids'), darts: parse('ds_darts') };
+    }
+
+    // `lists` is optional purely so the handful of one-off callers outside a render loop can
+    // keep calling this with just a name; inside a loop, hoist getCallOutLists() out and pass
+    // it in. Matching order (targets, then avoids, then darts) is unchanged.
+    function getCallOutStyle(playerName, lists) {
         let n = playerName.toLowerCase();
-        let targets = (localStorage.getItem('ds_targets') || "").split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
-        let avoids = (localStorage.getItem('ds_avoids') || "").split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
-        let darts = (localStorage.getItem('ds_darts') || "").split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+        const { targets, avoids, darts } = lists || getCallOutLists();
 
         if (targets.some(t => n.includes(t))) return `border-left: 5px solid var(--target-border); background-color: var(--target-bg);`;
         if (avoids.some(a => n.includes(a))) return `border-left: 5px solid var(--avoid-border); background-color: var(--avoid-bg);`;
@@ -1014,19 +1317,26 @@ window.addEventListener('popstate', (e) => {
         return '';
     }
 
-    function getTierTrackerData() {
+    // `draftedSet` is optional: renderBoard already builds one for its own loop and passes it
+    // in, which avoids re-deriving it here. Without it this filtered the whole player pool
+    // with drafted.includes(), i.e. O(players x drafted) -- ~120k comparisons deep into a
+    // real draft, on every render.
+    function getTierTrackerData(draftedSet) {
         let draft = getActiveDraft();
-        let drafted = draft ? draft.draftedPlayers : [];
+        let drafted = draftedSet || new Set(draft ? draft.draftedPlayers : []);
         let trackers = { QB: null, RB: null, WR: null, TE: null, K: null, DEF: null };
-        let available = State.players.filter(p => !drafted.includes(p.id));
 
-        ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].forEach(pos => {
-            let posPlayers = available.filter(p => p.posGroup === pos && p.tier !== "-");
-            if (posPlayers.length > 0) {
-                let minTier = Math.min(...posPlayers.map(p => parseInt(p.tier) || 99));
-                let count = posPlayers.filter(p => (parseInt(p.tier) || 99) === minTier).length;
-                trackers[pos] = { tier: minTier, count: count };
-            }
+        // Single pass over the pool tracking the best (lowest) live tier per position and how
+        // many players share it, rather than filtering the pool once per position and then
+        // walking each position's slice three more times (min, spread into Math.min, count).
+        State.players.forEach(p => {
+            if (drafted.has(p.id)) return;
+            if (p.tier === "-") return;
+            const t = trackers[p.posGroup];
+            if (t === undefined) return; // position outside the six tracked here
+            const tier = parseInt(p.tier) || 99;
+            if (t === null || tier < t.tier) trackers[p.posGroup] = { tier: tier, count: 1 };
+            else if (tier === t.tier) t.count++;
         });
         return trackers;
     }
@@ -1267,9 +1577,9 @@ function parseExcel(file) {
             State.rankingsMeta = { count: State.players.length, date: dateString };
 
             localStorage.setItem('ds_meta', JSON.stringify(State.rankingsMeta));
-            localStorage.setItem('ds_players', JSON.stringify(State.players));
+            savePlayerPool();
             updateMetaDisplay();
-            saveActiveDraftState();
+            saveAndRenderDraftState();
 
             if (btn) flashButton(btn, "Loaded Successfully", false, originalBtnText);
             if (typeof window.showToast === 'function') window.showToast(`Loaded ${State.players.length} players`);
@@ -1364,10 +1674,10 @@ function parseExcel(file) {
 
                 localStorage.setItem('ds_meta', JSON.stringify(State.rankingsMeta));
                 localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
-                localStorage.setItem('ds_players', JSON.stringify(State.players));
+                savePlayerPool();
                 
                 updateMetaDisplay();
-                saveActiveDraftState();
+                saveAndRenderDraftState();
                 flashButton(btn, "Quick-Start Loaded!", false, originalText);
                 if (typeof window.showToast === 'function') window.showToast("Quick-Start market rankings loaded");
             } else {
@@ -1436,7 +1746,7 @@ function parseExcel(file) {
             }
         });
 
-        localStorage.setItem('ds_players', JSON.stringify(State.players));
+        savePlayerPool();
         renderBoard();
 
         let now = new Date();
@@ -1513,7 +1823,7 @@ function parseExcel(file) {
         });
 
         if (matchedCount > 0) {
-            localStorage.setItem('ds_players', JSON.stringify(State.players));
+            savePlayerPool();
             renderBoard();
             flashButton(btn, "Updated!");
         } else {
@@ -1544,6 +1854,25 @@ function parseExcel(file) {
         let totalRounds = draft.settings?.rounds || 15;
         let is3RR = draft.settings?.is3RR || false;
 
+        // Three indexes built once for the whole grid. Both loops below visit every cell
+        // (teams x rounds, e.g. 180), and each cell previously ran rawDraftPicks.find() by
+        // pick number AND State.players.find() by sleeperId AND myTeam.includes() -- so a
+        // single grid render cost on the order of a quarter-million comparisons, and it ran
+        // twice per mutation and on every search keystroke via renderBoard's tail.
+        // First entry wins throughout, matching the .find() calls these replace -- relevant if
+        // the pool ever ends up holding two entries for one sleeperId (the sync path can
+        // synthesize players for picks it can't match against the rankings).
+        const hasRawPicks = !!(draft.rawDraftPicks && draft.rawDraftPicks.length > 0);
+        const pickByNumber = new Map();
+        if (hasRawPicks) draft.rawDraftPicks.forEach(p => { if (!pickByNumber.has(p.pick_no)) pickByNumber.set(p.pick_no, p); });
+        const playerBySleeperId = new Map();
+        const playerById = new Map();
+        State.players.forEach(p => {
+            if (p.sleeperId !== undefined && p.sleeperId !== null && !playerBySleeperId.has(p.sleeperId)) playerBySleeperId.set(p.sleeperId, p);
+            if (!playerById.has(p.id)) playerById.set(p.id, p);
+        });
+        const myTeamSet = new Set(draft.myTeam || []);
+
         let gridHTML = `<div class="draft-grid" style="--num-teams: ${totalTeams}; grid-template-columns: repeat(${totalTeams}, minmax(64px, 1fr));">`;
 
             for (let t = 1; t <= totalTeams; t++) {
@@ -1554,16 +1883,16 @@ function parseExcel(file) {
                 if (is3RR && r >= 3) { isOddLogic = !isOddLogic; }
                 let pNum = isOddLogic ? ((r - 1) * totalTeams) + t : (r * totalTeams) - (t - 1);
                 // --- 3RR MATH FIX END ---
-                
-                if (draft.rawDraftPicks && draft.rawDraftPicks.length > 0) {
-                    let matched = draft.rawDraftPicks.find(p => p.pick_no === pNum);
+
+                if (hasRawPicks) {
+                    let matched = pickByNumber.get(pNum);
                     if (matched) {
-                        let pl = State.players.find(x => x.sleeperId === matched.player_id);
-                        if (pl && draft.myTeam.includes(pl.id)) { isMyCol = true; break; }
+                        let pl = playerBySleeperId.get(matched.player_id);
+                        if (pl && myTeamSet.has(pl.id)) { isMyCol = true; break; }
                     }
                 } else {
                     let manualPId = draft.draftedPlayers[pNum - 1];
-                    if (manualPId && draft.myTeam.includes(manualPId)) { isMyCol = true; break; }
+                    if (manualPId && myTeamSet.has(manualPId)) { isMyCol = true; break; }
                 }
             }
             
@@ -1588,17 +1917,17 @@ function parseExcel(file) {
                 let pName = "";
                 let pPos = "";
 
-                if (draft.rawDraftPicks && draft.rawDraftPicks.length > 0) {
-                    let matchedPick = draft.rawDraftPicks.find(p => p.pick_no === pickNum);
+                if (hasRawPicks) {
+                    let matchedPick = pickByNumber.get(pickNum);
                     if (matchedPick) {
-                        pObj = State.players.find(pl => pl.sleeperId === matchedPick.player_id);
+                        pObj = playerBySleeperId.get(matchedPick.player_id);
                         pName = pObj ? pObj.name : (matchedPick.metadata?.first_name?.[0] + ". " + matchedPick.metadata?.last_name) || "Player";
                         pPos = pObj ? pObj.posGroup : matchedPick.metadata?.position || "";
                     }
                 } else {
                     let manualPlayerId = draft.draftedPlayers[pickNum - 1];
                     if (manualPlayerId) {
-                        pObj = State.players.find(pl => pl.id === manualPlayerId);
+                        pObj = playerById.get(manualPlayerId);
                         if (pObj) { pName = pObj.name; pPos = pObj.posGroup; }
                     }
                 }
@@ -1612,7 +1941,7 @@ function parseExcel(file) {
                     let lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : "";
 
                     cellClass += ` picked ${pPos}`;
-                    if (pObj && draft.myTeam.includes(pObj.id)) cellClass += " mine";
+                    if (pObj && myTeamSet.has(pObj.id)) cellClass += " mine";
 
                     // 1. Grab the exact Sleeper ID safely (removing the undefined matchedPick variable)
                     let playerId = pObj ? (pObj.sleeperId || pObj.id) : null;
@@ -1646,7 +1975,10 @@ function parseExcel(file) {
         }
     }
 
-    function renderFantasyRoster() {
+    // `playerById` is optional: renderBoard, the main caller, already has one built for its own
+    // loop and passes it in. Without it this scanned the whole player pool once per rostered
+    // player, on every render.
+    function renderFantasyRoster(playerById) {
         if (State.players.length === 0) {
             return `<div class="empty-state-card"><p>Load rankings on the Setup tab to start building your roster.</p><button class="btn btn-primary empty-state-cta" onclick="showTab('setup')">Go to Setup</button></div>`;
         }
@@ -1654,7 +1986,12 @@ function parseExcel(file) {
         let draft = getActiveDraft();
         if (!draft) return `<div style="text-align:center; color:var(--text-muted);">Select or add a draft first.</div>`;
 
-        let myPlayersObjects = draft.myTeam.map(id => State.players.find(p => p.id === id)).filter(Boolean);
+        let byId = playerById;
+        if (!byId) {
+            byId = new Map();
+            State.players.forEach(p => { if (!byId.has(p.id)) byId.set(p.id, p); });
+        }
+        let myPlayersObjects = draft.myTeam.map(id => byId.get(id)).filter(Boolean);
         let availablePool = [...myPlayersObjects];
         let rosterSlotsHTML = '';
         let limits = draft.limits || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
@@ -1809,15 +2146,31 @@ function parseExcel(file) {
     // three different broken placeholders (an index into myTeam only, the player's own internal
     // id, or a hardcoded 50) that used to be scattered across the functions below, none of which
     // reflected a real pick number for a manual draft.
-    function getPickNumberForPlayer(draft, player) {
+    // Builds the two lookups getPickNumberForPlayer needs, once, for a caller that is about to
+    // ask about many players. First entry wins in both, matching the .find()/.indexOf() the
+    // lookup replaces.
+    function buildPickNumberIndex(draft) {
+        const bySleeperId = new Map();
         if (draft.rawDraftPicks && draft.rawDraftPicks.length > 0) {
-            let match = draft.rawDraftPicks.find(r => r.player_id === player.sleeperId);
-            if (match) return match.pick_no;
+            draft.rawDraftPicks.forEach(r => { if (!bySleeperId.has(r.player_id)) bySleeperId.set(r.player_id, r.pick_no); });
         }
+        const byPlayerId = new Map();
         if (draft.draftedPlayers) {
-            let idx = draft.draftedPlayers.indexOf(player.id);
-            if (idx !== -1) return idx + 1;
+            draft.draftedPlayers.forEach((id, i) => { if (!byPlayerId.has(id)) byPlayerId.set(id, i + 1); });
         }
+        return { bySleeperId, byPlayerId };
+    }
+
+    // `index` is optional (built on demand when absent) but callers in a loop should pass one.
+    // renderDraftRecap calls this seven times over the same roster -- including from inside a
+    // sort comparator, where a per-call scan of rawDraftPicks turns an O(n log n) sort into
+    // O(n log n * picks).
+    function getPickNumberForPlayer(draft, player, index) {
+        const idx = index || buildPickNumberIndex(draft);
+        const byPick = idx.bySleeperId.get(player.sleeperId);
+        if (byPick !== undefined) return byPick;
+        const byManual = idx.byPlayerId.get(player.id);
+        if (byManual !== undefined) return byManual;
         return player.rank; // last-resort neutral fallback: treat as "drafted right at their rank"
     }
 
@@ -1840,8 +2193,14 @@ function parseExcel(file) {
 
         recapCard.style.display = 'block';
 
-        let myPlayers = draft.myTeam.map(id => State.players.find(p => p.id === id)).filter(Boolean);
-        
+        // Built once and shared by every getPickNumberForPlayer call in this function -- see
+        // the note on buildPickNumberIndex. The roster lookup gets the same treatment: the
+        // map/find chain scanned the whole player pool once per rostered player.
+        const pickIndex = buildPickNumberIndex(draft);
+        const playerById = new Map();
+        State.players.forEach(p => { if (!playerById.has(p.id)) playerById.set(p.id, p); });
+        let myPlayers = draft.myTeam.map(id => playerById.get(id)).filter(Boolean);
+
         let bestSteal = null;
         let worstReach = null;
         let maxDiff = -999;
@@ -1851,7 +2210,7 @@ function parseExcel(file) {
             // Ignore dynamically created unranked players (K, DEF, etc.) so they don't trigger as a massive reach
             if (p.rank === 999) return; 
 
-            let pickNum = getPickNumberForPlayer(draft, p);
+            let pickNum = getPickNumberForPlayer(draft, p, pickIndex);
 
             let valueDiff = pickNum - p.rank;
             if (valueDiff > maxDiff) { maxDiff = valueDiff; bestSteal = { player: p, diff: valueDiff }; }
@@ -1861,14 +2220,14 @@ function parseExcel(file) {
         // Archetype Detection
         let firstPosRound = { QB: 99, RB: 99, WR: 99, TE: 99 };
         myPlayers.forEach(p => {
-            let pickNum = getPickNumberForPlayer(draft, p);
+            let pickNum = getPickNumberForPlayer(draft, p, pickIndex);
             let rd = Math.ceil(pickNum / teams);
             if (rd < firstPosRound[p.posGroup]) firstPosRound[p.posGroup] = rd;
         });
 
         let archetype = "Balanced Build";
         let rbCountRds12 = myPlayers.filter(p => {
-            let pNum = getPickNumberForPlayer(draft, p);
+            let pNum = getPickNumberForPlayer(draft, p, pickIndex);
             return p.posGroup === 'RB' && Math.ceil(pNum / teams) <= 2;
         }).length;
 
@@ -1904,7 +2263,7 @@ function parseExcel(file) {
             }
 
             let efficiencies = posPlayers.map(sp => {
-                let pPick = getPickNumberForPlayer(draft, sp);
+                let pPick = getPickNumberForPlayer(draft, sp, pickIndex);
                 return pPick - sp.rank; 
             });
 
@@ -1972,11 +2331,11 @@ function parseExcel(file) {
             if (posPlayers.length === 0) return;
 
             posPlayers.sort((a, b) => {
-                return getPickNumberForPlayer(draft, a) - getPickNumberForPlayer(draft, b);
+                return getPickNumberForPlayer(draft, a, pickIndex) - getPickNumberForPlayer(draft, b, pickIndex);
             });
 
             posPlayers.forEach(sp => {
-                let pPick = getPickNumberForPlayer(draft, sp);
+                let pPick = getPickNumberForPlayer(draft, sp, pickIndex);
                 let diff = pPick - sp.rank;
                 let valColor = diff >= 0 ? "var(--primary-green)" : "var(--avoid-border)";
                 let sign = diff >= 0 ? "+" : "";
@@ -2014,11 +2373,16 @@ function parseExcel(file) {
 
     // --- TEAM EXPORT LOGIC ---
     window.exportTeam = async function() {
-        if (typeof html2canvas === 'undefined') { 
-            if (window.showToast) window.showToast("Screenshot library loading. Please try again in a moment.", { isError: true });
-            return; 
+        // Fetched on first use rather than on every page load -- see loadScriptOnce in
+        // utils.js. The old message here ("loading, try again in a moment") was a symptom of
+        // the eager <script defer> tag: the only thing the user could do was wait and
+        // re-press. Now the press itself starts the download and the export continues once
+        // it lands.
+        if (!(await window.ensureHtml2Canvas())) {
+            if (window.showToast) window.showToast("Couldn't load the screenshot library. Check your connection and try again.", { isError: true });
+            return;
         }
-        
+
         const container = document.getElementById('exportableTeamContainer'); 
         const exportBtn = document.getElementById('exportTeamBtn');
         
@@ -2111,7 +2475,7 @@ function parseExcel(file) {
             // Cycle 0 (Empty) -> 1 (Green) -> 2 (Yellow) -> 3 (Orange) -> 4 (Red) -> 5 (Purple)
             p.affinity = ((p.affinity || 0) + 1) % 6;
             
-            localStorage.setItem('ds_players', JSON.stringify(State.players));
+            savePlayerPool();
             renderBoard();
         }
     };
@@ -2119,8 +2483,15 @@ function parseExcel(file) {
     // Pure function: player object + current draft context in, one player-card's HTML string out.
     // No side effects, no DOM access -- extracted from what used to be inline in renderBoard()'s
     // main forEach loop so this ~130-line template is readable and testable on its own.
-    function buildPlayerCardHTML(p, currentOverallPick, showStacks, myQbs, myPassCatchers, draft) {
-        let customStyle = getCallOutStyle(p.name);
+    //
+    // `ctx` carries the values that are the same for every card in one render pass and were
+    // previously re-derived per card: the parsed call-out lists (3 localStorage reads each
+    // time) and the T-Score toggle (a 4th read). Across a 600-player pool that was ~2,400
+    // synchronous storage hits per render. They're read once in renderBoard now and passed
+    // down, which also makes this function genuinely pure -- it no longer touches
+    // localStorage at all, so the "no side effects" claim above is now literally true.
+    function buildPlayerCardHTML(p, currentOverallPick, showStacks, myQbs, myPassCatchers, draft, ctx) {
+        let customStyle = getCallOutStyle(p.name, ctx.callOutLists);
         let valueBadgeHTML = "";
         let diff = currentOverallPick - p.rank;
         if (diff > 0) {
@@ -2131,7 +2502,7 @@ function parseExcel(file) {
             valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
         }
         
-        if (['WR', 'RB'].includes(p.posGroup) && localStorage.getItem('ds_tscore') === 'true') {
+        if (['WR', 'RB'].includes(p.posGroup) && ctx.showTScore) {
             const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
             const normName = normFunc(p.name); 
             const tInfo = getEffectiveTScoreData()[normName];
@@ -2353,6 +2724,16 @@ function parseExcel(file) {
         let myTeam = draft ? draft.myTeam : [];
         let limits = draft ? draft.limits : { QB:1, RB:2, WR:3, TE:1, FLEX:1, SFLEX:0, BENCH:6, TOTAL:14 };
 
+        // Per-render lookup index, built once and shared by everything below. All of this used
+        // to be done with State.players.find(...) / array.includes(...) from inside loops over
+        // the full player pool -- O(players x drafted) work, repeated in several places per
+        // render -- and renderBoard runs on every (debounced) search keystroke, every pick,
+        // and every live-sync tick that finds a new pick. First entry wins, matching .find().
+        const playerById = new Map();
+        State.players.forEach(p => { if (!playerById.has(p.id)) playerById.set(p.id, p); });
+        const draftedSet = new Set(draftedPlayers);
+        const myTeamSet = new Set(myTeam);
+
         let newPoolHTML = '';
         let posCounts = { "QB": 0, "RB": 0, "WR": 0, "TE": 0, "K": 0, "DEF": 0 };
         // Check Sleeper's raw pick count first so unranked K/DEF are included in the math
@@ -2366,7 +2747,7 @@ function parseExcel(file) {
         const pickTrackerEl = document.getElementById('pickTracker');
         if (pickTrackerEl) pickTrackerEl.innerText = `Pick: ${round}.${pickInRound.toString().padStart(2, '0')}`;
 
-        const trackers = getTierTrackerData();
+        const trackers = getTierTrackerData(draftedSet);
         let isAllActive = !Array.isArray(State.activePosFilter) || State.activePosFilter.length === 0;
         let trackerHTML = `<div class="badge badge-all pos-filter ${isAllActive ? 'active-filter' : ''}" onclick="setPosFilter('ALL')"><span>ALL</span></div>`;
 
@@ -2380,15 +2761,27 @@ function parseExcel(file) {
         if (tierTrackerEl) tierTrackerEl.innerHTML = trackerHTML;
 
         let showStacks = localStorage.getItem('ds_stacks') === 'true';
-        let myQbs = myTeam.map(id => State.players.find(p => p.id === id)).filter(p => p && p.posGroup === 'QB').map(p => p.team).filter(t => t !== "FA");
-        let myPassCatchers = myTeam.map(id => State.players.find(p => p.id === id)).filter(p => p && ['WR', 'TE'].includes(p.posGroup)).map(p => p.team).filter(t => t !== "FA");
 
+        // One pass over myTeam instead of two full map/find/filter chains over it (each of
+        // which scanned the entire player pool once per rostered player) to derive the same
+        // two team lists.
+        let myQbs = [];
+        let myPassCatchers = [];
+        myTeam.forEach(id => {
+            const p = playerById.get(id);
+            if (!p || p.team === "FA") return;
+            if (p.posGroup === 'QB') myQbs.push(p.team);
+            else if (p.posGroup === 'WR' || p.posGroup === 'TE') myPassCatchers.push(p.team);
+        });
+
+        // Read once per render rather than once per card -- see buildPlayerCardHTML's `ctx`.
+        const cardCtx = { callOutLists: getCallOutLists(), showTScore: localStorage.getItem('ds_tscore') === 'true' };
 
         let lastTier = null;
 
         State.players.forEach(p => {
-            const isDrafted = draftedPlayers.includes(p.id);
-            const isMine = myTeam.includes(p.id);
+            const isDrafted = draftedSet.has(p.id);
+            const isMine = myTeamSet.has(p.id);
 
             if (isMine && posCounts[p.posGroup] !== undefined) posCounts[p.posGroup]++;
 
@@ -2403,7 +2796,7 @@ function parseExcel(file) {
                         lastTier = p.tier;
                     }
 
-                    newPoolHTML += buildPlayerCardHTML(p, currentOverallPick, showStacks, myQbs, myPassCatchers, draft);
+                    newPoolHTML += buildPlayerCardHTML(p, currentOverallPick, showStacks, myQbs, myPassCatchers, draft, cardCtx);
                 }
             }
         });
@@ -2419,7 +2812,7 @@ function parseExcel(file) {
         let newQueueHTML = '';
 
         if (draft && draft.queue && draft.queue.length > 0) {
-            let activeQueue = draft.queue.filter(id => !draftedPlayers.includes(id));
+            let activeQueue = draft.queue.filter(id => !draftedSet.has(id));
 
             if (activeQueue.length > 0) {
                 let queueExpandedClass = isQueueCollapsed ? "" : " is-expanded";
@@ -2431,7 +2824,7 @@ function parseExcel(file) {
                     newQueueHTML += `<div class="player-pool-container" style="margin-bottom: 1.5rem; border-bottom: 1px dashed var(--border); padding-bottom: 1.5rem;">`;
 
                     activeQueue.forEach((qId, idx) => {
-                        let p = State.players.find(x => x.id === qId);
+                        let p = playerById.get(qId);
                         if (p) {
                             let isFirst = idx === 0;
                             let isLast = idx === activeQueue.length - 1;
@@ -2443,9 +2836,9 @@ function parseExcel(file) {
             }
         }
         if (queueEl) queueEl.innerHTML = newQueueHTML;
-        if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster();
+        if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster(playerById);
 
-        let otherDraftedIds = draftedPlayers.filter(id => !myTeam.includes(id)).slice().reverse();
+        let otherDraftedIds = draftedPlayers.filter(id => !myTeamSet.has(id)).slice().reverse();
         let newOtherHTML = '';
         if (otherDraftedIds.length === 0) {
             newOtherHTML = `
@@ -2454,7 +2847,7 @@ function parseExcel(file) {
                 </div>`;
         } else {
             otherDraftedIds.forEach(id => {
-                let p = State.players.find(player => player.id === id);
+                let p = playerById.get(id);
                 if (p) {
                     newOtherHTML += `
                         <div class="roster-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border);">
