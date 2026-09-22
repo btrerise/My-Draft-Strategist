@@ -308,6 +308,23 @@ body {
     margin: 0 0 1rem 0;
 }
 
+/* Destination line directly above the preview modal's buttons. Neutral by default (new set);
+   the .is-replace variant matches .btn-danger, since that case overwrites existing data. */
+.mls-preview-target {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    margin: 0 0 1rem 0;
+}
+
+.mls-preview-target.is-replace {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
 .mls-preview-actions,
 .mds-modal-actions {
     display: flex;

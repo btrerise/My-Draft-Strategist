@@ -3476,6 +3476,36 @@ function attachScoutSuggestionHandler(outputElId) {
     // RANKING_TYPE_CONFIG itself lives up with the other top-of-file constants, since
     // switchActiveLeague() (defined well above this section) needs it too.
 
+    // Works out where saveRankingsAsSet would put an upload right now, without writing anything.
+    // Mirrors the branch below exactly (including '__legacy__' falling through to a new set),
+    // so the preview modal can name the destination before the user commits.
+    //
+    // This matters because an in-place update is destructive and has no undo: with a named set
+    // selected, an upload replaces that set's data, and every league pointed at the set follows
+    // it (see applyRankingSetToAll). The preview used to describe only the incoming file, never
+    // what it was about to overwrite.
+    function resolveRankingsTarget(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        const nameInput = document.getElementById(cfg.nameInputId);
+        const currentSelection = selectEl ? selectEl.value : '__new__';
+
+        if (currentSelection && currentSelection !== '__new__' && currentSelection !== '__legacy__') {
+            const existing = State.rankingSets[cfg.setsKey].find(s => s.id === currentSelection);
+            if (existing) {
+                return {
+                    mode: 'replace',
+                    name: existing.name,
+                    playerCount: Array.isArray(existing.data) ? existing.data.length : 0,
+                    leagueCount: State.leagues.filter(l => l[cfg.leagueSetIdKey] === existing.id).length
+                };
+            }
+        }
+
+        const defaultName = `${cfg.label} Rankings – ${new Date().toLocaleDateString()}`;
+        return { mode: 'new', name: (nameInput && nameInput.value.trim()) || defaultName };
+    }
+
     // Called after a successful upload or auto-fetch with the freshly parsed data. Updates the
     // currently-selected set in place if one's selected in the dropdown; otherwise creates a new
     // named set (using the name field, or a sensible default) and assigns it to the active league.
@@ -3750,7 +3780,7 @@ function attachScoutSuggestionHandler(outputElId) {
     };
 
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
-        const { parsedData, hasNewSos, sosUpdates } = await parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress });
+        const { parsedData, hasNewSos, sosUpdates } = await parseRankingsFiles(filesWithContext, { loadSheetJS: window.loadSheetJS, onProgress });
 
         // The parser module returns SoS data rather than writing to State directly (it has no
         // access to State at all -- see rankingsParser.js), so it's merged in here instead.
@@ -3777,7 +3807,7 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
 
-        openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds });
+        openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target: resolveRankingsTarget(type) });
     };
 
     // --- RANKINGS UPLOAD PREVIEW ---
@@ -3790,8 +3820,8 @@ function attachScoutSuggestionHandler(outputElId) {
     // Cancel: discards the pending upload and clears the file input for reselection).
     let previewFocusTrap = null;
 
-    function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds }) {
-        pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds };
+    function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target }) {
+        pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target };
 
         const rankType = isWeekly ? "Weekly" : "ROS";
         const sorted = [...parsedData].sort((a, b) => a.rank - b.rank);
@@ -3843,6 +3873,34 @@ function attachScoutSuggestionHandler(outputElId) {
                     derivedEl.style.display = 'block';
                 }
             }).catch(err => console.warn('Rankings file check skipped:', err));
+        }
+
+        // Name the destination, and say plainly when saving means overwriting something that
+        // already exists. The replace wording leads with the set name rather than the file's,
+        // since the set is the thing at risk.
+        const targetEl = document.getElementById('rankingsPreviewTarget');
+        const confirmBtn = document.getElementById('rankingsPreviewConfirmBtn');
+        if (targetEl) {
+            if (target && target.mode === 'replace') {
+                const leagueNote = target.leagueCount === 1
+                    ? 'Used by 1 league.'
+                    : `Used by ${target.leagueCount} leagues.`;
+                targetEl.innerHTML = `Replaces the saved set <strong>${escapeHtml(target.name)}</strong>` +
+                    `${target.playerCount ? ` (${target.playerCount} player${target.playerCount === 1 ? '' : 's'})` : ''}. ` +
+                    `${leagueNote} This can't be undone.`;
+                targetEl.className = 'mls-preview-target is-replace';
+            } else {
+                targetEl.innerHTML = target
+                    ? `Saves as a new set: <strong>${escapeHtml(target.name)}</strong>. Nothing existing is changed.`
+                    : 'Saves as a new set. Nothing existing is changed.';
+                targetEl.className = 'mls-preview-target';
+            }
+            targetEl.style.display = 'block';
+        }
+        if (confirmBtn) {
+            const isReplace = !!(target && target.mode === 'replace');
+            confirmBtn.className = isReplace ? 'btn btn-danger' : 'btn btn-primary';
+            confirmBtn.textContent = isReplace ? 'Replace Set' : 'Looks Good, Save It';
         }
 
         const overlay = document.getElementById('rankingsPreviewOverlay');
@@ -4039,7 +4097,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
         } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
-            loadSheetJS(() => {            
+            window.loadSheetJS(() => {            
                 const reader = new FileReader();
                 reader.onload = e => {
                     try {
@@ -4107,6 +4165,26 @@ function attachScoutSuggestionHandler(outputElId) {
                 posCounters[posKey] = (posCounters[posKey] || 0) + 1;
                 return { name: p.name, cleanName: p.cleanName, rank: i + 1, posRank: posCounters[posKey], flexRank: i + 1 };
             });
+
+            // Same destructive write an .xlsx/.csv upload makes, just reached without a file
+            // picker: with a named set selected in the dropdown, this replaces that set's data
+            // in place and every league pointed at it follows. Uploads get the preview modal's
+            // destination line for this; there's no file to preview here, so the confirm below
+            // carries the same information. A new set overwrites nothing, so it saves silently.
+            const target = resolveRankingsTarget('ros');
+            if (target.mode === 'replace') {
+                const leagueNote = target.leagueCount === 1
+                    ? 'It is used by 1 league.'
+                    : `It is used by ${target.leagueCount} leagues.`;
+                const confirmed = await window.showConfirm(
+                    `The ${rosRankings.length} players just fetched (${formatText}) will replace the saved set "${target.name}".\n\n${leagueNote} This can't be undone.`,
+                    { title: 'Replace saved set?', confirmText: 'Replace Set', danger: true }
+                );
+                if (!confirmed) {
+                    if (window.showToast) window.showToast(`Nothing was changed — "${target.name}" is untouched.`);
+                    return;
+                }
+            }
 
             saveRankingsAsSet('ros', rosRankings);
 
@@ -6861,25 +6939,8 @@ window.runMatchupSim = async function() {
     }
 };
 
-    // Lazy-loads the SheetJS (XLSX) library on first use, so pages that never upload an .xlsx
-    // ranking file don't pay for it. Kept inside the module (rather than as a bare global) like
-    // every other helper here, since this file isn't shared with any other page.
-    function loadSheetJS(callback, onError) {
-        if (typeof XLSX !== 'undefined') {
-            callback();
-        } else {
-            const script = document.createElement('script');
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-            script.onload = callback;
-            // Previously had no failure path at all: if the CDN fetch failed (offline,
-            // ad-blocker, cdnjs outage), the onload callback simply never fired and the
-            // .xlsx upload dead-ended with zero feedback -- the user just saw nothing
-            // happen. Callers now get a chance to surface that instead of hanging forever.
-            script.onerror = () => {
-                script.remove();
-                if (typeof onError === 'function') onError();
-            };
-            document.head.appendChild(script);
-        }
-    }
+    // loadSheetJS used to be defined here. mds.js needed the same lazy-load with the same
+    // failure path (it had its own copy with no error handling at all), so it now lives in
+    // js/utils.js as window.loadSheetJS alongside loadScriptOnce. The call sites above use it
+    // directly; the (callback, onError) signature rankingsParser.js documents is unchanged.
 })();

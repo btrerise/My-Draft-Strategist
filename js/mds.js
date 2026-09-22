@@ -128,8 +128,8 @@
         activePosFilter: 'ALL',
         autoSyncTimer: null,
         deferredPrompt: null,
-        touchstartX: 0,
-        touchendX: 0,
+        touchStartX: 0,
+        touchEndX: 0,
         tabOrder: ['tracker', 'team', 'board']
     };
 
@@ -329,14 +329,23 @@
         return;
     }
 
-    const swipeThreshold = 80;
+    // 20% of viewport width, with a floor so this doesn't get too twitchy on narrow
+    // phones (e.g. 20% of a 320px-wide screen would be 64px, which is on the edge of
+    // triggering from an imprecise scroll/tap rather than a deliberate swipe). Same
+    // threshold mls.js uses for the same gesture.
+    const swipeThreshold = Math.max(80, window.innerWidth * 0.2);
     const diffX = State.touchEndX - State.touchStartX;
 
     if (Math.abs(diffX) > swipeThreshold) {
         const activeNavBtn = document.querySelector('.nav-bar .nav-btn.active');
         if (!activeNavBtn) return;
 
-        const tabs = ['setup', 'tracker', 'board', 'team'];
+        // Must match the on-screen order of the nav buttons (setup, tracker, team, board --
+        // see both the drawer and the bottom nav bar in index.html), otherwise swiping jumps
+        // over a tab and lands somewhere the tab bar says isn't next. 'guide' is deliberately
+        // left out: it's reachable from the drawer, but swiping from the last tab into a wall
+        // of documentation reads as a misfire rather than a tab change (same call as mls.js).
+        const tabs = ['setup', 'tracker', 'team', 'board'];
         const currentIdx = tabs.indexOf(activeNavBtn.getAttribute('data-target'));
 
         if (diffX < 0 && currentIdx < tabs.length - 1) {
@@ -349,7 +358,7 @@
     }
 }
 
-    document.addEventListener('touchstart', e => { State.touchstartX = e.changedTouches[0].screenX; }, {passive: true});
+    document.addEventListener('touchstart', e => { State.touchStartX = e.changedTouches[0].screenX; }, {passive: true});
     document.addEventListener('touchend', (e) => {
     State.touchEndX = e.changedTouches[0].screenX;
     handleGesture(e);
@@ -1353,22 +1362,13 @@ if (fileInput) {
         if (ext === 'csv') {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
         } else if (ext === 'xlsx' || ext === 'xls') {
-            
-            // Check if SheetJS is already loaded. If not, fetch it on the fly.
-            if (typeof XLSX === 'undefined') {
-                const script = document.createElement('script');
-                script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-                
-                // Once the script finishes downloading, run the parser
-                script.onload = () => {
-                    parseExcel(file);
-                };
-                document.head.appendChild(script);
-            } else {
-                // If it was already loaded from a previous upload, just run it
-                parseExcel(file);
-            }
-            
+            // Fetches SheetJS on first use. The onError path matters: with an ad blocker, an
+            // offline phone or a cdnjs outage the script never loads, and without this the
+            // upload used to dead-end with nothing on screen at all.
+            window.loadSheetJS(() => parseExcel(file), () => {
+                console.error("Failed to load SheetJS library");
+                if (window.showToast) window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
+            });
         } else if (ext === 'numbers') {
             // Apple Numbers' file format isn't a spreadsheet format our parser (SheetJS) can
             // read -- it's a proprietary zip/binary format, not CSV/XLSX under the hood.
@@ -1384,10 +1384,21 @@ if (fileInput) {
 function parseExcel(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, {type: 'array'});
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
+        // XLSX.read throws on a corrupt or unexpected workbook. Uncaught inside a FileReader
+        // callback that means a silent dead-end, so the failure is surfaced instead.
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
+        } catch (err) {
+            console.error("Error reading Excel file:", err);
+            if (window.showToast) window.showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
+        }
+    };
+    reader.onerror = () => {
+        console.error("Error reading file:", file.name);
+        if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
     };
     reader.readAsArrayBuffer(file);
 }

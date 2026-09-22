@@ -467,6 +467,24 @@ window.ensureHtml2Canvas = async function() {
     }
 };
 
+// Lazy-loads SheetJS (XLSX) on first use, so the many sessions that never upload an .xlsx
+// don't pay for it. Previously lived only inside mls.js; mds.js had its own inline copy with
+// no failure path at all, so a blocked/offline CDN left an .xlsx upload dead-ended in total
+// silence. Shared here so both apps get the same error handling.
+//
+// Keeps the (callback, onError) signature rather than returning the promise, because
+// rankingsParser.js takes this function as an injected parameter and documents that shape.
+window.loadSheetJS = function(callback, onError) {
+    window.loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX')
+        .then(
+            () => callback(),
+            // Two arguments rather than .then().catch() on purpose: onError means "the library
+            // didn't load", so it must not also fire when the library loaded fine and the
+            // callback itself threw -- that would report a CDN failure for a parsing bug.
+            () => { if (typeof onError === 'function') onError(); }
+        );
+};
+
 // --- FLASH BUTTON FEEDBACK ---
 // Shared by mds.js and mls.js (previously two separate near-identical copies).
 // Uses innerHTML rather than innerText: some buttons' resting state includes icon markup

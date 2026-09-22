@@ -254,7 +254,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 };
                 reader.readAsArrayBuffer(file);
             }, () => {
-                // SheetJS itself failed to load -- see loadSheetJS's onerror in mls.js.
+                // SheetJS itself failed to load -- see window.loadSheetJS in js/utils.js.
                 console.error("Failed to load SheetJS library");
                 if (typeof window.showToast === 'function') {
                     window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
