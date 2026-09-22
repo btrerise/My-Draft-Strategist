@@ -1827,6 +1827,17 @@ body {
     color: var(--text-muted);
 }
 
+/* Standalone message shown in the results container in place of a result card -- "not enough
+   roster data", a bye week, or a worker that failed to load. */
+.sim-message {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.sim-message-error {
+    color: #fca5a5;
+}
+
 .sim-fallback-note {
     color: #fbbf24 !important;
 }

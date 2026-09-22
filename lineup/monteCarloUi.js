@@ -1,8 +1,17 @@
 // monteCarloUi.js
 import { getPlayerVarianceProfile, getBoomBustRates } from './statsEngine.js';
 
-// 1. Initialize the Web Worker
-const worker = new Worker('./worker.js');
+// 1. Initialize the Web Worker.
+// Guarded because this runs at module-import time: a worker that can't be constructed (the
+// file didn't deploy, the browser refuses workers for this origin) would throw here, before
+// mls.js finished importing, and take the entire Lineup Strategist down rather than just the
+// simulation. On failure `worker` stays null and runMatchupSimulation reports it in place.
+let worker = null;
+try {
+    worker = new Worker('./worker.js');
+} catch (err) {
+    console.error('Monte Carlo Worker failed to load:', err);
+}
 
 // The worker only ever needs to report back win/loss/tie counts -- it has no reason to know
 // player names or positions, so those are kept here rather than round-tripped through
@@ -29,15 +38,86 @@ let animationFrameId = null;
 let animationDone = false;
 let pendingResult = null;
 
+const WORKER_FAILURE_MESSAGE = "Couldn't run the simulation &mdash; the calculation engine failed to load. Reload the page and try again.";
+const WORKER_TIMEOUT_MESSAGE = "Couldn't run the simulation &mdash; the calculation engine stopped responding. Reload the page and try again.";
+
+// --- WORKER RESPONSE WATCHDOG ---
+// onerror only covers the failures the worker itself reports. It doesn't cover a worker that
+// simply never answers: once its script has failed to load, postMessage is silently discarded,
+// so a second Run after a load failure would start the progress animation and leave it parked
+// at "10,000 / 10,000" with no error and no result -- exactly the dead-progress-display this
+// module is otherwise careful to avoid. The work here is a few milliseconds of arithmetic, so
+// anything approaching this bound means the worker is not coming back.
+//
+// A timer rather than a "worker is dead" flag on purpose: an uncaught exception inside the
+// worker's own message handler fires onerror but leaves the worker alive and usable, and a
+// sticky flag would permanently disable the feature for a failure the next Run would survive.
+// This self-heals -- every Run gets a real attempt, and only a run that actually hangs reports
+// one.
+const WORKER_RESPONSE_TIMEOUT_MS = 10000;
+let responseTimeoutId = null;
+
+function clearResponseTimeout() {
+    if (responseTimeoutId !== null) {
+        clearTimeout(responseTimeoutId);
+        responseTimeoutId = null;
+    }
+}
+
 function renderProgress(simOutputDiv, count) {
     if (!simOutputDiv) return;
     simOutputDiv.innerHTML = `<p style="display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating matchups... ${count.toLocaleString()} / ${SIMULATION_ITERATIONS.toLocaleString()}</p>`;
 }
 
-function startProgressAnimation(simOutputDiv) {
-    if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+// Abandons the run currently on screen: stops the progress animation, drops the state it left
+// behind, and stops waiting on the worker. Called before writing a message that replaces the
+// counter, by clearSimResults below, and at the start of each new run.
+function cancelProgressAnimation() {
+    if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
     animationDone = false;
     pendingResult = null;
+    clearResponseTimeout();
+}
+
+// Writes a message into the results container in place of whatever is there. This is what the
+// worker's failure paths use: the progress animation reveals the container and counts up to
+// 10,000 on its own schedule, so a worker that dies would otherwise leave "Simulating
+// matchups... 10,000 / 10,000" and a spinning icon on screen permanently -- a progress display
+// for work that already failed, with no way for the user to tell.
+function renderSimMessage(message, { isError = false } = {}) {
+    cancelProgressAnimation();
+    const simOutputDiv = document.getElementById('monte-carlo-results');
+    if (!simOutputDiv) return;
+    simOutputDiv.style.display = 'block';
+    simOutputDiv.innerHTML = `<p class="sim-message${isError ? ' sim-message-error' : ''}">${message}</p>`;
+}
+
+// Hides the results container and drops any in-flight animation. Exported because a stale
+// result card is worse than none: the card carries a win probability for one specific team in
+// one specific week, so leaving the previous run's card up while the user switches leagues or
+// triggers a run that can't proceed presents the old numbers as if they were the new ones.
+export const clearSimResults = () => {
+    cancelProgressAnimation();
+    const simOutputDiv = document.getElementById('monte-carlo-results');
+    if (!simOutputDiv) return;
+    simOutputDiv.style.display = 'none';
+    simOutputDiv.innerHTML = '';
+};
+
+// Shows an explanation in place of a result, for the cases where a run can't proceed at all
+// (too early in the season, a bye week, no opponent). Exported so mls.js's runMatchupSim can
+// use the same surface its results appear in instead of only firing a toast that disappears.
+export const showSimNotice = (message, { isError = false } = {}) => {
+    renderSimMessage(message, { isError });
+};
+
+function startProgressAnimation(simOutputDiv) {
+    // Also clears any watchdog still armed from a previous run, so the new run's timer is the
+    // only one that can fire.
+    cancelProgressAnimation();
 
     const startTime = performance.now();
     function tick() {
@@ -80,10 +160,12 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     const simOutputDiv = document.getElementById('monte-carlo-results');
 
     if (team1Players.length === 0 || team2Players.length === 0) {
-        if (simOutputDiv) {
-            simOutputDiv.style.display = 'block';
-            simOutputDiv.innerHTML = '<p>Not enough roster data to simulate this matchup yet.</p>';
-        }
+        renderSimMessage('Not enough roster data to simulate this matchup yet.');
+        return;
+    }
+
+    if (!worker) {
+        renderSimMessage(WORKER_FAILURE_MESSAGE, { isError: true });
         return;
     }
 
@@ -134,6 +216,15 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
         projectionCount,
         actualCount
     });
+
+    // Arm the watchdog on the send, not on the animation, so it measures the thing it's
+    // actually waiting for (see WORKER_RESPONSE_TIMEOUT_MS above). Disarmed in onmessage.
+    clearResponseTimeout();
+    responseTimeoutId = setTimeout(() => {
+        responseTimeoutId = null;
+        console.error('Monte Carlo Worker did not respond within %dms.', WORKER_RESPONSE_TIMEOUT_MS);
+        renderSimMessage(WORKER_TIMEOUT_MESSAGE, { isError: true });
+    }, WORKER_RESPONSE_TIMEOUT_MS);
 };
 
 // Renders one team's starters as a name/position/projected-range list. floor-ceiling is shown
@@ -278,16 +369,26 @@ function renderResults(data) {
 }
 
 // 4. Listen for the Web Worker to finish
-worker.onmessage = function(e) {
-    if (animationDone) {
-        renderResults(e.data);
-    } else {
-        // Animation is still playing -- hold the real result until it catches up rather than
-        // revealing it early (see startProgressAnimation's own comment for why).
-        pendingResult = e.data;
-    }
-};
+if (worker) {
+    worker.onmessage = function(e) {
+        // The worker answered, so disarm the watchdog before anything else -- the result may
+        // still sit in pendingResult for a few hundred ms waiting on the animation, and that
+        // wait must not be mistaken for a hang.
+        clearResponseTimeout();
 
-worker.onerror = function(error) {
-    console.error('Monte Carlo Worker Error:', error);
-};
+        if (animationDone) {
+            renderResults(e.data);
+        } else {
+            // Animation is still playing -- hold the real result until it catches up rather than
+            // revealing it early (see startProgressAnimation's own comment for why).
+            pendingResult = e.data;
+        }
+    };
+
+    worker.onerror = function(error) {
+        console.error('Monte Carlo Worker Error:', error);
+        // The progress animation is almost certainly still running (or parked at its target)
+        // when this fires, so the message has to replace it rather than just be logged.
+        renderSimMessage(WORKER_FAILURE_MESSAGE, { isError: true });
+    };
+}

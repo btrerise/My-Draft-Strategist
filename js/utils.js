@@ -368,7 +368,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 // --- TOAST NOTIFICATIONS ---
+// Batch operations (optimizeAllLineups, syncAllLeagues) call a per-league routine that toasts
+// on its own, so firing N of them in a row is spam. Those callers suppress toasts for the
+// length of the loop and report one summary at the end. They flip this flag rather than
+// reassigning window.showToast to a no-op: a monkey-patch that never gets restored -- a throw
+// mid-loop, an early return that skips the restore line -- silently kills every toast in the
+// app for the rest of the session, including the error toast that would have explained why.
+let toastsSuppressed = false;
+window.setToastsSuppressed = function(suppressed) {
+  toastsSuppressed = !!suppressed;
+};
+
 window.showToast = function(message, options = {}) {
+  // options.force lets a batch caller surface something that genuinely matters (its summary,
+  // or a failure) without having to unsuppress around the call.
+  if (toastsSuppressed && !options.force) return;
+
   const isError = options.isError || false;
   const duration = options.duration || (isError ? 6000 : 3500);
 
