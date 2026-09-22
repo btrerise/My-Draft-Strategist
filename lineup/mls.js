@@ -5660,6 +5660,13 @@ window.syncAllLeagues = async function(btn) {
                 const preloaded = { playerMap }; 
 
                 let successCount = 0;
+                // processSleeperData returns false when a league couldn't be reached, and the
+                // suppressErrorToast=true we pass below means that failure makes no noise of
+                // its own. Counting only the successes and reporting "Successfully synced 5
+                // leagues!" said nothing about the three now sitting on stale rosters -- you'd
+                // go set lineups off them. Track the misses and name them, the way
+                // importAllSleeperLeagues already does.
+                let failedLeagueNames = [];
                 let newLogs = [];
 
                 // Suppress the per-league toasts processSleeperData fires during the loop; one
@@ -5690,6 +5697,8 @@ window.syncAllLeagues = async function(btn) {
                                 newlyOut: result.newlyOut
                             });
                         }
+                    } else {
+                        failedLeagueNames.push(l.name || l.leagueId);
                     }
                 }
 
@@ -5701,14 +5710,28 @@ window.syncAllLeagues = async function(btn) {
                 State.syncLogs = newLogs;
                 localStorage.setItem('mls_sync_logs', JSON.stringify(State.syncLogs));
                 
-                // Toast a simple summary
-                let summaryMsg = `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
+                // Toast a summary that accounts for every league we tried, not just the ones
+                // that worked: a miss here is a roster you'd go on to set a lineup off, so it
+                // gets named rather than quietly dropped from the count.
+                const failedCount = failedLeagueNames.length;
+                let summaryMsg = failedCount > 0
+                    ? `Synced ${successCount} of ${sleeperLeagues.length}. Couldn't reach: ${formatNameList(failedLeagueNames)} — try Sync All again.`
+                    : `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
                 if (newLogs.length > 0) {
                     summaryMsg += `\n\nChanges found in ${newLogs.length} league${newLogs.length === 1 ? '' : 's'}. Check the Sync Logs!`;
                 }
                 // force: toasts are still suppressed here (the finally below is what clears the
                 // flag) and this summary is the whole point of having suppressed them.
-                if (window.showToast) window.showToast(summaryMsg, { force: true });
+                // A partial sync is shown as an error so it doesn't read like an all-clear --
+                // that also gets it the dismiss button and a longer window, which it needs:
+                // there are league names in there the person has to read and act on.
+                if (window.showToast) {
+                    window.showToast(summaryMsg, {
+                        isError: failedCount > 0,
+                        force: true,
+                        duration: failedCount > 0 ? 9000 : undefined
+                    });
+                }
 
                 // Re-render the logs accordion
                 renderSyncLogs();
