@@ -53,6 +53,11 @@ export function buildRankDisplayIndex(rankings, getPos) {
     withPos.forEach(({ r, pos }) => {
         index[r.cleanName] = {
             pos,
+            // Overall rank, straight from the file. ROS exports carry Overall + Positional and no
+            // FLEX list, so for ROS this -- not a derived flexRank -- is the cross-position number
+            // the UI shows ("ROS Overall #106"); see crossKind in mls.js's waiverCompareLine.
+            rank: isRanked(r.rank) ? r.rank : null,
+            tier: r.tier ?? null,
             posRank: isRanked(r.posRank) ? r.posRank : null,
             posTier: r.posTier ?? null,
             posDerived: false,

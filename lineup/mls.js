@@ -2873,13 +2873,18 @@ function attachScoutSuggestionHandler(outputElId) {
 
         const scan = resolveWaiverBasis();
 
+        // *Cross: which number a cross-position head-to-head (FLEX slot, WR vs RB) is shown in.
+        // Weekly files carry a FLEX list, so 'flex'; ROS files carry Overall instead, so
+        // 'overall' -- "ROS Flex" isn't a number any ROS source actually publishes.
         return {
             league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly,
             checkLabel: checkIsWeekly ? 'Wk' : 'ROS',
             checkDisplay: checkIsWeekly ? wkDisplay : rosDisplay,
+            checkCross: checkIsWeekly ? 'flex' : 'overall',
             wkDisplay, rosDisplay, rosByName,
             scan,
-            scanDisplay: scan && scan.basis === 'ros' ? rosDisplay : wkDisplay
+            scanDisplay: scan && scan.basis === 'ros' ? rosDisplay : wkDisplay,
+            scanCross: scan && scan.basis === 'ros' ? 'overall' : 'flex'
         };
     }
 
@@ -2979,26 +2984,28 @@ function attachScoutSuggestionHandler(outputElId) {
 
     // The rank line every waiver card shows, led by whichever set Rank By resolved to:
     //   Weekly -- Wk Pos / Wk Flex / ROS overall (ROS kept as rest-of-season context).
-    //   ROS    -- ROS overall + ROS Pos / ROS Flex only. Weekly numbers are left off rather
-    //             than shown alongside: with ROS picked they were the first thing on the card
-    //             and read as the basis. The Starting Lineup verdict line below still cites
-    //             its Wk numbers, since that check is a this-week question (see
-    //             buildWaiverContext's checkRankings).
-    // Flex cells only for RB/WR/TE.
+    //   ROS    -- ROS Pos / ROS Overall, the two numbers ROS sources actually publish (no
+    //             FLEX list -- the parser stores Overall in flexRank for those files, which is
+    //             why "ROS Flex" isn't shown). Overall is shown for every position, QBs
+    //             included, since the overall list covers them. Weekly numbers are left off:
+    //             with ROS picked they read as the basis. The Starting Lineup verdict line
+    //             below still cites its Wk numbers, since that check is a this-week question
+    //             (see buildWaiverContext's checkRankings).
+    // Wk Flex only for RB/WR/TE.
     function waiverRanksRowHTML(ctx, cleanName, pos) {
         const wk = ctx.wkDisplay[cleanName] || {};
         const ros = ctx.rosDisplay[cleanName] || {};
         const rosRaw = ctx.rosByName[cleanName];
         const isFlexPos = FLEX_POSITIONS.includes(pos);
+
+        if (ctx.scan && ctx.scan.basis === 'ros') {
+            const rosPos = ros.posRank ? `<strong class="mls-stat-green">${pos}${ros.posRank}</strong>${tierTag(ros.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
+            return `<div class="mls-meta-row mls-scan-ranks"><span>ROS Pos: ${rosPos}</span><span>ROS Overall: ${waiverRankHTML(rosRaw ? rosRaw.rank : null, rosRaw ? rosRaw.tier : null)}</span></div>`;
+        }
+
         const rosCell = rosRaw
             ? `<span>ROS: <strong class="mls-stat-green">#${rosRaw.rank}</strong>${tierTag(rosRaw.tier)}${ros.posRank ? ` <span class="mls-rank-sep">&middot;</span> ${pos}${ros.posRank}` : ''}</span>`
             : `<span>ROS: <strong class="mls-muted-rank">UR</strong></span>`;
-
-        if (ctx.scan && ctx.scan.basis === 'ros') {
-            const rosFlexCell = isFlexPos ? `<span>ROS Flex: ${waiverRankHTML(ros.flexRank, ros.flexTier)}</span>` : '';
-            return `<div class="mls-meta-row mls-scan-ranks">${rosCell}${rosFlexCell}</div>`;
-        }
-
         const flexCell = isFlexPos ? `<span>Wk Flex: ${waiverRankHTML(wk.flexRank, wk.flexTier)}</span>` : '';
         const wkPos = wk.posRank ? `<strong class="mls-stat-blue">${pos}${wk.posRank}</strong>${tierTag(wk.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
         return `<div class="mls-meta-row mls-scan-ranks"><span>Wk Pos: ${wkPos}</span>${flexCell}${rosCell}</div>`;
@@ -3017,7 +3024,7 @@ function attachScoutSuggestionHandler(outputElId) {
         const faRanks = ctx.scan.byName[player.cleanName] || {};
         const upgrade = compareForScan({ pos: player.pos, rank: faRanks.rank, posRank: faRanks.posRank, flexRank: faRanks.flexRank }, bench, filter) < 0;
         const line = waiverCompareLine(player, bench, `weakest ${groupLabel}`, upgrade ? 'Upgrade over' : "Doesn't pass",
-            ctx.scanDisplay, ctx.scan.label, filter === 'FLEX' ? 'flex' : 'pos');
+            ctx.scanDisplay, ctx.scan.label, filter === 'FLEX' ? 'flex' : 'pos', ctx.scanCross);
         return { line, upgrade };
     }
 
@@ -3035,21 +3042,27 @@ function attachScoutSuggestionHandler(outputElId) {
     // basis: 'flex' | 'pos' | 'auto'. Auto picks the number that actually decides that
     // head-to-head: FLEX/SFLEX battles between flex-eligible players are decided by Flex rank;
     // same-position slots (and QB vs QB) by position rank.
-    function waiverCompareLine(faPlayer, other, slotType, verb, display, label, basis = 'auto') {
+    // crossKind: which number stands in for a cross-position head-to-head -- 'flex' (Weekly
+    // files, which carry a FLEX list) or 'overall' (ROS files, which carry Overall instead).
+    // Only the label and the number shown change; the verdict itself was already decided by
+    // the caller, and ordering RB/WR/TE by Overall is the same order the FLEX comparison uses.
+    function waiverCompareLine(faPlayer, other, slotType, verb, display, label, basis = 'auto', crossKind = 'flex') {
         const bothFlex = FLEX_POSITIONS.includes(faPlayer.pos) && FLEX_POSITIONS.includes(other.pos);
         const useFlex = basis === 'flex' ? bothFlex
             : basis === 'pos' ? false
             : bothFlex && (slotType === 'FLEX' || slotType === 'SFLEX' || faPlayer.pos !== other.pos);
+        const crossField = crossKind === 'overall' ? 'rank' : 'flexRank';
+        const crossName = crossKind === 'overall' ? 'Overall' : 'Flex';
         const faD = display[faPlayer.cleanName] || {};
         const oD = display[other.cleanName] || {};
         const fmt = (v, pos) => (v === null || v === undefined) ? 'unranked' : (useFlex ? `#${v}` : `${pos}${v}`);
-        const faVal = useFlex ? faD.flexRank : faD.posRank;
-        const oVal = useFlex ? oD.flexRank : oD.posRank;
+        const faVal = useFlex ? faD[crossField] : faD.posRank;
+        const oVal = useFlex ? oD[crossField] : oD.posRank;
         const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotType})</span>` : '';
         // The two ranks go on their own line under the verdict (see .mls-verdict-nums), and each
         // label/name+rank pair is kept unbreakable -- at phone width this line otherwise wrapped
         // mid-phrase ("Wk" on one line, "Flex: Dobbins #58" on the next), which read as garbled.
-        const nums = `<span class="mls-nowrap">${label} ${useFlex ? 'Flex' : 'Pos'}:</span> `
+        const nums = `<span class="mls-nowrap">${label} ${useFlex ? crossName : 'Pos'}:</span> `
             + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos)}</span>, `
             + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos)}</span>`;
         return `${verb} <strong>${escapeHtml(other.name)}</strong>${slotText}<span class="mls-verdict-nums">${nums}</span>`;
@@ -3066,11 +3079,11 @@ function attachScoutSuggestionHandler(outputElId) {
                 return {
                     pill: pill('mls-verdict-start', 'Would Start'),
                     line: verdict.displaced
-                        ? waiverCompareLine(player, verdict.displaced, verdict.displacedSlotType, 'Replaces', ctx.checkDisplay, ctx.checkLabel)
+                        ? waiverCompareLine(player, verdict.displaced, verdict.displacedSlotType, 'Replaces', ctx.checkDisplay, ctx.checkLabel, 'auto', ctx.checkCross)
                         : 'Fills an empty lineup slot'
                 };
             case 'bench':
-                return { pill: pill('mls-verdict-bench', 'Bench'), line: waiverCompareLine(player, verdict.bubble, verdict.bubbleSlotType, 'Would need to pass', ctx.checkDisplay, ctx.checkLabel) };
+                return { pill: pill('mls-verdict-bench', 'Bench'), line: waiverCompareLine(player, verdict.bubble, verdict.bubbleSlotType, 'Would need to pass', ctx.checkDisplay, ctx.checkLabel, 'auto', ctx.checkCross) };
             case 'unavailable':
                 return { pill: pill('mls-verdict-out', onBye ? 'Bye' : 'Out'), line: onBye ? 'On bye this week - a stash, not a start.' : `Listed ${escapeHtml(player.inj || 'out')} - can't start this week.` };
             case 'kickedOff':
@@ -3480,8 +3493,10 @@ function attachScoutSuggestionHandler(outputElId) {
                 const upgrades = g.items.filter(fa => compareForScan(fa, bench, g.filter) < 0).slice(0, limit);
                 const rankText = (p) => {
                     const d = basisDisplay[p.cleanName] || {};
-                    const v = basisKind === 'flex' ? d.flexRank : d.posRank;
-                    return v ? `${basisLabel} ${basisKind === 'flex' ? `Flex #${v}` : `${p.pos}${v}`}` : `unranked by ${basisName}`;
+                    // Cross-position number: Weekly's FLEX rank, or ROS's Overall (see scanCross).
+                    const crossOverall = ctx.scanCross === 'overall';
+                    const v = basisKind === 'flex' ? (crossOverall ? d.rank : d.flexRank) : d.posRank;
+                    return v ? `${basisLabel} ${basisKind === 'flex' ? `${crossOverall ? 'Overall' : 'Flex'} #${v}` : `${p.pos}${v}`}` : `unranked by ${basisName}`;
                 };
                 const nextUp = mine.slice(Math.max(0, mine.length - 3), mine.length - 1).reverse()
                     .map(p => `${escapeHtml(p.name)} (${rankText(p)})`);
@@ -3494,7 +3509,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 </div>`;
                 const cards = upgrades.map(fa => {
                     const row = ctx.evaluate(fa);
-                    const line = waiverCompareLine(row.player, bench, null, 'Upgrade over', basisDisplay, basisLabel, basisKind);
+                    const line = waiverCompareLine(row.player, bench, null, 'Upgrade over', basisDisplay, basisLabel, basisKind, ctx.scanCross);
                     return renderWaiverScanCard(ctx, row, line);
                 }).join('');
                 return { body: header + cards, count: upgrades.length, countText: upgrades.length ? `${upgrades.length} upgrade${upgrades.length === 1 ? '' : 's'}` : 'no upgrades' };
@@ -3510,7 +3525,7 @@ function attachScoutSuggestionHandler(outputElId) {
             if (mode === 'lineup' && playedExcluded > 0) notes.push(`${playedExcluded} player${playedExcluded === 1 ? "'s game has" : "s' games have"} already kicked off this week, so ${playedExcluded === 1 ? 'he was' : 'they were'} left out; everyone below can still help you this week. Switch to Whole Roster to include ${playedExcluded === 1 ? 'him' : 'them'}.`);
             if (mode === 'lineup' && allPlayed) notes.push(`Every available player's game has already kicked off this week, so they're shown anyway - treat these as adds for next week.`);
             if (mode === 'lineup' && !ctx.lineupReady) notes.push(`Couldn't build a starting lineup for this league yet, so there's no Would Start check - open the Lineup tab and tap Optimize Lineup.`);
-            else if (!ctx.checkIsWeekly) notes.push(`No Weekly rankings loaded, so the Would Start check uses ROS ranks (same as the optimizer) and Wk Pos/Flex show "UR".`);
+            else if (!ctx.checkIsWeekly) notes.push(`No Weekly rankings loaded, so the Would Start check uses ROS ranks (same as the optimizer).`);
             notes.push(...waiverDerivedNotes(ctx));
             if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference; renaming them in your rankings file to match Sleeper brings them back.`);
 
@@ -5876,6 +5891,24 @@ window.syncAllLeagues = async function(btn) {
     // pure waste when many lineups are computed in a row. Batch callers (optimizeAllLineups)
     // therefore don't call this function at all per league -- see optimizeLineup's `batch`
     // option -- rather than calling it and suppressing half its work.
+    // "Pos: #40 | Flex: #66" badge on each Lineup tab player. The second number depends on
+    // which rankings the optimizer ran on (see optimizeLineup's activeDataSet: Weekly when
+    // loaded, otherwise ROS):
+    //   Weekly -- FLEX rank, RB/WR/TE only. Weekly exports carry a FLEX list.
+    //   ROS    -- Overall rank, any position. ROS exports carry Overall + Positional and no
+    //             FLEX list; the parser stores Overall in flexRank for those files, so the
+    //             number is right but "Flex" was the wrong name for it. Same wording as the
+    //             waiver cards ("ROS Overall").
+    function lineupRankBadge(p, rankedByRos) {
+        const hasPos = p.posRank !== 999;
+        const hasCross = p.flexRank !== 999;
+        if (!hasPos && !hasCross) return "Unranked";
+        const posStr = hasPos ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
+        const crossStr = hasCross ? `#${p.flexRank}${tierTag(p.flexTier)}` : "-";
+        if (rankedByRos) return hasCross ? `Pos: ${posStr} | Overall: ${crossStr}` : `Pos: ${posStr}`;
+        return (['QB', 'K', 'DEF'].includes(p.pos) || !hasCross) ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${crossStr}`;
+    }
+
     function renderLineupUI() {
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
@@ -5891,6 +5924,9 @@ window.syncAllLeagues = async function(btn) {
         // lockControl below). Written via setPlayerLockState, by toggleLock (the lock icon) and
         // by initiateSwap (keeping a manual swap sticky across the next full recompute).
         let locksList = State.lockedPlayersMap[State.activeLeagueId] || [];
+        // Mirrors optimizeLineup's activeDataSet choice, so the badges name the numbers the
+        // lineup was actually built from.
+        const rankedByRos = State.weeklyRankings.length === 0 && State.rosRankings.length > 0;
 
         let html = "";
 
@@ -5947,11 +5983,7 @@ window.syncAllLeagues = async function(btn) {
                     ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
                     : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>`;
 
-                let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
-                let flexStr = p.flexRank !== 999 ? `#${p.flexRank}${tierTag(p.flexTier)}` : "-";
-                let rankBadge = (p.posRank !== 999 || p.flexRank !== 999)
-                    ? (['QB', 'K', 'DEF'].includes(p.pos) || p.flexRank === 999 ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${flexStr}`)
-                    : "Unranked";
+                let rankBadge = lineupRankBadge(p, rankedByRos);
 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
@@ -6019,11 +6051,7 @@ window.syncAllLeagues = async function(btn) {
                     benchHTML += `<div class="bench-taxi-divider"><span>Taxi Squad</span></div>`;
                 }
                 let lockClass = State.swapSourceId === p.id ? "swapping" : "";
-                let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
-                let flexStr = p.flexRank !== 999 ? `#${p.flexRank}${tierTag(p.flexTier)}` : "-";
-                let rankBadge = (p.posRank !== 999 || p.flexRank !== 999)
-                    ? (['QB', 'K', 'DEF'].includes(p.pos) || p.flexRank === 999 ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${flexStr}`)
-                    : "Unranked";
+                let rankBadge = lineupRankBadge(p, rankedByRos);
 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
