@@ -368,7 +368,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 // --- TOAST NOTIFICATIONS ---
+// Batch operations (optimizeAllLineups, syncAllLeagues) call a per-league routine that toasts
+// on its own, so firing N of them in a row is spam. Those callers suppress toasts for the
+// length of the loop and report one summary at the end. They flip this flag rather than
+// reassigning window.showToast to a no-op: a monkey-patch that never gets restored -- a throw
+// mid-loop, an early return that skips the restore line -- silently kills every toast in the
+// app for the rest of the session, including the error toast that would have explained why.
+let toastsSuppressed = false;
+window.setToastsSuppressed = function(suppressed) {
+  toastsSuppressed = !!suppressed;
+};
+
 window.showToast = function(message, options = {}) {
+  // options.force lets a batch caller surface something that genuinely matters (its summary,
+  // or a failure) without having to unsuppress around the call.
+  if (toastsSuppressed && !options.force) return;
+
   const isError = options.isError || false;
   const duration = options.duration || (isError ? 6000 : 3500);
 
@@ -450,6 +465,24 @@ window.ensureHtml2Canvas = async function() {
     } catch (err) {
         return false;
     }
+};
+
+// Lazy-loads SheetJS (XLSX) on first use, so the many sessions that never upload an .xlsx
+// don't pay for it. Previously lived only inside mls.js; mds.js had its own inline copy with
+// no failure path at all, so a blocked/offline CDN left an .xlsx upload dead-ended in total
+// silence. Shared here so both apps get the same error handling.
+//
+// Keeps the (callback, onError) signature rather than returning the promise, because
+// rankingsParser.js takes this function as an injected parameter and documents that shape.
+window.loadSheetJS = function(callback, onError) {
+    window.loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX')
+        .then(
+            () => callback(),
+            // Two arguments rather than .then().catch() on purpose: onError means "the library
+            // didn't load", so it must not also fire when the library loaded fine and the
+            // callback itself threw -- that would report a CDN failure for a parsing bug.
+            () => { if (typeof onError === 'function') onError(); }
+        );
 };
 
 // --- FLASH BUTTON FEEDBACK ---

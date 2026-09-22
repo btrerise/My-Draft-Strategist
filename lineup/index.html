@@ -1217,9 +1217,12 @@
             <div class="mls-preview-unmatched-list"></div>
             <p class="mls-preview-unmatched-hint">Players are matched by name, so these stay unranked everywhere in the app - including your lineup and waiver scans. Team defenses are often named differently than Sleeper names them. You can still save this file; renaming them to match Sleeper fixes it.</p>
         </div>
+        <!-- Says where this upload lands: a new set, or an in-place overwrite of an existing
+             one (and how many leagues follow that set). Filled by openRankingsPreview. -->
+        <p id="rankingsPreviewTarget" class="mls-preview-target" style="display: none;"></p>
         <div class="mls-preview-actions">
             <button class="btn btn-secondary" onclick="cancelRankingsPreview()">Cancel</button>
-            <button class="btn btn-primary" onclick="confirmRankingsPreview()">Looks Good, Save It</button>
+            <button id="rankingsPreviewConfirmBtn" class="btn btn-primary" onclick="confirmRankingsPreview()">Looks Good, Save It</button>
         </div>
     </div>
 </div>

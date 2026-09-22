@@ -127,10 +127,15 @@
         adpMeta: JSON.parse(localStorage.getItem('ds_adp_meta')) || null,
         activePosFilter: 'ALL',
         autoSyncTimer: null,
+        // Health of the live-draft poll, so the LIVE pill can tell the truth about it.
+        // lastLiveSyncAt is the last tick that actually came back from Sleeper (a tick with
+        // no new picks still counts -- we heard from them); liveSyncFailStreak is how many
+        // silent ticks have failed back to back since then.
+        lastLiveSyncAt: null,
+        liveSyncFailStreak: 0,
         deferredPrompt: null,
-        touchstartX: 0,
-        touchendX: 0,
-        tabOrder: ['tracker', 'team', 'board']
+        touchStartX: 0,
+        touchEndX: 0
     };
 
     const BYE_WEEKS_2026 = {
@@ -329,14 +334,23 @@
         return;
     }
 
-    const swipeThreshold = 80;
+    // 20% of viewport width, with a floor so this doesn't get too twitchy on narrow
+    // phones (e.g. 20% of a 320px-wide screen would be 64px, which is on the edge of
+    // triggering from an imprecise scroll/tap rather than a deliberate swipe). Same
+    // threshold mls.js uses for the same gesture.
+    const swipeThreshold = Math.max(80, window.innerWidth * 0.2);
     const diffX = State.touchEndX - State.touchStartX;
 
     if (Math.abs(diffX) > swipeThreshold) {
         const activeNavBtn = document.querySelector('.nav-bar .nav-btn.active');
         if (!activeNavBtn) return;
 
-        const tabs = ['setup', 'tracker', 'board', 'team'];
+        // Must match the on-screen order of the nav buttons (setup, tracker, team, board --
+        // see both the drawer and the bottom nav bar in index.html), otherwise swiping jumps
+        // over a tab and lands somewhere the tab bar says isn't next. 'guide' is deliberately
+        // left out: it's reachable from the drawer, but swiping from the last tab into a wall
+        // of documentation reads as a misfire rather than a tab change (same call as mls.js).
+        const tabs = ['setup', 'tracker', 'team', 'board'];
         const currentIdx = tabs.indexOf(activeNavBtn.getAttribute('data-target'));
 
         if (diffX < 0 && currentIdx < tabs.length - 1) {
@@ -349,7 +363,7 @@
     }
 }
 
-    document.addEventListener('touchstart', e => { State.touchstartX = e.changedTouches[0].screenX; }, {passive: true});
+    document.addEventListener('touchstart', e => { State.touchStartX = e.changedTouches[0].screenX; }, {passive: true});
     document.addEventListener('touchend', (e) => {
     State.touchEndX = e.changedTouches[0].screenX;
     handleGesture(e);
@@ -881,7 +895,15 @@ window.addEventListener('popstate', (e) => {
             const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
             if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
             const picksData = await picksRes.json();
-            
+
+            // Sleeper answered, so this tick is healthy -- a tick that finds no new picks
+            // still means we're hearing from them, which is exactly what the LIVE pill is
+            // claiming. Stamped here rather than at the end of the try because the common
+            // outcome of a good poll is the unchanged-silent-tick early return further down.
+            State.lastLiveSyncAt = Date.now();
+            State.liveSyncFailStreak = 0;
+            if (typeof window.renderLiveSyncStatus === 'function') window.renderLiveSyncStatus();
+
             let sleeperDrafted = [];
             let sleeperMyTeam = [];
 
@@ -1059,7 +1081,17 @@ window.addEventListener('popstate', (e) => {
             
         } catch (err) {
             console.error(err);
-            
+
+            // Every branch below is gated on !isSilent, so a failed tick of the 3s live-draft
+            // poll used to be a console.error and nothing else: the 🔴 LIVE pill kept pulsing
+            // while the board silently stopped updating -- a false "I'm live" signal at the
+            // worst possible moment. Count the misses instead, and let the pill flip to amber
+            // "LIVE · stalled" with the last good sync time once there have been enough of
+            // them. The timer is deliberately left running: a rate limit or a dropped
+            // connection clears on its own, and killing the poll turns a blip into a dead board.
+            State.liveSyncFailStreak = (State.liveSyncFailStreak || 0) + 1;
+            if (typeof window.renderLiveSyncStatus === 'function') window.renderLiveSyncStatus();
+
             // 3. Restore pointer events and pass the original HTML to the error flash
             if (!isSilent && btn) {
                 btn.style.pointerEvents = 'auto';
@@ -1123,6 +1155,62 @@ window.addEventListener('popstate', (e) => {
         }
     };
 
+    // How many silent ticks have to fail back to back before the pill stops claiming to be
+    // live. One miss is normal -- Sleeper rate-limits and phone connections blip -- but two
+    // in a row is ~6s of a board that isn't moving while the dot keeps pulsing.
+    const LIVE_STALL_THRESHOLD = 2;
+
+    function formatClockTime(ts) {
+        if (!ts) return "";
+        try {
+            return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        } catch (e) {
+            return new Date(ts).toLocaleTimeString();
+        }
+    }
+
+    // The header LIVE pill was a bare pulsing dot with no timestamp, so it said exactly the
+    // same thing whether picks were streaming in or the poll had been failing for a minute.
+    // This makes it report the poll's actual state: live, or amber "LIVE · stalled" stamped
+    // with the last tick that came back from Sleeper.
+    window.renderLiveSyncStatus = function() {
+        const liveWrap = document.getElementById('liveIconWrap');
+        if (!liveWrap) return;
+
+        const label = document.getElementById('liveStatusLabel');
+        const stamp = document.getElementById('liveStatusStamp');
+        const syncBtn = document.getElementById('headerSyncBtn');
+
+        const isLive = !!State.autoSyncTimer;
+        const isStalled = isLive && (State.liveSyncFailStreak || 0) >= LIVE_STALL_THRESHOLD;
+        const lastAt = formatClockTime(State.lastLiveSyncAt);
+
+        // Writes are guarded on an actual change: this runs on every successful tick, and
+        // liveIconWrap is an aria-live region -- reassigning the same textContent 20 times a
+        // minute would have a screen reader announce "LIVE" over and over during a draft.
+        const setText = (el, text) => { if (el && el.textContent !== text) el.textContent = text; };
+
+        liveWrap.classList.toggle('is-stalled', isStalled);
+        setText(label, isStalled ? 'LIVE · stalled' : 'LIVE');
+        // The stamp only earns its space in the header when something is wrong; while the
+        // poll is healthy the same time lives in the button's tooltip.
+        setText(stamp, isStalled && lastAt ? `Last pick sync: ${lastAt}` : '');
+
+        if (syncBtn) {
+            syncBtn.classList.toggle('is-stalled', isStalled);
+            const stampNote = lastAt ? ` Last pick sync: ${lastAt}.` : '';
+            let title;
+            if (!isLive) {
+                title = "Manual Sync (or click to stop Live Sync)";
+            } else if (isStalled) {
+                title = `Can't reach Sleeper — the board may be out of date. Still retrying every 3s.${stampNote} Click to stop Live Sync.`;
+            } else {
+                title = `Live Sync is on.${stampNote} Click to stop Live Sync.`;
+            }
+            if (syncBtn.title !== title) syncBtn.title = title;
+        }
+    };
+
     window.toggleAutoSync = function(isLive, sourceToggle = null) {
         // 1. Mirror the state across all toggles on all tabs
         document.querySelectorAll('.sync-toggle').forEach(el => {
@@ -1165,7 +1253,11 @@ window.addEventListener('popstate', (e) => {
             if (syncWrap) syncWrap.style.display = 'none';
             if (liveWrap) liveWrap.style.display = 'flex';
             if (syncBtn) syncBtn.classList.add('is-live'); 
-            
+
+            // Fresh start: whatever went wrong before this toggle shouldn't have the pill
+            // opening in the stalled state.
+            State.liveSyncFailStreak = 0;
+
             // Fire immediately. We pass "false" so if the sync fails, you get an alert instead of silence!
             processSleeperDraftData(targetUser, targetDraftId, null, false);
             
@@ -1178,6 +1270,8 @@ window.addEventListener('popstate', (e) => {
                     }
                 }, 3000); 
             }
+            // After the timer exists, so the pill reads as live rather than idle.
+            window.renderLiveSyncStatus();
 
         } else {
             // Stop Sync & Revert UI
@@ -1189,6 +1283,11 @@ window.addEventListener('popstate', (e) => {
                 clearInterval(State.autoSyncTimer);
                 State.autoSyncTimer = null;
             }
+
+            // Drop the stalled styling with the timer, so turning Live Sync back on doesn't
+            // inherit an amber button from the last session.
+            State.liveSyncFailStreak = 0;
+            window.renderLiveSyncStatus();
         }
     };
     window.draftPlayer = function(id, isMine) {
@@ -1353,22 +1452,13 @@ if (fileInput) {
         if (ext === 'csv') {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
         } else if (ext === 'xlsx' || ext === 'xls') {
-            
-            // Check if SheetJS is already loaded. If not, fetch it on the fly.
-            if (typeof XLSX === 'undefined') {
-                const script = document.createElement('script');
-                script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-                
-                // Once the script finishes downloading, run the parser
-                script.onload = () => {
-                    parseExcel(file);
-                };
-                document.head.appendChild(script);
-            } else {
-                // If it was already loaded from a previous upload, just run it
-                parseExcel(file);
-            }
-            
+            // Fetches SheetJS on first use. The onError path matters: with an ad blocker, an
+            // offline phone or a cdnjs outage the script never loads, and without this the
+            // upload used to dead-end with nothing on screen at all.
+            window.loadSheetJS(() => parseExcel(file), () => {
+                console.error("Failed to load SheetJS library");
+                if (window.showToast) window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
+            });
         } else if (ext === 'numbers') {
             // Apple Numbers' file format isn't a spreadsheet format our parser (SheetJS) can
             // read -- it's a proprietary zip/binary format, not CSV/XLSX under the hood.
@@ -1384,10 +1474,21 @@ if (fileInput) {
 function parseExcel(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, {type: 'array'});
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
+        // XLSX.read throws on a corrupt or unexpected workbook. Uncaught inside a FileReader
+        // callback that means a silent dead-end, so the failure is surfaced instead.
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
+        } catch (err) {
+            console.error("Error reading Excel file:", err);
+            if (window.showToast) window.showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
+        }
+    };
+    reader.onerror = () => {
+        console.error("Error reading file:", file.name);
+        if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
     };
     reader.readAsArrayBuffer(file);
 }

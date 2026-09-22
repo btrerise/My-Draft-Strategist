@@ -10,7 +10,7 @@
 import { parseRankingsFiles } from './rankingsParser.js';
 import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from './sleeperApi.js';
 import { fetchMarketConsensusData } from './marketDataApi.js';
-import { runMatchupSimulation } from './monteCarloUi.js';
+import { runMatchupSimulation, clearSimResults, showSimNotice } from './monteCarloUi.js';
 import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from './sleeperService.js';
 import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './statsEngine.js';
 import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLineup, compareForScan, matchesPosFilter } from './waiverScanner.js';
@@ -1538,6 +1538,13 @@ function attachScoutSuggestionHandler(outputElId) {
         const tradeOutput = document.getElementById('tradeOutput');
         if (buyInput && sellInput && (buyInput.value.trim() !== '' || sellInput.value.trim() !== '')) runScout('trade');
         else if (tradeOutput) tradeOutput.innerHTML = '';
+
+        // Same reasoning as the two output panes above, and the sim card is the worst of the
+        // three to leave behind: it's headed "Your Team 61.4%" with no league name on it, so
+        // switching from League A to League B silently presents League A's win probability
+        // under League B's header. There's no equivalent of the re-run branches above -- the
+        // sim is an explicit, network-bound action the user has to press Run for.
+        clearSimResults();
     };
 
     function getActiveLeague() {
@@ -3469,6 +3476,36 @@ function attachScoutSuggestionHandler(outputElId) {
     // RANKING_TYPE_CONFIG itself lives up with the other top-of-file constants, since
     // switchActiveLeague() (defined well above this section) needs it too.
 
+    // Works out where saveRankingsAsSet would put an upload right now, without writing anything.
+    // Mirrors the branch below exactly (including '__legacy__' falling through to a new set),
+    // so the preview modal can name the destination before the user commits.
+    //
+    // This matters because an in-place update is destructive and has no undo: with a named set
+    // selected, an upload replaces that set's data, and every league pointed at the set follows
+    // it (see applyRankingSetToAll). The preview used to describe only the incoming file, never
+    // what it was about to overwrite.
+    function resolveRankingsTarget(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        const nameInput = document.getElementById(cfg.nameInputId);
+        const currentSelection = selectEl ? selectEl.value : '__new__';
+
+        if (currentSelection && currentSelection !== '__new__' && currentSelection !== '__legacy__') {
+            const existing = State.rankingSets[cfg.setsKey].find(s => s.id === currentSelection);
+            if (existing) {
+                return {
+                    mode: 'replace',
+                    name: existing.name,
+                    playerCount: Array.isArray(existing.data) ? existing.data.length : 0,
+                    leagueCount: State.leagues.filter(l => l[cfg.leagueSetIdKey] === existing.id).length
+                };
+            }
+        }
+
+        const defaultName = `${cfg.label} Rankings – ${new Date().toLocaleDateString()}`;
+        return { mode: 'new', name: (nameInput && nameInput.value.trim()) || defaultName };
+    }
+
     // Called after a successful upload or auto-fetch with the freshly parsed data. Updates the
     // currently-selected set in place if one's selected in the dropdown; otherwise creates a new
     // named set (using the name field, or a sensible default) and assigns it to the active league.
@@ -3743,7 +3780,7 @@ function attachScoutSuggestionHandler(outputElId) {
     };
 
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
-        const { parsedData, hasNewSos, sosUpdates } = await parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress });
+        const { parsedData, hasNewSos, sosUpdates } = await parseRankingsFiles(filesWithContext, { loadSheetJS: window.loadSheetJS, onProgress });
 
         // The parser module returns SoS data rather than writing to State directly (it has no
         // access to State at all -- see rankingsParser.js), so it's merged in here instead.
@@ -3770,7 +3807,7 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
 
-        openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds });
+        openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target: resolveRankingsTarget(type) });
     };
 
     // --- RANKINGS UPLOAD PREVIEW ---
@@ -3783,8 +3820,8 @@ function attachScoutSuggestionHandler(outputElId) {
     // Cancel: discards the pending upload and clears the file input for reselection).
     let previewFocusTrap = null;
 
-    function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds }) {
-        pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds };
+    function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target }) {
+        pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target };
 
         const rankType = isWeekly ? "Weekly" : "ROS";
         const sorted = [...parsedData].sort((a, b) => a.rank - b.rank);
@@ -3836,6 +3873,34 @@ function attachScoutSuggestionHandler(outputElId) {
                     derivedEl.style.display = 'block';
                 }
             }).catch(err => console.warn('Rankings file check skipped:', err));
+        }
+
+        // Name the destination, and say plainly when saving means overwriting something that
+        // already exists. The replace wording leads with the set name rather than the file's,
+        // since the set is the thing at risk.
+        const targetEl = document.getElementById('rankingsPreviewTarget');
+        const confirmBtn = document.getElementById('rankingsPreviewConfirmBtn');
+        if (targetEl) {
+            if (target && target.mode === 'replace') {
+                const leagueNote = target.leagueCount === 1
+                    ? 'Used by 1 league.'
+                    : `Used by ${target.leagueCount} leagues.`;
+                targetEl.innerHTML = `Replaces the saved set <strong>${escapeHtml(target.name)}</strong>` +
+                    `${target.playerCount ? ` (${target.playerCount} player${target.playerCount === 1 ? '' : 's'})` : ''}. ` +
+                    `${leagueNote} This can't be undone.`;
+                targetEl.className = 'mls-preview-target is-replace';
+            } else {
+                targetEl.innerHTML = target
+                    ? `Saves as a new set: <strong>${escapeHtml(target.name)}</strong>. Nothing existing is changed.`
+                    : 'Saves as a new set. Nothing existing is changed.';
+                targetEl.className = 'mls-preview-target';
+            }
+            targetEl.style.display = 'block';
+        }
+        if (confirmBtn) {
+            const isReplace = !!(target && target.mode === 'replace');
+            confirmBtn.className = isReplace ? 'btn btn-danger' : 'btn btn-primary';
+            confirmBtn.textContent = isReplace ? 'Replace Set' : 'Looks Good, Save It';
         }
 
         const overlay = document.getElementById('rankingsPreviewOverlay');
@@ -4032,7 +4097,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (filename.endsWith('.csv')) {
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
         } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
-            loadSheetJS(() => {            
+            window.loadSheetJS(() => {            
                 const reader = new FileReader();
                 reader.onload = e => {
                     try {
@@ -4100,6 +4165,26 @@ function attachScoutSuggestionHandler(outputElId) {
                 posCounters[posKey] = (posCounters[posKey] || 0) + 1;
                 return { name: p.name, cleanName: p.cleanName, rank: i + 1, posRank: posCounters[posKey], flexRank: i + 1 };
             });
+
+            // Same destructive write an .xlsx/.csv upload makes, just reached without a file
+            // picker: with a named set selected in the dropdown, this replaces that set's data
+            // in place and every league pointed at it follows. Uploads get the preview modal's
+            // destination line for this; there's no file to preview here, so the confirm below
+            // carries the same information. A new set overwrites nothing, so it saves silently.
+            const target = resolveRankingsTarget('ros');
+            if (target.mode === 'replace') {
+                const leagueNote = target.leagueCount === 1
+                    ? 'It is used by 1 league.'
+                    : `It is used by ${target.leagueCount} leagues.`;
+                const confirmed = await window.showConfirm(
+                    `The ${rosRankings.length} players just fetched (${formatText}) will replace the saved set "${target.name}".\n\n${leagueNote} This can't be undone.`,
+                    { title: 'Replace saved set?', confirmText: 'Replace Set', danger: true }
+                );
+                if (!confirmed) {
+                    if (window.showToast) window.showToast(`Nothing was changed — "${target.name}" is untouched.`);
+                    return;
+                }
+            }
 
             saveRankingsAsSet('ros', rosRankings);
 
@@ -5482,52 +5567,72 @@ function applyMarketSettingsToUI() {
         // Brief timeout ensures the UI button state updates before locking the main thread
         setTimeout(() => {
             const originalActiveId = State.activeLeagueId;
-            
-            // Temporarily suppress single-toast spam
-            let tempToast = window.showToast;
-            window.showToast = function(){}; 
-            
-            State.leagues.forEach(l => {
-                let isBestBall = isBestBallLeague(l);
-                if (isBestBall) return; // Skip optimizing Best Ball leagues
+            let failed = false;
 
-                State.activeLeagueId = l.leagueId;
-                
-                // Manually hydrate rankings for this specific league so the optimizer uses the correct set
-                ['ros', 'weekly'].forEach(type => {
-                    const cfg = RANKING_TYPE_CONFIG[type];
-                    const setId = l[cfg.leagueSetIdKey];
-                    const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+            // Suppress the per-league toast optimizeLineup fires; one summary goes out below.
+            if (typeof window.setToastsSuppressed === 'function') window.setToastsSuppressed(true);
 
-                    if (set) State[cfg.stateKey] = [...set.data];
-                    else if (Array.isArray(l[cfg.leagueLegacyDataKey]) && l[cfg.leagueLegacyDataKey].length > 0) State[cfg.stateKey] = [...l[cfg.leagueLegacyDataKey]];
-                    else State[cfg.stateKey] = [];
+            try {
+                State.leagues.forEach(l => {
+                    let isBestBall = isBestBallLeague(l);
+                    if (isBestBall) return; // Skip optimizing Best Ball leagues
+
+                    State.activeLeagueId = l.leagueId;
+
+                    // Manually hydrate rankings for this specific league so the optimizer uses the correct set
+                    ['ros', 'weekly'].forEach(type => {
+                        const cfg = RANKING_TYPE_CONFIG[type];
+                        const setId = l[cfg.leagueSetIdKey];
+                        const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+
+                        if (set) State[cfg.stateKey] = [...set.data];
+                        else if (Array.isArray(l[cfg.leagueLegacyDataKey]) && l[cfg.leagueLegacyDataKey].length > 0) State[cfg.stateKey] = [...l[cfg.leagueLegacyDataKey]];
+                        else State[cfg.stateKey] = [];
+                    });
+
+                    window.optimizeLineup(true, false, { batch: true });
                 });
 
-                window.optimizeLineup(true, false, { batch: true });
-            });
+                // Single flush for the whole run. Each optimizeLineup call above deliberately
+                // skipped these two writes (see its `batch` option): they serialize the entire
+                // per-league map every time, so leaving them in the loop meant N leagues paid for
+                // N serializations of all N leagues' lineups rather than one.
+                localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
+                localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+            } catch (err) {
+                // A bad ranking set, or a quota-exceeded write on the flush above, used to throw
+                // straight out of this timeout: toasts stayed stubbed for the rest of the session
+                // and the button sat disabled reading "Optimizing All..." with no way back.
+                console.error("Optimize All Error:", err);
+                failed = true;
+            } finally {
+                // However the run ended, the app has to come back usable: toasts on, the user's
+                // real league re-selected, the button clickable.
+                if (typeof window.setToastsSuppressed === 'function') window.setToastsSuppressed(false);
 
-            // Single flush for the whole run. Each optimizeLineup call above deliberately
-            // skipped these two writes (see its `batch` option): they serialize the entire
-            // per-league map every time, so leaving them in the loop meant N leagues paid for
-            // N serializations of all N leagues' lineups rather than one.
-            localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
-            localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+                // switchActiveLeague re-hydrates the real active league's rankings (the loop
+                // above left State.rosRankings/weeklyRankings pointing at whichever league it
+                // stopped on) and calls optimizeLineup(false), which is the single render for
+                // the entire batch. It must run even after a failure, or the app is left
+                // displaying another league's data under the active league's header.
+                try {
+                    switchActiveLeague(originalActiveId);
+                } catch (err) {
+                    console.error("Optimize All: failed to restore the active league", err);
+                    failed = true;
+                }
 
-            // Restore original state and reactivate toasts. switchActiveLeague re-hydrates the
-            // real active league's rankings (the loop above left State.rosRankings/
-            // weeklyRankings pointing at whichever league happened to be last) and calls
-            // optimizeLineup(false), which is the single render for the entire batch.
-            window.showToast = tempToast;
-            switchActiveLeague(originalActiveId);
+                btn.innerHTML = origText;
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
 
-            let managedLeaguesCount = State.leagues.filter(l => !isBestBallLeague(l)).length;
-            
-            if (window.showToast) window.showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
-            
-            btn.innerHTML = origText;
-            btn.disabled = false;
-            btn.style.opacity = '1';
+            if (failed) {
+                if (window.showToast) window.showToast("Couldn't optimize every lineup. Some leagues may be unchanged — check the console for details.", { isError: true });
+            } else {
+                let managedLeaguesCount = State.leagues.filter(l => !isBestBallLeague(l)).length;
+                if (window.showToast) window.showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
+            }
         }, 50);
     };
 
@@ -5555,11 +5660,22 @@ window.syncAllLeagues = async function(btn) {
                 const preloaded = { playerMap }; 
 
                 let successCount = 0;
+                // processSleeperData returns false when a league couldn't be reached, and the
+                // suppressErrorToast=true we pass below means that failure makes no noise of
+                // its own. Counting only the successes and reporting "Successfully synced 5
+                // leagues!" said nothing about the three now sitting on stale rosters -- you'd
+                // go set lineups off them. Track the misses and name them, the way
+                // importAllSleeperLeagues already does.
+                let failedLeagueNames = [];
                 let newLogs = [];
-                
-                // Temporarily suppress single-toast spam during the loop
-                let tempToast = window.showToast;
-                window.showToast = function(){}; 
+
+                // Suppress the per-league toasts processSleeperData fires during the loop; one
+                // summary goes out below. Turned back off in the finally, not here: the writes
+                // after the loop can throw (QuotaExceededError is realistic once someone has
+                // eight or more leagues), and restoring only on the happy path used to mean the
+                // catch's error toast went to a no-op stub and every toast in the app stayed
+                // dead for the rest of the session.
+                if (typeof window.setToastsSuppressed === 'function') window.setToastsSuppressed(true);
 
                 for (let i = 0; i < sleeperLeagues.length; i++) {
                     let l = sleeperLeagues[i];
@@ -5581,11 +5697,10 @@ window.syncAllLeagues = async function(btn) {
                                 newlyOut: result.newlyOut
                             });
                         }
+                    } else {
+                        failedLeagueNames.push(l.name || l.leagueId);
                     }
                 }
-
-                // Restore original toast functionality
-                window.showToast = tempToast; 
 
                 // Single write after the loop instead of one localStorage.setItem per league.
                 localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
@@ -5595,12 +5710,28 @@ window.syncAllLeagues = async function(btn) {
                 State.syncLogs = newLogs;
                 localStorage.setItem('mls_sync_logs', JSON.stringify(State.syncLogs));
                 
-                // Toast a simple summary
-                let summaryMsg = `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
+                // Toast a summary that accounts for every league we tried, not just the ones
+                // that worked: a miss here is a roster you'd go on to set a lineup off, so it
+                // gets named rather than quietly dropped from the count.
+                const failedCount = failedLeagueNames.length;
+                let summaryMsg = failedCount > 0
+                    ? `Synced ${successCount} of ${sleeperLeagues.length}. Couldn't reach: ${formatNameList(failedLeagueNames)} — try Sync All again.`
+                    : `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
                 if (newLogs.length > 0) {
                     summaryMsg += `\n\nChanges found in ${newLogs.length} league${newLogs.length === 1 ? '' : 's'}. Check the Sync Logs!`;
                 }
-                if (window.showToast) window.showToast(summaryMsg);
+                // force: toasts are still suppressed here (the finally below is what clears the
+                // flag) and this summary is the whole point of having suppressed them.
+                // A partial sync is shown as an error so it doesn't read like an all-clear --
+                // that also gets it the dismiss button and a longer window, which it needs:
+                // there are league names in there the person has to read and act on.
+                if (window.showToast) {
+                    window.showToast(summaryMsg, {
+                        isError: failedCount > 0,
+                        force: true,
+                        duration: failedCount > 0 ? 9000 : undefined
+                    });
+                }
 
                 // Re-render the logs accordion
                 renderSyncLogs();
@@ -5611,12 +5742,20 @@ window.syncAllLeagues = async function(btn) {
                 
             } catch (err) {
                 console.error("Sync All Error:", err);
-                if (window.showToast) window.showToast("An error occurred while syncing leagues.", { isError: true });
+                // A storage-quota failure on the writes above is the common case and has a
+                // specific fix, so name it rather than hiding it behind the generic message.
+                const isQuota = err && (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED');
+                const msg = isQuota
+                    ? "Synced your leagues, but there wasn't enough browser storage to save them. Remove a league you no longer use, then try again."
+                    : "An error occurred while syncing leagues.";
+                if (window.showToast) window.showToast(msg, { isError: true, force: true });
             } finally {
+                if (typeof window.setToastsSuppressed === 'function') window.setToastsSuppressed(false);
+
                 btn.innerHTML = origText;
                 btn.disabled = false;
                 btn.style.opacity = '1';
-                
+
                 // Refresh data states natively
                 if (typeof renderLeagueManager === 'function') renderLeagueManager();
                 if (typeof loadRosterTab === 'function') loadRosterTab();
@@ -6508,12 +6647,24 @@ window.runMatchupSim = async function() {
     const btn = document.getElementById('run-sim-btn');
     const league = getActiveLeague();
 
+    // Nothing else ever clears #monte-carlo-results, so without this every path that returns
+    // below leaves the PREVIOUS run's card on screen -- a win probability for a different
+    // week, lineup or league, sitting there looking like the answer to what was just asked.
+    // Each of those paths now writes its reason into that same container: a toast that
+    // vanishes after six seconds isn't enough on its own when the thing it's explaining is a
+    // stale card that stays.
+    clearSimResults();
+
     if (!league || league.leagueId.startsWith('manual_')) {
-        if (typeof window.showToast === 'function') window.showToast("Sync a Sleeper league on the Dashboard first.", { isError: true });
+        const msg = "Sync a Sleeper league on the Dashboard first.";
+        showSimNotice(msg);
+        if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
         return;
     }
     if (!league.rosterId) {
-        if (typeof window.showToast === 'function') window.showToast("Re-sync this league from the Dashboard to enable simulations.", { isError: true });
+        const msg = "Re-sync this league from the Dashboard to enable simulations.";
+        showSimNotice(msg);
+        if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
         return;
     }
 
@@ -6533,7 +6684,9 @@ window.runMatchupSim = async function() {
         const rosterMap = league.globalRosterMap || {}; // needed by Waiver Insights below, to exclude anyone already rostered in this league
 
         if (currentWeek < 2) {
-            if (typeof window.showToast === 'function') window.showToast("Not enough completed weeks yet to estimate variance.", { isError: true });
+            const msg = "Not enough completed weeks yet to estimate variance.";
+            showSimNotice(msg);
+            if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
             return;
         }
 
@@ -6551,12 +6704,16 @@ window.runMatchupSim = async function() {
         const matchups = await getSleeperMatchups(league.leagueId, currentWeek);
         const myEntry = matchups.find(m => m.roster_id === league.rosterId);
         if (!myEntry || !myEntry.matchup_id) {
-            if (typeof window.showToast === 'function') window.showToast("No matchup found for this week (bye week?).", { isError: true });
+            const msg = `No matchup found for Week ${currentWeek} (bye week?).`;
+            showSimNotice(msg);
+            if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
             return;
         }
         const oppEntry = matchups.find(m => m.matchup_id === myEntry.matchup_id && m.roster_id !== league.rosterId);
         if (!oppEntry) {
-            if (typeof window.showToast === 'function') window.showToast("Couldn't find an opponent for this week's matchup.", { isError: true });
+            const msg = "Couldn't find an opponent for this week's matchup.";
+            showSimNotice(msg);
+            if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
             return;
         }
 
@@ -6797,31 +6954,16 @@ window.runMatchupSim = async function() {
         runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, waiverInsights, currentWeek });
     } catch (err) {
         console.error(err);
-        if (typeof window.showToast === 'function') window.showToast("Failed to run the matchup simulation. Check console for details.", { isError: true });
+        const msg = "Failed to run the matchup simulation. Check the console for details.";
+        showSimNotice(msg, { isError: true });
+        if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = origText; }
     }
 };
 
-    // Lazy-loads the SheetJS (XLSX) library on first use, so pages that never upload an .xlsx
-    // ranking file don't pay for it. Kept inside the module (rather than as a bare global) like
-    // every other helper here, since this file isn't shared with any other page.
-    function loadSheetJS(callback, onError) {
-        if (typeof XLSX !== 'undefined') {
-            callback();
-        } else {
-            const script = document.createElement('script');
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-            script.onload = callback;
-            // Previously had no failure path at all: if the CDN fetch failed (offline,
-            // ad-blocker, cdnjs outage), the onload callback simply never fired and the
-            // .xlsx upload dead-ended with zero feedback -- the user just saw nothing
-            // happen. Callers now get a chance to surface that instead of hanging forever.
-            script.onerror = () => {
-                script.remove();
-                if (typeof onError === 'function') onError();
-            };
-            document.head.appendChild(script);
-        }
-    }
+    // loadSheetJS used to be defined here. mds.js needed the same lazy-load with the same
+    // failure path (it had its own copy with no error handling at all), so it now lives in
+    // js/utils.js as window.loadSheetJS alongside loadScriptOnce. The call sites above use it
+    // directly; the (callback, onError) signature rankingsParser.js documents is unchanged.
 })();

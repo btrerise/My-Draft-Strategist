@@ -308,6 +308,23 @@ body {
     margin: 0 0 1rem 0;
 }
 
+/* Destination line directly above the preview modal's buttons. Neutral by default (new set);
+   the .is-replace variant matches .btn-danger, since that case overwrites existing data. */
+.mls-preview-target {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    margin: 0 0 1rem 0;
+}
+
+.mls-preview-target.is-replace {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
 .mls-preview-actions,
 .mds-modal-actions {
     display: flex;
@@ -1827,6 +1844,17 @@ body {
     color: var(--text-muted);
 }
 
+/* Standalone message shown in the results container in place of a result card -- "not enough
+   roster data", a bye week, or a worker that failed to load. */
+.sim-message {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.sim-message-error {
+    color: #fca5a5;
+}
+
 .sim-fallback-note {
     color: #fbbf24 !important;
 }
@@ -3150,6 +3178,42 @@ input[type="file"]::-webkit-file-upload-button:hover {
 .btn-header.is-live:hover {
     background-color: rgba(239, 68, 68, 0.25);
     box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* Stalled Live Sync: the 3s poll has missed enough ticks in a row that the board may no
+   longer match the draft. Amber rather than red so it reads as "still trying, but don't
+   trust this yet" instead of a hard failure -- the poll is deliberately still running. */
+.btn-header.is-live.is-stalled {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.45);
+}
+
+.btn-header.is-live.is-stalled:hover {
+    background-color: rgba(245, 158, 11, 0.25);
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.65), 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+/* The dot stops pulsing when stalled: the pulse is what sells "picks are arriving", and
+   that's exactly the claim we can no longer make. */
+#liveIconWrap.is-stalled .pulse-dot {
+    background-color: #f59e0b;
+    animation: none;
+    box-shadow: none;
+}
+
+.live-sync-stamp {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    opacity: 0.85;
+    white-space: nowrap;
+}
+
+/* Nothing to show while the poll is healthy -- collapse the gap the flex row would
+   otherwise leave for an empty span. */
+.live-sync-stamp:empty {
+    display: none;
 }
 /* Mobile-specific adjustments for Draft Board edge-to-edge bleed */
 @media (max-width: 767px) {
