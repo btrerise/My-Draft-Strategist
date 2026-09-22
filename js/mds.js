@@ -129,8 +129,7 @@
         autoSyncTimer: null,
         deferredPrompt: null,
         touchStartX: 0,
-        touchEndX: 0,
-        tabOrder: ['tracker', 'team', 'board']
+        touchEndX: 0
     };
 
     const BYE_WEEKS_2026 = {
