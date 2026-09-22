@@ -802,7 +802,7 @@
                 <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML='';">Clear</button>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">Auto-Find scans every player nobody in this league has rostered, sorted by your Weekly or ROS rankings. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules; "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Or paste your own list of targets below; available players get the same check. Switch "Search In" to All My Leagues and the same pasted list is checked against every league you've synced at once, showing where each player is a free agent, where you already own him, and who has him everywhere else.</span>
+                    <span class="tooltip-text">Auto-Find scans every player nobody in this league has rostered, sorted by your Weekly or ROS rankings. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules; "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Or paste your own list of targets below; available players are checked the same way, using the Compare Against and Rank By settings above. Switch "Search In" to All My Leagues and the same pasted list is checked against every league you've synced at once, showing where each player is a free agent, where you already own him, and who has him everywhere else.</span>
                 </div>
             </div>
         </header>
@@ -870,7 +870,7 @@
                 <button type="button" class="mls-segmented-btn active" data-scope="league" aria-pressed="true" onclick="setWaiverScope('league')">This League</button>
                 <button type="button" class="mls-segmented-btn" data-scope="all" aria-pressed="false" onclick="setWaiverScope('all')">All My Leagues</button>
             </div>
-            <small id="waiverScopeHint" class="text-helper mt-1">Checks these players against the league you have active, with the same Would Start verdict as Auto-Find.</small>
+            <small id="waiverScopeHint" class="text-helper mt-1">Checks these players against the league you have active, using the Compare Against and Rank By settings above.</small>
         </div>
 
         <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>

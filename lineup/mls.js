@@ -2267,9 +2267,12 @@ function attachScoutSuggestionHandler(outputElId) {
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
 
-        // Scan Pasted List gets the same Wk Pos/Flex ranks and Would Start check as Auto-Find
+        // Scan Pasted List follows the same Compare Against and Rank By settings as Auto-Find
         // (see buildWaiverContext) whenever a synced league and some rankings exist. Anything
         // missing just leaves the cards as they were -- rank and ownership still work without it.
+        // Rank By also sets the sort order below, even with no synced league.
+        const waiverMode = State.waiverScanSettings.compare === 'roster' ? 'roster' : 'lineup';
+        const waiverScan = type === 'waiver' ? resolveWaiverBasis() : null;
         let waiverCtx = null;
         if (type === 'waiver' && league && league.globalRosterMap && league.roster && league.roster.length > 0
             && (State.weeklyRankings.length > 0 || State.rosRankings.length > 0)) {
@@ -2418,18 +2421,27 @@ function attachScoutSuggestionHandler(outputElId) {
             // ties within players who share the same ROS status.
             let availabilityOrder = !owner ? 0 : (owner === "You" ? 1 : 2);
 
-            // Waiver path only: swap the rank line for the Wk Pos / Wk Flex / ROS line, and give
-            // available players the lineup verdict. Would-starts sort ahead of other free agents
-            // (availabilityOrder -0.5) since they're the most actionable adds on the list.
+            // Waiver path only: swap the rank line for the same Rank By-led line Auto-Find uses,
+            // and give available players the same verdict Auto-Find would under the current
+            // Compare Against setting. The lineup pill shows either way (as on Auto-Find cards);
+            // under Whole Roster the explanation line becomes the drop-candidate comparison.
+            // The most actionable adds sort ahead of other free agents (availabilityOrder -0.5):
+            // would-starts under Starting Lineup, upgrades under Whole Roster.
             let ranksRowHTML = null, verdictLineHTML = "";
             if (waiverCtx && pos !== "UNK") {
                 ranksRowHTML = waiverRanksRowHTML(waiverCtx, clean, pos);
                 if (!owner) {
                     let row = waiverCtx.evaluate({ name: displayName, cleanName: clean, pos });
                     let { pill, line } = waiverVerdictParts(waiverCtx, row);
+                    if (waiverMode === 'roster' && waiverCtx.scan) {
+                        const rosterVerdict = pastedRosterVerdict(waiverCtx, row.player);
+                        line = rosterVerdict.line;
+                        if (rosterVerdict.upgrade) availabilityOrder = -0.5;
+                    } else if (row.verdict && row.verdict.status === 'starts') {
+                        availabilityOrder = -0.5;
+                    }
                     if (pill) statusHTML = `<div class="scout-status status-avail mls-nowrap">Free Agent</div><div class="mls-scan-pill-stack">${pill}</div>`;
                     if (line) verdictLineHTML = `<div class="mls-scan-verdict">${line}</div>`;
-                    if (row.verdict && row.verdict.status === 'starts') availabilityOrder = -0.5;
                 }
             }
             let rosSortRank = (rRank !== "UR") ? rRank : Infinity;
@@ -2539,13 +2551,34 @@ function attachScoutSuggestionHandler(outputElId) {
         // Waiver path: sorted by availability (Free Agent first, then On Your Roster, then
         // Rostered by someone else), then by rank ascending within each group -- previously
         // this just listed results in whatever order they were pasted, which buried actionable
-        // pickups (actual free agents) among names that aren't addable at all.
+        // pickups (actual free agents) among names that aren't addable at all. Within a group
+        // the Rank By set is the primary key and the other set only breaks ties (the two are
+        // never merged onto one number line -- see the comment above availabilityOrder).
+        const weeklyFirst = !!(waiverScan && waiverScan.basis === 'weekly');
         let waiverResults = targetNames.map(n => buildCard(n, null));
         waiverResults.sort((a, b) => {
             if (a.availabilityOrder !== b.availabilityOrder) return a.availabilityOrder - b.availabilityOrder;
-            if (a.rosSortRank !== b.rosSortRank) return a.rosSortRank - b.rosSortRank;
-            return a.weekSortRank - b.weekSortRank;
+            const [aP, bP, aS, bS] = weeklyFirst
+                ? [a.weekSortRank, b.weekSortRank, a.rosSortRank, b.rosSortRank]
+                : [a.rosSortRank, b.rosSortRank, a.weekSortRank, b.weekSortRank];
+            if (aP !== bP) return aP - bP;
+            return aS - bS;
         });
+
+        // Same one-line summary Auto-Find opens with, so it's visible which lens and which
+        // rankings produced these cards -- without it, a Whole Roster or ROS scan looked
+        // identical to the default until you read the numbers.
+        if (waiverCtx && waiverScan) {
+            const notes = [];
+            if (waiverScan.note) notes.push(waiverScan.note);
+            if (waiverMode === 'lineup' && !waiverCtx.lineupReady) notes.push(`Couldn't build a starting lineup for this league yet, so there's no Would Start check - open the Lineup tab and tap Optimize Lineup.`);
+            notes.push(...waiverDerivedNotes(waiverCtx));
+            html += `
+            <div class="mls-scan-summary">
+                Your list, checked in <strong>${escapeHtml(league.name || 'this league')}</strong> by <strong>${waiverScan.name} rank</strong>, ${waiverCompareText(waiverCtx, waiverMode)}.
+                ${notes.length ? `<ul class="mls-scan-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}
+            </div>`;
+        }
         waiverResults.forEach(r => html += r.html);
         outputEl.innerHTML = html;
     };
@@ -2723,7 +2756,7 @@ function attachScoutSuggestionHandler(outputElId) {
         const scopeHint = document.getElementById('waiverScopeHint');
         if (scopeHint) scopeHint.innerText = allLeagues
             ? "Checks every league you've synced at once: where each player is a free agent, where you already own him, and who has him elsewhere."
-            : 'Checks these players against the league you have active, with the same Would Start verdict as Auto-Find.';
+            : 'Checks these players against the league you have active, using the Compare Against and Rank By settings above.';
         // The button label doubles as the reminder of which mode is armed -- the results
         // below it look different enough between the two that "Scan Pasted List" alone would
         // leave someone guessing which one they just ran.
@@ -2734,10 +2767,52 @@ function attachScoutSuggestionHandler(outputElId) {
             : 'Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)';
     }
 
+    // The Waiver Wire Assistant's "Rank By" choice, resolved against what's actually loaded:
+    // the person's pick, or the other set (with a note saying so) when the picked one hasn't
+    // been uploaded. Returns null only when neither set exists. Shared by Auto-Find and Scan
+    // Pasted List so the two can't drift apart on which rankings a card is built from -- the
+    // pasted list used to ignore Rank By entirely and always show Weekly-led cards.
+    function resolveWaiverBasis() {
+        const wanted = State.waiverScanSettings.basis === 'ros' ? 'ros' : 'weekly';
+        const setFor = (b) => (b === 'ros' ? State.rosRankings : State.weeklyRankings);
+        let basis = wanted, rankings = setFor(wanted), note = '';
+        if (rankings.length === 0) {
+            const other = wanted === 'ros' ? 'weekly' : 'ros';
+            if (setFor(other).length === 0) return null;
+            note = `No ${wanted === 'ros' ? 'ROS' : 'Weekly'} rankings loaded for this league - using ${other === 'ros' ? 'ROS' : 'Weekly'} rank instead.`;
+            basis = other;
+            rankings = setFor(other);
+        }
+        const byName = {};
+        rankings.forEach(r => { byName[r.cleanName] = r; });
+        return {
+            basis, rankings, byName, note,
+            label: basis === 'ros' ? 'ROS' : 'Wk',
+            name: basis === 'ros' ? 'ROS' : 'Weekly'
+        };
+    }
+
+    // Whole Roster lens benchmark: your rostered players in one position group, weakest last,
+    // by the same comparator that orders free agents (compareForScan), so "ranked ahead of your
+    // weakest" means the same thing everywhere. Raw basis ranks drive the comparison; the
+    // derived display ranks keep the same order within a group, so the numbers shown agree.
+    function rosterBenchmark(league, getPos, basisByName, filter) {
+        const mine = (league.roster || [])
+            .map(p => ({ ...p, pos: getPos(p.cleanName) }))
+            .filter(p => matchesPosFilter(p.pos, filter))
+            .map(p => {
+                const r = basisByName[p.cleanName] || {};
+                return { ...p, rank: r.rank ?? 999, posRank: r.posRank ?? 999, flexRank: r.flexRank ?? 999 };
+            })
+            .sort((a, b) => compareForScan(a, b, filter));
+        return { mine, bench: mine.length ? mine[mine.length - 1] : null };
+    }
+
     // Everything a waiver card needs, built once per scan: positions/teams/injuries from Sleeper,
     // display ranks for both rankings sets, your current starters, and an evaluate(fa) that runs
     // the lineup check. lineupReady is false when no starting lineup could be built -- callers
-    // still render ranks, just without a verdict.
+    // still render ranks, just without a verdict. `scan` is the resolved Rank By basis (see
+    // resolveWaiverBasis), which decides which rankings lead each card's rank line.
     async function buildWaiverContext(league) {
         let meta = {};
         try {
@@ -2796,11 +2871,15 @@ function attachScoutSuggestionHandler(outputElId) {
             return { fa, player, verdict };
         };
 
+        const scan = resolveWaiverBasis();
+
         return {
             league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly,
             checkLabel: checkIsWeekly ? 'Wk' : 'ROS',
             checkDisplay: checkIsWeekly ? wkDisplay : rosDisplay,
-            wkDisplay, rosDisplay, rosByName
+            wkDisplay, rosDisplay, rosByName,
+            scan,
+            scanDisplay: scan && scan.basis === 'ros' ? rosDisplay : wkDisplay
         };
     }
 
@@ -2898,17 +2977,48 @@ function attachScoutSuggestionHandler(outputElId) {
             : `<strong>${prefix}${val}</strong>${tierTag(tier)}`;
     }
 
-    // The Wk Pos / Wk Flex / ROS line every waiver card shows. Wk Flex only for RB/WR/TE.
+    // The rank line every waiver card shows, led by whichever set Rank By resolved to:
+    //   Weekly -- Wk Pos / Wk Flex / ROS overall (ROS kept as rest-of-season context).
+    //   ROS    -- ROS overall + ROS Pos / ROS Flex only. Weekly numbers are left off rather
+    //             than shown alongside: with ROS picked they were the first thing on the card
+    //             and read as the basis. The Starting Lineup verdict line below still cites
+    //             its Wk numbers, since that check is a this-week question (see
+    //             buildWaiverContext's checkRankings).
+    // Flex cells only for RB/WR/TE.
     function waiverRanksRowHTML(ctx, cleanName, pos) {
         const wk = ctx.wkDisplay[cleanName] || {};
         const ros = ctx.rosDisplay[cleanName] || {};
         const rosRaw = ctx.rosByName[cleanName];
-        const flexCell = FLEX_POSITIONS.includes(pos) ? `<span>Wk Flex: ${waiverRankHTML(wk.flexRank, wk.flexTier)}</span>` : '';
-        const wkPos = wk.posRank ? `<strong class="mls-stat-blue">${pos}${wk.posRank}</strong>${tierTag(wk.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
+        const isFlexPos = FLEX_POSITIONS.includes(pos);
         const rosCell = rosRaw
             ? `<span>ROS: <strong class="mls-stat-green">#${rosRaw.rank}</strong>${tierTag(rosRaw.tier)}${ros.posRank ? ` <span class="mls-rank-sep">&middot;</span> ${pos}${ros.posRank}` : ''}</span>`
             : `<span>ROS: <strong class="mls-muted-rank">UR</strong></span>`;
+
+        if (ctx.scan && ctx.scan.basis === 'ros') {
+            const rosFlexCell = isFlexPos ? `<span>ROS Flex: ${waiverRankHTML(ros.flexRank, ros.flexTier)}</span>` : '';
+            return `<div class="mls-meta-row mls-scan-ranks">${rosCell}${rosFlexCell}</div>`;
+        }
+
+        const flexCell = isFlexPos ? `<span>Wk Flex: ${waiverRankHTML(wk.flexRank, wk.flexTier)}</span>` : '';
+        const wkPos = wk.posRank ? `<strong class="mls-stat-blue">${pos}${wk.posRank}</strong>${tierTag(wk.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
         return `<div class="mls-meta-row mls-scan-ranks"><span>Wk Pos: ${wkPos}</span>${flexCell}${rosCell}</div>`;
+    }
+
+    // Whole Roster verdict for ONE player off a pasted list -- the per-card version of what
+    // Auto-Find's renderRosterGroup does for a whole group. Group follows Auto-Find's Position
+    // setting: FLEX compares RB/WR/TE against your weakest FLEX-eligible player; anything else
+    // (a single position, All, or a QB/K/DEF under FLEX) compares within the player's own
+    // position, the same way All groups them. Returns { line, upgrade }.
+    function pastedRosterVerdict(ctx, player) {
+        const filter = (State.waiverScanSettings.pos === 'FLEX' && FLEX_POSITIONS.includes(player.pos)) ? 'FLEX' : player.pos;
+        const groupLabel = filter;
+        const { bench } = rosterBenchmark(ctx.league, ctx.getPos, ctx.scan.byName, filter);
+        if (!bench) return { line: `You have no ${groupLabel} on your roster to compare against.`, upgrade: false };
+        const faRanks = ctx.scan.byName[player.cleanName] || {};
+        const upgrade = compareForScan({ pos: player.pos, rank: faRanks.rank, posRank: faRanks.posRank, flexRank: faRanks.flexRank }, bench, filter) < 0;
+        const line = waiverCompareLine(player, bench, `weakest ${groupLabel}`, upgrade ? 'Upgrade over' : "Doesn't pass",
+            ctx.scanDisplay, ctx.scan.label, filter === 'FLEX' ? 'flex' : 'pos');
+        return { line, upgrade };
     }
 
     // Last name only, for labelling the two numbers in a comparison line ("Dobbins #58, Evans
@@ -2996,6 +3106,28 @@ function attachScoutSuggestionHandler(outputElId) {
             </div>
             <div class="mls-text-right">${pill}</div>
         </div>`;
+    }
+
+    // "compared against your weakest rostered player at each position" -- the second half of
+    // the summary sentence above both Auto-Find and Scan Pasted List results.
+    function waiverCompareText(ctx, mode) {
+        const weekText = State.currentNflWeek ? `Week ${State.currentNflWeek} ` : '';
+        return mode === 'roster'
+            ? `compared against your weakest rostered player at each position`
+            : `checked against your current ${weekText}starting lineup using ${ctx.checkIsWeekly ? 'Weekly' : 'ROS'} ranks`;
+    }
+
+    // Summary notes for rankings files whose Pos/Flex ranks had to be derived. Named per set
+    // (Weekly / ROS, plus the saved set's name when there is one): with several sets loaded,
+    // "a rankings file you loaded" left it unclear which one to fix.
+    function waiverDerivedNotes(ctx) {
+        const derivedNote = (display, type) => {
+            const vals = Object.values(display);
+            const wording = derivedRanksWording(vals.some(d => d.posDerived), vals.some(d => d.flexDerived), type === 'weekly');
+            if (!wording) return null;
+            return `Your ${rankingSetLabel(type)} don't include ${wording.short}, so those were derived from the file's order.`;
+        };
+        return [derivedNote(ctx.wkDisplay, 'weekly'), derivedNote(ctx.rosDisplay, 'ros')].filter(Boolean);
     }
 
     window.setWaiverCompare = function(mode) {
@@ -3270,22 +3402,16 @@ function attachScoutSuggestionHandler(outputElId) {
 
         // Scan basis: the person's pick, falling back to the other set (and saying so) if the
         // picked one hasn't been uploaded, rather than refusing to run.
-        let basis = s.basis === 'ros' ? 'ros' : 'weekly';
-        let scanRankings = basis === 'ros' ? State.rosRankings : State.weeklyRankings;
-        let basisNote = '';
-        if (scanRankings.length === 0) {
-            const other = basis === 'ros' ? 'weekly' : 'ros';
-            const otherRankings = other === 'ros' ? State.rosRankings : State.weeklyRankings;
-            if (otherRankings.length === 0) {
-                outputEl.innerHTML = `<span class="mls-error-text">Upload Weekly (Lineup tab) or ROS (Roster tab) rankings first.</span>`;
-                return;
-            }
-            basisNote = `No ${basis === 'ros' ? 'ROS' : 'Weekly'} rankings loaded for this league - scanned by ${other === 'ros' ? 'ROS' : 'Weekly'} rank instead.`;
-            basis = other;
-            scanRankings = otherRankings;
+        const scan = resolveWaiverBasis();
+        if (!scan) {
+            outputEl.innerHTML = `<span class="mls-error-text">Upload Weekly (Lineup tab) or ROS (Roster tab) rankings first.</span>`;
+            return;
         }
-        const basisLabel = basis === 'ros' ? 'ROS' : 'Wk';
-        const basisName = basis === 'ros' ? 'ROS' : 'Weekly';
+        const basis = scan.basis;
+        const scanRankings = scan.rankings;
+        const basisNote = scan.note;
+        const basisLabel = scan.label;
+        const basisName = scan.name;
 
         const origText = btn ? btn.innerText : '';
         if (btn) { btn.disabled = true; btn.innerText = 'Scanning...'; }
@@ -3294,8 +3420,7 @@ function attachScoutSuggestionHandler(outputElId) {
         try {
             const ctx = await buildWaiverContext(league);
             const basisDisplay = basis === 'ros' ? ctx.rosDisplay : ctx.wkDisplay;
-            const basisByName = {};
-            scanRankings.forEach(r => { basisByName[r.cleanName] = r; });
+            const basisByName = scan.byName;
 
             const posFilter = s.pos || 'FLEX';
             const limit = parseInt(s.limit, 10) || 10;
@@ -3347,18 +3472,10 @@ function attachScoutSuggestionHandler(outputElId) {
             // the group (by the same comparator used to order the free agents) is the benchmark;
             // every free agent ranked ahead of him is listed.
             const renderRosterGroup = (g) => {
-                const mine = league.roster
-                    .map(p => ({ ...p, pos: ctx.getPos(p.cleanName) }))
-                    .filter(p => matchesPosFilter(p.pos, g.filter))
-                    .map(p => {
-                        const r = basisByName[p.cleanName] || {};
-                        return { ...p, rank: r.rank ?? 999, posRank: r.posRank ?? 999, flexRank: r.flexRank ?? 999 };
-                    })
-                    .sort((a, b) => compareForScan(a, b, g.filter));
-                if (mine.length === 0) {
+                const { mine, bench } = rosterBenchmark(league, ctx.getPos, basisByName, g.filter);
+                if (!bench) {
                     return { body: `<div class="mls-scan-empty">You have no ${groupName(g)} on your roster to compare against.</div>`, count: 0, countText: 'no roster players' };
                 }
-                const bench = mine[mine.length - 1];
                 const basisKind = g.filter === 'FLEX' ? 'flex' : 'pos';
                 const upgrades = g.items.filter(fa => compareForScan(fa, bench, g.filter) < 0).slice(0, limit);
                 const rankText = (p) => {
@@ -3394,21 +3511,10 @@ function attachScoutSuggestionHandler(outputElId) {
             if (mode === 'lineup' && allPlayed) notes.push(`Every available player's game has already kicked off this week, so they're shown anyway - treat these as adds for next week.`);
             if (mode === 'lineup' && !ctx.lineupReady) notes.push(`Couldn't build a starting lineup for this league yet, so there's no Would Start check - open the Lineup tab and tap Optimize Lineup.`);
             else if (!ctx.checkIsWeekly) notes.push(`No Weekly rankings loaded, so the Would Start check uses ROS ranks (same as the optimizer) and Wk Pos/Flex show "UR".`);
-            // Named per set (Weekly / ROS, plus the saved set's name when there is one): with
-            // several sets loaded, "a rankings file you loaded" left it unclear which one to fix.
-            const derivedNote = (display, type) => {
-                const vals = Object.values(display);
-                const wording = derivedRanksWording(vals.some(d => d.posDerived), vals.some(d => d.flexDerived), type === 'weekly');
-                if (!wording) return null;
-                return `Your ${rankingSetLabel(type)} don't include ${wording.short}, so those were derived from the file's order.`;
-            };
-            [derivedNote(ctx.wkDisplay, 'weekly'), derivedNote(ctx.rosDisplay, 'ros')].forEach(n => { if (n) notes.push(n); });
+            notes.push(...waiverDerivedNotes(ctx));
             if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference; renaming them in your rankings file to match Sleeper brings them back.`);
 
-            const weekText = State.currentNflWeek ? `Week ${State.currentNflWeek} ` : '';
-            const compareText = mode === 'roster'
-                ? `compared against your weakest rostered player at each position`
-                : `checked against your current ${weekText}starting lineup using ${ctx.checkIsWeekly ? 'Weekly' : 'ROS'} ranks`;
+            const compareText = waiverCompareText(ctx, mode);
             let html = `
             <div class="mls-scan-summary">
                 Top available in <strong>${escapeHtml(league.name || 'this league')}</strong> by <strong>${basisName} rank</strong>, ${compareText}.
