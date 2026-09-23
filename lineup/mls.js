@@ -2502,6 +2502,11 @@ function attachScoutSuggestionHandler(outputElId) {
 
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
+        // Manual / handoff leagues only know YOUR players, so "not in rosterMap" can't mean
+        // "free agent" there -- see isFullyMappedLeague. Those leagues get the same neutral
+        // "Not Yours" wording the All My Leagues search already uses, with a tooltip saying why.
+        const knowsWholeLeague = isFullyMappedLeague(league);
+        const notYoursTitle = "Manual league: this app only knows your roster, so it can't tell whether he's a free agent or on another team. Check your league's site before putting in a claim.";
 
         // Scan Pasted List follows the same Compare Against and Rank By settings as Auto-Find
         // (see buildWaiverContext) whenever a synced league and some rankings exist. Anything
@@ -2637,7 +2642,9 @@ function attachScoutSuggestionHandler(outputElId) {
                 else if (owner) statusHTML = `<div class="scout-status status-avail">Already Dropped<br>/ Traded</div>`;
                 else statusHTML = `<div class="scout-status status-avail">Not on your<br>roster</div>`;
             } else {
-                if (!owner) statusHTML = `<div class="scout-status status-avail">Free Agent<br>(Available)</div>`;
+                if (!owner) statusHTML = knowsWholeLeague
+                    ? `<div class="scout-status status-avail">Free Agent<br>(Available)</div>`
+                    : `<div class="scout-status mls-status-unknown" title="${notYoursTitle}">Not Yours</div>`;
                 else if (owner === "You") statusHTML = `<div class="scout-status status-mine">On Your<br>Roster</div>`;
                 else statusHTML = `<div class="scout-status status-owned">Rostered by:<br>${owner}</div>`;
             }
@@ -2676,7 +2683,9 @@ function attachScoutSuggestionHandler(outputElId) {
                     } else if (row.verdict && row.verdict.status === 'starts') {
                         availabilityOrder = -0.5;
                     }
-                    if (pill) statusHTML = `<div class="scout-status status-avail mls-nowrap">Free Agent</div><div class="mls-scan-pill-stack">${pill}</div>`;
+                    if (pill) statusHTML = knowsWholeLeague
+                        ? `<div class="scout-status status-avail mls-nowrap">Free Agent</div><div class="mls-scan-pill-stack">${pill}</div>`
+                        : `<div class="scout-status mls-status-unknown mls-nowrap" title="${notYoursTitle}">Not Yours</div><div class="mls-scan-pill-stack">${pill}</div>`;
                     if (line) verdictLineHTML = `<div class="mls-scan-verdict">${line}</div>`;
                 }
             }
@@ -3684,6 +3693,11 @@ function attachScoutSuggestionHandler(outputElId) {
         try {
             const ctx = await buildWaiverContext(league);
             const basisDisplay = basis === 'ros' ? ctx.rosDisplay : ctx.wkDisplay;
+            // In a manual / handoff league the scan still works -- it just can't exclude other
+            // teams' players, because it never saw them (see isFullyMappedLeague). So the wording
+            // says "not on your roster" instead of "available", and a note says to double-check.
+            const knowsWholeLeague = isFullyMappedLeague(league);
+            const availGroup = (name) => knowsWholeLeague ? `available ${name}` : `${name} outside your roster`;
             const basisByName = scan.byName;
 
             const posFilter = s.pos || 'FLEX';
@@ -3724,7 +3738,7 @@ function attachScoutSuggestionHandler(outputElId) {
             const noneAvailableText = (g) => {
                 const n = rankedIn(g);
                 return n > 0
-                    ? `Every ${groupName(g)} in your ${basisName} rankings (${n} ranked) is already rostered in this league.`
+                    ? `Every ${groupName(g)} in your ${basisName} rankings (${n} ranked) is already ${knowsWholeLeague ? 'rostered in this league' : 'on your roster'}.`
                     : `Your ${basisName} rankings don't include any ${groupName(g)}.`;
             };
 
@@ -3755,7 +3769,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 }
                 const body = rows.length
                     ? rows.map(r => renderWaiverScanCard(ctx, r)).join('')
-                    : `<div class="mls-scan-empty">${startersOnly ? `No available ${groupName(g)} would crack your starting lineup this week.` : `No available ${groupName(g)} found in your ${basisName} rankings.`}</div>`;
+                    : `<div class="mls-scan-empty">${startersOnly ? `No ${availGroup(groupName(g))} would crack your starting lineup this week.` : `No ${availGroup(groupName(g))} found in your ${basisName} rankings.`}</div>`;
                 return { body, count: starts, countText: starts > 0 ? `${starts} would start` : 'none would start' };
             };
 
@@ -3784,7 +3798,7 @@ function attachScoutSuggestionHandler(outputElId) {
                     Your weakest ${groupName(g)} is <strong>${escapeHtml(bench.name)}</strong> (${rankText(bench)}).
                     ${upgrades.length ? `Available players ranked ahead of him:`
                         : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
-                        : `<div class="mls-scan-benchmark-ok">No available ${groupName(g)} ranks ahead of him; you're set here by ${basisName}.</div>`}
+                        : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}
                     ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(', ')}</div>` : ''}
                 </div>`;
                 const cards = upgrades.map(fa => {
@@ -3807,6 +3821,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
             // Summary: what was scanned, what it was compared against, and any caveats.
             const notes = [];
+            if (!knowsWholeLeague) notes.push(`This is a manual league, so the app only knows your own roster. Everyone below is off your roster, but some may be on other teams - check your league before putting in a claim.`);
             if (basisNote) notes.push(basisNote);
             if (mode === 'lineup' && playedExcluded > 0) notes.push(`${playedExcluded} player${playedExcluded === 1 ? "'s game has" : "s' games have"} already kicked off this week, so ${playedExcluded === 1 ? 'he was' : 'they were'} left out; everyone below can still help you this week. Switch to Whole Roster to include ${playedExcluded === 1 ? 'him' : 'them'}.`);
             if (mode === 'lineup' && allPlayed) notes.push(`Every available player's game has already kicked off this week, so they're shown anyway - treat these as adds for next week.`);
@@ -3822,7 +3837,7 @@ function attachScoutSuggestionHandler(outputElId) {
             const compareText = waiverCompareText(ctx, mode);
             let html = `
             <div class="mls-scan-summary">
-                Top available in <strong>${escapeHtml(league.name || 'this league')}</strong> by <strong>${basisName} rank</strong>, ${compareText}.
+                ${knowsWholeLeague ? 'Top available' : 'Top players not on your roster'} in <strong>${escapeHtml(league.name || 'this league')}</strong> by <strong>${basisName} rank</strong>, ${compareText}.
                 ${notes.length ? `<ul class="mls-scan-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}
             </div>`;
 
@@ -3843,7 +3858,7 @@ function attachScoutSuggestionHandler(outputElId) {
             } else if (rendered.length === 1) {
                 html += rendered[0].body;
             } else {
-                html += `<div class="mls-scan-empty">No available players found in your ${basisName} rankings.</div>`;
+                html += `<div class="mls-scan-empty">No ${availGroup('players')} found in your ${basisName} rankings.</div>`;
             }
 
             outputEl.innerHTML = html;
@@ -5345,6 +5360,11 @@ function applyMarketSettingsToUI() {
 
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
+        // Manual / handoff leagues only know YOUR players, so "not in rosterMap" can't mean
+        // "free agent" there -- see isFullyMappedLeague. Those leagues get the same neutral
+        // "Not Yours" wording the All My Leagues search already uses, with a tooltip saying why.
+        const knowsWholeLeague = isFullyMappedLeague(league);
+        const notYoursTitle = "Manual league: this app only knows your roster, so it can't tell whether he's a free agent or on another team. Check your league's site before putting in a claim.";
 
         let analysisList = [];
 
@@ -5462,7 +5482,10 @@ function applyMarketSettingsToUI() {
                 High-Value Targets (Market Sleeping)
             </div>`;
             buyItems.forEach(item => {
-                let ownerStr = item.owner === "You" ? `<span style="color:#60a5fa;">On your roster</span>` : (item.owner ? `Rostered by: ${item.owner}` : `<span style="color:var(--primary-green);">Free Agent</span>`);
+                let ownerStr = item.owner === "You" ? `<span style="color:#60a5fa;">On your roster</span>`
+                    : item.owner ? `Rostered by: ${item.owner}`
+                    : knowsWholeLeague ? `<span style="color:var(--primary-green);">Free Agent</span>`
+                    : `<span style="color:var(--text-muted);" title="${notYoursTitle}">Not on your roster</span>`;
                 html += `
                 <div class="scout-result-card">
                     <div>
@@ -5723,7 +5746,11 @@ function applyMarketSettingsToUI() {
             // broke up the list's rhythm at phone width. Grouped so they wrap as one unit.
             // Ordered most-permanent first: rookie holds all season, so it keeps a fixed spot
             // beside the name; injury and bye come and go after it without shifting it.
-            let statusBadges = [rookieBadge, injBadge, byeBadge].filter(Boolean).join('');
+            // Same TAXI badge the Lineup tab's bench uses. isTaxi is set at Sleeper sync time, so
+            // manual leagues never show it. Sits right after rookie: both are season-long
+            // roster-status markers, so they stay fixed ahead of injury/bye.
+            let taxiBadge = p.isTaxi ? `<span class="badge taxi-badge" title="Taxi squad">TAXI</span>` : "";
+            let statusBadges = [rookieBadge, taxiBadge, injBadge, byeBadge].filter(Boolean).join('');
             
             html += `
             <div class="roster-item">
