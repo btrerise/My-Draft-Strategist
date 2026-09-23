@@ -6,6 +6,17 @@
 (function () {
     'use strict';
 
+    // Belt and braces for the service worker's stale-while-revalidate window. Assets are
+    // served from cache first (see sw.js), so there is a narrow window after a deploy where a
+    // browser could pair this file with an older cached js/utils.js from before readJSON
+    // existed. State construction below would then throw on an undefined function and blank
+    // the page -- precisely the failure readJSON was added to prevent. This local binding
+    // falls back to the old inline behavior so that can't happen; once every client is on the
+    // current utils.js it is simply never used.
+    const readJSON = window.readJSON || function (key, fallback) {
+        try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
+    };
+
     // --- DRAFT PLAYER-POOL STORAGE (v2) ---
     // Each draft profile remembers its own player pool, so switching profiles restores the
     // rankings that profile was drafted with. That pool used to live INLINE inside each draft
@@ -120,11 +131,11 @@
 
     // --- STATE MANAGEMENT ---
     const State = {
-        players: JSON.parse(localStorage.getItem('ds_players')) || [],
-        drafts: JSON.parse(localStorage.getItem('ds_drafts')) || [],
+        players: readJSON('ds_players', []),
+        drafts: readJSON('ds_drafts', []),
         activeDraftId: localStorage.getItem('ds_active_draft_id') || null,
-        rankingsMeta: JSON.parse(localStorage.getItem('ds_meta')) || null,
-        adpMeta: JSON.parse(localStorage.getItem('ds_adp_meta')) || null,
+        rankingsMeta: readJSON('ds_meta', null),
+        adpMeta: readJSON('ds_adp_meta', null),
         activePosFilter: 'ALL',
         autoSyncTimer: null,
         // Health of the live-draft poll, so the LIVE pill can tell the truth about it.
@@ -154,11 +165,11 @@
                 draftId: 'draft_default',
                 name: 'Main Draft',
                 username: localStorage.getItem('ds_username') || '',
-                settings: JSON.parse(localStorage.getItem('ds_draft_settings')) || { teams: 12, rounds: 15 },
-                limits: JSON.parse(localStorage.getItem('ds_limits')) || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1, BENCH: 5, TOTAL: 15 },
-                draftedPlayers: JSON.parse(localStorage.getItem('ds_drafted')) || [],
-                myTeam: JSON.parse(localStorage.getItem('ds_myTeam')) || [],
-                rawDraftPicks: JSON.parse(localStorage.getItem('ds_raw_picks')) || [],
+                settings: readJSON('ds_draft_settings', { teams: 12, rounds: 15 }),
+                limits: readJSON('ds_limits', { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1, BENCH: 5, TOTAL: 15 }),
+                draftedPlayers: readJSON('ds_drafted', []),
+                myTeam: readJSON('ds_myTeam', []),
+                rawDraftPicks: readJSON('ds_raw_picks', []),
                 totalPicks: parseInt(localStorage.getItem('ds_total_picks')) || 0,
                 queue: []
             };
@@ -249,7 +260,7 @@
             // readDraftPlayerPool checks this draft's own key first and falls back to an
             // inline v1 copy, so a profile saved before the storage migration still restores.
             const savedPool = readDraftPlayerPool(draft);
-            State.players = savedPool ? [...savedPool] : (JSON.parse(localStorage.getItem('ds_players')) || []);
+            State.players = savedPool ? [...savedPool] : readJSON('ds_players', []);
             // Persists under BOTH the global key and this draft's own key, which also means a
             // profile that fell through to the global fallback now has a pool of its own and
             // won't inherit whatever another profile loads next.
@@ -3124,6 +3135,13 @@ window.toggleHeadshots = function(show) {
         const toggleEl = document.getElementById('toggleHeadshots');
         if (toggleEl) toggleEl.checked = showHeadshots;
         toggleHeadshots(showHeadshots);
+
+        // Last line of init on purpose: tells the safety net in utils.js that this script
+        // evaluated all the way through and the page is genuinely usable, so a later uncaught
+        // error gets logged instead of covering a working screen with the fatal-boot banner.
+        // If anything above throws, this never runs and the banner stays armed -- which is
+        // exactly the behavior we want.
+        if (typeof window.markAppReady === 'function') window.markAppReady();
     });
 
 })();
