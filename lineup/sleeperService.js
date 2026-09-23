@@ -13,7 +13,16 @@ const SLEEPER_BASE_URL = 'https://api.sleeper.app/v1';
 async function getWeekStats(season, week) {
     const cacheKey = `stats_${season}_w${week}`;
 
-    const cached = await getCachedData(cacheKey);
+    // The IndexedDB cache is best-effort in both directions. A read failure (storage blocked,
+    // private browsing, a connection closed mid-upgrade -- see db.js) is treated as a cache
+    // miss rather than thrown: this read used to sit outside the try below, so a broken cache
+    // took down the whole matchup simulation even though the stats themselves were reachable.
+    let cached = null;
+    try {
+        cached = await getCachedData(cacheKey);
+    } catch (e) {
+        console.warn('Week stats cache unavailable, fetching from Sleeper instead:', e);
+    }
     if (cached) return cached;
 
     try {
@@ -21,7 +30,9 @@ async function getWeekStats(season, week) {
         if (!response.ok) throw new Error(`Failed to fetch week ${week} stats`);
 
         const data = await response.json();
-        await cacheData(cacheKey, data);
+        // Same on the write side: a failed cache write (quota, storage blocked) used to land in
+        // the catch below and return null, throwing away stats that had downloaded fine.
+        cacheData(cacheKey, data).catch(e => console.warn('Could not cache week stats:', e));
         return data;
     } catch (error) {
         console.error('Sleeper API Error:', error);

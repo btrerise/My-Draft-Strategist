@@ -312,7 +312,7 @@
             <summary class="sos-summary">Add Player Manually</summary>
             <div class="accordion-body">
                 <div class="manual-player-grid">
-                    <input type="text" id="manualName" class="form-input" placeholder="Player Name" aria-label="Type in player name">
+                    <input type="text" id="manualName" class="form-input" placeholder="Player Name" autocomplete="off" aria-label="Type in player name" aria-describedby="manualKeyHint">
                     <select id="manualPos" class="form-input" aria-label="Type in player's position">
                         <option value="QB">QB</option>
                         <option value="RB">RB</option>
@@ -321,10 +321,12 @@
                         <option value="K">K</option>
                         <option value="DEF">DEF</option>
                     </select>
-                    <input type="text" id="manualTeam" class="form-input" placeholder="Team" aria-label="Type in player's team">
+                    <input type="text" id="manualTeam" class="form-input" placeholder="Team" autocomplete="off" aria-label="Type in player's team">
                 </div>
+                <p id="manualKeyHint" class="mls-manual-key-hint">Tip: type a name and press <kbd>Enter</kbd> to pick it, then <kbd>Enter</kbd> again to add. Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> when there are several matches.</p>
                 <button class="btn btn-primary mt-2" onclick="addManualPlayer()">Add Player to Active Roster</button>
-                <div id="manualAddMsg" class="manual-add-feedback"></div>
+                <div id="manualAddMsg" class="manual-add-feedback" role="status" aria-live="polite"></div>
+                <div id="manualAddLog" class="mls-manual-log" aria-live="polite"></div>
             </div>
         </details>
         
@@ -350,7 +352,16 @@
                 <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" width="274" height="36" />
             </a>
         </div>
-    <div class="app-version">My Lineup Strategist v2.7</div>
+    <!-- APP VERSION (My Lineup Strategist): update this when a deploy changes the Lineup app -
+         anything under lineup/, or shared css/styles.css / js/utils.js changes that show up
+         here. My Draft Strategist has its own number in the root index.html.
+         WHEN TO BUMP: the second number (vX.Y -> vX.Y+1) on any deploy with something a
+         user would notice - a new feature, a new control or badge, or a visible change in how
+         something behaves. The first number (vX -> vX+1.0) for a major overhaul or redesign.
+         Bug-fix-only or behind-the-scenes deploys leave it alone.
+         Also bump CACHE_NAME in /sw.js on EVERY deploy - that's a separate number (cache
+         busting, not a user-facing version), and it's required even when this one stays put. -->
+    <div class="app-version">My Lineup Strategist v2.8</div>
 </div>
 
         <!-- ROSTER TAB -->
@@ -363,7 +374,12 @@
          header with a freshness readout still visible for quick reference.) -->
     <section class="settings-card rankings-card" id="rosRankingsCard">
         <header class="card-header rankings-card-header" onclick="toggleRankingsCard('rosRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Rest-of-Season Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('rosRankingsCard');}">
-            <h3><span>Rest-of-Season (ROS) Rankings</span></h3>
+            <div class="rankings-header-titles">
+                <h3><span>Rest-of-Season (ROS) Rankings</span></h3>
+                <!-- Name of the set this league uses, filled by populateRankingSetDropdown.
+                     Lives in the header so it stays readable with the card collapsed. -->
+                <div id="rosHeaderSetName" class="rankings-header-set"></div>
+            </div>
             <div class="cluster cluster-sm">
                 <span id="rosHeaderFreshness" class="header-freshness"></span>
                 <div class="tooltip-container">
@@ -383,8 +399,9 @@
                     <button id="rosDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('ros')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
-            <div class="mb-3" style="text-align: right;">
-                <button class="mls-btn-sm btn-link-inline" onclick="applyRankingSetToAll('ros')">Apply this set to all leagues</button>
+            <div id="rosSetLeaguesRow" class="mls-set-leagues-row mb-3">
+                <span id="rosSetLeaguesSummary" class="mls-set-leagues-summary"></span>
+                <button class="mls-btn-sm btn-link-inline" onclick="openRankingSetLeagues('ros')">Choose leagues&hellip;</button>
             </div>
             <div id="rosNewSetNameWrap" class="input-group mb-3">
                 <label for="rosNewSetName">New Set Name (optional)</label>
@@ -556,7 +573,10 @@
          every single week, so freshness needs to be visible before anything else here) -->
     <section class="settings-card rankings-card" id="weeklyRankingsCard">
         <header class="card-header rankings-card-header" onclick="toggleRankingsCard('weeklyRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Weekly Matchup Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('weeklyRankingsCard');}">
-            <h3><span>Weekly Matchup Rankings</span></h3>
+            <div class="rankings-header-titles">
+                <h3><span>Weekly Matchup Rankings</span></h3>
+                <div id="weeklyHeaderSetName" class="rankings-header-set"></div>
+            </div>
             <div class="cluster cluster-sm">
                 <span id="weeklyHeaderFreshness" class="header-freshness"></span>
                 <div class="tooltip-container">
@@ -576,8 +596,9 @@
                     <button id="weeklyDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('weekly')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
-            <div class="mb-3" style="text-align: right;">
-                <button class="mls-btn-sm btn-link-inline" onclick="applyRankingSetToAll('weekly')">Apply this set to all leagues</button>
+            <div id="weeklySetLeaguesRow" class="mls-set-leagues-row mb-3">
+                <span id="weeklySetLeaguesSummary" class="mls-set-leagues-summary"></span>
+                <button class="mls-btn-sm btn-link-inline" onclick="openRankingSetLeagues('weekly')">Choose leagues&hellip;</button>
             </div>
             <div id="weeklyNewSetNameWrap" class="input-group mb-3">
                 <label for="weeklyNewSetName">New Set Name (optional)</label>
@@ -1220,6 +1241,9 @@
         <!-- Says where this upload lands: a new set, or an in-place overwrite of an existing
              one (and how many leagues follow that set). Filled by openRankingsPreview. -->
         <p id="rankingsPreviewTarget" class="mls-preview-target" style="display: none;"></p>
+        <!-- Other leagues to point at this set, picked before saving. Only shown when there's
+             more than one league. Filled by openRankingsPreview via renderLeaguePicker. -->
+        <div id="rankingsPreviewLeagues" class="mls-league-picker" style="display: none;"></div>
         <div class="mls-preview-actions">
             <button class="btn btn-secondary" onclick="cancelRankingsPreview()">Cancel</button>
             <button id="rankingsPreviewConfirmBtn" class="btn btn-primary" onclick="confirmRankingsPreview()">Looks Good, Save It</button>
@@ -1227,7 +1251,37 @@
     </div>
 </div>
 
+<!-- Ranking Set League Picker (shared by ROS & Weekly). Opened from "Choose leagues..." on a
+     rankings card, and after an auto-fetch creates a new set. Filled by openLeaguePickerDialog. -->
+<div id="rankingLeaguesOverlay" class="mls-preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingLeaguesTitle">
+    <div class="mls-preview-modal">
+        <h3 id="rankingLeaguesTitle">Choose leagues</h3>
+        <p id="rankingLeaguesIntro" class="mls-preview-count"></p>
+        <div id="rankingLeaguesList" class="mls-league-picker"></div>
+        <div class="mls-preview-actions">
+            <button type="button" class="btn btn-secondary" data-league-picker="cancel">Cancel</button>
+            <button type="button" class="btn btn-primary" data-league-picker="ok">Save</button>
+        </div>
+    </div>
+</div>
+
 <script src="../js/utils.js" defer></script>
     <script type="module" src="mls.js"></script>
+    <!-- Registers the site-wide service worker from this page too. Before this, only js/mds.js
+         (the draft page) registered it, so anyone who went straight to /lineup/ never got
+         offline support at all. Deliberately an inline classic script rather than part of
+         mls.js: if a module in mls.js's import chain fails, mls.js never runs -- which is
+         exactly the offline failure the service worker is there to prevent. Absolute '/sw.js'
+         is required: a relative 'sw.js' here would resolve to /lineup/sw.js, which doesn't
+         exist. The default scope of /sw.js is '/', covering this page and the rest of the site,
+         so this is the same registration as mds.js's (the browser dedupes, it doesn't install
+         twice). -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.warn('Service Worker registration failed: ', err));
+            });
+        }
+    </script>
 </body>
 </html>

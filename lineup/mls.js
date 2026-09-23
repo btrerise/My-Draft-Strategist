@@ -86,6 +86,8 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
             globalDataKey: 'mds_season_ros', globalUpdatedKey: 'mds_season_ros_updated',
             selectId: 'rosRankingSetSelect', nameInputWrapId: 'rosNewSetNameWrap',
             nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn',
+            cardId: 'rosRankingsCard', headerSetNameId: 'rosHeaderSetName',
+            leaguesRowId: 'rosSetLeaguesRow', leaguesSummaryId: 'rosSetLeaguesSummary',
             label: 'ROS', staleAfterDays: 14
         },
         weekly: {
@@ -96,6 +98,8 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
             globalDataKey: 'mds_season_weekly', globalUpdatedKey: 'mds_season_weekly_updated',
             selectId: 'weeklyRankingSetSelect', nameInputWrapId: 'weeklyNewSetNameWrap',
             nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn',
+            cardId: 'weeklyRankingsCard', headerSetNameId: 'weeklyHeaderSetName',
+            leaguesRowId: 'weeklySetLeaguesRow', leaguesSummaryId: 'weeklySetLeaguesSummary',
             label: 'Weekly', staleAfterDays: 6
         }
     };
@@ -832,6 +836,10 @@ function attachPlayerAutocomplete(inputEl, onSelect) {
 
     let matches = [];
     let highlightedIdx = -1;
+    // True between a keystroke and its search results landing. Callers that add their own
+    // Enter behavior (the manual-add form) check this so an Enter pressed before the dropdown
+    // has caught up isn't mistaken for "nothing matched".
+    let pending = false;
 
     function render() {
         if (matches.length === 0) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
@@ -860,9 +868,11 @@ function attachPlayerAutocomplete(inputEl, onSelect) {
     inputEl.addEventListener('input', () => {
         const q = inputEl.value.trim().toLowerCase();
         highlightedIdx = -1;
-        if (q.length < 2) { close(); return; }
+        if (q.length < 2) { pending = false; close(); return; }
+        pending = true;
         getPlayerSearchIndex().then(index => {
             if (inputEl.value.trim().toLowerCase() !== q) return;
+            pending = false;
             const starts = [], contains = [];
             for (const p of index) {
                 if (p.searchKey.startsWith(q)) { starts.push(p); if (starts.length >= 8) break; }
@@ -870,7 +880,7 @@ function attachPlayerAutocomplete(inputEl, onSelect) {
             }
             matches = starts.concat(contains).slice(0, 8);
             render();
-        }).catch(() => {});
+        }).catch(() => { pending = false; });
     });
 
     dropdown.addEventListener('mousedown', (e) => {
@@ -884,11 +894,25 @@ function attachPlayerAutocomplete(inputEl, onSelect) {
         if (matches.length === 0) return;
         if (e.key === 'ArrowDown') { e.preventDefault(); highlightedIdx = Math.min(highlightedIdx + 1, matches.length - 1); render(); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); highlightedIdx = Math.max(highlightedIdx - 1, 0); render(); }
-        else if (e.key === 'Enter') { if (highlightedIdx !== -1) { e.preventDefault(); select(matches[highlightedIdx]); } }
+        else if (e.key === 'Enter') {
+            // Enter takes the arrowed-to row, or the only row when the search has narrowed to
+            // one -- so "type a name, Enter" works without reaching for the arrow keys. With
+            // several rows and none highlighted it stays a no-op rather than guessing.
+            const pick = highlightedIdx !== -1 ? matches[highlightedIdx] : (matches.length === 1 ? matches[0] : null);
+            // preventDefault doubles as the "handled" signal: any Enter listener added after
+            // this one (the manual-add form's save-on-Enter) checks e.defaultPrevented, so the
+            // same keypress can't both pick a player and save them.
+            if (pick) { e.preventDefault(); select(pick); }
+        }
         else if (e.key === 'Escape') { close(); }
     });
 
     inputEl.addEventListener('blur', () => setTimeout(close, 150));
+
+    return {
+        isOpen: () => matches.length > 0,
+        isPending: () => pending
+    };
 }
 
 // Levenshtein (edit) distance math
@@ -946,12 +970,7 @@ function attachScoutSuggestionHandler(outputElId) {
 }
 
     window.onload = function() {
-        attachPlayerAutocomplete(document.getElementById('manualName'), (p) => {
-        const posEl = document.getElementById('manualPos');
-        const teamEl = document.getElementById('manualTeam');
-        if (posEl) posEl.value = p.pos;
-        if (teamEl) teamEl.value = p.team;
-        });
+        initManualAddForm();
         attachPlayerAutocomplete(document.getElementById('simPlayerSearch'), (p) => {
             window.lookupSimPlayer(p);
         });
@@ -959,6 +978,30 @@ function attachScoutSuggestionHandler(outputElId) {
         attachScoutSuggestionHandler('tradeOutput');
         populateEarlyGameDropdown();
         refreshLeagueDropdown();
+        // State starts from the flat global rankings keys -- the last upload for ANY league --
+        // and only switchActiveLeague() used to replace them with the active league's own set.
+        // So after a reload, a league on set A showed set B's players until you switched away
+        // and back, while its dropdown (and now the card header) said A. Hydrate up front, per
+        // type, and only where the league has something of its own (a saved set that still
+        // exists, or legacy data): otherwise that type keeps the global fallback, as before.
+        {
+            const bootLeague = getActiveLeague() || State.leagues[0] || null;
+            if (bootLeague) {
+                ['ros', 'weekly'].forEach(t => {
+                    const cfg = RANKING_TYPE_CONFIG[t];
+                    const setId = bootLeague[cfg.leagueSetIdKey];
+                    const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+                    const legacy = bootLeague[cfg.leagueLegacyDataKey];
+                    if (set) {
+                        State[cfg.stateKey] = [...set.data];
+                        State[cfg.updatedAtKey] = set.updatedAt;
+                    } else if (Array.isArray(legacy) && legacy.length > 0) {
+                        State[cfg.stateKey] = [...legacy];
+                        State[cfg.updatedAtKey] = bootLeague[cfg.leagueLegacyUpdatedKey] || null;
+                    }
+                });
+            }
+        }
         updateRankingsMetaDisplay();
         generateSoSGrid();
         checkForDraftStrategistHandoff();
@@ -1680,6 +1723,7 @@ function attachScoutSuggestionHandler(outputElId) {
         const titleEl = document.getElementById('activeLeagueReqTitle');
         if (titleEl) titleEl.innerText = `(${league.name})`;
         setVal('sleeperUsername', league.username !== "Manual" ? league.username : "");
+        renderManualAddLog(); // show only this league's session adds
     }
 
     window.saveRequirements = function(btn) {
@@ -1714,14 +1758,10 @@ function attachScoutSuggestionHandler(outputElId) {
         localStorage.setItem('mds_season_active_league', State.activeLeagueId);
 
         if (nameInput) nameInput.value = "";
-        refreshLeagueDropdown(); 
+        refreshLeagueDropdown();
         loadActiveLeagueData();
-        
-        let msgEl = document.getElementById('manualAddMsg');
-        if (msgEl) {
-            msgEl.innerText = `Manual League '${name}' Created`;
-            setTimeout(() => msgEl.innerText = "", 3000);
-        }
+
+        setManualAddMsg(`Manual League '${name}' Created`, { clearAfterMs: 3000 });
     };
 
     // --- DRAFT STRATEGIST ROSTER HANDOFF ---
@@ -1792,7 +1832,136 @@ function attachScoutSuggestionHandler(outputElId) {
         if (banner) banner.style.display = 'none';
     };
 
-    window.addManualPlayer = function() {
+    // --- ADD PLAYER MANUALLY: keyboard fast path + "Added this session" list ---
+    // Built for keying in a whole league from the keyboard: type a name, Enter picks the
+    // single (or arrowed-to) suggestion, Enter again saves and clears the field for the next
+    // player. Every add still saves immediately -- there's deliberately no "Submit roster"
+    // step, so closing the tab halfway through a league loses nothing. The list under the form
+    // is the safety net instead: it shows who went in, newest first, with a one-click undo.
+    //
+    // _manualAddLog is in-memory only (resets on reload). It's a record of this sitting's
+    // entries, not a second copy of the roster -- entries are resolved against league.roster at
+    // render time, so a player removed anywhere else (Roster tab, re-sync) just drops out.
+    const _manualAddLog = []; // { leagueId, playerId }, newest first
+    let _manualSelected = null; // last autocomplete pick in the name field
+    let _manualMsgTimer = null;
+
+    function setManualAddMsg(text, { isError = false, clearAfterMs = 0 } = {}) {
+        const msgEl = document.getElementById('manualAddMsg');
+        if (!msgEl) return;
+        clearTimeout(_manualMsgTimer);
+        msgEl.innerText = text || "";
+        msgEl.classList.toggle('is-error', !!(text && isError));
+        if (text && clearAfterMs) _manualMsgTimer = setTimeout(() => setManualAddMsg(""), clearAfterMs);
+    }
+
+    function initManualAddForm() {
+        const nameEl = document.getElementById('manualName');
+        const teamEl = document.getElementById('manualTeam');
+        const posEl = document.getElementById('manualPos');
+        if (!nameEl) return;
+
+        const ac = attachPlayerAutocomplete(nameEl, (p) => {
+            _manualSelected = p;
+            if (posEl) posEl.value = p.pos;
+            if (teamEl) teamEl.value = p.team;
+        });
+
+        nameEl.addEventListener('input', () => {
+            // Any edit after a pick means the field no longer holds that pick.
+            if (_manualSelected && nameEl.value.trim() !== _manualSelected.name) _manualSelected = null;
+            setManualAddMsg("");
+        });
+
+        // Registered after the autocomplete's own keydown listener, so on the Enter that picks
+        // a suggestion, e.defaultPrevented is already true and this skips it -- one keypress
+        // never both selects and saves. e.repeat guards against a held-down Enter saving twice.
+        nameEl.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' || e.defaultPrevented || e.repeat || e.isComposing) return;
+            if (_manualSelected && nameEl.value.trim() === _manualSelected.name) {
+                e.preventDefault();
+                window.addManualPlayer({ fromKeyboard: true });
+                return;
+            }
+            // Name was typed but never picked. Saving it on Enter would make every typo a
+            // roster entry, so point at the deliberate routes instead. Stay quiet while the
+            // dropdown is open or its results are still loading -- Enter there just means
+            // "not narrowed down yet".
+            if (nameEl.value.trim() && !(ac && (ac.isOpen() || ac.isPending()))) {
+                setManualAddMsg("No match picked. Choose a player from the list, or fill in Position and Team and press Enter in the Team box to add this name as typed.");
+            }
+        });
+
+        // Enter in Team = submit the form as filled. This is the keyboard route for a name
+        // that isn't in Sleeper's player list (or when that list couldn't load).
+        if (teamEl) {
+            teamEl.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
+                e.preventDefault();
+                window.addManualPlayer({ fromKeyboard: true });
+            });
+        }
+
+        const logEl = document.getElementById('manualAddLog');
+        if (logEl) {
+            logEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('.mls-manual-log-remove');
+                if (btn) undoManualAdd(btn.dataset.playerId);
+            });
+        }
+    }
+
+    function removePlayerFromLeague(league, playerId) {
+        const pToRemove = (league.roster || []).find(p => p.id === playerId);
+        if (!pToRemove) return null;
+        if (league.globalRosterMap) delete league.globalRosterMap[pToRemove.cleanName];
+        league.roster = league.roster.filter(p => p.id !== playerId);
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        return pToRemove;
+    }
+
+    // No confirm dialog here, unlike deletePlayer: this only appears next to a player that was
+    // just keyed in, and a confirm on every typo fix would undo the point of the fast path.
+    function undoManualAdd(playerId) {
+        const league = getActiveLeague();
+        if (!league) return;
+        const removed = removePlayerFromLeague(league, playerId);
+        if (!removed) { renderManualAddLog(); return; }
+        window.optimizeLineup(true);
+        loadRosterTab(); // also re-renders the log
+        setManualAddMsg(`Removed ${removed.name}`, { clearAfterMs: 4000 });
+        const nameEl = document.getElementById('manualName');
+        if (nameEl) nameEl.focus();
+    }
+
+    function renderManualAddLog() {
+        const el = document.getElementById('manualAddLog');
+        if (!el) return;
+        const league = getActiveLeague();
+        const rosterById = new Map(((league && league.roster) || []).map(p => [p.id, p]));
+        const entries = league
+            ? _manualAddLog.filter(e => e.leagueId === league.leagueId && rosterById.has(e.playerId)).map(e => rosterById.get(e.playerId))
+            : [];
+        if (entries.length === 0) { el.innerHTML = ""; return; }
+
+        const total = league.roster.length;
+        el.innerHTML = `
+            <div class="mls-manual-log-head">
+                <span>Added this session (${entries.length})</span>
+                <span class="mls-manual-log-total">${escapeHtml(league.name)}: ${total} player${total === 1 ? '' : 's'}</span>
+            </div>
+            <ul class="mls-manual-log-list">
+                ${entries.map((p, i) => `
+                <li class="mls-manual-log-item${i === 0 ? ' is-latest' : ''}">
+                    <span class="mls-manual-log-name">${escapeHtml(p.name)}</span>
+                    <span class="mls-manual-log-meta">${escapeHtml(p.pos)} · ${escapeHtml(p.team)}</span>
+                    ${i === 0 ? '<span class="mls-manual-log-tag">Last added</span>' : ''}
+                    <button type="button" class="mls-manual-log-remove" data-player-id="${escapeHtml(p.id)}" aria-label="Remove ${escapeHtml(p.name)}" title="Remove from roster">&times;</button>
+                </li>`).join('')}
+            </ul>`;
+    }
+
+    window.addManualPlayer = function(opts = {}) {
         let league = getActiveLeague();
         if (!league) { if (window.showToast) window.showToast("Please add or select a league first.", { isError: true }); return; }
         const nameInput = document.getElementById('manualName');
@@ -1805,35 +1974,43 @@ function attachScoutSuggestionHandler(outputElId) {
 
         if (!name) { if (window.showToast) window.showToast("Please enter a player name.", { isError: true }); return; }
 
-        let newP = { id: 'p_' + Date.now(), name: name, cleanName: normalizeName(name), pos: pos, team: team };
+        const cleanName = normalizeName(name);
         league.roster = league.roster || [];
+        // Fast keyboard entry makes a double add easy (same name keyed twice in a long list),
+        // and a duplicate would show up twice in the optimizer. Keep the text so it can be fixed.
+        const existing = league.roster.find(p => p.cleanName === cleanName);
+        if (existing) {
+            setManualAddMsg(`${existing.name} is already on this roster.`, { isError: true });
+            if (nameInput) { nameInput.focus(); nameInput.select(); }
+            return;
+        }
+
+        let newP = { id: 'p_' + Date.now(), name: name, cleanName: cleanName, pos: pos, team: team };
         league.roster.push(newP);
-        
+
         league.globalRosterMap = league.globalRosterMap || {};
         league.globalRosterMap[newP.cleanName] = "You";
-        
+
         localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-        if (nameInput) nameInput.value = ""; 
+        _manualAddLog.unshift({ leagueId: league.leagueId, playerId: newP.id });
+        _manualSelected = null;
+        if (nameInput) nameInput.value = "";
         if (teamInput) teamInput.value = "";
-        window.optimizeLineup(true); 
-        loadRosterTab();
-        
-        let msgEl = document.getElementById('manualAddMsg');
-        if (msgEl) {
-            msgEl.innerText = `Added ${name}`;
-            setTimeout(() => msgEl.innerText = "", 3000);
-        }
+        setManualAddMsg("");
+        window.optimizeLineup(true);
+        loadRosterTab(); // also re-renders the "Added this session" list
+
+        // Keyboard adds keep the cursor in the name field for the next player. Button taps
+        // don't, since refocusing there would pop the on-screen keyboard back open on phones.
+        if (opts.fromKeyboard && nameInput) nameInput.focus();
     };
 
     window.deletePlayer = async function(playerId) {
         let league = getActiveLeague();
         if (!league) return;
         if (await window.showConfirm("This takes the player off your active roster in this league. You can add them back from the Roster tab.", { title: 'Remove player?', confirmText: 'Remove', danger: true })) {
-            let pToRemove = league.roster.find(p => p.id === playerId);
-            if (pToRemove && league.globalRosterMap) { delete league.globalRosterMap[pToRemove.cleanName]; }
-            league.roster = league.roster.filter(p => p.id !== playerId);
-            localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-            window.optimizeLineup(true); 
+            removePlayerFromLeague(league, playerId);
+            window.optimizeLineup(true);
             loadRosterTab();
         }
     };
@@ -2325,6 +2502,11 @@ function attachScoutSuggestionHandler(outputElId) {
 
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
+        // Manual / handoff leagues only know YOUR players, so "not in rosterMap" can't mean
+        // "free agent" there -- see isFullyMappedLeague. Those leagues get the same neutral
+        // "Not Yours" wording the All My Leagues search already uses, with a tooltip saying why.
+        const knowsWholeLeague = isFullyMappedLeague(league);
+        const notYoursTitle = "Manual league: this app only knows your roster, so it can't tell whether he's a free agent or on another team. Check your league's site before putting in a claim.";
 
         // Scan Pasted List follows the same Compare Against and Rank By settings as Auto-Find
         // (see buildWaiverContext) whenever a synced league and some rankings exist. Anything
@@ -2460,7 +2642,9 @@ function attachScoutSuggestionHandler(outputElId) {
                 else if (owner) statusHTML = `<div class="scout-status status-avail">Already Dropped<br>/ Traded</div>`;
                 else statusHTML = `<div class="scout-status status-avail">Not on your<br>roster</div>`;
             } else {
-                if (!owner) statusHTML = `<div class="scout-status status-avail">Free Agent<br>(Available)</div>`;
+                if (!owner) statusHTML = knowsWholeLeague
+                    ? `<div class="scout-status status-avail">Free Agent<br>(Available)</div>`
+                    : `<div class="scout-status mls-status-unknown" title="${notYoursTitle}">Not Yours</div>`;
                 else if (owner === "You") statusHTML = `<div class="scout-status status-mine">On Your<br>Roster</div>`;
                 else statusHTML = `<div class="scout-status status-owned">Rostered by:<br>${owner}</div>`;
             }
@@ -2499,7 +2683,9 @@ function attachScoutSuggestionHandler(outputElId) {
                     } else if (row.verdict && row.verdict.status === 'starts') {
                         availabilityOrder = -0.5;
                     }
-                    if (pill) statusHTML = `<div class="scout-status status-avail mls-nowrap">Free Agent</div><div class="mls-scan-pill-stack">${pill}</div>`;
+                    if (pill) statusHTML = knowsWholeLeague
+                        ? `<div class="scout-status status-avail mls-nowrap">Free Agent</div><div class="mls-scan-pill-stack">${pill}</div>`
+                        : `<div class="scout-status mls-status-unknown mls-nowrap" title="${notYoursTitle}">Not Yours</div><div class="mls-scan-pill-stack">${pill}</div>`;
                     if (line) verdictLineHTML = `<div class="mls-scan-verdict">${line}</div>`;
                 }
             }
@@ -3460,6 +3646,21 @@ function attachScoutSuggestionHandler(outputElId) {
         outputEl.innerHTML = html;
     }
 
+    // True when a thrown error means "couldn't reach the server" rather than "our own code or
+    // data broke" -- the split the Auto-Find and Global Audit catch blocks use to tell someone
+    // whether to check their connection or re-sync. Covers mdsFetch's own timeout (utils.js
+    // marks it isTimeout / names it TimeoutError), the browser reporting itself offline, and
+    // fetch()'s bare network failure, which is a TypeError whose wording differs per browser
+    // (Chrome "Failed to fetch", Firefox "NetworkError when attempting...", Safari "Load
+    // failed") -- so it's matched on all three rather than just Chrome's, which is what the
+    // adBlockerTip checks elsewhere in this file key on.
+    function isConnectionError(err) {
+        if (!err) return false;
+        if (err.isTimeout || err.name === 'TimeoutError') return true;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+        return err.name === 'TypeError' && /failed to fetch|networkerror|load failed|network connection was lost/i.test(err.message || '');
+    }
+
     window.autoFindWaiverUpgrades = async function(btn) {
         const outputEl = document.getElementById('waiverOutput');
         if (!outputEl) return;
@@ -3492,6 +3693,11 @@ function attachScoutSuggestionHandler(outputElId) {
         try {
             const ctx = await buildWaiverContext(league);
             const basisDisplay = basis === 'ros' ? ctx.rosDisplay : ctx.wkDisplay;
+            // In a manual / handoff league the scan still works -- it just can't exclude other
+            // teams' players, because it never saw them (see isFullyMappedLeague). So the wording
+            // says "not on your roster" instead of "available", and a note says to double-check.
+            const knowsWholeLeague = isFullyMappedLeague(league);
+            const availGroup = (name) => knowsWholeLeague ? `available ${name}` : `${name} outside your roster`;
             const basisByName = scan.byName;
 
             const posFilter = s.pos || 'FLEX';
@@ -3532,7 +3738,7 @@ function attachScoutSuggestionHandler(outputElId) {
             const noneAvailableText = (g) => {
                 const n = rankedIn(g);
                 return n > 0
-                    ? `Every ${groupName(g)} in your ${basisName} rankings (${n} ranked) is already rostered in this league.`
+                    ? `Every ${groupName(g)} in your ${basisName} rankings (${n} ranked) is already ${knowsWholeLeague ? 'rostered in this league' : 'on your roster'}.`
                     : `Your ${basisName} rankings don't include any ${groupName(g)}.`;
             };
 
@@ -3563,7 +3769,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 }
                 const body = rows.length
                     ? rows.map(r => renderWaiverScanCard(ctx, r)).join('')
-                    : `<div class="mls-scan-empty">${startersOnly ? `No available ${groupName(g)} would crack your starting lineup this week.` : `No available ${groupName(g)} found in your ${basisName} rankings.`}</div>`;
+                    : `<div class="mls-scan-empty">${startersOnly ? `No ${availGroup(groupName(g))} would crack your starting lineup this week.` : `No ${availGroup(groupName(g))} found in your ${basisName} rankings.`}</div>`;
                 return { body, count: starts, countText: starts > 0 ? `${starts} would start` : 'none would start' };
             };
 
@@ -3592,7 +3798,7 @@ function attachScoutSuggestionHandler(outputElId) {
                     Your weakest ${groupName(g)} is <strong>${escapeHtml(bench.name)}</strong> (${rankText(bench)}).
                     ${upgrades.length ? `Available players ranked ahead of him:`
                         : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
-                        : `<div class="mls-scan-benchmark-ok">No available ${groupName(g)} ranks ahead of him; you're set here by ${basisName}.</div>`}
+                        : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}
                     ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(', ')}</div>` : ''}
                 </div>`;
                 const cards = upgrades.map(fa => {
@@ -3615,6 +3821,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
             // Summary: what was scanned, what it was compared against, and any caveats.
             const notes = [];
+            if (!knowsWholeLeague) notes.push(`This is a manual league, so the app only knows your own roster. Everyone below is off your roster, but some may be on other teams - check your league before putting in a claim.`);
             if (basisNote) notes.push(basisNote);
             if (mode === 'lineup' && playedExcluded > 0) notes.push(`${playedExcluded} player${playedExcluded === 1 ? "'s game has" : "s' games have"} already kicked off this week, so ${playedExcluded === 1 ? 'he was' : 'they were'} left out; everyone below can still help you this week. Switch to Whole Roster to include ${playedExcluded === 1 ? 'him' : 'them'}.`);
             if (mode === 'lineup' && allPlayed) notes.push(`Every available player's game has already kicked off this week, so they're shown anyway - treat these as adds for next week.`);
@@ -3630,7 +3837,7 @@ function attachScoutSuggestionHandler(outputElId) {
             const compareText = waiverCompareText(ctx, mode);
             let html = `
             <div class="mls-scan-summary">
-                Top available in <strong>${escapeHtml(league.name || 'this league')}</strong> by <strong>${basisName} rank</strong>, ${compareText}.
+                ${knowsWholeLeague ? 'Top available' : 'Top players not on your roster'} in <strong>${escapeHtml(league.name || 'this league')}</strong> by <strong>${basisName} rank</strong>, ${compareText}.
                 ${notes.length ? `<ul class="mls-scan-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}
             </div>`;
 
@@ -3651,13 +3858,24 @@ function attachScoutSuggestionHandler(outputElId) {
             } else if (rendered.length === 1) {
                 html += rendered[0].body;
             } else {
-                html += `<div class="mls-scan-empty">No available players found in your ${basisName} rankings.</div>`;
+                html += `<div class="mls-scan-empty">No ${availGroup('players')} found in your ${basisName} rankings.</div>`;
             }
 
             outputEl.innerHTML = html;
         } catch (err) {
             console.error('Waiver Auto-Find failed:', err);
-            outputEl.innerHTML = `<span class="mls-error-text">An error occurred while analyzing waivers. Please try again.</span>`;
+            // Missing rankings and an unsynced league are already caught with their own
+            // messages before this try, and buildWaiverContext swallows a failed Sleeper
+            // player-map fetch (it falls back to league/market positions). So what actually
+            // lands here is almost always saved league data in a shape the scan doesn't expect
+            // -- typically a league last synced by an older version of the app -- and a fresh
+            // sync is the one thing the person can do about it. The connection branch is
+            // defensive: nothing inside the try hits the network today, but a future fetch
+            // added to buildWaiverContext shouldn't be misreported as stale data.
+            const leagueName = escapeHtml(league.name || 'this league');
+            outputEl.innerHTML = isConnectionError(err)
+                ? `<span class="mls-error-text">Couldn't reach Sleeper to finish the waiver scan for ${leagueName}. Check your connection and tap Auto-Find again.</span>`
+                : `<span class="mls-error-text">Couldn't finish the waiver scan for ${leagueName} - its saved roster data may be out of date. Tap Sync All Leagues on the Dashboard, then run Auto-Find again.</span>`;
         } finally {
             if (btn) { btn.disabled = false; btn.innerText = origText; }
         }
@@ -3703,7 +3921,7 @@ function attachScoutSuggestionHandler(outputElId) {
     //
     // This matters because an in-place update is destructive and has no undo: with a named set
     // selected, an upload replaces that set's data, and every league pointed at the set follows
-    // it (see applyRankingSetToAll). The preview used to describe only the incoming file, never
+    // it (see the league picker below). The preview used to describe only the incoming file, never
     // what it was about to overwrite.
     function resolveRankingsTarget(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
@@ -3716,6 +3934,7 @@ function attachScoutSuggestionHandler(outputElId) {
             if (existing) {
                 return {
                     mode: 'replace',
+                    id: existing.id,
                     name: existing.name,
                     playerCount: Array.isArray(existing.data) ? existing.data.length : 0,
                     leagueCount: State.leagues.filter(l => l[cfg.leagueSetIdKey] === existing.id).length
@@ -3769,6 +3988,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (league) league[cfg.leagueSetIdKey] = setId;
         saveActiveLeagueState();
         updateRankingsMetaDisplay();
+        return setId;
     }
 
     // Fills a type's <select> with the active league's legacy data (if any), every named set,
@@ -3807,8 +4027,45 @@ function attachScoutSuggestionHandler(outputElId) {
         const deleteBtn = document.getElementById(cfg.deleteBtnId);
         if (nameWrap) nameWrap.style.display = (selectedVal === '__new__') ? 'flex' : 'none';
         if (deleteBtn) deleteBtn.style.display = (selectedVal !== '__new__' && selectedVal !== '__legacy__') ? 'inline-block' : 'none';
+
+        updateRankingSetHeader(type);
+        updateSetLeaguesRow(type);
         
         if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
+    }
+
+    // Header line naming the set the active league actually uses. Kept in the card header (not
+    // the body) so it's still readable with the card collapsed. Reads the league's assignment
+    // rather than the dropdown, which can sit on "+ Create New Set" before anything is saved.
+    function updateRankingSetHeader(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const el = document.getElementById(cfg.headerSetNameId);
+        if (!el) return;
+        const league = getActiveLeague();
+        const text = league ? describeLeagueRankings(type, league) : null;
+        if (!text || text === 'No set') {
+            el.textContent = '';
+            el.removeAttribute('title');
+            return;
+        }
+        el.innerHTML = `Set: <strong>${escapeHtml(text)}</strong>`;
+        el.title = text; // full name on hover when it's truncated
+    }
+
+    // "Used in 2 of 5 leagues · Choose leagues..." under the dropdown. Hidden when there's only
+    // one league (nothing to choose) or no saved set is selected (nothing to apply yet).
+    function updateSetLeaguesRow(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const row = document.getElementById(cfg.leaguesRowId);
+        if (!row) return;
+        const selectEl = document.getElementById(cfg.selectId);
+        const val = selectEl ? selectEl.value : '__new__';
+        const isRealSet = val && val !== '__new__' && val !== '__legacy__';
+        if (!isRealSet || State.leagues.length < 2) { row.style.display = 'none'; return; }
+        const used = State.leagues.filter(l => l[cfg.leagueSetIdKey] === val).length;
+        const summary = document.getElementById(cfg.leaguesSummaryId);
+        if (summary) summary.textContent = `Used in ${used} of ${State.leagues.length} leagues`;
+        row.style.display = '';
     }
 
     // User manually picked a different set (or legacy data, or "create new") from the dropdown.
@@ -3821,6 +4078,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (val === '__new__') {
             if (nameWrap) nameWrap.style.display = 'flex';
             if (deleteBtn) deleteBtn.style.display = 'none';
+            updateSetLeaguesRow(type);
             return; // don't touch State yet -- wait for an actual upload/fetch to create the set
         }
         if (nameWrap) nameWrap.style.display = 'none';
@@ -3844,13 +4102,163 @@ function attachScoutSuggestionHandler(outputElId) {
 
         saveActiveLeagueState();
         updateRankingsMetaDisplay();
+        // Picking a set is the whole job for most visits to this card, so get it out of the way
+        // of the roster/lineup below. The header keeps showing which set is in use.
+        setRankingsCardExpanded(cfg.cardId, false);
 
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab && activeTab.id === 'rosterTab' && typeof loadRosterTab === 'function') loadRosterTab();
         if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
     };
 
-    window.applyRankingSetToAll = async function(type) {
+    // --- CHOOSING WHICH LEAGUES USE A RANKING SET ---
+    // Replaces the old all-or-nothing "Apply this set to all leagues" with a checklist, so a set
+    // can go to three of five leagues without touching the other two ("Select all" covers the
+    // old behavior). Used in three places, all through renderLeaguePicker below:
+    //   * the upload preview modal ("Also use this set in"), so leagues are picked as the set
+    //     is added -- additive only there, leagues already on the set stay locked on;
+    //   * a standalone dialog after Auto-Fetch creates a new set (no preview modal on that path);
+    //   * "Choose leagues..." under the set dropdown, any time -- the one place a league can be
+    //     unchecked off a set, since that's the view built around editing the whole list.
+    // The active league is always checked and locked: choosing a set in its dropdown, or saving
+    // an upload, already assigns the set there.
+
+    // What a league uses for this ranking type right now, for the picker's "Currently:" notes
+    // and the card header. Same priority as hydrateRankingsForLeague.
+    function describeLeagueRankings(type, league) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const setId = league[cfg.leagueSetIdKey];
+        const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+        if (set) return set.name;
+        const legacy = league[cfg.leagueLegacyDataKey];
+        if (Array.isArray(legacy) && legacy.length > 0) return 'Unassigned upload (legacy)';
+        return 'No set';
+    }
+
+    // setId: the set being assigned, or null for one that doesn't exist yet (a new upload).
+    // allowRemove: leagues already on the set can be unchecked (standalone dialog) rather than
+    // shown locked on (upload preview).
+    function renderLeaguePicker(container, type, { setId = null, allowRemove = false, heading = '' } = {}) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const activeId = State.activeLeagueId;
+        const leagues = [...State.leagues].sort((a, b) => (b.leagueId === activeId) - (a.leagueId === activeId));
+
+        let selectableCount = 0;
+        const rows = leagues.map(l => {
+            const isActive = l.leagueId === activeId;
+            const onSet = !!setId && l[cfg.leagueSetIdKey] === setId;
+            const locked = isActive || (onSet && !allowRemove);
+            if (!locked) selectableCount++;
+            const note = isActive ? 'This league'
+                : onSet ? 'Already using this set'
+                : `Currently: ${describeLeagueRankings(type, l)}`;
+            return `
+                <label class="mls-league-picker-row${locked ? ' is-locked' : ''}">
+                    <input type="checkbox" value="${escapeHtml(l.leagueId)}" data-was-on="${onSet ? '1' : '0'}"${(isActive || onSet) ? ' checked' : ''}${locked ? ' disabled' : ''}>
+                    <span class="mls-league-picker-text">
+                        <span class="mls-league-picker-name">${escapeHtml(l.name || 'Unnamed league')}</span>
+                        <span class="mls-league-picker-note">${escapeHtml(note)}</span>
+                    </span>
+                </label>`;
+        }).join('');
+
+        container.innerHTML = `
+            <div class="mls-league-picker-head">
+                <span>${escapeHtml(heading)}</span>
+                ${selectableCount > 1 ? '<button type="button" class="mls-btn-sm btn-link-inline" data-picker-all>Select all</button>' : ''}
+            </div>
+            <div class="mls-league-picker-list">${rows}</div>`;
+
+        // Property handlers rather than addEventListener: the same container is re-rendered on
+        // every open, and this keeps it to exactly one handler each.
+        const boxes = () => [...container.querySelectorAll('input[type="checkbox"]:not(:disabled)')];
+        const syncAllLabel = () => {
+            const btn = container.querySelector('[data-picker-all]');
+            if (btn) btn.textContent = boxes().every(b => b.checked) ? 'Clear all' : 'Select all';
+        };
+        container.onclick = (e) => {
+            if (!e.target.closest('[data-picker-all]')) return;
+            const turnOn = !boxes().every(b => b.checked);
+            boxes().forEach(b => { b.checked = turnOn; });
+            syncAllLabel();
+        };
+        container.onchange = syncAllLabel;
+        syncAllLabel();
+    }
+
+    function readLeaguePicker(container) {
+        const boxes = [...container.querySelectorAll('input[type="checkbox"]:not(:disabled)')];
+        return {
+            add: boxes.filter(b => b.checked && b.dataset.wasOn !== '1').map(b => b.value),
+            remove: boxes.filter(b => !b.checked && b.dataset.wasOn === '1').map(b => b.value)
+        };
+    }
+
+    // Removing a league leaves it with no set of this type (its legacy upload, if it still has
+    // one, takes over -- same fallback hydrateRankingsForLeague already uses). Never touches the
+    // active league: the picker locks that row, and this double-checks rather than trusting it.
+    function assignSetToLeagues(type, setId, { add = [], remove = [] } = {}) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        if (!setId || (add.length === 0 && remove.length === 0)) return;
+        State.leagues.forEach(l => {
+            if (l.leagueId === State.activeLeagueId) return;
+            if (add.includes(l.leagueId)) l[cfg.leagueSetIdKey] = setId;
+            else if (remove.includes(l.leagueId) && l[cfg.leagueSetIdKey] === setId) l[cfg.leagueSetIdKey] = null;
+        });
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        updateSetLeaguesRow(type);
+    }
+
+    // Standalone picker dialog. Resolves { add, remove } on Save, or null on Cancel / Escape /
+    // backdrop click. Same close behavior as showConfirm in utils.js.
+    let leaguePickerOpen = false;
+    function openLeaguePickerDialog(type, set, { title, intro, allowRemove = false, confirmText = 'Save', cancelText = 'Cancel' } = {}) {
+        const overlay = document.getElementById('rankingLeaguesOverlay');
+        if (!overlay || leaguePickerOpen) return Promise.resolve(null);
+        const titleEl = document.getElementById('rankingLeaguesTitle');
+        const introEl = document.getElementById('rankingLeaguesIntro');
+        const listEl = document.getElementById('rankingLeaguesList');
+        const okBtn = overlay.querySelector('[data-league-picker="ok"]');
+        const cancelBtn = overlay.querySelector('[data-league-picker="cancel"]');
+
+        if (titleEl) titleEl.textContent = title || `Leagues using "${set.name}"`;
+        if (introEl) introEl.textContent = intro || '';
+        if (okBtn) okBtn.textContent = confirmText;
+        if (cancelBtn) cancelBtn.textContent = cancelText;
+        renderLeaguePicker(listEl, type, { setId: set.id, allowRemove });
+
+        leaguePickerOpen = true;
+        overlay.style.display = 'flex';
+
+        return new Promise(resolve => {
+            let trap = null;
+            function settle(result) {
+                if (!leaguePickerOpen) return;
+                leaguePickerOpen = false;
+                overlay.style.display = 'none';
+                okBtn.removeEventListener('click', onOk);
+                cancelBtn.removeEventListener('click', onCancel);
+                overlay.removeEventListener('mousedown', onBackdrop);
+                if (trap) trap.deactivate();
+                resolve(result);
+            }
+            function onOk() { settle(readLeaguePicker(listEl)); }
+            function onCancel() { settle(null); }
+            function onBackdrop(e) { if (e.target === overlay) settle(null); }
+            okBtn.addEventListener('click', onOk);
+            cancelBtn.addEventListener('click', onCancel);
+            overlay.addEventListener('mousedown', onBackdrop);
+            if (typeof window.createFocusTrap === 'function') {
+                trap = window.createFocusTrap(overlay, { onEscape: () => settle(null) });
+                trap.activate();
+            }
+        });
+    }
+
+    function leagueCountText(n) { return `${n} league${n === 1 ? '' : 's'}`; }
+
+    // "Choose leagues..." link under the set dropdown.
+    window.openRankingSetLeagues = async function(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const selectEl = document.getElementById(cfg.selectId);
         const val = selectEl ? selectEl.value : null;
@@ -3860,18 +4268,24 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
         if (val === '__legacy__') {
-            if (window.showToast) window.showToast("Cannot apply legacy data to all leagues. Upload it as a new set first.", { isError: true });
+            if (window.showToast) window.showToast("Legacy data can't be shared with other leagues. Upload it as a new set first.", { isError: true });
             return;
         }
+        const set = State.rankingSets[cfg.setsKey].find(s => s.id === val);
+        if (!set) return;
 
-        if (!await window.showConfirm("Every league you've synced will be pointed at this ranking set, replacing whatever each one uses now.", { title: 'Apply to all leagues?', confirmText: 'Apply to All' })) return;
-
-        State.leagues.forEach(l => {
-            l[cfg.leagueSetIdKey] = val;
+        const result = await openLeaguePickerDialog(type, set, {
+            allowRemove: true,
+            intro: `Check each league that should use this ${cfg.label} set. Unchecking a league leaves it with no ${cfg.label} set until you pick one there.`
         });
-
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-        if (window.showToast) window.showToast(`Applied to all ${State.leagues.length} leagues!`);
+        if (!result) return;
+        if (result.add.length === 0 && result.remove.length === 0) {
+            if (window.showToast) window.showToast('No changes made.');
+            return;
+        }
+        assignSetToLeagues(type, set.id, result);
+        const usedCount = State.leagues.filter(l => l[cfg.leagueSetIdKey] === set.id).length;
+        if (window.showToast) window.showToast(`"${set.name}" is now used in ${leagueCountText(usedCount)}.`);
     };
 
     // Deletes the currently-selected named set entirely. Any league referencing it (not just
@@ -4118,6 +4532,21 @@ function attachScoutSuggestionHandler(outputElId) {
             }
             targetEl.style.display = 'block';
         }
+        // Other leagues to point at this set, chosen as it's added. Hidden with a single league.
+        const leaguesEl = document.getElementById('rankingsPreviewLeagues');
+        if (leaguesEl) {
+            if (State.leagues.length > 1) {
+                renderLeaguePicker(leaguesEl, isWeekly ? 'weekly' : 'ros', {
+                    setId: target && target.mode === 'replace' ? target.id : null,
+                    heading: 'Also use this set in'
+                });
+                leaguesEl.style.display = 'block';
+            } else {
+                leaguesEl.innerHTML = '';
+                leaguesEl.style.display = 'none';
+            }
+        }
+
         if (confirmBtn) {
             const isReplace = !!(target && target.mode === 'replace');
             confirmBtn.className = isReplace ? 'btn btn-danger' : 'btn btn-primary';
@@ -4150,10 +4579,25 @@ function attachScoutSuggestionHandler(outputElId) {
 
     window.confirmRankingsPreview = function() {
         if (!pendingRankingsUpload) return;
-        const { parsedData, hasNewSos, isWeekly, successMsgId } = pendingRankingsUpload;
+        const { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds } = pendingRankingsUpload;
+        const type = isWeekly ? 'weekly' : 'ros';
 
-        if (isWeekly) saveRankingsAsSet('weekly', parsedData);
-        else saveRankingsAsSet('ros', parsedData);
+        // Clear the file input(s) on save too, not just on cancel. Browsers only fire 'change'
+        // when the selection differs, so re-picking the same filename next week (a re-downloaded
+        // "rankings.csv", say) silently did nothing while the old selection was still sitting there.
+        (fileInputIds || []).forEach(id => {
+            const input = document.getElementById(id);
+            if (input) input.value = '';
+        });
+
+        // Read the league checklist before saving: saveRankingsAsSet re-renders the card, but
+        // the modal's picker is separate, and this is the moment the choice is final.
+        const leaguesEl = document.getElementById('rankingsPreviewLeagues');
+        const leagueChoice = (leaguesEl && leaguesEl.style.display !== 'none') ? readLeaguePicker(leaguesEl) : { add: [], remove: [] };
+
+        const savedSetId = saveRankingsAsSet(type, parsedData);
+        assignSetToLeagues(type, savedSetId, { add: leagueChoice.add });
+        setRankingsCardExpanded(RANKING_TYPE_CONFIG[type].cardId, false);
 
         if (hasNewSos) {
             localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
@@ -4174,11 +4618,13 @@ function attachScoutSuggestionHandler(outputElId) {
             let rankType = isWeekly ? "Weekly" : "ROS";
             let isFirstTime = !localStorage.getItem('mls_has_seen_rankings_toast');
 
+            const alsoText = leagueChoice.add.length ? ` Also applied to ${leagueCountText(leagueChoice.add.length)}.` : '';
+
             if (isFirstTime) {
-                window.showToast(`${rankType} Rankings loaded! \n\nTip: We saved this as a reusable set. When you switch to another league, select it from the dropdown to apply it there too!`, { duration: 6000 });
+                window.showToast(`${rankType} Rankings loaded!${alsoText} \n\nTip: We saved this as a reusable set. Use "Choose leagues..." under the set dropdown to share it with more of your leagues any time.`, { duration: 6000 });
                 localStorage.setItem('mls_has_seen_rankings_toast', 'true');
             } else {
-                window.showToast(`${rankType} Rankings loaded successfully!`);
+                window.showToast(`${rankType} Rankings loaded successfully!${alsoText}`);
             }
         }
 
@@ -4407,12 +4853,35 @@ function attachScoutSuggestionHandler(outputElId) {
                 }
             }
 
-            saveRankingsAsSet('ros', rosRankings);
+            const savedSetId = saveRankingsAsSet('ros', rosRankings);
+            setRankingsCardExpanded('rosRankingsCard', false);
 
             if (window.showToast) window.showToast(`ROS Rankings pulled: ${rosRankings.length} players (${formatText})`);
 
             const activeTab = document.querySelector('.tab-content.active');
             if (activeTab && activeTab.id === 'rosterTab') loadRosterTab();
+
+            // Uploads choose leagues in their preview modal; this path has none, so a brand-new
+            // set offers the same choice right after saving. A replaced set already carries its
+            // leagues with it, so there's nothing to ask.
+            const newSet = target.mode === 'new' && State.rankingSets.ros.find(s => s.id === savedSetId);
+            if (newSet && State.leagues.length > 1) {
+                // The fetch itself is done -- restore the button now rather than leaving it on
+                // "Fetching..." behind the dialog (finally below repeats this harmlessly).
+                btn.innerText = origText;
+                btn.style.opacity = "1";
+                btn.disabled = false;
+                const choice = await openLeaguePickerDialog('ros', newSet, {
+                    title: 'Use this set in other leagues?',
+                    intro: `"${newSet.name}" is saved for this league. Check any others that should use it too.`,
+                    confirmText: 'Apply',
+                    cancelText: 'Just This League'
+                });
+                if (choice && choice.add.length) {
+                    assignSetToLeagues('ros', newSet.id, { add: choice.add });
+                    if (window.showToast) window.showToast(`"${newSet.name}" also applied to ${leagueCountText(choice.add.length)}.`);
+                }
+            }
 
         } catch (error) {
             console.error("Error auto-fetching ROS rankings:", error);
@@ -4891,6 +5360,11 @@ function applyMarketSettingsToUI() {
 
         let league = getActiveLeague();
         let rosterMap = league ? (league.globalRosterMap || {}) : {};
+        // Manual / handoff leagues only know YOUR players, so "not in rosterMap" can't mean
+        // "free agent" there -- see isFullyMappedLeague. Those leagues get the same neutral
+        // "Not Yours" wording the All My Leagues search already uses, with a tooltip saying why.
+        const knowsWholeLeague = isFullyMappedLeague(league);
+        const notYoursTitle = "Manual league: this app only knows your roster, so it can't tell whether he's a free agent or on another team. Check your league's site before putting in a claim.";
 
         let analysisList = [];
 
@@ -5008,7 +5482,10 @@ function applyMarketSettingsToUI() {
                 High-Value Targets (Market Sleeping)
             </div>`;
             buyItems.forEach(item => {
-                let ownerStr = item.owner === "You" ? `<span style="color:#60a5fa;">On your roster</span>` : (item.owner ? `Rostered by: ${item.owner}` : `<span style="color:var(--primary-green);">Free Agent</span>`);
+                let ownerStr = item.owner === "You" ? `<span style="color:#60a5fa;">On your roster</span>`
+                    : item.owner ? `Rostered by: ${item.owner}`
+                    : knowsWholeLeague ? `<span style="color:var(--primary-green);">Free Agent</span>`
+                    : `<span style="color:var(--text-muted);" title="${notYoursTitle}">Not on your roster</span>`;
                 html += `
                 <div class="scout-result-card">
                     <div>
@@ -5188,6 +5665,9 @@ function applyMarketSettingsToUI() {
     }
 
     function loadRosterTab() {
+        // Every roster change funnels through here (manual add/remove, Roster tab delete,
+        // re-sync), so this keeps the Settings "Added this session" list in step with it.
+        renderManualAddLog();
         let league = getActiveLeague();
         const syncBtn = document.getElementById('rosterSyncBtn');
         const headerNameEl = document.getElementById('rosterLeagueHeader');
@@ -5266,7 +5746,11 @@ function applyMarketSettingsToUI() {
             // broke up the list's rhythm at phone width. Grouped so they wrap as one unit.
             // Ordered most-permanent first: rookie holds all season, so it keeps a fixed spot
             // beside the name; injury and bye come and go after it without shifting it.
-            let statusBadges = [rookieBadge, injBadge, byeBadge].filter(Boolean).join('');
+            // Same TAXI badge the Lineup tab's bench uses. isTaxi is set at Sleeper sync time, so
+            // manual leagues never show it. Sits right after rookie: both are season-long
+            // roster-status markers, so they stay fixed ahead of injury/bye.
+            let taxiBadge = p.isTaxi ? `<span class="badge taxi-badge" title="Taxi squad">TAXI</span>` : "";
+            let statusBadges = [rookieBadge, taxiBadge, injBadge, byeBadge].filter(Boolean).join('');
             
             html += `
             <div class="roster-item">
@@ -6148,7 +6632,11 @@ window.syncAllLeagues = async function(btn) {
                 // clear anything, the opposite of what tapping a "locked" icon implies. Instead
                 // this calls overrideAutoLock(), the failsafe for when the underlying kickoff/
                 // Sleeper data turns out to be wrong about this specific player.
-                let lockControl = (p.autoLocked && !locksList.includes(p.id))
+                // Computed once so the control and the text badge below can never disagree --
+                // a player can carry a stale autoLocked flag after the keep-swaps-sticky path
+                // adds them to locksList, and in that case both should treat it as a manual lock.
+                let isAutoLock = p.autoLocked && !locksList.includes(p.id);
+                let lockControl = isAutoLock
                     ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
                     : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>`;
 
@@ -6164,7 +6652,15 @@ window.syncAllLeagues = async function(btn) {
                 if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
                     sleeperWarn = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; font-size: 0.65rem; margin-left: 4px;">Bench in Sleeper</span>`;
                 }
-                let badgesRow = [injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
+                // Text version of the padlock's state. Without it, manual vs auto lock differ
+                // only by icon tint (green vs blue) plus a title= tooltip that never shows on a
+                // phone. Worded AUTO-LOCKED rather than naming the reason, because the kickoff
+                // badge on this same row already says "Started"/"Final" -- this adds the part
+                // that badge can't say (a started bench player shows "Started" too).
+                let lockBadge = !p.isLocked ? ""
+                    : isAutoLock ? `<span class="badge mls-autolock-badge">AUTO-LOCKED</span>`
+                    : `<span class="badge mls-lock-badge">LOCKED</span>`;
+                let badgesRow = [lockBadge, injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
 
                 // The slot badge below already spells out the position for strict slots (RB1
                 // always holds an RB, etc), so a second colored position pill there is pure
@@ -6931,8 +7427,27 @@ window.runGlobalInjuryAudit = async function(btn) {
         }
 
     } catch (err) {
-        console.error(err);
-        outputEl.innerHTML = `<span class="mls-error-text">Failed to run audit. Check console for details.</span>`;
+        console.error('Global injury audit failed:', err);
+        // Every message says the audit didn't finish, on purpose: an empty results panel after
+        // an audit reads as "all clear," which is the one conclusion a failed run must not
+        // leave behind. Three realistic causes, each with its own fix:
+        //   * Connection -- the forced-fresh player map (~5MB) or a league's roster fetch
+        //     failed or timed out. Common on phone data; retrying is the fix.
+        //   * SyntaxError -- neither getSleeperPlayerMap nor getSleeperLeagueRosters checks
+        //     res.ok, so when Sleeper is down or rate-limiting, its HTML/plain-text error page
+        //     gets fed to res.json() and fails here. Not the person's connection, so telling
+        //     them to check it would send them the wrong way.
+        //   * Anything else -- a saved league whose data isn't shaped the way the audit
+        //     expects. Re-syncing rewrites it.
+        let msg;
+        if (isConnectionError(err)) {
+            msg = `Couldn't reach Sleeper for current injury statuses, so the audit didn't finish - no leagues were checked. Check your connection and tap Run Global Audit again.`;
+        } else if (err && err.name === 'SyntaxError') {
+            msg = `Sleeper sent back an unexpected response, so the audit didn't finish - no leagues were checked. Sleeper may be having problems; try Run Global Audit again in a few minutes.`;
+        } else {
+            msg = `The audit stopped partway through, so treat this as no result, not an all-clear. Some saved league data may be out of date - tap Sync All Leagues on the Dashboard, then run the audit again.`;
+        }
+        outputEl.innerHTML = `<span class="mls-error-text">${msg}</span>`;
     } finally {
         btn.innerHTML = origText;
         btn.disabled = false;
@@ -6979,8 +7494,15 @@ window.runMatchupSim = async function() {
 
     try {
         const nflState = await getNflState();
+        // getNflState returns null only when Sleeper answered with an error status (a network
+        // failure throws instead, and lands in the connection branch of the catch below). This
+        // used to throw a generic Error here, which the catch had no way to tell apart from a
+        // bug -- so it's reported in place, like the other early exits in this function.
         if (!nflState || typeof nflState.week !== 'number') {
-            throw new Error("Could not determine the current NFL week.");
+            const msg = "Sleeper didn't return the current NFL week, so the simulation didn't run. Sleeper may be having problems - try Run Matchup Simulations again in a few minutes.";
+            showSimNotice(msg, { isError: true });
+            if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
+            return;
         }
         const currentWeek = nflState.week;
         const season = nflState.league_season || nflState.season;
@@ -7256,8 +7778,26 @@ window.runMatchupSim = async function() {
 
         runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, waiverInsights, currentWeek });
     } catch (err) {
-        console.error(err);
-        const msg = "Failed to run the matchup simulation. Check the console for details.";
+        console.error('Matchup simulation failed:', err);
+        // Same three-way split as runGlobalInjuryAudit's catch, for the same reasons:
+        //   * Connection -- any of the Sleeper calls above (matchups, weekly stats, the ~5MB
+        //     player map) failed or timed out. Retrying is the fix.
+        //   * SyntaxError -- getSleeperPlayerMap doesn't check res.ok, so a Sleeper outage or
+        //     rate-limit page fails in res.json(). Sleeper's side, not the person's connection.
+        //   * Anything else -- most likely the saved lineup/roster for this league isn't in
+        //     the shape this function expects (a non-ok matchups response lands here too,
+        //     which in practice means the stored league ID is stale). Re-syncing rewrites both.
+        // Worker failures never reach this catch -- runMatchupSimulation reports those itself.
+        // Escaped because both showSimNotice and showToast write their message as HTML.
+        const leagueName = escapeHtml(league.name || 'this league');
+        let msg;
+        if (isConnectionError(err)) {
+            msg = `Couldn't reach Sleeper, so the simulation for ${leagueName} didn't run. Check your connection and tap Run Matchup Simulations again.`;
+        } else if (err && err.name === 'SyntaxError') {
+            msg = `Sleeper sent back an unexpected response, so the simulation for ${leagueName} didn't run. Sleeper may be having problems - try again in a few minutes.`;
+        } else {
+            msg = `Couldn't run the simulation for ${leagueName} - its saved lineup or roster data may be out of date. Tap Sync All Leagues on the Dashboard, then run it again.`;
+        }
         showSimNotice(msg, { isError: true });
         if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
     } finally {
