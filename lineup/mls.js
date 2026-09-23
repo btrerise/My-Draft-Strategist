@@ -1480,6 +1480,31 @@ function attachScoutSuggestionHandler(outputElId) {
         if (typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
     };
 
+    // Loads a league's own ROS/Weekly rankings into State (its saved named set, else the
+    // rankings stored on the league itself, else none). State.rosRankings/weeklyRankings are
+    // what the optimizer and every card read, so anything that works league-by-league
+    // (switchActiveLeague, Optimize All, Sync All) has to call this per league first, or
+    // league B gets optimized with league A's rankings.
+    function hydrateRankingsForLeague(league) {
+        if (!league) return;
+        ['ros', 'weekly'].forEach(type => {
+            const cfg = RANKING_TYPE_CONFIG[type];
+            const setId = league[cfg.leagueSetIdKey];
+            const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+
+            if (set) {
+                State[cfg.stateKey] = [...set.data];
+                State[cfg.updatedAtKey] = set.updatedAt;
+            } else if (Array.isArray(league[cfg.leagueLegacyDataKey]) && league[cfg.leagueLegacyDataKey].length > 0) {
+                State[cfg.stateKey] = [...league[cfg.leagueLegacyDataKey]];
+                State[cfg.updatedAtKey] = league[cfg.leagueLegacyUpdatedKey] || null;
+            } else {
+                State[cfg.stateKey] = [];
+                State[cfg.updatedAtKey] = null;
+            }
+        });
+    }
+
     window.switchActiveLeague = function(leagueId) {
         if (!leagueId) return;
         State.activeLeagueId = leagueId;
@@ -1497,23 +1522,7 @@ function attachScoutSuggestionHandler(outputElId) {
         // another league had most recently active, rather than genuinely remembering its own.
         let league = getActiveLeague();
         if (league) {
-            ['ros', 'weekly'].forEach(type => {
-                const cfg = RANKING_TYPE_CONFIG[type];
-                const setId = league[cfg.leagueSetIdKey];
-                const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
-
-                if (set) {
-                    State[cfg.stateKey] = [...set.data];
-                    State[cfg.updatedAtKey] = set.updatedAt;
-                } else if (Array.isArray(league[cfg.leagueLegacyDataKey]) && league[cfg.leagueLegacyDataKey].length > 0) {
-                    State[cfg.stateKey] = [...league[cfg.leagueLegacyDataKey]];
-                    State[cfg.updatedAtKey] = league[cfg.leagueLegacyUpdatedKey] || null;
-                } else {
-                    State[cfg.stateKey] = [];
-                    State[cfg.updatedAtKey] = null;
-                }
-            });
-            
+            hydrateRankingsForLeague(league);
             updateRankingsMetaDisplay();
         }
 
@@ -1533,11 +1542,10 @@ function attachScoutSuggestionHandler(outputElId) {
         if (waiverInput && waiverInput.value.trim() !== '') runScout('waiver');
         else if (waiverOutput) waiverOutput.innerHTML = '';
         
-        const buyInput = document.getElementById('buyInput');
-        const sellInput = document.getElementById('sellInput');
-        const tradeOutput = document.getElementById('tradeOutput');
-        if (buyInput && sellInput && (buyInput.value.trim() !== '' || sellInput.value.trim() !== '')) runScout('trade');
-        else if (tradeOutput) tradeOutput.innerHTML = '';
+        // Trade Analyzer and Positional Power Rankings were already cleared by
+        // loadActiveLeagueData above (see clearLeagueScopedResults). The trade used to be
+        // re-run here against the new league, but a trade is built from one league's rosters,
+        // so carrying it over to another league didn't make sense.
 
         // Same reasoning as the two output panes above, and the sim card is the worst of the
         // three to leave behind: it's headed "Your Team 61.4%" with no league name on it, so
@@ -1603,7 +1611,35 @@ function attachScoutSuggestionHandler(outputElId) {
         }
         localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
     }
+    // --- LEAGUE-SCOPED SCOUT RESULTS ---
+    // The Trade Analyzer (the players typed into both sides, plus its verdict and the dynamic
+    // waiver-adjustment hint naming the old league's free agents) and the Positional Power
+    // Rankings table both describe ONE league. Left on screen after a switch, they read as
+    // results for the league now shown in the header. Cleared from loadActiveLeagueData, the
+    // one call every active-league change shares (header switcher, arrows, deleting the active
+    // league, adding or importing a new one), and only when the id actually changed -- so
+    // re-syncing the same league, or Optimize All handing control back to the league you
+    // started on, leaves them alone.
+    let _scoutResultsLeagueId = State.activeLeagueId;
+    function clearLeagueScopedResults() {
+        if (State.activeLeagueId === _scoutResultsLeagueId) return;
+        _scoutResultsLeagueId = State.activeLeagueId;
+
+        ['buyInput', 'sellInput'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        const tradeOutput = document.getElementById('tradeOutput');
+        if (tradeOutput) tradeOutput.innerHTML = '';
+        const adjustHint = document.getElementById('tradeWaiverAdjustHint');
+        if (adjustHint) { adjustHint.innerText = ''; adjustHint.style.display = 'none'; }
+
+        const powerOut = document.getElementById('powerRankingsOutput');
+        if (powerOut) { powerOut.innerHTML = ''; powerOut.style.display = 'none'; }
+    }
+
     function loadActiveLeagueData() {
+        clearLeagueScopedResults();
         let league = getActiveLeague();
         if (!league) return;
         
@@ -3453,6 +3489,30 @@ function attachScoutSuggestionHandler(outputElId) {
                 : [{ key: posFilter, filter: posFilter, items: freeAgents }];
             const groupName = (g) => g.filter === 'FLEX' ? 'RB/WR/TE' : g.filter;
 
+            // How many players the scan rankings rank at each position (resolved the same way the
+            // free agents are). Lets an empty group say WHY it's empty -- "everyone it ranks is
+            // already rostered" vs "this file doesn't rank that position at all" -- instead of
+            // disappearing. Before this, All mode silently dropped any position with no
+            // available players (a shallow QB list in a deep league, or an RB list whose every
+            // name was taken), which read as the position being skipped.
+            const rankedAtPos = {};
+            scanRankings.forEach(r => {
+                if (!r || !r.cleanName || isDraftPickName(r.name)) return;
+                const pos = ctx.getPos(r.cleanName);
+                if (pos && pos !== 'UNK') rankedAtPos[pos] = (rankedAtPos[pos] || 0) + 1;
+            });
+            const rankedIn = (g) => WAIVER_SCAN_POSITIONS
+                .filter(pos => matchesPosFilter(pos, g.filter))
+                .reduce((n, pos) => n + (rankedAtPos[pos] || 0), 0);
+            // Shown when a group has no available players at all (not merely none that start
+            // or upgrade -- those keep their own wording).
+            const noneAvailableText = (g) => {
+                const n = rankedIn(g);
+                return n > 0
+                    ? `Every ${groupName(g)} in your ${basisName} rankings (${n} ranked) is already rostered in this league.`
+                    : `Your ${basisName} rankings don't include any ${groupName(g)}.`;
+            };
+
             const renderLineupGroup = (g) => {
                 // This lens answers a this-week question, so a player whose game already kicked
                 // off is no help -- he's filtered out BEFORE the Show Top limit, so "top 10"
@@ -3475,6 +3535,9 @@ function attachScoutSuggestionHandler(outputElId) {
                 let rows = pool.map(ctx.evaluate);
                 if (startersOnly) rows = rows.filter(r => r.verdict && r.verdict.status === 'starts').slice(0, limit);
                 const starts = rows.filter(r => r.verdict && r.verdict.status === 'starts').length;
+                if (g.items.length === 0) {
+                    return { body: `<div class="mls-scan-empty">${noneAvailableText(g)}</div>`, count: 0, countText: 'none available' };
+                }
                 const body = rows.length
                     ? rows.map(r => renderWaiverScanCard(ctx, r)).join('')
                     : `<div class="mls-scan-empty">${startersOnly ? `No available ${groupName(g)} would crack your starting lineup this week.` : `No available ${groupName(g)} found in your ${basisName} rankings.`}</div>`;
@@ -3504,7 +3567,9 @@ function attachScoutSuggestionHandler(outputElId) {
                 <div class="mls-scan-benchmark">
                     <div class="mls-scan-benchmark-title">Drop candidate (by ${basisName}):</div>
                     Your weakest ${groupName(g)} is <strong>${escapeHtml(bench.name)}</strong> (${rankText(bench)}).
-                    ${upgrades.length ? `Available players ranked ahead of him:` : `<div class="mls-scan-benchmark-ok">No available ${groupName(g)} ranks ahead of him; you're set here by ${basisName}.</div>`}
+                    ${upgrades.length ? `Available players ranked ahead of him:`
+                        : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
+                        : `<div class="mls-scan-benchmark-ok">No available ${groupName(g)} ranks ahead of him; you're set here by ${basisName}.</div>`}
                     ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(', ')}</div>` : ''}
                 </div>`;
                 const cards = upgrades.map(fa => {
@@ -3512,11 +3577,17 @@ function attachScoutSuggestionHandler(outputElId) {
                     const line = waiverCompareLine(row.player, bench, null, 'Upgrade over', basisDisplay, basisLabel, basisKind, ctx.scanCross);
                     return renderWaiverScanCard(ctx, row, line);
                 }).join('');
-                return { body: header + cards, count: upgrades.length, countText: upgrades.length ? `${upgrades.length} upgrade${upgrades.length === 1 ? '' : 's'}` : 'no upgrades' };
+                return { body: header + cards, count: upgrades.length, countText: upgrades.length ? `${upgrades.length} upgrade${upgrades.length === 1 ? '' : 's'}` : (g.items.length === 0 ? 'none available' : 'no upgrades') };
             };
 
-            const rendered = groups
-                .filter(g => posFilter !== 'ALL' || g.items.length > 0)
+            // All mode keeps every position the rankings file actually ranks, even when none of
+            // them are available (that group explains itself -- see noneAvailableText). Only
+            // positions the file doesn't rank at all are left out, and the summary names them:
+            // ROS exports commonly skip K/DEF, and a K section that just says "not in your
+            // rankings" under every scan would be noise.
+            const shownGroups = posFilter === 'ALL' ? groups.filter(g => rankedIn(g) > 0) : groups;
+            const unrankedPositions = posFilter === 'ALL' ? groups.filter(g => rankedIn(g) === 0).map(g => g.key) : [];
+            const rendered = shownGroups
                 .map(g => ({ g, ...(mode === 'roster' ? renderRosterGroup(g) : renderLineupGroup(g)) }));
 
             // Summary: what was scanned, what it was compared against, and any caveats.
@@ -3527,6 +3598,10 @@ function attachScoutSuggestionHandler(outputElId) {
             if (mode === 'lineup' && !ctx.lineupReady) notes.push(`Couldn't build a starting lineup for this league yet, so there's no Would Start check - open the Lineup tab and tap Optimize Lineup.`);
             else if (!ctx.checkIsWeekly) notes.push(`No Weekly rankings loaded, so the Would Start check uses ROS ranks (same as the optimizer).`);
             notes.push(...waiverDerivedNotes(ctx));
+            if (unrankedPositions.length > 0) {
+                const list = unrankedPositions.length === 1 ? unrankedPositions[0] : `${unrankedPositions.slice(0, -1).join(', ')} or ${unrankedPositions[unrankedPositions.length - 1]}`;
+                notes.push(`Your ${rankingSetLabel(basis)} don't rank any ${list}, so ${unrankedPositions.length === 1 ? "that position isn't" : "those positions aren't"} shown.`);
+            }
             if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference; renaming them in your rankings file to match Sleeper brings them back.`);
 
             const compareText = waiverCompareText(ctx, mode);
@@ -3536,7 +3611,9 @@ function attachScoutSuggestionHandler(outputElId) {
                 ${notes.length ? `<ul class="mls-scan-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}
             </div>`;
 
-            if (rendered.length > 1) {
+            // All mode always gets section headers, even if only one position survives -- the
+            // header is what says which position a headerless list would be.
+            if (rendered.length > 1 || (posFilter === 'ALL' && rendered.length === 1)) {
                 html += rendered.map(({ g, body, count, countText }) => {
                     const sectionId = `waiverScanSection${g.key}`;
                     return `
@@ -5046,6 +5123,47 @@ function applyMarketSettingsToUI() {
 };
 
     // --- RENDERERS ---
+    // --- ROOKIE LOOKUP (Roster tab "R" badge) ---
+    // Rookie status isn't stored on league.roster -- it comes from Sleeper's years_exp (0 in a
+    // player's rookie season), the same field the Matchup Simulator's rookie badge reads.
+    // Looked up at render time rather than saved at sync so it can't go stale when the season
+    // rolls over, and so leagues synced before this existed get badges without a re-sync.
+    // Matched by Sleeper id first (synced leagues); manual and Draft Strategist handoff rosters
+    // carry made-up ids ('p_...'), so those fall back to the normalized name -- on a name
+    // collision preferring the player with an NFL team, like getSleeperMetaByName.
+    let _rookieIndex = null;
+    let _rookieIndexPromise = null;
+    function getRookieIndex() {
+        if (_rookieIndexPromise) return _rookieIndexPromise;
+        _rookieIndexPromise = getSleeperPlayerMap().then(map => {
+            const rookieIds = new Set();
+            const knownIds = new Set();
+            const byName = new Map();
+            Object.entries(map).forEach(([id, p]) => {
+                knownIds.add(id);
+                const rookie = p.years_exp === 0;
+                if (rookie) rookieIds.add(id);
+                if (!p.first_name) return;
+                const clean = normalizeName(`${p.first_name} ${p.last_name}`);
+                const prev = byName.get(clean);
+                if (!prev || (!prev.team && p.team)) byName.set(clean, { rookie, team: p.team || null });
+            });
+            _rookieIndex = { rookieIds, knownIds, byName };
+            return _rookieIndex;
+        }).catch(err => {
+            _rookieIndexPromise = null;
+            throw err;
+        });
+        return _rookieIndexPromise;
+    }
+
+    function isRookiePlayer(p, idx) {
+        if (!idx || !p) return false;
+        if (p.id && idx.knownIds.has(String(p.id))) return idx.rookieIds.has(String(p.id));
+        const entry = idx.byName.get(p.cleanName);
+        return !!(entry && entry.rookie);
+    }
+
     function loadRosterTab() {
         let league = getActiveLeague();
         const syncBtn = document.getElementById('rosterSyncBtn');
@@ -5081,6 +5199,16 @@ function applyMarketSettingsToUI() {
             return;
         }
         
+        // Rookie badges need the Sleeper player map. It's usually already cached for the
+        // session; the first time it isn't, the roster renders now without badges and
+        // re-renders once the lookup lands. That happens at most once per session: after it
+        // resolves, _rookieIndex is set and this branch is skipped. A failed lookup just
+        // leaves the badges off.
+        const rookieIdx = _rookieIndex;
+        if (!rookieIdx) {
+            getRookieIndex().then(() => loadRosterTab()).catch(e => console.warn('Rookie badges unavailable: Sleeper player map could not be loaded.', e));
+        }
+
         const rosIndex = rankingIndex(State.rosRankings);
         let displayRoster = league.roster.map(p => {
             let rObj = rosIndex.get(p.cleanName);
@@ -5108,15 +5236,21 @@ function applyMarketSettingsToUI() {
             let byeBadge = getByeBadgeHTML(p.team);
             let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
-            let badgesRow = [injBadge, byeBadge].filter(Boolean).join(' ');
+            // Same "R" badge as MDS roster cards and the Matchup Simulator.
+            let rookieBadge = isRookiePlayer(p, rookieIdx) ? `<span class="badge badge-rookie" title="Rookie" aria-label="Rookie">R</span>` : "";
+            // Status badges ride on the name line (see .mls-name-badges) rather than a row of
+            // their own: a separate row made badged cards a line taller than the rest, which
+            // broke up the list's rhythm at phone width. Grouped so they wrap as one unit.
+            // Ordered most-permanent first: rookie holds all season, so it keeps a fixed spot
+            // beside the name; injury and bye come and go after it without shifting it.
+            let statusBadges = [rookieBadge, injBadge, byeBadge].filter(Boolean).join('');
             
             html += `
             <div class="roster-item">
                 <div class="mls-player-row-info">
                     <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
                     <div class="mls-player-row-text">
-                        <div class="player-name-wrap">${p.name}${byeStr}</div>
-                        ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
+                        <div class="player-name-wrap">${p.name}${byeStr}${statusBadges ? ` <span class="mls-name-badges">${statusBadges}</span>` : ''}</div>
                         <div class="mls-player-row-meta">
                             <span class="badge">${p.team}</span>
                             <span class="badge mls-rank-badge">${rankBadge}</span>
@@ -5700,16 +5834,8 @@ function applyMarketSettingsToUI() {
 
                     State.activeLeagueId = l.leagueId;
 
-                    // Manually hydrate rankings for this specific league so the optimizer uses the correct set
-                    ['ros', 'weekly'].forEach(type => {
-                        const cfg = RANKING_TYPE_CONFIG[type];
-                        const setId = l[cfg.leagueSetIdKey];
-                        const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
-
-                        if (set) State[cfg.stateKey] = [...set.data];
-                        else if (Array.isArray(l[cfg.leagueLegacyDataKey]) && l[cfg.leagueLegacyDataKey].length > 0) State[cfg.stateKey] = [...l[cfg.leagueLegacyDataKey]];
-                        else State[cfg.stateKey] = [];
-                    });
+                    // Hydrate this league's own rankings so the optimizer uses the correct set
+                    hydrateRankingsForLeague(l);
 
                     window.optimizeLineup(true, false, { batch: true });
                 });
@@ -5775,6 +5901,13 @@ window.syncAllLeagues = async function(btn) {
 
         // Brief timeout ensures UI button state updates before locking the main thread
         setTimeout(async () => {
+            // processSleeperData makes each league active in turn (it's shared with the
+            // single-league sync, where that's the point), so without this the loop ended on
+            // whichever league synced last: the header still named yours, but the Lineup and
+            // Roster tabs showed the last league's roster scored with your league's rankings,
+            // and the app reopened on that league next visit. Put back in the finally below,
+            // the same way optimizeAllLineups restores it.
+            const originalActiveId = State.activeLeagueId;
             try {
                 // Preload the heavy player map ONCE to save massive API bandwidth
                 const playerMap = await getSleeperPlayerMap();
@@ -5804,6 +5937,10 @@ window.syncAllLeagues = async function(btn) {
                     // of a static "Syncing All..." for the whole loop regardless of how many
                     // leagues or how long it takes.
                     btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing ${i + 1}/${sleeperLeagues.length}...`;
+                    // processSleeperData re-optimizes the league it just synced, and the optimizer
+                    // reads whatever rankings are in State -- so load THIS league's first, or every
+                    // league gets a lineup built from the originally active league's rankings.
+                    hydrateRankingsForLeague(l);
                     // isRefresh = true, suppressErrorToast = true, showChangeSummary = true, skipSave = true
                     let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true, true);
                     
@@ -5823,7 +5960,9 @@ window.syncAllLeagues = async function(btn) {
                     }
                 }
 
-                // Single write after the loop instead of one localStorage.setItem per league.
+                // Single write after the loop instead of one localStorage.setItem per league. The
+                // active league is put back first so the one saved is yours, not the last synced.
+                if (originalActiveId && State.leagues.some(x => x.leagueId === originalActiveId)) State.activeLeagueId = originalActiveId;
                 localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
                 localStorage.setItem('mds_season_active_league', State.activeLeagueId);
 
@@ -5876,6 +6015,13 @@ window.syncAllLeagues = async function(btn) {
                 btn.innerHTML = origText;
                 btn.disabled = false;
                 btn.style.opacity = '1';
+
+                // Restore your league even if the loop threw partway: switchActiveLeague puts
+                // back its id AND its rankings (the loop left State holding the last synced
+                // league's), and re-renders the header, league manager and active tab.
+                if (originalActiveId && State.leagues.some(x => x.leagueId === originalActiveId)) {
+                    try { switchActiveLeague(originalActiveId); } catch (e) { console.error('Sync All: could not restore the active league.', e); }
+                }
 
                 // Refresh data states natively
                 if (typeof renderLeagueManager === 'function') renderLeagueManager();
