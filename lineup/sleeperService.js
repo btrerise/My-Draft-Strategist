@@ -17,7 +17,7 @@ async function getWeekStats(season, week) {
     if (cached) return cached;
 
     try {
-        const response = await fetch(`${SLEEPER_BASE_URL}/stats/nfl/regular/${season}/${week}`);
+        const response = await window.mdsFetch(`${SLEEPER_BASE_URL}/stats/nfl/regular/${season}/${week}`);
         if (!response.ok) throw new Error(`Failed to fetch week ${week} stats`);
 
         const data = await response.json();
@@ -124,7 +124,7 @@ export async function getPlayerWeeklyScoreHistory(playerIds, season, throughWeek
  */
 export async function getWeeklyProjections(season = '2026', week) {
     try {
-        const response = await fetch(`${SLEEPER_BASE_URL}/projections/nfl/regular/${season}/${week}`);
+        const response = await window.mdsFetch(`${SLEEPER_BASE_URL}/projections/nfl/regular/${season}/${week}`);
         if (!response.ok) throw new Error('Failed to fetch weekly projections');
         return await response.json();
     } catch (error) {

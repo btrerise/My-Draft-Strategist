@@ -1186,11 +1186,12 @@
 
 <script>
 // --- T-SCORE SHEET AUTO-REFRESH ---
-// Pulls the WR/RB Google Sheets (published to web as CSV, so a plain fetch() works with no
-// auth) and refreshes every data table on this page, plus caches a copy in localStorage that
-// mds.js checks before falling back to the bundled tscore_data.js -- see that file's
-// buildPlayerCardHTML() for the read side of this. This page and MDS share an origin
-// (mydraftstrategist.com), so localStorage is already visible to both without any extra work.
+// Pulls the WR/RB Google Sheets (published to web as CSV, so no auth is needed -- the call
+// goes through window.mdsFetch purely for its timeout, see below) and refreshes every data
+// table on this page, plus caches a copy in localStorage that mds.js checks before falling
+// back to the bundled tscore_data.js -- see that file's buildPlayerCardHTML() for the read
+// side of this. This page and MDS share an origin (mydraftstrategist.com), so localStorage
+// is already visible to both without any extra work.
 const TSCORE_SHEET_URLS = {
     wr: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9ckcq-TOC3soaHNBwbZEGBzd8goU4j10x8UJ4qjIH79_f_oSsf7rZUghstUQ24DYbBTvXr5hAConB/pub?output=csv',
     rb: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQD7lelXI38YKAJhzszarIhjKlbjG5pYv5o2KTc79k1ibWUU1HhO4QcDOMbmnQnXt-O6tqlZSr6oC5s/pub?output=csv'
@@ -1230,7 +1231,13 @@ function tscoreEscapeHtml(str) {
 
 // Fetches and parses one position's sheet into structured player rows.
 async function fetchTScoreSheet(pos) {
-    const res = await fetch(TSCORE_SHEET_URLS[pos]);
+    // window.mdsFetch (utils.js) rather than a bare fetch, for the timeout: refreshTScoreData
+    // disables the Refresh button and only restores it in its finally, so a stalled sheet
+    // request left that button dead for the rest of the session with nothing on screen to say
+    // why. Safe to reach for here even though utils.js loads via <script defer> AFTER this
+    // inline script -- nothing calls this function until the button is pressed, long after
+    // DOMContentLoaded (same reasoning as the Papa/normalizeName note further down).
+    const res = await window.mdsFetch(TSCORE_SHEET_URLS[pos]);
     if (!res.ok) throw new Error(`Could not fetch ${pos.toUpperCase()} sheet (HTTP ${res.status})`);
     const csvText = await res.text();
 

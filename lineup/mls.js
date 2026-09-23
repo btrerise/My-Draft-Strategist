@@ -291,7 +291,11 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         if (State.gameTimesFetchedForWeek === week && Object.keys(State.gameTimesByTeam).length > 0 && !gameStatusMayBeStale()) return Promise.resolve();
 
         State.gameTimesFetchedAt = Date.now();
-        return fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
+        // mdsFetch rather than a bare fetch: a stalled ESPN request would otherwise leave this
+        // promise pending forever, which matters beyond the fire-and-forget callers -- runMatchupSim
+        // awaits this one before deciding whether to use a player's live score, so a hang here
+        // would stall the whole simulation rather than just skip a kickoff badge.
+        return window.mdsFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
             .then(res => res.ok ? res.json() : null)
             .then(data => {
                 if (!data || !Array.isArray(data.events)) return;
