@@ -2325,6 +2325,112 @@ body {
     margin-top: 0.75rem;
     text-align: center;
 }
+.manual-add-feedback:empty { display: none; }
+.manual-add-feedback.is-error { color: #fb923c; }
+
+/* Keyboard hint -- only on devices with a real pointer (desktop), where Enter-to-add applies */
+.mls-manual-key-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0.5rem 0 0;
+}
+.mls-manual-key-hint kbd {
+    font-family: inherit;
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main);
+}
+@media (hover: none) {
+    .mls-manual-key-hint { display: none; }
+}
+
+/* "Added this session" list under Add Player Manually */
+.mls-manual-log:empty { display: none; }
+.mls-manual-log {
+    margin-top: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+.mls-manual-log-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border);
+}
+.mls-manual-log-total {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.mls-manual-log-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 260px;
+    overflow-y: auto;
+}
+.mls-manual-log-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.mls-manual-log-item:last-child { border-bottom: none; }
+.mls-manual-log-item.is-latest {
+    background: rgba(16, 185, 129, 0.10);
+    box-shadow: inset 3px 0 0 var(--primary-green);
+}
+.mls-manual-log-name {
+    color: var(--text-main);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mls-manual-log-meta {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.mls-manual-log-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary-green);
+    white-space: nowrap;
+}
+.mls-manual-log-remove {
+    margin-left: auto;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.mls-manual-log-remove:hover,
+.mls-manual-log-remove:focus-visible {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.10);
+}
 
 /* Danger Zone Card Styling */
 .danger-card {

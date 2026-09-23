@@ -312,7 +312,7 @@
             <summary class="sos-summary">Add Player Manually</summary>
             <div class="accordion-body">
                 <div class="manual-player-grid">
-                    <input type="text" id="manualName" class="form-input" placeholder="Player Name" aria-label="Type in player name">
+                    <input type="text" id="manualName" class="form-input" placeholder="Player Name" autocomplete="off" aria-label="Type in player name" aria-describedby="manualKeyHint">
                     <select id="manualPos" class="form-input" aria-label="Type in player's position">
                         <option value="QB">QB</option>
                         <option value="RB">RB</option>
@@ -321,10 +321,12 @@
                         <option value="K">K</option>
                         <option value="DEF">DEF</option>
                     </select>
-                    <input type="text" id="manualTeam" class="form-input" placeholder="Team" aria-label="Type in player's team">
+                    <input type="text" id="manualTeam" class="form-input" placeholder="Team" autocomplete="off" aria-label="Type in player's team">
                 </div>
+                <p id="manualKeyHint" class="mls-manual-key-hint">Tip: type a name and press <kbd>Enter</kbd> to pick it, then <kbd>Enter</kbd> again to add. Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> when there are several matches.</p>
                 <button class="btn btn-primary mt-2" onclick="addManualPlayer()">Add Player to Active Roster</button>
-                <div id="manualAddMsg" class="manual-add-feedback"></div>
+                <div id="manualAddMsg" class="manual-add-feedback" role="status" aria-live="polite"></div>
+                <div id="manualAddLog" class="mls-manual-log" aria-live="polite"></div>
             </div>
         </details>
         

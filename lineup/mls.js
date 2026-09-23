@@ -832,6 +832,10 @@ function attachPlayerAutocomplete(inputEl, onSelect) {
 
     let matches = [];
     let highlightedIdx = -1;
+    // True between a keystroke and its search results landing. Callers that add their own
+    // Enter behavior (the manual-add form) check this so an Enter pressed before the dropdown
+    // has caught up isn't mistaken for "nothing matched".
+    let pending = false;
 
     function render() {
         if (matches.length === 0) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
@@ -860,9 +864,11 @@ function attachPlayerAutocomplete(inputEl, onSelect) {
     inputEl.addEventListener('input', () => {
         const q = inputEl.value.trim().toLowerCase();
         highlightedIdx = -1;
-        if (q.length < 2) { close(); return; }
+        if (q.length < 2) { pending = false; close(); return; }
+        pending = true;
         getPlayerSearchIndex().then(index => {
             if (inputEl.value.trim().toLowerCase() !== q) return;
+            pending = false;
             const starts = [], contains = [];
             for (const p of index) {
                 if (p.searchKey.startsWith(q)) { starts.push(p); if (starts.length >= 8) break; }
@@ -870,7 +876,7 @@ function attachPlayerAutocomplete(inputEl, onSelect) {
             }
             matches = starts.concat(contains).slice(0, 8);
             render();
-        }).catch(() => {});
+        }).catch(() => { pending = false; });
     });
 
     dropdown.addEventListener('mousedown', (e) => {
@@ -884,11 +890,25 @@ function attachPlayerAutocomplete(inputEl, onSelect) {
         if (matches.length === 0) return;
         if (e.key === 'ArrowDown') { e.preventDefault(); highlightedIdx = Math.min(highlightedIdx + 1, matches.length - 1); render(); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); highlightedIdx = Math.max(highlightedIdx - 1, 0); render(); }
-        else if (e.key === 'Enter') { if (highlightedIdx !== -1) { e.preventDefault(); select(matches[highlightedIdx]); } }
+        else if (e.key === 'Enter') {
+            // Enter takes the arrowed-to row, or the only row when the search has narrowed to
+            // one -- so "type a name, Enter" works without reaching for the arrow keys. With
+            // several rows and none highlighted it stays a no-op rather than guessing.
+            const pick = highlightedIdx !== -1 ? matches[highlightedIdx] : (matches.length === 1 ? matches[0] : null);
+            // preventDefault doubles as the "handled" signal: any Enter listener added after
+            // this one (the manual-add form's save-on-Enter) checks e.defaultPrevented, so the
+            // same keypress can't both pick a player and save them.
+            if (pick) { e.preventDefault(); select(pick); }
+        }
         else if (e.key === 'Escape') { close(); }
     });
 
     inputEl.addEventListener('blur', () => setTimeout(close, 150));
+
+    return {
+        isOpen: () => matches.length > 0,
+        isPending: () => pending
+    };
 }
 
 // Levenshtein (edit) distance math
@@ -946,12 +966,7 @@ function attachScoutSuggestionHandler(outputElId) {
 }
 
     window.onload = function() {
-        attachPlayerAutocomplete(document.getElementById('manualName'), (p) => {
-        const posEl = document.getElementById('manualPos');
-        const teamEl = document.getElementById('manualTeam');
-        if (posEl) posEl.value = p.pos;
-        if (teamEl) teamEl.value = p.team;
-        });
+        initManualAddForm();
         attachPlayerAutocomplete(document.getElementById('simPlayerSearch'), (p) => {
             window.lookupSimPlayer(p);
         });
@@ -1680,6 +1695,7 @@ function attachScoutSuggestionHandler(outputElId) {
         const titleEl = document.getElementById('activeLeagueReqTitle');
         if (titleEl) titleEl.innerText = `(${league.name})`;
         setVal('sleeperUsername', league.username !== "Manual" ? league.username : "");
+        renderManualAddLog(); // show only this league's session adds
     }
 
     window.saveRequirements = function(btn) {
@@ -1714,14 +1730,10 @@ function attachScoutSuggestionHandler(outputElId) {
         localStorage.setItem('mds_season_active_league', State.activeLeagueId);
 
         if (nameInput) nameInput.value = "";
-        refreshLeagueDropdown(); 
+        refreshLeagueDropdown();
         loadActiveLeagueData();
-        
-        let msgEl = document.getElementById('manualAddMsg');
-        if (msgEl) {
-            msgEl.innerText = `Manual League '${name}' Created`;
-            setTimeout(() => msgEl.innerText = "", 3000);
-        }
+
+        setManualAddMsg(`Manual League '${name}' Created`, { clearAfterMs: 3000 });
     };
 
     // --- DRAFT STRATEGIST ROSTER HANDOFF ---
@@ -1792,7 +1804,136 @@ function attachScoutSuggestionHandler(outputElId) {
         if (banner) banner.style.display = 'none';
     };
 
-    window.addManualPlayer = function() {
+    // --- ADD PLAYER MANUALLY: keyboard fast path + "Added this session" list ---
+    // Built for keying in a whole league from the keyboard: type a name, Enter picks the
+    // single (or arrowed-to) suggestion, Enter again saves and clears the field for the next
+    // player. Every add still saves immediately -- there's deliberately no "Submit roster"
+    // step, so closing the tab halfway through a league loses nothing. The list under the form
+    // is the safety net instead: it shows who went in, newest first, with a one-click undo.
+    //
+    // _manualAddLog is in-memory only (resets on reload). It's a record of this sitting's
+    // entries, not a second copy of the roster -- entries are resolved against league.roster at
+    // render time, so a player removed anywhere else (Roster tab, re-sync) just drops out.
+    const _manualAddLog = []; // { leagueId, playerId }, newest first
+    let _manualSelected = null; // last autocomplete pick in the name field
+    let _manualMsgTimer = null;
+
+    function setManualAddMsg(text, { isError = false, clearAfterMs = 0 } = {}) {
+        const msgEl = document.getElementById('manualAddMsg');
+        if (!msgEl) return;
+        clearTimeout(_manualMsgTimer);
+        msgEl.innerText = text || "";
+        msgEl.classList.toggle('is-error', !!(text && isError));
+        if (text && clearAfterMs) _manualMsgTimer = setTimeout(() => setManualAddMsg(""), clearAfterMs);
+    }
+
+    function initManualAddForm() {
+        const nameEl = document.getElementById('manualName');
+        const teamEl = document.getElementById('manualTeam');
+        const posEl = document.getElementById('manualPos');
+        if (!nameEl) return;
+
+        const ac = attachPlayerAutocomplete(nameEl, (p) => {
+            _manualSelected = p;
+            if (posEl) posEl.value = p.pos;
+            if (teamEl) teamEl.value = p.team;
+        });
+
+        nameEl.addEventListener('input', () => {
+            // Any edit after a pick means the field no longer holds that pick.
+            if (_manualSelected && nameEl.value.trim() !== _manualSelected.name) _manualSelected = null;
+            setManualAddMsg("");
+        });
+
+        // Registered after the autocomplete's own keydown listener, so on the Enter that picks
+        // a suggestion, e.defaultPrevented is already true and this skips it -- one keypress
+        // never both selects and saves. e.repeat guards against a held-down Enter saving twice.
+        nameEl.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' || e.defaultPrevented || e.repeat || e.isComposing) return;
+            if (_manualSelected && nameEl.value.trim() === _manualSelected.name) {
+                e.preventDefault();
+                window.addManualPlayer({ fromKeyboard: true });
+                return;
+            }
+            // Name was typed but never picked. Saving it on Enter would make every typo a
+            // roster entry, so point at the deliberate routes instead. Stay quiet while the
+            // dropdown is open or its results are still loading -- Enter there just means
+            // "not narrowed down yet".
+            if (nameEl.value.trim() && !(ac && (ac.isOpen() || ac.isPending()))) {
+                setManualAddMsg("No match picked. Choose a player from the list, or fill in Position and Team and press Enter in the Team box to add this name as typed.");
+            }
+        });
+
+        // Enter in Team = submit the form as filled. This is the keyboard route for a name
+        // that isn't in Sleeper's player list (or when that list couldn't load).
+        if (teamEl) {
+            teamEl.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
+                e.preventDefault();
+                window.addManualPlayer({ fromKeyboard: true });
+            });
+        }
+
+        const logEl = document.getElementById('manualAddLog');
+        if (logEl) {
+            logEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('.mls-manual-log-remove');
+                if (btn) undoManualAdd(btn.dataset.playerId);
+            });
+        }
+    }
+
+    function removePlayerFromLeague(league, playerId) {
+        const pToRemove = (league.roster || []).find(p => p.id === playerId);
+        if (!pToRemove) return null;
+        if (league.globalRosterMap) delete league.globalRosterMap[pToRemove.cleanName];
+        league.roster = league.roster.filter(p => p.id !== playerId);
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        return pToRemove;
+    }
+
+    // No confirm dialog here, unlike deletePlayer: this only appears next to a player that was
+    // just keyed in, and a confirm on every typo fix would undo the point of the fast path.
+    function undoManualAdd(playerId) {
+        const league = getActiveLeague();
+        if (!league) return;
+        const removed = removePlayerFromLeague(league, playerId);
+        if (!removed) { renderManualAddLog(); return; }
+        window.optimizeLineup(true);
+        loadRosterTab(); // also re-renders the log
+        setManualAddMsg(`Removed ${removed.name}`, { clearAfterMs: 4000 });
+        const nameEl = document.getElementById('manualName');
+        if (nameEl) nameEl.focus();
+    }
+
+    function renderManualAddLog() {
+        const el = document.getElementById('manualAddLog');
+        if (!el) return;
+        const league = getActiveLeague();
+        const rosterById = new Map(((league && league.roster) || []).map(p => [p.id, p]));
+        const entries = league
+            ? _manualAddLog.filter(e => e.leagueId === league.leagueId && rosterById.has(e.playerId)).map(e => rosterById.get(e.playerId))
+            : [];
+        if (entries.length === 0) { el.innerHTML = ""; return; }
+
+        const total = league.roster.length;
+        el.innerHTML = `
+            <div class="mls-manual-log-head">
+                <span>Added this session (${entries.length})</span>
+                <span class="mls-manual-log-total">${escapeHtml(league.name)}: ${total} player${total === 1 ? '' : 's'}</span>
+            </div>
+            <ul class="mls-manual-log-list">
+                ${entries.map((p, i) => `
+                <li class="mls-manual-log-item${i === 0 ? ' is-latest' : ''}">
+                    <span class="mls-manual-log-name">${escapeHtml(p.name)}</span>
+                    <span class="mls-manual-log-meta">${escapeHtml(p.pos)} · ${escapeHtml(p.team)}</span>
+                    ${i === 0 ? '<span class="mls-manual-log-tag">Last added</span>' : ''}
+                    <button type="button" class="mls-manual-log-remove" data-player-id="${escapeHtml(p.id)}" aria-label="Remove ${escapeHtml(p.name)}" title="Remove from roster">&times;</button>
+                </li>`).join('')}
+            </ul>`;
+    }
+
+    window.addManualPlayer = function(opts = {}) {
         let league = getActiveLeague();
         if (!league) { if (window.showToast) window.showToast("Please add or select a league first.", { isError: true }); return; }
         const nameInput = document.getElementById('manualName');
@@ -1805,35 +1946,43 @@ function attachScoutSuggestionHandler(outputElId) {
 
         if (!name) { if (window.showToast) window.showToast("Please enter a player name.", { isError: true }); return; }
 
-        let newP = { id: 'p_' + Date.now(), name: name, cleanName: normalizeName(name), pos: pos, team: team };
+        const cleanName = normalizeName(name);
         league.roster = league.roster || [];
+        // Fast keyboard entry makes a double add easy (same name keyed twice in a long list),
+        // and a duplicate would show up twice in the optimizer. Keep the text so it can be fixed.
+        const existing = league.roster.find(p => p.cleanName === cleanName);
+        if (existing) {
+            setManualAddMsg(`${existing.name} is already on this roster.`, { isError: true });
+            if (nameInput) { nameInput.focus(); nameInput.select(); }
+            return;
+        }
+
+        let newP = { id: 'p_' + Date.now(), name: name, cleanName: cleanName, pos: pos, team: team };
         league.roster.push(newP);
-        
+
         league.globalRosterMap = league.globalRosterMap || {};
         league.globalRosterMap[newP.cleanName] = "You";
-        
+
         localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-        if (nameInput) nameInput.value = ""; 
+        _manualAddLog.unshift({ leagueId: league.leagueId, playerId: newP.id });
+        _manualSelected = null;
+        if (nameInput) nameInput.value = "";
         if (teamInput) teamInput.value = "";
-        window.optimizeLineup(true); 
-        loadRosterTab();
-        
-        let msgEl = document.getElementById('manualAddMsg');
-        if (msgEl) {
-            msgEl.innerText = `Added ${name}`;
-            setTimeout(() => msgEl.innerText = "", 3000);
-        }
+        setManualAddMsg("");
+        window.optimizeLineup(true);
+        loadRosterTab(); // also re-renders the "Added this session" list
+
+        // Keyboard adds keep the cursor in the name field for the next player. Button taps
+        // don't, since refocusing there would pop the on-screen keyboard back open on phones.
+        if (opts.fromKeyboard && nameInput) nameInput.focus();
     };
 
     window.deletePlayer = async function(playerId) {
         let league = getActiveLeague();
         if (!league) return;
         if (await window.showConfirm("This takes the player off your active roster in this league. You can add them back from the Roster tab.", { title: 'Remove player?', confirmText: 'Remove', danger: true })) {
-            let pToRemove = league.roster.find(p => p.id === playerId);
-            if (pToRemove && league.globalRosterMap) { delete league.globalRosterMap[pToRemove.cleanName]; }
-            league.roster = league.roster.filter(p => p.id !== playerId);
-            localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-            window.optimizeLineup(true); 
+            removePlayerFromLeague(league, playerId);
+            window.optimizeLineup(true);
             loadRosterTab();
         }
     };
@@ -5214,6 +5363,9 @@ function applyMarketSettingsToUI() {
     }
 
     function loadRosterTab() {
+        // Every roster change funnels through here (manual add/remove, Roster tab delete,
+        // re-sync), so this keeps the Settings "Added this session" list in step with it.
+        renderManualAddLog();
         let league = getActiveLeague();
         const syncBtn = document.getElementById('rosterSyncBtn');
         const headerNameEl = document.getElementById('rosterLeagueHeader');
