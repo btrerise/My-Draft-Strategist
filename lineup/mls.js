@@ -18,6 +18,17 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
 (function () {
     'use strict';
 
+    // Belt and braces for the service worker's stale-while-revalidate window. Assets are
+    // served from cache first (see sw.js), so there is a narrow window after a deploy where a
+    // browser could pair this file with an older cached js/utils.js from before readJSON
+    // existed. State construction below would then throw on an undefined function and blank
+    // the page -- precisely the failure readJSON was added to prevent. This local binding
+    // falls back to the old inline behavior so that can't happen; once every client is on the
+    // current utils.js it is simply never used.
+    const readJSON = window.readJSON || function (key, fallback) {
+        try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
+    };
+
     // --- CONSTANTS & CONFIGURATION ---
     const NFL_TEAMS = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
     
@@ -91,28 +102,28 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
 
     // --- STATE MANAGEMENT ---
     const State = {
-        leagues: JSON.parse(localStorage.getItem('mds_season_leagues')) || [],
+        leagues: readJSON('mds_season_leagues', []),
         activeLeagueId: localStorage.getItem('mds_season_active_league') || null,
-        earlyTeams: JSON.parse(localStorage.getItem('mds_season_early_teams')) || [],
-        rosRankings: JSON.parse(localStorage.getItem('mds_season_ros')) || [],
-        weeklyRankings: JSON.parse(localStorage.getItem('mds_season_weekly')) || [],
+        earlyTeams: readJSON('mds_season_early_teams', []),
+        rosRankings: readJSON('mds_season_ros', []),
+        weeklyRankings: readJSON('mds_season_weekly', []),
         rosRankingsUpdatedAt: localStorage.getItem('mds_season_ros_updated') || null,
         rankingSets: {
-            ros: JSON.parse(localStorage.getItem('mls_ranking_sets_ros')) || [],
-            weekly: JSON.parse(localStorage.getItem('mls_ranking_sets_weekly')) || []
+            ros: readJSON('mls_ranking_sets_ros', []),
+            weekly: readJSON('mls_ranking_sets_weekly', [])
         },
         weeklyRankingsUpdatedAt: localStorage.getItem('mds_season_weekly_updated') || null,
-        marketRankings: JSON.parse(localStorage.getItem('mds_season_market')) || [],
-        marketSettings: JSON.parse(localStorage.getItem('mls_market_settings')) || { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false },
-        tradeSettings: JSON.parse(localStorage.getItem('mls_trade_settings')) || { waiverAdjustment: true, waiverAdjustmentValue: 500 },
-        simSettings: JSON.parse(localStorage.getItem('mls_sim_settings')) || { waiverInsights: false },
+        marketRankings: readJSON('mds_season_market', []),
+        marketSettings: readJSON('mls_market_settings', { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false }),
+        tradeSettings: readJSON('mls_trade_settings', { waiverAdjustment: true, waiverAdjustmentValue: 500 }),
+        simSettings: readJSON('mls_sim_settings', { waiverInsights: false }),
         // Waiver Wire Assistant Auto-Find controls (Scout tab). compare: 'lineup' (would he
         // start?) | 'roster' (drop-candidate upgrade); basis: 'weekly' | 'ros' (scan order); pos:
         // a position, 'FLEX', or 'ALL' (grouped by position); limit: rows per group.
         // scope ('league' | 'all') belongs to the Scan Pasted List half of the tool, not
         // Auto-Find -- it rides in this same object purely so it persists under the one
         // localStorage key the rest of the Waiver Wire Assistant's settings already use.
-        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false, scope: 'league' }, JSON.parse(localStorage.getItem('mls_waiver_scan_settings')) || {}),
+        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false, scope: 'league' }, readJSON('mls_waiver_scan_settings', {})),
         // --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
         // flexKickoffOptimization gates optimizeFlexKickoffOrder() (see below): when on, the
         // optimizer reassigns which flex-eligible starters sit in strict RB/WR/TE slots vs the
@@ -124,10 +135,10 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         // optimizeLineup), which always stays on -- that one is about not silently benching an
         // already-started player, not a strategy preference, and already has its own override
         // mechanism (per-player overrideAutoLock + Unlock All).
-        lineupSettings: JSON.parse(localStorage.getItem('mls_lineup_settings')) || { flexKickoffOptimization: true },
-        syncLogs: JSON.parse(localStorage.getItem('mls_sync_logs')) || [],
-        sosMap: JSON.parse(localStorage.getItem('mds_season_sos')) || {},
-        lockedPlayersMap: JSON.parse(localStorage.getItem('mds_season_locks_map')) || {},
+        lineupSettings: readJSON('mls_lineup_settings', { flexKickoffOptimization: true }),
+        syncLogs: readJSON('mls_sync_logs', []),
+        sosMap: readJSON('mds_season_sos', {}),
+        lockedPlayersMap: readJSON('mds_season_locks_map', {}),
         // Per-league, per-week list of player ids the person has explicitly told the auto-lock
         // feature (see optimizeLineup) to back off of -- the failsafe for when gameTimesByTeam
         // or Sleeper's synced starters turn out to be wrong about a specific player. Deliberately
@@ -137,9 +148,9 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         // week is stored alongside the ids so a stale override from a prior week (which would no
         // longer make sense once gameTimesByTeam has moved on) is ignored rather than silently
         // carried forward; see isAutoLockOverridden below.
-        autoLockOverridesMap: JSON.parse(localStorage.getItem('mls_autolock_overrides_map')) || {},
-        manualStartersMap: JSON.parse(localStorage.getItem('mds_season_manual_starters')) || {},
-        manualBenchMap: JSON.parse(localStorage.getItem('mds_season_manual_bench')) || {},
+        autoLockOverridesMap: readJSON('mls_autolock_overrides_map', {}),
+        manualStartersMap: readJSON('mds_season_manual_starters', {}),
+        manualBenchMap: readJSON('mds_season_manual_bench', {}),
         swapSourceId: null,
         touchStartX: 0,
         touchEndX: 0,
@@ -969,6 +980,14 @@ function attachScoutSuggestionHandler(outputElId) {
             loadActiveLeagueData();
         }
         window.showTab('setup');
+
+        // Last line of init on purpose: tells the safety net in utils.js that this module --
+        // and every module it imports -- evaluated all the way through and the page is
+        // genuinely usable, so a later uncaught error gets logged instead of covering a
+        // working screen with the fatal-boot banner. If any of the seven files in this
+        // module graph 404s, or anything above throws, this never runs and the banner stays
+        // armed, which is exactly the behavior we want.
+        if (typeof window.markAppReady === 'function') window.markAppReady();
     };
 
     // --- EARLY GAMES LOGIC ---
