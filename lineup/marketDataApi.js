@@ -10,7 +10,9 @@ import { getSleeperPlayerMap } from './sleeperApi.js';
 // normalizeName lives in utils.js, a plain (non-module) script loaded before this one -- its
 // top-level `function` declaration attaches to `window`, so it's reached here explicitly via
 // `window.` rather than assumed to be a bare global, since that's the only form of cross-script
-// access a module can rely on.
+// access a module can rely on. window.mdsFetch, used for both API calls below, comes from the
+// same place for the same reason -- it's fetch() with a timeout, so neither FantasyCalc nor
+// LeagueLogs going quiet can leave the Market Value button spinning forever.
 function normalizeName(name) {
     return window.normalizeName(name);
 }
@@ -34,7 +36,7 @@ export async function fetchMarketConsensusData(source, isDynastyVal, numQbsVal, 
 
     // --- 1. FANTASYCALC ---
     if (source === 'fantasycalc') {
-        const fcRes = await fetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
+        const fcRes = await window.mdsFetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
         if (!fcRes.ok) throw new Error(`FantasyCalc API Error: ${fcRes.status}`);
         const fcData = await fcRes.json();
 
@@ -67,7 +69,7 @@ export async function fetchMarketConsensusData(source, isDynastyVal, numQbsVal, 
 
         let sleeperMap = await getSleeperPlayerMap();
 
-        const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+        const marketRes = await window.mdsFetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
         if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
         const llMarket = await marketRes.json();
 

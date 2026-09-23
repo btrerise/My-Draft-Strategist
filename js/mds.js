@@ -778,7 +778,10 @@ window.addEventListener('popstate', (e) => {
     async function fetchSleeperMeta(url, { force = false, required = false, errorMsg = '', shouldCache = () => true } = {}) {
         if (!force && _sleeperMetaCache.has(url)) return _sleeperMetaCache.get(url);
 
-        const res = await fetch(url);
+        // mdsFetch, so a tick of the 3s live-draft poll can't hang forever. A timed-out
+        // request throws, which is what lets processSleeperDraftData's catch count the miss
+        // and flip the LIVE pill to "stalled" -- a hung fetch never reached that code at all.
+        const res = await window.mdsFetch(url);
         if (!res.ok) {
             if (required) throw new Error(errorMsg);
             return null;
@@ -892,7 +895,7 @@ window.addEventListener('popstate', (e) => {
             }
             draftLimits.TOTAL = draftLimits.QB + draftLimits.RB + draftLimits.WR + draftLimits.TE + draftLimits.WT + draftLimits.FLEX + draftLimits.SFLEX + draftLimits.K + draftLimits.DEF + draftLimits.BENCH;
 
-            const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
+            const picksRes = await window.mdsFetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
             if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
             const picksData = await picksRes.json();
 
@@ -1515,7 +1518,10 @@ function parseExcel(file) {
         let sleeperMap = {};
 
         try {
-            let res = await fetch('https://api.sleeper.app/v1/players/nfl');
+            // The long timeout, not the 12s default: this payload is ~5MB, which a healthy
+            // download on a slow phone connection can legitimately take longer than an
+            // ordinary JSON call should. Still bounded -- just a higher ceiling.
+            let res = await window.mdsFetch('https://api.sleeper.app/v1/players/nfl', {}, window.MDS_LONG_FETCH_TIMEOUT_MS);
             if (res.ok) sleeperMap = await res.json();
         } catch(err) {
             console.warn("Could not fetch Sleeper database.");
@@ -1708,17 +1714,18 @@ function parseExcel(file) {
         try {
             let sleeperMap = {};
             try {
-                let res = await fetch('https://api.sleeper.app/v1/players/nfl');
+                // Long timeout for the same reason as processData's copy above: ~5MB payload.
+                let res = await window.mdsFetch('https://api.sleeper.app/v1/players/nfl', {}, window.MDS_LONG_FETCH_TIMEOUT_MS);
                 if (res.ok) sleeperMap = await res.json();
             } catch(e) { console.warn("Sleeper DB fetch failed", e); }
 
-            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+            const marketRes = await window.mdsFetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
             if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
             const llMarket = await marketRes.json();
 
             let playerMetaMap = {};
             try {
-                let pRes = await fetch(`https://developer.leaguelogs.com/v1/players`);
+                let pRes = await window.mdsFetch(`https://developer.leaguelogs.com/v1/players`);
                 if (pRes.ok) {
                     let pData = await pRes.json();
                     pData.data.forEach(lp => { playerMetaMap[lp.sleeperPlayerId] = lp; });
@@ -1814,7 +1821,7 @@ function parseExcel(file) {
 
         // --- 1. LEAGUELOGS ---
         if (source === 'leaguelogs') {
-            const marketRes = await fetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+            const marketRes = await window.mdsFetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
             if (!marketRes.ok) throw new Error(`LeagueLogs Market Error: ${marketRes.status}`);
             const llMarket = await marketRes.json();
             llMarket.data.forEach(item => { adpMap[item.sleeperPlayerId] = item.overallRank; });
@@ -1822,7 +1829,7 @@ function parseExcel(file) {
         
         // --- 2. SLEEPER ---
         else if (source === 'sleeper') {
-            const sleeperRes = await fetch(`https://api.sleeper.com/projections/nfl/2026?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=${profileKey}`);
+            const sleeperRes = await window.mdsFetch(`https://api.sleeper.com/projections/nfl/2026?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=${profileKey}`);
             if (!sleeperRes.ok) throw new Error(`Sleeper API Error: ${sleeperRes.status}`);
             const sleeperData = await sleeperRes.json();
             sleeperData.forEach(item => {

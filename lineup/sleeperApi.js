@@ -6,6 +6,11 @@
 // State/localStorage, updating buttons) stays behind in mls.js and is unaffected by this
 // split; it just calls these functions instead of calling fetch() directly.
 //
+// Every call here goes through window.mdsFetch (utils.js, a plain script loaded before this
+// module) rather than fetch() directly, so none of them can hang forever on a stalled
+// connection. That's the one behavior this file adds on top of a bare fetch; the ok-checks
+// and error messages below are still exactly what their original call sites had.
+//
 // Each function's error-handling (whether it throws on a non-ok response, and with what
 // message) intentionally matches whatever its original call site(s) in mls.js already did,
 // even where that's inconsistent across endpoints -- this is a pure extraction, not a pass
@@ -21,39 +26,39 @@
  * a normal, recoverable case, not an error worth surfacing to the user.
  */
 export async function getNflState() {
-    const res = await fetch('https://api.sleeper.app/v1/state/nfl');
+    const res = await window.mdsFetch('https://api.sleeper.app/v1/state/nfl');
     return res.ok ? res.json() : null;
 }
 
 /** Throws "User not found." on a non-ok response -- matches the original sync-a-league path. */
 export async function getSleeperUser(username) {
-    const res = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+    const res = await window.mdsFetch(`https://api.sleeper.app/v1/user/${username}`);
     if (!res.ok) throw new Error("User not found.");
     return res.json();
 }
 
 /** Throws "League ID not found." on a non-ok response. */
 export async function getSleeperLeague(leagueId) {
-    const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
+    const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}`);
     if (!res.ok) throw new Error("League ID not found.");
     return res.json();
 }
 
 /** No ok-check, matching the original -- a non-ok response's body still gets parsed as JSON. */
 export async function getSleeperLeagueUsers(leagueId) {
-    const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+    const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
     return res.json();
 }
 
 /** No ok-check, matching the original -- a non-ok response's body still gets parsed as JSON. */
 export async function getSleeperLeagueRosters(leagueId) {
-    const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+    const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
     return res.json();
 }
 
 /** Throws "Could not fetch leagues for this user." on a non-ok response. */
 export async function getSleeperUserLeagues(userId, season) {
-    const res = await fetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${season}`);
+    const res = await window.mdsFetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${season}`);
     if (!res.ok) throw new Error("Could not fetch leagues for this user.");
     return res.json();
 }
@@ -76,7 +81,7 @@ export async function getSleeperUserLeagues(userId, season) {
  * UI keeps showing the projection after the fact purely for comparison, not as a live estimate.
  */
 export async function getSleeperMatchups(leagueId, week) {
-    const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`);
+    const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`);
     if (!res.ok) throw new Error("Could not fetch matchups for this league/week.");
     return res.json();
 }
@@ -164,7 +169,10 @@ export function getSleeperPlayerMap(options = {}) {
                 }
             }
 
-            const res = await fetch('https://api.sleeper.app/v1/players/nfl');
+            // The long timeout, not the 12s default: this payload is ~5MB (see the cache
+            // comment above) and a healthy download of it on a slow phone connection can
+            // legitimately outlast the ceiling an ordinary JSON call gets.
+            const res = await window.mdsFetch('https://api.sleeper.app/v1/players/nfl', {}, window.MDS_LONG_FETCH_TIMEOUT_MS);
             const data = await res.json();
             _sleeperPlayerMapCache = data;
             setCachedSleeperPlayerMap(data); // don't await -- this shouldn't delay callers
