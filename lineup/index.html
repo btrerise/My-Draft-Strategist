@@ -365,7 +365,12 @@
          header with a freshness readout still visible for quick reference.) -->
     <section class="settings-card rankings-card" id="rosRankingsCard">
         <header class="card-header rankings-card-header" onclick="toggleRankingsCard('rosRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Rest-of-Season Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('rosRankingsCard');}">
-            <h3><span>Rest-of-Season (ROS) Rankings</span></h3>
+            <div class="rankings-header-titles">
+                <h3><span>Rest-of-Season (ROS) Rankings</span></h3>
+                <!-- Name of the set this league uses, filled by populateRankingSetDropdown.
+                     Lives in the header so it stays readable with the card collapsed. -->
+                <div id="rosHeaderSetName" class="rankings-header-set"></div>
+            </div>
             <div class="cluster cluster-sm">
                 <span id="rosHeaderFreshness" class="header-freshness"></span>
                 <div class="tooltip-container">
@@ -385,8 +390,9 @@
                     <button id="rosDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('ros')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
-            <div class="mb-3" style="text-align: right;">
-                <button class="mls-btn-sm btn-link-inline" onclick="applyRankingSetToAll('ros')">Apply this set to all leagues</button>
+            <div id="rosSetLeaguesRow" class="mls-set-leagues-row mb-3">
+                <span id="rosSetLeaguesSummary" class="mls-set-leagues-summary"></span>
+                <button class="mls-btn-sm btn-link-inline" onclick="openRankingSetLeagues('ros')">Choose leagues&hellip;</button>
             </div>
             <div id="rosNewSetNameWrap" class="input-group mb-3">
                 <label for="rosNewSetName">New Set Name (optional)</label>
@@ -558,7 +564,10 @@
          every single week, so freshness needs to be visible before anything else here) -->
     <section class="settings-card rankings-card" id="weeklyRankingsCard">
         <header class="card-header rankings-card-header" onclick="toggleRankingsCard('weeklyRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Weekly Matchup Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('weeklyRankingsCard');}">
-            <h3><span>Weekly Matchup Rankings</span></h3>
+            <div class="rankings-header-titles">
+                <h3><span>Weekly Matchup Rankings</span></h3>
+                <div id="weeklyHeaderSetName" class="rankings-header-set"></div>
+            </div>
             <div class="cluster cluster-sm">
                 <span id="weeklyHeaderFreshness" class="header-freshness"></span>
                 <div class="tooltip-container">
@@ -578,8 +587,9 @@
                     <button id="weeklyDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" onclick="deleteRankingSet('weekly')" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
-            <div class="mb-3" style="text-align: right;">
-                <button class="mls-btn-sm btn-link-inline" onclick="applyRankingSetToAll('weekly')">Apply this set to all leagues</button>
+            <div id="weeklySetLeaguesRow" class="mls-set-leagues-row mb-3">
+                <span id="weeklySetLeaguesSummary" class="mls-set-leagues-summary"></span>
+                <button class="mls-btn-sm btn-link-inline" onclick="openRankingSetLeagues('weekly')">Choose leagues&hellip;</button>
             </div>
             <div id="weeklyNewSetNameWrap" class="input-group mb-3">
                 <label for="weeklyNewSetName">New Set Name (optional)</label>
@@ -1222,9 +1232,26 @@
         <!-- Says where this upload lands: a new set, or an in-place overwrite of an existing
              one (and how many leagues follow that set). Filled by openRankingsPreview. -->
         <p id="rankingsPreviewTarget" class="mls-preview-target" style="display: none;"></p>
+        <!-- Other leagues to point at this set, picked before saving. Only shown when there's
+             more than one league. Filled by openRankingsPreview via renderLeaguePicker. -->
+        <div id="rankingsPreviewLeagues" class="mls-league-picker" style="display: none;"></div>
         <div class="mls-preview-actions">
             <button class="btn btn-secondary" onclick="cancelRankingsPreview()">Cancel</button>
             <button id="rankingsPreviewConfirmBtn" class="btn btn-primary" onclick="confirmRankingsPreview()">Looks Good, Save It</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ranking Set League Picker (shared by ROS & Weekly). Opened from "Choose leagues..." on a
+     rankings card, and after an auto-fetch creates a new set. Filled by openLeaguePickerDialog. -->
+<div id="rankingLeaguesOverlay" class="mls-preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingLeaguesTitle">
+    <div class="mls-preview-modal">
+        <h3 id="rankingLeaguesTitle">Choose leagues</h3>
+        <p id="rankingLeaguesIntro" class="mls-preview-count"></p>
+        <div id="rankingLeaguesList" class="mls-league-picker"></div>
+        <div class="mls-preview-actions">
+            <button type="button" class="btn btn-secondary" data-league-picker="cancel">Cancel</button>
+            <button type="button" class="btn btn-primary" data-league-picker="ok">Save</button>
         </div>
     </div>
 </div>

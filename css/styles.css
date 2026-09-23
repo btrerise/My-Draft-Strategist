@@ -2482,6 +2482,14 @@ body {
     display: none;
 }
 
+/* Collapsed is the usual resting state now (picking a set collapses the card), so drop the
+   header's divider and gap that only exist to separate it from the hidden body. */
+.settings-card.rankings-card:not(.expanded) > .rankings-card-header {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
 .rankings-card.expanded .chevron-icon {
     transform: rotate(180deg);
 }
@@ -2494,6 +2502,98 @@ body {
 
 .header-freshness.rankings-stale {
     color: #f59e0b;
+}
+
+/* Title + "Set: <name>" line. min-width: 0 lets a long set name truncate instead of shoving
+   the freshness readout and chevron off the edge on a phone. */
+.rankings-header-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+    margin-right: 0.5rem;
+}
+.rankings-header-set {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rankings-header-set:empty { display: none; }
+.rankings-header-set strong {
+    color: var(--primary-green);
+    font-weight: 600;
+}
+
+/* "Used in 2 of 5 leagues · Choose leagues..." under the set dropdown */
+.mls-set-leagues-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+.mls-set-leagues-summary {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.mls-set-leagues-row .btn-link-inline { margin-left: auto; }
+
+/* League checklist (upload preview + standalone picker dialog) */
+.mls-league-picker { margin: 0 0 1rem 0; }
+.mls-league-picker-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.4rem;
+}
+.mls-league-picker-head:has(> span:empty):not(:has(button)) { display: none; }
+.mls-league-picker-list {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+.mls-league-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+}
+.mls-league-picker-row:last-child { border-bottom: none; }
+.mls-league-picker-row:hover:not(.is-locked) { background: rgba(16, 185, 129, 0.06); }
+.mls-league-picker-row.is-locked { cursor: default; opacity: 0.7; }
+.mls-league-picker-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    accent-color: var(--primary-green);
+}
+.mls-league-picker-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.mls-league-picker-name {
+    font-size: 0.875rem;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mls-league-picker-note {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .success-feedback {

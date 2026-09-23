@@ -86,6 +86,8 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
             globalDataKey: 'mds_season_ros', globalUpdatedKey: 'mds_season_ros_updated',
             selectId: 'rosRankingSetSelect', nameInputWrapId: 'rosNewSetNameWrap',
             nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn',
+            cardId: 'rosRankingsCard', headerSetNameId: 'rosHeaderSetName',
+            leaguesRowId: 'rosSetLeaguesRow', leaguesSummaryId: 'rosSetLeaguesSummary',
             label: 'ROS', staleAfterDays: 14
         },
         weekly: {
@@ -96,6 +98,8 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
             globalDataKey: 'mds_season_weekly', globalUpdatedKey: 'mds_season_weekly_updated',
             selectId: 'weeklyRankingSetSelect', nameInputWrapId: 'weeklyNewSetNameWrap',
             nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn',
+            cardId: 'weeklyRankingsCard', headerSetNameId: 'weeklyHeaderSetName',
+            leaguesRowId: 'weeklySetLeaguesRow', leaguesSummaryId: 'weeklySetLeaguesSummary',
             label: 'Weekly', staleAfterDays: 6
         }
     };
@@ -974,6 +978,30 @@ function attachScoutSuggestionHandler(outputElId) {
         attachScoutSuggestionHandler('tradeOutput');
         populateEarlyGameDropdown();
         refreshLeagueDropdown();
+        // State starts from the flat global rankings keys -- the last upload for ANY league --
+        // and only switchActiveLeague() used to replace them with the active league's own set.
+        // So after a reload, a league on set A showed set B's players until you switched away
+        // and back, while its dropdown (and now the card header) said A. Hydrate up front, per
+        // type, and only where the league has something of its own (a saved set that still
+        // exists, or legacy data): otherwise that type keeps the global fallback, as before.
+        {
+            const bootLeague = getActiveLeague() || State.leagues[0] || null;
+            if (bootLeague) {
+                ['ros', 'weekly'].forEach(t => {
+                    const cfg = RANKING_TYPE_CONFIG[t];
+                    const setId = bootLeague[cfg.leagueSetIdKey];
+                    const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+                    const legacy = bootLeague[cfg.leagueLegacyDataKey];
+                    if (set) {
+                        State[cfg.stateKey] = [...set.data];
+                        State[cfg.updatedAtKey] = set.updatedAt;
+                    } else if (Array.isArray(legacy) && legacy.length > 0) {
+                        State[cfg.stateKey] = [...legacy];
+                        State[cfg.updatedAtKey] = bootLeague[cfg.leagueLegacyUpdatedKey] || null;
+                    }
+                });
+            }
+        }
         updateRankingsMetaDisplay();
         generateSoSGrid();
         checkForDraftStrategistHandoff();
@@ -3878,7 +3906,7 @@ function attachScoutSuggestionHandler(outputElId) {
     //
     // This matters because an in-place update is destructive and has no undo: with a named set
     // selected, an upload replaces that set's data, and every league pointed at the set follows
-    // it (see applyRankingSetToAll). The preview used to describe only the incoming file, never
+    // it (see the league picker below). The preview used to describe only the incoming file, never
     // what it was about to overwrite.
     function resolveRankingsTarget(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
@@ -3891,6 +3919,7 @@ function attachScoutSuggestionHandler(outputElId) {
             if (existing) {
                 return {
                     mode: 'replace',
+                    id: existing.id,
                     name: existing.name,
                     playerCount: Array.isArray(existing.data) ? existing.data.length : 0,
                     leagueCount: State.leagues.filter(l => l[cfg.leagueSetIdKey] === existing.id).length
@@ -3944,6 +3973,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (league) league[cfg.leagueSetIdKey] = setId;
         saveActiveLeagueState();
         updateRankingsMetaDisplay();
+        return setId;
     }
 
     // Fills a type's <select> with the active league's legacy data (if any), every named set,
@@ -3982,8 +4012,45 @@ function attachScoutSuggestionHandler(outputElId) {
         const deleteBtn = document.getElementById(cfg.deleteBtnId);
         if (nameWrap) nameWrap.style.display = (selectedVal === '__new__') ? 'flex' : 'none';
         if (deleteBtn) deleteBtn.style.display = (selectedVal !== '__new__' && selectedVal !== '__legacy__') ? 'inline-block' : 'none';
+
+        updateRankingSetHeader(type);
+        updateSetLeaguesRow(type);
         
         if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
+    }
+
+    // Header line naming the set the active league actually uses. Kept in the card header (not
+    // the body) so it's still readable with the card collapsed. Reads the league's assignment
+    // rather than the dropdown, which can sit on "+ Create New Set" before anything is saved.
+    function updateRankingSetHeader(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const el = document.getElementById(cfg.headerSetNameId);
+        if (!el) return;
+        const league = getActiveLeague();
+        const text = league ? describeLeagueRankings(type, league) : null;
+        if (!text || text === 'No set') {
+            el.textContent = '';
+            el.removeAttribute('title');
+            return;
+        }
+        el.innerHTML = `Set: <strong>${escapeHtml(text)}</strong>`;
+        el.title = text; // full name on hover when it's truncated
+    }
+
+    // "Used in 2 of 5 leagues · Choose leagues..." under the dropdown. Hidden when there's only
+    // one league (nothing to choose) or no saved set is selected (nothing to apply yet).
+    function updateSetLeaguesRow(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const row = document.getElementById(cfg.leaguesRowId);
+        if (!row) return;
+        const selectEl = document.getElementById(cfg.selectId);
+        const val = selectEl ? selectEl.value : '__new__';
+        const isRealSet = val && val !== '__new__' && val !== '__legacy__';
+        if (!isRealSet || State.leagues.length < 2) { row.style.display = 'none'; return; }
+        const used = State.leagues.filter(l => l[cfg.leagueSetIdKey] === val).length;
+        const summary = document.getElementById(cfg.leaguesSummaryId);
+        if (summary) summary.textContent = `Used in ${used} of ${State.leagues.length} leagues`;
+        row.style.display = '';
     }
 
     // User manually picked a different set (or legacy data, or "create new") from the dropdown.
@@ -3996,6 +4063,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (val === '__new__') {
             if (nameWrap) nameWrap.style.display = 'flex';
             if (deleteBtn) deleteBtn.style.display = 'none';
+            updateSetLeaguesRow(type);
             return; // don't touch State yet -- wait for an actual upload/fetch to create the set
         }
         if (nameWrap) nameWrap.style.display = 'none';
@@ -4019,13 +4087,163 @@ function attachScoutSuggestionHandler(outputElId) {
 
         saveActiveLeagueState();
         updateRankingsMetaDisplay();
+        // Picking a set is the whole job for most visits to this card, so get it out of the way
+        // of the roster/lineup below. The header keeps showing which set is in use.
+        setRankingsCardExpanded(cfg.cardId, false);
 
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab && activeTab.id === 'rosterTab' && typeof loadRosterTab === 'function') loadRosterTab();
         if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
     };
 
-    window.applyRankingSetToAll = async function(type) {
+    // --- CHOOSING WHICH LEAGUES USE A RANKING SET ---
+    // Replaces the old all-or-nothing "Apply this set to all leagues" with a checklist, so a set
+    // can go to three of five leagues without touching the other two ("Select all" covers the
+    // old behavior). Used in three places, all through renderLeaguePicker below:
+    //   * the upload preview modal ("Also use this set in"), so leagues are picked as the set
+    //     is added -- additive only there, leagues already on the set stay locked on;
+    //   * a standalone dialog after Auto-Fetch creates a new set (no preview modal on that path);
+    //   * "Choose leagues..." under the set dropdown, any time -- the one place a league can be
+    //     unchecked off a set, since that's the view built around editing the whole list.
+    // The active league is always checked and locked: choosing a set in its dropdown, or saving
+    // an upload, already assigns the set there.
+
+    // What a league uses for this ranking type right now, for the picker's "Currently:" notes
+    // and the card header. Same priority as hydrateRankingsForLeague.
+    function describeLeagueRankings(type, league) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const setId = league[cfg.leagueSetIdKey];
+        const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+        if (set) return set.name;
+        const legacy = league[cfg.leagueLegacyDataKey];
+        if (Array.isArray(legacy) && legacy.length > 0) return 'Unassigned upload (legacy)';
+        return 'No set';
+    }
+
+    // setId: the set being assigned, or null for one that doesn't exist yet (a new upload).
+    // allowRemove: leagues already on the set can be unchecked (standalone dialog) rather than
+    // shown locked on (upload preview).
+    function renderLeaguePicker(container, type, { setId = null, allowRemove = false, heading = '' } = {}) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const activeId = State.activeLeagueId;
+        const leagues = [...State.leagues].sort((a, b) => (b.leagueId === activeId) - (a.leagueId === activeId));
+
+        let selectableCount = 0;
+        const rows = leagues.map(l => {
+            const isActive = l.leagueId === activeId;
+            const onSet = !!setId && l[cfg.leagueSetIdKey] === setId;
+            const locked = isActive || (onSet && !allowRemove);
+            if (!locked) selectableCount++;
+            const note = isActive ? 'This league'
+                : onSet ? 'Already using this set'
+                : `Currently: ${describeLeagueRankings(type, l)}`;
+            return `
+                <label class="mls-league-picker-row${locked ? ' is-locked' : ''}">
+                    <input type="checkbox" value="${escapeHtml(l.leagueId)}" data-was-on="${onSet ? '1' : '0'}"${(isActive || onSet) ? ' checked' : ''}${locked ? ' disabled' : ''}>
+                    <span class="mls-league-picker-text">
+                        <span class="mls-league-picker-name">${escapeHtml(l.name || 'Unnamed league')}</span>
+                        <span class="mls-league-picker-note">${escapeHtml(note)}</span>
+                    </span>
+                </label>`;
+        }).join('');
+
+        container.innerHTML = `
+            <div class="mls-league-picker-head">
+                <span>${escapeHtml(heading)}</span>
+                ${selectableCount > 1 ? '<button type="button" class="mls-btn-sm btn-link-inline" data-picker-all>Select all</button>' : ''}
+            </div>
+            <div class="mls-league-picker-list">${rows}</div>`;
+
+        // Property handlers rather than addEventListener: the same container is re-rendered on
+        // every open, and this keeps it to exactly one handler each.
+        const boxes = () => [...container.querySelectorAll('input[type="checkbox"]:not(:disabled)')];
+        const syncAllLabel = () => {
+            const btn = container.querySelector('[data-picker-all]');
+            if (btn) btn.textContent = boxes().every(b => b.checked) ? 'Clear all' : 'Select all';
+        };
+        container.onclick = (e) => {
+            if (!e.target.closest('[data-picker-all]')) return;
+            const turnOn = !boxes().every(b => b.checked);
+            boxes().forEach(b => { b.checked = turnOn; });
+            syncAllLabel();
+        };
+        container.onchange = syncAllLabel;
+        syncAllLabel();
+    }
+
+    function readLeaguePicker(container) {
+        const boxes = [...container.querySelectorAll('input[type="checkbox"]:not(:disabled)')];
+        return {
+            add: boxes.filter(b => b.checked && b.dataset.wasOn !== '1').map(b => b.value),
+            remove: boxes.filter(b => !b.checked && b.dataset.wasOn === '1').map(b => b.value)
+        };
+    }
+
+    // Removing a league leaves it with no set of this type (its legacy upload, if it still has
+    // one, takes over -- same fallback hydrateRankingsForLeague already uses). Never touches the
+    // active league: the picker locks that row, and this double-checks rather than trusting it.
+    function assignSetToLeagues(type, setId, { add = [], remove = [] } = {}) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        if (!setId || (add.length === 0 && remove.length === 0)) return;
+        State.leagues.forEach(l => {
+            if (l.leagueId === State.activeLeagueId) return;
+            if (add.includes(l.leagueId)) l[cfg.leagueSetIdKey] = setId;
+            else if (remove.includes(l.leagueId) && l[cfg.leagueSetIdKey] === setId) l[cfg.leagueSetIdKey] = null;
+        });
+        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        updateSetLeaguesRow(type);
+    }
+
+    // Standalone picker dialog. Resolves { add, remove } on Save, or null on Cancel / Escape /
+    // backdrop click. Same close behavior as showConfirm in utils.js.
+    let leaguePickerOpen = false;
+    function openLeaguePickerDialog(type, set, { title, intro, allowRemove = false, confirmText = 'Save', cancelText = 'Cancel' } = {}) {
+        const overlay = document.getElementById('rankingLeaguesOverlay');
+        if (!overlay || leaguePickerOpen) return Promise.resolve(null);
+        const titleEl = document.getElementById('rankingLeaguesTitle');
+        const introEl = document.getElementById('rankingLeaguesIntro');
+        const listEl = document.getElementById('rankingLeaguesList');
+        const okBtn = overlay.querySelector('[data-league-picker="ok"]');
+        const cancelBtn = overlay.querySelector('[data-league-picker="cancel"]');
+
+        if (titleEl) titleEl.textContent = title || `Leagues using "${set.name}"`;
+        if (introEl) introEl.textContent = intro || '';
+        if (okBtn) okBtn.textContent = confirmText;
+        if (cancelBtn) cancelBtn.textContent = cancelText;
+        renderLeaguePicker(listEl, type, { setId: set.id, allowRemove });
+
+        leaguePickerOpen = true;
+        overlay.style.display = 'flex';
+
+        return new Promise(resolve => {
+            let trap = null;
+            function settle(result) {
+                if (!leaguePickerOpen) return;
+                leaguePickerOpen = false;
+                overlay.style.display = 'none';
+                okBtn.removeEventListener('click', onOk);
+                cancelBtn.removeEventListener('click', onCancel);
+                overlay.removeEventListener('mousedown', onBackdrop);
+                if (trap) trap.deactivate();
+                resolve(result);
+            }
+            function onOk() { settle(readLeaguePicker(listEl)); }
+            function onCancel() { settle(null); }
+            function onBackdrop(e) { if (e.target === overlay) settle(null); }
+            okBtn.addEventListener('click', onOk);
+            cancelBtn.addEventListener('click', onCancel);
+            overlay.addEventListener('mousedown', onBackdrop);
+            if (typeof window.createFocusTrap === 'function') {
+                trap = window.createFocusTrap(overlay, { onEscape: () => settle(null) });
+                trap.activate();
+            }
+        });
+    }
+
+    function leagueCountText(n) { return `${n} league${n === 1 ? '' : 's'}`; }
+
+    // "Choose leagues..." link under the set dropdown.
+    window.openRankingSetLeagues = async function(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const selectEl = document.getElementById(cfg.selectId);
         const val = selectEl ? selectEl.value : null;
@@ -4035,18 +4253,24 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
         if (val === '__legacy__') {
-            if (window.showToast) window.showToast("Cannot apply legacy data to all leagues. Upload it as a new set first.", { isError: true });
+            if (window.showToast) window.showToast("Legacy data can't be shared with other leagues. Upload it as a new set first.", { isError: true });
             return;
         }
+        const set = State.rankingSets[cfg.setsKey].find(s => s.id === val);
+        if (!set) return;
 
-        if (!await window.showConfirm("Every league you've synced will be pointed at this ranking set, replacing whatever each one uses now.", { title: 'Apply to all leagues?', confirmText: 'Apply to All' })) return;
-
-        State.leagues.forEach(l => {
-            l[cfg.leagueSetIdKey] = val;
+        const result = await openLeaguePickerDialog(type, set, {
+            allowRemove: true,
+            intro: `Check each league that should use this ${cfg.label} set. Unchecking a league leaves it with no ${cfg.label} set until you pick one there.`
         });
-
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-        if (window.showToast) window.showToast(`Applied to all ${State.leagues.length} leagues!`);
+        if (!result) return;
+        if (result.add.length === 0 && result.remove.length === 0) {
+            if (window.showToast) window.showToast('No changes made.');
+            return;
+        }
+        assignSetToLeagues(type, set.id, result);
+        const usedCount = State.leagues.filter(l => l[cfg.leagueSetIdKey] === set.id).length;
+        if (window.showToast) window.showToast(`"${set.name}" is now used in ${leagueCountText(usedCount)}.`);
     };
 
     // Deletes the currently-selected named set entirely. Any league referencing it (not just
@@ -4293,6 +4517,21 @@ function attachScoutSuggestionHandler(outputElId) {
             }
             targetEl.style.display = 'block';
         }
+        // Other leagues to point at this set, chosen as it's added. Hidden with a single league.
+        const leaguesEl = document.getElementById('rankingsPreviewLeagues');
+        if (leaguesEl) {
+            if (State.leagues.length > 1) {
+                renderLeaguePicker(leaguesEl, isWeekly ? 'weekly' : 'ros', {
+                    setId: target && target.mode === 'replace' ? target.id : null,
+                    heading: 'Also use this set in'
+                });
+                leaguesEl.style.display = 'block';
+            } else {
+                leaguesEl.innerHTML = '';
+                leaguesEl.style.display = 'none';
+            }
+        }
+
         if (confirmBtn) {
             const isReplace = !!(target && target.mode === 'replace');
             confirmBtn.className = isReplace ? 'btn btn-danger' : 'btn btn-primary';
@@ -4325,10 +4564,25 @@ function attachScoutSuggestionHandler(outputElId) {
 
     window.confirmRankingsPreview = function() {
         if (!pendingRankingsUpload) return;
-        const { parsedData, hasNewSos, isWeekly, successMsgId } = pendingRankingsUpload;
+        const { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds } = pendingRankingsUpload;
+        const type = isWeekly ? 'weekly' : 'ros';
 
-        if (isWeekly) saveRankingsAsSet('weekly', parsedData);
-        else saveRankingsAsSet('ros', parsedData);
+        // Clear the file input(s) on save too, not just on cancel. Browsers only fire 'change'
+        // when the selection differs, so re-picking the same filename next week (a re-downloaded
+        // "rankings.csv", say) silently did nothing while the old selection was still sitting there.
+        (fileInputIds || []).forEach(id => {
+            const input = document.getElementById(id);
+            if (input) input.value = '';
+        });
+
+        // Read the league checklist before saving: saveRankingsAsSet re-renders the card, but
+        // the modal's picker is separate, and this is the moment the choice is final.
+        const leaguesEl = document.getElementById('rankingsPreviewLeagues');
+        const leagueChoice = (leaguesEl && leaguesEl.style.display !== 'none') ? readLeaguePicker(leaguesEl) : { add: [], remove: [] };
+
+        const savedSetId = saveRankingsAsSet(type, parsedData);
+        assignSetToLeagues(type, savedSetId, { add: leagueChoice.add });
+        setRankingsCardExpanded(RANKING_TYPE_CONFIG[type].cardId, false);
 
         if (hasNewSos) {
             localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
@@ -4349,11 +4603,13 @@ function attachScoutSuggestionHandler(outputElId) {
             let rankType = isWeekly ? "Weekly" : "ROS";
             let isFirstTime = !localStorage.getItem('mls_has_seen_rankings_toast');
 
+            const alsoText = leagueChoice.add.length ? ` Also applied to ${leagueCountText(leagueChoice.add.length)}.` : '';
+
             if (isFirstTime) {
-                window.showToast(`${rankType} Rankings loaded! \n\nTip: We saved this as a reusable set. When you switch to another league, select it from the dropdown to apply it there too!`, { duration: 6000 });
+                window.showToast(`${rankType} Rankings loaded!${alsoText} \n\nTip: We saved this as a reusable set. Use "Choose leagues..." under the set dropdown to share it with more of your leagues any time.`, { duration: 6000 });
                 localStorage.setItem('mls_has_seen_rankings_toast', 'true');
             } else {
-                window.showToast(`${rankType} Rankings loaded successfully!`);
+                window.showToast(`${rankType} Rankings loaded successfully!${alsoText}`);
             }
         }
 
@@ -4582,12 +4838,35 @@ function attachScoutSuggestionHandler(outputElId) {
                 }
             }
 
-            saveRankingsAsSet('ros', rosRankings);
+            const savedSetId = saveRankingsAsSet('ros', rosRankings);
+            setRankingsCardExpanded('rosRankingsCard', false);
 
             if (window.showToast) window.showToast(`ROS Rankings pulled: ${rosRankings.length} players (${formatText})`);
 
             const activeTab = document.querySelector('.tab-content.active');
             if (activeTab && activeTab.id === 'rosterTab') loadRosterTab();
+
+            // Uploads choose leagues in their preview modal; this path has none, so a brand-new
+            // set offers the same choice right after saving. A replaced set already carries its
+            // leagues with it, so there's nothing to ask.
+            const newSet = target.mode === 'new' && State.rankingSets.ros.find(s => s.id === savedSetId);
+            if (newSet && State.leagues.length > 1) {
+                // The fetch itself is done -- restore the button now rather than leaving it on
+                // "Fetching..." behind the dialog (finally below repeats this harmlessly).
+                btn.innerText = origText;
+                btn.style.opacity = "1";
+                btn.disabled = false;
+                const choice = await openLeaguePickerDialog('ros', newSet, {
+                    title: 'Use this set in other leagues?',
+                    intro: `"${newSet.name}" is saved for this league. Check any others that should use it too.`,
+                    confirmText: 'Apply',
+                    cancelText: 'Just This League'
+                });
+                if (choice && choice.add.length) {
+                    assignSetToLeagues('ros', newSet.id, { add: choice.add });
+                    if (window.showToast) window.showToast(`"${newSet.name}" also applied to ${leagueCountText(choice.add.length)}.`);
+                }
+            }
 
         } catch (error) {
             console.error("Error auto-fetching ROS rankings:", error);
