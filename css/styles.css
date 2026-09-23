@@ -1273,6 +1273,13 @@ body {
    than "upcoming", pairing with the auto-lock indicator icon used on that same row. */
 .kickoff-started { background: rgba(59, 130, 246, 0.28); color: #bfdbfe; border-color: #3b82f6; }
 
+/* Lock-state text badges on Lineup starter rows (see lockBadge in renderLineupUI, mls.js).
+   Colours match each padlock icon's tint -- green for a manual season-long lock, blue for an
+   auto-lock at kickoff -- so badge and icon read as one signal, but the words carry the meaning
+   on their own (the tint alone was the only difference before, and title= never shows on touch). */
+.mls-lock-badge { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid var(--primary-green); padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
+.mls-autolock-badge { background: rgba(96, 165, 250, 0.15); color: #93c5fd; border: 1px solid #60a5fa; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
+
 /* Lineup tab's "next lock" countdown (top of the card) -- reuses the same blue used for
    kickoff-badge/kickoff-started above, since this is the same "kickoff time" information,
    just summarized across the whole lineup instead of shown per-player. Deliberately not

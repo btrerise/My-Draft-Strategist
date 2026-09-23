@@ -1229,5 +1229,21 @@
 
 <script src="../js/utils.js" defer></script>
     <script type="module" src="mls.js"></script>
+    <!-- Registers the site-wide service worker from this page too. Before this, only js/mds.js
+         (the draft page) registered it, so anyone who went straight to /lineup/ never got
+         offline support at all. Deliberately an inline classic script rather than part of
+         mls.js: if a module in mls.js's import chain fails, mls.js never runs -- which is
+         exactly the offline failure the service worker is there to prevent. Absolute '/sw.js'
+         is required: a relative 'sw.js' here would resolve to /lineup/sw.js, which doesn't
+         exist. The default scope of /sw.js is '/', covering this page and the rest of the site,
+         so this is the same registration as mds.js's (the browser dedupes, it doesn't install
+         twice). -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.warn('Service Worker registration failed: ', err));
+            });
+        }
+    </script>
 </body>
 </html>

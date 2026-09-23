@@ -27,19 +27,39 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.8';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.9';  // Update this version on EVERY deploy - see note above
 
-// Core assets to pre-cache immediately on install
+// Core assets to pre-cache immediately on install.
+//
+// Every file in /lineup/'s module graph has to be listed here, not just mls.js. A module
+// <script> fails as a whole if any static import fails, so a first offline load with even one
+// of mls.js's imports uncached is a blank Lineup page -- stale-while-revalidate only fills the
+// gap after an online visit has already requested each file. When adding an `import` to any
+// lineup module, add the file here too. worker.js needs listing separately: it's loaded by
+// `new Worker('./worker.js')` in monteCarloUi.js, not imported, so it's outside the graph.
+//
+// Note cache.addAll is all-or-nothing: one 404 in this list and NOTHING gets precached (the
+// .catch below swallows it silently). Renaming or deleting a file means updating this list.
 const PRECACHE_ASSETS = [
     '/',
     '/index.html',
     '/css/styles.css',
     '/js/mds.js',
     '/js/utils.js',
+    '/t-score/tscore_data.js',        // classic <script> on the root page; mds.js falls back to {} without it
     '/lineup/',
     '/lineup/index.html',
     '/lineup/mls.js',
-    '/lineup/waiverScanner.js'
+    // mls.js's static imports, and theirs:
+    '/lineup/rankingsParser.js',
+    '/lineup/sleeperApi.js',
+    '/lineup/marketDataApi.js',       // -> sleeperApi.js
+    '/lineup/monteCarloUi.js',        // -> statsEngine.js, spawns worker.js
+    '/lineup/sleeperService.js',      // -> db.js
+    '/lineup/statsEngine.js',
+    '/lineup/waiverScanner.js',
+    '/lineup/db.js',
+    '/lineup/worker.js'               // new Worker(), not an import -- see above
 ];
 
 // Extensions served straight from cache while refreshing behind the scenes. Deliberately

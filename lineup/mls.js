@@ -3460,6 +3460,21 @@ function attachScoutSuggestionHandler(outputElId) {
         outputEl.innerHTML = html;
     }
 
+    // True when a thrown error means "couldn't reach the server" rather than "our own code or
+    // data broke" -- the split the Auto-Find and Global Audit catch blocks use to tell someone
+    // whether to check their connection or re-sync. Covers mdsFetch's own timeout (utils.js
+    // marks it isTimeout / names it TimeoutError), the browser reporting itself offline, and
+    // fetch()'s bare network failure, which is a TypeError whose wording differs per browser
+    // (Chrome "Failed to fetch", Firefox "NetworkError when attempting...", Safari "Load
+    // failed") -- so it's matched on all three rather than just Chrome's, which is what the
+    // adBlockerTip checks elsewhere in this file key on.
+    function isConnectionError(err) {
+        if (!err) return false;
+        if (err.isTimeout || err.name === 'TimeoutError') return true;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+        return err.name === 'TypeError' && /failed to fetch|networkerror|load failed|network connection was lost/i.test(err.message || '');
+    }
+
     window.autoFindWaiverUpgrades = async function(btn) {
         const outputEl = document.getElementById('waiverOutput');
         if (!outputEl) return;
@@ -3657,7 +3672,18 @@ function attachScoutSuggestionHandler(outputElId) {
             outputEl.innerHTML = html;
         } catch (err) {
             console.error('Waiver Auto-Find failed:', err);
-            outputEl.innerHTML = `<span class="mls-error-text">An error occurred while analyzing waivers. Please try again.</span>`;
+            // Missing rankings and an unsynced league are already caught with their own
+            // messages before this try, and buildWaiverContext swallows a failed Sleeper
+            // player-map fetch (it falls back to league/market positions). So what actually
+            // lands here is almost always saved league data in a shape the scan doesn't expect
+            // -- typically a league last synced by an older version of the app -- and a fresh
+            // sync is the one thing the person can do about it. The connection branch is
+            // defensive: nothing inside the try hits the network today, but a future fetch
+            // added to buildWaiverContext shouldn't be misreported as stale data.
+            const leagueName = escapeHtml(league.name || 'this league');
+            outputEl.innerHTML = isConnectionError(err)
+                ? `<span class="mls-error-text">Couldn't reach Sleeper to finish the waiver scan for ${leagueName}. Check your connection and tap Auto-Find again.</span>`
+                : `<span class="mls-error-text">Couldn't finish the waiver scan for ${leagueName} - its saved roster data may be out of date. Tap Sync All Leagues on the Dashboard, then run Auto-Find again.</span>`;
         } finally {
             if (btn) { btn.disabled = false; btn.innerText = origText; }
         }
@@ -6148,7 +6174,11 @@ window.syncAllLeagues = async function(btn) {
                 // clear anything, the opposite of what tapping a "locked" icon implies. Instead
                 // this calls overrideAutoLock(), the failsafe for when the underlying kickoff/
                 // Sleeper data turns out to be wrong about this specific player.
-                let lockControl = (p.autoLocked && !locksList.includes(p.id))
+                // Computed once so the control and the text badge below can never disagree --
+                // a player can carry a stale autoLocked flag after the keep-swaps-sticky path
+                // adds them to locksList, and in that case both should treat it as a manual lock.
+                let isAutoLock = p.autoLocked && !locksList.includes(p.id);
+                let lockControl = isAutoLock
                     ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
                     : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>`;
 
@@ -6164,7 +6194,15 @@ window.syncAllLeagues = async function(btn) {
                 if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
                     sleeperWarn = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; font-size: 0.65rem; margin-left: 4px;">Bench in Sleeper</span>`;
                 }
-                let badgesRow = [injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
+                // Text version of the padlock's state. Without it, manual vs auto lock differ
+                // only by icon tint (green vs blue) plus a title= tooltip that never shows on a
+                // phone. Worded AUTO-LOCKED rather than naming the reason, because the kickoff
+                // badge on this same row already says "Started"/"Final" -- this adds the part
+                // that badge can't say (a started bench player shows "Started" too).
+                let lockBadge = !p.isLocked ? ""
+                    : isAutoLock ? `<span class="badge mls-autolock-badge">AUTO-LOCKED</span>`
+                    : `<span class="badge mls-lock-badge">LOCKED</span>`;
+                let badgesRow = [lockBadge, injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
 
                 // The slot badge below already spells out the position for strict slots (RB1
                 // always holds an RB, etc), so a second colored position pill there is pure
@@ -6931,8 +6969,27 @@ window.runGlobalInjuryAudit = async function(btn) {
         }
 
     } catch (err) {
-        console.error(err);
-        outputEl.innerHTML = `<span class="mls-error-text">Failed to run audit. Check console for details.</span>`;
+        console.error('Global injury audit failed:', err);
+        // Every message says the audit didn't finish, on purpose: an empty results panel after
+        // an audit reads as "all clear," which is the one conclusion a failed run must not
+        // leave behind. Three realistic causes, each with its own fix:
+        //   * Connection -- the forced-fresh player map (~5MB) or a league's roster fetch
+        //     failed or timed out. Common on phone data; retrying is the fix.
+        //   * SyntaxError -- neither getSleeperPlayerMap nor getSleeperLeagueRosters checks
+        //     res.ok, so when Sleeper is down or rate-limiting, its HTML/plain-text error page
+        //     gets fed to res.json() and fails here. Not the person's connection, so telling
+        //     them to check it would send them the wrong way.
+        //   * Anything else -- a saved league whose data isn't shaped the way the audit
+        //     expects. Re-syncing rewrites it.
+        let msg;
+        if (isConnectionError(err)) {
+            msg = `Couldn't reach Sleeper for current injury statuses, so the audit didn't finish - no leagues were checked. Check your connection and tap Run Global Audit again.`;
+        } else if (err && err.name === 'SyntaxError') {
+            msg = `Sleeper sent back an unexpected response, so the audit didn't finish - no leagues were checked. Sleeper may be having problems; try Run Global Audit again in a few minutes.`;
+        } else {
+            msg = `The audit stopped partway through, so treat this as no result, not an all-clear. Some saved league data may be out of date - tap Sync All Leagues on the Dashboard, then run the audit again.`;
+        }
+        outputEl.innerHTML = `<span class="mls-error-text">${msg}</span>`;
     } finally {
         btn.innerHTML = origText;
         btn.disabled = false;
@@ -6979,8 +7036,15 @@ window.runMatchupSim = async function() {
 
     try {
         const nflState = await getNflState();
+        // getNflState returns null only when Sleeper answered with an error status (a network
+        // failure throws instead, and lands in the connection branch of the catch below). This
+        // used to throw a generic Error here, which the catch had no way to tell apart from a
+        // bug -- so it's reported in place, like the other early exits in this function.
         if (!nflState || typeof nflState.week !== 'number') {
-            throw new Error("Could not determine the current NFL week.");
+            const msg = "Sleeper didn't return the current NFL week, so the simulation didn't run. Sleeper may be having problems - try Run Matchup Simulations again in a few minutes.";
+            showSimNotice(msg, { isError: true });
+            if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
+            return;
         }
         const currentWeek = nflState.week;
         const season = nflState.league_season || nflState.season;
@@ -7256,8 +7320,26 @@ window.runMatchupSim = async function() {
 
         runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, waiverInsights, currentWeek });
     } catch (err) {
-        console.error(err);
-        const msg = "Failed to run the matchup simulation. Check the console for details.";
+        console.error('Matchup simulation failed:', err);
+        // Same three-way split as runGlobalInjuryAudit's catch, for the same reasons:
+        //   * Connection -- any of the Sleeper calls above (matchups, weekly stats, the ~5MB
+        //     player map) failed or timed out. Retrying is the fix.
+        //   * SyntaxError -- getSleeperPlayerMap doesn't check res.ok, so a Sleeper outage or
+        //     rate-limit page fails in res.json(). Sleeper's side, not the person's connection.
+        //   * Anything else -- most likely the saved lineup/roster for this league isn't in
+        //     the shape this function expects (a non-ok matchups response lands here too,
+        //     which in practice means the stored league ID is stale). Re-syncing rewrites both.
+        // Worker failures never reach this catch -- runMatchupSimulation reports those itself.
+        // Escaped because both showSimNotice and showToast write their message as HTML.
+        const leagueName = escapeHtml(league.name || 'this league');
+        let msg;
+        if (isConnectionError(err)) {
+            msg = `Couldn't reach Sleeper, so the simulation for ${leagueName} didn't run. Check your connection and tap Run Matchup Simulations again.`;
+        } else if (err && err.name === 'SyntaxError') {
+            msg = `Sleeper sent back an unexpected response, so the simulation for ${leagueName} didn't run. Sleeper may be having problems - try again in a few minutes.`;
+        } else {
+            msg = `Couldn't run the simulation for ${leagueName} - its saved lineup or roster data may be out of date. Tap Sync All Leagues on the Dashboard, then run it again.`;
+        }
         showSimNotice(msg, { isError: true });
         if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
     } finally {
