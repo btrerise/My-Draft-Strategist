@@ -118,6 +118,9 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         },
         weeklyRankingsUpdatedAt: localStorage.getItem('mds_season_weekly_updated') || null,
         marketRankings: readJSON('mds_season_market', []),
+        // When marketRankings was last pulled or uploaded (ms epoch). Null for market data saved
+        // before this was tracked -- updateMarketMetaDisplay shows no age rather than guess one.
+        marketUpdatedAt: localStorage.getItem('mds_season_market_updated') || null,
         marketSettings: readJSON('mls_market_settings', { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false }),
         tradeSettings: readJSON('mls_trade_settings', { waiverAdjustment: true, waiverAdjustmentValue: 500 }),
         simSettings: readJSON('mls_sim_settings', { waiverInsights: false }),
@@ -1003,6 +1006,9 @@ function attachScoutSuggestionHandler(outputElId) {
             }
         }
         updateRankingsMetaDisplay();
+        // Market data persists across reloads, but this was only ever called right after a
+        // fetch/upload -- so on a fresh page load the Trade Finder showed no count or age at all.
+        updateMarketMetaDisplay();
         generateSoSGrid();
         checkForDraftStrategistHandoff();
         applyMarketSettingsToUI();
@@ -1494,6 +1500,18 @@ function attachScoutSuggestionHandler(outputElId) {
 
             // --- Layout ---
             let formatText = l.formatBadge ? `<div style="color:var(--text-muted); font-size: 0.75rem; margin-top: 2px; font-weight: normal;">${l.formatBadge}</div>` : "";
+            // Roster age. Manual and Draft Strategist handoff leagues are never synced from
+            // Sleeper, so they get no label. A Sleeper league with no lastSyncedAt was last
+            // synced before this was tracked -- flagged the same way the Rankings column treats
+            // a missing date (stale), since we can't vouch for it. Past 2 days a waiver run or
+            // trade has likely landed, so it goes amber.
+            let syncText = "";
+            if (!/^(manual|handoff)_/.test(l.leagueId)) {
+                const syncFresh = getRankingsFreshness(l.lastSyncedAt, 2, 'Synced');
+                const syncStale = !syncFresh || syncFresh.isStale;
+                const syncLabel = syncFresh ? syncFresh.label : 'Last sync unknown';
+                syncText = `<div class="${syncStale ? 'rankings-stale' : 'rankings-fresh'}" style="font-size: 0.75rem; margin-top: 2px;">${syncLabel}</div>`;
+            }
             let activeStyle = l.leagueId === State.activeLeagueId ? 'background: rgba(16, 185, 129, 0.08);' : '';
             let activeIndicator = l.leagueId === State.activeLeagueId ? `<div style="width: 3px; height: 100%; background: var(--primary-green); position: absolute; left: 0; top: 0;"></div>` : '';
 
@@ -1504,6 +1522,7 @@ function attachScoutSuggestionHandler(outputElId) {
                     <div style="padding-left: 6px;">
                         <strong style="color: var(--text-main); font-size: 0.9rem;">${l.name}</strong>
                         ${formatText}
+                        ${syncText}
                     </div>
                 </td>
                 <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: center;">
@@ -2166,7 +2185,11 @@ function attachScoutSuggestionHandler(outputElId) {
                 rosRankingsUpdatedAt: existingLeague ? existingLeague.rosRankingsUpdatedAt : null,
                 weeklyRankingsUpdatedAt: existingLeague ? existingLeague.weeklyRankingsUpdatedAt : null,
                 rosRankingSetId: existingLeague ? existingLeague.rosRankingSetId : null,
-                weeklyRankingSetId: existingLeague ? existingLeague.weeklyRankingSetId : null
+                weeklyRankingSetId: existingLeague ? existingLeague.weeklyRankingSetId : null,
+                // Set only here, i.e. only once every Sleeper fetch above has succeeded. A league
+                // that fails during Sync All keeps its previous object, and with it its previous
+                // lastSyncedAt -- which is exactly what the dashboard row's age label surfaces.
+                lastSyncedAt: Date.now()
             };
 
             // Capture the "what changed" diff before existingLeague's roster is overwritten below.
@@ -3886,15 +3909,16 @@ function attachScoutSuggestionHandler(outputElId) {
     // the given threshold (in days) so the UI can call attention to rankings that likely need
     // a refresh. Returns null if there's no timestamp at all (e.g. rankings from before this
     // tracking existed) so the caller can fall back to a neutral message rather than claim
-    // false freshness.
-    function getRankingsFreshness(timestamp, staleAfterDays) {
+    // false freshness. `verb` swaps the leading word so league rows can read "Synced 4 days
+    // ago" off the same logic; market data and rankings keep the default "Updated".
+    function getRankingsFreshness(timestamp, staleAfterDays, verb = 'Updated') {
         if (!timestamp) return null;
         const ms = Date.now() - Number(timestamp);
         const days = Math.floor(ms / (1000 * 60 * 60 * 24));
         let label;
-        if (days <= 0) label = "Updated today";
-        else if (days === 1) label = "Updated yesterday";
-        else label = `Updated ${days} days ago`;
+        if (days <= 0) label = `${verb} today`;
+        else if (days === 1) label = `${verb} yesterday`;
+        else label = `${verb} ${days} days ago`;
         return { label, isStale: days > staleAfterDays };
     }
 
@@ -4913,7 +4937,9 @@ function attachScoutSuggestionHandler(outputElId) {
         // Save to state and local storage
         State.marketRankings = parsed;
         localStorage.setItem('mds_season_market', JSON.stringify(State.marketRankings)); // was 'mls_season_market' -- State.marketRankings is always read back from 'mds_season_market' on load (see State init above), so this key must match or fetched data silently disappears on reload
-        
+        State.marketUpdatedAt = Date.now();
+        localStorage.setItem('mds_season_market_updated', State.marketUpdatedAt);
+
         // Update UI
         updateMarketMetaDisplay(); 
         if (msgEl) {
@@ -5138,6 +5164,10 @@ function applyMarketSettingsToUI() {
 
         State.marketRankings = parsed;
         localStorage.setItem('mds_season_market', JSON.stringify(State.marketRankings));
+        // Upload time, not the file's own date -- a CSV exported last week and uploaded today
+        // reads as "today". Same trade-off ROS/Weekly uploads already make.
+        State.marketUpdatedAt = Date.now();
+        localStorage.setItem('mds_season_market_updated', State.marketUpdatedAt);
         updateMarketMetaDisplay();
 
         let msgEl = document.getElementById(successMsgId);
@@ -5327,7 +5357,15 @@ function applyMarketSettingsToUI() {
         if (metaEl) {
             if (State.marketRankings.length > 0) {
                 metaEl.style.display = 'block';
-                metaEl.innerText = `Market Consensus Loaded: ${State.marketRankings.length} players`;
+                const countText = `Market Consensus Loaded: ${State.marketRankings.length} players`;
+                // In-season market values shift within days (injuries, depth-chart news), so the
+                // stale line sits much tighter than ROS (14) or Weekly (6).
+                const fresh = getRankingsFreshness(State.marketUpdatedAt, 3);
+                if (fresh) {
+                    metaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'rankings-stale' : 'rankings-fresh'}">• ${fresh.label}${fresh.isStale ? ' — pull fresh values before trading' : ''}</span>`;
+                } else {
+                    metaEl.innerText = countText;
+                }
             } else {
                 metaEl.style.display = 'none';
             }
