@@ -420,6 +420,7 @@
 
             <div id="rosSingleMode">
                 <input type="file" id="rosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload Rest of Season Rankings">
+                <p class="mds-drop-hint">Or drop a file anywhere on this card.</p>
             </div>
 
             <div id="rosMultiMode" class="multi-upload-panel">
@@ -442,6 +443,7 @@
                     <div id="ros-input-wrap-K" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="rosFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                     <div id="ros-input-wrap-DEF" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="rosFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                 </div>
+                <p class="mds-drop-hint">Or drop each file onto its position's box.</p>
                 <button id="rosMultiProcessBtn" class="btn btn-primary mt-2" style="width: 100%;" onclick="processMultiRankings('ros', 'rosSuccessMsg')">Combine & Process Files</button>
             </div>
 
@@ -617,6 +619,7 @@
 
             <div id="weeklySingleMode">
                 <input type="file" id="weeklyFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" aria-label="Upload weekly rankings">
+                <p class="mds-drop-hint">Or drop a file anywhere on this card.</p>
             </div>
 
             <div id="weeklyMultiMode" class="multi-upload-panel">
@@ -639,6 +642,7 @@
                     <div id="weekly-input-wrap-K" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="weeklyFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                     <div id="weekly-input-wrap-DEF" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="weeklyFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                 </div>
+                <p class="mds-drop-hint">Or drop each file onto its position's box.</p>
                 <button id="weeklyMultiProcessBtn" class="btn btn-primary mt-2" style="width: 100%;" onclick="processMultiRankings('weekly', 'weeklySuccessMsg')">Combine & Process Files</button>
             </div>
 
@@ -1227,6 +1231,14 @@
     <div class="mls-preview-modal">
         <h3 id="rankingsPreviewTitle">Preview Rankings</h3>
         <p id="rankingsPreviewCount" class="mls-preview-count"></p>
+        <!-- Files that contributed no players (multi-file uploads) and workbook tabs skipped as
+             notes, each with the reason. Reuses the unmatched-names styling. Filled by
+             openRankingsPreview. -->
+        <div id="rankingsPreviewSkipped" class="mls-preview-unmatched" style="display: none; margin-top: 0; margin-bottom: 0.75rem;">
+            <div class="mls-preview-unmatched-title"></div>
+            <div class="mls-preview-unmatched-list"></div>
+            <p class="mls-preview-unmatched-hint">The players below don't include anything from these. If that's intended, save as usual. Otherwise, cancel, fix the file and upload it again.</p>
+        </div>
         <ul id="rankingsPreviewList" class="mls-preview-list"></ul>
         <p id="rankingsPreviewNote" class="mls-preview-note" style="display: none;">This file also includes Strength of Schedule data, which will be updated too.</p>
         <div id="rankingsPreviewDerived" class="mls-preview-derived" style="display: none;">

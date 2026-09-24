@@ -738,9 +738,13 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         }
     }
 
-// Minimal HTML-attribute escaping for safe rendering
+// HTML escaping for outside text (player/league/set names, teams...) placed into markup.
+// Forwards to the shared copy in js/utils.js (window.escapeHtml, used by MDS too). The
+// inline fallback covers a browser briefly pairing this file with an older cached
+// utils.js right after a deploy (see sw.js), when window.escapeHtml wouldn't exist yet.
 function escapeHtml(str) {
-    return String(str)
+    if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
+    return String(str ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -849,7 +853,7 @@ function attachPlayerAutocomplete(inputEl, onSelect) {
         dropdown.innerHTML = matches.map((p, i) => `
             <div class="autocomplete-item${i === highlightedIdx ? ' highlighted' : ''}" role="option" data-idx="${i}">
                 <span>${escapeHtml(p.name)}</span>
-                <span class="autocomplete-meta">${p.pos} ·${p.team}</span>
+                <span class="autocomplete-meta">${escapeHtml(p.pos)} ·${escapeHtml(p.team)}</span>
             </div>
         `).join('');
         dropdown.style.display = 'block';
@@ -1429,7 +1433,9 @@ function attachScoutSuggestionHandler(outputElId) {
         let html = "";
         State.leagues.forEach(l => {
             let sel = l.leagueId === State.activeLeagueId ? "selected" : "";
-            html += `<option value="${l.leagueId}" ${sel}>${l.name}</option>`;
+            // League names are set by whoever runs the league on Sleeper, so they're escaped
+            // like any other outside text. The id is escaped too; it's Sleeper's, not ours.
+            html += `<option value="${escapeHtml(l.leagueId)}" ${sel}>${escapeHtml(l.name)}</option>`;
         });
         select.innerHTML = html;
         if (typeof updateLeagueNavUI === 'function') updateLeagueNavUI();
@@ -1520,7 +1526,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); position: relative; cursor: pointer;" onclick="switchActiveLeague('${l.leagueId}')">
                     ${activeIndicator}
                     <div style="padding-left: 6px;">
-                        <strong style="color: var(--text-main); font-size: 0.9rem;">${l.name}</strong>
+                        <strong style="color: var(--text-main); font-size: 0.9rem;">${escapeHtml(l.name)}</strong>
                         ${formatText}
                         ${syncText}
                     </div>
@@ -2478,6 +2484,16 @@ function attachScoutSuggestionHandler(outputElId) {
                         msgEl.style.display = 'block';
                         setTimeout(() => msgEl.style.display = 'none', 3000);
                     }
+                },
+                // Papa calls this instead of `complete` when it can't read the File. Without it
+                // the upload failed with no message. The input is cleared so choosing the same
+                // file again fires 'change'.
+                error: function(err) {
+                    console.error("Error reading file:", file.name, err);
+                    sosFileInput.value = '';
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
+                    }
                 }
             });
         });
@@ -2669,7 +2685,7 @@ function attachScoutSuggestionHandler(outputElId) {
                     ? `<div class="scout-status status-avail">Free Agent<br>(Available)</div>`
                     : `<div class="scout-status mls-status-unknown" title="${notYoursTitle}">Not Yours</div>`;
                 else if (owner === "You") statusHTML = `<div class="scout-status status-mine">On Your<br>Roster</div>`;
-                else statusHTML = `<div class="scout-status status-owned">Rostered by:<br>${owner}</div>`;
+                else statusHTML = `<div class="scout-status status-owned">Rostered by:<br>${escapeHtml(owner)}</div>`;
             }
 
             // Availability/rank fields for the Waiver path's sort below -- unused by the Trade
@@ -3267,15 +3283,15 @@ function attachScoutSuggestionHandler(outputElId) {
         const isFlexPos = FLEX_POSITIONS.includes(pos);
 
         if (ctx.scan && ctx.scan.basis === 'ros') {
-            const rosPos = ros.posRank ? `<strong class="mls-stat-green">${pos}${ros.posRank}</strong>${tierTag(ros.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
+            const rosPos = ros.posRank ? `<strong class="mls-stat-green">${escapeHtml(pos)}${ros.posRank}</strong>${tierTag(ros.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
             return `<div class="mls-meta-row mls-scan-ranks"><span>ROS Pos: ${rosPos}</span><span>ROS Overall: ${waiverRankHTML(rosRaw ? rosRaw.rank : null, rosRaw ? rosRaw.tier : null)}</span></div>`;
         }
 
         const rosCell = rosRaw
-            ? `<span>ROS: <strong class="mls-stat-green">#${rosRaw.rank}</strong>${tierTag(rosRaw.tier)}${ros.posRank ? ` <span class="mls-rank-sep">&middot;</span> ${pos}${ros.posRank}` : ''}</span>`
+            ? `<span>ROS: <strong class="mls-stat-green">#${rosRaw.rank}</strong>${tierTag(rosRaw.tier)}${ros.posRank ? ` <span class="mls-rank-sep">&middot;</span> ${escapeHtml(pos)}${ros.posRank}` : ''}</span>`
             : `<span>ROS: <strong class="mls-muted-rank">UR</strong></span>`;
         const flexCell = isFlexPos ? `<span>Wk Flex: ${waiverRankHTML(wk.flexRank, wk.flexTier)}</span>` : '';
-        const wkPos = wk.posRank ? `<strong class="mls-stat-blue">${pos}${wk.posRank}</strong>${tierTag(wk.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
+        const wkPos = wk.posRank ? `<strong class="mls-stat-blue">${escapeHtml(pos)}${wk.posRank}</strong>${tierTag(wk.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
         return `<div class="mls-meta-row mls-scan-ranks"><span>Wk Pos: ${wkPos}</span>${flexCell}${rosCell}</div>`;
     }
 
@@ -3323,7 +3339,7 @@ function attachScoutSuggestionHandler(outputElId) {
         const crossName = crossKind === 'overall' ? 'Overall' : 'Flex';
         const faD = display[faPlayer.cleanName] || {};
         const oD = display[other.cleanName] || {};
-        const fmt = (v, pos) => (v === null || v === undefined) ? 'unranked' : (useFlex ? `#${v}` : `${pos}${v}`);
+        const fmt = (v, pos) => (v === null || v === undefined) ? 'unranked' : (useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`);
         const faVal = useFlex ? faD[crossField] : faD.posRank;
         const oVal = useFlex ? oD[crossField] : oD.posRank;
         const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotType})</span>` : '';
@@ -3357,11 +3373,11 @@ function attachScoutSuggestionHandler(outputElId) {
             case 'kickedOff':
                 return { pill: pill('mls-verdict-out', 'Played'), line: 'His game already kicked off - no help this week.' };
             case 'locked':
-                return { pill: pill('mls-verdict-bench', 'Locked'), line: `Every ${player.pos}-eligible lineup spot is locked (manual lock or game started).` };
+                return { pill: pill('mls-verdict-bench', 'Locked'), line: `Every ${escapeHtml(player.pos)}-eligible lineup spot is locked (manual lock or game started).` };
             case 'noTeam':
                 return { pill: pill('mls-verdict-out', 'No Team'), line: 'Not on an NFL roster per Sleeper.' };
             default:
-                return { pill: pill('mls-verdict-bench', 'No Slot'), line: `Your lineup has no ${player.pos}-eligible slot.` };
+                return { pill: pill('mls-verdict-bench', 'No Slot'), line: `Your lineup has no ${escapeHtml(player.pos)}-eligible slot.` };
         }
     }
 
@@ -3377,7 +3393,7 @@ function attachScoutSuggestionHandler(outputElId) {
         <div class="scout-result-card mls-scan-card ${verdict && verdict.status === 'starts' ? 'mls-scan-card-start' : ''}">
             <div class="mls-scan-main">
                 <div class="mls-item-name" style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
-                    <span class="badge pos-badge ${player.pos} mls-pos-badge-sizing">${player.pos}</span>
+                    <span class="badge pos-badge ${escapeHtml(player.pos)} mls-pos-badge-sizing">${escapeHtml(player.pos)}</span>
                     <span>${escapeHtml(fa.name)}</span>
                     ${teamText}
                 </div>
@@ -3811,7 +3827,7 @@ function attachScoutSuggestionHandler(outputElId) {
                     // Cross-position number: Weekly's FLEX rank, or ROS's Overall (see scanCross).
                     const crossOverall = ctx.scanCross === 'overall';
                     const v = basisKind === 'flex' ? (crossOverall ? d.rank : d.flexRank) : d.posRank;
-                    return v ? `${basisLabel} ${basisKind === 'flex' ? `${crossOverall ? 'Overall' : 'Flex'} #${v}` : `${p.pos}${v}`}` : `unranked by ${basisName}`;
+                    return v ? `${basisLabel} ${basisKind === 'flex' ? `${crossOverall ? 'Overall' : 'Flex'} #${v}` : `${escapeHtml(p.pos)}${v}`}` : `unranked by ${basisName}`;
                 };
                 const nextUp = mine.slice(Math.max(0, mine.length - 3), mine.length - 1).reverse()
                     .map(p => `${escapeHtml(p.name)} (${rankText(p)})`);
@@ -4034,7 +4050,8 @@ function attachScoutSuggestionHandler(outputElId) {
             optionsHTML += `<option value="__legacy__">Unassigned Upload (legacy) — ${legacyData.length} players</option>`;
         }
         sets.forEach(s => {
-            optionsHTML += `<option value="${s.id}">${s.name} (${s.data.length} players)</option>`;
+            // Set names are typed by the user (or defaulted from a file name), so escaped.
+            optionsHTML += `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} (${s.data.length} players)</option>`;
         });
         optionsHTML += `<option value="__new__">+ Create New Set</option>`;
         selectEl.innerHTML = optionsHTML;
@@ -4439,7 +4456,7 @@ function attachScoutSuggestionHandler(outputElId) {
     };
 
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
-        const { parsedData, hasNewSos, sosUpdates } = await parseRankingsFiles(filesWithContext, { loadSheetJS: window.loadSheetJS, onProgress });
+        const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: window.loadSheetJS, onProgress });
 
         // The parser module returns SoS data rather than writing to State directly (it has no
         // access to State at all -- see rankingsParser.js), so it's merged in here instead.
@@ -4460,13 +4477,28 @@ function attachScoutSuggestionHandler(outputElId) {
                 const input = document.getElementById(id);
                 if (input) input.value = '';
             });
-            if (typeof window.showToast === 'function') {
-                window.showToast("Couldn't find any players in that file. Double check the format and try again.", { isError: true });
+            // Unreadable files were already toasted by the parser, where the error was caught,
+            // so only the other diagnostics are reported here. Each one names its file and says
+            // what was wrong (see window.formatRankingsDiagnostic in js/utils.js).
+            const toReport = diagnostics.filter(d => d.reason !== 'unreadable');
+            if (toReport.length > 0 && typeof window.showToast === 'function') {
+                const MAX_SHOWN = 3;
+                let message = toReport.slice(0, MAX_SHOWN).map(window.formatRankingsDiagnostic).join('\n\n');
+                if (toReport.length > MAX_SHOWN) {
+                    const rest = toReport.length - MAX_SHOWN;
+                    message += `\n\n...and ${rest} more file${rest === 1 ? '' : 's'} with the same problem.`;
+                }
+                // Longer than the 6s error default: these messages carry a list to read and act on.
+                window.showToast(message, { isError: true, duration: 12000 });
             }
             return;
         }
 
-        openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target: resolveRankingsTarget(type) });
+        // Some files in a multi-file upload worked and others didn't, or a workbook had a tab
+        // skipped as notes. The preview still opens (what did parse is real data), but it lists
+        // what was left out, so a set missing a whole position or tab isn't saved without anyone
+        // noticing.
+        openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target: resolveRankingsTarget(type), skipped: diagnostics });
     };
 
     // --- RANKINGS UPLOAD PREVIEW ---
@@ -4479,7 +4511,7 @@ function attachScoutSuggestionHandler(outputElId) {
     // Cancel: discards the pending upload and clears the file input for reselection).
     let previewFocusTrap = null;
 
-    function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target }) {
+    function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target, skipped = [] }) {
         pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target };
 
         const rankType = isWeekly ? "Weekly" : "ROS";
@@ -4491,6 +4523,43 @@ function attachScoutSuggestionHandler(outputElId) {
 
         const countEl = document.getElementById('rankingsPreviewCount');
         if (countEl) countEl.textContent = `${parsedData.length} player${parsedData.length === 1 ? '' : 's'} parsed`;
+
+        // Files from this upload that contributed no players, tabs skipped as notes, and rows
+        // lost to an unclosed quote.
+        const skippedEl = document.getElementById('rankingsPreviewSkipped');
+        if (skippedEl) {
+            if (skipped.length > 0) {
+                // Whole files that failed, single workbook tabs skipped as notes, and rows lost to
+                // an unclosed quote (see rankingsParser.js), counted separately so the title says
+                // which it was: e.g. "1 tab left out, 3 rows lost".
+                const tabs = skipped.filter(d => d.reason === 'tab-without-header').length;
+                const quoteDiags = skipped.filter(d => d.reason === 'unclosed-quote');
+                const files = skipped.length - tabs - quoteDiags.length;
+                const rowsLost = quoteDiags.reduce((sum, d) => sum + (d.rowsLost || 0), 0);
+                const leftOut = [];
+                if (files) leftOut.push(`${files} file${files === 1 ? '' : 's'}`);
+                if (tabs) leftOut.push(`${tabs} tab${tabs === 1 ? '' : 's'}`);
+                const titleBits = [];
+                if (leftOut.length) titleBits.push(`${leftOut.join(' and ')} left out`);
+                if (rowsLost) titleBits.push(`${rowsLost} row${rowsLost === 1 ? '' : 's'} lost`);
+                else if (quoteDiags.length) titleBits.push(`${quoteDiags.length} row${quoteDiags.length === 1 ? '' : 's'} may be garbled`);
+                const title = titleBits.join(', ');
+                skippedEl.querySelector('.mls-preview-unmatched-title').textContent = title.charAt(0).toUpperCase() + title.slice(1);
+                // Built as text nodes: the messages carry file names and headers from the
+                // user's file, and formatRankingsDiagnostic returns plain text.
+                const listEl = skippedEl.querySelector('.mls-preview-unmatched-list');
+                listEl.textContent = '';
+                skipped.forEach(d => {
+                    const row = document.createElement('div');
+                    row.style.marginBottom = '0.35rem';
+                    row.textContent = window.formatRankingsDiagnostic(d);
+                    listEl.appendChild(row);
+                });
+                skippedEl.style.display = 'block';
+            } else {
+                skippedEl.style.display = 'none';
+            }
+        }
 
         const listEl = document.getElementById('rankingsPreviewList');
         if (listEl) {
@@ -4738,6 +4807,27 @@ function attachScoutSuggestionHandler(outputElId) {
     const weeklyFileEl = document.getElementById('weeklyFileInput');
     if (rosFileEl) rosFileEl.addEventListener('change', () => processSingleRankingUpload('ros', 'rosSuccessMsg'));
     if (weeklyFileEl) weeklyFileEl.addEventListener('change', () => processSingleRankingUpload('weekly', 'weeklySuccessMsg'));
+
+    // Drag-and-drop onto either rankings card (window.enableFileDrop, js/utils.js). The drop
+    // is handed to the same file input the picker uses, so it goes through the exact same
+    // path. Single-file mode: the whole card is the target. Multiple-files mode: a file has
+    // to land on a visible position box, because the card alone can't say which position it
+    // is; that box's input gets it, and "Combine & Process Files" runs the batch as usual.
+    // typeof check: an older cached utils.js right after a deploy won't have the helper yet.
+    if (typeof window.enableFileDrop === 'function') {
+        ['ros', 'weekly'].forEach(type => {
+            window.enableFileDrop(document.getElementById(`${type}RankingsCard`), {
+                pickInput: e => {
+                    if (document.getElementById(`${type}UploadMode`)?.value !== 'multi') {
+                        return document.getElementById(`${type}FileInput`);
+                    }
+                    const wrap = e.target instanceof Element ? e.target.closest(`[id^="${type}-input-wrap-"]`) : null;
+                    return (wrap && wrap.style.display !== 'none') ? wrap.querySelector('input[type="file"]') : null;
+                },
+                refuseMessage: () => "You're in Multiple Files mode: drop each file onto its position's box. Tick a position above to show its box."
+            });
+        });
+    }
 // --- MARKET DISCONNECT ENGINE ---
     const marketFileEl = document.getElementById('marketFileInput');
     if (marketFileEl) {
@@ -4786,7 +4876,18 @@ function attachScoutSuggestionHandler(outputElId) {
 
         const filename = file.name.toLowerCase();
         if (filename.endsWith('.csv')) {
-            Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
+            Papa.parse(file, {
+                header: true, skipEmptyLines: true,
+                complete: results => parseMarketData(results.data, successMsgId),
+                // Papa calls this instead of `complete` when it can't read the File (moved or
+                // deleted after being picked). Without it the upload failed with no message.
+                // The input is cleared so choosing the same file again fires 'change'.
+                error: err => {
+                    console.error("Error reading file:", file.name, err);
+                    fileInput.value = '';
+                    if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
+                }
+            });
         } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
             window.loadSheetJS(() => {            
                 const reader = new FileReader();
@@ -5507,7 +5608,7 @@ function applyMarketSettingsToUI() {
         // rank -- prefixing the position (e.g. "QB #12") only for Positional Rank results keeps
         // Overall Rank results looking exactly as they always have.
         function formatDisconnectRank(rank, pos, isPositionalResult) {
-            return (isPositionalResult && pos) ? `${pos} #${rank}` : `#${rank}`;
+            return (isPositionalResult && pos) ? `${escapeHtml(pos)} #${rank}` : `#${rank}`;
         }
 
         let html = "";
@@ -5521,13 +5622,13 @@ function applyMarketSettingsToUI() {
             </div>`;
             buyItems.forEach(item => {
                 let ownerStr = item.owner === "You" ? `<span style="color:#60a5fa;">On your roster</span>`
-                    : item.owner ? `Rostered by: ${item.owner}`
+                    : item.owner ? `Rostered by: ${escapeHtml(item.owner)}`
                     : knowsWholeLeague ? `<span style="color:var(--primary-green);">Free Agent</span>`
                     : `<span style="color:var(--text-muted);" title="${notYoursTitle}">Not on your roster</span>`;
                 html += `
                 <div class="scout-result-card">
                     <div>
-                        <div class="mls-item-name">${item.name}</div>
+                        <div class="mls-item-name">${escapeHtml(item.name)}</div>
                         <div class="mls-meta-row">
                             <span>Your Board: <strong class="mls-stat-green">${formatDisconnectRank(item.userRank, item.pos, item.isPositional)}</strong>${tierTag(item.userTier)}${item.userAltHTML}</span>
                             <span>Market: <strong class="mls-stat-blue">${formatDisconnectRank(item.marketVal, item.pos, item.isPositional)}</strong></span>
@@ -5550,7 +5651,7 @@ function applyMarketSettingsToUI() {
                 html += `
                 <div class="scout-result-card">
                     <div>
-                        <div class="mls-item-name">${item.name}</div>
+                        <div class="mls-item-name">${escapeHtml(item.name)}</div>
                         <div class="mls-meta-row">
                             <span>Your Board: <strong class="mls-stat-red">${formatDisconnectRank(item.userRank, item.pos, item.isPositional)}</strong>${tierTag(item.userTier)}${item.userAltHTML}</span>
                             <span>Market: <strong class="mls-stat-blue">${formatDisconnectRank(item.marketVal, item.pos, item.isPositional)}</strong></span>
@@ -5775,7 +5876,7 @@ function applyMarketSettingsToUI() {
             let rankBadge = (p.rosRank !== 999 || p.posRank !== 999) ? `Ovr: ${ovrStr} | Pos: ${posStr}` : "Unranked";
             let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
             let byeBadge = getByeBadgeHTML(p.team);
-            let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+            let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
             // Same "R" badge as MDS roster cards and the Matchup Simulator.
             let rookieBadge = isRookiePlayer(p, rookieIdx) ? `<span class="badge badge-rookie" title="Rookie" aria-label="Rookie">R</span>` : "";
@@ -5793,11 +5894,11 @@ function applyMarketSettingsToUI() {
             html += `
             <div class="roster-item">
                 <div class="mls-player-row-info">
-                    <span class="badge pos-badge ${p.pos} mls-pos-badge-sizing">${p.pos}</span>
+                    <span class="badge pos-badge ${escapeHtml(p.pos)} mls-pos-badge-sizing">${escapeHtml(p.pos)}</span>
                     <div class="mls-player-row-text">
-                        <div class="player-name-wrap">${p.name}${byeStr}${statusBadges ? ` <span class="mls-name-badges">${statusBadges}</span>` : ''}</div>
+                        <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}${statusBadges ? ` <span class="mls-name-badges">${statusBadges}</span>` : ''}</div>
                         <div class="mls-player-row-meta">
-                            <span class="badge">${p.team}</span>
+                            <span class="badge">${escapeHtml(p.team)}</span>
                             <span class="badge mls-rank-badge">${rankBadge}</span>
                             ${sosBadge}
                         </div>
@@ -6331,15 +6432,15 @@ function applyMarketSettingsToUI() {
 
         State.syncLogs.forEach(log => {
             let changes = [];
-            if (log.added.length) changes.push(`<span style="color: #86efac; font-weight: 500;">+ ${log.added.join(', ')}</span>`);
-            if (log.dropped.length) changes.push(`<span style="color: #9ca3af; text-decoration: line-through;">- ${log.dropped.join(', ')}</span>`);
-            if (log.newlyOut.length) changes.push(`<span style="color: #fca5a5;">Out: ${log.newlyOut.join(', ')}</span>`);
+            if (log.added.length) changes.push(`<span style="color: #86efac; font-weight: 500;">+ ${log.added.map(escapeHtml).join(', ')}</span>`);
+            if (log.dropped.length) changes.push(`<span style="color: #9ca3af; text-decoration: line-through;">- ${log.dropped.map(escapeHtml).join(', ')}</span>`);
+            if (log.newlyOut.length) changes.push(`<span style="color: #fca5a5;">Out: ${log.newlyOut.map(escapeHtml).join(', ')}</span>`);
             
             if (changes.length > 0) {
                 totalChanges += (log.added.length + log.dropped.length + log.newlyOut.length);
                 html += `
                 <div style="background: rgba(0,0,0,0.2); padding: 0.6rem 0.8rem; border-radius: 6px; border-left: 2px solid #60a5fa;">
-                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; margin-bottom: 0.3rem;">${log.leagueName}</div>
+                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; margin-bottom: 0.3rem;">${escapeHtml(log.leagueName)}</div>
                     <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.2rem;">
                         ${changes.join('')}
                     </div>
@@ -6683,7 +6784,7 @@ window.syncAllLeagues = async function(btn) {
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
-                let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+                let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
                 let kickoffBadge = getGameInfoHTML(p.team);
 
                 let sleeperWarn = "";
@@ -6708,18 +6809,18 @@ window.syncAllLeagues = async function(btn) {
                 // bench, where the slot badge alone doesn't reveal it) -- for consistency, per
                 // Benton, and so every row's meta line starts with the same kind of element
                 // instead of some starting with plain text and others starting with the team badge.
-                let plainPos = `<span class="mls-plain-pos pos-text-${p.pos.toLowerCase()}">${p.pos}</span>`;
+                let plainPos = `<span class="mls-plain-pos pos-text-${escapeHtml(String(p.pos).toLowerCase())}">${escapeHtml(p.pos)}</span>`;
 
                 html += `
                 <div class="lineup-slot ${lockClass}">
                     <div class="mls-player-row-info">
                         <span class="slot-badge slot-${slotType}">${slotType}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr}</div>
+                            <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}</div>
                             ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 ${plainPos}
-                                <span class="badge">${p.team}</span>
+                                <span class="badge">${escapeHtml(p.team)}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
@@ -6759,7 +6860,7 @@ window.syncAllLeagues = async function(btn) {
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
-                let injBadge = p.inj ? `<span class="badge inj-badge">${p.inj}</span>` : "";
+                let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
                 let kickoffBadge = getGameInfoHTML(p.team);
                 // Kept even though the divider above already labels the group: the divider
                 // scrolls off, and these rows get screenshotted and pasted into league chats.
@@ -6772,7 +6873,7 @@ window.syncAllLeagues = async function(btn) {
                 let badgesRow = [injBadge, taxiBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
                 // Bench ("BN") never reveals real position the way a strict slot badge does, so
                 // always show it as plain text here -- same reasoning as the starters block above.
-                let plainPos = `<span class="mls-plain-pos pos-text-${p.pos.toLowerCase()}">${p.pos}</span>`;
+                let plainPos = `<span class="mls-plain-pos pos-text-${escapeHtml(String(p.pos).toLowerCase())}">${escapeHtml(p.pos)}</span>`;
 
                 // "TX" rather than "BN" in the slot column, so the distinction survives even
                 // where the badges row is dense -- same fixed 46px slot badge, no layout shift.
@@ -6793,11 +6894,11 @@ window.syncAllLeagues = async function(btn) {
                     <div class="mls-player-row-info">
                         <span class="slot-badge slot-${slotCode}">${slotCode}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${p.name}${byeStr}</div>
+                            <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}</div>
                             ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 ${plainPos}
-                                <span class="badge">${p.team}</span>
+                                <span class="badge">${escapeHtml(p.team)}</span>
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
@@ -7020,7 +7121,7 @@ window.renderPowerRankingsTable = function(teamScores) {
             // Show up to the top 6 players at the position
             let listHtml = players.slice(0, 6).map(p => `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 12px; font-size: 0.8rem;">
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">${p.name}</span>
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">${escapeHtml(p.name)}</span>
                     <span style="color: var(--text-muted); font-weight: 600; flex-shrink: 0;">#${p.rank}${tierTag(p.tier)}</span>
                 </div>
             `).join('');
@@ -7055,7 +7156,7 @@ window.renderPowerRankingsTable = function(teamScores) {
         
         html += `
             <tr style="border-bottom: 1px solid var(--border-color, #334155); ${isYou}">
-                <td style="padding: 12px 10px; text-align: left; color: var(--text-main, #f8fafc);">${t.owner}</td>
+                <td style="padding: 12px 10px; text-align: left; color: var(--text-main, #f8fafc);">${escapeHtml(t.owner)}</td>
                 
                 <td style="padding: 12px 10px; font-weight: 800; color: ${getRankColor(t.overallRank)};">
                     ${t.overallRank}

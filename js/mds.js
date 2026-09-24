@@ -16,6 +16,14 @@
     const readJSON = window.readJSON || function (key, fallback) {
         try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
     };
+    // Same stale-utils.js guard for the helpers utils.js gained later. escapeHtml's fallback is
+    // a full copy, since rendering player cards depends on it. The rankings-upload ones fall
+    // back to a generic message / no quote check, which is all an old utils.js could offer.
+    const escapeHtml = window.escapeHtml || function (str) {
+        return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    };
+    const formatRankingsDiagnostic = window.formatRankingsDiagnostic || (() => "Couldn't find any players in that file. Check the format and try again.");
+    const findCsvQuoteProblem = window.findCsvQuoteProblem || (() => null);
 
     // --- DRAFT PLAYER-POOL STORAGE (v2) ---
     // Each draft profile remembers its own player pool, so switching profiles restores the
@@ -241,12 +249,14 @@
     function refreshDraftDropdown() {
         const select = document.getElementById('draftProfileSelect');
         if (!select) return;
-        let html = "";
+        // Built as Option elements rather than an HTML string. Draft names are typed by the
+        // user or taken from Sleeper (a league's or draft's name, set by whoever runs it), so
+        // markup in one would otherwise run as script. Option's text and value are plain strings.
+        select.textContent = '';
         State.drafts.forEach(d => {
-            let sel = d.draftId === State.activeDraftId ? "selected" : "";
-            html += `<option value="${d.draftId}" ${sel}>${d.name}</option>`;
+            const isActive = d.draftId === State.activeDraftId;
+            select.appendChild(new Option(d.name, d.draftId, isActive, isActive));
         });
-        select.innerHTML = html;
     }
 
     window.switchDraftProfile = function(draftId) {
@@ -1464,7 +1474,17 @@ if (fileInput) {
         const ext = file.name.split('.').pop().toLowerCase();
         
         if (ext === 'csv') {
-            Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processData(results.data) });
+            // Read as text first (rather than handing Papa the File) so title lines can be
+            // stripped before the header parse; see stripTitleLines. Rankings files are small,
+            // so reading the whole thing at once costs nothing over Papa's own file reading.
+            file.text().then(
+                text => parseRankingsCsvText(text, null, file.name),
+                err => {
+                    console.error("Error reading file:", file.name, err);
+                    fileInput.value = '';
+                    if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
+                }
+            );
         } else if (ext === 'xlsx' || ext === 'xls') {
             // Fetches SheetJS on first use. The onError path matters: with an ad blocker, an
             // offline phone or a cdnjs outage the script never loads, and without this the
@@ -1482,6 +1502,14 @@ if (fileInput) {
             if (window.showToast) window.showToast("Please upload a .csv, .xlsx, or .xls file", { isError: true });
         }
     });
+
+    // Drag-and-drop anywhere on the upload card (window.enableFileDrop, js/utils.js). The
+    // dropped file is handed to this same input and fires the listener above, so a drop and
+    // a picked file take the identical path. typeof check: an older cached utils.js right
+    // after a deploy won't have the helper yet.
+    if (typeof window.enableFileDrop === 'function') {
+        window.enableFileDrop(fileInput.closest('.settings-card') || fileInput.parentElement, { pickInput: () => fileInput });
+    }
 }
 
 // Helper function that processes the Excel file
@@ -1493,8 +1521,33 @@ function parseExcel(file) {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            processData(XLSX.utils.sheet_to_json(firstSheet, {defval: ""}));
+            // The header row is read separately (header: 1 gives raw rows) because the object
+            // form below has no rows at all for a header-only sheet, so its keys can't be used
+            // to report which columns the file actually has.
+            // Header row per tab, found past any title lines (findHeaderRowIndex). blankrows:
+            // true keeps the raw row indexes lined up with the sheet's own rows, so `startRow`
+            // can be handed to SheetJS's `range` option below to start reading at the header.
+            const headerInfo = name => {
+                const ws = workbook.Sheets[name];
+                if (!ws || !ws['!ref']) return { headers: [], startRow: 0 };
+                const raw = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: true, defval: '' });
+                const idx = findHeaderRowIndex(raw);
+                return { headers: raw[idx] || [], startRow: XLSX.utils.decode_range(ws['!ref']).s.r + idx };
+            };
+            const headerRowOf = name => headerInfo(name).headers;
+            // Use the first tab with a player-name column, not simply the first tab. A workbook
+            // that opens on a notes or instructions tab used to fail outright here. If no tab
+            // qualifies, the error describes the first tab that looks like a table (2+ header
+            // cells), which is most likely the one meant to hold the rankings, and falls back to
+            // the first tab.
+            const sheetName = workbook.SheetNames.find(name =>
+                headerRowOf(name).some(h => MDS_NAME_HEADERS.includes(normalizeHeader(h)))
+            ) || workbook.SheetNames.find(name => headerRowOf(name).filter(h => String(h).trim()).length >= 2)
+              || workbook.SheetNames[0];
+            const { headers, startRow } = headerInfo(sheetName);
+            const source = { fileName: file.name, headers };
+            if (workbook.SheetNames.length > 1) source.sheetName = sheetName;
+            processData(XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "", range: startRow }), null, source);
         } catch (err) {
             console.error("Error reading Excel file:", err);
             if (window.showToast) window.showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
@@ -1509,12 +1562,105 @@ function parseExcel(file) {
 
     window.processPaste = function(btn) {
         const text = document.getElementById('csvPasteArea')?.value;
-        if (text) Papa.parse(text, { header: true, skipEmptyLines: true, complete: results => processData(results.data, btn) });
+        if (text) parseRankingsCsvText(text, btn, null);
     };
-    async function processData(data, btn = null) {
+
+    // Shared by CSV uploads and pastes (fileName null). Papa is given a string here, never a
+    // File, so it can't fail to read: it always calls `complete`, and read failures are
+    // handled where the file is read (file.text() above).
+    //
+    // The quote check runs on the ORIGINAL text, not the title-stripped copy. stripTitleLines
+    // re-serializes the rows with Papa.unparse, which would quote the swallowed cell properly
+    // and hide the damage from the main parse. Checking the original also makes the row
+    // number match the user's file.
+    function parseRankingsCsvText(text, btn, fileName) {
+        const quoteProblem = findCsvQuoteProblem(Papa.parse(text, { header: false, skipEmptyLines: true }), 1);
+        Papa.parse(stripTitleLines(text), {
+            header: true, skipEmptyLines: true,
+            complete: results => processData(results.data, btn, { fileName, headers: results.meta.fields, quoteProblem })
+        });
+    }
+
+    // Same header matching as getVal in processData below: lowercase, trimmed, quotes stripped.
+    const MDS_NAME_HEADERS = ['player', 'name', 'player name'];
+    const normalizeHeader = h => String(h).toLowerCase().trim().replace(/['"]/g, '');
+    const hasNameHeader = row => Array.isArray(row) && row.some(h => MDS_NAME_HEADERS.includes(normalizeHeader(h)));
+    const isBlankRow = row => !Array.isArray(row) || row.every(c => String(c ?? '').trim() === '');
+
+    // Title lines above the header row. Some exports start with "Week 3 Rankings" or a
+    // source credit, and the header row is a line or two further down. Papa (header: true)
+    // and SheetJS both take the first row as headers, so the title became the only "column"
+    // and the upload failed with no name column. Takes raw rows (arrays of cells) and returns
+    // the index of the row to use as the header: the first non-blank row if it has a name
+    // column, else the first of the next few rows that does. Only a row with a Player/Name
+    // cell can move the header down, so ordinary data never does.
+    //
+    // With no name column anywhere the upload fails regardless; the fallback just decides
+    // which row the error message lists as "Found:". It's the first row with 2+ cells, which
+    // skips a one-cell title line, so the message lists the real columns (Rank, Tm, Bye)
+    // rather than "Week 3 Rankings".
+    const MAX_TITLE_ROWS = 10;
+    const filledCells = row => row.filter(c => String(c ?? '').trim() !== '').length;
+    function findHeaderRowIndex(rawRows) {
+        const first = rawRows.findIndex(r => !isBlankRow(r));
+        if (first === -1 || hasNameHeader(rawRows[first])) return Math.max(first, 0);
+        let firstTableRow = -1;
+        for (let i = first, seen = 0; i < rawRows.length && seen <= MAX_TITLE_ROWS; i++) {
+            if (isBlankRow(rawRows[i])) continue;
+            seen++;
+            if (hasNameHeader(rawRows[i])) return i;
+            if (firstTableRow === -1 && filledCells(rawRows[i]) >= 2) firstTableRow = i;
+        }
+        return firstTableRow !== -1 ? firstTableRow : first;
+    }
+
+    // Cuts title lines off CSV text (an upload or a paste) before Papa parses it with
+    // header: true, so the header lands on the real header row. Files without title lines
+    // come back untouched. With title lines, the text is parsed to rows, the title rows are
+    // dropped, and the rest goes back through Papa.unparse. That keeps quoting intact without
+    // any character-offset math (Papa's meta.cursor after `preview` rows overshoots on its
+    // fast path for quote-free text, so it can't be used as a cut point).
+    // Runs BEFORE the main parse, never inside it: calling Papa.parse from inside another
+    // parse's beforeFirstChunk corrupts the outer parse's state.
+    function stripTitleLines(text) {
+        const idx = findHeaderRowIndex(Papa.parse(text, { header: false, preview: MAX_TITLE_ROWS * 2 + 1 }).data);
+        if (idx <= 0) return text;
+        return Papa.unparse(Papa.parse(text, { header: false }).data.slice(idx));
+    }
+
+    // source: { fileName, headers, sheetName?, quoteProblem? }. fileName is null for pasted
+    // text; sheetName is set when the rankings came from one tab of a multi-tab workbook;
+    // quoteProblem is findCsvQuoteProblem's result for CSV text. headers is the file's
+    // header row as written, used both to catch a missing name column before any work starts
+    // and to show the user what columns were found. The diagnostic follows the same shape as
+    // lineup/rankingsParser.js's so both apps share window.formatRankingsDiagnostic's wording.
+    async function processData(data, btn = null, source = {}) {
         const metaEl = document.getElementById('metaDisplay');
-        const originalBtnText = btn ? btn.innerHTML : "Upload"; 
-        
+        const originalBtnText = btn ? btn.innerHTML : "Upload";
+
+        // Blank header cells show up as SheetJS's "__EMPTY" placeholders or Papa's
+        // "__parsed_extra"; neither is something the user typed.
+        const headersFound = (source.headers || (data[0] ? Object.keys(data[0]) : []))
+            .map(h => String(h ?? '').trim())
+            .filter(h => h && !h.startsWith('__EMPTY') && h !== '__parsed_extra');
+        const fail = reason => {
+            const diag = { fileName: source.fileName || null, reason, headersFound, missing: reason === 'no-name-column' ? MDS_NAME_HEADERS : [] };
+            if (source.sheetName) diag.sheetName = source.sheetName;
+            // Nothing was replaced, so put back whatever the rankings status line said before.
+            updateMetaDisplay();
+            if (btn) flashButton(btn, "Error Parsing Data", true, originalBtnText);
+            // Clear the picker so choosing the same file again (after fixing it) fires 'change'.
+            if (source.fileName && fileInput) fileInput.value = '';
+            // Longer than the 6s error default: the message lists columns to read and act on.
+            if (window.showToast) window.showToast(formatRankingsDiagnostic(diag), { isError: true, duration: 12000 });
+        };
+
+        // Checked before the Sleeper download below (~5MB): no point fetching it for a file
+        // that can't produce a single player.
+        if (headersFound.length === 0 && data.length === 0) return fail('empty-file');
+        if (!headersFound.some(h => MDS_NAME_HEADERS.includes(normalizeHeader(h)))) return fail('no-name-column');
+        if (data.length === 0) return fail('no-rows');
+
         if (metaEl) {
             metaEl.style.display = 'block';
             metaEl.innerText = "Processing players and building database...";
@@ -1700,11 +1846,19 @@ function parseExcel(file) {
             saveAndRenderDraftState();
 
             if (btn) flashButton(btn, "Loaded Successfully", false, originalBtnText);
-            if (typeof window.showToast === 'function') window.showToast(`Loaded ${State.players.length} players`);
+            if (typeof window.showToast === 'function') {
+                // Loaded, but an unclosed quote swallowed rows (see findCsvQuoteProblem in
+                // utils.js). Shown as an error: the list is missing players the user expects.
+                if (source.quoteProblem) {
+                    const q = { fileName: source.fileName || null, reason: 'unclosed-quote', row: source.quoteProblem.row, rowsLost: source.quoteProblem.rowsLost, headersFound: [], missing: [] };
+                    window.showToast(`Loaded ${State.players.length} players, but some are missing.\n${formatRankingsDiagnostic(q)}`, { isError: true, duration: 12000 });
+                } else {
+                    window.showToast(`Loaded ${State.players.length} players`);
+                }
+            }
         } else {
-            if (metaEl) metaEl.style.display = 'none';
-            if (btn) flashButton(btn, "Error Parsing Data", true, originalBtnText);
-            if (window.showToast) window.showToast("Error: Could not detect player names. Please check your CSV format.", { isError: true });
+            // The name column exists (checked above), so every row's name cell was blank.
+            fail('no-names-in-column');
         }
     }
 
@@ -2059,7 +2213,7 @@ function parseExcel(file) {
                     let firstName = nameParts[0];
                     let lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : "";
 
-                    cellClass += ` picked ${pPos}`;
+                    cellClass += ` picked ${escapeHtml(pPos)}`;
                     if (pObj && myTeamSet.has(pObj.id)) cellClass += " mine";
 
                     // 1. Grab the exact Sleeper ID safely (removing the undefined matchedPick variable)
@@ -2073,8 +2227,8 @@ function parseExcel(file) {
                     cellContent = `
                         ${imgHTML}
                         <div style="display:flex; flex-direction:column; align-items:center;">
-                            <div class="draft-cell-first" title="${pName}">${firstName}</div>
-                            <div class="draft-cell-last" title="${pName}">${lastName}</div>
+                            <div class="draft-cell-first" title="${escapeHtml(pName)}">${escapeHtml(firstName)}</div>
+                            <div class="draft-cell-last" title="${escapeHtml(pName)}">${escapeHtml(lastName)}</div>
                         </div>
                     `;
                 }
@@ -2131,15 +2285,15 @@ function parseExcel(file) {
                         <span class="roster-label" style="color:${color}">${label}</span>
                         ${imgHTML} <!-- Inject Image Here -->
                         <div>
-                            <div style="font-weight: bold;">${p.name} ${rookieBadge}</div>
+                            <div style="font-weight: bold;">${escapeHtml(p.name)} ${rookieBadge}</div>
                             <div style="margin-top: 2px;">
-                                <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span>
-                                <span class="badge">${p.team}</span>
+                                <span class="badge pos-badge ${escapeHtml(p.posGroup)}">${escapeHtml(p.posDisplay)}</span>
+                                <span class="badge">${escapeHtml(p.team)}</span>
                             </div>
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Bye: ${p.bye}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Bye: ${escapeHtml(p.bye)}</div>
                         <button class="mds-btn-sm btn-draft" style="padding: 2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
                     </div>
                 </div>`;
@@ -2421,7 +2575,7 @@ function parseExcel(file) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border); margin-top:0.5rem;">
                 <span class="recap-callout-label">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary-green);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                    <strong>Biggest Steal:</strong> ${bestSteal.player.name} (${bestSteal.player.posDisplay})
+                    <strong>Biggest Steal:</strong> ${escapeHtml(bestSteal.player.name)} (${escapeHtml(bestSteal.player.posDisplay)})
                 </span>
                 <span class="badge badge-value">+${Math.abs(bestSteal.diff)} Value</span>
             </div>`;
@@ -2431,7 +2585,7 @@ function parseExcel(file) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border); margin-top:0.5rem;">
                 <span class="recap-callout-label">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--avoid-border);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    <strong>Biggest Reach:</strong> ${worstReach.player.name} (${worstReach.player.posDisplay})
+                    <strong>Biggest Reach:</strong> ${escapeHtml(worstReach.player.name)} (${escapeHtml(worstReach.player.posDisplay)})
                 </span>
                 <span class="badge badge-reach">${worstReach.diff} Reach</span>
             </div>`;
@@ -2461,7 +2615,7 @@ function parseExcel(file) {
 
                 mathHTML += `
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px;">
-                        <span><strong>${sp.posDisplay}:</strong> ${sp.name} (Rank: ${sp.rank} | Pick: ${pPick})</span>
+                        <span><strong>${escapeHtml(sp.posDisplay)}:</strong> ${escapeHtml(sp.name)} (Rank: ${sp.rank} | Pick: ${pPick})</span>
                         <span style="color:${valColor}; font-weight:bold;">${sign}${diff} Value</span>
                     </div>`;
             });
@@ -2647,7 +2801,7 @@ function parseExcel(file) {
             }
         }
 
-        let adpText = (p.adp && p.adp !== "-") ? ` | Market: ${p.adp}` : "";
+        let adpText = (p.adp && p.adp !== "-") ? ` | Market: ${escapeHtml(p.adp)}` : "";
         let isStack = false;
         if (showStacks && p.team !== "FA") {
             if (['WR', 'TE'].includes(p.posGroup) && myQbs.includes(p.team)) isStack = true;
@@ -2658,7 +2812,7 @@ function parseExcel(file) {
         let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
         
         // NEW: Generate the injury badge using your existing CSS class
-        let injuryBadge = p.injury ? `<span class="badge inj-badge">${p.injury}</span>` : "";
+        let injuryBadge = p.injury ? `<span class="badge inj-badge">${escapeHtml(p.injury)}</span>` : "";
         
         // Check if the card was expanded before the sync happened
         let expandedClass = p.isExpanded ? " is-expanded" : "";
@@ -2668,7 +2822,7 @@ function parseExcel(file) {
         let queueStarColor = isQueued ? "#f59e0b" : "var(--text-muted)";
 
         return `
-            <div class="player-card${expandedClass}" style="${customStyle}" tabindex="0" role="button" aria-label="${p.rank}. ${p.name}">
+            <div class="player-card${expandedClass}" style="${customStyle}" tabindex="0" role="button" aria-label="${escapeHtml(p.rank)}. ${escapeHtml(p.name)}">
                 
                 <div class="card-grid" style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch; text-align: left;">
                     
@@ -2676,7 +2830,7 @@ function parseExcel(file) {
                     <div class="card-top-row">
                         <span style="color: var(--text-muted); font-weight: 500; font-size: 1rem; flex-shrink: 0;">${p.rank}.</span> 
                         <h4 class="card-name">
-                            ${p.name}
+                            ${escapeHtml(p.name)}
                         </h4>
                     </div>
 
@@ -2685,7 +2839,7 @@ function parseExcel(file) {
                         
                         <!-- Bottom Left: Badges, Star & Affinity -->
                         <div class="card-badges-row">
-                            <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span> 
+                            <span class="badge pos-badge ${escapeHtml(p.posGroup)}">${escapeHtml(p.posDisplay)}</span> 
                             ${rookieBadge}
                             ${injuryBadge}
                             ${stackBadge}
@@ -2714,7 +2868,7 @@ function parseExcel(file) {
 
                 <div class="card-details" id="details-${p.id}">
                     <div class="player-stats">
-                        <span>${p.team} | Bye: ${p.bye}${adpText}${valueBadgeHTML}</span>
+                        <span>${escapeHtml(p.team)} | Bye: ${escapeHtml(p.bye)}${adpText}${valueBadgeHTML}</span>
                         <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                         </span>
@@ -2723,19 +2877,19 @@ function parseExcel(file) {
                         <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
                             <div>
                                 <label class="card-field-label">Rank</label>
-                                <input type="number" id="edit-rank-val-${p.id}" value="${p.rank}" style="width:55px;">
+                                <input type="number" id="edit-rank-val-${p.id}" value="${escapeHtml(p.rank)}" style="width:55px;">
                             </div>
                             <div>
                                 <label class="card-field-label">Tier</label>
-                                <input type="text" id="edit-tier-val-${p.id}" value="${p.tier}" style="width:45px;">
+                                <input type="text" id="edit-tier-val-${p.id}" value="${escapeHtml(p.tier)}" style="width:45px;">
                             </div>
                             <div>
                                 <label class="card-field-label">Team</label>
-                                <input type="text" id="edit-team-val-${p.id}" value="${p.team}" style="width:55px;">
+                                <input type="text" id="edit-team-val-${p.id}" value="${escapeHtml(p.team)}" style="width:55px;">
                             </div>
                             <div>
                                 <label class="card-field-label">Bye</label>
-                                <input type="text" id="edit-bye-val-${p.id}" value="${p.bye}" style="width:45px;">
+                                <input type="text" id="edit-bye-val-${p.id}" value="${escapeHtml(p.bye)}" style="width:45px;">
                             </div>
                             <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
                                 <button class="mds-btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
@@ -2762,7 +2916,7 @@ function parseExcel(file) {
                     <div class="card-top-row">
                         <span style="color: var(--text-muted); cursor: grab; user-select: none; flex-shrink: 0; font-size: 1.1rem; margin-right: 0.2rem;" title="Drag to reorder">⋮⋮</span>
                         <h4 class="card-name">
-                            ${p.name}
+                            ${escapeHtml(p.name)}
                         </h4>
                     </div>
 
@@ -2773,7 +2927,7 @@ function parseExcel(file) {
                         <div class="card-badges-row">
                             <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled' : ''}>▲</button>
                             <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled' : ''}>▼</button>
-                            <span class="badge pos-badge ${p.posGroup}">${p.posDisplay}</span>
+                            <span class="badge pos-badge ${escapeHtml(p.posGroup)}">${escapeHtml(p.posDisplay)}</span>
                             <div style="display: flex; align-items: center; gap: 2px;">
                                 <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
                                 <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
@@ -2911,7 +3065,7 @@ function parseExcel(file) {
 
                 if (p.name.toLowerCase().includes(searchTerm)) {
                     if (searchTerm === "" && p.tier !== lastTier && p.tier !== "-") {
-                        newPoolHTML += `<div class="tier-divider">Tier ${p.tier}</div>`;
+                        newPoolHTML += `<div class="tier-divider">Tier ${escapeHtml(p.tier)}</div>`;
                         lastTier = p.tier;
                     }
 
@@ -2970,7 +3124,7 @@ function parseExcel(file) {
                 if (p) {
                     newOtherHTML += `
                         <div class="roster-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border);">
-                            <div style="color: var(--text-muted);"><strike>${p.name}</strike> <span class="badge">${p.posGroup}</span></div>
+                            <div style="color: var(--text-muted);"><strike>${escapeHtml(p.name)}</strike> <span class="badge">${escapeHtml(p.posGroup)}</span></div>
                             <button class="mds-btn-sm btn-draft" style="padding:2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
                         </div>`;
                 }
