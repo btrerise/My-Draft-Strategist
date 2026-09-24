@@ -4181,3 +4181,21 @@ a.nav-btn,
 .mls-preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
 .mls-preview-derived-title { color: #93c5fd; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
 .mls-preview-derived-body { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin: 0; }
+/* --- Drag-and-drop file upload (see window.enableFileDrop in js/utils.js) --- */
+/* The card (or MLS position box) under a dragged file. An outline rather than a border so
+   nothing shifts; the tint makes the whole target read as one drop area. */
+.mds-drop-active {
+    outline: 2px dashed var(--primary-green);
+    outline-offset: -4px;
+    background-color: rgba(16, 185, 129, 0.06);
+}
+/* "Or drop a file here" hint under the upload inputs. Hidden on touch-only devices, where
+   there's nothing to drag from. */
+.mds-drop-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0.35rem 0 0;
+}
+@media (hover: none) {
+    .mds-drop-hint { display: none; }
+}

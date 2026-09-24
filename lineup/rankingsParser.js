@@ -17,6 +17,27 @@
 const NFL_TEAMS = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
 const TEAM_ALIASES = { "JAC": "JAX", "WSH": "WAS" };
 
+// Headers the vertical parser accepts as the player-name column (matched lowercase).
+// Position names count too, for files laid out as one list per position.
+const VALID_NAME_HEADERS = ['player', 'name', 'player name', 'quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense', 'flex'];
+
+// Name columns the horizontal (by-position, side-by-side) layout looks for. Used only to
+// tell the user what was expected when a file of that shape yields no players.
+const HORIZONTAL_NAME_HEADERS = ['qb player', 'rb player', 'wr player', 'te player', 'k player', 'def team', 'flex player'];
+
+// Common non-name column headers. They exist only to tell two cases apart when no name column
+// matches: "row 0 is a header row that's missing its name column" and "this file has no header
+// row at all". The headerless fallback reads row 0 as a player, so before this check a file
+// headed Rank,Tm,Bye,Proj went to the preview as players named "Rank", "1", "2"... No player is
+// named any of these, so if row 0 contains one, row 0 is a header row.
+const KNOWN_NON_NAME_HEADERS = new Set([
+    'rank', 'rk', 'overall', 'ovr', '#', 'ecr', 'tier',
+    'team', 'tm', 'pos', 'position', 'pos rank', 'position rank', 'positional rank',
+    'bye', 'bye week', 'sos', 'schedule', 'matchup', 'ros', 'opp', 'opponent',
+    'proj', 'projection', 'projected', 'proj pts', 'fpts', 'pts', 'points',
+    'adp', 'value', 'avg', 'std', 'std dev', 'best', 'worst', 'age', 'exp', 'notes'
+]);
+
 // normalizeName and showToast live in utils.js, a plain (non-module) script loaded before
 // this one -- their top-level `function` declarations attach to `window`, so they're reached
 // here explicitly via `window.` rather than assumed to be bare globals, since that's the only
@@ -34,11 +55,67 @@ function parseTier(cell) {
     return m ? parseInt(m[0], 10) : null;
 }
 
+// Combined horizontal sheet (old format or the newer 'wk1' format): positions side by side,
+// each with its own rank/name columns. Only applies to single-file uploads.
+function isHorizontalLayout(headers, context) {
+    return (context === 'SINGLE') && headers.some(h =>
+        h.includes('quarterback') ||
+        h.includes('running back') ||
+        h === 'flex' ||
+        h.includes('qb player') ||
+        h.includes('rb player') ||
+        h.includes('flex player')
+    );
+}
+
+// What row 0 of a sheet is, using the same tests parseRowsIntoCombined applies:
+//   'empty'      nothing in the sheet
+//   'header'     a header row: has a name column, or recognizable non-name columns
+//   'headerless' no header row, so every row is read as data (a plain list of names)
+// The xlsx path uses this to decide which tabs to skip; see there.
+function classifyFirstRow(rows, context) {
+    if (!rows || rows.length < 1) return 'empty';
+    return looksLikeHeaderRow(rows[0], context) ? 'header' : 'headerless';
+}
+
+function looksLikeHeaderRow(row, context) {
+    const headers = row.map(h => String(h).trim().toLowerCase());
+    if (isHorizontalLayout(headers, context)) return true;
+    return headers.some(h => VALID_NAME_HEADERS.includes(h) || KNOWN_NON_NAME_HEADERS.has(h));
+}
+
+// How far down to look for a header row below title lines ("Week 3 Rankings", "Updated 9/22",
+// a source credit...). Generous on purpose: a false match needs a cell that is exactly a header
+// word like "Player" or "Rank", which a list of names doesn't have. The cap just keeps the
+// scan short.
+const MAX_TITLE_ROWS = 10;
+
+// Drops title lines above the real header row. Without this, a file starting
+// "Week 3 Rankings" / "Rank,Player,Team" had no header in row 0, fell into the headerless
+// path, and came through as players named "Week 3 Rankings", "Rank", "1"...
+// Only applies when row 0 isn't a header row itself and one of the next few rows is. A
+// headerless list of names never contains a cell like "Player" or "Rank", so it's left alone.
+// Expects rows parsed with skipEmptyLines, so blank lines between title and header don't count.
+function dropTitleRows(rows, context) {
+    if (!rows || rows.length < 2 || looksLikeHeaderRow(rows[0], context)) return rows;
+    const limit = Math.min(MAX_TITLE_ROWS, rows.length - 1);
+    for (let i = 1; i <= limit; i++) {
+        if (looksLikeHeaderRow(rows[i], context)) return rows.slice(i);
+    }
+    return rows;
+}
+
 /**
  * Parses one uploaded file (CSV or XLSX) and merges any player rank/SoS data it contains
  * into the shared accumulators. Resolves once parsing finishes -- it never rejects, since a
  * per-file failure should not stop the rest of a multi-file batch (see the try/catch and
- * reader.onerror below); it reports failures via window.showToast and resolves anyway.
+ * reader.onerror below).
+ *
+ * Resolves with an array of diagnostics (see parseRankingsFiles for the shape): empty when the
+ * file parsed cleanly, a file-level entry when it contributed no players, an entry per
+ * skipped workbook tab, and one for an unclosed quote. Read/load failures
+ * still toast here, where the error is caught, and come back as reason 'unreadable' so the
+ * caller knows they've already been reported.
  *
  * @param {{file: File, context: string}} fileObj - context is 'SINGLE', 'QB', 'FLEX', etc.
  * @param {Function} loadSheetJS - injected so this module never needs to import mls.js's
@@ -46,29 +123,27 @@ function parseTier(cell) {
  * @param {Object} combinedPlayers - accumulator, mutated in place across all files in a batch.
  * @param {Object} sosUpdates - accumulator of { TEAM: { POS: sosValue } }, mutated in place.
  * @param {{value: boolean}} hasNewSosRef - boxed boolean so this function can report "found new
- *   SoS data" back without needing a return value (parseSingleFile's contract is just "done").
+ *   SoS data" back alongside the diagnostic it resolves with.
  */
 function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef) {
     return new Promise((resolve) => {
         const file = fileObj.file;
         const parseContext = fileObj.context;
 
+        // Returns { added, reason, headersFound, missing }: `added` is how many rows produced a
+        // player; when it's 0, `reason` says why, for the diagnostic built in parseSingleFile.
         function parseRowsIntoCombined(rows, context) {
-            if (!rows || rows.length < 1) return;
+            if (!rows || rows.length < 1) return { added: 0, reason: 'empty-file', headersFound: [], missing: [] };
 
             let headers = rows[0].map(h => String(h).trim().toLowerCase());
+            // Original casing, for showing back to the user ("Found: Rank, Tm, Bye, Proj").
+            const headersFound = rows[0].map(h => String(h).trim()).filter(Boolean);
+            let added = 0;
 
-            // Check if this is a combined horizontal sheet (either old format or new 'wk1' format)
-            let isHorizontal = (context === 'SINGLE') && headers.some(h =>
-                h.includes('quarterback') ||
-                h.includes('running back') ||
-                h === 'flex' ||
-                h.includes('qb player') ||
-                h.includes('rb player') ||
-                h.includes('flex player')
-            );
+            let isHorizontal = isHorizontalLayout(headers, context);
 
             if (isHorizontal) {
+                let nameColsFound = 0;
                 headers.forEach((h, idx) => {
                     // Name columns end in 'player', or are exactly 'def team' for defense
                     if (h.includes('player') || h === 'def team') {
@@ -79,11 +154,13 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                         let isPosCol = (posMatch !== null) || isDefCol;
 
                         if ((isFlexCol || isPosCol) && rankColIdx >= 0) {
+                            nameColsFound++;
                             for (let r = 1; r < rows.length; r++) {
                                 let pName = rows[r][idx];
                                 let pRank = rows[r][rankColIdx];
 
                                 if (pName && pName.trim() && pRank && !isNaN(parseInt(pRank))) {
+                                    added++;
                                     let clean = normalizeName(pName.trim());
                                     if (!combinedPlayers[clean]) {
                                         combinedPlayers[clean] = { name: pName.trim(), cleanName: clean, posRank: 999, flexRank: 999, rank: 999 };
@@ -119,6 +196,9 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                         }
                     }
                 });
+                if (added > 0) return { added };
+                if (nameColsFound === 0) return { added: 0, reason: 'no-name-column', headersFound, missing: HORIZONTAL_NAME_HEADERS };
+                return { added: 0, reason: rows.length < 2 ? 'no-rows' : 'no-names-in-column', headersFound, missing: [] };
             } else {
                 // Vertical Parsing Engine
                 // 'ros' included alongside the more obvious 'sos'/'schedule'/'matchup' names --
@@ -130,9 +210,14 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
                 let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank' || h === 'positional rank');
 
-                // Include position names as valid player name headers
-                const validNameHeaders = ['player', 'name', 'player name', 'quarterback', 'running back', 'wide receiver', 'tight end', 'kicker', 'defense', 'flex'];
-                let hasHeaders = headers.some(h => validNameHeaders.includes(h));
+                let hasHeaders = headers.some(h => VALID_NAME_HEADERS.includes(h));
+
+                // A header row without a recognizable name column. Stop here rather than
+                // falling through to the headerless path, which would read the header cells
+                // and whatever column comes first as player names.
+                if (!hasHeaders && headers.some(h => KNOWN_NON_NAME_HEADERS.has(h))) {
+                    return { added: 0, reason: 'no-name-column', headersFound, missing: VALID_NAME_HEADERS };
+                }
                 // 'tier' used to be accepted here as a rank column, which meant a file with both
                 // a Rank and a Tier column could have the Tier values read as ranks (whichever
                 // column came first won). Tier is now its own optional field (tierColIdx below);
@@ -140,13 +225,14 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 // with no rank column at all.
                 let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
                 let tierColIdx = hasHeaders ? headers.findIndex(h => h === 'tier') : -1;
-                let nameColIdx = hasHeaders ? headers.findIndex(h => validNameHeaders.includes(h)) : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
+                let nameColIdx = hasHeaders ? headers.findIndex(h => VALID_NAME_HEADERS.includes(h)) : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
 
                 let startIndex = hasHeaders ? 1 : 0;
 
                 for (let i = startIndex; i < rows.length; i++) {
                     let nameStr = rows[i][nameColIdx];
                     if (nameStr && nameStr.trim()) {
+                        added++;
                         let clean = normalizeName(nameStr.trim());
 
                         let overallRankVal = (rankColIdx !== -1 && rows[i][rankColIdx]) ? parseInt(rows[i][rankColIdx]) : (i + 1 - startIndex);
@@ -219,8 +305,35 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                         }
                     }
                 }
+                if (added > 0) return { added };
+                // A header-only file has nothing below its header row. For a headerless file,
+                // every row was read as data, so zero names means the name column was blank.
+                if (hasHeaders && rows.length < 2) return { added: 0, reason: 'no-rows', headersFound, missing: [] };
+                return { added: 0, reason: 'no-names-in-column', headersFound, missing: [] };
             }
         }
+
+        // Builds this file's diagnostics from its per-sheet results. A note goes in for every tab
+        // skipped for having no header row, whether or not the file worked otherwise: if one
+        // held real rankings, the user needs to know it wasn't read. If no sheet produced a player,
+        // a file-level entry comes first, describing the first sheet that was actually parsed
+        // and had something in it. A blank extra tab shouldn't hide the real problem on another tab.
+        function diagnosticsFor(results) {
+            const diags = [];
+            const base = { fileName: file.name, context: parseContext };
+            if (!results.some(r => r.added > 0)) {
+                const parsed = results.filter(x => !x.skipped);
+                const r = parsed.find(x => x.reason !== 'empty-file') || parsed[0] || { reason: 'empty-file', headersFound: [], missing: [] };
+                const diag = { ...base, reason: r.reason, headersFound: r.headersFound, missing: r.missing };
+                if (results.length > 1 && r.sheetName) diag.sheetName = r.sheetName;
+                diags.push(diag);
+            }
+            results.filter(r => r.skipped).forEach(r => {
+                diags.push({ ...base, reason: 'tab-without-header', headersFound: r.headersFound, missing: [], sheetName: r.sheetName });
+            });
+            return diags;
+        }
+        const unreadable = () => [{ fileName: file.name, context: parseContext, reason: 'unreadable', headersFound: [], missing: [] }];
 
         if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
             loadSheetJS(() => {
@@ -229,28 +342,48 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                     try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
-                        workbook.SheetNames.forEach(sheetName => {
-                            const csvStr = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
-                            Papa.parse(csvStr, {
+                        // Every tab is read into rows before any are parsed, because whether a
+                        // tab counts as data depends on the other tabs (below). Papa.parse on a
+                        // string is synchronous, so each sheet's rows are in hand right away.
+                        const sheets = workbook.SheetNames.map(sheetName => {
+                            let rows = [];
+                            Papa.parse(XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]), {
                                 header: false,
                                 skipEmptyLines: true,
-                                complete: results => parseRowsIntoCombined(results.data, parseContext)
+                                complete: results => { rows = dropTitleRows(results.data, parseContext); }
                             });
+                            return { sheetName, rows, kind: classifyFirstRow(rows, parseContext) };
                         });
+
+                        // A tab with no header row is normally read as a plain list of names.
+                        // That's right for a workbook made only of such lists. But when any other
+                        // tab has a header row, the workbook is laid out as a table, and a tab
+                        // without one is almost always notes ("Updated Tuesday",
+                        // "Injuries not reflected"). Before this, each note line became a player.
+                        // Those tabs are skipped and reported by name, so a real list that was
+                        // just missing its header row doesn't vanish without a trace.
+                        const workbookHasHeaders = sheets.some(s => s.kind === 'header');
+                        const sheetResults = sheets.map(({ sheetName, rows, kind }) => {
+                            if (workbookHasHeaders && kind === 'headerless') {
+                                return { added: 0, skipped: true, sheetName, headersFound: rows[0].map(c => String(c).trim()).filter(Boolean) };
+                            }
+                            return { ...parseRowsIntoCombined(rows, parseContext), sheetName };
+                        });
+                        resolve(diagnosticsFor(sheetResults));
                     } catch (err) {
                         console.error("Error reading Excel file:", err);
                         if (typeof window.showToast === 'function') {
                             window.showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
                         }
+                        resolve(unreadable());
                     }
-                    resolve();
                 };
                 reader.onerror = () => {
                     console.error("Error reading file:", file.name);
                     if (typeof window.showToast === 'function') {
                         window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                     }
-                    resolve();
+                    resolve(unreadable());
                 };
                 reader.readAsArrayBuffer(file);
             }, () => {
@@ -259,15 +392,40 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 if (typeof window.showToast === 'function') {
                     window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
                 }
-                resolve();
+                resolve(unreadable());
             });
         } else {
             Papa.parse(file, {
                 header: false,
                 skipEmptyLines: true,
                 complete: results => {
-                    parseRowsIntoCombined(results.data, parseContext);
-                    resolve();
+                    // try/catch for the same reason as `error` below: a throw in here would
+                    // leave the promise pending and the upload stuck on its spinner.
+                    try {
+                        const diags = diagnosticsFor([parseRowsIntoCombined(dropTitleRows(results.data, parseContext), parseContext)]);
+                        // Quote damage is the one results.errors entry that means rows were
+                        // lost (see findCsvQuoteProblem in js/utils.js). The XLSX branch doesn't
+                        // check: SheetJS writes its CSV with valid quoting.
+                        const quote = typeof window.findCsvQuoteProblem === 'function' ? window.findCsvQuoteProblem(results, 1) : null;
+                        if (quote) diags.push({ fileName: file.name, context: parseContext, reason: 'unclosed-quote', row: quote.row, rowsLost: quote.rowsLost, headersFound: [], missing: [] });
+                        resolve(diags);
+                    } catch (err) {
+                        console.error("Error parsing file:", file.name, err);
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(`Couldn't process "${file.name}". Check that it's a rankings file and try again.`, { isError: true });
+                        }
+                        resolve(unreadable());
+                    }
+                },
+                // Papa calls this instead of `complete` when it can't read the File (e.g. it
+                // was moved or deleted after being picked). Without it the promise never
+                // settled and the upload stalled on its progress indicator.
+                error: err => {
+                    console.error("Error reading file:", file.name, err);
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
+                    }
+                    resolve(unreadable());
                 }
             });
         }
@@ -283,7 +441,28 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
  * @param {Object} options
  * @param {Function} options.loadSheetJS - (onSuccess, onError) => void; loads the SheetJS lib.
  * @param {Function} [options.onProgress] - (completedCount, totalCount) => void.
- * @returns {Promise<{parsedData: Array, hasNewSos: boolean, sosUpdates: Object}>}
+ * @returns {Promise<{parsedData: Array, hasNewSos: boolean, sosUpdates: Object, diagnostics: Array}>}
+ *
+ * `diagnostics` lists, in upload order, one entry per file that contributed NO players, plus
+ * one per workbook tab that was skipped and one per CSV damaged by an unclosed quote (these
+ * two can come from a file that otherwise worked).
+ * Files that parsed cleanly aren't listed.
+ *   { fileName, context, reason, headersFound, missing, sheetName? }
+ *   - reason: 'no-name-column'     header row present, but none of `missing` is in it
+ *             'no-names-in-column' name column found, but every row's name cell is blank
+ *             'no-rows'            header row only, nothing below it
+ *             'empty-file'         nothing in the file at all
+ *             'unreadable'         couldn't be read/loaded; already toasted here
+ *             'tab-without-header' workbook tab with no header row, skipped because another
+ *                                  tab has one (usually a notes tab); always has sheetName
+ *             'unclosed-quote'     CSV row opens a quote that never closes; the file's
+ *                                  players were still read, but `rowsLost` rows after line
+ *                                  `row` were swallowed into one cell (both extra fields)
+ *   - headersFound: the header row as written (original casing, blanks dropped); for a
+ *     skipped tab, its first row
+ *   - missing: the lowercase name headers that were looked for (only for 'no-name-column')
+ *   - sheetName: set for multi-sheet workbooks, naming the tab the diagnostic describes
+ * window.formatRankingsDiagnostic (js/utils.js) turns one into the user-facing message.
  */
 export async function parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress } = {}) {
     let combinedPlayers = {};
@@ -294,12 +473,18 @@ export async function parseRankingsFiles(filesWithContext, { loadSheetJS, onProg
     let completed = 0;
     if (typeof onProgress === 'function') onProgress(completed, total);
 
-    await Promise.all(filesWithContext.map(f =>
-        parseSingleFile(f, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef).then(() => {
+    const perFile = await Promise.all(filesWithContext.map(f =>
+        parseSingleFile(f, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef).then(diags => {
             completed++;
             if (typeof onProgress === 'function') onProgress(completed, total);
+            return diags;
         })
     ));
 
-    return { parsedData: Object.values(combinedPlayers), hasNewSos: hasNewSosRef.value, sosUpdates };
+    return {
+        parsedData: Object.values(combinedPlayers),
+        hasNewSos: hasNewSosRef.value,
+        sosUpdates,
+        diagnostics: perFile.flat()
+    };
 }

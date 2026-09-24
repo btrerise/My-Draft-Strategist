@@ -861,12 +861,25 @@ window.showToast = function(message, options = {}) {
   toast.classList.toggle('toast-error', isError);
   toast.setAttribute('aria-live', isError ? 'assertive' : 'polite');
 
-  // Support \n line breaks the same way the alert() messages this replaces already used them
-  const textHTML = String(message).replace(/\n/g, '<br>');
+  // The message is plain text, never HTML. Toasts regularly carry names from outside the app:
+  // league names set by other people on Sleeper, player names and file names from uploaded
+  // files, draft names. Rendering them as HTML let markup in any of those run as script on
+  // this site. \n still becomes a line break (as in the alert() messages this replaces),
+  // added as <br> elements between text nodes rather than spliced into an HTML string.
+  const target = isError ? document.createElement('span') : toast;
+  toast.textContent = '';
+  String(message).split('\n').forEach((line, i) => {
+    if (i > 0) target.appendChild(document.createElement('br'));
+    target.appendChild(document.createTextNode(line));
+  });
   if (isError) {
-    toast.innerHTML = `<span class="toast-message">${textHTML}</span><button class="toast-dismiss-btn" onclick="this.parentElement.classList.remove('show')" aria-label="Dismiss">✕</button>`;
-  } else {
-    toast.innerHTML = textHTML;
+    target.className = 'toast-message';
+    const dismiss = document.createElement('button');
+    dismiss.className = 'toast-dismiss-btn';
+    dismiss.setAttribute('aria-label', 'Dismiss');
+    dismiss.textContent = '✕';
+    dismiss.addEventListener('click', () => toast.classList.remove('show'));
+    toast.append(target, dismiss);
   }
 
   void toast.offsetWidth; // Force CSS reflow to ensure animation replays
@@ -876,6 +889,188 @@ window.showToast = function(message, options = {}) {
   toast.hideTimeout = setTimeout(() => {
     toast.classList.remove('show');
   }, duration);
+};
+
+// --- RANKINGS UPLOAD DIAGNOSTICS ---
+// Turns one per-file diagnostic into the message the user sees. Diagnostics come from
+// rankingsParser.js's parseRankingsFiles (MLS) and from mds.js's processData (MDS), both
+// shaped { fileName, reason, headersFound, missing, sheetName? } -- see parseRankingsFiles for
+// what each reason means. Kept here so both apps describe the same problem in the same words.
+//
+// Returns plain text, not HTML. The file name and headers come straight from the user's file,
+// so callers must render it as text: showToast (above) does, and the MLS preview box sets
+// textContent.
+window.formatRankingsDiagnostic = function(diag) {
+  const MAX_HEADERS_SHOWN = 8;
+  const headers = diag.headersFound || [];
+  const foundList = headers.slice(0, MAX_HEADERS_SHOWN).map(String).join(', ') +
+    (headers.length > MAX_HEADERS_SHOWN ? `, +${headers.length - MAX_HEADERS_SHOWN} more` : '');
+  // No fileName means the rankings were pasted rather than uploaded (MDS's paste box).
+  const file = diag.fileName ? `"${diag.fileName}"` : 'your pasted rankings';
+  const where = diag.sheetName ? `the "${diag.sheetName}" tab of ${file}` : file;
+
+  switch (diag.reason) {
+    case 'no-name-column':
+      // The side-by-side, one-section-per-position layout looks for different column names.
+      if ((diag.missing || []).includes('qb player')) {
+        return `No player-name columns in ${where}. Found: ${foundList}. For a sheet with positions side by side, head each name column like 'QB Player', 'RB Player' or 'FLEX Player'.`;
+      }
+      return `No player-name column in ${where}. Found: ${foundList}. Rename one column to 'Player' or 'Name'.`;
+    case 'no-names-in-column':
+      return `The player-name column in ${where} is blank on every row. Check that the names are in that column and not the one next to it.`;
+    case 'no-rows':
+      return `${where.charAt(0).toUpperCase() + where.slice(1)} has a header row${foundList ? ` (${foundList})` : ''} but no players under it.`;
+    case 'empty-file':
+      return `${where.charAt(0).toUpperCase() + where.slice(1)} is empty.`;
+    case 'unreadable':
+      return `Couldn't read ${where}.`;
+    case 'unclosed-quote': {
+      const lost = diag.rowsLost || 0;
+      return lost > 0
+        ? `Row ${diag.row} of ${where} opens a quote (") that never closes, so the ${lost} row${lost === 1 ? '' : 's'} after it ${lost === 1 ? 'was' : 'were'} swallowed into one cell and ${lost === 1 ? 'is' : 'are'} missing. Add the closing quote and upload again.`
+        : `Row ${diag.row} of ${where} opens a quote (") that never closes, so that row may be garbled. Add the closing quote and upload again.`;
+    }
+    case 'tab-without-header':
+      // Always a single tab, so `where` already reads 'the "Notes" tab of "x.xlsx"'.
+      return `Skipped ${where}: it has no header row, and the file's other tabs do, so it was treated as notes. If it holds rankings, add a header row with a 'Player' or 'Name' column.`;
+    default:
+      return `Couldn't find any players in ${where}.`;
+  }
+};
+
+// --- DRAG-AND-DROP FILE UPLOAD ---
+// Lets a file be dropped onto an upload area instead of going through the file picker. A
+// dropped file is handed to the area's existing <input type="file"> and a 'change' event is
+// fired, so everything downstream (parsing, the preview, every error message) runs exactly as
+// if the file had been picked. Nothing about the upload paths themselves had to change.
+//
+// zone:      the element that accepts drops (usually the whole upload card, a big target).
+// pickInput: (event) => the <input type="file"> this drop should go to, or null to refuse it.
+//            A function rather than a fixed input so a zone can route by state (MLS: the
+//            single-file input, or in multi-file mode the position box the file landed on).
+// refuseMessage: (event) => text for a refused drop, when pickInput returned null.
+//
+// The dropped file is checked against the input's `accept` extensions. The file picker
+// enforces those; a drop bypasses them, and the rankings parser would otherwise read a
+// dropped PDF or image as CSV.
+window.enableFileDrop = function(zone, { pickInput, refuseMessage } = {}) {
+  if (!zone || typeof pickInput !== 'function') return;
+  let depth = 0; // dragenter/dragleave fire for every child element crossed; count them
+  const hasFiles = e => !!e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+  const clear = () => { depth = 0; zone.classList.remove('mds-drop-active'); };
+
+  zone.addEventListener('dragenter', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth++;
+    zone.classList.add('mds-drop-active');
+  });
+  zone.addEventListener('dragover', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); // required, or the browser never fires 'drop' here
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  zone.addEventListener('dragleave', e => {
+    if (!hasFiles(e)) return;
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) zone.classList.remove('mds-drop-active');
+  });
+  zone.addEventListener('drop', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.stopPropagation(); // handled here; keeps the page-level guard below out of it
+    clear();
+
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    const input = pickInput(e);
+    if (!input) {
+      const msg = typeof refuseMessage === 'function' ? refuseMessage(e) : '';
+      if (msg) window.showToast(msg, { isError: true });
+      return;
+    }
+    if (input.disabled) {
+      window.showToast('Wait for the current upload to finish, then drop the file again.', { isError: true });
+      return;
+    }
+    if (files.length > 1) {
+      window.showToast(`Drop one file at a time here (you dropped ${files.length}).`, { isError: true });
+      return;
+    }
+    const file = files[0];
+    const exts = String(input.accept || '').split(',').map(s => s.trim().toLowerCase()).filter(s => s.startsWith('.'));
+    if (exts.length && !exts.some(ext => file.name.toLowerCase().endsWith(ext))) {
+      const list = exts.length > 1 ? `${exts.slice(0, -1).join(', ')} or ${exts[exts.length - 1]}` : exts[0];
+      window.showToast(`"${file.name}" isn't a file this upload can read. Drop a ${list} file.`, { isError: true });
+      return;
+    }
+    try {
+      input.files = files; // shows the file's name in the input, same as picking it
+    } catch (err) {
+      console.error('Could not attach dropped file:', err);
+      window.showToast("Your browser didn't accept the dropped file. Use the file picker instead.", { isError: true });
+      return;
+    }
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  // A drag cancelled with Escape, or dropped elsewhere, never fires dragleave on the zone.
+  document.addEventListener('dragend', clear);
+  document.addEventListener('drop', clear);
+};
+
+// A file dropped anywhere OUTSIDE an upload area would make the browser open it in place of
+// the app, leaving the page and throwing away anything unsaved. That's easy to do by missing
+// the target by a few pixels, so the default is blocked page-wide for file drags. The cursor
+// shows "not allowed" there, and drops on real upload areas are handled above. Text drags
+// (e.g. into the paste box) aren't files and are left alone.
+(function guardStrayFileDrops() {
+  const isFileDrag = e => !!e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+  window.addEventListener('dragover', e => {
+    if (!isFileDrag(e) || e.defaultPrevented) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'none';
+  });
+  window.addEventListener('drop', e => {
+    if (isFileDrag(e)) e.preventDefault();
+  });
+})();
+
+// --- HTML ESCAPING ---
+// The one copy for both apps: mds.js (a plain script) calls it directly, and mls.js's own
+// escapeHtml forwards here. Use it on any outside text placed into an HTML string: player
+// names, teams, tiers and the like from uploaded or pasted rankings (and inline edits), plus
+// names from Sleeper. Safe in element text and in quoted attribute values ("..." or '...').
+// Not enough on its own inside an unquoted attribute, a URL, or inline JS/CSS.
+window.escapeHtml = function(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+// --- CSV QUOTE DAMAGE ---
+// Papa's results.errors is NOT a list of skipped rows. Papa never skips a row, and most of
+// what it reports is harmless: every single-column file gets an "UndetectableDelimiter"
+// notice, and rows with too many or too few fields are still returned. The one entry that
+// means data was lost is a quote error. An opening quote that never closes makes Papa read
+// the rest of the file as a single cell, so every row after it disappears into that cell
+// (e.g. a player named "Josh Allen,BUF\n2,Lamar Jackson,BAL").
+//
+// Returns null, or { row, rowsLost }: `row` is the 1-based line of the damaged row, counting
+// the lines Papa kept (blank lines are skipped, so it can be off in a file with blank lines).
+// `rowsLost` is how many rows ended up inside the swallowed cell. lineOffset converts Papa's
+// row index to a line number: 1 for header: false, 2 (+ any title lines dropped) for
+// header: true, where Papa's index doesn't count the header line.
+window.findCsvQuoteProblem = function(results, lineOffset = 1) {
+  const err = (results.errors || []).find(e => e.type === 'Quotes' && typeof e.row === 'number');
+  if (!err) return null;
+  const row = results.data[err.row];
+  const cells = row == null ? [] : (Array.isArray(row) ? row : Object.values(row)).flat();
+  const swallowed = cells.map(c => String(c ?? '')).find(c => /[\r\n]/.test(c)) || '';
+  const rowsLost = swallowed.split(/\r\n|\n|\r/).slice(1).filter(l => l.trim()).length;
+  return { row: err.row + lineOffset, rowsLost };
 };
 
 // --- ON-DEMAND SCRIPT LOADING ---
