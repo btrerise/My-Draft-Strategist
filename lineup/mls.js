@@ -615,11 +615,11 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
     // --- BACKUP & RESTORE ---
     // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in mds.js -- see that
     // file's comment for why key-prefix scoping matters on a shared origin. MLS's own keys are
-    // mds_season_*, mls_*, and shared_sleeper_league_id. mds_handoff_roster is excluded --
-    // transient signal from MDS, not a persistent MLS setting.
+    // mds_season_* and mls_*. mds_handoff_roster is excluded -- transient signal from MDS,
+    // not a persistent MLS setting.
     function getMlsOwnedKeys() {
         return Object.keys(localStorage).filter(k =>
-            (k.startsWith('mds_season_') || k.startsWith('mls_') || k === 'shared_sleeper_league_id')
+            (k.startsWith('mds_season_') || k.startsWith('mls_'))
             && k !== 'mds_handoff_roster'
         );
     }
@@ -1516,7 +1516,16 @@ function attachScoutSuggestionHandler(outputElId) {
                 const syncFresh = getRankingsFreshness(l.lastSyncedAt, 2, 'Synced');
                 const syncStale = !syncFresh || syncFresh.isStale;
                 const syncLabel = syncFresh ? syncFresh.label : 'Last sync unknown';
-                syncText = `<div class="${syncStale ? 'rankings-stale' : 'rankings-fresh'}" style="font-size: 0.75rem; margin-top: 2px;">${syncLabel}</div>`;
+                if (l.lastSyncFailedAt) {
+                    // A failed sync outranks the age label: this roster is not just old, we
+                    // know it's behind. Age still gets shown alongside it, since how stale the
+                    // data is decides whether you can trust a lineup off it before retrying.
+                    // Set in processSleeperData's catch, cleared on the next successful sync.
+                    const staleFor = syncFresh ? syncFresh.label.replace(/^Synced /, 'from ') : 'never synced';
+                    syncText = `<div class="sync-failed" style="font-size: 0.75rem; margin-top: 2px;">Last sync failed · roster ${staleFor}</div>`;
+                } else {
+                    syncText = `<div class="${syncStale ? 'rankings-stale' : 'rankings-fresh'}" style="font-size: 0.75rem; margin-top: 2px;">${syncLabel}</div>`;
+                }
             }
             let activeStyle = l.leagueId === State.activeLeagueId ? 'background: rgba(16, 185, 129, 0.08);' : '';
             let activeIndicator = l.leagueId === State.activeLeagueId ? `<div style="width: 3px; height: 100%; background: var(--primary-green); position: absolute; left: 0; top: 0;"></div>` : '';
@@ -1558,7 +1567,20 @@ function attachScoutSuggestionHandler(outputElId) {
     };
 
     window.deleteLeagueManager = async function(leagueId) {
-        if (!await window.showConfirm("This removes the league and its saved settings from the app. You can sync it again from Sleeper later.", { title: 'Remove this league?', confirmText: 'Remove League', danger: true })) return;
+        // Name the league being removed. The dashboard is a stack of identical ✕ buttons, so
+        // "Remove this league?" asked you to trust you'd clicked the right row -- and getting
+        // it wrong costs that league's rankings assignment and sync history. The name goes in
+        // the body rather than the title: dialogMessageHTML escapes it (Sleeper league names
+        // are set by whoever created the league, so they're outside text) and a long one wraps
+        // better in a paragraph than in the h3.
+        const league = State.leagues.find(l => l.leagueId === leagueId);
+        const leagueLabel = league && league.name ? `"${league.name}"` : 'this league';
+        // Manual and Draft Strategist handoff leagues have no Sleeper league behind them, so
+        // don't offer a re-sync that can't happen -- rebuilding one means entering it by hand.
+        const recovery = /^(manual|handoff)_/.test(leagueId)
+            ? "It wasn't synced from Sleeper, so you'd have to set it up again by hand."
+            : 'You can sync it again from Sleeper later.';
+        if (!await window.showConfirm(`This removes ${leagueLabel} and its saved settings from the app. ${recovery}`, { title: 'Remove this league?', confirmText: 'Remove League', danger: true })) return;
         State.leagues = State.leagues.filter(l => l.leagueId !== leagueId);
         if (State.activeLeagueId === leagueId) {
             State.activeLeagueId = State.leagues.length > 0 ? State.leagues[0].leagueId : null;
@@ -2033,7 +2055,13 @@ function attachScoutSuggestionHandler(outputElId) {
     window.deletePlayer = async function(playerId) {
         let league = getActiveLeague();
         if (!league) return;
-        if (await window.showConfirm("This takes the player off your active roster in this league. You can add them back from the Roster tab.", { title: 'Remove player?', confirmText: 'Remove', danger: true })) {
+        // Name the player, for the same reason deleteLeagueManager names the league: the roster
+        // is a column of identical ✕ buttons, and on a phone the dialog covers the row you just
+        // tapped, so "Remove player?" gave you nothing to check the tap against. The name comes
+        // from Sleeper; dialogMessageHTML escapes the body, so it goes in raw here.
+        const player = (league.roster || []).find(p => p.id === playerId);
+        const playerLabel = player && player.name ? `"${player.name}"` : 'this player';
+        if (await window.showConfirm(`This takes ${playerLabel} off your active roster in this league. You can add them back from the Roster tab.`, { title: 'Remove player?', confirmText: 'Remove', danger: true })) {
             removePlayerFromLeague(league, playerId);
             window.optimizeLineup(true);
             loadRosterTab();
@@ -2196,6 +2224,10 @@ function attachScoutSuggestionHandler(outputElId) {
                 // that fails during Sync All keeps its previous object, and with it its previous
                 // lastSyncedAt -- which is exactly what the dashboard row's age label surfaces.
                 lastSyncedAt: Date.now()
+                // lastSyncFailedAt is deliberately NOT carried over from existingLeague the way
+                // the fields above are: rebuilding leagueObj without it is what clears the
+                // dashboard's "Last sync failed" flag once a league syncs cleanly again. If this
+                // object ever starts spreading existingLeague, clear the field explicitly.
             };
 
             // Capture the "what changed" diff before existingLeague's roster is overwritten below.
@@ -2246,6 +2278,35 @@ function attachScoutSuggestionHandler(outputElId) {
 
         } catch(err) {
             console.error(err);
+            // Stamp the failure on the stored league so the dashboard row can flag it. The only
+            // trace of a failed sync used to be a toast -- Sync All's summary names the leagues
+            // it couldn't reach, but that's gone in seconds, and the row's age label reads off
+            // lastSyncedAt, so a league that synced fine yesterday and failed today still looked
+            // healthy until the 2-day staleness threshold caught up. Cleared on the next
+            // success, where leagueObj is rebuilt without this field.
+            //
+            // A brand-new league whose first sync failed was never stored, so there's nothing to
+            // find here -- correct, since there's no stale roster to warn about.
+            try {
+                const failedLeague = State.leagues.find(x => x.leagueId === leagueId);
+                if (failedLeague) {
+                    failedLeague.lastSyncFailedAt = Date.now();
+                    // Bulk callers (importAllSleeperLeagues, syncAllLeagues) pass skipSave=true
+                    // and write State.leagues once after their loop, which picks this up along
+                    // with that run's successes.
+                    if (!skipSave) {
+                        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+                        // Single-league syncs don't otherwise re-render the dashboard, so the row
+                        // would keep showing the old age label until something else redrew it.
+                        // Sync All does its own render in the finally, after the whole loop.
+                        if (typeof renderLeagueManager === 'function') renderLeagueManager();
+                    }
+                }
+            } catch (e) {
+                // Never let flagging the failure swallow the failure itself -- the toast below
+                // is the part the user actually needs.
+                console.error(e);
+            }
             if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
             if (!suppressErrorToast && window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
             return false;
@@ -2305,11 +2366,18 @@ function attachScoutSuggestionHandler(outputElId) {
             const preloaded = { userId, playerMap };
 
             let successCount = 0;
-            let failCount = 0;
+            // Name the misses rather than just counting them, the same way syncAllLeagues does:
+            // "3 failed - check console for details" left you to guess which of your leagues
+            // didn't make it, and the console isn't somewhere a phone user can look. A league
+            // that failed here usually isn't stored at all (it's a first-time import), so it
+            // won't show up on the dashboard with a "Last sync failed" row either -- this toast
+            // is the only signal there is.
+            let failedLeagueNames = [];
             for (let i = 0; i < leagues.length; i++) {
                 if (btn) btn.innerText = `Syncing ${i + 1}/${leagues.length}...`;
                 const ok = await processSleeperData(username, leagues[i].league_id, null, true, preloaded, true, false, true);
-                if (ok) successCount++; else failCount++;
+                if (ok) successCount++;
+                else failedLeagueNames.push(leagues[i].name || leagues[i].league_id);
             }
 
             // Single write after the loop instead of one localStorage.setItem per league.
@@ -2324,10 +2392,19 @@ function attachScoutSuggestionHandler(outputElId) {
             loadActiveLeagueData();
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
 
+            const failCount = failedLeagueNames.length;
             const summary = failCount > 0
-                ? `Imported ${successCount} league${successCount === 1 ? '' : 's'} (${failCount} failed - check console for details).`
+                ? `Imported ${successCount} of ${leagues.length}. Couldn't reach: ${formatNameList(failedLeagueNames)} — try Import All again.`
                 : `Imported ${successCount} league${successCount === 1 ? '' : 's'}!`;
-            if (window.showToast) window.showToast(summary, { isError: failCount > 0 });
+            // A partial import gets the longer window (and with it the dismiss button), matching
+            // syncAllLeagues: there are league names in there to read and act on, and the
+            // default duration isn't enough to do that.
+            if (window.showToast) {
+                window.showToast(summary, {
+                    isError: failCount > 0,
+                    duration: failCount > 0 ? 9000 : undefined
+                });
+            }
 
         } catch (err) {
             console.error(err);
@@ -2943,13 +3020,13 @@ function attachScoutSuggestionHandler(outputElId) {
             <div class="trade-verdict-totals">
                 <div class="trade-verdict-side">
                     <span class="trade-verdict-label">You Receive</span>
-                    <span class="trade-verdict-amount">${getTotal.toLocaleString()}</span>
+                    <span class="trade-verdict-amount"><span class="trade-verdict-est">est.</span>${getTotal.toLocaleString()}</span>
                     ${waiverSubnoteGet}
                 </div>
                 <div class="trade-verdict-vs">vs</div>
                 <div class="trade-verdict-side">
                     <span class="trade-verdict-label">You Give</span>
-                    <span class="trade-verdict-amount">${giveTotal.toLocaleString()}</span>
+                    <span class="trade-verdict-amount"><span class="trade-verdict-est">est.</span>${giveTotal.toLocaleString()}</span>
                     ${waiverSubnoteGive}
                 </div>
             </div>
@@ -6924,16 +7001,15 @@ window.syncAllLeagues = async function(btn) {
         // (and no re-render) when everything's already fresh. See refreshLineupStats.
         refreshLineupStats();
     }
-    // --- AUTO-LOAD SHARED LEAGUE ID FROM MDS & MOBILE TOOLTIPS ---
+    // --- MOBILE TOOLTIPS ---
 document.addEventListener('DOMContentLoaded', () => {
-    const sharedLeagueId = localStorage.getItem('shared_sleeper_league_id');
-    const mlsLeagueInput = document.getElementById('sleeperLeagueId'); 
-    
-    if (sharedLeagueId && mlsLeagueInput && !mlsLeagueInput.value) {
-        mlsLeagueInput.value = sharedLeagueId;
-        const syncBtn = document.getElementById('syncSleeperBtn');
-        if (syncBtn) syncBtn.click();
-    }
+    // One-time cleanup of 'shared_sleeper_league_id', a league-ID handoff from MDS that was
+    // never finished: nothing in either app ever wrote the key, but MLS used to read it here
+    // and auto-click Sync on page load. MDS hands off via mds_handoff_roster instead (see
+    // checkForDraftStrategistHandoff). The key is off getMlsOwnedKeys() now, so Factory Reset
+    // can no longer clear a stale copy -- hence removing it directly. Idempotent, so it needs
+    // no "already migrated" flag; safe to delete once existing installs have loaded once.
+    try { localStorage.removeItem('shared_sleeper_league_id'); } catch (e) {}
 
     // Enable tap-to-toggle for tooltips on touch devices
     document.querySelectorAll('.tooltip-icon').forEach(icon => {

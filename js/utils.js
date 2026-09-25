@@ -218,7 +218,7 @@
             const keys = Object.keys(localStorage).filter(function (k) {
                 if (k === 'mds_handoff_roster') return false;
                 return mls
-                    ? (k.indexOf('mds_season_') === 0 || k.indexOf('mls_') === 0 || k === 'shared_sleeper_league_id')
+                    ? (k.indexOf('mds_season_') === 0 || k.indexOf('mls_') === 0)
                     : (k.indexOf('ds_') === 0 || k === 'mds_show_headshots');
             });
             const data = {};
