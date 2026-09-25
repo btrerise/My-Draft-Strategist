@@ -2180,6 +2180,17 @@ body {
     color: var(--text-main);
 }
 
+/* These totals are summed from whichever rankings or values the verdict is using, so they're
+   estimates -- but at 1.4rem/800 they read like settled, official numbers. "est." sits inside
+   the amount so it qualifies the figure rather than the "You Receive" label above it, and is
+   small and muted so it doesn't compete with the number it's marking. */
+.trade-verdict-est {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-right: 3px;
+}
+
 .trade-verdict-vs {
     font-size: 0.8rem;
     color: var(--text-muted);
@@ -2470,6 +2481,14 @@ body {
 
 .rankings-stale {
     color: #f59e0b;
+    font-weight: 700;
+}
+
+/* A sync that actually failed, as opposed to data that's merely aged (.rankings-stale, amber).
+   Red so it doesn't read as the same "getting old" signal -- this roster is known to be behind,
+   not just unrefreshed. Same red as .status-danger. */
+.sync-failed {
+    color: #ef4444;
     font-weight: 700;
 }
 
