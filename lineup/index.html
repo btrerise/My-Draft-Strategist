@@ -145,7 +145,20 @@
     </header>
 
     <div class="container">
-        
+
+        <!-- SETUP PROGRESS: text version of the pulse prompts, with how-to and a jump button per
+             unfinished step. Sits outside the tabs so it can show on Dashboard (all three steps),
+             Roster (ROS step only) and Lineup (Weekly step only). Filled and shown/hidden by
+             updatePulsePrompts() in mls.js. -->
+        <section id="setupChecklist" class="setup-checklist" aria-labelledby="setupChecklistTitle" style="display: none;">
+            <h3 id="setupChecklistTitle" class="setup-checklist-title">Setup progress</h3>
+            <ul class="setup-checklist-list">
+                <li id="setupStepLeagues"></li>
+                <li id="setupStepRos"></li>
+                <li id="setupStepWeekly"></li>
+            </ul>
+        </section>
+
         <!-- Dashboard TAB -->
 <div id="setupTab" class="tab-content active">
     <!-- Info & Guide Banner Shortcut -->
@@ -361,7 +374,7 @@
          Bug-fix-only or behind-the-scenes deploys leave it alone.
          Also bump CACHE_NAME in /sw.js on EVERY deploy - that's a separate number (cache
          busting, not a user-facing version), and it's required even when this one stays put. -->
-    <div class="app-version">My Lineup Strategist v2.9.1</div>
+    <div class="app-version">My Lineup Strategist v2.9.2</div>
 </div>
 
         <!-- ROSTER TAB -->
