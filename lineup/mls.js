@@ -767,7 +767,11 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         const leagueCount = State.leagues.length;
         const hasLeagues = leagueCount > 0;
         const hasRos = State.rosRankings.length > 0;
-        const hasWeekly = State.weeklyRankings.length > 0;
+        // Best Ball sets its own lineups, so there's no weekly lineup to rank for -- the rest of
+        // the app skips it too (Optimize All, the injury audit). Count the step as done there.
+        // Like the rankings themselves, this follows the active league.
+        const weeklyNotNeeded = isBestBallLeague(getActiveLeague());
+        const hasWeekly = State.weeklyRankings.length > 0 || weeklyNotNeeded;
 
         // Setup Checklist. Dashboard shows all three steps until everything is in place;
         // Roster and Lineup show only their own step (ROS / Weekly) while it's unfinished --
@@ -797,7 +801,8 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
             renderSetupStep('setupStepRos', 'ros', hasRos, 'ROS rankings',
                 hasLeagues ? "Upload a .csv or .xlsx of rest-of-season rankings, or tap Auto-Fetch ROS Rankings to pull market values." : null,
                 activeTabId);
-            renderSetupStep('setupStepWeekly', 'weekly', hasWeekly, 'Weekly rankings (needed for the Lineup tab)',
+            renderSetupStep('setupStepWeekly', 'weekly', hasWeekly,
+                weeklyNotNeeded ? 'Weekly rankings: not needed for Best Ball' : 'Weekly rankings (needed for the Lineup tab)',
                 hasLeagues ? "Upload this week's rankings as a .csv or .xlsx. Re-upload each week." : null,
                 activeTabId);
         }
