@@ -770,7 +770,8 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         // Best Ball sets its own lineups, so there's no weekly lineup to rank for -- the rest of
         // the app skips it too (Optimize All, the injury audit). Count the step as done there.
         // Like the rankings themselves, this follows the active league.
-        const weeklyNotNeeded = isBestBallLeague(getActiveLeague());
+        const activeLeague = getActiveLeague();
+        const weeklyNotNeeded = isBestBallLeague(activeLeague);
         const hasWeekly = State.weeklyRankings.length > 0 || weeklyNotNeeded;
 
         // Setup Checklist. Dashboard shows all three steps until everything is in place;
@@ -798,11 +799,15 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
                 hasLeagues ? `${leagueCount} league${leagueCount === 1 ? '' : 's'} synced` : 'Sync or create a league',
                 "In Add/Sync League, enter your Sleeper username and tap Import All My Leagues. Not on Sleeper? Tap Create Manual instead.",
                 activeTabId);
-            renderSetupStep('setupStepRos', 'ros', hasRos, 'ROS rankings',
+            // Rankings belong to each league, so with several leagues the ROS/Weekly steps name
+            // the active one -- otherwise switching to a new league reads as "1 of 3 done" for
+            // the whole app. renderSetupStep appends labels as text, so no escaping needed.
+            const forLeague = leagueCount > 1 && activeLeague ? ` for ${activeLeague.name || 'this league'}` : '';
+            renderSetupStep('setupStepRos', 'ros', hasRos, `ROS rankings${forLeague}`,
                 hasLeagues ? "Upload a .csv or .xlsx of rest-of-season rankings, or tap Auto-Fetch ROS Rankings to pull market values." : null,
                 activeTabId);
             renderSetupStep('setupStepWeekly', 'weekly', hasWeekly,
-                weeklyNotNeeded ? 'Weekly rankings: not needed for Best Ball' : 'Weekly rankings (needed for the Lineup tab)',
+                weeklyNotNeeded ? `Weekly rankings${forLeague}: not needed for Best Ball` : `Weekly rankings${forLeague} (needed for the Lineup tab)`,
                 hasLeagues ? "Upload this week's rankings as a .csv or .xlsx. Re-upload each week." : null,
                 activeTabId);
         }
@@ -2203,6 +2208,10 @@ function attachScoutSuggestionHandler(outputElId) {
     }
 
     async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false, showChangeSummary = false, skipSave = false) {
+        // Flipped once the fresh leagueObj is in State.leagues. The catch below covers steps
+        // that run after that (optimizeLineup, loadRosterTab...), and a throw there doesn't mean
+        // the stored roster is behind -- so it mustn't earn the "Last sync failed" flag.
+        let rosterSaved = false;
         try {
             let userId = preloaded.userId;
             if (!userId) {
@@ -2340,6 +2349,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
             if (existingIdx !== -1) State.leagues[existingIdx] = leagueObj;
             else State.leagues.push(leagueObj);
+            rosterSaved = true;
 
             State.activeLeagueId = leagueId;
             // Bulk callers (importAllSleeperLeagues, syncAllLeagues) pass skipSave=true and
@@ -2385,9 +2395,11 @@ function attachScoutSuggestionHandler(outputElId) {
             // success, where leagueObj is rebuilt without this field.
             //
             // A brand-new league whose first sync failed was never stored, so there's nothing to
-            // find here -- correct, since there's no stale roster to warn about.
+            // find here -- correct, since there's no stale roster to warn about. Likewise a sync
+            // that throws after rosterSaved: the stored roster is the fresh one, so the flag
+            // would be a false alarm.
             try {
-                const failedLeague = State.leagues.find(x => x.leagueId === leagueId);
+                const failedLeague = rosterSaved ? null : State.leagues.find(x => x.leagueId === leagueId);
                 if (failedLeague) {
                     failedLeague.lastSyncFailedAt = Date.now();
                     // Bulk callers (importAllSleeperLeagues, syncAllLeagues) pass skipSave=true
@@ -4247,8 +4259,6 @@ function attachScoutSuggestionHandler(outputElId) {
 
         updateRankingSetHeader(type);
         updateSetLeaguesRow(type);
-        
-        if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
     }
 
     // Header line naming the set the active league actually uses. Kept in the card header (not
@@ -6648,6 +6658,11 @@ function applyMarketSettingsToUI() {
         setTimeout(() => {
             const originalActiveId = State.activeLeagueId;
             let failed = false;
+            // The league the loop is working on. The loop stops at the first league that throws,
+            // so if it's still set when the catch runs, the failure toast can name it -- every
+            // league after it in the list was never reached. Cleared once the loop completes, so
+            // a failure in the flush or the restore below isn't blamed on the last league.
+            let workingOn = null;
 
             // Suppress the per-league toast optimizeLineup fires; one summary goes out below.
             if (typeof window.setToastsSuppressed === 'function') window.setToastsSuppressed(true);
@@ -6657,6 +6672,7 @@ function applyMarketSettingsToUI() {
                     let isBestBall = isBestBallLeague(l);
                     if (isBestBall) return; // Skip optimizing Best Ball leagues
 
+                    workingOn = l;
                     State.activeLeagueId = l.leagueId;
 
                     // Hydrate this league's own rankings so the optimizer uses the correct set
@@ -6664,6 +6680,7 @@ function applyMarketSettingsToUI() {
 
                     window.optimizeLineup(true, false, { batch: true });
                 });
+                workingOn = null;
 
                 // Single flush for the whole run. Each optimizeLineup call above deliberately
                 // skipped these two writes (see its `batch` option): they serialize the entire
@@ -6700,7 +6717,11 @@ function applyMarketSettingsToUI() {
             }
 
             if (failed) {
-                if (window.showToast) window.showToast("Couldn't optimize every lineup. Some leagues may be unchanged — check the console for details.", { isError: true });
+                // showToast renders plain text, so the (Sleeper-set) league name needs no escaping.
+                const msg = workingOn
+                    ? `Stopped at "${workingOn.name || 'Unnamed league'}", so leagues after it weren't re-optimized. Try Optimize All again.`
+                    : "Lineups were optimized, but saving them or restoring your league didn't finish. Try Optimize All again.";
+                if (window.showToast) window.showToast(msg, { isError: true });
             } else {
                 let managedLeaguesCount = State.leagues.filter(l => !isBestBallLeague(l)).length;
                 if (window.showToast) window.showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
