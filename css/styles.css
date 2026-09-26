@@ -3241,6 +3241,94 @@ body {
     animation: nav-pulse-anim 2s infinite;
     border-radius: 8px;
 }
+
+/* Reduced motion: stop the four pulses but keep a static highlight, so the
+   "this is next" cue survives without the animation. */
+@media (prefers-reduced-motion: reduce) {
+    .pulse-dot,
+    .btn-pulse,
+    .pulse-border,
+    .nav-pulse {
+        animation: none;
+    }
+    .btn-pulse {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+    }
+    .pulse-border {
+        border-color: rgba(16, 185, 129, 0.8);
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+    }
+    .nav-pulse {
+        background: rgba(16, 185, 129, 0.15);
+    }
+}
+
+/* Setup progress checklist (Dashboard) -- the text version of the pulse prompts */
+.setup-checklist {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: var(--space-4);
+}
+.setup-checklist-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 0 0 0.5rem;
+}
+.setup-checklist-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+.setup-checklist-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.setup-checklist-list li.is-done {
+    color: var(--text-main);
+}
+.setup-step-mark {
+    width: 1em;
+    flex-shrink: 0;
+    text-align: center;
+    font-weight: 700;
+}
+.setup-checklist-list li.is-done .setup-step-mark {
+    color: var(--primary-green);
+}
+.setup-step-body {
+    min-width: 0;
+}
+.setup-checklist-list li.is-actionable .setup-step-label {
+    color: var(--text-main);
+    font-weight: 600;
+}
+.setup-step-how {
+    margin: 0.15rem 0 0.25rem;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+.setup-step-go {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+/* goToSetupStep scrolls these into view; clear the sticky .header so the card title shows */
+#setupSyncCard,
+#rosRankingsCard,
+#weeklyRankingsCard {
+    scroll-margin-top: 5.5rem;
+}
 /* Sync Loading Spinner */
 @keyframes spin {
     100% { transform: rotate(360deg); }
@@ -3570,25 +3658,31 @@ input[type="file"]::-webkit-file-upload-button:hover {
   border: 1px solid var(--primary-green, #10b981);
   transform: translateY(150%);
   opacity: 0;
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+  /* visibility flips only after the slide-out finishes, so a hidden toast's ✕ drops out of
+     the tab order without cutting the exit animation short */
+  visibility: hidden;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0s linear 0.4s;
   z-index: 9999;
   pointer-events: none;
-}
-
-.mds-toast.show {
-  transform: translateY(0);
-  opacity: 1;
-}
-
-.mds-toast.toast-error {
-  border-color: var(--error-color, #ea4335);
   max-width: 380px;
-  white-space: normal;
-  pointer-events: auto; /* base toast disables pointer-events; the dismiss button needs them back */
   display: flex;
   align-items: flex-start;
   gap: 10px;
   line-height: 1.4;
+}
+
+/* Pointer events only while shown: hovering pauses the timer and ✕ needs clicks, but an
+   invisible toast parked over the bottom nav must not swallow taps meant for it. */
+.mds-toast.show {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0s;
+}
+
+.mds-toast.toast-error {
+  border-color: var(--error-color, #ea4335);
 }
 
 .mds-toast .toast-dismiss-btn {
@@ -3598,9 +3692,10 @@ input[type="file"]::-webkit-file-upload-button:hover {
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;
-  padding: 2px;
+  /* ~32px tap target for phones; the negative margins keep it from growing the toast */
+  padding: 8px;
+  margin: -8px -12px -8px auto;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .mds-toast .toast-dismiss-btn:hover {

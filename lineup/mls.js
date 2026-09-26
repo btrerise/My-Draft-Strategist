@@ -696,34 +696,127 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
     };
 
     // --- INITIALIZATION ---
+    // Where each setup step gets done: the tab it lives on, the card to reveal, and the control
+    // to focus once there. Shared by the checklist's buttons and goToSetupStep.
+    const SETUP_STEPS = {
+        leagues: { tab: 'setup',  tabLabel: 'Dashboard', cardId: 'setupSyncCard',      focusId: 'sleeperUsername' },
+        ros:     { tab: 'roster', tabLabel: 'Roster',    cardId: 'rosRankingsCard',    focusId: 'rosFileInput' },
+        weekly:  { tab: 'lineup', tabLabel: 'Lineup',    cardId: 'weeklyRankingsCard', focusId: 'weeklyFileInput' },
+    };
+
+    // Takes the user to where a setup step gets done: switches tab if needed, opens the
+    // rankings card if it's collapsed, scrolls it into view and focuses its first control.
+    window.goToSetupStep = function(step) {
+        const cfg = SETUP_STEPS[step];
+        if (!cfg) return;
+        const activeTab = document.querySelector('.tab-content.active');
+        if (!activeTab || activeTab.id !== cfg.tab + 'Tab') {
+            window.showTab(cfg.tab);
+            updateDrawerActiveState(cfg.tab);
+        }
+        if (step !== 'leagues') setRankingsCardExpanded(cfg.cardId, true);
+        const card = document.getElementById(cfg.cardId);
+        if (!card) return;
+        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        card.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+        const focusEl = document.getElementById(cfg.focusId);
+        if (focusEl && focusEl.offsetParent !== null) focusEl.focus({ preventScroll: true });
+    };
+
+    // Fills one setup-checklist <li>. The ✓ / — mark is decorative; the sr-only prefix
+    // carries the done/not-done state for screen readers. `how` (a sentence of instructions)
+    // and the jump button only appear on unfinished steps the user can act on right now.
+    function renderSetupStep(id, step, done, text, how, activeTabId) {
+        const li = document.getElementById(id);
+        if (!li) return;
+        li.classList.toggle('is-done', done);
+        li.classList.toggle('is-actionable', !done && !!how);
+        const mark = document.createElement('span');
+        mark.className = 'setup-step-mark';
+        mark.setAttribute('aria-hidden', 'true');
+        mark.textContent = done ? '✓' : '—';
+        const body = document.createElement('div');
+        body.className = 'setup-step-body';
+        const label = document.createElement('div');
+        label.className = 'setup-step-label';
+        const status = document.createElement('span');
+        status.className = 'sr-only';
+        status.textContent = done ? 'Done: ' : 'Not done: ';
+        label.append(status, text);
+        body.append(label);
+
+        if (!done && how) {
+            const cfg = SETUP_STEPS[step];
+            const howEl = document.createElement('p');
+            howEl.className = 'setup-step-how';
+            howEl.textContent = how;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mls-btn-sm btn-link-inline setup-step-go';
+            btn.textContent = activeTabId === cfg.tab + 'Tab' ? 'Show me ↓' : `Go to ${cfg.tabLabel} tab →`;
+            btn.setAttribute('aria-label', `${btn.textContent.slice(0, -2)} for ${text}`);
+            btn.addEventListener('click', () => window.goToSetupStep(step));
+            body.append(howEl, btn);
+        }
+        li.replaceChildren(mark, body);
+    }
+
     function updatePulsePrompts() {
+        // The three setup states. The checklist states them in words; the pulses below
+        // highlight whichever card is next.
+        const leagueCount = State.leagues.length;
+        const hasLeagues = leagueCount > 0;
+        const hasRos = State.rosRankings.length > 0;
+        const hasWeekly = State.weeklyRankings.length > 0;
+
+        // Setup Checklist. Dashboard shows all three steps until everything is in place;
+        // Roster and Lineup show only their own step (ROS / Weekly) while it's unfinished --
+        // or the league step in its place, since rankings are per-league and can't be added
+        // before one exists. Hidden on every other tab.
+        const checklist = document.getElementById('setupChecklist');
+        if (checklist) {
+            const activeTab = document.querySelector('.tab-content.active');
+            const activeTabId = activeTab ? activeTab.id : '';
+            const doneState = { leagues: hasLeagues, ros: hasRos, weekly: hasWeekly };
+            const allDone = hasLeagues && hasRos && hasWeekly;
+            let visibleSteps = [];
+            if (activeTabId === 'setupTab') visibleSteps = allDone ? [] : ['leagues', 'ros', 'weekly'];
+            else if (activeTabId === 'rosterTab') visibleSteps = !hasLeagues ? ['leagues'] : (!hasRos ? ['ros'] : []);
+            else if (activeTabId === 'lineupTab') visibleSteps = !hasLeagues ? ['leagues'] : (!hasWeekly ? ['weekly'] : []);
+            checklist.style.display = visibleSteps.length > 0 ? '' : 'none';
+            [['setupStepLeagues', 'leagues'], ['setupStepRos', 'ros'], ['setupStepWeekly', 'weekly']].forEach(([id, step]) => {
+                const li = document.getElementById(id);
+                if (li) li.style.display = visibleSteps.includes(step) ? '' : 'none';
+            });
+            const title = document.getElementById('setupChecklistTitle');
+            if (title) title.textContent = `Setup progress · ${Object.values(doneState).filter(Boolean).length} of 3 done`;
+            renderSetupStep('setupStepLeagues', 'leagues', hasLeagues,
+                hasLeagues ? `${leagueCount} league${leagueCount === 1 ? '' : 's'} synced` : 'Sync or create a league',
+                "In Add/Sync League, enter your Sleeper username and tap Import All My Leagues. Not on Sleeper? Tap Create Manual instead.",
+                activeTabId);
+            renderSetupStep('setupStepRos', 'ros', hasRos, 'ROS rankings',
+                hasLeagues ? "Upload a .csv or .xlsx of rest-of-season rankings, or tap Auto-Fetch ROS Rankings to pull market values." : null,
+                activeTabId);
+            renderSetupStep('setupStepWeekly', 'weekly', hasWeekly, 'Weekly rankings (needed for the Lineup tab)',
+                hasLeagues ? "Upload this week's rankings as a .csv or .xlsx. Re-upload each week." : null,
+                activeTabId);
+        }
+
         // Sync Button Pulse
         const syncBtn = document.getElementById('mainSyncBtn');
-        if (syncBtn) {
-            if (State.leagues.length === 0) syncBtn.classList.add('btn-pulse');
-            else syncBtn.classList.remove('btn-pulse');
-        }
-        
+        if (syncBtn) syncBtn.classList.toggle('btn-pulse', !hasLeagues);
+
         // Dashboard Sync Card Pulse
         const syncCard = document.getElementById('setupSyncCard');
-        if (syncCard) {
-            if (State.leagues.length === 0) syncCard.classList.add('pulse-border');
-            else syncCard.classList.remove('pulse-border');
-        }
+        if (syncCard) syncCard.classList.toggle('pulse-border', !hasLeagues);
 
         // ROS Rankings Pulse
         const rosCard = document.getElementById('rosRankingsCard');
-        if (rosCard) {
-            if (State.leagues.length > 0 && State.rosRankings.length === 0) rosCard.classList.add('pulse-border');
-            else rosCard.classList.remove('pulse-border');
-        }
+        if (rosCard) rosCard.classList.toggle('pulse-border', hasLeagues && !hasRos);
 
         // Weekly Rankings Pulse
         const weeklyCard = document.getElementById('weeklyRankingsCard');
-        if (weeklyCard) {
-            if (State.leagues.length > 0 && State.weeklyRankings.length === 0) weeklyCard.classList.add('pulse-border');
-            else weeklyCard.classList.remove('pulse-border');
-        }
+        if (weeklyCard) weeklyCard.classList.toggle('pulse-border', hasLeagues && !hasWeekly);
 
         // Navigation Element Pulses (Only Logo, and only when NOT on Dashboard tab)
         const setupNav = document.querySelector('.logo-container');
@@ -1589,6 +1682,7 @@ function attachScoutSuggestionHandler(outputElId) {
         localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
         refreshLeagueDropdown();
         loadActiveLeagueData();
+        updatePulsePrompts();
         if (typeof loadRosterTab === 'function') loadRosterTab();
         if (typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
     };
@@ -4513,6 +4607,9 @@ function attachScoutSuggestionHandler(outputElId) {
 
         populateRankingSetDropdown('ros');
         populateRankingSetDropdown('weekly');
+        // Every rankings change (upload, set switch, set delete, league switch) lands here,
+        // so keep the setup checklist and pulses in step with it.
+        updatePulsePrompts();
     }
 
     window.toggleUploadMode = function(type) {
