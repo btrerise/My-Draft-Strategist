@@ -3671,14 +3671,21 @@ input[type="file"]::-webkit-file-upload-button:hover {
   line-height: 1.4;
 }
 
-/* Pointer events only while shown: hovering pauses the timer and ✕ needs clicks, but an
-   invisible toast parked over the bottom nav must not swallow taps meant for it. */
 .mds-toast.show {
   transform: translateY(0);
   opacity: 1;
   visibility: visible;
-  pointer-events: auto;
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0s;
+}
+
+/* Pointer events, only while shown and only where needed. A success toast stays click-through
+   except for its ✕: it lands over the lower lineup rows, and quick lock/swap taps must reach
+   the buttons underneath. Error toasts take the whole box, so a long message can be hovered or
+   tapped to hold it open (see getToastElement in utils.js). Nothing hidden takes taps -- an
+   invisible toast parked over the bottom nav must not swallow them. */
+.mds-toast.show.toast-error,
+.mds-toast.show .toast-dismiss-btn {
+  pointer-events: auto;
 }
 
 .mds-toast.toast-error {
@@ -3704,7 +3711,9 @@ input[type="file"]::-webkit-file-upload-button:hover {
 
 @media (max-width: 767px) {
   .mds-toast {
-    bottom: 90px;
+    /* Clears .nav-bar, which pads itself by the same env() inset for the home indicator.
+       (env() is 0 until the viewport meta adds viewport-fit=cover; this keeps them in step.) */
+    bottom: calc(90px + env(safe-area-inset-bottom));
     left: 50%;
     right: auto;
     transform: translate(-50%, 150%);

@@ -876,9 +876,12 @@ window.showToast = function(message, options = {}) {
 };
 
 // Toast timing: the countdown pauses while the toast is hovered (mouse), holds focus (keyboard),
-// or has been tapped (touch -- phones have no hover, so a tap holds it until ✕). Long, multi-line
-// upload errors are the reason: they're easy to lose mid-read otherwise. toastRemaining carries
-// the time left across a pause, so leaving the toast resumes rather than restarts the countdown.
+// or -- error toasts only -- has been tapped (touch: phones have no hover, so a tap holds it
+// until ✕). Long, multi-line upload errors are the reason: they're easy to lose mid-read
+// otherwise. Success toasts are click-through except for ✕ (see .mds-toast.show in styles.css),
+// so on those only hovering or focusing the ✕ pauses them, and taps pass through to the lineup
+// underneath. toastRemaining carries the time left across a pause, so leaving the toast
+// resumes rather than restarts the countdown.
 function getToastElement() {
   let toast = document.getElementById('mds-toast');
   if (toast) return toast;
@@ -905,7 +908,10 @@ function getToastElement() {
     if (e.pointerType === 'mouse') { toast.toastHovered = false; resumeToastTimer(toast); }
   });
   toast.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'mouse' && !dismiss.contains(e.target)) { toast.toastPinned = true; pauseToastTimer(toast); }
+    if (e.pointerType !== 'mouse' && toast.classList.contains('toast-error') && !dismiss.contains(e.target)) {
+      toast.toastPinned = true;
+      pauseToastTimer(toast);
+    }
   });
   toast.addEventListener('focusin', () => { toast.toastFocused = true; pauseToastTimer(toast); });
   toast.addEventListener('focusout', (e) => {
