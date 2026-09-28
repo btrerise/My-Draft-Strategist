@@ -153,7 +153,7 @@
             T-Score Methodology
         </a>
         
-        <a href="../lineup/" class="nav-btn premium-link-btn">
+        <a href="./lineup/" class="nav-btn premium-link-btn">
             My Lineup Strategist 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </a>
@@ -219,7 +219,7 @@
         
         <div id="metaDisplay" class="status-badge"></div>
         
-        <p class="card-desc">Want to skip the spreadsheet? Quick-start using live Market Value rankings (Select your league format below in Step 2).</p>
+        <p class="card-desc">Want to skip the spreadsheet? Quick-start using live Market Value rankings (Select your league format below in Step 3).</p>
         <button class="btn btn-purple" onclick="quickStartLeagueLogs(this)">
             Quick-Start: LeagueLogs Market
         </button>
@@ -745,41 +745,46 @@
             <!-- Step 1 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">1</span> Load Rankings</h4>
-                <p class="step-desc">Upload your custom rankings via CSV or Excel. Ensure your file has a 'Name' column. Or, use the <strong class="text-main">Quick-Start</strong> option to automatically load live Market Value rankings directly from the LeagueLogs market.</p>
+                <p class="step-desc">Upload your custom rankings as a CSV or Excel file, drop the file onto the card, or paste raw CSV text. Your file needs a <strong class="text-main">Name</strong> (or "Player") column. Rows are ranked in the order they appear, and Position, Team, Tier, and Bye columns are picked up if present. Or, use the <strong class="text-main">Quick-Start</strong> option to load live Market Value rankings directly from the LeagueLogs market (it uses the format selected in Step 3).</p>
+                <ul class="guide-list">
+                    <li><strong class="text-main">Aggregate Rankings:</strong> Turn this on before uploading to blend the new file with your currently loaded rankings instead of replacing them. Use the slider to set how much weight each set gets.</li>
+                    <li><strong class="text-main">Rookie Badges:</strong> When rankings load, the app matches players against Sleeper's database and automatically assigns Rookie badges (<span class="badge badge-rookie">R</span>) to first-year players.</li>
+                </ul>
             </div>
 
             <!-- Step 2 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">2</span> Live Market Value (ADP)</h4>
-                <p class="step-desc">Once custom rankings are loaded, click "Fetch Market Value" to pull live market data from LeagueLogs or Sleeper. The app incorporates ADP and platform-wide market trends based on your specific league settings. The app will also automatically assign Rookie badges (<span class="badge badge-rookie">R</span>) to first-year players during this process.</p>
+                <h4 class="step-title"><span class="step-num blue-step">2</span> Add / Sync Draft Profiles</h4>
+                <p class="step-desc">You can maintain multiple draft profiles at once and swap between them using the header dropdown.</p>
+                <ul class="guide-list">
+                    <li><strong class="text-main">Live Sync:</strong> Users drafting on Sleeper can enter their Username and Draft ID (or paste the full draft URL) to sync live draft picks. The app also pulls in the league's team count, rounds, roster slots, and Third Round Reversal setting. You can hit the Sync button manually or toggle "Live Auto-Sync" to have the board update automatically every 3 seconds.</li>
+                    <li><strong class="text-main">Manual Drafts:</strong> Users of other platforms can click "Create Manual Draft" and manually input pick selections on the Tracker tab.</li>
+                </ul>
             </div>
 
             <!-- Step 3 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">3</span> Add / Sync Draft Profiles</h4>
-                <p class="step-desc">You can maintain multiple draft profiles at once and swap between them using the header dropdown.</p>
-                <ul class="guide-list">
-                    <li><strong class="text-main">Live Sync:</strong> Users drafting on Sleeper can enter their Username and Draft ID to sync live draft picks. You can hit the Sync button manually or toggle "Live Auto-Sync" to have the board update automatically every 3 seconds.</li>
-                    <li><strong class="text-main">Manual Drafts:</strong> Users of other platforms can click "Create Manual Draft" and manually input pick selections on the Tracker tab.</li>
-                </ul>
+                <h4 class="step-title"><span class="step-num blue-step">3</span> Live Market Value (ADP)</h4>
+                <p class="step-desc">If you uploaded custom rankings, select the LeagueLogs or Sleeper profile that matches your league format and click "Fetch Market Value" to pull in live ADP, so you know when players are actually being drafted. If a live source is unavailable, you can paste ADP values manually using the fallback box.</p>
             </div>
 
             <!-- Step 4 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">4</span> Roster Limits, Settings & Analytics</h4>
-                <p class="step-desc">Set your starting lineup requirements in the Setup tab. The <strong class="text-main">Team</strong> tab will automatically slot drafted players into their correct positions and calculate roster limits.</p>
+                <p class="step-desc">Set your starting lineup slots, bench size, number of teams, and total rounds in the Setup tab, then click "Save Settings". These are saved to the active draft profile (Sleeper drafts fill them in automatically). The <strong class="text-main">Team</strong> tab will automatically slot drafted players into their correct positions and calculate roster limits.</p>
                 <ul class="guide-list">
-                    <li><strong class="text-main">Highlight Stacks</strong> Turn on "Highlight Stacks" to automatically place a <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; margin: 0 4px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; margin-right:2px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>Stack</span> badge on available WRs or TEs if you have already drafted their Quarterback (or vice versa).</li>
+                    <li><strong class="text-main">Highlight Stacks:</strong> Turn on "Highlight Stacks" to automatically place a <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; margin: 0 4px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; margin-right:2px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>Stack</span> badge on available WRs or TEs if you have already drafted their Quarterback (or vice versa).</li>
                     <li><strong class="text-main">Bye Week Warnings:</strong> Toggle this to get instant alerts if 3 or more of your starters share a bye week.</li>
-                    <li><strong class="text-main">T-Score Analytics:</strong> Toggle this on to overlay predictive WR scoring models, highlighting receivers with labels like Elite, High, Strong, Quality, or Boom.</li>
+                    <li><strong class="text-main">T-Score Analytics:</strong> Toggle this on to overlay predictive WR and RB scoring models, labeling players as Elite, High-End Starter, Strong Starter, Quality Contributor, Boom/Bust, or Depth Player. Tap "Read Methodology" to see how scores are calculated.</li>
+                    <li><strong class="text-main">Third Round Reversal (3RR):</strong> Turn this on if your league flips the draft order at the start of Round 3, so the Draft Board and pick numbers stay accurate.</li>
                     <li><strong class="text-main">UI Controls:</strong> You can also toggle player headshots on the Draft Board or enable the "Collapse Player Cards" setting to save screen space on mobile devices.</li>
                 </ul>
             </div>
 
             <!-- Step 5 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">5</span> Call Outs & Stacks</h4>
-                <p class="step-desc">On the Setup tab, paste lists of names to permanently highlight them throughout the app as Targets (<span class="dot bg-target" style="margin:0 2px;"></span>), Avoids (<span class="dot bg-avoid" style="margin:0 2px;"></span>), or Dart Throws (<span class="dot bg-dart" style="margin:0 2px;"></span>).</p>
+                <h4 class="step-title"><span class="step-num blue-step">5</span> Call Outs</h4>
+                <p class="step-desc">On the Setup tab, paste lists of names to permanently highlight them throughout the app as Targets (<span class="dot bg-target" style="margin:0 2px;"></span>), Avoids (<span class="dot bg-avoid" style="margin:0 2px;"></span>), or Dart Throws (<span class="dot bg-dart" style="margin:0 2px;"></span>). Separate names with commas or new lines, then click "Save Call Outs".</p>
             </div>
 
             <!-- Step 6 -->
@@ -796,7 +801,7 @@
                     <li><strong class="text-main">Value / Reach Badge:</strong> On each player card, you'll see a dynamic value badge based on your rankings. <span class="badge badge-value">+12 Value</span> means their Custom Rank is 12 spots better than the current pick. <span class="badge badge-reach">-8 Reach</span> means drafting them now is a reach.</li>
                     <li><strong class="text-main">Inline Editor:</strong> Tap the pencil icon (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>) on any player card to quickly adjust their Rank, Tier, Team, or Bye Week without leaving the Tracker. You can also select the "★" button to add them to your queue.</li>
                     <li><strong class="text-main">Undo:</strong> If a mistake is made, drafted players can be returned to the pool using the "Undo" buttons.</li>
-                    <li><strong class="text-main">Missing Players:</strong> If you are using Sleeper Live Sync, the app will automatically generate a player card if someone drafts a Kicker or Defense that wasn't in your rankings. If you are drafting manually, a player <em>must</em> be in your uploaded rankings to be drafted.</li>
+                    <li><strong class="text-main">Missing Players:</strong> If you are using Sleeper Live Sync, the app will automatically generate a player card for any drafted player who wasn't in your rankings (most often Kickers and Defenses). If you are drafting manually, a player <em>must</em> be in your uploaded rankings to be drafted.</li>
                 </ul>
             </div>
 
@@ -818,18 +823,29 @@
 
             <!-- Step 9 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">9</span> Install the App</h4>
-                <p class="step-desc">For the best experience, you can install this app directly to your home screen! If your browser supports it, tap the "Install App" button on the Setup screen or use your browser's menu options (like "Add to Home Screen") to get a full-screen, native app experience.</p>
+                <h4 class="step-title"><span class="step-num blue-step">9</span> Backup, Restore & Reset</h4>
+                <p class="step-desc">Your drafts, rankings, and settings are stored in this browser only. At the bottom of the Setup tab:</p>
+                <ul class="guide-list">
+                    <li><strong class="text-main">Export / Import Backup:</strong> Download everything as a file, then import it to restore on this or another device or browser.</li>
+                    <li><strong class="text-main">Reset Draft Picks Only:</strong> Clears the picks from the active draft while keeping your rankings and settings.</li>
+                    <li><strong class="text-main">Reset Everything:</strong> Deletes all My Draft Strategist drafts, rankings, and settings. My Lineup Strategist data is not affected.</li>
+                </ul>
             </div>
 
             <!-- Step 10 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">10</span> Keyboard Shortcuts</h4>
+                <h4 class="step-title"><span class="step-num blue-step">10</span> Install the App</h4>
+                <p class="step-desc">For the best experience, you can install this app directly to your home screen! If your browser supports it, tap the "Install App" button on the Setup screen or use your browser's menu options (like "Add to Home Screen") to get a full-screen, native app experience.</p>
+            </div>
+
+            <!-- Step 11 -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">11</span> Keyboard Shortcuts</h4>
                 <p class="step-desc">Draft like a power-user with these global keyboard shortcuts (active whenever you aren't typing in a text box):</p>
                 <ul class="guide-list" style="list-style-type: none; padding-left: 2.2rem;">
                     <li><strong class="text-main">/ (Forward Slash):</strong> Instantly jump to the Player Search bar.</li>
-                    <li><strong class="text-main">Escape:</strong> Clear the search bar and reset the board.</li>
-                    <li><strong class="text-main">Spacebar / Enter:</strong> Draft the currently focused player.</li>
+                    <li><strong class="text-main">Escape:</strong> Clear the search bar and reset the board, or close the menu if it's open.</li>
+                    <li><strong class="text-main">Tab, then Enter / Spacebar:</strong> Tab to a player's <strong class="text-main">Taken</strong> or <strong class="text-main">Pick</strong> button (or any other control) and press Enter or Space to use it.</li>
                     <li><strong class="text-main">A, Q, R, W, T:</strong> Instantly filter the Tracker by position (All, QB, RB, WR, TE).</li>
                     <li><strong class="text-main">1, 2, 3, 4, 5:</strong> Instantly switch tabs (Setup, Tracker, Team, Board, Guide).</li>
                 </ul>

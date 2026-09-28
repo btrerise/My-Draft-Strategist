@@ -304,7 +304,7 @@
         <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu" aria-expanded="false">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
-        <div class="logo-container" onclick="window.location.href='../index.html'">
+        <div class="logo-container" onclick="window.location.href='../index.html'" role="button" tabindex="0" aria-label="Go to My Draft Strategist" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='../index.html';}">
             <img src="../images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
             <div class="logo-text">My Draft <span>Strategist</span></div>
         </div>
@@ -587,7 +587,7 @@
     </div>
 
     <!-- TAB: TOP 50 -->
-<div id="top50Tab" class="tab-content active">
+<div id="top50Tab" class="tab-content">
     <div class="settings-card highlight-card">
         <h2>2026 Top-50 T-Score Rankings</h2>
         <p class="card-desc">T-Score is a combination of a player’s previous season metrics, each weighted based on their coefficient to the following season (N+1) using historical data. <em>Note: Rookies are not included since there is no previous NFL data to utilize.</em></p>
@@ -1447,6 +1447,15 @@ window.addEventListener('popstate', (e) => {
     } else {
         switchTab('researchTab', true);
     }
+});
+
+// Deep link: open the tab named in the URL hash on load (a reload, or a shared #top50Tab
+// link), else The Research. Waits for DOMContentLoaded because getTabFromHash lives in the
+// deferred utils.js. replaceState stamps this first entry with its tab so Back restores it.
+document.addEventListener('DOMContentLoaded', () => {
+    const initialTab = (typeof window.getTabFromHash === 'function' && window.getTabFromHash(id => id)) || 'researchTab';
+    switchTab(initialTab, true);
+    history.replaceState({ tab: initialTab }, '');
 });
 
 function toggleMenu() {

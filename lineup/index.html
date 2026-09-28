@@ -1168,27 +1168,55 @@
             <!-- Step 1 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">1</span> Syncing & Adding Leagues</h4>
-                <p class="step-desc">Navigate to the <strong class="text-main">Dashboard</strong> tab and enter your Sleeper Username and League ID to sync your roster automatically. You can manage multiple leagues and switch between them using the header dropdown or the League Command Center. If you don't use Sleeper, tap "Create Manual" and add players one-by-one.</p>
+                <p class="step-desc">On the <strong class="text-main">Dashboard</strong> tab, enter your Sleeper Username and League ID and tap <strong class="text-main">Sync Sleeper</strong> to sync that league's roster automatically. To bring in every league at once, enter just your Username and tap <strong class="text-main">Import All My Leagues</strong> (no League ID needed). Switch between leagues using the header dropdown or its arrow buttons.</p>
+                <ul class="guide-list">
+                    <li><strong class="text-main">Manual Leagues:</strong> If you don't use Sleeper, leave the Sleeper fields blank, tap "Create Manual", then add your players one by one under <strong class="text-main">Advanced Settings &gt; Add Player Manually</strong> (type a name, press Enter to pick it, then Enter again to add it).</li>
+                    <li><strong class="text-main">From My Draft Strategist:</strong> If you just finished a draft in My Draft Strategist, a banner on the Dashboard offers to <strong class="text-main">Import as New League</strong> using your drafted roster.</li>
+                    <li><strong class="text-main">Setup Progress:</strong> Until you've added a league and loaded ROS and Weekly rankings, a short checklist shows what's left to do.</li>
+                </ul>
             </div>
 
             <!-- Step 2 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">2</span> Uploading Custom Rankings & SoS</h4>
-                <p class="step-desc">Upload custom analyst rankings in either <strong class="text-main">.CSV</strong> or native <strong class="text-main">.XLSX Excel</strong> format.</p>
-                <p class="step-desc mt-2">Upload Rest-of-Season (ROS) rankings on the <strong class="text-main">Roster</strong> tab, and Weekly Matchup rankings on the <strong class="text-main">Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Roster tab to instantly generate color-coded matchup gradients on player cards. <em class="text-muted">Note: If you upload a generic rankings CSV that contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.</em> If your file also has a <strong class="text-main">Tier</strong> column, each player's tier is shown next to their rank on player cards, like <span class="mls-tier">(T2)</span>.</p>
+                <h4 class="step-title"><span class="step-num blue-step">2</span> League Command Center & Requirements</h4>
+                <p class="step-desc">The <strong class="text-main">League Command Center</strong> on the Dashboard shows every league at a glance, with the status of its rankings, lineup, and settings.</p>
+                <ul class="guide-list">
+                    <li><strong class="text-main">Sync All Leagues:</strong> Refreshes rosters, waivers, and trades for all of your Sleeper leagues at once (manual leagues are skipped).</li>
+                    <li><strong class="text-main">Optimize All Lineups:</strong> Re-runs the Lineup Optimizer for every league using your latest Weekly rankings.</li>
+                    <li><strong class="text-main">Active League Requirements:</strong> The number of starting slots at each position for the active league. These auto-populate during Sleeper sync; for manual leagues, set them yourself and tap "Save Requirements".</li>
+                </ul>
             </div>
 
             <!-- Step 3 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">3</span> Lineup Optimizer & Early Games</h4>
-                <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. Select teams playing in early windows (TNF, London) under <strong class="text-main">Early Games</strong> to flag them with an <span class="badge early-badge">EARLY</span> badge across your lineup before roster locks. Each starter and bench player also shows their opponent and Sleeper's projection for the week (labeled <strong class="text-main">proj</strong>); once that player's game is final, their actual score takes its place with the projection shown beneath it. The optimizer runs on your rankings; the one place it uses Sleeper's projection is a FLEX decision between players who have no FLEX rank in your file, since position ranks don't compare across positions (TE24 isn't really ahead of WR45). Projections and scores update when you open or interact with the tab, not live during games.</p>
+                <h4 class="step-title"><span class="step-num blue-step">3</span> Uploading Custom Rankings & SoS</h4>
+                <p class="step-desc">Upload custom analyst rankings in either <strong class="text-main">.CSV</strong> or native <strong class="text-main">.XLSX Excel</strong> format. Choose the file, or drop it anywhere on the rankings card. Use <strong class="text-main">Upload Format</strong> to send one file with all positions, or separate files for each position that get combined into one list.</p>
+                <p class="step-desc mt-2">Upload Rest-of-Season (ROS) rankings on the <strong class="text-main">Roster</strong> tab, and Weekly Matchup rankings on the <strong class="text-main">Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Roster tab to instantly generate color-coded matchup gradients on player cards. <em class="text-muted">Note: If you upload a generic rankings CSV that contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.</em> If your file also has a <strong class="text-main">Tier</strong> column, each player's tier is shown next to their rank on player cards, like <span class="mls-tier">(T2)</span>.</p>
+                <ul class="guide-list">
+                    <li><strong class="text-main">Preview Before Saving:</strong> Every upload opens a preview first. It flags any names that didn't match a Sleeper player (those players stay unranked everywhere in the app, so rename them to match Sleeper if needed) and lets you pick which leagues should use the file.</li>
+                    <li><strong class="text-main">Ranking Sets:</strong> Each upload is saved as a named set you can share across leagues. Pick a league's set with <strong class="text-main">Ranking Set for this League</strong>, or tap "Choose leagues&hellip;" to point several leagues at the same set.</li>
+                    <li><strong class="text-main">Auto-Fetch ROS Rankings:</strong> No ROS file? Pull market consensus values from FantasyCalc or LeagueLogs instead, matched to your league type, QB format, scoring, and TE Premium. These settings are shared with the Scout tab's Trade Finder.</li>
+                    <li><strong class="text-main">Manual SoS:</strong> Under "Edit Manual SoS Grid", enter each team's matchup rank (1-32) for QB, RB, WR, and TE, then tap "Save Manual SoS".</li>
+                </ul>
             </div>
 
-            <!-- Step 4 (NEW) -->
+            <!-- Step 4 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">4</span> Matchup Simulator</h4>
-                <p class="step-desc">Found on the <strong class="text-main">Lineup</strong> tab, this runs 10,000 simulated matchups between your starting lineup and your current Sleeper opponent's, using each player's own week-to-week variance rather than just their season average. If you swap a player in the Lineup Optimizer before running it, the simulation reflects your in-app lineup - even if you haven't pushed that change to Sleeper yet - so you can test "what if I started X instead of Y" before committing to it.</p>
-                <p class="step-desc mt-2">Each player's expected score comes from whichever of these is available, in order: Sleeper's own weekly projection for this specific matchup (factors in opponent, injury designation, etc.), this season's actual scores, and last season's scores as a supplement when this season's sample is still small; last season's influence fades out as your current-season sample grows, rather than being used indefinitely.</p>
+                <h4 class="step-title"><span class="step-num blue-step">4</span> Lineup Optimizer & Early Games</h4>
+                <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. Select teams playing in early windows (TNF, London) under <strong class="text-main">Early Games</strong> to flag them with an <span class="badge early-badge">EARLY</span> badge across your lineup before roster locks. Each starter and bench player also shows their opponent and Sleeper's projection for the week (labeled <strong class="text-main">proj</strong>); once that player's game is final, their actual score takes its place with the projection shown beneath it. The optimizer runs on your rankings; the one place it uses Sleeper's projection is a FLEX decision between players who have no FLEX rank in your file, since position ranks don't compare across positions (TE24 isn't really ahead of WR45). Projections and scores update when you open or interact with the tab, not live during games.</p>
+                <ul class="guide-list">
+                    <li><strong class="text-main">Automatic Game-Time Locks:</strong> Once a player's game kicks off, the optimizer locks him in place so he's never moved or benched after the fact. If a lock is wrong, you can override it for that player. "Unlock All" clears your manual locks for the league, but leaves game-time locks alone.</li>
+                    <li><strong class="text-main">FLEX Kickoff Optimization:</strong> On by default. Who starts is always decided by rank first. Then your flex-eligible starters are arranged so the FLEX slot holds whoever kicks off latest, giving you the most time to make a late swap. Turn it off if you'd rather your FLEX slot simply follow rank order.</li>
+                    <li><strong class="text-main">Bench Priorities:</strong> Lists your bench from best to worst for this week, with taxi-squad players at the bottom.</li>
+                    <li><strong class="text-main">Undo / Redo:</strong> Press Ctrl+Z (Cmd+Z on Mac) to undo your last lineup edit, and Ctrl+Y or Ctrl+Shift+Z to redo it.</li>
+                </ul>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">5</span> Matchup Simulator</h4>
+                <p class="step-desc">Found on the <strong class="text-main">Lineup</strong> tab, this runs 10,000 simulated matchups between your starting lineup and your current Sleeper opponent's, using each player's own week-to-week variance rather than just their season average. If you swap a player in the Lineup Optimizer before running it, the simulation reflects your in-app lineup - even if you haven't made that change in Sleeper yet - so you can test "what if I started X instead of Y" before committing to it.</p>
+                <p class="step-desc mt-2">Each player's expected score comes from whichever of these is available, in order: their actual score if their game has already started, Sleeper's own weekly projection for this specific matchup (factors in opponent, injury designation, etc.), then their scoring history. That history is this season's scores, plus last season's for players who have played fewer than 3 games this season; once a player reaches 3 games, last season's scores are no longer used for him.</p>
                 <p class="step-desc mt-2"><strong class="text-main">Boom/Bust thresholds</strong> are fixed point totals, not relative to any one player's own average, so "boom" means the same real accomplishment whether it's your WR1 or your flex streamer:</p>
                 <ul class="guide-list pl-6" style="list-style-type: none;">
                     <li><strong class="text-main">QB:</strong> Boom 24+ pts &nbsp;/&nbsp; Bust &lt;12 pts</li>
@@ -1197,32 +1225,60 @@
                     <li><strong class="text-main">TE:</strong> Boom 15+ pts &nbsp;/&nbsp; Bust &lt;5.5 pts</li>
                     <li><strong class="text-main">K / DEF:</strong> no widely-used standard exists for these, so Boom/Bust is instead based on each player's own average (50%/150% of it).</li>
                 </ul>
-                <p class="step-desc mt-2">A <span class="badge-rookie">R</span> badge flags rookies, and a <strong class="text-main">~</strong> before a player's range means there wasn't enough game history yet to measure their variance directly; it's an early-season estimate, not a measured one. The <strong class="text-main">Lineup Insights</strong> section (when shown) flags bench players projected to outscore the weakest starter they're eligible to replace. Only swaps you can still make are considered: bench players (and free agents, for Waiver Insights) whose game has already kicked off are left out, and so are starters whose game has started, since their slot is locked.</p>
+                <p class="step-desc mt-2">A <span class="badge-rookie">R</span> badge flags rookies, and a <strong class="text-main">~</strong> before a player's range means there wasn't enough game history yet (fewer than 3 games) to measure their variance directly; it's an estimate, not a measured one. The <strong class="text-main">Lineup Insights</strong> section (when shown) flags bench players projected to outscore the weakest starter they're eligible to replace. Only swaps you can still make are considered: bench players (and free agents, for Waiver Insights) whose game has already kicked off are left out, and so are starters whose game has started, since their slot is locked.</p>
+                <ul class="guide-list">
+                    <li><strong class="text-main">Waiver Insights:</strong> Turn this on to also compare your weakest eligible starter at each position against the best available free agent there. It picks candidates from your ROS rankings (or Market Consensus data).</li>
+                    <li><strong class="text-main">Look Up a Specific Player:</strong> Search any NFL player to see their standalone boom/bust range for this week - handy for checking a waiver "sleeper" before you add him.</li>
+                </ul>
                 <p class="step-desc mt-2"><em class="text-muted">This is meant for exploring possibilities, not as start/sit advice. It's built on historical data, projections, and estimated variance; it has no way to know about a role change, coaching change, or opportunity shift that hasn't shown up in the data yet.</em></p>
             </div>
 
-            <!-- Step 5 (Previously Step 4) -->
+            <!-- Step 6 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">5</span> Scout & Waivers</h4>
-                <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. Paste waiver wire recommendations or trade targets. The app cross-references your <strong class="text-main">Sleeper Sync</strong> data to show whether players are available on waivers, on your roster, or owned by opponents, alongside side-by-side Weekly and ROS ranks. The Waiver Wire Assistant's Auto-Find lists the top available players by your Weekly or ROS rankings, with each one's weekly positional and FLEX rank. Compare them against your Starting Lineup (would he start this week, and who would he replace?) or your Whole Roster (is he better than your weakest player at the position?). Pasted lists get the same Would Start check, and the <strong class="text-main">Search In</strong> toggle above the paste box will run that same list against <em>every</em> league you have synced at once - one card per player showing where he is a free agent, where he is already on your roster, and who owns him in the rest, with a Switch button to jump straight to any of them. The Trade Analyzer tells you who owns each player and totals up each side's value using your own custom ROS Rankings from the Roster tab, and if you've also loaded Market Value data from the Trade Finder section, it shows a second verdict from market consensus for comparison. The values used for your ROS Rankings are estimated by converting your ROS Rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more; rank #1 player is around 10,000, and the values decay from there at ~1.8% per rank. It's a way to help compare players on your own board; not intended to be an exact evaluation of your rankings.</p>
+                <h4 class="step-title"><span class="step-num blue-step">6</span> Global Injury Auditor</h4>
+                <p class="step-desc">At the bottom of the <strong class="text-main">Lineup</strong> tab, tap "Run Global Audit" to scan all of your leagues at once for players listed as Out or on IR who are still in a starting lineup or taking up an active bench spot. Best Ball leagues are skipped (there's no lineup to set), as are players whose game has already kicked off.</p>
             </div>
 
-            <!-- Step 6 (Previously Step 5) -->
+            <!-- Step 7 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">6</span> Trade Finder & Market Disconnects</h4>
+                <h4 class="step-title"><span class="step-num blue-step">7</span> Scout: Waiver Wire Assistant</h4>
+                <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. The app cross-references your <strong class="text-main">Sleeper Sync</strong> data to show whether players are available on waivers, on your roster, or owned by opponents, alongside side-by-side Weekly and ROS ranks.</p>
+                <ul class="guide-list">
+                    <li><strong class="text-main">Auto-Find:</strong> Lists the top available players by your Weekly or ROS rankings (<strong class="text-main">Rank By</strong>), filtered by <strong class="text-main">Position</strong> and <strong class="text-main">Show Top</strong>, with each one's weekly positional and FLEX rank. Turn on <strong class="text-main">Only Would-Starts</strong> to hide anyone who wouldn't crack your lineup.</li>
+                    <li><strong class="text-main">Compare Against:</strong> <strong class="text-main">Starting Lineup</strong> checks whether he'd start for you this week and names who he'd bench. <strong class="text-main">Whole Roster</strong> checks whether he's better than your weakest player at the position (your drop candidate).</li>
+                    <li><strong class="text-main">Pasted Lists:</strong> Paste waiver recommendations or trade targets and tap "Scan Pasted List" to get the same checks. Set <strong class="text-main">Search In</strong> to <strong class="text-main">All My Leagues</strong> to run that list against <em>every</em> league you have synced at once - one card per player showing where he is a free agent, where he is already on your roster, and who owns him in the rest, with a Switch button to jump straight to any of them.</li>
+                </ul>
+            </div>
+
+            <!-- Step 8 -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">8</span> Scout: Trade Analyzer</h4>
+                <p class="step-desc">Enter the players you'd receive and the players you'd give up. The Trade Analyzer tells you who owns each player and totals up each side's value using your own custom ROS Rankings from the Roster tab, and if you've also loaded Market Value data from the Trade Finder section, it shows a second verdict from market consensus for comparison. The values used for your ROS Rankings are estimated by converting your ROS Rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more; rank #1 player is around 10,000, and the values decay from there at ~1.8% per rank. It's a way to help compare players on your own board; not intended to be an exact evaluation of your rankings.</p>
+                <p class="step-desc mt-2"><strong class="text-main">Waiver Adjustment</strong> (on by default): trading away more players than you receive frees up roster spots you can refill from waivers. When this is on, the side with fewer players gets a flat credit (500 by default, adjustable) for each extra open roster spot.</p>
+            </div>
+
+            <!-- Step 9 -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">9</span> Trade Finder & Market Disconnects</h4>
                 <p class="step-desc">Pull live market consensus values from <strong class="text-main">FantasyCalc</strong> or <strong class="text-main">LeagueLogs</strong> (or upload a market CSV). Use the Trade Finder to filter by flat rank gaps or percentage shifts to instantly uncover high-value buy-low targets and overvalued sell-high assets relative to your custom ROS board. <strong class="text-main">Rank Basis</strong> controls what those gaps are measured against: Overall compares each player's rank across the whole player pool, while Positional Rank compares them only against others at their own position (QB vs QB, RB vs RB, etc.). Positional Rank is the better choice in Superflex or TE Premium leagues; those formats make market consensus price entire positions differently than a standard board would, which can otherwise flag a fairly-valued player (e.g. a top QB in a Superflex league) as a false buy-low or sell-high. One thing to know: positional gaps run much smaller than overall ones; a 10-spot Overall gap is a reasonable default, but a 10-spot gap within a single position is enormous, so lower the Minimum Rank Gap (2-4 is a good starting point) when you switch to Positional Rank.</p>
             </div>
 
-            <!-- Step 7 (Previously Step 6) -->
+            <!-- Step 10 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">7</span> Positional Power Rankings</h4>
+                <h4 class="step-title"><span class="step-num blue-step">10</span> Positional Power Rankings</h4>
                 <p class="step-desc">Found on the <strong class="text-main">Roster</strong> tab and generated automatically from your rankings (or Market Consensus data). Every team in your league is ranked 1 to N: <strong class="text-main">Start</strong> scores each team's best legal starting lineup under your league's roster settings, measuring each position's starters against the league average and weighting by how many lineup spots that position fills (one position can lift a lineup, but only up to 150% of average, so an elite QB can't hide empty RB and WR rooms). <strong class="text-main">Ovr</strong> scores the whole roster, and QB/RB/WR/TE score each whole position room. Hover or tap any rank to see the players behind it; teams strong where you're weak make ideal trade partners. Each team also gets a label. In dynasty and keeper leagues it's <strong class="text-main">Contender</strong> (top-third starting lineup), <strong class="text-main">Retool</strong> (mid-pack lineup with a decent future) or <strong class="text-main">Rebuild</strong> (bottom-third lineup, or mid-pack with an aging roster), using a <strong class="text-main">Future</strong> column (future value) that adjusts each roster's value for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less. It's a heuristic, not a projection. In redraft leagues it's <strong class="text-main">Contender</strong> / <strong class="text-main">Bubble</strong> / <strong class="text-main">Longshot</strong>. Labels reflect roster strength only, not the standings. The same rankings also power the Waiver Wire Assistant's <strong class="text-main">All My Leagues</strong> search: look up a player and each league shows your power rank at his position. Set <strong class="text-main">Looking To</strong> to <strong class="text-main">Buy / Add</strong> to flag the leagues where you're weak there and he'd move you up, or <strong class="text-main">Sell / Drop</strong> to flag the leagues where you own him and have depth to spare. Each league is scored with its own rankings (Market Consensus if it has none).</p>
             </div>
 
-            <!-- Step 8 (Previously Step 7) -->
+            <!-- Step 11 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">8</span> Exporting & Sharing</h4>
-                <p class="step-desc">Once your lineup is finalized, tap the <strong class="text-main">Export</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media!</p>
+                <h4 class="step-title"><span class="step-num blue-step">11</span> Exporting & Sharing</h4>
+                <p class="step-desc">Once your lineup is finalized, tap the <strong class="text-main">PNG</strong> button to generate a clean, high-resolution screenshot of your Optimal Lineup to share with friends or post on social media! Or tap <strong class="text-main">Copy</strong> to copy your lineup as plain text for group chats.</p>
+            </div>
+
+            <!-- Step 12 -->
+            <div class="guide-step">
+                <h4 class="step-title"><span class="step-num blue-step">12</span> Backup, Restore & Reset</h4>
+                <p class="step-desc">Your leagues, rankings, and settings are stored in this browser only. Under <strong class="text-main">Advanced Settings</strong> on the Dashboard, use <strong class="text-main">Export Backup</strong> to download everything as a file and <strong class="text-main">Import Backup</strong> to restore it on this or another device or browser. The <strong class="text-main">Danger Zone</strong> has a Factory Reset that erases all of your saved leagues, rankings, and settings, which is handy when starting a new season. My Draft Strategist data is not affected.</p>
             </div>
 
             <!-- Step 9: Shortcuts (Previously Step 8) -->
@@ -1231,11 +1287,14 @@
                 <p class="step-desc">Navigate the app instantly with your keyboard (active when not typing in a text box):</p>
                 <ul class="guide-list pl-6" style="list-style-type: none;">
                     <li><strong class="text-main">1:</strong> Jump to Dashboard</li>
-                    <li><strong class="text-main">2:</strong> Jump to Roster & Optimizer Tab</li>
-                    <li><strong class="text-main">3:</strong> Jump to Lineup Tab</li>
-                    <li><strong class="text-main">4:</strong> Jump to Scout & Trade Tab</li>
+                    <li><strong class="text-main">2:</strong> Jump to Roster Tab</li>
+                    <li><strong class="text-main">3:</strong> Jump to Lineup & Optimizer Tab</li>
+                    <li><strong class="text-main">4:</strong> Jump to Scout Tab</li>
                     <li><strong class="text-main">5:</strong> Jump to Guide Tab</li>
-                    <li><strong class="text-main">Shift+Right/Left</strong> Jump between leagues</li>
+                    <li><strong class="text-main">Shift+Right/Left:</strong> Jump between leagues</li>
+                    <li><strong class="text-main">Ctrl+Z (Cmd+Z):</strong> Undo your last lineup edit</li>
+                    <li><strong class="text-main">Ctrl+Y or Ctrl+Shift+Z (Cmd+Shift+Z):</strong> Redo</li>
+                    <li><strong class="text-main">Escape:</strong> Close the menu</li>
                 </ul>
             </div>
         </div>

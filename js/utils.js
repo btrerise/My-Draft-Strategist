@@ -1229,3 +1229,120 @@ window.flashButton = function(btn, text, isError = false, fallbackContent = null
         btn.style.color = "";
     }, duration);
 };
+// --- TAB DEEP LINKS ---
+// Every tab switch writes its tab to the URL hash (#tracker, #lineup, #top50Tab...), so a reload
+// or a shared link should land on that tab. Returns the hash's tab id only when this page really
+// has that tab, so a stale, mistyped or unrelated hash falls back to the page's default tab
+// instead of blanking every tab. toElementId maps the hash to the tab's element id: MDS/MLS
+// store the bare name ("tracker" -> #trackerTab); T-Score stores the full id, so it passes an
+// identity function.
+window.getTabFromHash = function(toElementId = id => id + 'Tab') {
+  let id = '';
+  try { id = decodeURIComponent((window.location.hash || '').slice(1)); } catch (e) { return null; }
+  if (!id) return null;
+  const el = document.getElementById(toElementId(id));
+  return el && el.classList.contains('tab-content') ? id : null;
+};
+
+// --- INFO TOOLTIPS (the "i" icons) ---
+// Shared by MDS, MLS and T-Score. Before this, tooltips only opened on mouse hover: the icons
+// were plain <div>s that couldn't take keyboard focus, and only MLS had a tap handler -- bound
+// per icon at page load, so icons rendered later (e.g. the Trade Analyzer verdict's) never got
+// one. Everything here is delegated from document, so it covers icons rendered at any time.
+//   Keyboard: Tab to an icon to show its tooltip (CSS, :focus-visible); Enter/Space toggles it;
+//             Escape hides it.
+//   Touch/mouse: tap an icon to toggle its tooltip; tap anywhere else to close it.
+// The icons stay <div>s rather than becoming <button>s on purpose: several sit inside a
+// <label>, and a button there would become the label's control, so tapping the label's text
+// would open the tooltip.
+(function initInfoTooltips() {
+  let tipSeq = 0;
+  const textFor = icon => {
+    const next = icon.nextElementSibling;
+    return next && next.classList.contains('tooltip-text') ? next : null;
+  };
+
+  // Makes each icon a focusable, named button that points screen readers at its text.
+  // Idempotent (data-tt marks icons already done).
+  function enhanceIcons() {
+    document.querySelectorAll('.tooltip-icon:not([data-tt])').forEach(icon => {
+      icon.setAttribute('data-tt', '');
+      icon.setAttribute('tabindex', '0');
+      icon.setAttribute('role', 'button');
+      if (!icon.hasAttribute('aria-label')) icon.setAttribute('aria-label', 'More info');
+      const text = textFor(icon);
+      if (text) {
+        if (!text.id) text.id = `mds-tip-${++tipSeq}`;
+        text.setAttribute('role', 'tooltip');
+        icon.setAttribute('aria-describedby', text.id);
+      }
+    });
+  }
+
+  function closeAll(except) {
+    document.querySelectorAll('.tooltip-text.mobile-visible').forEach(t => {
+      if (t !== except) t.classList.remove('mobile-visible');
+    });
+  }
+
+  function toggle(icon) {
+    const text = textFor(icon);
+    if (!text) return;
+    closeAll(text);
+    // Open = tapped/pressed open, or keyboard-focused and not dismissed. Hover is deliberately
+    // left out: phones keep :hover "stuck" after a tap, which would make every tap read as
+    // "already open" and close it instead.
+    const open = text.classList.contains('mobile-visible') ||
+      (icon.matches(':focus-visible') && !text.classList.contains('tt-dismissed'));
+    text.classList.toggle('mobile-visible', !open);
+    text.classList.toggle('tt-dismissed', open);
+  }
+
+  document.addEventListener('click', e => {
+    const icon = e.target.closest && e.target.closest('.tooltip-icon');
+    if (icon) {
+      e.stopPropagation(); // e.g. an icon inside a clickable card header shouldn't also toggle it
+      toggle(icon);
+    } else {
+      closeAll(null);
+    }
+  }, true);
+
+  document.addEventListener('keydown', e => {
+    const icon = e.target.closest && e.target.closest('.tooltip-icon');
+    if (icon && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggle(icon);
+    } else if (e.key === 'Escape') {
+      const open = document.querySelectorAll('.tooltip-text.mobile-visible');
+      const focusedText = icon ? textFor(icon) : null;
+      if (open.length === 0 && !(focusedText && !focusedText.classList.contains('tt-dismissed'))) return;
+      closeAll(null);
+      if (focusedText) focusedText.classList.add('tt-dismissed');
+      // Only this Escape: keep it from also closing a menu or dialog behind the tooltip.
+      e.stopPropagation();
+    }
+  }, true);
+
+  // Leaving an icon resets it, so the next visit (focus or tap) starts from "closed".
+  document.addEventListener('focusout', e => {
+    const icon = e.target.closest && e.target.closest('.tooltip-icon');
+    const text = icon && textFor(icon);
+    if (text) text.classList.remove('tt-dismissed', 'mobile-visible');
+  });
+
+  const start = () => {
+    enhanceIcons();
+    // Catch icons rendered after load (verdict banners, re-rendered cards). Batched to one
+    // pass per frame, and the pass only touches icons not already enhanced.
+    let queued = false;
+    new MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; enhanceIcons(); });
+    }).observe(document.body, { childList: true, subtree: true });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
