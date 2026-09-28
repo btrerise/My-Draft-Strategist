@@ -124,6 +124,9 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         marketSettings: readJSON('mls_market_settings', { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false }),
         tradeSettings: readJSON('mls_trade_settings', { waiverAdjustment: true, waiverAdjustmentValue: 500 }),
         simSettings: readJSON('mls_sim_settings', { waiverInsights: false }),
+        // Positional Power Rankings (Roster tab). source: 'custom' (the league's own rankings) |
+        // 'market' (Market Consensus). See refreshPowerRankings.
+        powerSettings: Object.assign({ source: 'custom' }, readJSON('mls_power_settings', {})),
         // Waiver Wire Assistant Auto-Find controls (Scout tab). compare: 'lineup' (would he
         // start?) | 'roster' (drop-candidate upgrade); basis: 'weekly' | 'ros' (scan order); pos:
         // a position, 'FLEX', or 'ALL' (grouped by position); limit: rows per group.
@@ -1749,7 +1752,9 @@ function attachScoutSuggestionHandler(outputElId) {
         State.swapSourceId = null;
 
         if (typeof updateLeagueNavUI === 'function') updateLeagueNavUI();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // No scroll-to-top here anymore: flipping through leagues to compare the same card
+        // (e.g. each league's Positional Power Rankings) meant scrolling back down every time.
+        // The header's league switcher is sticky, so it's always reachable from where you are.
 
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
@@ -1855,6 +1860,8 @@ function attachScoutSuggestionHandler(outputElId) {
 
         const powerOut = document.getElementById('powerRankingsOutput');
         if (powerOut) { powerOut.innerHTML = ''; powerOut.style.display = 'none'; }
+        const powerStrip = document.getElementById('rosterPowerStrip');
+        if (powerStrip) { powerStrip.innerHTML = ''; powerStrip.style.display = 'none'; }
     }
 
     function loadActiveLeagueData() {
@@ -2310,8 +2317,15 @@ function attachScoutSuggestionHandler(outputElId) {
             let existingIdx = State.leagues.findIndex(l => l.leagueId === leagueId);
             let existingLeague = existingIdx !== -1 ? State.leagues[existingIdx] : null;
 
+            // Stored separately from formatBadge because the badge swaps its type word for
+            // "Best Ball" -- a dynasty best-ball league would otherwise read as redraft to the
+            // Power Rankings' Contender/Retool/Rebuild labels (see getPowerLeagueKind).
+            const leagueType = leagueData.settings
+                ? (leagueData.settings.type === 2 ? 'dynasty' : (leagueData.settings.type === 1 ? 'keeper' : 'redraft'))
+                : 'redraft';
+
             let leagueObj = {
-                leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge,
+                leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge, leagueType: leagueType,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
                 // Needed by the Matchup Simulator: rosterId identifies "us" within this
@@ -3178,7 +3192,10 @@ function attachScoutSuggestionHandler(outputElId) {
             Object.entries(map).forEach(([id, p]) => {
                 if (!p.first_name || !FANTASY_POS.includes(p.position)) return;
                 const clean = normalizeName(`${p.first_name} ${p.last_name}`);
-                const entry = { id, pos: p.position, team: p.team || null, inj: getShortInjuryStatus(p) };
+                // age feeds the Power Rankings' future-value score (see getPowerAgeIndex);
+                // birth_date is preferred there when present, since Sleeper's age field can
+                // lag a birthday.
+                const entry = { id, pos: p.position, team: p.team || null, inj: getShortInjuryStatus(p), age: p.age ?? null, birthDate: p.birth_date || null };
                 if (!index[clean] || (!index[clean].team && entry.team)) index[clean] = entry;
             });
             return index;
@@ -3883,10 +3900,9 @@ function attachScoutSuggestionHandler(outputElId) {
     // "Switch" on a league row. No re-render needed here: switchActiveLeague already re-runs
     // runScout('waiver') whenever the textarea still has names in it, which lands right back on
     // this view with the newly-active league's rankings behind the Wk/ROS numbers. All this
-    // adds is scrolling the results back into view -- switchActiveLeague jumps the page to the
-    // top, which would otherwise leave the person staring at the Dashboard banner. The delay
-    // lets that smooth scroll-to-top start before overriding it, matching how the Positional
-    // Power Rankings table scrolls itself into view after rendering.
+    // adds is scrolling the results back into view once that re-render lands, since the
+    // rebuilt cards can change height above or below where the person tapped. (switchActiveLeague
+    // no longer scrolls to the top on its own.)
     window.scoutGoToLeague = function(leagueId) {
         if (!leagueId || leagueId === State.activeLeagueId) return;
         window.switchActiveLeague(leagueId);
@@ -6286,6 +6302,9 @@ function applyMarketSettingsToUI() {
         // Every roster change funnels through here (manual add/remove, Roster tab delete,
         // re-sync), so this keeps the Settings "Added this session" list in step with it.
         renderManualAddLog();
+        // Same funnel keeps the Positional Power Rankings card current: rankings uploads, set
+        // changes, syncs and league switches all end up here (see refreshPowerRankings).
+        refreshPowerRankings();
         let league = getActiveLeague();
         const syncBtn = document.getElementById('rosterSyncBtn');
         const headerNameEl = document.getElementById('rosterLeagueHeader');
@@ -7498,6 +7517,9 @@ document.addEventListener('keydown', (e) => {
 // managers 1..N at each position and overall. Pure (no DOM, no toasts) so the Positional Power
 // Rankings card and the All My Leagues player search (see getLeaguePowerContext) run the exact
 // same numbers -- the search's "WR Power Rank: 9th" has to match what this league's table says.
+// Also splits each roster into its best legal starting lineup vs bench (see
+// pickPowerStarters): the position columns measure whole rooms, depth included, but whether a
+// team can actually compete comes down to who it can put on the field each week.
 // Returns [] when the league has no whole-league roster data.
 const POWER_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
 const POWER_UNRANKED_RANK = 300;
@@ -7509,7 +7531,63 @@ function powerRankFor(rankingsIdx, cleanName) {
     return { rank: data ? (data.rank || data.marketVal) : POWER_UNRANKED_RANK, data };
 }
 
-function computePositionalPower(league, rankings) {
+// How far above the league average one position's starters can count toward the Start score
+// (1.5 = 150% of average). Lets a Josh Allen genuinely lift a lineup without letting him
+// single-handedly paper over empty RB and WR rooms. See computePositionalPower step 3a.
+const POWER_STARTER_CARRY_CAP = 1.5;
+
+// Same fallback lineup the rest of this file uses for a league with no saved reqs.
+const POWER_DEFAULT_REQS = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+// Filled in this order: fixed slots first, then FLEX, then Superflex -- most restrictive to
+// least. Taking the best available player for each slot in that order is optimal here, since
+// every eligibility set contains the one before it and a player's value doesn't depend on which
+// slot he fills. K/DEF slots are skipped: power rankings don't score those positions.
+const POWER_STARTER_SLOTS = [
+    ['QB', ['QB']], ['RB', ['RB']], ['WR', ['WR']], ['TE', ['TE']],
+    ['FLEX', ['RB', 'WR', 'TE']], ['SFLEX', ['QB', 'RB', 'WR', 'TE']]
+];
+function pickPowerStarters(players, reqs) {
+    const r = Object.assign({}, POWER_DEFAULT_REQS, reqs || {});
+    const pool = [...players].sort((a, b) => b.value - a.value || a.rank - b.rank);
+    const used = new Set();
+    const starters = [];
+    POWER_STARTER_SLOTS.forEach(([slot, eligible]) => {
+        let need = parseInt(r[slot], 10) || 0;
+        for (const p of pool) {
+            if (need <= 0) break;
+            if (used.has(p) || !eligible.includes(p.pos)) continue;
+            used.add(p);
+            starters.push({ ...p, slot });
+            need--;
+        }
+    });
+    return { starters, bench: pool.filter(p => !used.has(p)) };
+}
+
+// --- FUTURE VALUE (dynasty / keeper) ---
+// Rough positional age curves: a multiplier on each player's rankings value, >1 before a
+// position's typical peak and falling off after it (RBs earliest, QBs latest). Custom dynasty
+// rankings usually price age in already, so these are deliberately gentle -- they tilt a
+// roster's future score toward youth rather than overriding the board. A heuristic, and the
+// guide says so; not a projection model. Each row is [max age, multiplier]; unknown age = 1.
+const POWER_AGE_CURVES = {
+    QB: [[26, 1.10], [30, 1.05], [32, 1.00], [33, 0.90], [34, 0.80], [35, 0.70], [Infinity, 0.55]],
+    RB: [[24, 1.15], [25, 1.05], [26, 0.95], [27, 0.80], [28, 0.65], [29, 0.50], [Infinity, 0.35]],
+    WR: [[24, 1.15], [26, 1.05], [27, 1.00], [28, 0.90], [29, 0.75], [30, 0.60], [31, 0.45], [Infinity, 0.35]],
+    TE: [[25, 1.10], [27, 1.05], [28, 1.00], [29, 0.90], [30, 0.75], [31, 0.60], [Infinity, 0.45]]
+};
+function powerAgeFactor(pos, age) {
+    const curve = POWER_AGE_CURVES[pos];
+    if (!curve || !Number.isFinite(age) || age <= 0) return 1;
+    for (const [maxAge, factor] of curve) if (age <= maxAge) return factor;
+    return 1;
+}
+
+// opts.future (optional) adds a futureScore/futureRank per team:
+//   { mode: 'age', ages: { [cleanName]: age } } -- this league's rankings value x age curve
+//   { mode: 'market', rankings: [...] }          -- dynasty Market Consensus value, no age
+// Without it, teams carry no future fields -- the All My Leagues search doesn't use them.
+function computePositionalPower(league, rankings, opts = {}) {
     if (!league || !league.globalRosterMap || !league.globalPosMap) return [];
     const rankingsIdx = rankingIndex(rankings);
     let teamScoresMap = {};
@@ -7537,27 +7615,84 @@ function computePositionalPower(league, rankings) {
         if (teamScoresMap[owner] && POWER_POSITIONS.includes(pos)) {
             teamScoresMap[owner].scores[pos] += powerValue;
             teamScoresMap[owner].total += powerValue;
-            teamScoresMap[owner].players[pos].push({ name: actualName, rank: rank, tier: data?.tier });
+            teamScoresMap[owner].players[pos].push({ name: actualName, cleanName, pos, rank: rank, value: powerValue, tier: data?.tier });
         }
     });
 
     let teamScores = Object.values(teamScoresMap);
     if (teamScores.length === 0) return teamScores;
 
-    // 3. Sort player arrays so the tooltip shows the best players at the top
+    // 3. Sort player arrays so the tooltip shows the best players at the top, and split each
+    // roster into starters vs bench against this league's own lineup requirements.
     teamScores.forEach(team => {
         POWER_POSITIONS.forEach(pos => {
             team.players[pos].sort((a, b) => a.rank - b.rank);
         });
+        const all = POWER_POSITIONS.flatMap(pos => team.players[pos]);
+        const { starters, bench } = pickPowerStarters(all, league.reqs);
+        team.starters = starters;
+        team.bench = bench;
+        team.starterRaw = starters.reduce((sum, p) => sum + p.value, 0);
+        team.benchScore = bench.reduce((sum, p) => sum + p.value, 0);
+        // Starters grouped by their real position (a WR in FLEX counts as a WR), for the
+        // balance score below.
+        team.starterByPos = { QB: 0, RB: 0, WR: 0, TE: 0 };
+        team.starterCountByPos = { QB: 0, RB: 0, WR: 0, TE: 0 };
+        starters.forEach(p => { team.starterByPos[p.pos] += p.value; team.starterCountByPos[p.pos]++; });
     });
 
-    // 4. Rank teams 1 to N (Highest Power Score = Rank 1)
-    const assignRanks = (arr, posKey, rankKey) => {
-        let sorted = [...arr].sort((a, b) => {
-            let scoreA = posKey === 'total' ? a.total : a.scores[posKey];
-            let scoreB = posKey === 'total' ? b.total : b.scores[posKey];
-            return scoreB - scoreA; // Descending Sort
+    // 3a. Starting lineup strength, BALANCED across positions. A plain sum of starter values
+    // let one or two studs hide empty rooms elsewhere -- the power curve is steep (a rank-1
+    // player is worth ~9x a rank-50 one), so an elite QB + TE could post the league's best
+    // "starters" total with the league's worst RBs and WRs. Instead, each position's starters
+    // are measured against the league average at that position, capped so one room can only
+    // carry so much (POWER_STARTER_CARRY_CAP), and averaged with weights equal to how many
+    // lineup spots that position fills on an average team here (so 3 WR spots count 3x one TE
+    // spot, and Superflex leagues weight QBs accordingly). starterRatios is kept for the Start
+    // tooltip, so the rank is explainable.
+    const avgStarterByPos = {}, slotWeight = {};
+    POWER_POSITIONS.forEach(pos => {
+        avgStarterByPos[pos] = teamScores.reduce((sum, t) => sum + t.starterByPos[pos], 0) / teamScores.length;
+        slotWeight[pos] = teamScores.reduce((sum, t) => sum + t.starterCountByPos[pos], 0) / teamScores.length;
+    });
+    const totalWeight = POWER_POSITIONS.reduce((sum, pos) => sum + slotWeight[pos], 0) || 1;
+    teamScores.forEach(team => {
+        team.starterRatios = {};
+        let weighted = 0;
+        POWER_POSITIONS.forEach(pos => {
+            const ratio = avgStarterByPos[pos] > 0 ? team.starterByPos[pos] / avgStarterByPos[pos] : 1;
+            team.starterRatios[pos] = ratio;
+            weighted += slotWeight[pos] * Math.min(ratio, POWER_STARTER_CARRY_CAP);
         });
+        team.starterScore = weighted / totalWeight;
+    });
+
+    // 3b. Future value, when asked for.
+    const future = opts.future || null;
+    if (future) {
+        const marketIdx = future.mode === 'market' ? rankingIndex(future.rankings) : null;
+        teamScores.forEach(team => {
+            const all = POWER_POSITIONS.flatMap(pos => team.players[pos]);
+            team.futurePlayers = all.map(p => {
+                if (future.mode === 'market') {
+                    const { rank } = powerRankFor(marketIdx, p.cleanName);
+                    return { ...p, futureValue: powerValueForRank(rank), futureRank: rank };
+                }
+                const age = future.ages ? future.ages[p.cleanName] : undefined;
+                return { ...p, age: Number.isFinite(age) ? age : null, futureValue: Math.round(p.value * powerAgeFactor(p.pos, age)) };
+            }).sort((a, b) => b.futureValue - a.futureValue);
+            team.futureScore = team.futurePlayers.reduce((sum, p) => sum + p.futureValue, 0);
+        });
+    }
+
+    // 4. Rank teams 1 to N (Highest Power Score = Rank 1)
+    const scoreOf = (team, key) => key === 'total' ? team.total
+        : key === 'starters' ? team.starterScore
+        : key === 'bench' ? team.benchScore
+        : key === 'future' ? team.futureScore
+        : team.scores[key];
+    const assignRanks = (arr, posKey, rankKey) => {
+        let sorted = [...arr].sort((a, b) => scoreOf(b, posKey) - scoreOf(a, posKey)); // Descending Sort
 
         sorted.forEach((team, idx) => {
             let original = arr.find(t => t.owner === team.owner);
@@ -7570,6 +7705,9 @@ function computePositionalPower(league, rankings) {
     assignRanks(teamScores, 'WR', 'wrRank');
     assignRanks(teamScores, 'TE', 'teRank');
     assignRanks(teamScores, 'total', 'overallRank');
+    assignRanks(teamScores, 'starters', 'starterRank');
+    assignRanks(teamScores, 'bench', 'benchRank');
+    if (future) assignRanks(teamScores, 'future', 'futureRank');
 
     // Final sort by overall rank for the table display
     teamScores.sort((a, b) => a.overallRank - b.overallRank);
@@ -7585,139 +7723,399 @@ function powerTier(rank, totalTeams) {
     return 'middle';
 }
 
-window.runPositionalStrength = function() {
-    let league = getActiveLeague();
-    if (!league || !league.globalRosterMap || !league.globalPosMap) {
-        if (window.showToast) window.showToast("Please sync a league on the Dashboard first.", { isError: true });
-        return;
+// --- TEAM DIRECTION LABELS ---
+// Dynasty and keeper leagues get Contender / Retool / Rebuild; redraft (and anything else) gets
+// Contender / Bubble / Longshot, since "rebuild" means nothing when rosters reset each year.
+// leagueType is stored at sync (see the leagueObj in the Sleeper sync); leagues synced before
+// it existed fall back to reading formatBadge.
+function getPowerLeagueKind(league) {
+    const t = league && league.leagueType;
+    if (t) return (t === 'dynasty' || t === 'keeper') ? 'dynasty' : 'redraft';
+    return /^(Dynasty|Keeper)\b/.test((league && league.formatBadge) || '') ? 'dynasty' : 'redraft';
+}
+
+// Labels come from the starting lineup's tier (top / middle / bottom third, as powerTier), with
+// future value deciding the dynasty cases where "now" alone is ambiguous:
+//   Dynasty:  top-third starters                -> Contender ("window closing" if the roster's
+//                                                  future value is bottom-third)
+//             middle starters                    -> Retool, unless future is bottom-third ->
+//                                                  Rebuild (a mid-pack team that's also old)
+//             bottom-third starters              -> Rebuild ("young core" if future is top-third)
+//   Redraft:  top / middle / bottom starters     -> Contender / Bubble / Longshot
+// A top-third lineup is never told to Retool: whatever the ages, the best move for one of the
+// best teams in the league is to push for a title. Based on roster strength only -- not
+// the standings -- which the card's notes say.
+function assignPowerLabels(teams, kind) {
+    const N = teams.length;
+    const hasFuture = teams.every(t => Number.isFinite(t.futureRank));
+    teams.forEach(t => {
+        const st = powerTier(t.starterRank, N);
+        const ft = hasFuture ? powerTier(t.futureRank, N) : null;
+        t.labelNote = '';
+        if (kind === 'redraft') {
+            t.label = st === 'strong' ? 'Contender' : (st === 'middle' ? 'Bubble' : 'Longshot');
+            return;
+        }
+        if (st === 'strong') {
+            t.label = 'Contender';
+            if (ft === 'weak') t.labelNote = 'window closing';
+        } else if (st === 'middle') {
+            t.label = ft === 'weak' ? 'Rebuild' : 'Retool';
+        } else {
+            t.label = 'Rebuild';
+            if (ft === 'strong') t.labelNote = 'young core';
+        }
+    });
+}
+
+// One sentence per label for the "Your Team" summary above the table.
+function powerLabelAdvice(t) {
+    const key = t.label + (t.labelNote ? `|${t.labelNote}` : '');
+    return ({
+        'Contender': "Your starting lineup is one of the league's best. Depth or future value you can spare is worth turning into starters.",
+        'Contender|window closing': "Your starting lineup is one of the league's best, but the roster is old. Push for a title now; this window won't stay open long.",
+        'Retool': "Your lineup is mid-pack with a solid future behind it. One or two targeted starter upgrades could make you a contender, without selling your young core.",
+        'Rebuild': t.starterTier === 'middle'
+            ? "Your lineup is mid-pack and the roster is aging. Consider selling veterans for younger players and picks before their value drops."
+            : "Your starting lineup is in the bottom third. Consider selling veterans for younger players and picks.",
+        'Rebuild|young core': "Your lineup is in the bottom third now, but your future value is among the league's best. The rebuild is on track; keep adding youth.",
+        'Bubble': "Your lineup is mid-pack. A starter upgrade or two could swing a playoff spot.",
+        'Longshot': "Your starting lineup is in the bottom third. Take swings on upside, on waivers and in trades."
+    })[key] || '';
+}
+
+// Clean name -> age, from the same day-cached Sleeper player map everything else uses. The card
+// renders without the Future column until this resolves, then re-renders once; a failed load
+// is remembered for the session so it doesn't retry on every Roster tab render.
+let _powerAgeIndex = null;
+let _powerAgeState = 'idle'; // 'idle' | 'loading' | 'ready' | 'failed'
+function ageFromMeta(m) {
+    if (m.birthDate) {
+        const b = new Date(m.birthDate + 'T00:00:00');
+        if (!isNaN(b)) {
+            const now = new Date();
+            let age = now.getFullYear() - b.getFullYear();
+            if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) age--;
+            if (age > 15 && age < 50) return age;
+        }
     }
+    const a = Number(m.age);
+    return Number.isFinite(a) && a > 0 ? a : null;
+}
+function ensurePowerAgeIndex() {
+    if (_powerAgeState !== 'idle') return;
+    _powerAgeState = 'loading';
+    getSleeperMetaByName().then(meta => {
+        const idx = {};
+        Object.entries(meta).forEach(([clean, m]) => {
+            const age = ageFromMeta(m);
+            if (age != null) idx[clean] = age;
+        });
+        _powerAgeIndex = idx;
+        _powerAgeState = 'ready';
+        refreshPowerRankings();
+    }).catch(err => {
+        console.warn('Power Rankings: Sleeper player ages unavailable; future value falls back to Market Consensus if loaded.', err);
+        _powerAgeState = 'failed';
+        refreshPowerRankings();
+    });
+}
 
-    const source = document.getElementById('powerRankingsSource')?.value || 'custom';
-    const activeRankings = source === 'market' ? State.marketRankings : State.rosRankings;
+// Future value source for the active league: rankings x Sleeper age (preferred), else dynasty
+// Market Consensus values, else none. Market data only counts when it was pulled as Dynasty --
+// redraft market values say nothing about next year.
+function resolvePowerFuture() {
+    if (_powerAgeState === 'ready') return { future: { mode: 'age', ages: _powerAgeIndex }, label: 'age' };
+    const dynastyMarket = State.marketRankings.length > 0 && State.marketSettings && State.marketSettings.type === 'dynasty';
+    if (_powerAgeState === 'failed' && dynastyMarket) return { future: { mode: 'market', rankings: State.marketRankings }, label: 'market' };
+    return { future: null, label: _powerAgeState === 'loading' ? 'loading' : 'none' };
+}
 
-    if (!activeRankings || activeRankings.length === 0) {
-        let msg = source === 'market' 
-            ? "Please pull live Market Value data below first." 
-            : "Please upload your Rest of Season rankings first.";
-        if (window.showToast) window.showToast(msg, { isError: true });
-        return;
-    }
-
-    const teamScores = computePositionalPower(league, activeRankings);
-
-    if (teamScores.length === 0) {
-        if (window.showToast) window.showToast("Not enough roster data to evaluate.", { isError: true });
-        return;
-    }
-
-    renderPowerRankingsTable(teamScores);
+// --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
+// Generated automatically (no Calculate button) every time the Roster tab renders -- see the
+// call at the top of loadRosterTab, which every rankings upload, set change, sync and league
+// switch already funnels through. The math is a few milliseconds even for a 14-team league,
+// so recomputing on every render is cheaper than tracking what changed.
+window.updatePowerSetting = function(key, value) {
+    State.powerSettings[key] = value;
+    localStorage.setItem('mls_power_settings', JSON.stringify(State.powerSettings));
+    refreshPowerRankings();
 };
 
-window.renderPowerRankingsTable = function(teamScores) {
-    let out = document.getElementById('powerRankingsOutput');
-    if (!out) return;
-    
-    let totalTeams = teamScores.length;
+// Which rankings the card scores with: the person's pick, falling back to the other source
+// (with a note saying so) rather than showing nothing, the same way the All My Leagues search
+// falls back to Market Consensus for a league without rankings of its own.
+function resolvePowerRankingsSource() {
+    const wantMarket = State.powerSettings.source === 'market';
+    const mine = State.rosRankings, market = State.marketRankings;
+    if (wantMarket) {
+        if (market.length > 0) return { rankings: market, source: 'market', note: '' };
+        if (mine.length > 0) return { rankings: mine, source: 'custom', note: 'No Market Consensus data loaded yet, so this uses your own rankings instead.' };
+    } else {
+        if (mine.length > 0) return { rankings: mine, source: 'custom', note: '' };
+        if (market.length > 0) return { rankings: market, source: 'market', note: 'No rankings of your own loaded for this league, so this uses Market Consensus instead. Upload rankings above for a board built for this league.' };
+    }
+    return null;
+}
 
-    // Hardcoded hex values prevent CSS root variables from clashing
-    const getRankColor = (rank) => {
-        if (rank <= Math.ceil(totalTeams / 3)) return '#4ade80'; // Top Tier (Green)
-        if (rank > Math.floor(totalTeams * 2 / 3)) return '#fca5a5'; // Bottom Tier (Red)
-        return 'var(--text-main, #f8fafc)'; // Middle Tier (Neutral)
+function refreshPowerRankings() {
+    const out = document.getElementById('powerRankingsOutput');
+    if (!out) return;
+    const sourceSelect = document.getElementById('powerRankingsSource');
+    if (sourceSelect) sourceSelect.value = State.powerSettings.source === 'market' ? 'market' : 'custom';
+
+    const showMessage = (msg) => {
+        out.innerHTML = `<div class="mls-power-empty">${msg}</div>`;
+        out.style.display = 'block';
+        renderRosterPowerStrip(null); // nothing to summarize up top either
     };
 
-    // Helper to generate the nested player tooltips
-    const buildTooltip = (players, posName, isRightEdge = false) => {
-        let shiftStyle = isRightEdge ? "right: 0; left: auto; transform: translateY(-4px);" : "";
-        let html = `<div class="tooltip-text" style="width: 220px; font-weight: normal; z-index: 1005; ${shiftStyle}">`;
-        html += `<div style="font-weight: 700; color: var(--text-main); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border);">${posName} Room</div>`;
-        
+    const league = getActiveLeague();
+    if (!league) {
+        showMessage('Select or sync a league on the Dashboard to see Positional Power Rankings.');
+        return;
+    }
+    if (!isFullyMappedLeague(league) || !league.globalPosMap) {
+        showMessage("Power Rankings compare every team in the league, so they need a Sleeper-synced league. This league only knows your own roster.");
+        return;
+    }
+    const src = resolvePowerRankingsSource();
+    if (!src) {
+        showMessage('Upload your rankings above (or Auto-Fetch them) to see how every team in this league stacks up.');
+        return;
+    }
+    // Future value only matters where rosters carry over. Ages load in the background the
+    // first time (see ensurePowerAgeIndex), which re-runs this once they land.
+    const kind = getPowerLeagueKind(league);
+    let futureInfo = { future: null, label: 'none' };
+    if (kind === 'dynasty') {
+        ensurePowerAgeIndex();
+        futureInfo = resolvePowerFuture();
+    }
+    const teams = computePositionalPower(league, src.rankings, { future: futureInfo.future });
+    if (teams.length === 0) {
+        showMessage('Not enough roster data to evaluate yet. Try re-syncing this league.');
+        return;
+    }
+    assignPowerLabels(teams, kind);
+    teams.forEach(t => { t.starterTier = powerTier(t.starterRank, teams.length); });
+    renderPowerRankingsTable(teams, { league, source: src, kind, futureLabel: futureInfo.label });
+    renderRosterPowerStrip(teams, { source: src });
+}
+
+// --- ACTIVE ROSTER: POWER RANKINGS SNAPSHOT ---
+// Your own row of the Positional Power Rankings, shown under the league name at the top of the
+// Active Roster card (#rosterPowerStrip) -- the full table sits far enough down the Roster tab
+// that people could miss it entirely. Ranks only, no tooltips: this is a glance, and the link
+// underneath jumps to the table, which has the player-level detail and the explanations.
+// Rendered from the exact same teams array as the table, so the two can't disagree.
+function renderRosterPowerStrip(teams, ctx = {}) {
+    const el = document.getElementById('rosterPowerStrip');
+    if (!el) return;
+    const you = teams ? teams.find(t => t.owner === 'You') : null;
+    if (!you) {
+        el.innerHTML = '';
+        el.style.display = 'none';
+        return;
+    }
+    const N = teams.length;
+    const hasFuture = teams.every(t => Number.isFinite(t.futureRank));
+    const stats = [
+        ['Start', you.starterRank], ['Ovr', you.overallRank],
+        ['QB', you.qbRank], ['RB', you.rbRank], ['WR', you.wrRank], ['TE', you.teRank]
+    ];
+    if (hasFuture) stats.push(['Future', you.futureRank]);
+    const label = you.label
+        ? `<span class="mls-power-label mls-power-label-${String(you.label).toLowerCase()}">${escapeHtml(you.label)}${you.labelNote ? ` <span class="mls-power-label-note">&middot; ${escapeHtml(you.labelNote)}</span>` : ''}</span>` : '';
+    const via = ctx.source && ctx.source.source === 'market' ? ' &middot; via Market Consensus' : '';
+    el.innerHTML = `
+        <div class="mls-roster-power-head">
+            <span class="mls-roster-power-title">Positional Power Rankings</span>
+            ${label}
+            <span class="mls-roster-power-of">out of ${N} teams${via}</span>
+        </div>
+        <div class="mls-roster-power-stats" style="grid-template-columns: repeat(${stats.length}, minmax(0, 1fr));">
+            ${stats.map(([name, rank]) => `
+            <div class="mls-roster-power-stat">
+                <span class="mls-roster-power-stat-name">${name}</span>
+                <span class="mls-roster-power-stat-rank mls-power-cell-${powerTier(rank, N)}">${rank}</span>
+            </div>`).join('')}
+        </div>
+        <a href="#" class="mls-roster-power-link" onclick="scrollToPowerRankings(); return false;">See the full league breakdown and explanations below &darr;</a>`;
+    el.style.display = 'block';
+}
+
+// Scrolls the Roster tab's Power Rankings card into view (the snapshot's link above; the Scout
+// tab's temporary pointer uses it too, via goToPowerRankings). #powerRankingsCard carries a
+// scroll-margin-top in styles.css so the sticky header doesn't cover the card title.
+window.scrollToPowerRankings = function() {
+    const card = document.getElementById('powerRankingsCard');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+// Scout tab's one-line "moved to the Roster tab" pointer (see #powerRankingsScoutPointer in
+// index.html). The delay lets showTab's own scroll-to-top start before scrolling to the card,
+// the same trick scoutGoToLeague uses.
+// TODO (added 2026-09-27): recommend removing this pointer -- the #powerRankingsScoutPointer
+// section in index.html, this function, and the .mls-moved-pointer CSS -- on or after
+// 2026-10-04, once regular users have had a week to find the card's new home.
+window.goToPowerRankings = function() {
+    if (typeof window.showTab === 'function') window.showTab('roster');
+    setTimeout(() => window.scrollToPowerRankings(), 60);
+};
+
+// Kept for anything still calling the old Scout-tab button handler.
+window.runPositionalStrength = function() {
+    refreshPowerRankings();
+};
+
+window.renderPowerRankingsTable = function(teamScores, ctx = {}) {
+    let out = document.getElementById('powerRankingsOutput');
+    if (!out) return;
+
+    const totalTeams = teamScores.length;
+    const tierCls = (rank) => `mls-power-cell-${powerTier(rank, totalTeams)}`;
+
+    // Nested player tooltips. slot: show each player's lineup slot (Starters column).
+    // Direction: the site-wide tooltip opens leftward from its anchor, which runs off-screen for
+    // the left-hand columns on a phone -- so Start/Bench/QB open rightward instead, and RB and
+    // everything right of it keep opening leftward.
+    const buildTooltip = (players, title, { rightEdge = false, slot = false, limit = 6 } = {}) => {
+        let html = `<div class="tooltip-text mls-power-tooltip ${rightEdge ? 'mls-power-tooltip-right' : 'mls-power-tooltip-left'}">`;
+        html += `<div class="mls-power-tooltip-title">${escapeHtml(title)}</div>`;
         if (players.length === 0) {
-            html += `<div style="color: var(--text-muted); font-style: italic; font-size: 0.8rem;">No players rostered.</div>`;
+            html += `<div class="mls-power-tooltip-empty">No players rostered.</div>`;
         } else {
-            // Show up to the top 6 players at the position
-            let listHtml = players.slice(0, 6).map(p => `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 12px; font-size: 0.8rem;">
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">${escapeHtml(p.name)}</span>
-                    <span style="color: var(--text-muted); font-weight: 600; flex-shrink: 0;">#${p.rank}${tierTag(p.tier)}</span>
-                </div>
-            `).join('');
-            
-            html += listHtml;
-            if (players.length > 6) {
-                html += `<div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 6px; text-align: center;">+ ${players.length - 6} more</div>`;
+            html += players.slice(0, limit).map(p => `
+                <div class="mls-power-tooltip-row">
+                    <span class="mls-power-tooltip-name">${slot ? `<span class="mls-power-tooltip-slot">${p.slot === 'SFLEX' ? 'SF' : p.slot}</span>` : ''}${escapeHtml(p.name)}</span>
+                    <span class="mls-power-tooltip-rank">#${p.rank}${tierTag(p.tier)}</span>
+                </div>`).join('');
+            if (players.length > limit) {
+                html += `<div class="mls-power-tooltip-more">+ ${players.length - limit} more</div>`;
             }
         }
         return html + `</div>`;
     };
 
-    // Note: We use overflow: visible here so the tooltips don't get clipped by the scroll container
+    const cell = (rank, tooltipHTML, extraCls = '') => `
+        <td class="${tierCls(rank)} ${extraCls}">
+            <div class="tooltip-container mls-tooltip-center" ontouchstart="">
+                <span class="mls-dotted-underline">${rank}</span>
+                ${tooltipHTML}
+            </div>
+        </td>`;
+
+    // Sorted by starting-lineup strength: "can this team win now?" is the question the table
+    // leads with. The position columns still cover whole rooms, bench included.
+    const rows = [...teamScores].sort((a, b) => a.starterRank - b.starterRank);
+    const hasFuture = rows.every(t => Number.isFinite(t.futureRank));
+    const labelCls = (t) => `mls-power-label mls-power-label-${String(t.label || '').toLowerCase()}`;
+    const labelChip = (t) => t.label
+        ? `<span class="${labelCls(t)}">${escapeHtml(t.label)}${t.labelNote ? ` <span class="mls-power-label-note">&middot; ${escapeHtml(t.labelNote)}</span>` : ''}</span>` : '';
+
+    // Start tooltip: each position's starters vs the league average (what the rank is actually
+    // built from -- see computePositionalPower step 3a), then the lineup itself.
+    const startTooltip = (t) => {
+        const ratioCls = (r) => r >= 1.15 ? 'mls-power-cell-strong' : (r < 0.85 ? 'mls-power-cell-weak' : '');
+        const balance = POWER_POSITIONS.map(pos => {
+            const r = t.starterRatios ? t.starterRatios[pos] : null;
+            if (r == null) return '';
+            const capped = r > POWER_STARTER_CARRY_CAP ? ' title="Counts as 150% - one position can only carry so much"' : '';
+            return `<span class="mls-power-balance-item"${capped}>${pos} <strong class="${ratioCls(r)}">${Math.round(r * 100)}%</strong>${r > POWER_STARTER_CARRY_CAP ? '*' : ''}</span>`;
+        }).join('');
+        let html = `<div class="tooltip-text mls-power-tooltip mls-power-tooltip-left">`;
+        html += `<div class="mls-power-tooltip-title">Starting Lineup</div>`;
+        html += `<div class="mls-power-balance-label">Starters vs. league average</div><div class="mls-power-balance">${balance}</div>`;
+        if (POWER_POSITIONS.some(pos => t.starterRatios && t.starterRatios[pos] > POWER_STARTER_CARRY_CAP)) {
+            html += `<div class="mls-power-balance-foot">* capped at 150% - one position can only carry so much</div>`;
+        }
+        html += t.starters.map(p => `
+            <div class="mls-power-tooltip-row">
+                <span class="mls-power-tooltip-name"><span class="mls-power-tooltip-slot">${p.slot === 'SFLEX' ? 'SF' : p.slot}</span>${escapeHtml(p.name)}</span>
+                <span class="mls-power-tooltip-rank">#${p.rank}${tierTag(p.tier)}</span>
+            </div>`).join('');
+        return html + `</div>`;
+    };
+
+    // Future tooltip: top contributors with their age (age mode) so the number is explainable.
+    const futureTooltip = (t) => {
+        const players = (t.futurePlayers || []).slice(0, 8);
+        let html = `<div class="tooltip-text mls-power-tooltip mls-power-tooltip-right">`;
+        html += `<div class="mls-power-tooltip-title">Future Value (age-adjusted)</div>`;
+        html += players.map(p => `
+            <div class="mls-power-tooltip-row">
+                <span class="mls-power-tooltip-name">${escapeHtml(p.name)}</span>
+                <span class="mls-power-tooltip-rank">${p.age != null ? `${p.age} yrs &middot; ` : ''}#${p.futureRank != null ? p.futureRank : p.rank}</span>
+            </div>`).join('');
+        if ((t.futurePlayers || []).length > players.length) html += `<div class="mls-power-tooltip-more">+ ${t.futurePlayers.length - players.length} more</div>`;
+        return html + `</div>`;
+    };
+
+    // "Your Team" summary: the label in words, so nobody has to decode the table first.
+    let summaryHTML = '';
+    const you = rows.find(t => t.owner === 'You');
+    if (you && you.label) {
+        const facts = [`<strong>${ordinal(you.starterRank)}</strong> of ${totalTeams} in starting lineup`, `<strong>${ordinal(you.overallRank)}</strong> overall`];
+        if (hasFuture) facts.push(`<strong>${ordinal(you.futureRank)}</strong> in future value`);
+        summaryHTML = `
+        <div class="mls-power-summary-card mls-power-summary-${String(you.label).toLowerCase()}">
+            <div class="mls-power-summary-head">Your Team: ${labelChip(you)}</div>
+            <div class="mls-power-summary-facts">${facts.join(' <span class="mls-rank-sep">&middot;</span> ')}</div>
+            <div class="mls-power-summary-advice">${escapeHtml(powerLabelAdvice(you))}</div>
+        </div>`;
+    }
+
     let html = `
-        <div style="overflow: visible; border-radius: 6px; border: 1px solid var(--border-color, #334155); margin-top: 15px;">
-        <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem;">
+        <div class="mls-power-table-wrap">
+        <table class="mls-power-table">
             <thead>
-                <tr style="border-bottom: 2px solid var(--border-color, #334155); color: var(--text-muted, #94a3b8); font-size: 0.8rem; text-transform: uppercase;">
-                    <th style="padding: 12px 10px; text-align: left;">Manager</th>
-                    <th class="mls-table-header-cell">Ovr</th>
-                    <th class="mls-table-header-cell">QB</th>
-                    <th class="mls-table-header-cell">RB</th>
-                    <th class="mls-table-header-cell">WR</th>
-                    <th class="mls-table-header-cell">TE</th>
+                <tr>
+                    <th class="mls-power-manager">Manager</th>
+                    <th title="Best legal starting lineup for this league's roster settings, weighed position by position against the league average">Start</th>
+                    <th title="Whole roster (QB/RB/WR/TE), starters and depth together">Ovr</th>
+                    <th>QB</th>
+                    <th>RB</th>
+                    <th>WR</th>
+                    <th>TE</th>
+                    ${hasFuture ? `<th title="Future value: roster value adjusted for age - who holds up beyond this season">Future</th>` : ''}
                 </tr>
             </thead>
-            <tbody>
-    `;
+            <tbody>`;
 
-    teamScores.forEach(t => {
-        let isYou = t.owner === "You" ? "font-weight: bold; background: rgba(147, 197, 253, 0.08);" : "";
-        
+    rows.forEach(t => {
         html += `
-            <tr style="border-bottom: 1px solid var(--border-color, #334155); ${isYou}">
-                <td style="padding: 12px 10px; text-align: left; color: var(--text-main, #f8fafc);">${escapeHtml(t.owner)}</td>
-                
-                <td style="padding: 12px 10px; font-weight: 800; color: ${getRankColor(t.overallRank)};">
-                    ${t.overallRank}
-                </td>
-                
-                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.qbRank)};">
-                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
-                        <span class="mls-dotted-underline">${t.qbRank}</span>
-                        ${buildTooltip(t.players.QB, 'QB')}
-                    </div>
-                </td>
-                
-                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.rbRank)};">
-                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
-                        <span class="mls-dotted-underline">${t.rbRank}</span>
-                        ${buildTooltip(t.players.RB, 'RB')}
-                    </div>
-                </td>
-                
-                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.wrRank)};">
-                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
-                        <span class="mls-dotted-underline">${t.wrRank}</span>
-                        ${buildTooltip(t.players.WR, 'WR', true)}
-                    </div>
-                </td>
-                
-                <td style="padding: 12px 10px; font-weight: 600; color: ${getRankColor(t.teRank)};">
-                    <div class="tooltip-container" class="mls-tooltip-center" ontouchstart="">
-                        <span class="mls-dotted-underline">${t.teRank}</span>
-                        ${buildTooltip(t.players.TE, 'TE', true)}
-                    </div>
-                </td>
-            </tr>
-        `;
+            <tr class="${t.owner === 'You' ? 'mls-power-you' : ''}">
+                <td class="mls-power-manager"><span class="mls-power-owner">${escapeHtml(t.owner)}</span>${labelChip(t)}</td>
+                ${cell(t.starterRank, startTooltip(t), 'mls-power-strong-col')}
+                ${cell(t.overallRank, buildTooltip([...t.starters, ...t.bench].sort((a, b) => a.rank - b.rank), 'Top of the Roster', { limit: 8 }))}
+                ${cell(t.qbRank, buildTooltip(t.players.QB, 'QB Room'))}
+                ${cell(t.rbRank, buildTooltip(t.players.RB, 'RB Room', { rightEdge: true }))}
+                ${cell(t.wrRank, buildTooltip(t.players.WR, 'WR Room', { rightEdge: true }))}
+                ${cell(t.teRank, buildTooltip(t.players.TE, 'TE Room', { rightEdge: true }))}
+                ${hasFuture ? cell(t.futureRank, futureTooltip(t)) : ''}
+            </tr>`;
     });
 
     html += `</tbody></table></div>`;
-    out.innerHTML = html;
-    
-    out.style.display = 'none';
-    setTimeout(() => {
-        out.style.display = 'block';
-        out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 50);
+
+    const notes = [];
+    if (ctx.source && ctx.source.note) notes.push(escapeHtml(ctx.source.note));
+    notes.push(`Ranked 1-${totalTeams} (1 = strongest). <strong>Start</strong> is each team's best legal lineup under this league's roster settings, with each position's starters measured against the league average and weighted by how many lineup spots it fills - so a stud at one position can't hide empty rooms at the others. <strong>Ovr</strong> is the whole roster, depth included.`);
+    if (ctx.kind === 'dynasty') {
+        if (ctx.futureLabel === 'age') notes.push(`<strong>Future</strong> is each roster's future value: its value from these rankings, adjusted for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less.`);
+        else if (ctx.futureLabel === 'market') notes.push(`<strong>Future</strong> is each roster's future value. Couldn't load player ages from Sleeper, so it uses dynasty Market Consensus values instead.`);
+        else if (ctx.futureLabel === 'loading') notes.push(`Loading player ages from Sleeper for the Future column...`);
+        else notes.push(`Couldn't load player ages from Sleeper, so there's no Future column; labels use the starting lineup alone. Pulling Dynasty Market Consensus data (Trade Finder on the Scout tab) gives a fallback.`);
+        notes.push(`Labels: <strong>Contender</strong> = top-third starting lineup; <strong>Retool</strong> = mid-pack lineup with a decent future; <strong>Rebuild</strong> = bottom-third lineup, or mid-pack with a bottom-third future.`);
+    } else {
+        notes.push(`Labels: <strong>Contender</strong> / <strong>Bubble</strong> / <strong>Longshot</strong> = top / middle / bottom third in starting lineup strength.`);
+    }
+    notes.push(`Labels reflect roster strength only, not the standings.`);
+    html += `<ul class="mls-power-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>`;
+
+    out.innerHTML = summaryHTML + html;
+    out.style.display = 'block';
 };
 
 // A player this audit considers a genuine problem to leave in an active slot. Deliberately
