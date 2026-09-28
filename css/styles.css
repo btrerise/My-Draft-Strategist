@@ -1951,7 +1951,8 @@ body {
 }
 
 .sim-player-info .pos-badge,
-.sim-bench-row .pos-badge {
+.sim-bench-row .pos-badge,
+.sim-waiver-empty .pos-badge {
     display: inline-block;
     padding: 1px 5px;
     border-radius: 4px;
@@ -2005,6 +2006,32 @@ body {
 .sim-bench-row strong {
     color: var(--text-main);
     font-weight: 600;
+}
+
+/* Waiver Insights when the check ran but produced no rows (see renderWaiverInsights in
+   monteCarloUi.js): a green confirmation when nothing beat your starters, amber when the check
+   couldn't run, so an empty section never reads as "did this even do anything?". */
+.sim-waiver-empty {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 0.6rem 0.75rem;
+    border-radius: 6px;
+}
+.sim-waiver-empty-ok {
+    color: var(--text-main);
+    background: var(--target-bg);
+    border: 1px solid var(--target-border);
+}
+.sim-waiver-empty-warn {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.sim-waiver-check {
+    color: var(--primary-green);
+    font-weight: 700;
+    margin-right: 4px;
 }
 
 .info-banner {
@@ -4281,6 +4308,69 @@ a.nav-btn,
     gap: 0.5rem;
     flex-shrink: 0;
 }
+/* Recommended row for the chosen Buy/Sell intent (see buildPowerRead in mls.js). Wins over the
+   green free-agent edge: when a Buy/Sell verdict exists, it's the more specific signal. */
+.mls-league-search-row.mls-league-search-rec { border-left-color: #a78bfa; background: rgba(167, 139, 250, 0.06); }
+
+/* Per-league Positional Power Rank line + verdict, under the league name. Tier colors match the
+   Positional Power Rankings table's own green / neutral / red cells. */
+.mls-power-line { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+.mls-power-line strong { font-weight: 700; }
+.mls-power-strong { color: #4ade80; }
+.mls-power-middle { color: var(--text-main); }
+.mls-power-weak { color: #fca5a5; }
+.mls-power-arrow { opacity: 0.6; }
+.mls-power-src {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    border-radius: 4px;
+    padding: 0 4px;
+    margin-left: 2px;
+    cursor: help;
+}
+.mls-power-verdict {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+.mls-power-chip {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+.mls-power-chip-rec {
+    color: #c4b5fd;
+    background: rgba(167, 139, 250, 0.12);
+    border-color: rgba(167, 139, 250, 0.5);
+}
+/* Leagues scored without their own ROS rankings (market fallback) or not at all -- see
+   renderPowerSourceNote in mls.js. Amber to match the "mkt" tag it explains. */
+.mls-power-note {
+    font-size: 0.72rem;
+    color: #fbbf24;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+.mls-power-summary { font-size: 0.8rem; color: var(--text-main); margin-top: 6px; line-height: 1.5; }
+.mls-power-summary-none { color: var(--text-muted); }
+
 /* Neutral fourth state alongside status-avail/owned/mine: a league that structurally can't
    answer the availability question (manual or handoff leagues store only your own players). */
 .mls-status-unknown {

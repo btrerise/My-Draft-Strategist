@@ -21,6 +21,7 @@ let lastTeam2Profiles = [];
 let lastLineupDiffersFromSleeper = false;
 let lastBenchInsights = [];
 let lastWaiverInsights = [];
+let lastWaiverInsightsStatus = null;
 
 // --- PROGRESS ANIMATION ---
 // 10,000 iterations of simple arithmetic finishes in a handful of milliseconds -- correct
@@ -152,11 +153,15 @@ function startProgressAnimation(simOutputDiv) {
  * @param {Array<{faName, faPos, starterName, starterPos, faWinPct}>} [options.waiverInsights]
  *   - same idea as benchInsights, sourced from available free agents instead of the bench;
  *   only populated when the Waiver Insights toggle is on (see mls.js's runMatchupSim).
+ * @param {{checkedCount: number, positions: string[], noRankings: boolean, failed: boolean}|null} [options.waiverInsightsStatus]
+ *   - what the waiver check actually did; null when the toggle is off. Lets the results card
+ *   confirm "checked N free agents, none beat your starters" instead of showing nothing,
+ *   which read the same as the check never having run.
  * @param {number} [options.currentWeek] - the current NFL week, passed straight through to
  *   getBoomBustRates' tier 2 gate (see statsEngine.js).
  */
 export const runMatchupSimulation = (team1Players, team2Players, options = {}) => {
-    const { lineupDiffersFromSleeper = false, benchInsights = [], waiverInsights = [], currentWeek = null } = options;
+    const { lineupDiffersFromSleeper = false, benchInsights = [], waiverInsights = [], waiverInsightsStatus = null, currentWeek = null } = options;
     const simOutputDiv = document.getElementById('monte-carlo-results');
 
     if (team1Players.length === 0 || team2Players.length === 0) {
@@ -197,6 +202,7 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     lastLineupDiffersFromSleeper = lineupDiffersFromSleeper;
     lastBenchInsights = benchInsights;
     lastWaiverInsights = waiverInsights;
+    lastWaiverInsightsStatus = waiverInsightsStatus;
 
     // Early in the season (or for a player who just changed teams, returned from injury,
     // etc.) some players won't have enough games for a directly-measured standard deviation --
@@ -293,20 +299,41 @@ function renderBenchInsights(benchInsights) {
 // shape and same ">50% win probability" bar as renderBenchInsights above, just sourced from
 // available waivers instead of your own bench. Only ever receives anything when the Waiver
 // Insights toggle is on (see mls.js's runMatchupSim).
-function renderWaiverInsights(waiverInsights) {
-    if (!waiverInsights || waiverInsights.length === 0) return '';
+//
+// Unlike Lineup Insights, an empty result here still gets a section whenever the toggle is on:
+// the person explicitly asked for this check, so silence would leave them guessing whether it
+// ran. status (see runMatchupSim) says which of the empty cases this is -- the check failed,
+// there was nothing to check it against, or it genuinely found no upgrade.
+function renderWaiverInsights(waiverInsights, status) {
+    const hasRows = waiverInsights && waiverInsights.length > 0;
+    if (!hasRows && !status) return '';
 
-    const rows = waiverInsights.map(w => `
+    let body;
+    if (hasRows) {
+        const rows = waiverInsights.map(w => `
         <li class="sim-bench-row">
             <strong>${w.faName}</strong> ${renderPosBadge(w.faPos)} (available) outscored
             <strong>${w.starterName}</strong> ${renderPosBadge(w.starterPos)}${renderRookieBadge(w.starterIsRookie)} (starting) in
             <strong>${w.faWinPct}%</strong> of simulated weeks.
         </li>`).join('');
+        body = `<ul class="sim-bench-list">${rows}</ul>`;
+    } else if (status.failed) {
+        body = `<p class="sim-waiver-empty sim-waiver-empty-warn">Couldn't finish checking waivers this time (a rankings or Sleeper lookup failed). The matchup result above isn't affected - run it again to retry.</p>`;
+    } else if (status.noRankings) {
+        body = `<p class="sim-waiver-empty sim-waiver-empty-warn">No free agents to check yet. Waiver Insights picks its candidates from your ROS rankings (or Market Consensus data), and neither is loaded for this league.</p>`;
+    } else if (status.checkedCount === 0) {
+        body = `<p class="sim-waiver-empty sim-waiver-empty-warn">No available free agents had enough game history to compare against your starters, so there was nothing to check this week.</p>`;
+    } else {
+        const n = status.checkedCount;
+        const posText = status.positions && status.positions.length > 0
+            ? ` across ${status.positions.map(renderPosBadge).join(' ')}` : '';
+        body = `<p class="sim-waiver-empty sim-waiver-empty-ok"><span class="sim-waiver-check" aria-hidden="true">&#10003;</span> Checked the top ${n} available free agent${n === 1 ? '' : 's'}${posText}. None outscored the starter they'd replace in more than half of simulated weeks, so your starting lineup holds up.</p>`;
+    }
 
     return `
         <div class="sim-bench-insights">
             <h4>Waiver Insights</h4>
-            <ul class="sim-bench-list">${rows}</ul>
+            ${body}
         </div>`;
 }
 
@@ -362,7 +389,7 @@ function renderResults(data) {
                     </div>
                 </div>
                 ${renderBenchInsights(lastBenchInsights)}
-                ${renderWaiverInsights(lastWaiverInsights)}
+                ${renderWaiverInsights(lastWaiverInsights, lastWaiverInsightsStatus)}
             </div>
         `;
     }

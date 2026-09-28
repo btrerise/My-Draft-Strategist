@@ -130,7 +130,9 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         // scope ('league' | 'all') belongs to the Scan Pasted List half of the tool, not
         // Auto-Find -- it rides in this same object purely so it persists under the one
         // localStorage key the rest of the Waiver Wire Assistant's settings already use.
-        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false, scope: 'league' }, readJSON('mls_waiver_scan_settings', {})),
+        // intent ('buy' | 'sell') rides along for the same reason: it only steers the All My
+        // Leagues search's Positional Power Rank recommendations (see runAllLeaguesSearch).
+        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false, scope: 'league', intent: 'buy' }, readJSON('mls_waiver_scan_settings', {})),
         // --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
         // flexKickoffOptimization gates optimizeFlexKickoffOrder() (see below): when on, the
         // optimizer reassigns which flex-eligible starters sit in strict RB/WR/TE slots vs the
@@ -3233,6 +3235,22 @@ function attachScoutSuggestionHandler(outputElId) {
         // below it look different enough between the two that "Scan Pasted List" alone would
         // leave someone guessing which one they just ran.
         set('waiverScanBtn', 'innerText', allLeagues ? 'Search All My Leagues' : 'Scan Pasted List');
+
+        // --- LOOKING TO (Buy / Add | Sell / Drop) ---
+        // Only means anything to the All My Leagues search, so it's hidden in This League mode
+        // rather than left visible and inert.
+        const sellIntent = s.intent === 'sell';
+        const intentWrap = document.getElementById('waiverIntentWrap');
+        if (intentWrap) intentWrap.style.display = allLeagues ? '' : 'none';
+        document.querySelectorAll('#waiverIntentToggle [data-intent]').forEach(b => {
+            const on = (b.dataset.intent === 'sell') === sellIntent;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        const intentHint = document.getElementById('waiverIntentHint');
+        if (intentHint) intentHint.innerText = sellIntent
+            ? "Flags leagues where you own him and you'd still be in decent shape at his position without him - where you can afford to sell."
+            : "Flags leagues where you're weak at his position (by Positional Power Rankings) and he'd move you up - where it's worth adding or trading for him.";
         const waiverInput = document.getElementById('waiverInput');
         if (waiverInput) waiverInput.placeholder = allLeagues
             ? 'Paste the players to look up... (e.g. Isiah Pacheco, Puka Nacua)'
@@ -3628,6 +3646,208 @@ function attachScoutSuggestionHandler(outputElId) {
         if (out) out.innerHTML = '';
     };
 
+    // Unlike setWaiverScope, switching Buy/Sell re-runs an existing search in place: the
+    // question ("where is he?") hasn't changed, only which leagues get flagged, and the whole
+    // search is a local read over stored rosters (plus the day-cached player map) -- cheap
+    // enough that making someone press Search again would just be friction.
+    window.setWaiverIntent = function(intent) {
+        window.updateWaiverScanSetting('intent', intent === 'sell' ? 'sell' : 'buy');
+        const input = document.getElementById('waiverInput');
+        const out = document.getElementById('waiverOutput');
+        if (State.waiverScanSettings.scope === 'all' && input && input.value.trim() !== '' && out && out.innerHTML.trim() !== '') {
+            runScout('waiver');
+        }
+    };
+
+    // --- ALL-LEAGUES POSITIONAL POWER RANKS ---
+    // Each league's power ranks come from THAT league's own ROS rankings (its named set, else
+    // its legacy per-league copy -- the same priority hydrateRankingsForLeague uses), not the
+    // active league's: a Superflex league's QB board and a 1QB league's shouldn't score each
+    // other's rosters. The active league reads State.rosRankings directly, which is exactly
+    // what the Positional Power Rankings card would use for it. A league with no ROS rankings
+    // of its own falls back to Market Consensus (flagged "mkt" on its row, since market data
+    // is priced for one format -- see State.marketSettings -- not necessarily this league's);
+    // with neither, the league simply gets no power rank.
+    function getLeaguePowerRankings(league) {
+        if (league.leagueId === State.activeLeagueId && State.rosRankings.length > 0) {
+            return { rankings: State.rosRankings, source: 'ros' };
+        }
+        const cfg = RANKING_TYPE_CONFIG.ros;
+        const setId = league[cfg.leagueSetIdKey];
+        const set = setId ? State.rankingSets[cfg.setsKey].find(rs => rs.id === setId) : null;
+        if (set && Array.isArray(set.data) && set.data.length > 0) return { rankings: set.data, source: 'ros' };
+        const legacy = league[cfg.leagueLegacyDataKey];
+        if (Array.isArray(legacy) && legacy.length > 0) return { rankings: legacy, source: 'ros' };
+        if (State.marketRankings.length > 0) return { rankings: State.marketRankings, source: 'market' };
+        return null;
+    }
+
+    // Everything a league row needs to talk about power ranks, computed once per league per
+    // search (not once per searched name). Null when the league can't support it: power ranks
+    // compare every manager's room, so a manual/handoff league that only knows your roster
+    // (see isFullyMappedLeague) has nothing to compare against.
+    function getLeaguePowerContext(league) {
+        if (!isFullyMappedLeague(league) || !league.globalPosMap) return null;
+        const src = getLeaguePowerRankings(league);
+        if (!src) return { league, missing: 'rankings' };
+        const teams = computePositionalPower(league, src.rankings);
+        const you = teams.find(t => t.owner === 'You');
+        if (!you) return { league, missing: 'roster' };
+        return { league, teams, you, totalTeams: teams.length, source: src.source, rankingsIdx: rankingIndex(src.rankings) };
+    }
+
+    const POWER_RANK_KEY = { QB: 'qbRank', RB: 'rbRank', WR: 'wrRank', TE: 'teRank' };
+
+    // "Where would this manager rank at pos if these score changes happened?" -- 1 + the number
+    // of other managers still strictly ahead. adjustments is { [owner]: delta }, so a trade can
+    // move the player's value off his current owner and onto you in the same call.
+    function powerRankWithAdjust(ctx, pos, owner, adjustments) {
+        const scoreOf = t => t.scores[pos] + (adjustments[t.owner] || 0);
+        const target = ctx.teams.find(t => t.owner === owner);
+        if (!target) return null;
+        const mine = scoreOf(target);
+        return 1 + ctx.teams.filter(t => t.owner !== owner && scoreOf(t) > mine).length;
+    }
+
+    const ordinal = (n) => {
+        const v = n % 100;
+        if (v >= 11 && v <= 13) return `${n}th`;
+        return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' })[n % 10] || 'th'}`;
+    };
+
+    // One league row's power-rank read for one player: your rank at his position now, where
+    // you'd land with him (Buy/Add) or without him (Sell/Drop), and a verdict for the chosen
+    // intent. Verdict rules, deliberately simple enough to explain in one line on the row:
+    //   Buy/Add  (free agent or someone else's player):
+    //     * you're already top third at the position       -> "Not a need"
+    //     * he'd lift you 2+ spots, or you're bottom third
+    //       and he'd lift you at all                        -> Add / Buy (recommended)
+    //     * otherwise                                       -> "Marginal"
+    //   Sell/Drop (only rows where he's yours):
+    //     * you'd drop into the bottom third without him     -> "Hold"
+    //     * you're top third now and wouldn't fall to the
+    //       bottom third without him                         -> Sell (recommended; "Drop" when
+    //                                                           he isn't on this league's board)
+    //     * otherwise                                       -> "Neutral"
+    function buildPowerRead(ctx, res, status, owner, intent) {
+        const pos = res.pos;
+        if (!ctx || ctx.missing || !POWER_RANK_KEY[pos]) return null;
+        const N = ctx.totalTeams;
+        const myRank = ctx.you[POWER_RANK_KEY[pos]];
+        const tier = powerTier(myRank, N);
+        const { rank: playerRank } = powerRankFor(ctx.rankingsIdx, res.clean);
+        const onBoard = playerRank !== POWER_UNRANKED_RANK;
+        const v = powerValueForRank(playerRank);
+        const read = { pos, N, myRank, tier, source: ctx.source, onBoard, verdict: null };
+
+        if (status === 'mine') {
+            read.withoutRank = powerRankWithAdjust(ctx, pos, 'You', { You: -v });
+            read.withoutTier = powerTier(read.withoutRank, N);
+        } else if (status === 'free' || status === 'taken') {
+            const adj = { You: v };
+            if (status === 'taken' && owner) adj[owner] = -v;
+            read.withRank = powerRankWithAdjust(ctx, pos, 'You', adj);
+            if (status === 'taken') {
+                // Judged on where the owner would sit AFTER the deal, not now: an owner who's
+                // 1st at WR only because of this very player isn't "deep" -- he's their WR room.
+                const ownerAfter = powerRankWithAdjust(ctx, pos, owner, adj);
+                if (ownerAfter != null) {
+                    read.ownerAfterRank = ownerAfter;
+                    read.ownerAfterTier = powerTier(ownerAfter, N);
+                }
+            }
+        }
+
+        if (intent === 'sell') {
+            if (status !== 'mine') return read;
+            // Managers weakest at this position -- the natural buyers. Bottom third only, so a
+            // mid-pack team isn't pitched as "needs a WR".
+            read.partners = ctx.teams
+                .filter(t => t.owner !== 'You' && powerTier(t[POWER_RANK_KEY[pos]], N) === 'weak')
+                .sort((a, b) => b[POWER_RANK_KEY[pos]] - a[POWER_RANK_KEY[pos]])
+                .slice(0, 2)
+                .map(t => ({ owner: t.owner, rank: t[POWER_RANK_KEY[pos]] }));
+            if (read.withoutTier === 'weak') {
+                read.verdict = { rec: false, label: 'Hold', reason: `You'd be thin at ${pos} without him` };
+            } else if (tier === 'strong') {
+                read.verdict = { rec: true, label: onBoard ? 'Sell' : 'Drop',
+                    reason: onBoard ? `${pos} surplus - you can afford to move him` : `${pos} surplus, and he's not on this league's board` };
+            } else {
+                read.verdict = { rec: false, label: 'Neutral', reason: `Sell only if the return fills a bigger need` };
+            }
+            return read;
+        }
+
+        // Buy / Add
+        if (status === 'mine') {
+            read.verdict = { rec: false, label: 'Yours', reason: '' };
+        } else if (status === 'free' || status === 'taken') {
+            const gain = myRank - read.withRank;
+            const action = status === 'free' ? 'Add' : 'Buy';
+            if (tier === 'strong') {
+                read.verdict = { rec: false, label: 'Not a need', reason: `You're already top-third at ${pos}` };
+            } else if (gain >= 2 || (tier === 'weak' && gain >= 1)) {
+                read.verdict = { rec: true, label: action, reason: tier === 'weak' ? `You're thin at ${pos}` : `A real ${pos} upgrade` };
+            } else {
+                read.verdict = { rec: false, label: 'Marginal', reason: `Barely moves your ${pos} rank` };
+            }
+            read.gain = gain;
+        }
+        return read;
+    }
+
+    function renderPowerRead(read, status, intent) {
+        if (!read) return '';
+        const tierCls = { strong: 'mls-power-strong', middle: 'mls-power-middle', weak: 'mls-power-weak' };
+        const mkt = read.source === 'market'
+            ? ` <span class="mls-power-src" title="This league has no ROS rankings of its own, so its power ranks use Market Consensus data.">mkt</span>` : '';
+        let line = `Your ${read.pos} Power Rank: <strong class="${tierCls[read.tier]}">${ordinal(read.myRank)}</strong> of ${read.N}${mkt}`;
+        if (intent === 'sell' && read.withoutRank != null) {
+            line += ` <span class="mls-power-arrow">&rarr;</span> <strong class="${tierCls[read.withoutTier]}">${ordinal(read.withoutRank)}</strong> without him`;
+        } else if (intent !== 'sell' && read.withRank != null && read.withRank !== read.myRank) {
+            line += ` <span class="mls-power-arrow">&rarr;</span> <strong class="${tierCls[powerTier(read.withRank, read.N)]}">${ordinal(read.withRank)}</strong> with him`;
+        } else if (intent !== 'sell' && read.withRank != null) {
+            line += ` <span class="mls-muted-rank">(no change with him)</span>`;
+        }
+
+        let verdictHTML = '';
+        const vd = read.verdict;
+        if (vd && vd.label !== 'Yours') {
+            const extras = [];
+            if (vd.reason) extras.push(escapeHtml(vd.reason));
+            // Only on flagged rows -- on a "Not a need" row, how the owner would fare is noise.
+            if (intent !== 'sell' && vd.rec && status === 'taken' && read.ownerAfterRank != null) {
+                if (read.ownerAfterTier === 'strong') extras.push(`Owner stays top-third at ${read.pos} without him (${ordinal(read.ownerAfterRank)}) - may be open to a deal`);
+                else if (read.ownerAfterTier === 'weak') extras.push(`Owner would drop to ${ordinal(read.ownerAfterRank)} at ${read.pos} without him - expect to pay up`);
+            }
+            if (intent === 'sell' && vd.rec && read.partners && read.partners.length > 0) {
+                extras.push(`Weakest ${read.pos} rooms: ${read.partners.map(p => `${escapeHtml(p.owner)} (${ordinal(p.rank)})`).join(', ')}`);
+            }
+            verdictHTML = `<div class="mls-power-verdict">
+                <span class="mls-power-chip ${vd.rec ? 'mls-power-chip-rec' : ''}">${escapeHtml(vd.label)}</span>
+                ${extras.length ? `<span>${extras.join(' <span class="mls-rank-sep">&middot;</span> ')}</span>` : ''}
+            </div>`;
+        }
+        return `<div class="mls-power-line">${line}</div>${verdictHTML}`;
+    }
+
+    // Row-level "why is this league scored differently (or not at all)?" note. Only for a
+    // position power ranks actually cover, and only for leagues that could be scored if they
+    // had rankings (see getLeaguePowerContext) -- a manual league's gap is structural, not
+    // something adding rankings would fix. The fix is always the same: switch to the league
+    // (the row's Switch button) and load ROS rankings there, since rankings attach to
+    // whichever league is active.
+    function renderPowerSourceNote(ctx, pos) {
+        if (!ctx || !POWER_RANK_KEY[pos]) return '';
+        if (ctx.missing === 'rankings') {
+            return `<div class="mls-power-note">No ROS rankings for this league yet, so Buy/Sell can't be evaluated here. Switch to it and add ROS rankings on the Roster tab.</div>`;
+        }
+        if (!ctx.missing && ctx.source === 'market') {
+            return `<div class="mls-power-note">No ROS rankings for this league yet, so it's evaluated with Market Consensus instead. Add ROS rankings on the Roster tab for a board built for this league.</div>`;
+        }
+        return '';
+    }
+
     // --- ALL-LEAGUES PLAYER SEARCH (Scout tab: Scan Pasted List -> "All My Leagues") ---
     // Answers "where does this player stand across everything I'm in?" -- one card per player,
     // one row per league. Ownership is a pure read over the globalRosterMaps already stored on
@@ -3697,6 +3917,11 @@ function attachScoutSuggestionHandler(outputElId) {
 
         const mappedCount = leagues.filter(isFullyMappedLeague).length;
 
+        // Positional Power Ranks, computed once per league for the whole search (see
+        // getLeaguePowerContext) -- every searched name reads from the same per-league tables.
+        const intent = State.waiverScanSettings.intent === 'sell' ? 'sell' : 'buy';
+        const powerCtxByLeague = new Map(leagues.map(l => [l.leagueId, getLeaguePowerContext(l)]));
+
         // All three rankings arrays are indexed once for the whole search -- getPos runs per
         // searched name, and the two lookups in the names loop below do as well.
         const marketIndex = rankingIndex(State.marketRankings);
@@ -3725,6 +3950,7 @@ function attachScoutSuggestionHandler(outputElId) {
             const rosObj = rosIndex.get(clean);
             const weekObj = weeklyIndex.get(clean);
             const m = meta[clean] || null;
+            const pos = getPos(clean);
 
             const rows = leagues.map(l => {
                 const owner = (l.globalRosterMap || {})[clean];
@@ -3733,23 +3959,38 @@ function attachScoutSuggestionHandler(outputElId) {
                 else if (owner) status = 'taken';
                 else if (isFullyMappedLeague(l)) status = 'free';
                 else status = 'unknown';
-                return { league: l, owner, status };
+                const power = buildPowerRead(powerCtxByLeague.get(l.leagueId), { clean, pos }, status, owner, intent);
+                return { league: l, owner, status, power, rec: !!(power && power.verdict && power.verdict.rec) };
             });
 
             const counts = { free: 0, mine: 0, taken: 0, unknown: 0 };
             rows.forEach(r => counts[r.status]++);
+            const recCount = rows.filter(r => r.rec).length;
 
-            // Free agents first -- the only rows that are actionable today -- then leagues you
-            // already own him in, then blocked, then the ones that can't say. Sorted by name
-            // inside each group so a card's row order is stable between searches.
+            // Recommended leagues (for the chosen Buy/Sell intent) lead the card, strongest case
+            // first: Buy puts your thinnest room first, then the biggest jump; Sell puts the
+            // league that would miss him least first. Everything else keeps the original order:
+            // free agents -- the only rows that are actionable today -- then leagues you already
+            // own him in, then blocked, then the ones that can't say. Sorted by name inside each
+            // group so a card's row order is stable between searches.
             const ORDER = { free: 0, mine: 1, taken: 2, unknown: 3 };
-            rows.sort((a, b) => (ORDER[a.status] - ORDER[b.status])
-                || String(a.league.name || '').localeCompare(String(b.league.name || '')));
+            const recScore = (r) => intent === 'sell'
+                ? r.power.withoutRank
+                : -(r.power.myRank * 100 + r.power.gain);
+            rows.sort((a, b) => {
+                if (a.rec !== b.rec) return a.rec ? -1 : 1;
+                if (a.rec && b.rec) {
+                    const d = recScore(a) - recScore(b);
+                    if (d !== 0) return d;
+                }
+                return (ORDER[a.status] - ORDER[b.status])
+                    || String(a.league.name || '').localeCompare(String(b.league.name || ''));
+            });
 
             results.push({
-                clean, name, rosObj, weekObj, meta: m, rows, counts,
+                clean, name, rosObj, weekObj, meta: m, rows, counts, recCount,
                 displayName: (rosObj && rosObj.name) || (weekObj && weekObj.name) || name,
-                pos: getPos(clean)
+                pos
             });
         });
 
@@ -3758,9 +3999,11 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
 
-        // Most actionable first: whoever is sitting on the most waiver wires. Ties fall back to
-        // ROS then Weekly rank, matching how the single-league scan breaks its own ties.
+        // Most actionable first: whoever has the most leagues flagged for the chosen Buy/Sell
+        // intent, then whoever is sitting on the most waiver wires. Ties fall back to ROS then
+        // Weekly rank, matching how the single-league scan breaks its own ties.
         results.sort((a, b) => {
+            if (a.recCount !== b.recCount) return b.recCount - a.recCount;
             if (a.counts.free !== b.counts.free) return b.counts.free - a.counts.free;
             const ar = a.rosObj ? a.rosObj.rank : Infinity, br = b.rosObj ? b.rosObj.rank : Infinity;
             if (ar !== br) return ar - br;
@@ -3779,6 +4022,21 @@ function attachScoutSuggestionHandler(outputElId) {
             notes.push(`Wk/ROS ranks come from the rankings loaded for <strong>${escapeHtml(activeLeague.name)}</strong> (your active league); only the ownership rows below are per-league.`);
         }
         notes.push(`Ownership is from your last sync of each league. Re-run <strong>Sync All</strong> on the Dashboard if a recent add or drop is missing.`);
+
+        // Power-rank provenance, per the "say where the numbers came from" rule the Trade
+        // Analyzer verdicts follow: whose rankings, and which leagues couldn't be scored.
+        const powerCtxs = [...powerCtxByLeague.values()];
+        const scoredCtxs = powerCtxs.filter(c => c && !c.missing);
+        if (scoredCtxs.length > 0) {
+            let powerNote = `${intent === 'sell' ? '<strong>Sell / Drop</strong>' : '<strong>Buy / Add</strong>'} recommendations use each league's <strong>Positional Power Rankings</strong> (same math as that card), scored with that league's own ROS rankings.`;
+            const mktCount = scoredCtxs.filter(c => c.source === 'market').length;
+            if (mktCount > 0) powerNote += ` ${plural(mktCount, 'league')} without ROS rankings used Market Consensus instead (marked <em>mkt</em>).`;
+            const noRankCount = powerCtxs.filter(c => c && c.missing === 'rankings').length;
+            if (noRankCount > 0) powerNote += ` ${plural(noRankCount, 'league')} ${noRankCount === 1 ? 'has' : 'have'} no rankings loaded, so no power rank.`;
+            notes.push(powerNote);
+        } else if (mappedCount > 0) {
+            notes.push(`Load ROS rankings (or pull Market Consensus data) to see your Positional Power Rank in each league and get Buy/Sell recommendations.`);
+        }
 
         let html = `<div class="mls-scan-summary">Searched <strong>${plural(leagues.length, 'league')}</strong> for <strong>${plural(results.length, 'player')}</strong>.`;
         html += `<ul class="mls-scan-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
@@ -3837,10 +4095,12 @@ function attachScoutSuggestionHandler(outputElId) {
                 const format = r.league.formatBadge
                     ? `<div class="mls-league-search-format">${escapeHtml(r.league.formatBadge)}</div>` : '';
                 return `
-                <div class="mls-league-search-row mls-league-search-${r.status}">
+                <div class="mls-league-search-row mls-league-search-${r.status}${r.rec ? ' mls-league-search-rec' : ''}">
                     <div class="mls-league-search-meta">
                         <div class="mls-league-search-league">${escapeHtml(r.league.name || 'Unnamed League')}${activeTag}</div>
                         ${format}
+                        ${renderPowerRead(r.power, r.status, intent)}
+                        ${renderPowerSourceNote(powerCtxByLeague.get(r.league.leagueId), res.pos)}
                     </div>
                     <div class="mls-league-search-actions">
                         <span class="scout-status ${conf.cls}">${label}</span>
@@ -3848,6 +4108,35 @@ function attachScoutSuggestionHandler(outputElId) {
                     </div>
                 </div>`;
             }).join('');
+
+            // One-line answer to "so where should I act?", naming the flagged leagues so the
+            // person doesn't have to scan every row for the purple edge.
+            let recHTML = '';
+            const hasPower = res.rows.some(r => r.power);
+            if (!POWER_RANK_KEY[res.pos]) {
+                if (res.pos !== 'UNK' && scoredCtxs.length > 0) {
+                    recHTML = `<div class="mls-power-summary mls-power-summary-none">Positional Power Rankings cover QB, RB, WR and TE only.</div>`;
+                }
+            } else if (hasPower) {
+                const recRows = res.rows.filter(r => r.rec);
+                if (recRows.length > 0) {
+                    const byLabel = {};
+                    recRows.forEach(r => {
+                        const label = r.power.verdict.label;
+                        (byLabel[label] = byLabel[label] || []).push(`<strong>${escapeHtml(r.league.name || 'Unnamed League')}</strong>`);
+                    });
+                    const parts = Object.entries(byLabel).map(([label, names]) => `${label} in ${names.join(', ')}`);
+                    recHTML = `<div class="mls-power-summary"><span class="mls-power-chip mls-power-chip-rec">Consider</span> ${parts.join(' <span class="mls-rank-sep">&middot;</span> ')}</div>`;
+                } else if (intent === 'sell' && res.counts.mine === 0) {
+                    recHTML = `<div class="mls-power-summary mls-power-summary-none">He isn't on your roster in any synced league, so there's nothing to sell.</div>`;
+                } else if (intent === 'sell') {
+                    recHTML = `<div class="mls-power-summary mls-power-summary-none">No league where you're deep enough at ${escapeHtml(res.pos)} to sell him comfortably.</div>`;
+                } else if (res.counts.free + res.counts.taken === 0) {
+                    recHTML = `<div class="mls-power-summary mls-power-summary-none">He's already yours everywhere he could be.</div>`;
+                } else {
+                    recHTML = `<div class="mls-power-summary mls-power-summary-none">No league where you're weak enough at ${escapeHtml(res.pos)} for him to make a real difference.</div>`;
+                }
+            }
 
             html += `
             <div class="mls-league-search-card">
@@ -3862,6 +4151,7 @@ function attachScoutSuggestionHandler(outputElId) {
                             <span>ROS Rank: <strong class="mls-stat-green">${rRank}</strong>${tierTag(res.rosObj?.tier)}${posRankTag(res.rosObj, 'mls-stat-green')}</span>
                         </div>
                         ${breakdown.length ? `<div class="mls-scan-verdict">${breakdown.join(' <span class="mls-rank-sep">&middot;</span> ')}</div>` : ''}
+                        ${recHTML}
                         ${suggestHTML}
                     </div>
                     <div class="mls-text-right"><div class="scout-status ${pillCls} mls-nowrap">${pillText}</div></div>
@@ -7203,6 +7493,98 @@ document.addEventListener('keydown', (e) => {
         case '5': if (typeof window.showTab === 'function') window.showTab('guide'); break;
     }
 });
+// --- POSITIONAL POWER RANKINGS: SHARED MATH ---
+// Scores every manager's QB/RB/WR/TE room in one league from a rankings list, then ranks the
+// managers 1..N at each position and overall. Pure (no DOM, no toasts) so the Positional Power
+// Rankings card and the All My Leagues player search (see getLeaguePowerContext) run the exact
+// same numbers -- the search's "WR Power Rank: 9th" has to match what this league's table says.
+// Returns [] when the league has no whole-league roster data.
+const POWER_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+const POWER_UNRANKED_RANK = 300;
+// Power Curve: Heavily weights studs, incrementally adds value for depth
+const powerValueForRank = (rank) => Math.round(100000 / (rank + 5));
+function powerRankFor(rankingsIdx, cleanName) {
+    const data = rankingsIdx.get(cleanName);
+    // Use custom rank, or market rank. Default to 300 if not on the board.
+    return { rank: data ? (data.rank || data.marketVal) : POWER_UNRANKED_RANK, data };
+}
+
+function computePositionalPower(league, rankings) {
+    if (!league || !league.globalRosterMap || !league.globalPosMap) return [];
+    const rankingsIdx = rankingIndex(rankings);
+    let teamScoresMap = {};
+
+    // 1. Initialize scoring objects for every manager
+    Object.values(league.globalRosterMap).forEach(owner => {
+        if (!teamScoresMap[owner]) {
+            teamScoresMap[owner] = {
+                owner: owner,
+                scores: { QB: 0, RB: 0, WR: 0, TE: 0 },
+                total: 0,
+                players: { QB: [], RB: [], WR: [], TE: [] } // For our tooltips
+            };
+        }
+    });
+
+    // 2. Assign Power Points to EVERY rostered player
+    Object.keys(league.globalRosterMap).forEach(cleanName => {
+        let owner = league.globalRosterMap[cleanName];
+        let pos = league.globalPosMap[cleanName];
+        const { rank, data } = powerRankFor(rankingsIdx, cleanName);
+        let actualName = data ? data.name : cleanName;
+        let powerValue = powerValueForRank(rank);
+
+        if (teamScoresMap[owner] && POWER_POSITIONS.includes(pos)) {
+            teamScoresMap[owner].scores[pos] += powerValue;
+            teamScoresMap[owner].total += powerValue;
+            teamScoresMap[owner].players[pos].push({ name: actualName, rank: rank, tier: data?.tier });
+        }
+    });
+
+    let teamScores = Object.values(teamScoresMap);
+    if (teamScores.length === 0) return teamScores;
+
+    // 3. Sort player arrays so the tooltip shows the best players at the top
+    teamScores.forEach(team => {
+        POWER_POSITIONS.forEach(pos => {
+            team.players[pos].sort((a, b) => a.rank - b.rank);
+        });
+    });
+
+    // 4. Rank teams 1 to N (Highest Power Score = Rank 1)
+    const assignRanks = (arr, posKey, rankKey) => {
+        let sorted = [...arr].sort((a, b) => {
+            let scoreA = posKey === 'total' ? a.total : a.scores[posKey];
+            let scoreB = posKey === 'total' ? b.total : b.scores[posKey];
+            return scoreB - scoreA; // Descending Sort
+        });
+
+        sorted.forEach((team, idx) => {
+            let original = arr.find(t => t.owner === team.owner);
+            original[rankKey] = idx + 1;
+        });
+    };
+
+    assignRanks(teamScores, 'QB', 'qbRank');
+    assignRanks(teamScores, 'RB', 'rbRank');
+    assignRanks(teamScores, 'WR', 'wrRank');
+    assignRanks(teamScores, 'TE', 'teRank');
+    assignRanks(teamScores, 'total', 'overallRank');
+
+    // Final sort by overall rank for the table display
+    teamScores.sort((a, b) => a.overallRank - b.overallRank);
+    return teamScores;
+}
+
+// Top third / middle / bottom third -- the same split renderPowerRankingsTable colors its
+// cells by (green / neutral / red), so a "weak" label in the All My Leagues search lines up
+// with a red cell in that league's table.
+function powerTier(rank, totalTeams) {
+    if (rank <= Math.ceil(totalTeams / 3)) return 'strong';
+    if (rank > Math.floor(totalTeams * 2 / 3)) return 'weak';
+    return 'middle';
+}
+
 window.runPositionalStrength = function() {
     let league = getActiveLeague();
     if (!league || !league.globalRosterMap || !league.globalPosMap) {
@@ -7221,77 +7603,13 @@ window.runPositionalStrength = function() {
         return;
     }
 
-    let teamScoresMap = {};
-
-    // 1. Initialize scoring objects for every manager
-    Object.values(league.globalRosterMap).forEach(owner => {
-        if (!teamScoresMap[owner]) {
-            teamScoresMap[owner] = { 
-                owner: owner, 
-                scores: { QB: 0, RB: 0, WR: 0, TE: 0 }, 
-                total: 0,
-                players: { QB: [], RB: [], WR: [], TE: [] } // For our tooltips
-            };
-        }
-    });
-
-    // 2. Assign Power Points to EVERY rostered player
-    Object.keys(league.globalRosterMap).forEach(cleanName => {
-        let owner = league.globalRosterMap[cleanName];
-        let pos = league.globalPosMap[cleanName];
-        
-        let data = activeRankings.find(r => r.cleanName === cleanName);
-        
-        // Use custom rank, or market rank. Default to 300 if not on the board.
-        let rank = data ? (data.rank || data.marketVal) : 300; 
-        let actualName = data ? data.name : cleanName;
-        
-        // Power Curve: Heavily weights studs, incrementally adds value for depth
-        let powerValue = Math.round(100000 / (rank + 5));
-        
-        if (teamScoresMap[owner] && ['QB', 'RB', 'WR', 'TE'].includes(pos)) {
-            teamScoresMap[owner].scores[pos] += powerValue;
-            teamScoresMap[owner].total += powerValue;
-            teamScoresMap[owner].players[pos].push({ name: actualName, rank: rank, tier: data?.tier });
-        }
-    });
-
-    let teamScores = Object.values(teamScoresMap);
+    const teamScores = computePositionalPower(league, activeRankings);
 
     if (teamScores.length === 0) {
         if (window.showToast) window.showToast("Not enough roster data to evaluate.", { isError: true });
         return;
     }
 
-    // 3. Sort player arrays so the tooltip shows the best players at the top
-    teamScores.forEach(team => {
-        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            team.players[pos].sort((a, b) => a.rank - b.rank);
-        });
-    });
-
-    // 4. Rank teams 1 to N (Highest Power Score = Rank 1)
-    const assignRanks = (arr, posKey, rankKey) => {
-        let sorted = [...arr].sort((a, b) => {
-            let scoreA = posKey === 'total' ? a.total : a.scores[posKey];
-            let scoreB = posKey === 'total' ? b.total : b.scores[posKey];
-            return scoreB - scoreA; // Descending Sort
-        });
-        
-        sorted.forEach((team, idx) => {
-            let original = arr.find(t => t.owner === team.owner);
-            original[rankKey] = idx + 1;
-        });
-    };
-
-    assignRanks(teamScores, 'QB', 'qbRank');
-    assignRanks(teamScores, 'RB', 'rbRank');
-    assignRanks(teamScores, 'WR', 'wrRank');
-    assignRanks(teamScores, 'TE', 'teRank');
-    assignRanks(teamScores, 'total', 'overallRank');
-
-    // Final sort by overall rank for the table display
-    teamScores.sort((a, b) => a.overallRank - b.overallRank);
     renderPowerRankingsTable(teamScores);
 };
 
@@ -8074,8 +8392,21 @@ window.runMatchupSim = async function() {
         // rather than reusing the one batched history fetch already done above for your
         // roster and your opponent's.
         const waiverInsights = [];
+        // What the waiver check actually did, so the results card can tell "nobody out there
+        // beats your starters" apart from "the check never ran" -- an empty waiverInsights
+        // list alone reads identically either way, which left people unsure whether the
+        // toggle had done anything at all. Stays null while the toggle is off (nothing to
+        // report). checkedCount counts only free agents that made it all the way through the
+        // comparison (resolved to a Sleeper id, had score history, had an eligible starter
+        // to measure against), so "checked N" never overstates the work.
+        let waiverInsightsStatus = null;
         if (State.simSettings.waiverInsights) {
+            waiverInsightsStatus = { checkedCount: 0, positions: [], noRankings: false, failed: false };
+            const checkedPositions = new Set();
             try {
+                if (State.rosRankings.length === 0 && State.marketRankings.length === 0) {
+                    waiverInsightsStatus.noRankings = true;
+                }
                 const nameToIdIndex = await getCleanNameToIdIndex();
                 const candidates = getTopWaiverCandidatesByPosition(rosterMap, 3)
                     .map(c => ({ ...c, id: nameToIdIndex[c.cleanName] }))
@@ -8092,12 +8423,17 @@ window.runMatchupSim = async function() {
                         if (weeklyScores.length === 0) return; // same "not enough history" bar as everyone else
 
                         const rawPlayer = playerMap[c.id] || {};
+                        const faPos = rawPlayer.position || c.pos;
                         const profile = getPlayerVarianceProfile(weeklyScores, { projectedMean: getProjectedMean(c.id) });
-                        const result = compareAgainstWeakestStarter(profile, rawPlayer.position || c.pos);
-                        if (!result || result.winPct <= 50) return;
+                        const result = compareAgainstWeakestStarter(profile, faPos);
+                        if (!result) return;
+
+                        waiverInsightsStatus.checkedCount++;
+                        checkedPositions.add(faPos);
+                        if (result.winPct <= 50) return;
 
                         waiverInsights.push({
-                            faName: c.name, faPos: rawPlayer.position || c.pos,
+                            faName: c.name, faPos,
                             starterName: result.weakestStarter.name, starterPos: result.weakestStarter.pos, starterIsRookie: result.weakestStarter.isRookie,
                             faWinPct: result.winPct
                         });
@@ -8109,12 +8445,17 @@ window.runMatchupSim = async function() {
             } catch (err) {
                 // Waiver Insights is a bonus layer on top of the main simulation -- a failure
                 // here (a rankings/market fetch hiccup, an unresolvable name) shouldn't take
-                // down the matchup simulation itself, just quietly skip this part.
+                // down the matchup simulation itself. The results card still says the check
+                // didn't finish, rather than letting silence read as "no upgrades found".
                 console.error('Waiver Insights failed:', err);
+                waiverInsightsStatus.failed = true;
             }
+            const POS_ORDER = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+            waiverInsightsStatus.positions = [...checkedPositions].sort((a, b) =>
+                (POS_ORDER.indexOf(a) + 1 || 99) - (POS_ORDER.indexOf(b) + 1 || 99));
         }
 
-        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, waiverInsights, currentWeek });
+        runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, waiverInsights, waiverInsightsStatus, currentWeek });
     } catch (err) {
         console.error('Matchup simulation failed:', err);
         // Same three-way split as runGlobalInjuryAudit's catch, for the same reasons:
