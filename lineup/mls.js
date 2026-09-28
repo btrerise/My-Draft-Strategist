@@ -1931,10 +1931,36 @@ function attachScoutSuggestionHandler(outputElId) {
         if (powerStrip) { powerStrip.innerHTML = ''; powerStrip.style.display = 'none'; }
     }
 
+    // Points the Market Consensus controls (Scout tab, plus the Roster tab's copy -- they share
+    // State.marketSettings) at the active league's own format, so a fetch is priced for the
+    // league you're looking at without re-picking four dropdowns every time you switch. Runs on
+    // every active-league change and after a sync (both go through loadActiveLeagueData), so
+    // it's a default, not a lock: changing a dropdown still works and holds until the next
+    // switch. Only what the league actually knows is set -- a manual league has no scoring or
+    // league type from Sleeper, so those keep whatever was last chosen. Source (FantasyCalc
+    // vs LeagueLogs) is a preference, not a league setting, and is left alone.
+    function applyLeagueDefaultsToMarketSettings(league) {
+        if (!league) return;
+        const s = State.marketSettings;
+        const badge = league.formatBadge || '';
+
+        if (league.leagueType || badge) s.type = getPowerLeagueKind(league); // 'dynasty' (incl. keeper) or 'redraft'
+        if (league.reqs) s.qbs = ((league.reqs.SFLEX || 0) > 0 || (league.reqs.QB || 0) >= 2) ? '2' : '1';
+        if (typeof league.pprVal === 'number') {
+            // FantasyCalc only offers 1 / 0.5 / 0, so an unusual value (e.g. 0.25 PPR) rounds to the nearest.
+            s.ppr = league.pprVal >= 0.75 ? '1' : (league.pprVal >= 0.25 ? '0.5' : '0');
+        }
+        if (badge) s.tep = /\bTEP\b/.test(badge);
+
+        localStorage.setItem('mls_market_settings', JSON.stringify(s));
+        applyMarketSettingsToUI();
+    }
+
     function loadActiveLeagueData() {
         clearLeagueScopedResults();
         let league = getActiveLeague();
         if (!league) return;
+        applyLeagueDefaultsToMarketSettings(league);
         
         let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 };
         const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
