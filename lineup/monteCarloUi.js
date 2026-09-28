@@ -321,8 +321,17 @@ function renderWaiverInsights(waiverInsights, status) {
         body = `<p class="sim-waiver-empty sim-waiver-empty-warn">Couldn't finish checking waivers this time (a rankings or Sleeper lookup failed). The matchup result above isn't affected - run it again to retry.</p>`;
     } else if (status.noRankings) {
         body = `<p class="sim-waiver-empty sim-waiver-empty-warn">No free agents to check yet. Waiver Insights picks its candidates from your ROS rankings (or Market Consensus data), and neither is loaded for this league.</p>`;
+    } else if (status.checkedCount === 0 && status.startersAllStarted) {
+        body = `<p class="sim-waiver-empty">All of your starters' games have already kicked off, so there's no lineup spot left for a free agent to take this week.</p>`;
     } else if (status.checkedCount === 0) {
-        body = `<p class="sim-waiver-empty sim-waiver-empty-warn">No available free agents had enough game history to compare against your starters, so there was nothing to check this week.</p>`;
+        // Three things can leave a free agent uncompared: too little game history, his own
+        // game already kicked off (locked on Sleeper), or every starter he could replace has
+        // already played. The kickoff part is only mentioned when it actually happened.
+        const n = status.kickedOffCount || 0;
+        const reasons = n > 0
+            ? ` ${n} top free agent${n === 1 ? ' was' : 's were'} skipped because their game already kicked off (locked until next week). The others either don't have enough game history yet or could only replace a starter who has already played.`
+            : ` They either don't have enough game history yet or could only replace a starter who has already played.`;
+        body = `<p class="sim-waiver-empty sim-waiver-empty-warn">No free agents could be compared against a starter you can still change this week.${reasons}</p>`;
     } else {
         const n = status.checkedCount;
         const posText = status.positions && status.positions.length > 0

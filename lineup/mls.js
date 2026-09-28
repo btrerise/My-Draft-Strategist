@@ -1559,7 +1559,17 @@ function attachScoutSuggestionHandler(outputElId) {
     // kicked off, independent of anything this app previously recommended. Shared by
     // renderLineupUI (the "matches Sleeper" banner / per-player mismatch badges) and
     // optimizeLineup (auto-lock, below) so both read the exact same filtered list.
+    // Best Ball returns [] on purpose. Nobody sets a lineup in Best Ball, so the `starters`
+    // array Sleeper keeps on the roster isn't a lineup decision -- and in practice it can be
+    // stale or incomplete (a Best Ball DEF that played and scored still showed "Bench in
+    // Sleeper" and never auto-locked). Treating it as ground truth there caused three wrong
+    // things at once: the "Bench in Sleeper"/"Starting in Sleeper" badges, the "Differs from
+    // Sleeper lineup" banner, and auto-lock skipping that player. With [] every consumer
+    // takes its existing "no Sleeper starter data" path: no badges or banner, and auto-lock
+    // falls back to this app's own previous lineup (see isSleeperStarter in optimizeLineup).
+    // The Dashboard matrix already shows Best Ball as "BB" instead of a match/differs icon.
     function getValidSleeperStarterIds(league) {
+        if (isBestBallLeague(league)) return [];
         return (league && league.sleeperStarters) ? league.sleeperStarters.filter(id => id && id !== "0") : [];
     }
 
@@ -8876,7 +8886,14 @@ window.runMatchupSim = async function() {
         // to measure against), so "checked N" never overstates the work.
         let waiverInsightsStatus = null;
         if (State.simSettings.waiverInsights) {
-            waiverInsightsStatus = { checkedCount: 0, positions: [], noRankings: false, failed: false };
+            // startersAllStarted / kickedOffCount let the empty-result message name the real
+            // reason nothing was compared, now that already-started starters and free agents
+            // are left out (see lockedStarterIds above and the candidates filter below).
+            waiverInsightsStatus = {
+                checkedCount: 0, positions: [], noRankings: false, failed: false,
+                startersAllStarted: team1Players.length > 0 && team1Players.every(p => lockedStarterIds.has(p.id)),
+                kickedOffCount: 0
+            };
             const checkedPositions = new Set();
             try {
                 if (State.rosRankings.length === 0 && State.marketRankings.length === 0) {
@@ -8885,9 +8902,14 @@ window.runMatchupSim = async function() {
                 const nameToIdIndex = await getCleanNameToIdIndex();
                 const candidates = getTopWaiverCandidatesByPosition(rosterMap, 3)
                     .map(c => ({ ...c, id: nameToIdIndex[c.cleanName] }))
+                    .filter(c => c.id && !isExcludedFromSimulation(playerMap[c.id]))
                     // A free agent whose game has kicked off is locked on Sleeper until next
                     // week -- same "can't act on it" reasoning as the bench filter above.
-                    .filter(c => c.id && !isExcludedFromSimulation(playerMap[c.id]) && !hasKickedOff({ team: (playerMap[c.id] || {}).team }));
+                    .filter(c => {
+                        if (!hasKickedOff({ team: (playerMap[c.id] || {}).team })) return true;
+                        waiverInsightsStatus.kickedOffCount++;
+                        return false;
+                    });
 
                 if (candidates.length > 0) {
                     const candidateIds = candidates.map(c => c.id);
