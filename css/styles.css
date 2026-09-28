@@ -846,6 +846,13 @@ body {
 .mds-slider::-moz-range-thumb:hover {
     transform: scale(1.2);
 }
+/* Keyboard focus: ring the thumb (the track is only 6px tall, so an outline there is hard to see) */
+.mds-slider:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px #0a0e17, 0 0 0 5px var(--primary-green);
+}
+.mds-slider:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px #0a0e17, 0 0 0 5px var(--primary-green);
+}
 
 /* Grid Layouts */
 .roster-grid {
@@ -919,6 +926,10 @@ body {
 }
 .toggle-switch:checked::after {
     transform: translateX(20px);
+}
+.toggle-switch:focus-visible {
+    outline: 2px solid var(--primary-green);
+    outline-offset: 2px;
 }
 
 /* --- BUTTONS --- */
@@ -1430,6 +1441,34 @@ body {
     visibility: visible; opacity: 1; transform: translateY(0);
 }
 
+/* Keyboard: an icon with keyboard focus shows its tooltip (see initInfoTooltips in
+   js/utils.js), unless Escape/Enter dismissed it. cursor: pointer on the icon is also what
+   makes iOS Safari deliver the tap to the document-level handler at all. */
+.tooltip-icon { cursor: pointer; }
+.tooltip-icon:focus-visible {
+    outline: 2px solid var(--primary-green);
+    outline-offset: 2px;
+    background: var(--border);
+    color: var(--text-main);
+}
+.tooltip-icon:focus-visible + .tooltip-text:not(.tt-dismissed) {
+    visibility: visible; opacity: 1; transform: translateY(0);
+}
+.tooltip-container:hover .tooltip-text.tt-dismissed:not(.mobile-visible) {
+    visibility: hidden; opacity: 0;
+}
+/* Icon-less tooltips, where the badge/status icon/cell itself is the trigger (data-tt-self is
+   set by initTooltips in js/utils.js): League Command Center status icons and badges, Power
+   Rankings cells, the T-Score badge on Draft Tracker cards. */
+.tooltip-container[data-tt-self]:focus-visible {
+    outline: 2px solid var(--primary-green);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+.tooltip-container[data-tt-self]:focus-visible > .tooltip-text:not(.tt-dismissed) {
+    visibility: visible; opacity: 1; transform: translateY(0);
+}
+
 /* Mobile tap-to-toggle class */
 .tooltip-text.mobile-visible {
     visibility: visible !important;
@@ -1722,6 +1761,43 @@ body {
 
 .team-chip .close-chip:hover {
     opacity: 0.7;
+}
+/* Now a <button> (was a <span>): drop the browser's button chrome so it looks the same. */
+button.close-chip {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+}
+.close-chip:focus-visible {
+    outline: 2px solid var(--primary-green);
+    outline-offset: -4px;
+    border-radius: 4px;
+}
+
+/* League Command Center: the league cell's content is a full-cell <button> (was a clickable
+   <td>), so it's reachable by keyboard. Padding moved here from the <td> so the whole cell
+   stays the click target. */
+.mls-league-row-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 0.5rem 0.75rem calc(0.5rem + 6px);
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.mls-league-row-btn:focus-visible {
+    outline: 2px solid var(--primary-green);
+    outline-offset: -2px;
+}
+/* ▲/▼ on the first/last league. The dimming used to be a second style="" attribute on a button
+   that already had one, which browsers ignore, so disabled arrows looked clickable. */
+.mls-league-move-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
 /* Action Buttons within slots */
@@ -3656,19 +3732,37 @@ input[type="file"]::-webkit-file-upload-button:hover {
     }
 }
 /* --- ACCESSIBILITY & MICRO-INTERACTIONS --- */
-.player-card:focus-visible {
-  outline: 2px solid var(--primary-green);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
-}
-
-.player-card[tabindex="0"] {
-  cursor: pointer;
+.player-card {
   transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.player-card[tabindex="0"]:active {
-  transform: scale(0.98);
+/* The card itself is no longer a tab stop (its buttons are), so this marks which card a
+   keyboard user is on while tabbing through its buttons. :focus-visible keeps it from
+   lighting up on a mouse click or tap. */
+.player-card:has(:focus-visible) {
+  border-color: var(--primary-green);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+/* Position filters and the edit pencil used to be a <div>/<span> and are now <button>s:
+   strip the browser's button font and chrome so they look exactly as before. */
+button.pos-filter,
+button.edit-link {
+  font-family: inherit;
+  line-height: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+button.edit-link {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.pos-filter:focus-visible,
+.edit-link:focus-visible {
+  outline: 2px solid var(--primary-green);
+  outline-offset: 2px;
+  opacity: 1;
 }
 
 /* --- TOAST NOTIFICATIONS --- */
@@ -4446,7 +4540,11 @@ a.nav-btn,
    leftward (see buildTooltip in renderPowerRankingsTable). */
 .mls-power-table .tooltip-container .mls-power-tooltip { display: none; width: 220px; font-weight: normal; z-index: 1005; text-align: left; }
 .mls-power-table .tooltip-container:hover .mls-power-tooltip,
+.mls-power-table .tooltip-container:focus-visible .mls-power-tooltip,
 .mls-power-table .tooltip-container .mls-power-tooltip.mobile-visible { display: block; }
+/* Dismissed with Escape or a second tap/press (see initTooltips in js/utils.js). */
+.mls-power-table .tooltip-container:hover .mls-power-tooltip.tt-dismissed:not(.mobile-visible),
+.mls-power-table .tooltip-container:focus-visible .mls-power-tooltip.tt-dismissed:not(.mobile-visible) { display: none; }
 .mls-power-table .tooltip-container .mls-power-tooltip-left { left: -10px; right: auto; }
 .mls-power-table .tooltip-container .mls-power-tooltip-right { right: 0; left: auto; }
 .mls-power-tooltip-title { font-weight: 700; color: var(--text-main); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }

@@ -626,7 +626,9 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         if (e.state && e.state.tab) {
             window.showTab(e.state.tab, true);
         } else {
-            window.showTab('setup', true);
+            // No state = an entry we didn't push (a hand-edited hash), so honor its hash if
+            // it names a real tab.
+            window.showTab(window.getTabFromHash() || 'setup', true);
         }
     });
     
@@ -1153,7 +1155,13 @@ function attachScoutSuggestionHandler(outputElId) {
             if (leagueSelect) leagueSelect.value = State.activeLeagueId;
             loadActiveLeagueData();
         }
-        window.showTab('setup');
+        // Deep link: open the tab named in the URL hash (a reload, or a shared #lineup link),
+        // else the Dashboard. skipHistory + replaceState instead of a push: pushing here added
+        // a second history entry on every page load, so the first Back press went nowhere.
+        // Stamping this entry with its tab also means Back to it restores the right tab.
+        const initialTab = window.getTabFromHash() || 'setup';
+        window.showTab(initialTab, true);
+        history.replaceState({ tab: initialTab }, '', `#${initialTab}`);
 
         // Last line of init on purpose: tells the safety net in utils.js that this module --
         // and every module it imports -- evaluated all the way through and the page is
@@ -1201,15 +1209,26 @@ function attachScoutSuggestionHandler(outputElId) {
     function renderEarlyChips() {
         const container = document.getElementById('earlyTeamChips');
         if (!container) return;
+        // Removing a chip re-renders them all, which would drop keyboard focus to the top of the
+        // page. Remember which ✕ had focus so it can move to the chip that takes its place (or
+        // to the team picker once the last one is gone).
+        const focusedChipIdx = [...container.querySelectorAll('.close-chip')].indexOf(document.activeElement);
+        const restoreChipFocus = () => {
+            if (focusedChipIdx === -1) return;
+            const chips = container.querySelectorAll('.close-chip');
+            (chips[Math.min(focusedChipIdx, chips.length - 1)] || document.getElementById('earlyTeamSelect'))?.focus();
+        };
         if (State.earlyTeams.length === 0) {
             container.innerHTML = `<span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No teams selected.</span>`;
+            restoreChipFocus();
             return;
         }
         let html = "";
         State.earlyTeams.forEach(t => {
-            html += `<div class="team-chip">${t} <span class="close-chip" onclick="removeEarlyTeam('${t}')">✕</span></div>`;
+            html += `<div class="team-chip">${t} <button type="button" class="close-chip" onclick="removeEarlyTeam('${t}')" aria-label="Remove ${t} from Early Games">✕</button></div>`;
         });
         container.innerHTML = html;
+        restoreChipFocus();
     }
 
     function checkEarlyBannerVisibility() {
@@ -1663,7 +1682,7 @@ function attachScoutSuggestionHandler(outputElId) {
             let earlyIcon = hasEarly ? `<span class="badge early-badge tooltip-container" style="padding: 2px 4px; font-size: 0.6rem; margin-left: 6px; cursor: help;">EARLY<span class="tooltip-text">Starter has an Early Game</span></span>` : '';
 
             // --- Layout ---
-            let formatText = l.formatBadge ? `<div style="color:var(--text-muted); font-size: 0.75rem; margin-top: 2px; font-weight: normal;">${l.formatBadge}</div>` : "";
+            let formatText = l.formatBadge ? `<span style="display: block; color:var(--text-muted); font-size: 0.75rem; margin-top: 2px; font-weight: normal;">${l.formatBadge}</span>` : "";
             // Roster age. Manual and Draft Strategist handoff leagues are never synced from
             // Sleeper, so they get no label. A Sleeper league with no lastSyncedAt was last
             // synced before this was tracked -- flagged the same way the Rankings column treats
@@ -1680,9 +1699,9 @@ function attachScoutSuggestionHandler(outputElId) {
                     // data is decides whether you can trust a lineup off it before retrying.
                     // Set in processSleeperData's catch, cleared on the next successful sync.
                     const staleFor = syncFresh ? syncFresh.label.replace(/^Synced /, 'from ') : 'never synced';
-                    syncText = `<div class="sync-failed" style="font-size: 0.75rem; margin-top: 2px;">Last sync failed · roster ${staleFor}</div>`;
+                    syncText = `<span class="sync-failed" style="display: block; font-size: 0.75rem; margin-top: 2px;">Last sync failed · roster ${staleFor}</span>`;
                 } else {
-                    syncText = `<div class="${syncStale ? 'rankings-stale' : 'rankings-fresh'}" style="font-size: 0.75rem; margin-top: 2px;">${syncLabel}</div>`;
+                    syncText = `<span class="${syncStale ? 'rankings-stale' : 'rankings-fresh'}" style="display: block; font-size: 0.75rem; margin-top: 2px;">${syncLabel}</span>`;
                 }
             }
             let activeStyle = l.leagueId === State.activeLeagueId ? 'background: rgba(16, 185, 129, 0.08);' : '';
@@ -1690,13 +1709,15 @@ function attachScoutSuggestionHandler(outputElId) {
 
             html += `
             <tr style="position: relative; ${activeStyle}">
-                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); position: relative; cursor: pointer;" onclick="switchActiveLeague('${l.leagueId}')">
+                <td style="padding: 0; border-bottom: 1px solid var(--border); position: relative;">
                     ${activeIndicator}
-                    <div style="padding-left: 6px;">
+                    <!-- A real button (was a clickable <td>) so the row can be reached with Tab and
+                         switched to with Enter/Space. Fills the cell, so the click area is unchanged. -->
+                    <button type="button" class="mls-league-row-btn" data-focus-key="row:${escapeHtml(l.leagueId)}" onclick="switchActiveLeague('${l.leagueId}')" ${l.leagueId === State.activeLeagueId ? 'aria-current="true"' : ''}>
                         <strong style="color: var(--text-main); font-size: 0.9rem;">${escapeHtml(l.name)}</strong>
                         ${formatText}
                         ${syncText}
-                    </div>
+                    </button>
                 </td>
                 <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: center;">
                     ${rankIcon}
@@ -1705,14 +1726,25 @@ function attachScoutSuggestionHandler(outputElId) {
                     ${lineupIcon} ${earlyIcon}
                 </td>
                 <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap;">
-                    <button class="btn-sm btn-secondary" style="padding: 0.3rem 0.5rem;" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
-                    <button class="btn-sm btn-secondary" style="padding: 0.3rem 0.5rem;" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
-                    <button class="btn-sm btn-danger" style="padding: 0.3rem 0.5rem; margin-left: 0.3rem;" onclick="deleteLeagueManager('${l.leagueId}')">✕</button>
+                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="up:${escapeHtml(l.leagueId)}" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} up">▲</button>
+                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="down:${escapeHtml(l.leagueId)}" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} down">▼</button>
+                    <button class="btn-sm btn-danger" style="padding: 0.3rem 0.5rem; margin-left: 0.3rem;" onclick="deleteLeagueManager('${l.leagueId}')" aria-label="Remove ${escapeHtml(l.name)}">✕</button>
                 </td>
             </tr>`;
         });
 
+        // Rebuilding the rows destroys whatever button had focus, which drops a keyboard user
+        // back at the top of the page after every switch or reorder. Put focus back on the same
+        // control for the same league (or its row, if that control is now disabled, e.g. ▲ on a
+        // league that just moved to the top).
+        const focusKey = tbody.contains(document.activeElement) ? document.activeElement.getAttribute('data-focus-key') : null;
         tbody.innerHTML = html;
+        if (focusKey) {
+            const leagueId = focusKey.slice(focusKey.indexOf(':') + 1);
+            const same = tbody.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
+            const target = (same && !same.disabled) ? same : tbody.querySelector(`[data-focus-key="${CSS.escape('row:' + leagueId)}"]`);
+            if (target) target.focus();
+        }
     }
 
     window.moveLeague = function(index, direction) {
@@ -7566,7 +7598,7 @@ window.syncAllLeagues = async function(btn) {
         // (and no re-render) when everything's already fresh. See refreshLineupStats.
         refreshLineupStats();
     }
-    // --- MOBILE TOOLTIPS ---
+    // --- STARTUP CLEANUP ---
 document.addEventListener('DOMContentLoaded', () => {
     // One-time cleanup of 'shared_sleeper_league_id', a league-ID handoff from MDS that was
     // never finished: nothing in either app ever wrote the key, but MLS used to read it here
@@ -7576,23 +7608,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // no "already migrated" flag; safe to delete once existing installs have loaded once.
     try { localStorage.removeItem('shared_sleeper_league_id'); } catch (e) {}
 
-    // Enable tap-to-toggle for tooltips on touch devices
-    document.querySelectorAll('.tooltip-icon').forEach(icon => {
-        icon.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const text = icon.nextElementSibling;
-            if (text && text.classList.contains('tooltip-text')) {
-                text.classList.toggle('mobile-visible');
-            }
-        });
-    });
-
-    // Tap anywhere else on the screen to close open tooltips
-    document.addEventListener('click', () => {
-        document.querySelectorAll('.tooltip-text.mobile-visible').forEach(text => {
-            text.classList.remove('mobile-visible');
-        });
-    });
+    // Tooltip tap/keyboard handling moved to js/utils.js (initInfoTooltips), shared with MDS
+    // and T-Score. The per-icon listeners that lived here only covered icons present at load.
 });
 // --- POWER-USER KEYBOARD SHORTCUTS (MLS) ---
 document.addEventListener('keydown', (e) => {

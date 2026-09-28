@@ -636,7 +636,9 @@ window.addEventListener('popstate', (e) => {
         // Pass 'true' so we don't accidentally create an infinite history loop
         window.showTab(e.state.tab, true); 
     } else {
-        window.showTab('setup', true);
+        // No state = an entry we didn't push (a hand-edited hash, or an in-page link), so
+        // honor its hash if it names a real tab.
+        window.showTab(window.getTabFromHash() || 'setup', true);
     }
 });
 
@@ -666,6 +668,14 @@ window.addEventListener('popstate', (e) => {
             // Remember the edit state so it doesn't snap shut on auto-sync
             let p = State.players.find(x => x.id === id);
             if (p) p.isEditing = !isFlex;
+
+            // Keep the pencil button's expanded state in sync, and move keyboard users into
+            // the editor they just opened (its first field is Rank). Keyboard only (the button
+            // shows :focus-visible): on a tap, focusing a number field would pop the phone's
+            // keyboard over the card before anyone asked for it.
+            const toggleBtn = document.querySelector(`[aria-controls="inline-edit-${id}"]`);
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(!isFlex));
+            if (!isFlex && toggleBtn && toggleBtn.matches(':focus-visible')) bar.querySelector('input')?.focus();
         }
     };
     window.toggleCardDetails = function(e, id) {
@@ -2822,7 +2832,7 @@ function parseExcel(file) {
         let queueStarColor = isQueued ? "#f59e0b" : "var(--text-muted)";
 
         return `
-            <div class="player-card${expandedClass}" style="${customStyle}" tabindex="0" role="button" aria-label="${escapeHtml(p.rank)}. ${escapeHtml(p.name)}">
+            <div class="player-card${expandedClass}" style="${customStyle}" role="group" aria-label="${escapeHtml(p.rank)}. ${escapeHtml(p.name)}">
                 
                 <div class="card-grid" style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch; text-align: left;">
                     
@@ -2844,7 +2854,7 @@ function parseExcel(file) {
                             ${injuryBadge}
                             ${stackBadge}
                             <div style="display: flex; align-items: center; gap: 2px;">
-                                <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue">${queueStarIcon}</button>
+                                <button type="button" onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue" aria-label="Queue ${escapeHtml(p.name)}" aria-pressed="${isQueued ? 'true' : 'false'}">${queueStarIcon}</button>
                                 <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
                                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
                                                  border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
@@ -2857,8 +2867,8 @@ function parseExcel(file) {
                         
                         <!-- Bottom Right: Draft Actions & Chevron -->
                         <div class="actions" style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
-                            <button class="mds-btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
-                            <button class="mds-btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">Pick</button>
+                            <button class="mds-btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
+                            <button class="mds-btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
                             <button class="btn-expand hide-on-desktop" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
                                 <svg class="chevron-icon" style="transform: ${p.isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
@@ -2869,9 +2879,9 @@ function parseExcel(file) {
                 <div class="card-details" id="details-${p.id}">
                     <div class="player-stats">
                         <span>${escapeHtml(p.team)} | Bye: ${escapeHtml(p.bye)}${adpText}${valueBadgeHTML}</span>
-                        <span class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                        </span>
+                        <button type="button" class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details" aria-label="Edit ${escapeHtml(p.name)}'s details" aria-expanded="${p.isEditing ? 'true' : 'false'}" aria-controls="inline-edit-${p.id}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                        </button>
                     </div>
                     <div class="inline-editor" id="inline-edit-${p.id}" style="${p.isEditing ? 'display: flex;' : ''}">
                         <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
@@ -2925,8 +2935,8 @@ function parseExcel(file) {
                         
                         <!-- Left Side: Arrows, Badges, Star & Affinity -->
                         <div class="card-badges-row">
-                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled' : ''}>▲</button>
-                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled' : ''}>▼</button>
+                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled' : ''} aria-label="Move ${escapeHtml(p.name)} up the queue">▲</button>
+                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled' : ''} aria-label="Move ${escapeHtml(p.name)} down the queue">▼</button>
                             <span class="badge pos-badge ${escapeHtml(p.posGroup)}">${escapeHtml(p.posDisplay)}</span>
                             <div style="display: flex; align-items: center; gap: 2px;">
                                 <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
@@ -2942,8 +2952,8 @@ function parseExcel(file) {
                         
                         <!-- Right Side: Draft Actions -->
                         <div style="display: flex; gap: 0.4rem; flex-shrink: 0; align-items: center;">
-                            <button class="mds-btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)">Taken</button>
-                            <button class="mds-btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)">Pick</button>
+                            <button class="mds-btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
+                            <button class="mds-btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
                         </div>
                     </div>
                 </div>
@@ -3022,13 +3032,17 @@ function parseExcel(file) {
 
         const trackers = getTierTrackerData(draftedSet);
         let isAllActive = !Array.isArray(State.activePosFilter) || State.activePosFilter.length === 0;
-        let trackerHTML = `<div class="badge badge-all pos-filter ${isAllActive ? 'active-filter' : ''}" onclick="setPosFilter('ALL')"><span>ALL</span></div>`;
+        let trackerHTML = `<button type="button" class="badge badge-all pos-filter ${isAllActive ? 'active-filter' : ''}" onclick="setPosFilter('ALL')" aria-pressed="${isAllActive}" aria-label="Show all positions"><span>ALL</span></button>`;
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             // If ALL is active, everything lights up. Otherwise, check if this specific pos is selected.
             let isActive = isAllActive || (Array.isArray(State.activePosFilter) && State.activePosFilter.includes(pos)) ? 'active-filter' : '';
             let tText = trackers[pos] ? `T${trackers[pos].tier} (${trackers[pos].count})` : "—";
-            trackerHTML += `<div class="badge pos-badge ${pos} pos-filter ${isActive}" onclick="setPosFilter('${pos}')"><span>${pos}</span><span style="font-size:0.65rem; opacity:0.9;">${tText}</span></div>`;
+            // aria-pressed reflects an explicit pick only: with ALL active every badge is lit up, but
+            // none of them is individually "on".
+            const isPicked = !isAllActive && State.activePosFilter.includes(pos);
+            const tLabel = trackers[pos] ? `top available tier ${trackers[pos].tier}, ${trackers[pos].count} left` : 'none left';
+            trackerHTML += `<button type="button" class="badge pos-badge ${pos} pos-filter ${isActive}" onclick="setPosFilter('${pos}')" aria-pressed="${isPicked}" aria-label="Filter ${pos}, ${tLabel}"><span>${pos}</span><span style="font-size:0.65rem; opacity:0.9;">${tText}</span></button>`;
         });
         const tierTrackerEl = document.getElementById('tierTracker');
         if (tierTrackerEl) tierTrackerEl.innerHTML = trackerHTML;
@@ -3186,17 +3200,10 @@ window.toggleHeadshots = function(show) {
             searchBarEl.addEventListener('input', debounce(renderBoard, 200));
         }
 
-        // --- KEYBOARD ACCESSIBILITY FOR PLAYER CARDS ---
-        const poolEl = document.getElementById('playerPool');
-        if (poolEl) {
-            poolEl.addEventListener('keydown', (e) => {
-                if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('player-card')) {
-                    e.preventDefault();
-                    const draftBtn = e.target.querySelector('.btn-draft');
-                    if (draftBtn) draftBtn.click();
-                }
-            });
-        }
+        // (Player cards used to be focusable role="button" wrappers that proxied Enter/Space to
+        // their Taken button. A button can't contain other buttons -- screen readers flatten or
+        // skip the star, color label, Pick and expand buttons inside it -- so the card is now a
+        // plain labeled group and each of its buttons is reached with Tab directly.)
         // --- POWER-USER KEYBOARD SHORTCUTS ---
         document.addEventListener('keydown', (e) => {
             // Escape closes the hamburger drawer from anywhere, so keyboard users have a way to
@@ -3289,6 +3296,14 @@ window.toggleHeadshots = function(show) {
         const toggleEl = document.getElementById('toggleHeadshots');
         if (toggleEl) toggleEl.checked = showHeadshots;
         toggleHeadshots(showHeadshots);
+
+        // Deep link: open the tab named in the URL hash (a reload, or a shared #tracker link).
+        // Runs after everything above so the board has its data before showTab renders it.
+        // replaceState stamps this first history entry with its tab, so pressing Back to it
+        // later restores the right tab instead of falling through to Setup.
+        const initialTab = window.getTabFromHash() || 'setup';
+        if (initialTab !== 'setup') window.showTab(initialTab, true);
+        history.replaceState({ tab: initialTab }, '');
 
         // Last line of init on purpose: tells the safety net in utils.js that this script
         // evaluated all the way through and the page is genuinely usable, so a later uncaught
