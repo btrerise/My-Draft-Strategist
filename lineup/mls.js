@@ -163,6 +163,12 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         autoLockOverridesMap: readJSON('mls_autolock_overrides_map', {}),
         manualStartersMap: readJSON('mds_season_manual_starters', {}),
         manualBenchMap: readJSON('mds_season_manual_bench', {}),
+        // leagueId -> which rankings that league's saved lineup was built from (see
+        // getLeagueRankingsStamp). Each saved player carries the posRank/flexRank it was
+        // optimized with, so a lineup saved before new rankings were assigned kept showing
+        // "Unranked" in every league except the one the upload happened in. optimizeLineup
+        // compares against this and recomputes a stale lineup instead of just re-showing it.
+        lineupRankingsStamps: readJSON('mls_lineup_rankings_stamps', {}),
         swapSourceId: null,
         touchStartX: 0,
         touchEndX: 0,
@@ -1769,6 +1775,23 @@ function attachScoutSuggestionHandler(outputElId) {
                 State[cfg.updatedAtKey] = null;
             }
         });
+    }
+
+    // Identifies the rankings a league currently resolves to, in the same priority order
+    // hydrateRankingsForLeague uses: its named set (id + last-updated time, so re-uploading into
+    // a set counts as a change), else its legacy per-league upload, else none. Weekly and ROS
+    // both, since the optimizer falls back to ROS when there's no Weekly.
+    function getLeagueRankingsStamp(league) {
+        if (!league) return '';
+        return ['weekly', 'ros'].map(type => {
+            const cfg = RANKING_TYPE_CONFIG[type];
+            const setId = league[cfg.leagueSetIdKey];
+            const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+            if (set) return `${set.id}@${set.updatedAt || 0}`;
+            const legacy = league[cfg.leagueLegacyDataKey];
+            if (Array.isArray(legacy) && legacy.length > 0) return `legacy@${league[cfg.leagueLegacyUpdatedKey] || 0}:${legacy.length}`;
+            return 'none';
+        }).join('|');
     }
 
     window.switchActiveLeague = function(leagueId) {
@@ -6755,7 +6778,13 @@ function applyMarketSettingsToUI() {
             return;
         }
 
-        if (!forceReset && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
+        // A saved lineup is only re-shown as-is if it was built from the rankings this league
+        // uses now. Otherwise (a set was just assigned to this league from another league's
+        // upload, the set was re-uploaded, or the lineup predates stamps) it's recomputed, the
+        // same full recompute a sync does: locks and manual swaps (which lock) carry over.
+        const rankingsStamp = getLeagueRankingsStamp(league);
+        const savedLineupCurrent = State.lineupRankingsStamps[State.activeLeagueId] === rankingsStamp;
+        if (!forceReset && savedLineupCurrent && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
             renderLineupUI(); 
             return;
         }
@@ -6959,6 +6988,10 @@ function applyMarketSettingsToUI() {
 
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = pool;
+        // Written even in batch mode: it's one short string per league, not the full lineup
+        // maps the batch caller defers.
+        State.lineupRankingsStamps[State.activeLeagueId] = rankingsStamp;
+        localStorage.setItem('mls_lineup_rankings_stamps', JSON.stringify(State.lineupRankingsStamps));
 
         // Batch runs defer both writes to the caller -- see the note on this function's
         // signature. State above is updated either way, so a batch that somehow failed to
