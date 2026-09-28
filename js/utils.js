@@ -1219,8 +1219,8 @@ window.flashButton = function(btn, text, isError = false, fallbackContent = null
     const originalBg = btn.style.backgroundColor;
 
     btn.innerHTML = text;
-    btn.style.backgroundColor = isError ? "var(--error-color, #ea4335)" : "var(--success-color, #4ade80)";
-    btn.style.color = isError ? "white" : "var(--bg-main, #0b132b)";
+    btn.style.backgroundColor = isError ? "var(--error-color)" : "var(--success-color)";
+    btn.style.color = isError ? "white" : "var(--bg-color)";
 
     clearTimeout(btn.flashTimeout);
     btn.flashTimeout = setTimeout(() => {
