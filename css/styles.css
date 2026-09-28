@@ -3353,7 +3353,8 @@ body {
 /* goToSetupStep scrolls these into view; clear the sticky .header so the card title shows */
 #setupSyncCard,
 #rosRankingsCard,
-#weeklyRankingsCard {
+#weeklyRankingsCard,
+#powerRankingsCard {
     scroll-margin-top: 5.5rem;
 }
 /* Sync Loading Spinner */
@@ -4412,3 +4413,158 @@ a.nav-btn,
 @media (hover: none) {
     .mds-drop-hint { display: none; }
 }
+
+/* --- POSITIONAL POWER RANKINGS (Roster tab) ---
+   Markup from renderPowerRankingsTable in mls.js. Replaces the old inline-styled table. Cell
+   colors are the same green / neutral / red thirds powerTier() uses everywhere else.
+   overflow: visible so the player tooltips aren't clipped by the table wrapper. */
+.mls-power-table-wrap { overflow: visible; border: 1px solid var(--border); border-radius: 6px; }
+.mls-power-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem; }
+.mls-power-table th {
+    padding: 10px 6px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 2px solid var(--border);
+}
+.mls-power-table td { padding: 10px 6px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.mls-power-table tbody tr:last-child td { border-bottom: none; }
+.mls-power-table .mls-power-manager { text-align: left; padding-left: 10px; }
+.mls-power-owner { color: var(--text-main); font-weight: 500; display: block; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mls-power-you td { background: rgba(147, 197, 253, 0.08); }
+.mls-power-you .mls-power-owner { font-weight: 700; }
+.mls-power-strong-col { font-weight: 800; }
+.mls-power-cell-strong { color: #4ade80; }
+.mls-power-cell-middle { color: var(--text-main); }
+.mls-power-cell-weak { color: #fca5a5; }
+/* Table tooltips: display:none (not the site-wide visibility:hidden) while closed, because a
+   hidden-but-laid-out tooltip that opens rightward still widens the page and lets it scroll
+   sideways on a phone. Selectors carry .mls-power-table .tooltip-container so they outrank the
+   site-wide .tooltip-container .tooltip-text rule. Left-hand columns open rightward, the rest
+   leftward (see buildTooltip in renderPowerRankingsTable). */
+.mls-power-table .tooltip-container .mls-power-tooltip { display: none; width: 220px; font-weight: normal; z-index: 1005; text-align: left; }
+.mls-power-table .tooltip-container:hover .mls-power-tooltip,
+.mls-power-table .tooltip-container .mls-power-tooltip.mobile-visible { display: block; }
+.mls-power-table .tooltip-container .mls-power-tooltip-left { left: -10px; right: auto; }
+.mls-power-table .tooltip-container .mls-power-tooltip-right { right: 0; left: auto; }
+.mls-power-tooltip-title { font-weight: 700; color: var(--text-main); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.mls-power-tooltip-empty { color: var(--text-muted); font-style: italic; font-size: 0.8rem; }
+.mls-power-tooltip-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 4px; font-size: 0.8rem; }
+.mls-power-tooltip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+.mls-power-tooltip-slot { display: inline-block; min-width: 3.4em; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; }
+.mls-power-tooltip-rank { color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
+.mls-power-balance-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.mls-power-balance { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.78rem; margin: 2px 0 6px; }
+.mls-power-balance-item { white-space: nowrap; color: var(--text-muted); }
+.mls-power-balance-item strong { color: var(--text-main); }
+.mls-power-balance-item strong.mls-power-cell-strong { color: #4ade80; }
+.mls-power-balance-item strong.mls-power-cell-weak { color: #fca5a5; }
+.mls-power-balance-foot { font-size: 0.7rem; color: var(--text-muted); margin: -2px 0 6px; }
+.mls-power-tooltip-more { color: var(--text-muted); font-size: 0.75rem; margin-top: 6px; text-align: center; }
+.mls-power-notes { margin: 0.6rem 0 0; padding-left: 1.1rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; }
+.mls-power-empty { font-size: 0.85rem; color: var(--text-muted); padding: 1rem; text-align: center; background: rgba(0, 0, 0, 0.15); border: 1px dashed var(--border); border-radius: 8px; }
+
+@media (max-width: 520px) {
+    /* Seven-plus columns on a phone: tighter cells and a narrower name column keep the table
+       inside the card without a horizontal scroller (which would clip the tooltips). */
+    .mls-power-table { font-size: 0.8rem; }
+    .mls-power-table th { padding: 8px 1px; font-size: 0.6rem; letter-spacing: 0; }
+    .mls-power-table td { padding: 9px 1px; }
+    .mls-power-table .mls-power-manager { padding-left: 6px; }
+    .mls-power-owner { max-width: 5.5rem; font-size: 0.78rem; }
+    /* The "window closing" / "young core" qualifier stays in the Your Team summary; in the
+       table it would make the Manager column the widest thing on the row. */
+    .mls-power-table .mls-power-label-note { display: none; }
+    .mls-power-table .mls-power-label { font-size: 0.55rem; padding: 0 4px; }
+    /* On a phone, anchor each tooltip to its ROW rather than its cell, so it opens across the
+       full table width just under that row -- never off either edge of the screen. */
+    .mls-power-table tbody tr { position: relative; }
+    .mls-power-table td .tooltip-container { position: static; }
+    .mls-power-table .tooltip-container .mls-power-tooltip,
+    .mls-power-table .tooltip-container .mls-power-tooltip-left,
+    .mls-power-table .tooltip-container .mls-power-tooltip-right { left: 4px; right: 4px; width: auto; top: calc(100% - 2px); }
+}
+
+/* Team direction labels (see assignPowerLabels in mls.js). Green = win now, blue = close,
+   amber = on the fence (redraft Bubble), red = sell / long odds. */
+.mls-power-label {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+.mls-power-label-note { font-weight: 600; text-transform: none; letter-spacing: 0; opacity: 0.85; }
+.mls-power-label-contender { color: #4ade80; background: rgba(74, 222, 128, 0.1); border-color: rgba(74, 222, 128, 0.45); }
+.mls-power-label-retool { color: #93c5fd; background: rgba(147, 197, 253, 0.1); border-color: rgba(147, 197, 253, 0.45); }
+.mls-power-label-bubble { color: #fbbf24; background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.45); }
+.mls-power-label-rebuild,
+.mls-power-label-longshot { color: #fca5a5; background: rgba(252, 165, 165, 0.1); border-color: rgba(252, 165, 165, 0.45); }
+
+/* "Your Team" summary above the table, edged in the label's color. */
+.mls-power-summary-card {
+    margin-bottom: 0.9rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+}
+.mls-power-summary-contender { border-left-color: #4ade80; }
+.mls-power-summary-retool { border-left-color: #93c5fd; }
+.mls-power-summary-bubble { border-left-color: #fbbf24; }
+.mls-power-summary-rebuild,
+.mls-power-summary-longshot { border-left-color: #fca5a5; }
+.mls-power-summary-head { font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mls-power-summary-head .mls-power-label { margin-top: 0; font-size: 0.7rem; }
+.mls-power-summary-facts { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+.mls-power-summary-facts strong { color: var(--text-main); }
+.mls-power-summary-advice { font-size: 0.82rem; color: var(--text-main); margin-top: 6px; line-height: 1.45; }
+
+/* Active Roster card's Power Rankings snapshot (see renderRosterPowerStrip in mls.js): your
+   own ranks only, same tier colors as the table. Seven evenly split cells fit a 360px phone. */
+.mls-roster-power {
+    margin-bottom: 0.9rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+.mls-roster-power-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 0.55rem; }
+.mls-roster-power-title { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
+.mls-roster-power-head .mls-power-label { margin-top: 0; }
+.mls-roster-power-of { font-size: 0.72rem; color: var(--text-muted); }
+.mls-roster-power-stats { display: grid; gap: 4px; } /* column count set inline: one per stat */
+.mls-roster-power-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0.35rem 0.1rem;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.18);
+}
+.mls-roster-power-stat-name { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+.mls-roster-power-stat-rank { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+.mls-roster-power-link { display: inline-block; margin-top: 0.55rem; font-size: 0.75rem; font-weight: 600; color: #c4b5fd; }
+.mls-roster-power-link:hover { color: #ddd6fe; }
+@media (max-width: 520px) {
+    /* All seven cells stay on one row at 360px: slimmer padding and labels. */
+    .mls-roster-power { padding: 0.65rem 0.6rem; }
+    .mls-roster-power-stats { gap: 3px; }
+    .mls-roster-power-stat-name { font-size: 0.55rem; letter-spacing: 0; }
+    .mls-roster-power-stat-rank { font-size: 0.95rem; }
+}
+
+/* Scout tab's temporary "moved to the Roster tab" pointer -- see goToPowerRankings in mls.js
+   for when to remove it. */
+.mls-moved-pointer { padding-top: 0.9rem; padding-bottom: 0.9rem; }
+.mls-moved-pointer-text { margin: 0; }
+.mls-moved-pointer-link { color: #c4b5fd; font-weight: 600; white-space: nowrap; }

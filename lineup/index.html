@@ -374,7 +374,7 @@
          Bug-fix-only or behind-the-scenes deploys leave it alone.
          Also bump CACHE_NAME in /sw.js on EVERY deploy - that's a separate number (cache
          busting, not a user-facing version), and it's required even when this one stays put. -->
-    <div class="app-version">My Lineup Strategist v2.10.0</div>
+    <div class="app-version">My Lineup Strategist v2.11.0</div>
 </div>
 
         <!-- ROSTER TAB -->
@@ -515,7 +515,7 @@
                 </div>
             </div>
 
-            <button id="autoFetchRosBtn" class="btn btn-secondary" style="width: 100%;" onclick="autoFetchRosRankings(this)" title="Pulls market-consensus values from FantasyCalc/LeagueLogs. These settings are shared with the Scout tab's Power Rankings feature - changing them here updates them there too.">
+            <button id="autoFetchRosBtn" class="btn btn-secondary" style="width: 100%;" onclick="autoFetchRosRankings(this)" title="Pulls market-consensus values from FantasyCalc/LeagueLogs. These settings are shared with the Scout tab's Trade Finder - changing them here updates them there too.">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
                 Auto-Fetch ROS Rankings
             </button>
@@ -534,6 +534,10 @@
             </div>
         </header>
         
+        <!-- Your row of the Positional Power Rankings (full table further down this tab), filled
+             by renderRosterPowerStrip in mls.js. Hidden when there's nothing to rank. -->
+        <div id="rosterPowerStrip" class="mls-roster-power" style="display: none;" aria-live="polite"></div>
+
         <button id="rosterSyncBtn" class="btn btn-primary mb-3" style="display: none;" onclick="syncActiveLeague()">
             Sync Sleeper Waivers & Trades
         </button>
@@ -545,6 +549,34 @@
         </div>
     </section>
     
+    <!-- POSITIONAL POWER RANKINGS (moved here from the Scout tab). Generated automatically by
+         refreshPowerRankings in mls.js whenever this tab renders -- no Calculate button. -->
+    <section class="settings-card" id="powerRankingsCard">
+        <header class="card-header">
+            <h3><span>Positional Power Rankings</span></h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">Scores every team in this league with your rankings (or Market Consensus). Start is each team's best legal starting lineup under this league's roster settings, weighed position by position against the league average, so a stud at one spot can't hide empty rooms elsewhere. Ovr is the whole roster; QB/RB/WR/TE score each whole position room, depth included. Dynasty/keeper leagues add a Future column (roster value adjusted for age) and Contender / Retool / Rebuild labels; redraft leagues get Contender / Bubble / Longshot. Based on roster strength, not the standings.</span>
+            </div>
+        </header>
+
+        <p class="card-desc">
+            See how you stack up against the rest of the league. Hover or tap any rank to see the players behind it. Teams strong where you're weak make ideal trade partners.
+        </p>
+
+        <div class="input-group mb-3">
+            <label for="powerRankingsSource">Rankings Source</label>
+            <select id="powerRankingsSource" class="form-input" onchange="updatePowerSetting('source', this.value)" aria-label="Select Source for Power Rankings">
+                <option value="custom" selected>My Rankings (uploaded above)</option>
+                <option value="market">Market Consensus (FantasyCalc / LeagueLogs)</option>
+            </select>
+        </div>
+
+        <div id="powerRankingsOutput" class="mt-3" style="display: none;" aria-live="polite">
+            <!-- The heatmap table injects here -->
+        </div>
+    </section>
+
     <!-- POSITIONAL STRENGTH OF SCHEDULE -->
     <section class="settings-card">
         <header class="card-header">
@@ -982,34 +1014,15 @@
         <div id="tradeOutput" class="scout-output-container"></div>
     </section>
     
-    <!-- POSITIONAL STRENGTH -->
-<section class="settings-card">
-    <header class="card-header">
-        <h3><span>Positional Power Rankings</span></h3>
-        <div class="tooltip-container">
-            <div class="tooltip-icon">i</div>
-            <span class="tooltip-text">Evaluates every team's positional strength based on your own custom board or live market data.</span>
-        </div>
-    </header>
-    
-    <p class="card-desc">
-        See how you stack up against the rest of the league. Hover or tap on any positional rank to see the players driving that score. Find teams who are strong where you are weak to identify ideal trade partners.
-    </p>
-
-    <div class="input-group mb-3">
-        <label for="powerRankingsSource">Rankings Source</label>
-        <select id="powerRankingsSource" class="form-input" aria-label="Select Source for Power Rankings">
-            <option value="custom" selected>My Custom ROS Rankings</option>
-            <option value="market">Market Consensus (FantasyCalc / LeagueLogs)</option>
-        </select>
-    </div>
-
-    <button class="btn btn-purple" style="width: 100%;" onclick="runPositionalStrength()">Calculate League Strengths</button>
-
-    <div id="powerRankingsOutput" class="mt-4" style="display: none;">
-        <!-- The heatmap table injects here -->
-    </div>
-</section>
+    <!-- POSITIONAL POWER RANKINGS: moved to the Roster tab (2026-09-27). This one-line pointer
+         catches people who still look for it here -- see goToPowerRankings in mls.js for the
+         removal note. -->
+    <section class="settings-card mls-moved-pointer" id="powerRankingsScoutPointer">
+        <p class="card-desc mls-moved-pointer-text">
+            <strong>Positional Power Rankings</strong> now live on the Roster tab and update automatically.
+            <a href="#" class="mls-moved-pointer-link" onclick="goToPowerRankings(); return false;">Go to Power Rankings &rarr;</a>
+        </p>
+    </section>
 
     <!-- TRADE FINDER -->
 <section class="settings-card">
@@ -1203,7 +1216,7 @@
             <!-- Step 7 (Previously Step 6) -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">7</span> Positional Power Rankings</h4>
-                <p class="step-desc">Found on the <strong class="text-main">Scout</strong> tab, this tool evaluates every team's positional strength based on your custom ROS rankings or live market data. It generates a heatmap table of your league's rosters—hover or tap on any positional rank to see the specific players driving that score. Use this to quickly find ideal trade partners who are strong where you are weak! The same rankings also power the Waiver Wire Assistant's <strong class="text-main">All My Leagues</strong> search: look up a player and each league shows your power rank at his position. Set <strong class="text-main">Looking To</strong> to <strong class="text-main">Buy / Add</strong> to flag the leagues where you're weak there and he'd move you up, or <strong class="text-main">Sell / Drop</strong> to flag the leagues where you own him and have depth to spare. Each league is scored with its own ROS rankings (Market Consensus if it has none).</p>
+                <p class="step-desc">Found on the <strong class="text-main">Roster</strong> tab and generated automatically from your rankings (or Market Consensus data). Every team in your league is ranked 1 to N: <strong class="text-main">Start</strong> scores each team's best legal starting lineup under your league's roster settings, measuring each position's starters against the league average and weighting by how many lineup spots that position fills (one position can lift a lineup, but only up to 150% of average, so an elite QB can't hide empty RB and WR rooms). <strong class="text-main">Ovr</strong> scores the whole roster, and QB/RB/WR/TE score each whole position room. Hover or tap any rank to see the players behind it; teams strong where you're weak make ideal trade partners. Each team also gets a label. In dynasty and keeper leagues it's <strong class="text-main">Contender</strong> (top-third starting lineup), <strong class="text-main">Retool</strong> (mid-pack lineup with a decent future) or <strong class="text-main">Rebuild</strong> (bottom-third lineup, or mid-pack with an aging roster), using a <strong class="text-main">Future</strong> column (future value) that adjusts each roster's value for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less. It's a heuristic, not a projection. In redraft leagues it's <strong class="text-main">Contender</strong> / <strong class="text-main">Bubble</strong> / <strong class="text-main">Longshot</strong>. Labels reflect roster strength only, not the standings. The same rankings also power the Waiver Wire Assistant's <strong class="text-main">All My Leagues</strong> search: look up a player and each league shows your power rank at his position. Set <strong class="text-main">Looking To</strong> to <strong class="text-main">Buy / Add</strong> to flag the leagues where you're weak there and he'd move you up, or <strong class="text-main">Sell / Drop</strong> to flag the leagues where you own him and have depth to spare. Each league is scored with its own rankings (Market Consensus if it has none).</p>
             </div>
 
             <!-- Step 8 (Previously Step 7) -->
