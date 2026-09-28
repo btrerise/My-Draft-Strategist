@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <!-- Pinch-zoom intentionally allowed: no maximum-scale/user-scalable lock, so mobile users can zoom if they need to -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     
     <!-- Added basic SEO / Description -->
     <meta name="description" content="Advanced fantasy football draft strategist and tracker.">
@@ -13,6 +13,8 @@
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Draft Board player headshots -->
+    <link rel="preconnect" href="https://sleepercdn.com">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Browser Tab Favicon -->
@@ -69,6 +71,7 @@
 </script>
 </head>
 <body>
+<a href="#main" class="skip-link">Skip to content</a>
 
 <header class="header">
     <div class="header-left">
@@ -166,14 +169,16 @@
     </div>
 </nav>
 
-<main class="container">
+<main id="main" class="container">
+<h1 class="sr-only">My Draft Strategist</h1>
 
    <!-- SETUP TAB -->
 <div id="setupTab" class="tab-content active">
+    <h2 class="sr-only">Setup</h2>
     
     <!-- LARGE HERO LOGO -->
     <div class="setup-hero">
-        <img src="images/logo.svg" alt="My Draft Strategist" class="hero-logo" width="1200" height="400" onerror="this.style.display='none'">
+        <img src="images/logo.svg" alt="My Draft Strategist" class="hero-logo" fetchpriority="high" width="1200" height="400" onerror="this.style.display='none'">
     </div>
 
     <!-- Cross-App Navigation Banner -->
@@ -529,6 +534,7 @@
 </div>
    <!-- TRACKER TAB -->
 <div id="trackerTab" class="tab-content">
+    <h2 class="sr-only">Tracker</h2>
     
     <!-- Clean Stacked Row Layout for Tracker Control Card -->
     <section class="settings-card tracker-controls-card">
@@ -569,6 +575,7 @@
 
     <!-- TEAM TAB -->
 <div id="teamTab" class="tab-content">
+    <h2 class="sr-only">Team</h2>
     
     <div id="byeWarningContainer"></div>
 
@@ -699,6 +706,7 @@
 </div>
    <!-- DRAFT BOARD TAB (Grid View) -->
 <div id="boardTab" class="tab-content">
+    <h2 class="sr-only">Draft Board</h2>
     
     <!-- UPDATED: Flex layout to accommodate the toggle on the right -->
 <div class="board-header-group" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
@@ -733,6 +741,7 @@
     
    <!-- GUIDE TAB -->
 <div id="guideTab" class="tab-content">
+    <h2 class="sr-only">Guide</h2>
     <section class="settings-card">
         <header class="card-header">
             <h3>
@@ -855,7 +864,7 @@
 </div>
 </main>
 <!-- BOTTOM HYBRID NAVIGATION -->
-<nav class="nav-bar">
+<nav class="nav-bar" aria-label="Bottom Navigation">
     <button class="nav-btn" data-target="tracker" onclick="showTab('tracker')">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
         <span>Tracker</span>

@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <!-- Removed user-scalable=no to ensure mobile accessibility -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>My Lineup Strategist</title>
     <link rel="canonical" href="https://mydraftstrategist.com/lineup/" />
     <link rel="icon" href="../images/5775.svg">
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0a0e17">
 
     <!-- Google Fonts: Outfit (Matches MDS for visual continuity) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,6 +58,8 @@
 </script>
 </head>
 <body>
+<!-- Targets #mainApp (not #main): mls.js looks up #mainApp for swipe handling. -->
+<a href="#mainApp" class="skip-link">Skip to content</a>
 
 <!-- Screen-reader-only announcement region for tab changes (see showTab in mls.js) --
      visually hidden via .sr-only, but announced by assistive tech whenever its text changes. -->
@@ -114,7 +118,8 @@
     </div>
 </nav>
 
-<main id="mainApp">
+<!-- Header sits outside <main> (as in MDS) so the skip link jumps past it and it reads as the
+     page banner landmark. -->
     <header class="header">
         <div class="header-left">
             <button class="hamburger-btn" onclick="toggleDrawer()" aria-label="Toggle Menu" aria-expanded="false">
@@ -144,6 +149,9 @@
         </div>
     </header>
 
+<main id="mainApp">
+    <h1 class="sr-only">My Lineup Strategist</h1>
+
     <div class="container">
 
         <!-- SETUP PROGRESS: text version of the pulse prompts, with how-to and a jump button per
@@ -161,6 +169,7 @@
 
         <!-- Dashboard TAB -->
 <div id="setupTab" class="tab-content active">
+    <h2 class="sr-only">Dashboard</h2>
     <!-- Info & Guide Banner Shortcut -->
     <div class="guide-banner" id="guideBanner">
         <div class="cluster cluster-md" onclick="showTab('guide')" role="button" tabindex="0" aria-label="Read the User Guide" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('guide');}" style="flex-grow: 1; cursor: pointer;">
@@ -379,6 +388,7 @@
 
         <!-- ROSTER TAB -->
 <div id="rosterTab" class="tab-content">
+    <h2 class="sr-only">Roster</h2>
     
     <!-- REST-OF-SEASON RANKINGS (moved to top: this is the freshness-critical upload, surfaced
          first rather than buried below the roster list, per the rankings-upload restructuring.
@@ -615,6 +625,7 @@
 
         <!-- LINEUP TAB -->
 <div id="lineupTab" class="tab-content">
+    <h2 class="sr-only">Lineup</h2>
 
     <!-- WEEKLY MATCHUP RANKINGS (moved to top: this is the one upload that needs re-doing
          every single week, so freshness needs to be visible before anything else here) -->
@@ -852,6 +863,7 @@
         
         <!-- SCOUT TAB -->
 <div id="scoutTab" class="tab-content">
+    <h2 class="sr-only">Scout</h2>
     
     <!-- INFO BANNER -->
     <div class="info-banner" id="sleeperSyncBanner" style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -1151,6 +1163,7 @@
 </div>
         <!-- USER GUIDE TAB -->
 <div id="guideTab" class="tab-content">
+    <h2 class="sr-only">Guide</h2>
     <section class="settings-card">
         <header class="card-header">
             <h3>
@@ -1301,7 +1314,10 @@
     </section>
 </div>
 
-   <!-- BOTTOM HYBRID NAVIGATION -->
+    </div> <!-- Closes .container (was previously left unclosed) -->
+</main> <!-- Closes #mainApp -->
+
+<!-- BOTTOM HYBRID NAVIGATION -->
 <nav class="nav-bar" aria-label="Lineup Bottom Navigation">
     <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
@@ -1320,7 +1336,6 @@
         <span>Scout</span>
     </button>
 </nav>
-</main> <!-- Closes #mainApp -->
 
 <!-- Rankings Upload Preview Modal (shared by ROS & Weekly uploads) -->
 <div id="rankingsPreviewOverlay" class="mls-preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingsPreviewTitle">
