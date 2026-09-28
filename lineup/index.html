@@ -374,7 +374,7 @@
          Bug-fix-only or behind-the-scenes deploys leave it alone.
          Also bump CACHE_NAME in /sw.js on EVERY deploy - that's a separate number (cache
          busting, not a user-facing version), and it's required even when this one stays put. -->
-    <div class="app-version">My Lineup Strategist v2.9.2</div>
+    <div class="app-version">My Lineup Strategist v2.10.0</div>
 </div>
 
         <!-- ROSTER TAB -->
@@ -775,7 +775,7 @@
                         Waiver Insights
                         <div class="tooltip-container">
                             <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">When on, also compares your weakest eligible starter at each position against the best available free agent there - the same idea as the Lineup Insights bench comparison, pointed at waivers instead of your bench.</span>
+                            <span class="tooltip-text">When on, also compares your weakest eligible starter at each position against the best available free agent there - the same idea as the Lineup Insights bench comparison, pointed at waivers instead of your bench. If none of them would beat your starters, the results say so.</span>
                         </div>
                     </span>
                 </div>
@@ -840,7 +840,7 @@
                 <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML='';">Clear</button>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">Auto-Find scans every player nobody in this league has rostered, sorted by your Weekly or ROS rankings. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules; "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Or paste your own list of targets below; available players are checked the same way, using the Compare Against and Rank By settings above. Switch "Search In" to All My Leagues and the same pasted list is checked against every league you've synced at once, showing where each player is a free agent, where you already own him, and who has him everywhere else.</span>
+                    <span class="tooltip-text">Auto-Find scans every player nobody in this league has rostered, sorted by your Weekly or ROS rankings. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules; "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Or paste your own list of targets below; available players are checked the same way, using the Compare Against and Rank By settings above. Switch "Search In" to All My Leagues and the same pasted list is checked against every league you've synced at once, showing where each player is a free agent, where you already own him, and who has him everywhere else. Each league also shows your Positional Power Rank at his position; set Looking To to Buy / Add or Sell / Drop and the search flags the leagues where that move makes the most sense.</span>
                 </div>
             </div>
         </header>
@@ -909,6 +909,17 @@
                 <button type="button" class="mls-segmented-btn" data-scope="all" aria-pressed="false" onclick="setWaiverScope('all')">All My Leagues</button>
             </div>
             <small id="waiverScopeHint" class="text-helper mt-1">Checks these players against the league you have active, using the Compare Against and Rank By settings above.</small>
+        </div>
+
+        <!-- Only shown in All My Leagues mode (see applyWaiverScanSettingsToUI). Steers which
+             leagues the search flags, using each league's Positional Power Rankings. -->
+        <div class="input-group mb-2" id="waiverIntentWrap" style="display: none;">
+            <label id="waiverIntentLabel">Looking To</label>
+            <div class="mls-segmented" id="waiverIntentToggle" role="group" aria-labelledby="waiverIntentLabel">
+                <button type="button" class="mls-segmented-btn active" data-intent="buy" aria-pressed="true" onclick="setWaiverIntent('buy')">Buy / Add</button>
+                <button type="button" class="mls-segmented-btn" data-intent="sell" aria-pressed="false" onclick="setWaiverIntent('sell')">Sell / Drop</button>
+            </div>
+            <small id="waiverIntentHint" class="text-helper mt-1"></small>
         </div>
 
         <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
@@ -1192,7 +1203,7 @@
             <!-- Step 7 (Previously Step 6) -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">7</span> Positional Power Rankings</h4>
-                <p class="step-desc">Found on the <strong class="text-main">Scout</strong> tab, this tool evaluates every team's positional strength based on your custom ROS rankings or live market data. It generates a heatmap table of your league's rosters—hover or tap on any positional rank to see the specific players driving that score. Use this to quickly find ideal trade partners who are strong where you are weak!</p>
+                <p class="step-desc">Found on the <strong class="text-main">Scout</strong> tab, this tool evaluates every team's positional strength based on your custom ROS rankings or live market data. It generates a heatmap table of your league's rosters—hover or tap on any positional rank to see the specific players driving that score. Use this to quickly find ideal trade partners who are strong where you are weak! The same rankings also power the Waiver Wire Assistant's <strong class="text-main">All My Leagues</strong> search: look up a player and each league shows your power rank at his position. Set <strong class="text-main">Looking To</strong> to <strong class="text-main">Buy / Add</strong> to flag the leagues where you're weak there and he'd move you up, or <strong class="text-main">Sell / Drop</strong> to flag the leagues where you own him and have depth to spare. Each league is scored with its own ROS rankings (Market Consensus if it has none).</p>
             </div>
 
             <!-- Step 8 (Previously Step 7) -->
