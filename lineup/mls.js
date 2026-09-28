@@ -163,6 +163,12 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         autoLockOverridesMap: readJSON('mls_autolock_overrides_map', {}),
         manualStartersMap: readJSON('mds_season_manual_starters', {}),
         manualBenchMap: readJSON('mds_season_manual_bench', {}),
+        // leagueId -> which rankings that league's saved lineup was built from (see
+        // getLeagueRankingsStamp). Each saved player carries the posRank/flexRank it was
+        // optimized with, so a lineup saved before new rankings were assigned kept showing
+        // "Unranked" in every league except the one the upload happened in. optimizeLineup
+        // compares against this and recomputes a stale lineup instead of just re-showing it.
+        lineupRankingsStamps: readJSON('mls_lineup_rankings_stamps', {}),
         swapSourceId: null,
         touchStartX: 0,
         touchEndX: 0,
@@ -196,7 +202,14 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
         // data is { playerId: { pts_ppr, ... } } or null if never fetched; week guards against a
         // stale week's numbers being shown after currentNflWeek moves on.
         lineupProjections: { week: null, data: null, fetchedAt: 0 },
-        // Not persisted -- leagueId -> { week, points, fetchedAt, finalKey }: this roster's
+        // Not persisted -- leagueIds whose lineup optimizeLineup computed this session before
+        // lineupProjections had loaded, i.e. without the FLEX projection fallback (see
+        // compareFlexCandidates). refreshLineupStats re-optimizes such a league once projections
+        // arrive, so a lineup built from a sync that beat the projections fetch doesn't keep a
+        // posRank-only FLEX pick. Starts empty on page load: a saved lineup from an earlier
+        // visit is left as-is, same as any other saved lineup.
+        projectionlessLineups: new Set(),
+        // Not persisted -- leagueId ->{ week, points, fetchedAt, finalKey }: this roster's
         // players_points from Sleeper's matchups endpoint. finalKey records which teams' games
         // were final when it was fetched, so a game finishing afterwards forces a refetch.
         lineupActualPoints: {},
@@ -1285,6 +1298,22 @@ function attachScoutSuggestionHandler(outputElId) {
         return league.pprVal === 1 ? 'pts_ppr' : (league.pprVal === 0.5 ? 'pts_half_ppr' : 'pts_std');
     }
 
+    // True once Sleeper's weekly projections (State.lineupProjections, loaded by
+    // refreshLineupStats) are in hand for the current NFL week.
+    function lineupProjectionsLoaded() {
+        const proj = State.lineupProjections;
+        return State.currentNflWeek != null && proj.week === State.currentNflWeek && !!proj.data;
+    }
+
+    // Sleeper's projected points for this player this week in the league's scoring format, or
+    // null if projections aren't loaded yet or Sleeper doesn't project this player.
+    function getLineupProjection(playerId, league) {
+        if (!lineupProjectionsLoaded() || !league) return null;
+        const row = State.lineupProjections.data[playerId];
+        const val = row ? row[getLeagueScoringKey(league)] : undefined;
+        return typeof val === 'number' ? val : null;
+    }
+
     // "@ PHI" / "vs KC" for a player's team this week, or "" when there's no game data for them
     // (fetch hasn't resolved, bye week, free agent).
     function getOpponentHTML(team) {
@@ -1330,7 +1359,7 @@ function attachScoutSuggestionHandler(outputElId) {
             return `<div class="mls-pts mls-pts-final" title="Final score. Sleeper's pre-game projection shown below."><span class="mls-pts-main">${fmt(actualRaw)}</span><span class="mls-pts-sub">${sub}</span></div>`;
         }
         if (projVal !== null) {
-            return `<div class="mls-pts" title="Sleeper's projection for this week. Informational only; the optimizer uses your rankings."><span class="mls-pts-main">${fmt(projVal)}</span><span class="mls-pts-sub">proj</span></div>`;
+            return `<div class="mls-pts" title="Sleeper's projection for this week. The optimizer uses your rankings; this only breaks a FLEX decision when neither player has a FLEX rank."><span class="mls-pts-main">${fmt(projVal)}</span><span class="mls-pts-sub">proj</span></div>`;
         }
         if (projLoaded) {
             return `<div class="mls-pts mls-pts-none" title="Sleeper doesn't have a projection for this player."><span class="mls-pts-main">&mdash;</span><span class="mls-pts-sub">proj</span></div>`;
@@ -1353,6 +1382,17 @@ function attachScoutSuggestionHandler(outputElId) {
         const league = getActiveLeague();
         const week = State.currentNflWeek;
         if (!league || !league.leagueId || week == null) return;
+
+        // This league's lineup was optimized before projections loaded, so its FLEX picks
+        // couldn't use the projection fallback (see compareFlexCandidates). Now that they're
+        // here, recompute once -- same full recompute a Sleeper sync does, so locks and
+        // manual swaps (which lock) are preserved. optimizeLineup clears the flag and
+        // re-renders, which calls back in here with nothing left to redo.
+        if (State.projectionlessLineups.has(league.leagueId) && lineupProjectionsLoaded()) {
+            State.projectionlessLineups.delete(league.leagueId); // cleared first so this can never loop
+            window.optimizeLineup(true);
+            return;
+        }
 
         State.lineupStatsRefreshing = true;
         (async () => {
@@ -1525,7 +1565,17 @@ function attachScoutSuggestionHandler(outputElId) {
     // kicked off, independent of anything this app previously recommended. Shared by
     // renderLineupUI (the "matches Sleeper" banner / per-player mismatch badges) and
     // optimizeLineup (auto-lock, below) so both read the exact same filtered list.
+    // Best Ball returns [] on purpose. Nobody sets a lineup in Best Ball, so the `starters`
+    // array Sleeper keeps on the roster isn't a lineup decision -- and in practice it can be
+    // stale or incomplete (a Best Ball DEF that played and scored still showed "Bench in
+    // Sleeper" and never auto-locked). Treating it as ground truth there caused three wrong
+    // things at once: the "Bench in Sleeper"/"Starting in Sleeper" badges, the "Differs from
+    // Sleeper lineup" banner, and auto-lock skipping that player. With [] every consumer
+    // takes its existing "no Sleeper starter data" path: no badges or banner, and auto-lock
+    // falls back to this app's own previous lineup (see isSleeperStarter in optimizeLineup).
+    // The Dashboard matrix already shows Best Ball as "BB" instead of a match/differs icon.
     function getValidSleeperStarterIds(league) {
+        if (isBestBallLeague(league)) return [];
         return (league && league.sleeperStarters) ? league.sleeperStarters.filter(id => id && id !== "0") : [];
     }
 
@@ -1727,6 +1777,23 @@ function attachScoutSuggestionHandler(outputElId) {
         });
     }
 
+    // Identifies the rankings a league currently resolves to, in the same priority order
+    // hydrateRankingsForLeague uses: its named set (id + last-updated time, so re-uploading into
+    // a set counts as a change), else its legacy per-league upload, else none. Weekly and ROS
+    // both, since the optimizer falls back to ROS when there's no Weekly.
+    function getLeagueRankingsStamp(league) {
+        if (!league) return '';
+        return ['weekly', 'ros'].map(type => {
+            const cfg = RANKING_TYPE_CONFIG[type];
+            const setId = league[cfg.leagueSetIdKey];
+            const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+            if (set) return `${set.id}@${set.updatedAt || 0}`;
+            const legacy = league[cfg.leagueLegacyDataKey];
+            if (Array.isArray(legacy) && legacy.length > 0) return `legacy@${league[cfg.leagueLegacyUpdatedKey] || 0}:${legacy.length}`;
+            return 'none';
+        }).join('|');
+    }
+
     window.switchActiveLeague = function(leagueId) {
         if (!leagueId) return;
         State.activeLeagueId = leagueId;
@@ -1864,10 +1931,36 @@ function attachScoutSuggestionHandler(outputElId) {
         if (powerStrip) { powerStrip.innerHTML = ''; powerStrip.style.display = 'none'; }
     }
 
+    // Points the Market Consensus controls (Scout tab, plus the Roster tab's copy -- they share
+    // State.marketSettings) at the active league's own format, so a fetch is priced for the
+    // league you're looking at without re-picking four dropdowns every time you switch. Runs on
+    // every active-league change and after a sync (both go through loadActiveLeagueData), so
+    // it's a default, not a lock: changing a dropdown still works and holds until the next
+    // switch. Only what the league actually knows is set -- a manual league has no scoring or
+    // league type from Sleeper, so those keep whatever was last chosen. Source (FantasyCalc
+    // vs LeagueLogs) is a preference, not a league setting, and is left alone.
+    function applyLeagueDefaultsToMarketSettings(league) {
+        if (!league) return;
+        const s = State.marketSettings;
+        const badge = league.formatBadge || '';
+
+        if (league.leagueType || badge) s.type = getPowerLeagueKind(league); // 'dynasty' (incl. keeper) or 'redraft'
+        if (league.reqs) s.qbs = ((league.reqs.SFLEX || 0) > 0 || (league.reqs.QB || 0) >= 2) ? '2' : '1';
+        if (typeof league.pprVal === 'number') {
+            // FantasyCalc only offers 1 / 0.5 / 0, so an unusual value (e.g. 0.25 PPR) rounds to the nearest.
+            s.ppr = league.pprVal >= 0.75 ? '1' : (league.pprVal >= 0.25 ? '0.5' : '0');
+        }
+        if (badge) s.tep = /\bTEP\b/.test(badge);
+
+        localStorage.setItem('mls_market_settings', JSON.stringify(s));
+        applyMarketSettingsToUI();
+    }
+
     function loadActiveLeagueData() {
         clearLeagueScopedResults();
         let league = getActiveLeague();
         if (!league) return;
+        applyLeagueDefaultsToMarketSettings(league);
         
         let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 };
         const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
@@ -6608,7 +6701,7 @@ function applyMarketSettingsToUI() {
     // ascending. Whichever `count` of them is needed to fill that position's strict slots (e.g.
     // 2 RB slots) are exactly the `count` earliest-kickoff players at that position -- anyone
     // left over (because they were already flex-allocated by rank) is "surplus" and gets
-    // reassigned into a FLEX-labeled slot instead, latest-kickoff first. If kickoff data isn't
+    // reassigned into a FLEX-labeled slot instead, in kickoff order. If kickoff data isn't
     // available for a player, they sort last (Infinity) so we never assume a game is early
     // without evidence -- and if kickoff data isn't available at all, the sort is a no-op and
     // slot assignments are left exactly as fillSlot() originally produced them.
@@ -6649,12 +6742,16 @@ function applyMarketSettingsToUI() {
             strictAssignees[pos] = indices.slice(0, strictSlotCount[pos]).map(i => starters[i].player);
             flexAssignees.push(...indices.slice(strictSlotCount[pos]).map(i => starters[i].player));
         });
-        // Latest kickoff first, so if there are multiple FLEX slots the very latest game lands
-        // in whichever one appears first in the lineup.
+        // Earliest kickoff first, so multiple FLEX slots read chronologically top-to-bottom,
+        // the same way the strict RB/WR/TE slots above them do. (This used to sort latest-
+        // first, which put e.g. the MNF player in FLEX1 above the SNF player in FLEX2 and read
+        // as reversed.) Which FLEX slot a player lands in doesn't affect late-swap flexibility
+        // -- every FLEX slot accepts the same positions -- so this is purely display order.
+        // Unknown kickoff sorts last, matching byPos above.
         flexAssignees.sort((a, b) => {
-            const aMs = a.team && State.gameTimesByTeam[a.team] ? new Date(State.gameTimesByTeam[a.team]).getTime() : -Infinity;
-            const bMs = b.team && State.gameTimesByTeam[b.team] ? new Date(State.gameTimesByTeam[b.team]).getTime() : -Infinity;
-            return bMs - aMs;
+            const aMs = a.team && State.gameTimesByTeam[a.team] ? new Date(State.gameTimesByTeam[a.team]).getTime() : NaN;
+            const bMs = b.team && State.gameTimesByTeam[b.team] ? new Date(State.gameTimesByTeam[b.team]).getTime() : NaN;
+            return (isNaN(aMs) ? Infinity : aMs) - (isNaN(bMs) ? Infinity : bMs) || 0;
         });
 
         const cursors = { RB: 0, WR: 0, TE: 0, FLEX: 0 };
@@ -6707,7 +6804,13 @@ function applyMarketSettingsToUI() {
             return;
         }
 
-        if (!forceReset && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
+        // A saved lineup is only re-shown as-is if it was built from the rankings this league
+        // uses now. Otherwise (a set was just assigned to this league from another league's
+        // upload, the set was re-uploaded, or the lineup predates stamps) it's recomputed, the
+        // same full recompute a sync does: locks and manual swaps (which lock) carry over.
+        const rankingsStamp = getLeagueRankingsStamp(league);
+        const savedLineupCurrent = State.lineupRankingsStamps[State.activeLeagueId] === rankingsStamp;
+        if (!forceReset && savedLineupCurrent && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
             renderLineupUI(); 
             return;
         }
@@ -6768,6 +6871,37 @@ function applyMarketSettingsToUI() {
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? rObj.posTier : null, flexTier: rObj ? rObj.flexTier : null, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
+        // Sleeper projections for the FLEX fallback in compareFlexCandidates. Kept in a local
+        // Map rather than spread onto each player object, because those objects are what gets
+        // saved as the lineup -- a projection baked in there would go stale while the saved
+        // lineup lives on.
+        const projectionsReady = lineupProjectionsLoaded();
+        const projById = new Map();
+        if (projectionsReady) scoredRoster.forEach(p => projById.set(p.id, getLineupProjection(p.id, league)));
+        if (projectionsReady) State.projectionlessLineups.delete(State.activeLeagueId);
+        else State.projectionlessLineups.add(State.activeLeagueId);
+
+        // Head-to-head for a FLEX-type slot (RB/WR/TE competing across positions). Tiers, in order:
+        //   1. Both have a FLEX rank -> lower FLEX rank wins. Your rankings always come first.
+        //   2. Only one has a FLEX rank -> that one wins.
+        //   3. Neither has a FLEX rank -> higher Sleeper projection wins. Position ranks aren't
+        //      comparable across positions (TE24 isn't better than WR45, it's just a shallower
+        //      list), which is what used to push low-end TEs over depth RB/WRs here.
+        //   4. Projection missing for one or both (not loaded yet, or Sleeper doesn't project
+        //      him) -> a projected player beats an unprojected one; otherwise posRank as before.
+        // Each tier is a strict ordering, so the comparator stays consistent (transitive).
+        const compareFlexCandidates = (a, b) => {
+            if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
+            if (a.flexRank !== 999 && b.flexRank === 999) return -1;
+            if (a.flexRank === 999 && b.flexRank !== 999) return 1;
+            const aProj = projById.has(a.id) ? projById.get(a.id) : null;
+            const bProj = projById.has(b.id) ? projById.get(b.id) : null;
+            if (aProj !== null && bProj !== null && aProj !== bProj) return bProj - aProj;
+            if (aProj !== null && bProj === null) return -1;
+            if (aProj === null && bProj !== null) return 1;
+            return a.posRank - b.posRank;
+        };
+
         // Taxi-squad players are held out of the starter pool entirely rather than merely
         // deprioritized the way isUnavailableThisWeek handles byes and hard-out statuses.
         // That mechanism has a deliberate last-resort fallback that will start an unavailable
@@ -6807,14 +6941,7 @@ function applyMarketSettingsToUI() {
             let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
             if (lockedIndex !== -1) { starters.push({ slot: slotLabel, player: pool.splice(lockedIndex, 1)[0], usedFlex: useFlexRank }); return; }
 
-            const compareFn = useFlexRank
-                ? (a, b) => {
-                    if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
-                    if (a.flexRank !== 999 && b.flexRank === 999) return -1;
-                    if (a.flexRank === 999 && b.flexRank !== 999) return 1;
-                    return a.posRank - b.posRank;
-                }
-                : (a, b) => a.posRank - b.posRank;
+            const compareFn = useFlexRank ? compareFlexCandidates : (a, b) => a.posRank - b.posRank;
 
             let bestIndex = findBestStarterIndex(p => posFilter(p.pos), compareFn);
             if (bestIndex !== -1) starters.push({ slot: slotLabel, player: pool.splice(bestIndex, 1)[0], usedFlex: useFlexRank });
@@ -6847,7 +6974,9 @@ function applyMarketSettingsToUI() {
                 if (bestFlexIdx !== -1) {
                     starters.push({ slot: slotLabel, player: pool.splice(bestFlexIdx, 1)[0], usedFlex: true });
                 } else {
-                    let bestPosIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && p.posRank !== 999, (a, b) => a.posRank - b.posRank);
+                    // No one left has a FLEX rank, so compareFlexCandidates falls through to its
+                    // projection tier -- same cross-position reasoning as the FLEX slots.
+                    let bestPosIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && p.posRank !== 999, compareFlexCandidates);
                     if (bestPosIdx !== -1) starters.push({ slot: slotLabel, player: pool.splice(bestPosIdx, 1)[0], usedFlex: false });
                     else starters.push({ slot: slotLabel, player: null, usedFlex: false });
                 }
@@ -6885,6 +7014,10 @@ function applyMarketSettingsToUI() {
 
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = pool;
+        // Written even in batch mode: it's one short string per league, not the full lineup
+        // maps the batch caller defers.
+        State.lineupRankingsStamps[State.activeLeagueId] = rankingsStamp;
+        localStorage.setItem('mls_lineup_rankings_stamps', JSON.stringify(State.lineupRankingsStamps));
 
         // Batch runs defer both writes to the caller -- see the note on this function's
         // signature. State above is updated either way, so a batch that somehow failed to
@@ -8624,8 +8757,13 @@ window.runMatchupSim = async function() {
         // isExcludedFromSimulation, which answers a different question ("is this player likely
         // to take the field"): a healthy taxi rookie would pass that check and still be an
         // illegal suggestion.
+        //
+        // Bench players whose game has already kicked off are dropped for the same reason:
+        // Sleeper won't let you move them into the lineup anymore, so "Player Y outscored
+        // Player Z" after TNF (or the early Sunday slate) is a suggestion you can't act on.
+        // refreshGameTimes was awaited above, so hasKickedOff is current for this week.
         const benchPool = usingLocalLineup
-            ? (State.manualBenchMap[league.leagueId] || []).filter(p => !p.isTaxi)
+            ? (State.manualBenchMap[league.leagueId] || []).filter(p => !p.isTaxi && !hasKickedOff(p))
             : [];
         const benchIds = benchPool.map(p => p.id).filter(id => id && id !== '0');
 
@@ -8740,10 +8878,18 @@ window.runMatchupSim = async function() {
         // shared by both Lineup Insights (bench) and Waiver Insights (free agents) below,
         // since the eligibility rule and "compare against the weakest link" logic is identical
         // either way; only where the candidate came from differs.
+        //
+        // Starters whose game has already kicked off are never the target, for the mirror-
+        // image reason bench players who already played are left out of benchPool above:
+        // their slot is locked in Sleeper, so they can't be swapped out. Without this, a TNF
+        // starter's final (a fixed, zero-variance number) could be flagged as the weakest link
+        // and "lose" to a bench player you have no way to put in his place.
+        const lockedStarterIds = new Set(team1Players.filter(p => hasKickedOff({ team: p.team })).map(p => p.id));
         const compareAgainstWeakestStarter = (candidateProfile, candidatePos) => {
             const eligibleStarterIds = starterSlotTypes
                 .filter(s => slotAcceptsPos(s.slotType, candidatePos))
                 .map(s => s.id)
+                .filter(id => !lockedStarterIds.has(id))
                 .filter(id => team1ProfilesById[id]); // must have a valid profile too
             if (eligibleStarterIds.length === 0) return null;
 
@@ -8799,7 +8945,14 @@ window.runMatchupSim = async function() {
         // to measure against), so "checked N" never overstates the work.
         let waiverInsightsStatus = null;
         if (State.simSettings.waiverInsights) {
-            waiverInsightsStatus = { checkedCount: 0, positions: [], noRankings: false, failed: false };
+            // startersAllStarted / kickedOffCount let the empty-result message name the real
+            // reason nothing was compared, now that already-started starters and free agents
+            // are left out (see lockedStarterIds above and the candidates filter below).
+            waiverInsightsStatus = {
+                checkedCount: 0, positions: [], noRankings: false, failed: false,
+                startersAllStarted: team1Players.length > 0 && team1Players.every(p => lockedStarterIds.has(p.id)),
+                kickedOffCount: 0
+            };
             const checkedPositions = new Set();
             try {
                 if (State.rosRankings.length === 0 && State.marketRankings.length === 0) {
@@ -8808,7 +8961,14 @@ window.runMatchupSim = async function() {
                 const nameToIdIndex = await getCleanNameToIdIndex();
                 const candidates = getTopWaiverCandidatesByPosition(rosterMap, 3)
                     .map(c => ({ ...c, id: nameToIdIndex[c.cleanName] }))
-                    .filter(c => c.id && !isExcludedFromSimulation(playerMap[c.id]));
+                    .filter(c => c.id && !isExcludedFromSimulation(playerMap[c.id]))
+                    // A free agent whose game has kicked off is locked on Sleeper until next
+                    // week -- same "can't act on it" reasoning as the bench filter above.
+                    .filter(c => {
+                        if (!hasKickedOff({ team: (playerMap[c.id] || {}).team })) return true;
+                        waiverInsightsStatus.kickedOffCount++;
+                        return false;
+                    });
 
                 if (candidates.length > 0) {
                     const candidateIds = candidates.map(c => c.id);
