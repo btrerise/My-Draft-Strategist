@@ -1726,8 +1726,8 @@ function attachScoutSuggestionHandler(outputElId) {
                     ${lineupIcon} ${earlyIcon}
                 </td>
                 <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap;">
-                    <button class="btn-sm btn-secondary" style="padding: 0.3rem 0.5rem;" data-focus-key="up:${escapeHtml(l.leagueId)}" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''} aria-label="Move ${escapeHtml(l.name)} up">▲</button>
-                    <button class="btn-sm btn-secondary" style="padding: 0.3rem 0.5rem;" data-focus-key="down:${escapeHtml(l.leagueId)}" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled style="opacity:0.3;"' : ''} aria-label="Move ${escapeHtml(l.name)} down">▼</button>
+                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="up:${escapeHtml(l.leagueId)}" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} up">▲</button>
+                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="down:${escapeHtml(l.leagueId)}" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} down">▼</button>
                     <button class="btn-sm btn-danger" style="padding: 0.3rem 0.5rem; margin-left: 0.3rem;" onclick="deleteLeagueManager('${l.leagueId}')" aria-label="Remove ${escapeHtml(l.name)}">✕</button>
                 </td>
             </tr>`;

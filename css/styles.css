@@ -1457,6 +1457,17 @@ body {
 .tooltip-container:hover .tooltip-text.tt-dismissed:not(.mobile-visible) {
     visibility: hidden; opacity: 0;
 }
+/* Icon-less tooltips, where the badge/status icon/cell itself is the trigger (data-tt-self is
+   set by initTooltips in js/utils.js): League Command Center status icons and badges, Power
+   Rankings cells, the T-Score badge on Draft Tracker cards. */
+.tooltip-container[data-tt-self]:focus-visible {
+    outline: 2px solid var(--primary-green);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+.tooltip-container[data-tt-self]:focus-visible > .tooltip-text:not(.tt-dismissed) {
+    visibility: visible; opacity: 1; transform: translateY(0);
+}
 
 /* Mobile tap-to-toggle class */
 .tooltip-text.mobile-visible {
@@ -1781,6 +1792,12 @@ button.close-chip {
 .mls-league-row-btn:focus-visible {
     outline: 2px solid var(--primary-green);
     outline-offset: -2px;
+}
+/* ▲/▼ on the first/last league. The dimming used to be a second style="" attribute on a button
+   that already had one, which browsers ignore, so disabled arrows looked clickable. */
+.mls-league-move-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
 /* Action Buttons within slots */
@@ -4523,7 +4540,11 @@ a.nav-btn,
    leftward (see buildTooltip in renderPowerRankingsTable). */
 .mls-power-table .tooltip-container .mls-power-tooltip { display: none; width: 220px; font-weight: normal; z-index: 1005; text-align: left; }
 .mls-power-table .tooltip-container:hover .mls-power-tooltip,
+.mls-power-table .tooltip-container:focus-visible .mls-power-tooltip,
 .mls-power-table .tooltip-container .mls-power-tooltip.mobile-visible { display: block; }
+/* Dismissed with Escape or a second tap/press (see initTooltips in js/utils.js). */
+.mls-power-table .tooltip-container:hover .mls-power-tooltip.tt-dismissed:not(.mobile-visible),
+.mls-power-table .tooltip-container:focus-visible .mls-power-tooltip.tt-dismissed:not(.mobile-visible) { display: none; }
 .mls-power-table .tooltip-container .mls-power-tooltip-left { left: -10px; right: auto; }
 .mls-power-table .tooltip-container .mls-power-tooltip-right { right: 0; left: auto; }
 .mls-power-tooltip-title { font-weight: 700; color: var(--text-main); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
