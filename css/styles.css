@@ -688,6 +688,11 @@ html { scroll-padding-top: 5rem; }
     text-align: center;
     margin-bottom: 1.5rem;
 }
+/* MLS: the hero sits outside the tabs (above the setup checklist), so hide it whenever the
+   Dashboard (#setupTab) isn't the active tab. */
+.container:not(:has(> #setupTab.active)) > .mls-hero {
+    display: none;
+}
 .hero-logo {
     width: 100%;
     max-width: 500px;
