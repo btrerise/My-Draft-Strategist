@@ -1537,6 +1537,47 @@ html { scroll-padding-top: 5rem; }
 .mls-player-row-info { display: flex; align-items: center; gap: 0.6rem; overflow: hidden; }
 .mls-pos-badge-sizing { min-width: 26px; padding: 2px 4px; text-align: center; }
 .mls-player-row-text { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+
+/* MLS player headshots (Roster list + Lineup starters/bench) -- see playerHeadshotHTML in
+   lineup/mls.js. The circle always renders at a fixed size with the player's initials inside;
+   the Sleeper photo sits on top and removes itself if it fails to load, so rows keep one
+   shape and the name column starts at the same x whether or not a photo exists. */
+.mls-headshot {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.mls-headshot-initials {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+    line-height: 1;
+}
+.mls-headshot-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.mls-headshot-def .mls-headshot-initials { font-size: 0.56rem; }
+body.mls-hide-headshots .mls-headshot { display: none; }
+@media (max-width: 480px) {
+    .mls-headshot { width: 28px; height: 28px; }
+    .mls-headshot-initials { font-size: 0.56rem; }
+    .mls-headshot-def .mls-headshot-initials { font-size: 0.5rem; }
+}
 .mls-player-row-meta { margin-top: 3px; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
 /* Sits between the name and the team/rank meta row -- holds status badges (injury, bye, early,
    kickoff, Sleeper-mismatch) on their own line so a heavily-flagged player doesn't crowd the
