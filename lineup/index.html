@@ -6,8 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>My Lineup Strategist</title>
     <link rel="canonical" href="https://mydraftstrategist.com/lineup/" />
-    <link rel="icon" href="../images/5775.svg">
-    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/svg+xml" href="../images/mls-favicon.svg">
+    <!-- MLS has its own manifest so installing from /lineup/ opens MLS, not MDS. Scope is "/"
+         (same as MDS) so moving between the apps stays inside the installed app. -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="../images/mls-app-icon.png">
+    <meta name="apple-mobile-web-app-title" content="Lineup Strategist">
     <meta name="theme-color" content="#0a0e17">
 
     <!-- Google Fonts: Outfit (Matches MDS for visual continuity) -->
@@ -23,7 +27,7 @@
     <link rel="stylesheet" href="../css/styles.css">
     <meta property="og:title" content=" My Lineup Strategist | My Draft Strategist">
     <meta property="og:description" content="Fantasy football lineup and draft tools allowing use of custom rankings.">
-    <meta property="og:image" content="https://mydraftstrategist.com/images/5775.svg">
+    <meta property="og:image" content="https://mydraftstrategist.com/images/mls-app-icon.png">
     <meta property="og:url" content="https://mydraftstrategist.com">
     <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json">
@@ -72,7 +76,7 @@
 <nav class="hamburger-menu" id="drawer" aria-label="Lineup Navigation">
     <div class="menu-header">
         <div class="menu-logo-section">
-            <img src="../images/5775.svg" alt="Logo" class="menu-logo-img" width="36" height="36">
+            <img src="../images/mls-favicon.svg" alt="Logo" class="menu-logo-img" width="36" height="36">
             <span>Menu</span>
         </div>
         <button class="close-menu-btn" onclick="toggleDrawer()" aria-label="Close Menu">
@@ -127,7 +131,7 @@
             </button>
             
             <div class="logo-container" onclick="showTab('setup')" role="button" tabindex="0" aria-label="Go to Dashboard" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('setup');}">
-                <img src="../images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
+                <img src="../images/mls-favicon.svg" alt="Lineup Strategist Logo" class="logo-img" width="36" height="36">
                 <div class="logo-text">My Lineup <span>Strategist</span></div>
             </div>
         </div>
@@ -154,6 +158,13 @@
 
     <div class="container">
 
+        <!-- LARGE HERO LOGO: sits above the setup checklist (which lives outside the tabs), and is
+             shown on the Dashboard only - hidden on other tabs by the .mls-hero rule in
+             css/styles.css, which checks whether #setupTab is the active tab. -->
+        <div class="setup-hero mls-hero">
+            <img src="../images/mls-logo.svg" alt="My Lineup Strategist" class="hero-logo" fetchpriority="high" width="1133" height="177" onerror="this.style.display='none'">
+        </div>
+
         <!-- SETUP PROGRESS: text version of the pulse prompts, with how-to and a jump button per
              unfinished step. Sits outside the tabs so it can show on Dashboard (all three steps),
              Roster (ROS step only) and Lineup (Weekly step only). Filled and shown/hidden by
@@ -170,6 +181,7 @@
         <!-- Dashboard TAB -->
 <div id="setupTab" class="tab-content active">
     <h2 class="sr-only">Dashboard</h2>
+
     <!-- Info & Guide Banner Shortcut -->
     <div class="guide-banner" id="guideBanner">
         <div class="cluster cluster-md" onclick="showTab('guide')" role="button" tabindex="0" aria-label="Read the User Guide" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('guide');}" style="flex-grow: 1; cursor: pointer;">
@@ -383,7 +395,7 @@
          Bug-fix-only or behind-the-scenes deploys leave it alone.
          Also bump CACHE_NAME in /sw.js on EVERY deploy - that's a separate number (cache
          busting, not a user-facing version), and it's required even when this one stays put. -->
-    <div class="app-version">My Lineup Strategist v2.11.0</div>
+    <div class="app-version">My Lineup Strategist v2.12.0</div>
 </div>
 
         <!-- ROSTER TAB -->
