@@ -1631,12 +1631,12 @@ function attachScoutSuggestionHandler(outputElId) {
         const namesHTML = lockingPlayers.map(p => escapeHtml(p.name)).join(', ');
         const chevronSvg = `<svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
         return `<div id="lockCountdownCard" class="lineup-lock-countdown-collapsible">
-            <div class="lock-countdown-header" onclick="toggleLockCountdown()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLockCountdown();}" role="button" tabindex="0" aria-expanded="false">
+            <button type="button" class="lock-countdown-header btn-bare" onclick="toggleLockCountdown()" aria-expanded="false" aria-controls="lockCountdownDetail">
                 ${clockSvg}
                 <span>Next lock: <strong>${lockingPlayers.length} players</strong> &middot; ${label} <span class="lineup-lock-countdown-time">(in ${countdownStr})</span></span>
                 ${chevronSvg}
-            </div>
-            <div class="lock-countdown-detail">${namesHTML}</div>
+            </button>
+            <div class="lock-countdown-detail" id="lockCountdownDetail">${namesHTML}</div>
         </div>`;
     }
 
@@ -4612,11 +4612,13 @@ function attachScoutSuggestionHandler(outputElId) {
                     const sectionId = `waiverScanSection${g.key}`;
                     return `
                     <div class="rankings-card mls-waiver-section expanded" id="${sectionId}">
-                        <div class="rankings-card-header mls-waiver-section-header" onclick="toggleRankingsCard('${sectionId}')" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle ${g.key} results" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('${sectionId}');}">
-                            <span class="mls-waiver-section-title">${g.key} &middot; <span style="color: ${count > 0 ? 'var(--primary-green)' : 'var(--text-muted)'};">${countText}</span></span>
-                            <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <div class="rankings-card-header mls-waiver-section-header">
+                            <h4 class="mls-waiver-section-heading"><button type="button" class="rankings-card-toggle mls-waiver-section-toggle btn-bare" onclick="toggleRankingsCard('${sectionId}')" aria-expanded="true" aria-controls="${sectionId}Body">
+                                <span class="mls-waiver-section-title">${g.key} &middot; <span style="color: ${count > 0 ? 'var(--primary-green)' : 'var(--text-muted)'};">${countText}</span></span>
+                                <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </button></h4>
                         </div>
-                        <div class="rankings-card-body mls-waiver-section-body">${body}</div>
+                        <div class="rankings-card-body mls-waiver-section-body" id="${sectionId}Body">${body}</div>
                     </div>`;
                 }).join('');
             } else if (rendered.length === 1) {
@@ -5096,16 +5098,17 @@ function attachScoutSuggestionHandler(outputElId) {
         const card = document.getElementById(cardId);
         if (!card) return;
         const nowExpanded = card.classList.toggle('expanded');
-        const header = card.querySelector('.rankings-card-header');
-        if (header) header.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+        // aria-expanded lives on the <h3>/<h4> > <button> toggle, not the header wrapper.
+        const toggleBtn = card.querySelector(':scope > .rankings-card-header .rankings-card-toggle');
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
     };
 
     function setRankingsCardExpanded(cardId, expanded) {
         const card = document.getElementById(cardId);
         if (!card) return;
         card.classList.toggle('expanded', expanded);
-        const header = card.querySelector('.rankings-card-header');
-        if (header) header.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        const toggleBtn = card.querySelector(':scope > .rankings-card-header .rankings-card-toggle');
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     }
 
     function updateRankingsMetaDisplay() {
