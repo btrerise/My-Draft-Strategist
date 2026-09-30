@@ -2968,8 +2968,15 @@ function parseExcel(file) {
     // cards' collapse state also doesn't persist across a page reload).
     let isQueueCollapsed = false;
     window.toggleQueueCollapse = function() {
+        // renderBoard() replaces the header <button> via innerHTML, which would drop keyboard
+        // focus to <body>; put it back on the new header if it was focused before the toggle.
+        const hadFocus = !!(document.activeElement && document.activeElement.classList.contains('queue-header'));
         isQueueCollapsed = !isQueueCollapsed;
         renderBoard();
+        if (hadFocus) {
+            const newHeader = document.querySelector('#queueContainer .queue-header');
+            if (newHeader) newHeader.focus();
+        }
     };
 
     function renderBoard() {
@@ -3103,9 +3110,9 @@ function parseExcel(file) {
 
             if (activeQueue.length > 0) {
                 let queueExpandedClass = isQueueCollapsed ? "" : " is-expanded";
-                newQueueHTML += `<div class="queue-header${queueExpandedClass}" onclick="toggleQueueCollapse()" role="button" tabindex="0" aria-expanded="${isQueueCollapsed ? 'false' : 'true'}" aria-label="Toggle Queue" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQueueCollapse();}">                    <span class="queue-header-title"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</span>
+                newQueueHTML += `<button type="button" class="queue-header btn-bare${queueExpandedClass}" onclick="toggleQueueCollapse()" aria-expanded="${isQueueCollapsed ? 'false' : 'true'}" aria-label="Toggle Queue">                    <span class="queue-header-title"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</span>
                     <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </div>`;
+                </button>`;
 
                 if (!isQueueCollapsed) {
                     newQueueHTML += `<div class="player-pool-container" style="margin-bottom: 1.5rem; border-bottom: 1px dashed var(--border); padding-bottom: 1.5rem;">`;

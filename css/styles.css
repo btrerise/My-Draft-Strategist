@@ -1427,6 +1427,7 @@ html { scroll-padding-top: 5rem; }
     justify-content: center;
     gap: 6px;
     cursor: pointer;
+    width: 100%; /* <button> since Chunk 3; buttons don't stretch like the old <div> did */
 }
 .lock-countdown-header .chevron-icon {
     flex-shrink: 0;
@@ -2283,6 +2284,20 @@ button.close-chip {
     background: rgba(255, 255, 255, 0.03);
 }
 
+/* Waiver section toggle: <h4><button> filling the header, title left and chevron right
+   (same layout the old role="button" header div had). */
+.mls-waiver-section-heading {
+    margin: 0;
+    font-size: inherit;
+    flex: 1;
+    min-width: 0;
+}
+.rankings-card-toggle.mls-waiver-section-toggle {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+}
+
 .mls-waiver-section-title {
     font-weight: 700;
     font-size: 0.8rem;
@@ -2683,9 +2698,43 @@ button.close-chip {
     font-weight: 700;
 }
 
-/* --- COLLAPSIBLE RANKINGS CARDS (Roster/Lineup tabs) --- */
+/* --- COLLAPSIBLE RANKINGS CARDS (Roster/Lineup tabs) ---
+   The toggle is <h3><button class="rankings-card-toggle">Title + chevron</button></h3>, with
+   the freshness readout and tooltip as siblings OUTSIDE the button (a role="button" header
+   used to swallow the heading and nest the tooltip control inside it). Two CSS tricks keep
+   the old look and feel:
+   1. The button's ::after stretches over the whole header, so clicking anywhere on it still
+      toggles the card. The tooltip stays its own control without any z-index: it's positioned
+      and comes after the button in the markup, so it already paints above that layer (and no
+      z-index means its popup isn't trapped in a new stacking context).
+   2. In the ROS/Weekly cards the chevron lives inside the button but is pinned to the header's
+      right edge, where it used to sit after the tooltip. */
 .rankings-card-header {
     cursor: pointer;
+    position: relative;
+}
+.rankings-card-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.rankings-card-toggle::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+.settings-card.rankings-card > .rankings-card-header .chevron-icon {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0.75rem; /* .card-header's padding-bottom: centre on the content, not the padding */
+    margin: auto 0;
+}
+.settings-card.rankings-card:not(.expanded) > .rankings-card-header .chevron-icon {
+    bottom: 0; /* padding-bottom is 0 when collapsed (rule below) */
+}
+.settings-card.rankings-card > .rankings-card-header > .cluster {
+    margin-right: calc(18px + var(--space-2)); /* room for the pinned chevron */
 }
 
 .rankings-card:not(.expanded) .rankings-card-body {
@@ -3856,6 +3905,29 @@ button.edit-link {
   opacity: 1;
 }
 
+/* .btn-bare: shared reset for controls that used to be role="button" <div>s (logo, banners,
+   queue/lock-countdown/rankings-card toggles) and are now real <button>/<a> elements. It only
+   strips the browser's button/link chrome so they look exactly as before. Wrapped in :where()
+   so it has zero specificity: every existing class rule (.queue-header's padding, the banners'
+   inline styles, etc.) still wins over the reset regardless of source order. */
+:where(.btn-bare) {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  text-decoration: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.btn-bare:focus-visible {
+  outline: 2px solid var(--primary-green);
+  outline-offset: 2px;
+}
+
 /* --- TOAST NOTIFICATIONS --- */
 .mds-toast {
   position: fixed;
@@ -3989,6 +4061,7 @@ button.edit-link {
     cursor: pointer;
     padding-bottom: 0.4rem;
     border-bottom: 1px solid var(--border);
+    width: 100%; /* <button> since Chunk 3; buttons don't stretch like the old <div> did */
 }
 
 .queue-header-title {
@@ -4756,4 +4829,5 @@ a.nav-btn,
    for when to remove it. */
 .mls-moved-pointer { padding-top: 0.9rem; padding-bottom: 0.9rem; }
 .mls-moved-pointer-text { margin: 0; }
-.mls-moved-pointer-link { color: #c4b5fd; font-weight: 600; white-space: nowrap; }
+/* Now a <button> (was <a href="#">); the underline keeps the old link look. */
+.mls-moved-pointer-link { color: #c4b5fd; font-weight: 600; white-space: nowrap; text-decoration: underline; }

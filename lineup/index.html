@@ -132,10 +132,10 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
             
-            <div class="logo-container" onclick="showTab('setup')" role="button" tabindex="0" aria-label="Go to Dashboard" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('setup');}">
+            <button type="button" class="logo-container btn-bare" onclick="showTab('setup')" aria-label="Go to Dashboard">
                 <img src="../images/mls-favicon.svg" alt="Lineup Strategist Logo" class="logo-img" width="36" height="36">
-                <div class="logo-text">My Lineup <span>Strategist</span></div>
-            </div>
+                <span class="logo-text">My Lineup <span>Strategist</span></span>
+            </button>
         </div>
         
         <div class="header-controls">
@@ -186,11 +186,11 @@
 
     <!-- Info & Guide Banner Shortcut -->
     <div class="guide-banner" id="guideBanner">
-        <div class="cluster cluster-md" onclick="showTab('guide')" role="button" tabindex="0" aria-label="Read the User Guide" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTab('guide');}" style="flex-grow: 1; cursor: pointer;">
+        <button type="button" class="cluster cluster-md btn-bare" onclick="showTab('guide')" aria-label="Read the User Guide" style="flex-grow: 1; cursor: pointer;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
             <svg class="guide-arrow mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
-        </div>
+        </button>
         <button class="close-banner-btn close-banner-btn-sm" onclick="dismissBannerAndReveal('guideBanner', 'mls_hide_guide_banner', 'draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner">✕</button>
     </div>
     <!-- DRAFT STRATEGIST CROSS-PROMO -->
@@ -198,11 +198,11 @@
          Revealed by dismissBannerAndReveal() above, or on load by utils.js's DOMContentLoaded
          handler if guideBanner was already dismissed on an earlier visit. -->
     <div class="guide-banner" id="draftBanner" style="display: none; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4);">
-        <div class="cluster cluster-md" onclick="window.location.href='../'" role="button" tabindex="0" aria-label="Switch to My Draft Strategist" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='../';}" style="flex-grow: 1; cursor: pointer; color: var(--primary-green);">
+        <a href="../" class="cluster cluster-md btn-bare" aria-label="Switch to My Draft Strategist" style="flex-grow: 1; cursor: pointer; color: var(--primary-green);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
             <span style="font-size: 0.9rem;">Mocking or prepping for a draft? Try <strong>My Draft Strategist</strong></span>
             <svg class="guide-arrow mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
-        </div>
+        </a>
         <button class="close-banner-btn close-banner-btn-sm" onclick="dismissBanner('draftBanner', 'mls_hide_draft_banner')" aria-label="Dismiss Banner">✕</button>
     </div>
     <!-- DRAFT STRATEGIST ROSTER HANDOFF -->
@@ -421,9 +421,9 @@
          Roster too far down, so the body collapses once rankings exist, leaving a compact
          header with a freshness readout still visible for quick reference.) -->
     <section class="settings-card rankings-card" id="rosRankingsCard">
-        <header class="card-header rankings-card-header" onclick="toggleRankingsCard('rosRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Rest-of-Season Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('rosRankingsCard');}">
+        <header class="card-header rankings-card-header">
             <div class="rankings-header-titles">
-                <h3><span>Rest-of-Season (ROS) Rankings</span></h3>
+                <h3><button type="button" class="rankings-card-toggle btn-bare" onclick="toggleRankingsCard('rosRankingsCard')" aria-expanded="false" aria-controls="rosRankingsBody"><span>Rest-of-Season (ROS) Rankings</span><svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button></h3>
                 <!-- Name of the set this league uses, filled by populateRankingSetDropdown.
                      Lives in the header so it stays readable with the card collapsed. -->
                 <div id="rosHeaderSetName" class="rankings-header-set"></div>
@@ -434,11 +434,10 @@
                     <div class="tooltip-icon">i</div>
                     <span class="tooltip-text">Upload .csv or .xlsx Rest-of-Season rankings here to dictate the long-term value of your roster. This helps you evaluate trades and overall team strength.</span>
                 </div>
-                <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
         </header>
         
-        <div class="rankings-card-body">
+        <div class="rankings-card-body" id="rosRankingsBody">
             <div class="input-group mb-0">
                 <label for="rosRankingSetSelect">Ranking Set for this League</label>
                 <div class="cluster cluster-sm">
@@ -655,9 +654,9 @@
     <!-- WEEKLY MATCHUP RANKINGS (moved to top: this is the one upload that needs re-doing
          every single week, so freshness needs to be visible before anything else here) -->
     <section class="settings-card rankings-card" id="weeklyRankingsCard">
-        <header class="card-header rankings-card-header" onclick="toggleRankingsCard('weeklyRankingsCard')" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Weekly Matchup Rankings section" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRankingsCard('weeklyRankingsCard');}">
+        <header class="card-header rankings-card-header">
             <div class="rankings-header-titles">
-                <h3><span>Weekly Matchup Rankings</span></h3>
+                <h3><button type="button" class="rankings-card-toggle btn-bare" onclick="toggleRankingsCard('weeklyRankingsCard')" aria-expanded="false" aria-controls="weeklyRankingsBody"><span>Weekly Matchup Rankings</span><svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button></h3>
                 <div id="weeklyHeaderSetName" class="rankings-header-set"></div>
             </div>
             <div class="cluster cluster-sm">
@@ -666,11 +665,10 @@
                     <div class="tooltip-icon">i</div>
                     <span class="tooltip-text">Upload .csv or .xlsx Weekly Matchup Rankings to optimize your Start/Sit decisions for the current week.</span>
                 </div>
-                <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
         </header>
         
-        <div class="rankings-card-body">
+        <div class="rankings-card-body" id="weeklyRankingsBody">
             <div class="input-group mb-0">
                 <label for="weeklyRankingSetSelect">Ranking Set for this League</label>
                 <div class="cluster cluster-sm">
@@ -1057,7 +1055,7 @@
     <section class="settings-card mls-moved-pointer" id="powerRankingsScoutPointer">
         <p class="card-desc mls-moved-pointer-text">
             <strong>Positional Power Rankings</strong> now live on the Roster tab and update automatically.
-            <a href="#" class="mls-moved-pointer-link" onclick="goToPowerRankings(); return false;">Go to Power Rankings &rarr;</a>
+            <button type="button" class="mls-moved-pointer-link btn-bare" onclick="goToPowerRankings()">Go to Power Rankings &rarr;</button>
         </p>
     </section>
 
