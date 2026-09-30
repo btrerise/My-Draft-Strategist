@@ -814,7 +814,7 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
                 if (li) li.style.display = visibleSteps.includes(step) ? '' : 'none';
             });
             const title = document.getElementById('setupChecklistTitle');
-            if (title) title.textContent = `Setup progress · ${Object.values(doneState).filter(Boolean).length} of 3 done`;
+            if (title) title.textContent = `Setup Progress · ${Object.values(doneState).filter(Boolean).length} of 3 done`;
             renderSetupStep('setupStepLeagues', 'leagues', hasLeagues,
                 hasLeagues ? `${leagueCount} league${leagueCount === 1 ? '' : 's'} synced` : 'Sync or create a league',
                 "In Add/Sync League, enter your Sleeper username and tap Import All My Leagues. Not on Sleeper? Tap Create Manual instead.",
@@ -2797,10 +2797,10 @@ function attachScoutSuggestionHandler(outputElId) {
             let te = State.sosMap[team]?.TE || "";
             html += `<tr>
                 <td style="font-weight:bold;">${team}</td>
-                <td><input type="number" class="sos-input" id="sos_${team}_QB" value="${qb}"></td>
-                <td><input type="number" class="sos-input" id="sos_${team}_RB" value="${rb}"></td>
-                <td><input type="number" class="sos-input" id="sos_${team}_WR" value="${wr}"></td>
-                <td><input type="number" class="sos-input" id="sos_${team}_TE" value="${te}"></td>
+                <td><input type="number" class="sos-input" id="sos_${team}_QB" value="${qb}" aria-label="${team} QB matchup rank"></td>
+                <td><input type="number" class="sos-input" id="sos_${team}_RB" value="${rb}" aria-label="${team} RB matchup rank"></td>
+                <td><input type="number" class="sos-input" id="sos_${team}_WR" value="${wr}" aria-label="${team} WR matchup rank"></td>
+                <td><input type="number" class="sos-input" id="sos_${team}_TE" value="${te}" aria-label="${team} TE matchup rank"></td>
             </tr>`;
         });
         tbody.innerHTML = html;

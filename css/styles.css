@@ -938,6 +938,10 @@ html { scroll-padding-top: 5rem; }
     align-items: center;
     gap: 0.5rem;
 }
+/* Toggle titles that are (or contain) a <label for> toggle their switch when clicked, so show
+   the hand cursor to say so. */
+label.toggle-title,
+.toggle-title > label { cursor: pointer; }
 .toggle-desc {
     font-size: 0.75rem;
     color: var(--text-muted);
@@ -1243,6 +1247,13 @@ html { scroll-padding-top: 5rem; }
    and Weekly. */
 .pos-checkbox-row { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4); }
 .pos-checkbox-label { display: flex; align-items: center; gap: var(--space-1); font-size: 0.85rem; cursor: pointer; }
+
+/* The <fieldset> that groups a .pos-checkbox-row with its "Check the positions..." prompt, so
+   screen readers announce the prompt with each checkbox. Browser default fieldset border,
+   padding and margin are stripped so it looks the same as the old plain wrapper; min-width: 0
+   stops the fieldset from refusing to shrink on narrow phones (a browser quirk). */
+.pos-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.pos-fieldset-legend { display: block; padding: 0; font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
 
 /* Smaller variant of .close-banner-btn for banners with less vertical room. */
 .close-banner-btn-sm { font-size: 0.85rem; padding: var(--space-1); }
