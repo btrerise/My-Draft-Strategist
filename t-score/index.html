@@ -365,7 +365,7 @@
 </div>
 
 <div style="max-width: 1100px; margin: 0.75rem auto 0; padding: 0 1rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
-    <span id="tscoreFreshness" style="font-size: 0.8rem; color: var(--text-muted, #9ca3af);"></span>
+    <span id="tscoreFreshness" aria-live="polite" style="font-size: 0.8rem; color: var(--text-muted, #9ca3af);"></span>
     <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="refreshTScoreData(this)" title="Pulls the latest data from the WR and RB Google Sheets and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
         Sync with most recent data
@@ -1400,7 +1400,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function switchTab(tabId, skipHistory) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tscore-nav-btn').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tscore-nav-btn').forEach(el => {
+        el.classList.remove('active');
+        el.setAttribute('aria-pressed', 'false');
+    });
     
     const targetTab = document.getElementById(tabId);
     if (targetTab) {
@@ -1410,6 +1413,7 @@ function switchTab(tabId, skipHistory) {
     const targetBtn = document.querySelector(`.tscore-nav-btn[onclick*="${tabId}"]`);
     if (targetBtn) {
         targetBtn.classList.add('active');
+        targetBtn.setAttribute('aria-pressed', 'true');
     }
 
     if (skipHistory !== true) {
@@ -1423,11 +1427,9 @@ function switchPosition(pos, tabId) {
     
     const btns = activeTab.querySelectorAll('.pos-toggle-btn');
     btns.forEach(btn => {
-        if (btn.dataset.pos === pos) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
+        const isActive = btn.dataset.pos === pos;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
 
     const wrContent = activeTab.querySelector('.wr-content');
@@ -1459,7 +1461,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialTab = (typeof window.getTabFromHash === 'function' && window.getTabFromHash(id => id)) || 'researchTab';
     switchTab(initialTab, true);
     history.replaceState({ tab: initialTab }, '');
+
+    // switchPosition() only runs on click, so give the WR/RB pairs their starting
+    // aria-pressed from the markup's .active class.
+    document.querySelectorAll('.pos-toggle-btn').forEach(btn => {
+        btn.setAttribute('aria-pressed', btn.classList.contains('active') ? 'true' : 'false');
+    });
 });
+
+// Focus trap for the open drawer, same as MDS/MLS. This page has no document-level
+// Escape handler, so the trap's onEscape is what closes the menu; deactivate() then
+// returns focus to the hamburger button.
+let menuFocusTrap = null;
 
 function toggleMenu() {
     const menu = document.getElementById('hamburgerMenu');
@@ -1473,6 +1486,16 @@ function toggleMenu() {
     
     if (hamburgerBtn) {
         hamburgerBtn.setAttribute('aria-expanded', isOpen);
+    }
+
+    if (isOpen) {
+        if (typeof window.createFocusTrap === 'function') {
+            menuFocusTrap = window.createFocusTrap(menu, { onEscape: toggleMenu });
+            menuFocusTrap.activate();
+        }
+    } else if (menuFocusTrap) {
+        menuFocusTrap.deactivate();
+        menuFocusTrap = null;
     }
 }
 </script>

@@ -332,6 +332,12 @@
     // flashButton intentionally NOT declared here -- previously shadowed the shared version
     // now in js/utils.js (loaded before this file). Calls below resolve to that shared version.
 
+    // Focus trap for the open drawer, mirroring MLS's toggleDrawer. No onEscape: the
+    // document-level Escape handler in the keydown listener already calls toggleMenu()
+    // when the menu is open, and the close branch below deactivates the trap, which
+    // returns focus to the hamburger button.
+    let menuFocusTrap = null;
+
     window.toggleMenu = function() {
     const menu = document.getElementById('hamburgerMenu');
     const overlay = document.getElementById('menuOverlay');
@@ -345,6 +351,16 @@
     // Announce the new state to screen readers
     if (hamburgerBtn) {
         hamburgerBtn.setAttribute('aria-expanded', isOpen);
+    }
+
+    if (isOpen) {
+        if (typeof window.createFocusTrap === 'function') {
+            menuFocusTrap = window.createFocusTrap(menu);
+            menuFocusTrap.activate();
+        }
+    } else if (menuFocusTrap) {
+        menuFocusTrap.deactivate();
+        menuFocusTrap = null;
     }
 };
 
@@ -1207,6 +1223,10 @@ window.addEventListener('popstate', (e) => {
     // same thing whether picks were streaming in or the poll had been failing for a minute.
     // This makes it report the poll's actual state: live, or amber "LIVE · stalled" stamped
     // with the last tick that came back from Sleeper.
+    // Last state written to #liveSyncAnnouncer ('off' | 'live' | 'stalled'), so the announcer
+    // only speaks on a transition, not on every 3s tick.
+    let lastAnnouncedSyncState = 'off';
+
     window.renderLiveSyncStatus = function() {
         const liveWrap = document.getElementById('liveIconWrap');
         if (!liveWrap) return;
@@ -1219,9 +1239,9 @@ window.addEventListener('popstate', (e) => {
         const isStalled = isLive && (State.liveSyncFailStreak || 0) >= LIVE_STALL_THRESHOLD;
         const lastAt = formatClockTime(State.lastLiveSyncAt);
 
-        // Writes are guarded on an actual change: this runs on every successful tick, and
-        // liveIconWrap is an aria-live region -- reassigning the same textContent 20 times a
-        // minute would have a screen reader announce "LIVE" over and over during a draft.
+        // Writes are guarded on an actual change: this runs on every successful tick, so
+        // the DOM isn't rewritten 20 times a minute. Screen reader announcements go through
+        // #liveSyncAnnouncer below, and only when the state actually changes.
         const setText = (el, text) => { if (el && el.textContent !== text) el.textContent = text; };
 
         liveWrap.classList.toggle('is-stalled', isStalled);
@@ -1242,6 +1262,34 @@ window.addEventListener('popstate', (e) => {
                 title = `Live Sync is on.${stampNote} Click to stop Live Sync.`;
             }
             if (syncBtn.title !== title) syncBtn.title = title;
+
+            // The visible "Sync" text is hidden on mobile, so the button needs its own name.
+            let ariaLabel;
+            if (!isLive) {
+                ariaLabel = 'Sync draft now';
+            } else if (isStalled) {
+                ariaLabel = "Live sync stalled, can't reach Sleeper. Click to stop";
+            } else {
+                ariaLabel = 'Live sync on, click to stop';
+            }
+            if (syncBtn.getAttribute('aria-label') !== ariaLabel) syncBtn.setAttribute('aria-label', ariaLabel);
+        }
+
+        const syncState = !isLive ? 'off' : (isStalled ? 'stalled' : 'live');
+        if (syncState !== lastAnnouncedSyncState) {
+            const announcer = document.getElementById('liveSyncAnnouncer');
+            if (announcer) {
+                let msg;
+                if (syncState === 'stalled') {
+                    msg = `Live sync stalled. Can't reach Sleeper, still retrying.${lastAt ? ` Last pick sync ${lastAt}.` : ''}`;
+                } else if (syncState === 'live') {
+                    msg = lastAnnouncedSyncState === 'stalled' ? 'Live sync recovered.' : 'Live sync on.';
+                } else {
+                    msg = 'Live sync off.';
+                }
+                announcer.textContent = msg;
+            }
+            lastAnnouncedSyncState = syncState;
         }
     };
 
@@ -2231,7 +2279,7 @@ function parseExcel(file) {
                     
                     // 2. Build the image string (excluding custom uploaded players)
                     let imgHTML = playerId && !playerId.toString().startsWith('custom_') ? 
-                        `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="draft-cell-img" onerror="this.style.display='none'">` : '';
+                        `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="draft-cell-img" alt="" width="22" height="22" loading="lazy" decoding="async" onerror="this.style.display='none'">` : '';
 
                     // 3. Inject into the cell
                     cellContent = `
@@ -2286,7 +2334,7 @@ function parseExcel(file) {
                 // 1. Grab ID and build the image tag (crossorigin removed)
                 let playerId = p.sleeperId || p.id;
                 let imgHTML = playerId && !playerId.toString().startsWith('custom_') 
-                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" onerror="this.style.display='none'">` 
+                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" alt="" width="32" height="32" loading="lazy" decoding="async" onerror="this.style.display='none'">` 
                     : `<div class="roster-avatar placeholder"></div>`;
 
                 return `
@@ -2858,11 +2906,11 @@ function parseExcel(file) {
                             ${stackBadge}
                             <div style="display: flex; align-items: center; gap: 2px;">
                                 <button type="button" onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue" aria-label="Queue ${escapeHtml(p.name)}" aria-pressed="${isQueued ? 'true' : 'false'}">${queueStarIcon}</button>
-                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
+                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Color label: ${['None', 'Green', 'Yellow', 'Orange', 'Red', 'Purple'][p.affinity || 0]}. Change color">
                                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
                                                  border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
                                                  background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
-                                                 opacity: ${p.affinity ? '1' : '0.4'}; transition: all 0.2s ease;">
+                                                 opacity: ${p.affinity ? '1' : '0.4'}; transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;">
                                     </span>
                                 </button>
                             </div>
@@ -2942,12 +2990,12 @@ function parseExcel(file) {
                             <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled' : ''} aria-label="Move ${escapeHtml(p.name)} down the queue">▼</button>
                             <span class="badge pos-badge ${escapeHtml(p.posGroup)}">${escapeHtml(p.posDisplay)}</span>
                             <div style="display: flex; align-items: center; gap: 2px;">
-                                <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue">★</button>
-                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Toggle Color Label">
+                                <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue" aria-label="Remove ${escapeHtml(p.name)} from queue">★</button>
+                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Color label: ${['None', 'Green', 'Yellow', 'Orange', 'Red', 'Purple'][p.affinity || 0]}. Change color">
                                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
                                                  border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
                                                  background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
-                                                 opacity: ${p.affinity ? '1' : '0.4'}; transition: all 0.2s ease;">
+                                                 opacity: ${p.affinity ? '1' : '0.4'}; transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;">
                                     </span>
                                 </button>
                             </div>
