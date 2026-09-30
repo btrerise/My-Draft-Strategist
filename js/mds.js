@@ -2640,6 +2640,7 @@ function parseExcel(file) {
     window.toggleRecapMath = function() {
         const breakdown = document.getElementById('recapMathBreakdown');
         const arrow = document.getElementById('recapMathArrow');
+        const btn = document.getElementById('toggleRecapMathBtn');
         const btnText = document.querySelector('#toggleRecapMathBtn span');
         if (!breakdown) return;
 
@@ -2647,10 +2648,12 @@ function parseExcel(file) {
             breakdown.style.display = 'block';
             if (arrow) arrow.style.transform = 'rotate(180deg)';
             if (btnText) btnText.innerText = 'Hide Value Breakdown';
+            if (btn) btn.setAttribute('aria-expanded', 'true');
         } else {
             breakdown.style.display = 'none';
             if (arrow) arrow.style.transform = 'rotate(0deg)';
             if (btnText) btnText.innerText = 'Show Value Breakdown';
+            if (btn) btn.setAttribute('aria-expanded', 'false');
         }
     };
 
@@ -2886,19 +2889,19 @@ function parseExcel(file) {
                     <div class="inline-editor" id="inline-edit-${p.id}" style="${p.isEditing ? 'display: flex;' : ''}">
                         <div style="display:flex; gap:0.4rem; width:100%; flex-wrap:wrap; align-items:center;">
                             <div>
-                                <label class="card-field-label">Rank</label>
+                                <label class="card-field-label" for="edit-rank-val-${p.id}">Rank</label>
                                 <input type="number" id="edit-rank-val-${p.id}" value="${escapeHtml(p.rank)}" style="width:55px;">
                             </div>
                             <div>
-                                <label class="card-field-label">Tier</label>
+                                <label class="card-field-label" for="edit-tier-val-${p.id}">Tier</label>
                                 <input type="text" id="edit-tier-val-${p.id}" value="${escapeHtml(p.tier)}" style="width:45px;">
                             </div>
                             <div>
-                                <label class="card-field-label">Team</label>
+                                <label class="card-field-label" for="edit-team-val-${p.id}">Team</label>
                                 <input type="text" id="edit-team-val-${p.id}" value="${escapeHtml(p.team)}" style="width:55px;">
                             </div>
                             <div>
-                                <label class="card-field-label">Bye</label>
+                                <label class="card-field-label" for="edit-bye-val-${p.id}">Bye</label>
                                 <input type="text" id="edit-bye-val-${p.id}" value="${escapeHtml(p.bye)}" style="width:45px;">
                             </div>
                             <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
