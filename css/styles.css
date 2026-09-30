@@ -3065,8 +3065,37 @@ button.close-chip {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
-.player-card-main { 
-    display: flex; 
+/* Tracker pool render cost: renderBoard() swaps in several hundred cards on every pick. With
+   content-visibility: auto the browser skips style/layout/paint for cards that are off-screen,
+   which is where most of that cost went. Scoped to #playerPool only -- the queue and roster are
+   short lists and gain nothing.
+   contain-intrinsic-size is the placeholder height for a card that hasn't been rendered yet;
+   `auto` makes the browser remember each card's real height once it has been seen. It sizes the
+   CONTENT box -- the card's 1rem padding and 1px border are added on top -- so these are the
+   measured card heights minus 34px: desktop 114px card -> 80px, phone 108px card (collapsed and
+   uncollapsed are within ~2px) -> 74px. A wrong value only makes the scrollbar thumb drift a
+   little while scrolling -- it can't clip a card. */
+#playerPool .player-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 80px;
+}
+@media (max-width: 767px) {
+    #playerPool .player-card { contain-intrinsic-size: auto 74px; }
+}
+/* content-visibility: auto implies paint containment, which clips anything that overflows the
+   card -- the T-Score tooltip opens below the stats row and would be cut off at the card edge.
+   Drop the containment on the one card being interacted with, and lift it above its neighbours
+   (each contained card is its own stacking context, so the next card would paint over the tooltip). */
+#playerPool .player-card:hover,
+#playerPool .player-card:focus-within,
+#playerPool .player-card:has(.tooltip-text.mobile-visible) {
+    content-visibility: visible;
+    position: relative;
+    z-index: 2;
+}
+
+.player-card-main {
+    display: flex;
     justify-content: space-between; 
     align-items: center; 
 }

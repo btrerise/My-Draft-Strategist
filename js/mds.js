@@ -2883,7 +2883,7 @@ function parseExcel(file) {
         let queueStarColor = isQueued ? "#f59e0b" : "var(--text-muted)";
 
         return `
-            <div class="player-card${expandedClass}" style="${customStyle}" role="group" aria-label="${escapeHtml(p.rank)}. ${escapeHtml(p.name)}">
+            <div class="player-card${expandedClass}" data-player-id="${p.id}" style="${customStyle}" role="group" aria-label="${escapeHtml(p.rank)}. ${escapeHtml(p.name)}">
                 
                 <div class="card-grid" style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch; text-align: left;">
                     
@@ -2964,6 +2964,7 @@ function parseExcel(file) {
     function buildQueueCardHTML(p, idx, isFirst, isLast) {
         return `
             <div class="player-card queue-card" 
+                 data-player-id="${p.id}"
                  draggable="true" 
                  ondragstart="handleQueueDragStart(event, ${idx})" 
                  ondragover="handleQueueDragOver(event)" 
@@ -3152,8 +3153,102 @@ function parseExcel(file) {
                     <p style="font-size: 0.9rem;">Try clearing your search term or adjusting your position filter.</p>
                 </div>`;
         }
-        if (poolEl) poolEl.innerHTML = newPoolHTML;
+        // --- Focus retention across the pool and queue swaps ---
+        // innerHTML replaces every card, so whatever button had keyboard focus is destroyed and
+        // focus drops to <body> -- mid-draft, every time a Live Sync pick lands. Snapshot which
+        // card and which control inside it held focus, then put focus back on the same control
+        // in the rebuilt card. If that card is gone (player drafted, or taken off the queue),
+        // move to the same control on the next card in the same list, falling back to the
+        // previous one. Covers both lists that get rebuilt here: #playerPool and the queue.
+        //
+        // The control is matched by its position among the card's focusable elements, checked
+        // against its class. Position alone is exact because every card in a list comes from the
+        // same template; the class check guards against a template change shifting the order.
+        // Class alone isn't enough: .btn-mine / .btn-draft are also the inline editor's Save /
+        // Cancel, and both queue arrows share .queue-arrow-btn.
         const queueEl = document.getElementById('queueContainer');
+        const FOCUSABLE_SEL = 'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])';
+        const KEY_CLASSES = ['btn-mine', 'btn-draft', 'edit-link', 'btn-expand', 'queue-arrow-btn'];
+        let focusSnap = null;
+        const activeEl = document.activeElement;
+        const focusList = (activeEl && activeEl !== document.body)
+            ? [poolEl, queueEl].find(el => el && el.contains(activeEl)) : null;
+        if (focusList) {
+            const card = activeEl.closest('.player-card[data-player-id]');
+            if (card) {
+                const collectIds = (start, dir) => {
+                    const ids = [];
+                    let sib = start[dir];
+                    while (sib && ids.length < 25) {
+                        if (sib.dataset && sib.dataset.playerId) ids.push(sib.dataset.playerId);
+                        sib = sib[dir];
+                    }
+                    return ids;
+                };
+                // A card that's still in edit mode keeps whatever the user had typed; without
+                // this a sync tick mid-edit silently reverts the fields to the saved values.
+                const inputVals = {};
+                card.querySelectorAll('.inline-editor input[id]').forEach(inp => { inputVals[inp.id] = inp.value; });
+                let sel = null;
+                try { if (activeEl.selectionStart != null) sel = [activeEl.selectionStart, activeEl.selectionEnd]; } catch (e) { /* number inputs */ }
+                focusSnap = {
+                    listId: focusList.id,
+                    playerId: card.dataset.playerId,
+                    index: Array.from(card.querySelectorAll(FOCUSABLE_SEL)).indexOf(activeEl),
+                    keyClass: KEY_CLASSES.find(c => activeEl.classList.contains(c)) || null,
+                    nextIds: collectIds(card, 'nextElementSibling'),
+                    prevIds: collectIds(card, 'previousElementSibling'),
+                    inputVals,
+                    sel
+                };
+            }
+        }
+
+        const restoreFocus = (listEl) => {
+            if (!focusSnap || !listEl || focusSnap.listId !== listEl.id) return;
+            const findCard = (id) => listEl.querySelector(`.player-card[data-player-id="${id}"]`);
+            const usable = (el) => el && !el.disabled && el.getClientRects().length > 0;
+            const firstUsable = (card, cls) => Array.from(card.querySelectorAll(`.${cls}`)).find(usable) || null;
+            const pickControl = (card) => {
+                const byIndex = card.querySelectorAll(FOCUSABLE_SEL)[focusSnap.index];
+                if (byIndex && (!focusSnap.keyClass || byIndex.classList.contains(focusSnap.keyClass)) && usable(byIndex)) return byIndex;
+                // Same kind of control, first usable one: an open editor's Save on a drafted
+                // card maps to the next card's Pick (its editor is closed); a queue arrow that
+                // just became disabled (card moved to the top/bottom) maps to the other arrow.
+                return (focusSnap.keyClass && firstUsable(card, focusSnap.keyClass)) || firstUsable(card, 'btn-mine');
+            };
+
+            let targetCard = findCard(focusSnap.playerId);
+            const sameCard = !!targetCard;
+            if (!targetCard) {
+                for (const id of [...focusSnap.nextIds, ...focusSnap.prevIds]) {
+                    targetCard = findCard(id);
+                    if (targetCard) break;
+                }
+            }
+            // The last queued player was just drafted or un-queued, so the queue is gone
+            // entirely: land on the top card of the pool rather than dropping to <body>.
+            if (!targetCard && listEl === queueEl && poolEl) {
+                targetCard = poolEl.querySelector('.player-card[data-player-id]');
+            }
+            if (!targetCard) return;
+            if (sameCard) {
+                Object.keys(focusSnap.inputVals).forEach(inputId => {
+                    const inp = targetCard.querySelector(`#${CSS.escape(inputId)}`);
+                    if (inp) inp.value = focusSnap.inputVals[inputId];
+                });
+            }
+            const target = pickControl(targetCard);
+            if (target) {
+                target.focus();
+                if (sameCard && focusSnap.sel) {
+                    try { target.setSelectionRange(focusSnap.sel[0], focusSnap.sel[1]); } catch (e) { /* number inputs */ }
+                }
+            }
+        };
+
+        if (poolEl) poolEl.innerHTML = newPoolHTML;
+        restoreFocus(poolEl);
         let newQueueHTML = '';
 
         if (draft && draft.queue && draft.queue.length > 0) {
@@ -3181,6 +3276,7 @@ function parseExcel(file) {
             }
         }
         if (queueEl) queueEl.innerHTML = newQueueHTML;
+        restoreFocus(queueEl);
         if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster(playerById);
 
         let otherDraftedIds = draftedPlayers.filter(id => !myTeamSet.has(id)).slice().reverse();
