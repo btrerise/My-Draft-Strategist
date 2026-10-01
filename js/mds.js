@@ -846,7 +846,7 @@ window.addEventListener('popstate', (e) => {
         // 1. Capture the original button state and apply the loading spinner
         if (!isSilent && btn) {
             originalBtnHTML = btn.innerHTML;
-            btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg class="sync-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Syncing...</span>`;
+            btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg class="sync-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Syncing…</span>`;
             btn.style.pointerEvents = 'none'; // Prevents double-clicks while loading
             btn.style.opacity = '0.8';
         }
@@ -1721,9 +1721,9 @@ function parseExcel(file) {
 
         if (metaEl) {
             metaEl.style.display = 'block';
-            metaEl.innerText = "Processing players and building database...";
+            metaEl.innerText = "Processing players and building database…";
         }
-        if (btn) btn.innerHTML = "Processing...";
+        if (btn) btn.innerHTML = "Processing…";
 
         // Yield to the browser to ensure the UI updates before the heavy lifting starts
         await new Promise(resolve => setTimeout(resolve, 15));
@@ -1932,7 +1932,7 @@ function parseExcel(file) {
         const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
         const originalText = btn.innerHTML;
-        btn.innerHTML = "Building Quick-Start...";
+        btn.innerHTML = "Building Quick-Start…";
 
         try {
             let sleeperMap = {};
@@ -2037,7 +2037,7 @@ function parseExcel(file) {
     const formatText = formatSelect.options[formatSelect.selectedIndex].text;
 
     const originalText = btn.innerHTML;
-    btn.innerHTML = "Fetching...";
+    btn.innerHTML = "Fetching…";
 
     try {
         let adpMap = {}; // Key: SleeperID (or Name string), Value: ADP
@@ -2467,7 +2467,7 @@ function parseExcel(file) {
 
         localStorage.setItem('mds_handoff_roster', JSON.stringify(payload));
 
-        if (window.showToast) window.showToast(`Sending ${players.length} players to Lineup Strategist...`);
+        if (window.showToast) window.showToast(`Sending ${players.length} players to Lineup Strategist…`);
         setTimeout(() => { window.location.href = './lineup/'; }, 700);
     };
 
@@ -2723,7 +2723,7 @@ function parseExcel(file) {
         if (!container) return;
 
         const origText = exportBtn ? exportBtn.innerText : "Export";
-        if (exportBtn) exportBtn.innerText = "Capturing...";
+        if (exportBtn) exportBtn.innerText = "Capturing…";
         
         const buttons = container.querySelectorAll('.btn-draft, #toggleRecapMathBtn');
         buttons.forEach(b => b.style.display = 'none');
