@@ -59,7 +59,7 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   These are the same functions the nav buttons call. One test also clicks a real bottom-nav
   button.
 - Coverage: 14 smoke tests and 10 screenshot tests (40 PNGs) across desktop (1280×900) and
-  phone (390×844). The MLS matchup simulator runs in its Web Worker in the smoke test, but its
+  phone (390×844), plus 2 backup → restore round trips (`backup.spec.mjs`, added in 1B). The MLS matchup simulator runs in its Web Worker in the smoke test, but its
   output isn't screenshotted because it's random.
 
 ### Known gaps (good follow-ups, not blockers)
@@ -67,7 +67,8 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
 - MLS has no ranking set loaded in the seeded state, so rank-dependent UI (power rankings,
   scout results, "Unranked" badges replaced by ranks) is only covered in its empty form.
   Chunks 3C–3E would benefit from seeding an MLS rankings upload first.
-- No test covers backup/restore. Chunk 1B's card asks for a round-trip check.
+- ~~No test covers backup/restore.~~ Covered since 1B by `tests/backup.spec.mjs` (round trip in
+  both apps).
 - `tests/`, `scripts/` and `docs/` are served publicly by Cloudflare Pages, because the site
   deploys the repo root with no build output directory. This is harmless (about 9 MB of
   baselines). To exclude them, point Pages at an output directory, which needs a build step.
@@ -297,3 +298,93 @@ toast and re-enables the button; its inline `tscoreNormalize` reaches the shared
   1B/2x/3x. Fix them as each file moves (grep `utils.js`).
 - The "stale cached utils.js" fallbacks at the top of mds.js/mls.js stay as they are (5D).
 - Next: 1B.
+
+### 1B — Move lineup modules to js/shared; storage-key registry
+
+Moved with `git mv`, so `git log --follow` works and the diffs are small. Five of the moved
+files use CRLF line endings; I kept them that way (watch out: Python's text mode or an editor
+can silently convert a whole file to LF, which shows up as a whole-file diff).
+
+| From | To | Edits beyond the import path |
+|---|---|---|
+| `lineup/db.js` | `js/shared/storage/idb.js` | header comment only |
+| `lineup/sleeperApi.js` | `js/shared/api/sleeper.js` | comment: mdsFetch now comes from net.js/globals.js |
+| `lineup/sleeperService.js` | `js/shared/api/sleeperStats.js` | imports `../storage/idb.js` |
+| `lineup/marketDataApi.js` | `js/shared/api/market.js` | `window.normalizeName` shim → `import { normalizeName } from '../names.js'` |
+| `lineup/rankingsParser.js` | `js/shared/rankings/parse.js` | same shim replacement; three "js/utils.js" comments repointed |
+| `t-score/tscore_data.js` | `js/shared/data/tscore.js` | header comment only; still a plain script defining `tScoreData` |
+
+I kept Sleeper as two files (`sleeper.js` = the endpoint client and the IndexedDB player-map
+cache, `sleeperStats.js` = weekly stats/projections/score history on `idb.js`). The card allowed
+either. Merging them would mean rewriting one file's import of the other, and 2C will likely add
+endpoints to `sleeper.js` anyway.
+
+`mls.js` imports the new paths (`../js/shared/...`). `monteCarloUi.js`, `statsEngine.js`,
+`waiverScanner.js` and `worker.js` stay in `lineup/` (3C/3F). `window.mdsFetch` and
+`window.showToast` are still read through `window.` inside the moved modules: the card only
+asked for the `normalizeName` shims, so switching them to imports is left for later (see 1A's
+"shared modules don't import each other yet").
+
+**tscore.js: only one page loads it.** The card says "both pages load it from the new path",
+but only `/` (for mds.js) ever loaded `tscore_data.js`. The T-Score page builds its tables from
+Google Sheets and its own `tscore_page_cache`, and never referenced the file. I updated the one
+`<script>` tag in `/index.html` and did not add it to the T-Score page, since that would be new
+behavior. 2A decides whether it becomes a module export.
+
+#### Storage-key registry: `js/shared/storage/keys.js`
+
+- Lists every localStorage key in use (found by grepping every literal and key builder across
+  `js/`, `lineup/`, `t-score/` and the HTML), grouped `mds` / `mls` / `unowned`, plus the
+  prefixes and both IndexedDB databases (`LineupStrategistDB`/`sleeperData`,
+  `mls_sleeper_cache`/`players`). No key was renamed. The call sites still spell their keys
+  inline; the registry is a list, not yet their source.
+- `isMdsOwnedKey` / `isMlsOwnedKey` are the filters from `getMdsOwnedKeys()` (mds.js) and
+  `getMlsOwnedKeys()` (mls.js), moved verbatim except that the string literals became the
+  registry's constants. Both functions now call `Object.keys(localStorage).filter(<predicate>)`.
+  Backup, Restore, Hard Reset and Factory Reset all go through them.
+- mls.js imports `isMlsOwnedKey`. mds.js is a classic script, so `globals.js` assigns
+  `window.isMdsOwnedKey`, which is the only new window name (checked: exactly +1 own property
+  per page compared with main).
+- **`js/boot.js` keeps its own copy of both filters on purpose.** Its rescue backup has to work
+  when no module loaded, so it can't import keys.js. keys.js says so; keep them in step by hand.
+- Found on the way, unchanged: `shared_sleeper_league_id` is a legacy key MLS only deletes now.
+  `mds_tscore_cache*` and `tscore_page_cache` are written by the T-Score page and backed up by
+  neither app. For MDS, the `!== 'mds_handoff_roster'` exclusion is redundant, since that key
+  doesn't start with `ds_`, but it's kept as-is.
+
+#### New test: `tests/backup.spec.mjs`
+
+Fills the gap 0A noted. For each app (desktop + phone) it seeds state, plants the other app's
+keys plus `mds_handoff_roster`, clicks the real Export Backup, checks the file holds exactly the
+app's keys (using an independent copy of the filter, so a change to keys.js fails here), drops
+one owned key and adds a junk one, restores through the real file input and confirm dialog, and
+after the reload checks values, the junk key's removal, untouched foreign keys, and the UI.
+MLS's Backup & Restore is a collapsed `<details>` on Setup, so the test opens it. MLS consumes
+and removes `mds_handoff_roster` on page load, so that key's survival is only asserted on MDS.
+
+Verified: the spec passes unchanged against main's code (behavior identical); it fails if
+keys.js drops the `mls_` prefix or `mds_show_headshots`.
+
+#### Other changes
+
+- `sw.js`: the six paths swapped, `keys.js` added. CACHE_NAME `v2.8.40` → `v2.8.41`. No visible
+  change, so no app version label bump.
+- Unit tests: `rankingsParser.test.mjs` imports `js/shared/rankings/parse.js`. `parserEnv.mjs`
+  still installs `window.normalizeName`, which is unused now but harmless.
+- README project-structure lines for `/js` and `/t-score`.
+
+#### Checks run
+
+`node scripts/check-precache.mjs` OK (35 precached). `node --test` 117/117.
+`cd tests && npm run check`: 28 Playwright tests pass (24 existing + 4 new), screenshots
+identical (no baseline changed).
+
+#### Left for later chunks
+
+- **2A**: tScoreData is still a global from a plain script. Make it a module export or keep it
+  global, as the 2A card says.
+- **2C**: add MDS's Sleeper calls (user, draft, draft picks) to `js/shared/api/sleeper.js`.
+- Switching call sites to the registry constants and replacing `window.mdsFetch`/`showToast`
+  in shared modules with imports. Neither is assigned to a chunk yet; 5D is the natural place.
+- Comments in `mls.js` that say "see rankingsParser.js" / "sleeperApi.js" are left (rule 3:
+  I only changed the import lines and two "Moved to …" pointers). Fix them as 3x moves code.

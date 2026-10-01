@@ -1,4 +1,4 @@
-// db.js
+// idb.js (moved from lineup/db.js in refactor chunk 1B)
 const DB_NAME = 'LineupStrategistDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'sleeperData';

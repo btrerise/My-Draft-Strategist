@@ -1,4 +1,4 @@
-// Characterization tests for lineup/rankingsParser.js (refactor chunk 0B).
+// Characterization tests for js/shared/rankings/parse.js (was lineup/rankingsParser.js) (refactor chunk 0B).
 // Inputs are real-looking rankings exports: title lines above the header, odd header casing and
 // spacing, notes tabs in workbooks. Papa/XLSX/FileReader are stand-ins, see helpers/parserEnv.mjs.
 // Oddities pinned here on purpose are listed in docs/refactor/LOG.md.
@@ -6,8 +6,8 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { installParserEnv, csvFile, xlsxFile, loadSheetJSOk, loadSheetJSFails, dedent } from './helpers/parserEnv.mjs';
-import * as parser from '../../lineup/rankingsParser.js';
-import { parseRankingsFiles } from '../../lineup/rankingsParser.js';
+import * as parser from '../../js/shared/rankings/parse.js';
+import { parseRankingsFiles } from '../../js/shared/rankings/parse.js';
 
 const env = installParserEnv();
 beforeEach(() => { env.toasts.length = 0; });

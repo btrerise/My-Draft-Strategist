@@ -1,5 +1,6 @@
-// Browser stand-ins for lineup/rankingsParser.js, which reads these globals at call time:
-//   window.normalizeName, window.findCsvQuoteProblem, window.showToast  (js/shared/globals.js)
+// Browser stand-ins for js/shared/rankings/parse.js, which reads these globals at call time:
+//   window.findCsvQuoteProblem, window.showToast  (js/shared/globals.js)
+//   (window.normalizeName is still installed, but parse.js imports names.js directly since 1B)
 //   Papa      (PapaParse, CDN script)
 //   XLSX      (SheetJS, loaded on demand through the injected loadSheetJS)
 //   FileReader

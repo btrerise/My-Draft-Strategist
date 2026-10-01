@@ -533,11 +533,10 @@
     // ds_* covers every MDS-specific key; mds_show_headshots is the one MDS setting that
     // doesn't follow that prefix. mds_handoff_roster is deliberately excluded -- it's a
     // transient signal to MLS, not a persistent setting, and backing it up would just replay
-    // a stale handoff on restore.
+    // a stale handoff on restore. The filter itself is isMdsOwnedKey in
+    // js/shared/storage/keys.js (assigned to window by js/shared/globals.js).
     function getMdsOwnedKeys() {
-        return Object.keys(localStorage).filter(k =>
-            (k.startsWith('ds_') || k === 'mds_show_headshots') && k !== 'mds_handoff_roster'
-        );
+        return Object.keys(localStorage).filter(window.isMdsOwnedKey);
     }
 
     window.exportMdsSettings = function() {

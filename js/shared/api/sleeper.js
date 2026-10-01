@@ -6,9 +6,9 @@
 // State/localStorage, updating buttons) stays behind in mls.js and is unaffected by this
 // split; it just calls these functions instead of calling fetch() directly.
 //
-// Every call here goes through window.mdsFetch (utils.js, a plain script loaded before this
-// module) rather than fetch() directly, so none of them can hang forever on a stalled
-// connection. That's the one behavior this file adds on top of a bare fetch; the ok-checks
+// Every call here goes through window.mdsFetch (js/shared/net.js, assigned to window by
+// js/shared/globals.js before this module runs) rather than fetch() directly, so none of
+// them can hang forever on a stalled connection. That's the one behavior this file adds on top of a bare fetch; the ok-checks
 // and error messages below are still exactly what their original call sites had.
 //
 // Each function's error-handling (whether it throws on a non-ok response, and with what
