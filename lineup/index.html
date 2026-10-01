@@ -172,7 +172,7 @@
              Roster (ROS step only) and Lineup (Weekly step only). Filled and shown/hidden by
              updatePulsePrompts() in mls.js. -->
         <section id="setupChecklist" class="setup-checklist" aria-labelledby="setupChecklistTitle" style="display: none;">
-            <h3 id="setupChecklistTitle" class="setup-checklist-title">Setup progress</h3>
+            <h2 id="setupChecklistTitle" class="setup-checklist-title">Setup Progress</h2>
             <ul class="setup-checklist-list">
                 <li id="setupStepLeagues"></li>
                 <li id="setupStepRos"></li>
@@ -186,7 +186,7 @@
 
     <!-- Info & Guide Banner Shortcut -->
     <div class="guide-banner" id="guideBanner">
-        <button type="button" class="cluster cluster-md btn-bare" onclick="showTab('guide')" aria-label="Read the User Guide" style="flex-grow: 1; cursor: pointer;">
+        <button type="button" class="cluster cluster-md btn-bare" onclick="showTab('guide')" style="flex-grow: 1; cursor: pointer;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
             <svg class="guide-arrow mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
@@ -278,23 +278,23 @@
 
         <div class="input-group">
             <label for="newLeagueName">League Name / Nickname</label>
-            <input type="text" id="newLeagueName" class="form-input" placeholder="Auto-fills from Sleeper if blank" aria-label="Type in League name">
+            <input type="text" id="newLeagueName" class="form-input" placeholder="Auto-fills from Sleeper if blank">
         </div>
 
         <div class="input-group">
             <label for="sleeperUsername">Sleeper Username (Optional)</label>
-            <input type="text" id="sleeperUsername" class="form-input" placeholder="e.g., fantasy_guru" aria-label="Type in Sleeper Username">
+            <input type="text" id="sleeperUsername" class="form-input" autocomplete="off" spellcheck="false" placeholder="e.g., fantasy_guru">
         </div>
         
         <div class="input-group">
-    <label class="flex-label">
-        <span>Sleeper League ID (Optional)</span>
+    <div class="flex-label">
+        <label for="sleeperLeagueId">Sleeper League ID (Optional)</label>
         <div class="tooltip-container">
             <div class="tooltip-icon">i</div>
             <span class="tooltip-text"><strong>Mobile App:</strong> League Settings &gt; General &gt; scroll to bottom.<br><br><strong>Desktop:</strong> The string of numbers in your league's URL.</span>
         </div>
-    </label>
-    <input type="text" id="sleeperLeagueId" class="form-input" placeholder="e.g., 912345678901234567" aria-label="Type in Sleeper League ID">
+    </div>
+    <input type="text" id="sleeperLeagueId" class="form-input" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="e.g., 912345678901234567">
 </div>
         
         <div class="button-row-dual">
@@ -359,8 +359,8 @@
             <summary class="sos-summary">Add Player Manually</summary>
             <div class="accordion-body">
                 <div class="manual-player-grid">
-                    <input type="text" id="manualName" class="form-input" placeholder="Player Name" autocomplete="off" aria-label="Type in player name" aria-describedby="manualKeyHint">
-                    <select id="manualPos" class="form-input" aria-label="Type in player's position">
+                    <input type="text" id="manualName" class="form-input" placeholder="Player Name" autocomplete="off" aria-label="Player name" aria-describedby="manualKeyHint">
+                    <select id="manualPos" class="form-input" aria-label="Player position">
                         <option value="QB">QB</option>
                         <option value="RB">RB</option>
                         <option value="WR">WR</option>
@@ -368,7 +368,7 @@
                         <option value="K">K</option>
                         <option value="DEF">DEF</option>
                     </select>
-                    <input type="text" id="manualTeam" class="form-input" placeholder="Team" autocomplete="off" aria-label="Type in player's team">
+                    <input type="text" id="manualTeam" class="form-input" placeholder="Team" autocomplete="off" aria-label="Player team">
                 </div>
                 <p id="manualKeyHint" class="mls-manual-key-hint">Tip: type a name and press <kbd>Enter</kbd> to pick it, then <kbd>Enter</kbd> again to add. Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> when there are several matches.</p>
                 <button class="btn btn-primary mt-2" onclick="addManualPlayer()">Add Player to Active Roster</button>
@@ -381,7 +381,7 @@
             <summary class="sos-summary">Backup & Restore</summary>
             <div class="accordion-body flex-column gap-2">
                 <button class="btn btn-primary" onclick="exportMlsSettings()">Export Backup</button>
-                <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" onchange="importMlsSettings(this)">
+                <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" aria-label="Import backup file" onchange="importMlsSettings(this)">
                 <button class="btn btn-secondary" onclick="document.getElementById('mlsImportFileInput').click()">Import Backup</button>
             </div>
         </details>
@@ -471,24 +471,26 @@
             </div>
 
             <div id="rosMultiMode" class="multi-upload-panel">
-                <label class="mb-3" style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: block;">Check the positions you want to upload:</label>
-                <div class="pos-checkbox-row">
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'QB')"> QB</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'RB')"> RB</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'WR')"> WR</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'TE')"> TE</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'FLEX')"> FLEX</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'K')"> K</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'DEF')"> DEF</label>
-                </div>
+                <fieldset class="pos-fieldset">
+                    <legend class="pos-fieldset-legend mb-3">Check the positions you want to upload:</legend>
+                    <div class="pos-checkbox-row">
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'QB')"> QB</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'RB')"> RB</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'WR')"> WR</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'TE')"> TE</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'FLEX')"> FLEX</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'K')"> K</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('ros', 'DEF')"> DEF</label>
+                    </div>
+                </fieldset>
                 <div id="rosPosInputsContainer">
-                    <div id="ros-input-wrap-QB" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="rosFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-RB" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="rosFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-WR" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="rosFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-TE" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="rosFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-FLEX" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="rosFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-K" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="rosFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="ros-input-wrap-DEF" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="rosFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-QB" class="input-group mb-2" style="display: none;"><label for="rosFileInput-QB" style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="rosFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-RB" class="input-group mb-2" style="display: none;"><label for="rosFileInput-RB" style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="rosFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-WR" class="input-group mb-2" style="display: none;"><label for="rosFileInput-WR" style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="rosFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-TE" class="input-group mb-2" style="display: none;"><label for="rosFileInput-TE" style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="rosFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-FLEX" class="input-group mb-2" style="display: none;"><label for="rosFileInput-FLEX" style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="rosFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-K" class="input-group mb-2" style="display: none;"><label for="rosFileInput-K" style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="rosFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="ros-input-wrap-DEF" class="input-group mb-2" style="display: none;"><label for="rosFileInput-DEF" style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="rosFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                 </div>
                 <p class="mds-drop-hint">Or drop each file onto its position's box.</p>
                 <button id="rosMultiProcessBtn" class="btn btn-primary mt-2" style="width: 100%;" onclick="processMultiRankings('ros', 'rosSuccessMsg')">Combine & Process Files</button>
@@ -541,9 +543,9 @@
                     <div class="input-group input-group-end">
                         <div class="toggle-row toggle-row-flush">
                             <div class="toggle-info">
-                                <span class="toggle-title">TE Premium (TEP)</span>
+                                <label class="toggle-title" for="rosMarketTep">TE Premium (TEP)</label>
                             </div>
-                            <input type="checkbox" id="rosMarketTep" class="toggle-switch" onchange="updateMarketSetting('tep', this.checked)" aria-label="Toggle Tight End Premium">
+                            <input type="checkbox" id="rosMarketTep" class="toggle-switch" onchange="updateMarketSetting('tep', this.checked)">
                         </div>
                     </div>
                 </div>
@@ -702,24 +704,26 @@
             </div>
 
             <div id="weeklyMultiMode" class="multi-upload-panel">
-                <label class="mb-3" style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: block;">Check the positions you want to upload:</label>
-                <div class="pos-checkbox-row">
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'QB')"> QB</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'RB')"> RB</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'WR')"> WR</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'TE')"> TE</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'FLEX')"> FLEX</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'K')"> K</label>
-                    <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'DEF')"> DEF</label>
-                </div>
+                <fieldset class="pos-fieldset">
+                    <legend class="pos-fieldset-legend mb-3">Check the positions you want to upload:</legend>
+                    <div class="pos-checkbox-row">
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'QB')"> QB</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'RB')"> RB</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'WR')"> WR</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'TE')"> TE</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'FLEX')"> FLEX</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'K')"> K</label>
+                        <label class="pos-checkbox-label"><input type="checkbox" onchange="togglePosInput('weekly', 'DEF')"> DEF</label>
+                    </div>
+                </fieldset>
                 <div id="weeklyPosInputsContainer">
-                    <div id="weekly-input-wrap-QB" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="weeklyFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-RB" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="weeklyFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-WR" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="weeklyFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-TE" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="weeklyFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-FLEX" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="weeklyFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-K" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="weeklyFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
-                    <div id="weekly-input-wrap-DEF" class="input-group mb-2" style="display: none;"><label style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="weeklyFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-QB" class="input-group mb-2" style="display: none;"><label for="weeklyFileInput-QB" style="font-size: 0.75rem; color: var(--primary-green);">QB File</label><input type="file" id="weeklyFileInput-QB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-RB" class="input-group mb-2" style="display: none;"><label for="weeklyFileInput-RB" style="font-size: 0.75rem; color: var(--primary-green);">RB File</label><input type="file" id="weeklyFileInput-RB" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-WR" class="input-group mb-2" style="display: none;"><label for="weeklyFileInput-WR" style="font-size: 0.75rem; color: var(--primary-green);">WR File</label><input type="file" id="weeklyFileInput-WR" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-TE" class="input-group mb-2" style="display: none;"><label for="weeklyFileInput-TE" style="font-size: 0.75rem; color: var(--primary-green);">TE File</label><input type="file" id="weeklyFileInput-TE" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-FLEX" class="input-group mb-2" style="display: none;"><label for="weeklyFileInput-FLEX" style="font-size: 0.75rem; color: var(--primary-green);">FLEX File</label><input type="file" id="weeklyFileInput-FLEX" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-K" class="input-group mb-2" style="display: none;"><label for="weeklyFileInput-K" style="font-size: 0.75rem; color: var(--primary-green);">K File</label><input type="file" id="weeklyFileInput-K" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
+                    <div id="weekly-input-wrap-DEF" class="input-group mb-2" style="display: none;"><label for="weeklyFileInput-DEF" style="font-size: 0.75rem; color: var(--primary-green);">DEF File</label><input type="file" id="weeklyFileInput-DEF" class="form-input file-input" accept=".csv, .xlsx, .xls"></div>
                 </div>
                 <p class="mds-drop-hint">Or drop each file onto its position's box.</p>
                 <button id="weeklyMultiProcessBtn" class="btn btn-primary mt-2" style="width: 100%;" onclick="processMultiRankings('weekly', 'weeklySuccessMsg')">Combine & Process Files</button>
@@ -761,14 +765,14 @@
         <div class="toggle-row toggle-row-flush mt-2">
             <div class="toggle-info">
                 <span class="toggle-title">
-                    FLEX Kickoff Optimization
+                    <label for="flexKickoffOptimizationToggle">FLEX Kickoff Optimization</label>
                     <div class="tooltip-container">
                         <div class="tooltip-icon">i</div>
                         <span class="tooltip-text">Who starts is always decided by rank first. When this is on, we then reassign which of your flex-eligible starters (RB/WR/TE) sit in strict slots vs your true FLEX slot(s), so FLEX always holds whichever starter(s) kick off latest; that's the slot with the most real-time swap flexibility on most platforms, so this maximizes how long you can wait to lock in. Turn this off if you'd rather FLEX just reflect rank order with no extra slot-shuffling.</span>
                     </div>
                 </span>
             </div>
-            <input type="checkbox" id="flexKickoffOptimizationToggle" class="toggle-switch" checked onchange="updateLineupSetting('flexKickoffOptimization', this.checked)" aria-label="Toggle FLEX Kickoff Optimization">
+            <input type="checkbox" id="flexKickoffOptimizationToggle" class="toggle-switch" checked onchange="updateLineupSetting('flexKickoffOptimization', this.checked)">
         </div>
         
         <div class="lineup-container-wrapper">
@@ -838,14 +842,14 @@
             <div class="toggle-row">
                 <div class="toggle-info">
                     <span class="toggle-title">
-                        Waiver Insights
+                        <label for="waiverInsightsToggle">Waiver Insights</label>
                         <div class="tooltip-container">
                             <div class="tooltip-icon">i</div>
                             <span class="tooltip-text">When on, also compares your weakest eligible starter at each position against the best available free agent there - the same idea as the Lineup Insights bench comparison, pointed at waivers instead of your bench. If none of them would beat your starters, the results say so.</span>
                         </div>
                     </span>
                 </div>
-                <input type="checkbox" id="waiverInsightsToggle" class="toggle-switch" onchange="updateSimSetting('waiverInsights', this.checked)" aria-label="Toggle Waiver Insights">
+                <input type="checkbox" id="waiverInsightsToggle" class="toggle-switch" onchange="updateSimSetting('waiverInsights', this.checked)">
             </div>
         </div>
 
@@ -957,9 +961,9 @@
             <div class="input-group input-group-end" id="waiverScanStartersOnlyWrap">
                 <div class="toggle-row toggle-row-flush">
                     <div class="toggle-info">
-                        <span class="toggle-title">Only Would-Starts</span>
+                        <label class="toggle-title" for="waiverScanStartersOnly">Only Would-Starts</label>
                     </div>
-                    <input type="checkbox" id="waiverScanStartersOnly" class="toggle-switch" onchange="updateWaiverScanSetting('startersOnly', this.checked)" aria-label="Only show players who would crack your starting lineup">
+                    <input type="checkbox" id="waiverScanStartersOnly" class="toggle-switch" onchange="updateWaiverScanSetting('startersOnly', this.checked)">
                 </div>
             </div>
         </div>
@@ -989,7 +993,7 @@
             <small id="waiverIntentHint" class="text-helper mt-1"></small>
         </div>
 
-        <textarea id="waiverInput" class="scout-textarea" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
+        <textarea id="waiverInput" class="scout-textarea" aria-label="Players to check" placeholder="Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
         <button id="waiverScanBtn" class="btn btn-purple mt-3" style="width: 100%;" onclick="runScout('waiver')">Scan Pasted List</button>
 
         <div id="waiverOutput" class="scout-output-container" aria-live="polite"></div>
@@ -1009,14 +1013,14 @@
         
         <!-- Players You Receive Group -->
         <div class="trade-group-header">
-            <label class="text-target-label"><span class="dot bg-target"></span> Players You Receive</label>
+            <label class="text-target-label" for="buyInput"><span class="dot bg-target"></span> Players You Receive</label>
             <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('buyInput').value='';">Clear</button>
         </div>
         <textarea id="buyInput" class="scout-textarea" placeholder="Players you'd get in this trade..."></textarea>
         
         <!-- Players You Give Group -->
         <div class="trade-group-header mt-3">
-            <label class="text-avoid-label"><span class="dot bg-avoid"></span> Players You Give Up</label>
+            <label class="text-avoid-label" for="sellInput"><span class="dot bg-avoid"></span> Players You Give Up</label>
             <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('sellInput').value='';">Clear</button>
         </div>
         <textarea id="sellInput" class="scout-textarea" placeholder="Players you'd send away..."></textarea>
@@ -1028,14 +1032,14 @@
             <div class="toggle-row">
                 <div class="toggle-info">
                     <span class="toggle-title">
-                        Waiver Adjustment
+                        <label for="tradeWaiverAdjustToggle">Waiver Adjustment</label>
                         <div class="tooltip-container">
                             <div class="tooltip-icon">i</div>
                             <span class="tooltip-text">Trading away more players than you receive frees up bench spot(s) you can refill from waivers; that's worth something on its own, and a plain sum of player values doesn't capture it. When on, whichever side of the trade has fewer total players gets a flat credit per "extra" roster spot it's worth. This is a flat estimate (see the value below).</span>
                         </div>
                     </span>
                 </div>
-                <input type="checkbox" id="tradeWaiverAdjustToggle" class="toggle-switch" checked onchange="updateTradeSetting('waiverAdjustment', this.checked)" aria-label="Toggle Waiver Adjustment">
+                <input type="checkbox" id="tradeWaiverAdjustToggle" class="toggle-switch" checked onchange="updateTradeSetting('waiverAdjustment', this.checked)">
             </div>
             <div class="input-group" id="tradeWaiverValueWrap">
                 <label for="tradeWaiverAdjustValue">Waiver Adjustment Value (per open roster spot)</label>
@@ -1120,9 +1124,9 @@
             <div class="input-group input-group-end">
                 <div class="toggle-row toggle-row-flush">
                     <div class="toggle-info">
-                        <span class="toggle-title">TE Premium (TEP)</span>
+                        <label class="toggle-title" for="marketTep">TE Premium (TEP)</label>
                     </div>
-                    <input type="checkbox" id="marketTep" class="toggle-switch" onchange="updateMarketSetting('tep', this.checked)" aria-label="Toggle Tight End Premium">
+                    <input type="checkbox" id="marketTep" class="toggle-switch" onchange="updateMarketSetting('tep', this.checked)">
                 </div>
             </div>
         </div>
@@ -1161,7 +1165,7 @@
     <div class="settings-grid mb-3">
         <div class="input-group">
             <label for="disconnectThreshold" id="thresholdLabel">Minimum Rank Gap</label>
-            <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1" aria-label="Type in the threshold for difference in ranking">
+            <input type="number" id="disconnectThreshold" class="form-input text-center" value="10" min="1">
             <small id="disconnectGapHint" class="text-helper mt-1" style="display:none; line-height: 1.3;">
                 A 10-spot gap is common for Overall rank, but huge for a single position - try 2-4 instead.
             </small>

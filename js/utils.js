@@ -532,8 +532,8 @@ function injectFeedbackForm() {
         <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); margin-top: 1rem;">
             <h4 style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.75rem;">Report a Bug / Feedback</h4>
             <form action="https://formspree.io/f/xaewqqkq" method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <input type="email" name="email" class="form-input" placeholder="Your email (optional)" style="padding: 0.5rem; font-size: 0.85rem;">
-                <textarea name="message" class="form-input" placeholder="What went wrong?" required style="padding: 0.5rem; font-size: 0.85rem; min-height: 80px; resize: vertical;"></textarea>
+                <input type="email" name="email" class="form-input" placeholder="Your email (optional)" aria-label="Your email (optional)" autocomplete="email" style="padding: 0.5rem; font-size: 0.85rem;">
+                <textarea name="message" class="form-input" placeholder="What went wrong?" aria-label="What went wrong?" required style="padding: 0.5rem; font-size: 0.85rem; min-height: 80px; resize: vertical;"></textarea>
                 <button type="submit" class="btn btn-primary btn-sm">Submit</button>
             </form>
         </div>
