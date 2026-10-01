@@ -1,0 +1,18 @@
+# Line endings: store every text file with LF (Unix) endings, and check them out that way on
+# every OS. Without this, files saved on Windows came in as CRLF, and any tool that rewrote
+# one (an editor, a script) silently flipped every line -- a whole-file diff for a one-line
+# change. See docs/refactor/LOG.md ("1B follow-up: line endings").
+* text=auto eol=lf
+
+# Binary files: never touch their bytes.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
