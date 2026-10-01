@@ -388,3 +388,98 @@ identical (no baseline changed).
   in shared modules with imports. Neither is assigned to a chunk yet; 5D is the natural place.
 - Comments in `mls.js` that say "see rankingsParser.js" / "sleeperApi.js" are left (rule 3:
   I only changed the import lines and two "Moved to …" pointers). Fix them as 3x moves code.
+
+### 1B follow-up — Line endings normalized to LF (outside the runbook, commit `4f12339`)
+
+**Why this happened outside a chunk.** During 1B, an edit script silently converted five
+CRLF (Windows line ending) files to LF, which made each one look completely rewritten in the diff. I caught
+it and restored them before committing (see the 1B entry). Afterwards the repo owner asked
+whether the endings should be made consistent everywhere, and approved doing it as its own
+small change right after 1B merged (PR #140, merge commit `759a1c8`) and **before** the
+parallel tracks (2A / 3A / 4A) start. It isn't in the runbook. Doing it before the tracks
+start means no other session's branch has these files open, so nobody gets a whole-file merge
+conflict. It's separate from 1B because a file move and a full-file rewrite in one squashed
+commit can stop Git from recognizing the move.
+
+**What changed.**
+- New `.gitattributes`: `* text=auto eol=lf`, plus explicit `binary` for images and fonts.
+  Git now stores every text file with LF and checks it out with LF on every OS. Someone
+  editing on Windows with an editor that writes CRLF gets converted back to LF on commit,
+  so this can't come back.
+- Renormalized the only 10 tracked files that were CRLF. Each was CRLF throughout (none
+  mixed): `js/shared/api/{market,sleeper,sleeperStats}.js`, `js/shared/rankings/parse.js`,
+  `js/shared/storage/idb.js`, `lineup/{monteCarloUi,statsEngine,worker}.js`, `robots.txt`,
+  `.vscode/settings.json`. The other 80 text files were already LF. Binaries (42, including
+  every screenshot baseline) are detected as binary and untouched. The four SVGs are
+  one-line files with no line endings.
+- `git diff --ignore-cr-at-eol` against main shows **no content change** in those 10 files.
+  Their diff is every line, but only the invisible line ending changed.
+- `sw.js` CACHE_NAME `v2.8.41` → `v2.8.42`. No file was added or renamed, so rule 6 doesn't
+  require it, but sw.js's own deploy note says to bump on every deploy, and served JS bytes
+  changed.
+
+**For later sessions.**
+- `git blame` on those 10 files will point at this commit for every line. Use
+  `git blame --ignore-rev 4f1233969225efd99826c52d7af2b8d5e4e36457`, or list that hash in a `.git-blame-ignore-revs` file
+  if you want it permanent.
+- A branch that was cut **before** this commit and edits one of those 10 files will conflict
+  on every line when merging main. Re-cut from main instead (rule 9 already says to branch
+  from the latest main).
+- New files are LF automatically. No editor setting needed.
+
+**Checks run.** `node scripts/check-precache.mjs` OK, `node --test` 117/117,
+`cd tests && npm run check` (28 Playwright tests, screenshots identical).
+
+### Planned, not scheduled — Rename storage keys to consistent prefixes
+
+**Why this is here.** After 1B, the repo owner asked to make the localStorage prefixes
+consistent: Lineup Strategist uses both `mls_` and `mds_season_`, and Draft Strategist uses
+`ds_` while its app name is "MDS". **No runbook chunk does this, and rule 4 currently forbids
+it** ("keep every localStorage and IndexedDB key unchanged"). The owner asked for the plan to
+be recorded here so a future session can pick it up. Nothing has been renamed. **Before
+starting, the owner has to approve the chunk and amend rule 4 for it.**
+
+**Agreed naming (owner's choice, which I agreed with).** Prefixes per app:
+- Lineup Strategist: `mls_`.
+- Draft Strategist: `mds_`.
+
+| Today | Proposed |
+|---|---|
+| `mds_season_*` (13 keys: `active_league`, `early_teams`, `leagues`, `locks_map`, `manual_bench`, `manual_starters`, `market`, `market_updated`, `ros`, `ros_updated`, `sos`, `weekly`, `weekly_updated`) | `mls_*` with the same suffix |
+| `ds_*` (every MDS key, including dynamic `ds_players_<draftId>`, `ds_storage_version`, `ds_drafts_premigration_backup` and the `ds_hide_*_banner` keys) | `mds_*` with the same suffix |
+| `mds_show_headshots` | unchanged (already `mds_`) |
+| `mds_handoff_roster` (MDS → MLS hand-off) | a cross-app name, e.g. `shared_handoff_roster`, so it can't fall under either app's prefix |
+| `mds_tscore_cache`, `mds_tscore_cache_updated` (written by T-Score, read by MDS) | `tscore_cache`, `tscore_cache_updated`, grouped with `tscore_page_cache` |
+| IndexedDB `LineupStrategistDB`, `mls_sleeper_cache` | leave as they are (re-fetchable caches; renaming only throws the cache away) |
+
+Checked in 1B: no proposed name collides with an existing key. Full key list:
+`js/shared/storage/keys.js`.
+
+**Why it's more than find-and-replace.** These names are where users' saved data lives.
+- **Migration.** On first load the new code must copy every old key to its new name, or
+  existing users open an empty app. Follow MDS's existing `ds_storage_version` migration
+  pattern (`js/mds.js`, DRAFT PLAYER-POOL STORAGE). During a transition period, copy
+  instead of moving, or keep reading the old name as a fallback. Service-worker
+  stale-while-revalidate and already-open tabs can briefly run old code that only knows
+  the old names. Delete the old keys in a later release.
+- **Order.** MLS must leave `mds_season_` (and the hand-off and T-Score keys must be
+  renamed) **before** MDS's filter becomes "starts with `mds_`". Otherwise MDS backups and
+  Hard Reset would scoop up MLS's data.
+- **Old backup files.** Backups already downloaded contain old names. Restore
+  (`importMdsSettings` / `importMlsSettings`) needs a permanent old→new translation table.
+- **`js/boot.js`** keeps its own copy of both filters (see 1B) and must be updated too.
+- **Precedent for the risk.** A comment at `lineup/mls.js` (search `'mls_season_market'`)
+  records a past bug where data was saved under one name and read under another, so it
+  silently vanished on reload.
+
+**Suggested split (two chunks, after Phases 2 and 3).**
+1. *Keys through the registry (move only).* Replace every inline key string with
+   `keys.js` constants. This is easiest once MDS storage lives in `js/mds/storage.js` (2A)
+   and MLS state in `js/mls/state.js` (3A–3F), or fold it into 5D.
+2. *Rename (behavior change).* Change the names in `keys.js`, add the one-time migration,
+   the restore translation table and the `boot.js` filter update. Extend
+   `tests/backup.spec.mjs` with an old-format backup fixture and add a migration test
+   (old keys in → new keys out, nothing lost, other app untouched). Bump CACHE_NAME.
+
+Users never see these names. The payoff is clarity for whoever works on the code, so it's
+worth doing only with the migration done carefully.
