@@ -26,6 +26,7 @@ Run before pushing changes to scripts, styles or `sw.js`:
 
 ```sh
 node scripts/check-precache.mjs        # sw.js precache list matches what the pages load
+node --test                            # unit tests for the pure modules (Node 22+)
 cd tests && npm install && npm test    # Playwright smoke tests + screenshot comparisons
 ```
 

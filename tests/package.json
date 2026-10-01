@@ -7,7 +7,8 @@
     "test": "playwright test",
     "test:update": "playwright test --update-snapshots",
     "precache": "node ../scripts/check-precache.mjs",
-    "check": "node ../scripts/check-precache.mjs && playwright test"
+    "unit": "node --test",
+    "check": "node ../scripts/check-precache.mjs && node --test && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

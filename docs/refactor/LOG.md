@@ -12,12 +12,17 @@ From the repo root:
 
 ```sh
 node scripts/check-precache.mjs              # sw.js PRECACHE_ASSETS vs. what the pages load
-cd tests && npm install && npm run check     # precache check + Playwright smoke + screenshots
+node --test                                  # unit tests in tests/unit/ (Node 22+)
+cd tests && npm install && npm run check     # precache + unit tests + Playwright smoke + screenshots
 ```
 
-- `npm test` (in `tests/`) runs Playwright only. `npm run check` runs everything.
-- Unit tests (`node --test`, chunk 0B) are not wired into `npm run check` yet. 0B should
-  add them.
+- `npm test` (in `tests/`) runs Playwright only. `npm run unit` runs only the unit tests.
+  `npm run check` runs everything.
+- Run `node --test` with no arguments, from the repo root or from `tests/`. Node 22 or newer
+  is needed: the tests import the app's `.js` ES modules directly, and the repo root has no
+  package.json, so Node has to detect module syntax on its own. `node --test tests/unit/`
+  doesn't work, because Node 22 treats a directory argument as a file. To run one suite:
+  `node --test tests/unit/rankingsParser.test.mjs`.
 - Chromium is preinstalled in Claude Code cloud sessions (`/opt/pw-browsers`). Don't run
   `playwright install` there.
 
@@ -86,3 +91,112 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   the "Sync Sleeper Waivers & Trades" step was never run). Check before treating it as a bug.
   The DEF fixture shows an "R" rookie badge because the fixture gives it `years_exp: 0`.
 - Next: 0B (unit tests), then 1A.
+
+### 0B — Characterization unit tests for the pure modules
+
+**No app files changed.** Also wired the unit tests into the existing checks: `npm run check`
+in `tests/` now runs `node --test` between check-precache and Playwright, `npm run unit` runs
+them alone, and the README's check list includes `node --test`. Playwright's
+`testMatch: /.*\.spec\.mjs$/` doesn't match `*.test.mjs`, so the two runners don't overlap.
+
+Added:
+
+| File | Covers |
+|---|---|
+| `tests/unit/statsEngine.test.mjs` | `lineup/statsEngine.js`: every export, all four boom/bust tiers, threshold boundaries, the fallback CV, `actualScore` short-circuit |
+| `tests/unit/waiverScanner.test.mjs` | `lineup/waiverScanner.js`: rank-display re-derivation, scan ordering, free-agent filtering, `fillLineup` slotting rules, every `checkAgainstLineup` status |
+| `tests/unit/rankingsParser.test.mjs` | `lineup/rankingsParser.js`: vertical, headerless, per-position and horizontal layouts; title lines; odd headers (padded, upper-case, FantasyPros `RK`/`TIERS`/`PLAYER NAME`); SoS; every diagnostic reason; xlsx notes tabs; failure paths |
+| `tests/unit/names.test.mjs` | `normalizeName` / `isNameMatch` from `js/utils.js`, including every `NAME_ALIASES` pair (it fails if an alias is added without a test row) |
+| `tests/unit/helpers/loadUtils.mjs` | Runs `js/utils.js` in a `node:vm` context with a permissive DOM stub, and returns `normalizeName`, `isNameMatch`, `findCsvQuoteProblem`, `NAME_ALIASES` |
+| `tests/unit/helpers/parserEnv.mjs` | Stand-ins for `window`, `Papa`, `XLSX` and `FileReader`, which the parser reads as globals |
+
+I checked the suites by mutating a scratch copy of the modules. Changing a boom comparison to
+`>=`, letting SoS keep decimals, changing `MAX_TITLE_ROWS`, editing an alias, changing
+`FALLBACK_CV` and swapping FLEX/SFLEX in `SLOT_ORDER` each made at least one test fail.
+
+#### Conventions
+
+- Unit tests go in `tests/unit/*.test.mjs` and helpers in `tests/unit/helpers/`. Helper names
+  don't match Node's default test globs, so they aren't run as tests. `*.spec.mjs` (Playwright)
+  doesn't match those globs either.
+- Each suite imports its module by relative path in one place, near the top. After a move,
+  only that import line changes.
+- Tests that pin odd behavior are named `CURRENT BEHAVIOR: ...`. A deliberate fix updates the
+  test and says so here. A pure move must leave them passing.
+- The Papa stub is not PapaParse. It splits simple unquoted CSV the way Papa does with
+  `header: false, skipEmptyLines: true`, and it throws on quoted input. When a test needs
+  Papa output that plain splitting can't produce, such as quote errors, it passes
+  `papaResult` verbatim. Real Papa parses File input asynchronously, but the stub is
+  synchronous, so multi-file batches always finish in upload order in these tests.
+
+#### When later chunks move these modules
+
+- **1A** (utils.js split): point `UTILS_PATH` in `helpers/loadUtils.mjs` at whatever still
+  defines these as plain-script globals. If `normalizeName`/`isNameMatch` become an ES module
+  (`js/shared/names.js`), import them directly in `names.test.mjs` instead.
+  `NAME_ALIASES` needs to stay reachable for the coverage check: export it, or read it the
+  way the helper does now. `parserEnv.mjs` also takes `findCsvQuoteProblem` from that helper.
+- **1B**: `rankingsParser.js` → `js/shared/rankings/parse.js`. Update the import in
+  `rankingsParser.test.mjs`. If `parse.js` imports `normalizeName` instead of reading
+  `window.normalizeName`, the `window.normalizeName` stub in `parserEnv.mjs` is no longer
+  used but does no harm.
+- **2C**: add MDS's title-line inputs to `rankingsParser.test.mjs` before merging
+  `findHeaderRowIndex`/`stripTitleLines` in.
+- **3C**: update the `waiverScanner.js` import. **3F**: update the `statsEngine.js` import.
+
+#### Behavior that looked wrong (tested as-is, not fixed)
+
+1. **Boom/bust thresholds are strict** (`statsEngine.js`). The comment describes boom as
+   "20+ points from a WR", but the empirical count uses `> boomThreshold`. Exactly 20 (WR/RB),
+   24 (QB) or 15 (TE) is not a boom. Exactly at the bust line is not a bust either (`<`).
+2. **Pos Rank cells like `WR2` are ignored** (`rankingsParser.js`). An explicit Pos Rank
+   column is read with `parseInt`, so the common `WR2`/`RB14` format gives NaN. The row then
+   falls back to the overall rank, as if the column weren't there. Only bare numbers work.
+3. **SoS values keep only their digits** (`rankingsParser.js`). The value goes through
+   `.replace(/[^0-9]/g, '')`, so `4.5` becomes `"45"` and `-2` becomes `"2"`. Values are
+   stored as strings.
+4. **FantasyPros headers are only partly recognized** (`rankingsParser.js`). `RK` is in
+   `KNOWN_NON_NAME_HEADERS` but isn't used as a rank column, and `TIERS` isn't `tier`. Rank
+   then comes from row order, which is right only when the file is sorted, and tiers are
+   dropped. `SOS SEASON` isn't read as SoS.
+5. **Position-named name headers depend on upload mode** (`rankingsParser.js`).
+   `VALID_NAME_HEADERS` includes `quarterback`, `running back` and `flex` for per-position
+   lists. In a single-file upload, those headers switch on the horizontal layout, which finds
+   no `... player` column and reports `no-name-column`. `Wide Receiver`, `Tight End`,
+   `Kicker` and `Defense` work in both modes.
+6. **Horizontal sheets: FLEX overwrites rank and tier** (`rankingsParser.js`). The FLEX
+   column sets `rank` and `tier`. Current exports have no `FLEX Tier` column, so any player
+   listed under FLEX loses the tier from their position section (it becomes `null`). QBs
+   (and K/DEF) get `rank` equal to their positional rank. waiverScanner's comments already
+   account for that, so it may be intended, but it's recorded here.
+7. **Name suffix stripping has no word boundary** (`js/utils.js`). The regex
+   `(jr|sr|iii|ii|iv|v)$` runs after spaces are removed, so any surname ending in those
+   letters is cut: `Ivanov` becomes `ivano`. Two different players could collide.
+8. **`isNameMatch` matches two names that both normalize to `""`** (`js/utils.js`). The
+   falsy check runs on the raw inputs, so `isNameMatch('Jr.', '123')` is `true`.
+9. **`fillLineup` ignores slot types it doesn't know** (`waiverScanner.js`). Slots outside
+   `SLOT_ORDER` (for example IDP `DL`, or `BN`) are dropped from `starters` without a
+   warning. mls.js builds its slot requirements from the app's own types (REC_FLEX and
+   WRRB_FLEX count as FLEX, SUPER_FLEX as SFLEX; see `autoReqs` in mls.js), and the scanner
+   passes `st.slot.replace(/[0-9]/g, '')`, so this probably can't happen today. I only
+   grepped this and didn't trace it fully. If an unknown slot did get through,
+   `checkAgainstLineup` could name that slot's player as "displaced".
+
+#### Checks run
+
+`node scripts/check-precache.mjs` OK. `node --test` 117/117 from both the repo root and
+`tests/`. `cd tests && npm run check` passes: 24 Playwright tests, screenshots unchanged.
+
+#### Not done / for later chunks
+
+- No `CACHE_NAME` bump and no `sw.js` change: the only new files are tests and docs, which
+  aren't served or precached.
+- The parser's xlsx path uses an `XLSX` stub, not real SheetJS. Real-file fidelity, such as
+  how SheetJS writes dates or merged cells to CSV, isn't covered.
+- The unit tests use a Papa stub so that `node --test` needs no `npm install`. 0A installs the
+  real `papaparse` 5.4.1 in `tests/node_modules`. A later chunk could run the parser
+  fixtures through it as well, which would cover quoting and tokenization. That would make
+  those tests depend on the install.
+- 0A and 0B share the branch `perf/render-storage-pass`: 0B was rebased onto 0A's commit
+  there, so merging that branch merges both chunks.
+- Next: 1A. It must update `tests/unit/helpers/loadUtils.mjs` (see above).
