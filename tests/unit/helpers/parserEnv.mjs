@@ -1,9 +1,9 @@
 // Browser stand-ins for lineup/rankingsParser.js, which reads these globals at call time:
-//   window.normalizeName, window.findCsvQuoteProblem, window.showToast  (js/utils.js)
+//   window.normalizeName, window.findCsvQuoteProblem, window.showToast  (js/shared/globals.js)
 //   Papa      (PapaParse, CDN script)
 //   XLSX      (SheetJS, loaded on demand through the injected loadSheetJS)
 //   FileReader
-// normalizeName and findCsvQuoteProblem are the real ones, loaded from js/utils.js.
+// normalizeName and findCsvQuoteProblem are the real ones, imported from js/shared/.
 //
 // The Papa stub is NOT PapaParse. It turns fixture text into rows the way Papa does for the
 // simple, unquoted CSV the fixtures use (header: false, skipEmptyLines: true): split lines,
@@ -15,7 +15,8 @@
 //
 // The XLSX stub keeps each sheet as the CSV text SheetJS's sheet_to_csv would produce, so
 // blank cells and blank rows come through as ",,," the way the real thing writes them.
-import { loadUtils } from './loadUtils.mjs';
+import { normalizeName } from '../../../js/shared/names.js';
+import { findCsvQuoteProblem } from '../../../js/shared/rankings/diagnostics.js';
 
 const workbooks = new WeakMap(); // ArrayBuffer -> fake workbook
 
@@ -25,7 +26,7 @@ function splitCsv(text) {
 }
 
 export function installParserEnv() {
-    const utils = loadUtils();
+    const utils = { normalizeName, findCsvQuoteProblem };
     const toasts = [];
 
     globalThis.window = {

@@ -23,7 +23,7 @@
 
     <!-- PapaParse for CSV reading. Kept eager: it's small and the rankings upload is the
          primary onboarding path. html2canvas (~200KB, screenshot export only) and SheetJS
-         (.xlsx upload only) load on first use instead - see loadScriptOnce in js/utils.js. -->
+         (.xlsx upload only) load on first use instead - see loadScriptOnce in js/shared/ui/scriptLoader.js. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
 
     <link rel="stylesheet" href="../css/styles.css">
@@ -195,7 +195,7 @@
     </div>
     <!-- DRAFT STRATEGIST CROSS-PROMO -->
     <!-- Starts hidden: staggered behind guideBanner so the two never stack on a first visit.
-         Revealed by dismissBannerAndReveal() above, or on load by utils.js's DOMContentLoaded
+         Revealed by dismissBannerAndReveal() above, or on load by js/shared/ui/banners.js's DOMContentLoaded
          handler if guideBanner was already dismissed on an earlier visit. -->
     <div class="guide-banner" id="draftBanner" style="display: none; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(19, 27, 44, 0.9)); border-color: rgba(16, 185, 129, 0.4);">
         <a href="../" class="cluster cluster-md btn-bare" aria-label="Switch to My Draft Strategist" style="flex-grow: 1; cursor: pointer; color: var(--primary-green);">
@@ -400,7 +400,7 @@
             </a>
         </div>
     <!-- APP VERSION (My Lineup Strategist): update this when a deploy changes the Lineup app -
-         anything under lineup/, or shared css/styles.css / js/utils.js changes that show up
+         anything under lineup/, or shared css/styles.css / js/boot.js / js/shared/ changes that show up
          here. My Draft Strategist has its own number in the root index.html.
          WHEN TO BUMP: the second number (vX.Y -> vX.Y+1) on any deploy with something a
          user would notice - a new feature, a new control or badge, or a visible change in how
@@ -1415,7 +1415,8 @@
     </div>
 </div>
 
-<script src="../js/utils.js" defer></script>
+<script src="../js/boot.js" defer></script>
+<script type="module" src="../js/shared/globals.js"></script>
     <script type="module" src="mls.js"></script>
     <!-- Registers the site-wide service worker from this page too. Before this, only js/mds.js
          (the draft page) registered it, so anyone who went straight to /lineup/ never got

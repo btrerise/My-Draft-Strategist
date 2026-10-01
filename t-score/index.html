@@ -297,7 +297,8 @@
     }
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
-    <script src="../js/utils.js" defer></script>
+    <script src="../js/boot.js" defer></script>
+    <script type="module" src="../js/shared/globals.js"></script>
 </head>
 <body>
 <a href="#main" class="skip-link">Skip to content</a>
@@ -1234,10 +1235,10 @@ function tscoreEscapeHtml(str) {
 
 // Fetches and parses one position's sheet into structured player rows.
 async function fetchTScoreSheet(pos) {
-    // window.mdsFetch (utils.js) rather than a bare fetch, for the timeout: refreshTScoreData
+    // window.mdsFetch (js/shared/net.js) rather than a bare fetch, for the timeout: refreshTScoreData
     // disables the Refresh button and only restores it in its finally, so a stalled sheet
     // request left that button dead for the rest of the session with nothing on screen to say
-    // why. Safe to reach for here even though utils.js loads via <script defer> AFTER this
+    // why. Safe to reach for here even though js/shared/globals.js (a deferred module) runs AFTER this
     // inline script -- nothing calls this function until the button is pressed, long after
     // DOMContentLoaded (same reasoning as the Papa/normalizeName note further down).
     const res = await window.mdsFetch(TSCORE_SHEET_URLS[pos]);
@@ -1377,9 +1378,9 @@ window.refreshTScoreData = async function(btn) {
 // On page open: if a previous refresh left cached data, render from that instead of the
 // static (potentially stale) HTML that ships with the page. If there's no cache yet, the
 // static tables stay exactly as written until the first refresh. Waits for DOMContentLoaded
-// specifically because Papa/normalizeName load via <script defer> in <head>, which the spec
+// specifically because Papa (<script defer>) and normalizeName (the js/shared/globals.js module) load in <head>, which the spec
 // guarantees finishes before DOMContentLoaded fires -- this inline script itself runs earlier,
-// synchronously, so it can define these functions but can't safely CALL into Papa/utils.js yet.
+// synchronously, so it can define these functions but can't safely CALL into Papa/js/shared yet.
 document.addEventListener('DOMContentLoaded', () => {
     const cachedUpdatedAt = localStorage.getItem('mds_tscore_cache_updated');
     if (cachedUpdatedAt) updateTscoreFreshnessLabel(cachedUpdatedAt);
@@ -1456,7 +1457,7 @@ window.addEventListener('popstate', (e) => {
 
 // Deep link: open the tab named in the URL hash on load (a reload, or a shared #top50Tab
 // link), else The Research. Waits for DOMContentLoaded because getTabFromHash lives in the
-// deferred utils.js. replaceState stamps this first entry with its tab so Back restores it.
+// deferred js/shared/globals.js module. replaceState stamps this first entry with its tab so Back restores it.
 document.addEventListener('DOMContentLoaded', () => {
     const initialTab = (typeof window.getTabFromHash === 'function' && window.getTabFromHash(id => id)) || 'researchTab';
     switchTab(initialTab, true);

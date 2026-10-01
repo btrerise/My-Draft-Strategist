@@ -30,7 +30,7 @@
     <!-- PapaParse: kept eager. It's small and it's needed by the primary onboarding path
          (uploading or pasting a rankings CSV), so it's usually wanted within seconds of load.
          html2canvas (~200KB, screenshot export only) and SheetJS (.xlsx upload only) are both
-         loaded on first use instead - see loadScriptOnce in js/utils.js. -->
+         loaded on first use instead - see loadScriptOnce in js/shared/ui/scriptLoader.js. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
 
     <link rel="stylesheet" href="css/styles.css">
@@ -526,7 +526,7 @@
             </a>
         </div>
     <!-- APP VERSION (My Draft Strategist): update this when a deploy changes the Draft app -
-         this page, js/mds.js, t-score/, or shared css/styles.css / js/utils.js changes that
+         this page, js/mds.js, t-score/, or shared css/styles.css / js/boot.js / js/shared/ changes that
          show up here. My Lineup Strategist has its own number in lineup/index.html.
          WHEN TO BUMP: the second number (vX.Y -> vX.Y+1) on any deploy with something a
          user would notice - a new feature, a new control or badge, or a visible change in how
@@ -882,7 +882,8 @@
         <span>Board</span>
     </button>
 </nav>
-<script src="js/utils.js" defer></script>
+<script src="js/boot.js" defer></script>
+<script type="module" src="js/shared/globals.js"></script>
     <!-- Was "../t-score/..." -- this file sits at the site root, so that walked above it.
          It only ever worked because browsers clamp a leading ".." at the origin root, which
          silently turns it back into "/t-score/...". That clamp stops covering for it the
