@@ -430,14 +430,26 @@ commit can stop Git from recognizing the move.
 **Checks run.** `node scripts/check-precache.mjs` OK, `node --test` 117/117,
 `cd tests && npm run check` (28 Playwright tests, screenshots identical).
 
-### Planned, not scheduled — Rename storage keys to consistent prefixes
+### Planned as runbook chunks 6A / 6B — Rename storage keys to consistent prefixes
 
 **Why this is here.** After 1B, the repo owner asked to make the localStorage prefixes
 consistent: Lineup Strategist uses both `mls_` and `mds_season_`, and Draft Strategist uses
-`ds_` while its app name is "MDS". **No runbook chunk does this, and rule 4 currently forbids
-it** ("keep every localStorage and IndexedDB key unchanged"). The owner asked for the plan to
-be recorded here so a future session can pick it up. Nothing has been renamed. **Before
-starting, the owner has to approve the chunk and amend rule 4 for it.**
+`ds_` while its app name is "MDS". The original runbook had no chunk for this, and rule 4
+forbade it. The owner asked for the plan to be recorded here, then approved adding it to the
+runbook. Nothing has been renamed yet.
+
+**Runbook changes (made by the 1B session, at the owner's request, after #140 merged):**
+- New **Phase 6 "Storage keys"** with two cards: **6A** "Route every storage key through
+  keys.js" (move only; needs 2C and 3F) and **6B** "Rename storage keys to mds_ / mls_
+  prefixes" (behavior change; needs 6A). A "Storage keys" lane and a row in the sizing
+  table were added too; the job count went from 19 to 21.
+- **Rule 4 amended:** "every localStorage and IndexedDB key (until 6B, which renames the
+  localStorage keys on purpose)". The exception covers only 6B, and only localStorage keys.
+  Every other chunk still must not rename a key.
+- **Order-and-tracks note:** start the MDS, MLS and Styles tracks only after the line-ending
+  change ("1B follow-up" above) is on main.
+- The 6A/6B cards carry the essentials. The detail below (the old → new table, the risks)
+  is what they point to, so keep this entry in step with them.
 
 **Agreed naming (owner's choice, which I agreed with).** Prefixes per app:
 - Lineup Strategist: `mls_`.
@@ -472,14 +484,18 @@ Checked in 1B: no proposed name collides with an existing key. Full key list:
   records a past bug where data was saved under one name and read under another, so it
   silently vanished on reload.
 
-**Suggested split (two chunks, after Phases 2 and 3).**
-1. *Keys through the registry (move only).* Replace every inline key string with
+**The split (runbook cards 6A and 6B, after Phases 2 and 3).**
+1. *6A: keys through the registry (move only).* Replace every inline key string with
    `keys.js` constants. This is easiest once MDS storage lives in `js/mds/storage.js` (2A)
-   and MLS state in `js/mls/state.js` (3A–3F), or fold it into 5D.
-2. *Rename (behavior change).* Change the names in `keys.js`, add the one-time migration,
+   and MLS state in `js/mls/state.js` (3A–3F). Key names inside HTML attributes (the
+   `dismissBanner('ds_hide_…')` handlers) may stay as text; 6A lists them for 6B. `boot.js`
+   keeps its literal filters, and 6A adds a unit test checking them against `keys.js`.
+2. *6B: rename (behavior change).* Change the names in `keys.js`, add the one-time migration,
    the restore translation table and the `boot.js` filter update. Extend
    `tests/backup.spec.mjs` with an old-format backup fixture and add a migration test
    (old keys in → new keys out, nothing lost, other app untouched). Bump CACHE_NAME.
+   Keep the old keys after copying them; deleting them is a later release, once a
+   CACHE_NAME bump has been live.
 
 Users never see these names. The payoff is clarity for whoever works on the code, so it's
 worth doing only with the migration done carefully.
