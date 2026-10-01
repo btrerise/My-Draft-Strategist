@@ -620,6 +620,9 @@ when its reader moves.
   `js/shared/globals.js` (calls mds.js "a classic script"), `js/boot.js`, `js/shared/storage/keys.js`,
   `js/shared/html.js` and `lineup/mls.js` still name `js/mds.js`. I left them to keep this a pure move.
   Fix them when those files are next touched. `grep -rn "mds\.js"` finds them all.
+  **Owned by 5D:** at the owner's request, the runbook's 5D card now includes a comment sweep
+  (grep for `mds.js`, `mls.js`, `utils.js` and the old lineup/ file names in comments and point
+  them at the current files, comments only). Anything still stale at 5D gets fixed there.
 - `js/mds/*` modules still read the shared helpers through `window.` / bare globals (`showToast`,
   `mdsFetch`, `normalizeName`, `isMdsOwnedKey`…), not imports from `js/shared/`. Same reason as 1A's
   "shared modules don't import each other yet". 2C is the natural place for the API ones.
