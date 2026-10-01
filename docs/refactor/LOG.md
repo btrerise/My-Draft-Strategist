@@ -499,3 +499,130 @@ Checked in 1B: no proposed name collides with an existing key. Full key list:
 
 Users never see these names. The payoff is clarity for whoever works on the code, so it's
 worth doing only with the migration done carefully.
+
+### 2A — MDS to ES module; extract the first half
+
+`git mv js/mds.js js/mds/legacy.js`, then the IIFE wrapper and its `'use strict'` were dropped
+(modules are always strict, and mds.js already was). Everything above `// --- RENDER DRAFT MATRIX ---`
+moved into the modules below. A script cut the code by line range and added `export` and `import` lines.
+No other line was retyped or changed. I checked that every non-blank line of the old mds.js
+appears exactly once across `js/mds/*.js`, once those two edits are undone. Indentation is unchanged
+(the IIFE's 4 spaces), so a line from the old file greps the same in the new one.
+
+| New file | From mds.js (by section marker) |
+|---|---|
+| `js/mds/main.js` | New. Entry point (`<script type="module">` in index.html, where the mds.js tag was). Imports `legacy.js` first, then holds the single `window.*` block: all 35 names mds.js assigned |
+| `js/mds/compat.js` | The four stale-utils.js fallbacks at the top (`readJSON`, `escapeHtml`, `formatRankingsDiagnostic`, `findCsvQuoteProblem`). 5D deletes this file |
+| `js/mds/storage.js` | DRAFT PLAYER-POOL STORAGE (v2), including the load-time `migrateDraftStorage()` call |
+| `js/mds/state.js` | STATE MANAGEMENT + INITIALIZE DEFAULT DRAFT FALLBACK (`State`, `BYE_WEEKS_2026`, draft-profile helpers, `switchDraftProfile`), plus `draftPlayer` / `undoDraft` |
+| `js/mds/pwa.js` | PWA & SERVICE WORKER |
+| `js/mds/ui.js` | UI HELPERS (`debounce`, `toggleMenu`), plus the unmarked block after BACKUP & RESTORE: `showTab`, the `popstate` handler, `setPosFilter`, `toggleEditBar`, `toggleCardDetails`, `saveInlineEdit` |
+| `js/mds/gestures.js` | GESTURE HANDLING |
+| `js/mds/settings.js` | INITIALIZE SETTINGS INPUTS (`initSettingsUI`, `updateTotalRounds`, `updateMetaDisplay`, `saveSettings`, `resetPicksOnly`) |
+| `js/mds/backup.js` | BACKUP & RESTORE (`getMdsOwnedKeys`, export, import, `hardReset`) |
+| `js/mds/sleeperSync.js` | SLEEPER & MANUAL DRAFT CREATION, SESSION CACHE FOR SLEEPER'S STATIC DRAFT METADATA, the live-sync pill (`renderLiveSyncStatus`) and `toggleAutoSync` |
+| `js/mds/queue.js` | `toggleQueue` + QUEUE REORDERING LOGIC |
+| `js/mds/import.js` | FILE PARSING & DATA IMPORT |
+| `js/mds/market.js` | LEAGUE LOGS INTEGRATION |
+| `js/mds/legacy.js` | Everything from RENDER DRAFT MATRIX on, plus three call-out/tier helpers (below) |
+
+**Placements that don't follow the markers exactly.** Some code sat under a section marker but doesn't
+belong to that section, so I placed it by content:
+- `showTab`, the back-button `popstate` listener and the four player-card handlers sat between
+  BACKUP & RESTORE and the Sleeper section with no marker of their own. They went to `ui.js`. 2B can
+  move the card handlers to `board.js` / `tracker.js` if it prefers.
+- `draftPlayer` / `undoDraft` sat at the end of the Sleeper section. They went to `state.js`, next to
+  `saveAndRenderDraftState`, which they call. `toggleQueue`, which sat with them, went to `queue.js`.
+- `getCallOutLists`, `getCallOutStyle` and `getTierTrackerData` sat under QUEUE REORDERING but are
+  render helpers for `buildPlayerCardHTML` / `renderBoard`. **They stay in legacy.js** for 2B's
+  `tracker.js`.
+
+#### The pattern (2B and 3A follow it)
+
+1. **`window.x = function …` becomes `export const x = function …`** in its module, with the same body.
+   `main.js` imports `x` and assigns `window.x = x;` in one block. That block is the only place a
+   `window.*` name is created. Phase 5 deletes lines from it. Code that calls `window.x(...)` keeps
+   doing so. A bare `x(...)` in another module now imports `x`.
+2. **Every top-level name another module uses gets an `export` prefix, and nothing else.** Each module
+   starts with a "Moved from js/mds.js in refactor chunk 2A" header, then one `import { … }` line per
+   source module (names sorted, `legacy.js` last).
+3. **Load order is set in one place: legacy.js's import list.** `main.js` imports `legacy.js` first.
+   legacy.js imports every extracted module in the order its code sat in mds.js (side-effect-only
+   `import './pwa.js'` where it uses nothing from it). ES modules evaluate their dependencies
+   depth-first, so with this list the code that runs at load keeps its mds.js order:
+   storage migration → `State` → PWA listeners → popstate → touch listeners → file-input listener →
+   legacy's `DOMContentLoaded` init. The rest (settings, backup, sleeperSync, queue, market) only
+   declares things. **One trap:** `state.js` must come **before** `storage.js` in that list. storage.js
+   uses `State` (at call time), so if it were entered first it would pull state.js in and evaluate it
+   first, building `State` from `ds_drafts` before the v2 migration ran. With state.js first, its
+   import of storage.js makes storage.js evaluate first. storage.js's header says so. When 2B deletes
+   legacy.js, move this import list to main.js (or init.js) unchanged.
+4. **Rule 5 holds:** only `State`'s initializer (needs `readJSON`, from `compat.js`, which has no
+   imports) uses another module's binding at load time. All other cross-module use happens at call time.
+   I checked this with a parser rather than by eye. No load-time code calls a `window.*` name defined in
+   mds.js, which matters because `main.js` now assigns those names only after every module has run
+   (still before `DOMContentLoaded`).
+5. **`let`s are reassigned only by their own module** (`menuFocusTrap` in ui, `lastAnnouncedSyncState` in
+   sleeperSync, `draggedQueueIndex` in queue, `cachedEffectiveTScoreData` / `isQueueCollapsed` in
+   legacy). Imported bindings are read-only, so keep it that way: a module that needs to set
+   another module's `let` needs a setter, which is a code change.
+6. **Shadowing:** a parameter or local with the same name as another module's top-level name must not
+   become an import. The only case was `importMdsSettings(fileInput)` vs. import.js's `const fileInput`.
+
+**How I did it (reusable for 2B/3A).** I ran `npm i acorn` in a scratch directory, outside the
+repo, and wrote a throwaway Node script that:
+- parsed the file and listed the top-level statements with their line ranges;
+- assigned line ranges to modules and failed if a statement straddled two ranges or a non-blank line
+  was left unassigned;
+- collected each statement's identifier references, skipping non-computed property names;
+- built the imports and exports from those references;
+- simulated depth-first module evaluation from `main.js` to print the load order;
+- flagged load-time cross-module references, nested declarations that shadow a top-level name, and
+  assignments to top-level names.
+
+After writing the files, a second script checked that every original line is present exactly once.
+Grepping indentation doesn't work for finding top-level code in these files, because the original
+indentation is inconsistent. **3A differs:** mls.js is already a module, so it has no strict-mode
+change and no `'use strict'` to drop, but the rest applies.
+
+**tScoreData stays a global.** `js/shared/data/tscore.js` is still a plain `defer` script that loads
+before `main.js`. The only reader is `getEffectiveTScoreData()` in legacy.js, through
+`typeof tScoreData !== 'undefined'`, which a module resolves to the same global lexical binding.
+Making it a module export would change how it loads, for no gain in this chunk. Reconsider it in 2B,
+when its reader moves.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (48 precached). `node --test` 117/117.
+  `cd tests && npm run check`: 28 Playwright tests pass, **screenshots identical** (no baseline changed).
+- Manual draft, scripted against this branch **and** against main, with identical results on desktop
+  and phone: paste rankings, then Pick / Taken ×2 / Pick / Taken through the real buttons (5 drafted,
+  2 mine), real Undo button on the Team tab (4 drafted, 1 mine, "returned to pool" toast), queue a
+  player, reload (picks and queue persist), hamburger menu open/close, then switch tabs and use the
+  browser Back button (back to Tracker). No console errors.
+- `Object.getOwnPropertyNames(window)` on `/` is identical to main (1,250 names). Nothing was added
+  or lost.
+
+#### Other changes
+
+- `index.html`: `<script src="js/mds.js" defer>` → `<script type="module" src="js/mds/main.js">`, same
+  position. Module scripts run in document order with defer scripts, so it still runs after boot.js,
+  globals.js and tscore.js. Comments that pointed at js/mds.js now point at the new files.
+- `sw.js`: `/js/mds.js` replaced by the 14 `js/mds/*.js` files. CACHE_NAME `v2.8.42` → `v2.8.43`.
+  There's no user-visible change, so I didn't bump the app version label.
+- README `/js` line.
+
+#### Left for later chunks
+
+- **2B:** the three call-out/tier helpers in legacy.js (see above); moving legacy.js's ordered
+  import list when legacy.js goes; tScoreData (above).
+- Comments inside the moved code still say "this file", "mds.js" or "utils.js". Comments in
+  `js/shared/globals.js` (calls mds.js "a classic script"), `js/boot.js`, `js/shared/storage/keys.js`,
+  `js/shared/html.js` and `lineup/mls.js` still name `js/mds.js`. I left them to keep this a pure move.
+  Fix them when those files are next touched. `grep -rn "mds\.js"` finds them all.
+  **Owned by 5D:** at the owner's request, the runbook's 5D card now includes a comment sweep
+  (grep for `mds.js`, `mls.js`, `utils.js` and the old lineup/ file names in comments and point
+  them at the current files, comments only). Anything still stale at 5D gets fixed there.
+- `js/mds/*` modules still read the shared helpers through `window.` / bare globals (`showToast`,
+  `mdsFetch`, `normalizeName`, `isMdsOwnedKey`…), not imports from `js/shared/`. Same reason as 1A's
+  "shared modules don't import each other yet". 2C is the natural place for the API ones.

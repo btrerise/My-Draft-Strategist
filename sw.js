@@ -27,7 +27,7 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.42';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.43';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -49,7 +49,21 @@ const PRECACHE_ASSETS = [
     '/',
     '/index.html',
     '/css/styles.css',
-    '/js/mds.js',
+    '/js/mds/main.js',               // the root page's app script (a module)
+    // main.js's static imports (one missing file and the whole module graph fails):
+    '/js/mds/legacy.js',
+    '/js/mds/compat.js',
+    '/js/mds/storage.js',
+    '/js/mds/state.js',
+    '/js/mds/pwa.js',
+    '/js/mds/ui.js',
+    '/js/mds/gestures.js',
+    '/js/mds/settings.js',
+    '/js/mds/backup.js',
+    '/js/mds/sleeperSync.js',
+    '/js/mds/queue.js',
+    '/js/mds/import.js',
+    '/js/mds/market.js',
     '/js/boot.js',                    // plain script, first on every page
     '/js/shared/globals.js',          // module on every page; assigns the shared window.* names
     // globals.js's static imports (a module graph like mls.js's -- one missing file and the
@@ -70,7 +84,7 @@ const PRECACHE_ASSETS = [
     '/js/shared/ui/toast.js',
     '/js/shared/ui/tooltips.js',
     '/js/shared/storage/keys.js',
-    '/js/shared/data/tscore.js',      // classic <script> on the root page; mds.js falls back to {} without it
+    '/js/shared/data/tscore.js',      // classic <script> on the root page; js/mds/ falls back to {} without it
     '/lineup/',
     '/lineup/index.html',
     '/lineup/mls.js',
