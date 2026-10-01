@@ -74,7 +74,7 @@
 <a href="#main" class="skip-link">Skip to content</a>
 <!-- Persistent polite live region for Live Sync state changes. liveIconWrap can't carry
      aria-live itself: it's display:none until Live Sync starts, so the first announcement
-     was dropped. renderLiveSyncStatus() in js/mds.js writes here only on a state change. -->
+     was dropped. renderLiveSyncStatus() in js/mds/sleeperSync.js writes here only on a state change. -->
 <div id="liveSyncAnnouncer" class="sr-only" aria-live="polite"></div>
 
 <header class="header">
@@ -104,7 +104,7 @@
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             <span class="hide-on-mobile">Sync</span>
         </span>
-        <!-- Text and styling are driven by renderLiveSyncStatus() in js/mds.js: this reads
+        <!-- Text and styling are driven by renderLiveSyncStatus() in js/mds/sleeperSync.js: this reads
              "LIVE" while the 3s poll is landing, and amber "LIVE · stalled" plus the last
              good sync time once it has missed enough ticks in a row. -->
         <span id="liveIconWrap" style="display: none; align-items: center; gap: 4px; font-weight: bold;">
@@ -526,7 +526,7 @@
             </a>
         </div>
     <!-- APP VERSION (My Draft Strategist): update this when a deploy changes the Draft app -
-         this page, js/mds.js, t-score/, or shared css/styles.css / js/boot.js / js/shared/ changes that
+         this page, js/mds/, t-score/, or shared css/styles.css / js/boot.js / js/shared/ changes that
          show up here. My Lineup Strategist has its own number in lineup/index.html.
          WHEN TO BUMP: the second number (vX.Y -> vX.Y+1) on any deploy with something a
          user would notice - a new feature, a new control or badge, or a visible change in how
@@ -884,10 +884,13 @@
 </nav>
 <script src="js/boot.js" defer></script>
 <script type="module" src="js/shared/globals.js"></script>
-    <!-- The bundled T-Score data (defines the tScoreData global mds.js reads). Moved from
+    <!-- The bundled T-Score data (defines the tScoreData global js/mds/ reads). Moved from
          t-score/tscore_data.js in refactor chunk 1B. Keep the path page-relative (no leading
          "../" or "/") so it still resolves when the site is served from a subdirectory. -->
     <script src="js/shared/data/tscore.js" defer></script>
-    <script src="js/mds.js" defer></script>
+    <!-- The Draft Strategist app: js/mds/main.js and its imports (refactor chunk 2A; this was
+         js/mds.js, a defer script). Module scripts run in document order with defer scripts,
+         so this still runs after boot.js, globals.js and tscore.js, and before DOMContentLoaded. -->
+    <script type="module" src="js/mds/main.js"></script>
 </body>
 </html>
