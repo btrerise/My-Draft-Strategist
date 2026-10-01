@@ -1,0 +1,16 @@
+{
+  "name": "mds-tests",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only checks for the static site. Lives in tests/ (not the repo root) so Cloudflare Pages never sees a package.json.",
+  "scripts": {
+    "test": "playwright test",
+    "test:update": "playwright test --update-snapshots",
+    "precache": "node ../scripts/check-precache.mjs",
+    "check": "node ../scripts/check-precache.mjs && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "papaparse": "5.4.1"
+  }
+}

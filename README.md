@@ -2,26 +2,35 @@
 
 **My Draft Strategist** is a mobile-first, high-performance web application designed for fantasy football enthusiasts. It functions as a complete draft companion, offering custom ranking management, real-time market value (ADP) syncing, live platform integrations, advanced roster tracking, and full draft-board grid visualization.
 
----
-# My Draft Strategist
-
-The official repository for [My Draft Strategist](https://mydraftstrategist.com), featuring custom tools and calculators designed for fantasy football draft preparation and lineup strategy.
+The official repository for [My Draft Strategist](https://mydraftstrategist.com): custom tools and calculators for fantasy football draft preparation and lineup strategy.
 
 ## Project Structure
 
-* **`/css`** - Global stylesheets (`styles.css`) applied across the application.
-* **`/images`** - Brand assets, logos, and graphics (`logo.svg`).
-* **`/js`** - Shared JavaScript utility and helper scripts.
-* **`/lineup`** - The *Lineup Strategist* tool (contains its page-specific HTML and script files).
-* **`/t-score`** - The *T-Score* tool (contains its page-specific HTML and `tscore_data.js` file).
+* **`/css`** - Global stylesheet (`styles.css`) shared by every page.
+* **`/images`** - Brand assets: logos, favicons (`5775.svg`, `mls-favicon.svg`) and app icons.
+* **`/js`** - Shared utilities (`utils.js`) and the Draft Strategist app (`mds.js`).
+* **`/lineup`** - The *Lineup Strategist* app: its HTML, PWA manifest and ES modules (`mls.js` and its imports).
+* **`/t-score`** - The *T-Score* tool: its HTML and the bundled `tscore_data.js`.
+* **`/scripts`, `/tests`** - Development checks only (see below). Not used by the site.
 * **Root Files:**
-  * `index.html` - The main landing page of the website.
+  * `index.html` - Draft Strategist, the main page of the site.
   * `sw.js` - Progressive Web App service worker for caching.
   * `manifest.json` - PWA web app manifest configuration.
-  * `5775.svg` - Site favicon.
+  * `robots.txt`, `sitemap.xml`, `llms.txt` - Crawler and discovery files.
 
 ## Hosting
-Hosted and deployed statically via Cloudflare Pages.
+Hosted and deployed statically via Cloudflare Pages. There is no build step: files are served as they are in the repo.
+
+## Development Checks
+Run before pushing changes to scripts, styles or `sw.js`:
+
+```sh
+node scripts/check-precache.mjs        # sw.js precache list matches what the pages load
+cd tests && npm install && npm test    # Playwright smoke tests + screenshot comparisons
+```
+
+See [`docs/refactor/LOG.md`](docs/refactor/LOG.md) for details, including how to update screenshot baselines.
+
 ---
 
 ## 🌟 Comprehensive Feature List

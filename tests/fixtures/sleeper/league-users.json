@@ -1,0 +1,20 @@
+[
+ {
+  "user_id": "900001",
+  "username": "mds_test",
+  "display_name": "mds_test",
+  "league_id": "1000000000000000001",
+  "metadata": {
+   "team_name": "mds_test Team"
+  }
+ },
+ {
+  "user_id": "900002",
+  "username": "rival",
+  "display_name": "Rival",
+  "league_id": "1000000000000000001",
+  "metadata": {
+   "team_name": "Rival Team"
+  }
+ }
+]

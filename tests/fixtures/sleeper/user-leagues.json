@@ -1,0 +1,37 @@
+[
+ {
+  "league_id": "1000000000000000001",
+  "name": "Fixture League",
+  "season": "2026",
+  "status": "in_season",
+  "sport": "nfl",
+  "total_rosters": 2,
+  "draft_id": "2000000000000000001",
+  "roster_positions": [
+   "QB",
+   "RB",
+   "RB",
+   "WR",
+   "WR",
+   "TE",
+   "FLEX",
+   "K",
+   "DEF",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN"
+  ],
+  "scoring_settings": {
+   "rec": 1,
+   "pass_td": 4,
+   "rush_td": 6,
+   "rec_td": 6
+  },
+  "settings": {
+   "type": 0,
+   "playoff_week_start": 15
+  }
+ }
+]
