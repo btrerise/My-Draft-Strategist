@@ -1,0 +1,170 @@
+{
+ "17": {
+  "pts_ppr": 9.9,
+  "pts_half_ppr": 8.9,
+  "pts_std": 7.9,
+  "gp": 1
+ },
+ "3198": {
+  "pts_ppr": 12.4,
+  "pts_half_ppr": 11.2,
+  "pts_std": 9.9,
+  "gp": 1
+ },
+ "4034": {
+  "pts_ppr": 9.5,
+  "pts_half_ppr": 8.6,
+  "pts_std": 7.6,
+  "gp": 1
+ },
+ "4217": {
+  "pts_ppr": 11,
+  "pts_half_ppr": 9.9,
+  "pts_std": 8.8,
+  "gp": 1
+ },
+ "4866": {
+  "pts_ppr": 8.7,
+  "pts_half_ppr": 7.8,
+  "pts_std": 7,
+  "gp": 1
+ },
+ "4881": {
+  "pts_ppr": 23.1,
+  "pts_half_ppr": 20.8,
+  "pts_std": 18.5,
+  "gp": 1
+ },
+ "4892": {
+  "pts_ppr": 11.5,
+  "pts_half_ppr": 10.4,
+  "pts_std": 9.2,
+  "gp": 1
+ },
+ "4984": {
+  "pts_ppr": 18.9,
+  "pts_half_ppr": 17,
+  "pts_std": 15.1,
+  "gp": 1
+ },
+ "5095": {
+  "pts_ppr": 8.3,
+  "pts_half_ppr": 7.5,
+  "pts_std": 6.6,
+  "gp": 1
+ },
+ "5859": {
+  "pts_ppr": 14.2,
+  "pts_half_ppr": 12.8,
+  "pts_std": 11.4,
+  "gp": 1
+ },
+ "6770": {
+  "pts_ppr": 18.4,
+  "pts_half_ppr": 16.6,
+  "pts_std": 14.7,
+  "gp": 1
+ },
+ "6786": {
+  "pts_ppr": 16.3,
+  "pts_half_ppr": 14.7,
+  "pts_std": 13,
+  "gp": 1
+ },
+ "6794": {
+  "pts_ppr": 8.3,
+  "pts_half_ppr": 7.5,
+  "pts_std": 6.6,
+  "gp": 1
+ },
+ "6904": {
+  "pts_ppr": 11.8,
+  "pts_half_ppr": 10.6,
+  "pts_std": 9.4,
+  "gp": 1
+ },
+ "7523": {
+  "pts_ppr": 16,
+  "pts_half_ppr": 14.4,
+  "pts_std": 12.8,
+  "gp": 1
+ },
+ "7547": {
+  "pts_ppr": 16.2,
+  "pts_half_ppr": 14.6,
+  "pts_std": 13,
+  "gp": 1
+ },
+ "7553": {
+  "pts_ppr": 5.9,
+  "pts_half_ppr": 5.3,
+  "pts_std": 4.7,
+  "gp": 1
+ },
+ "7564": {
+  "pts_ppr": 13.2,
+  "pts_half_ppr": 11.9,
+  "pts_std": 10.6,
+  "gp": 1
+ },
+ "7569": {
+  "pts_ppr": 12.8,
+  "pts_half_ppr": 11.5,
+  "pts_std": 10.2,
+  "gp": 1
+ },
+ "8150": {
+  "pts_ppr": 7.8,
+  "pts_half_ppr": 7,
+  "pts_std": 6.2,
+  "gp": 1
+ },
+ "9221": {
+  "pts_ppr": 10.6,
+  "pts_half_ppr": 9.5,
+  "pts_std": 8.5,
+  "gp": 1
+ },
+ "9226": {
+  "pts_ppr": 14.3,
+  "pts_half_ppr": 12.9,
+  "pts_std": 11.4,
+  "gp": 1
+ },
+ "9493": {
+  "pts_ppr": 16.7,
+  "pts_half_ppr": 15,
+  "pts_std": 13.4,
+  "gp": 1
+ },
+ "9509": {
+  "pts_ppr": 19.3,
+  "pts_half_ppr": 17.4,
+  "pts_std": 15.4,
+  "gp": 1
+ },
+ "11604": {
+  "pts_ppr": 6.8,
+  "pts_half_ppr": 6.1,
+  "pts_std": 5.4,
+  "gp": 1
+ },
+ "11632": {
+  "pts_ppr": 11.7,
+  "pts_half_ppr": 10.5,
+  "pts_std": 9.4,
+  "gp": 1
+ },
+ "BAL": {
+  "pts_ppr": 6,
+  "pts_half_ppr": 5.4,
+  "pts_std": 4.8,
+  "gp": 1
+ },
+ "PHI": {
+  "pts_ppr": 9.5,
+  "pts_half_ppr": 8.6,
+  "pts_std": 7.6,
+  "gp": 1
+ }
+}
