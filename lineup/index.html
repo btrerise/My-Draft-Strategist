@@ -496,8 +496,8 @@
                 <button id="rosMultiProcessBtn" class="btn btn-primary mt-2" style="width: 100%;" onclick="processMultiRankings('ros', 'rosSuccessMsg')">Combine & Process Files</button>
             </div>
 
-            <div id="rosProcessingStatus" class="mls-upload-processing"></div>
-            <div id="rosSuccessMsg" class="success-feedback">Uploaded Successfully!</div>
+            <div id="rosProcessingStatus" class="mls-upload-processing" role="status"></div>
+            <div id="rosSuccessMsg" class="success-feedback" role="status">Uploaded Successfully!</div>
 
             <div class="or-divider">
                 <div class="divider-line"></div>
@@ -624,7 +624,7 @@
         </header>
         
         <input type="file" id="sosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload strength of schedule file">
-        <div id="sosSuccessMsg" class="success-feedback">SoS Uploaded Successfully!</div>
+        <div id="sosSuccessMsg" class="success-feedback" role="status">SoS Uploaded Successfully!</div>
         
         <details class="sos-details-accordion">
             <summary class="sos-summary">Edit Manual SoS Grid</summary>
@@ -729,8 +729,8 @@
                 <button id="weeklyMultiProcessBtn" class="btn btn-primary mt-2" style="width: 100%;" onclick="processMultiRankings('weekly', 'weeklySuccessMsg')">Combine & Process Files</button>
             </div>
 
-            <div id="weeklyProcessingStatus" class="mls-upload-processing"></div>
-            <div id="weeklySuccessMsg" class="weekly-success-feedback">Uploaded Successfully!</div>
+            <div id="weeklyProcessingStatus" class="mls-upload-processing" role="status"></div>
+            <div id="weeklySuccessMsg" class="weekly-success-feedback" role="status">Uploaded Successfully!</div>
         </div>
     </section>
     
@@ -858,7 +858,7 @@
         </button>
         
         <!-- The results will render inside this div -->
-        <div id="monte-carlo-results" class="mt-4" style="display: none;"></div>
+        <div id="monte-carlo-results" class="mt-4" aria-live="polite" style="display: none;"></div>
 
         <div class="settings-subsection mt-4">
             <label for="simPlayerSearch">Look Up a Specific Player</label>
@@ -884,7 +884,7 @@
             </div>
         </div>
         <button class="btn btn-danger" onclick="runGlobalInjuryAudit(this)">Run Global Audit</button>
-        <div id="injuryAuditOutput" class="scout-output-container"></div>
+        <div id="injuryAuditOutput" class="scout-output-container" aria-live="polite"></div>
     </section>
 </div>
         
@@ -1050,7 +1050,7 @@
 
         <button class="btn btn-purple mt-4" onclick="runScout('trade')">Analyze Trade</button>
         
-        <div id="tradeOutput" class="scout-output-container"></div>
+        <div id="tradeOutput" class="scout-output-container" aria-live="polite"></div>
     </section>
     
     <!-- POSITIONAL POWER RANKINGS: moved to the Roster tab (2026-09-27). This one-line pointer
@@ -1142,7 +1142,7 @@
             </a>
         </div>
 
-    <div id="marketSuccessMsg" class="success-feedback" style="display:none;">Market Data Loaded Successfully!</div>
+    <div id="marketSuccessMsg" class="success-feedback" role="status" style="display:none;">Market Data Loaded Successfully!</div>
 
     <!-- Filter / Control Bar -->
     <div class="settings-grid mb-2 mt-4" style="align-items: center;">
@@ -1185,7 +1185,7 @@
 
     <button class="btn btn-primary mt-2" onclick="runMarketDisconnectAnalysis()">Find Trade Targets</button>
     
-    <div id="marketDisconnectOutput" class="scout-output-container"></div>
+    <div id="marketDisconnectOutput" class="scout-output-container" aria-live="polite"></div>
 </section>
 </div>
         <!-- USER GUIDE TAB -->

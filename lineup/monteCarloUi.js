@@ -65,9 +65,21 @@ function clearResponseTimeout() {
     }
 }
 
+// #monte-carlo-results is an aria-live region (index.html), and this runs every animation
+// frame. Rewriting the whole container each frame would have screen readers trying to read
+// out every tick of the counter. So the "Simulating matchups..." line is written once per run
+// (announced once), and after that only the counter's own text changes -- and the counter is
+// aria-hidden, so those per-frame changes are silent. The final result still replaces the
+// whole container, which is the update that gets announced.
 function renderProgress(simOutputDiv, count) {
     if (!simOutputDiv) return;
-    simOutputDiv.innerHTML = `<p style="display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating matchups... ${count.toLocaleString()} / ${SIMULATION_ITERATIONS.toLocaleString()}</p>`;
+    const countText = `${count.toLocaleString()} / ${SIMULATION_ITERATIONS.toLocaleString()}`;
+    const countEl = simOutputDiv.querySelector('.sim-progress-count');
+    if (countEl) {
+        countEl.textContent = countText;
+        return;
+    }
+    simOutputDiv.innerHTML = `<p style="display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating matchups... <span class="sim-progress-count" aria-hidden="true">${countText}</span></p>`;
 }
 
 // Abandons the run currently on screen: stops the progress animation, drops the state it left

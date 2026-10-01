@@ -875,6 +875,22 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// Shows a role="status" feedback line that sits at display:none until now. Some screen
+// readers skip a live region that is revealed with its text already in it, so the box is
+// shown empty and the text goes in a beat later -- a content change, which they do announce.
+// `text` overrides the message; omitted, the element's current message is reused.
+function showStatusFeedback(el, text, hideAfterMs) {
+    if (!el) return;
+    const msg = text ?? el._feedbackText ?? el.textContent;
+    el._feedbackText = msg;
+    clearTimeout(el._feedbackShowT);
+    clearTimeout(el._feedbackHideT);
+    el.textContent = '';
+    el.style.display = 'block';
+    el._feedbackShowT = setTimeout(() => { el.textContent = msg; }, 100);
+    el._feedbackHideT = setTimeout(() => { el.style.display = 'none'; }, hideAfterMs);
+}
+
 // Parses an HTML string into a DocumentFragment using a detached <template>, then swaps
 // it into `container` in one operation. The parsing happens off-DOM (the template's
 // content is never attached to the live tree), and the fragment's children are moved
@@ -2914,11 +2930,7 @@ function attachScoutSuggestionHandler(outputElId) {
                     localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
                     generateSoSGrid();
                     
-                    let msgEl = document.getElementById('sosSuccessMsg');
-                    if (msgEl) {
-                        msgEl.style.display = 'block';
-                        setTimeout(() => msgEl.style.display = 'none', 3000);
-                    }
+                    showStatusFeedback(document.getElementById('sosSuccessMsg'), null, 3000);
                 },
                 // Papa calls this instead of `complete` when it can't read the File. Without it
                 // the upload failed with no message. The input is cleared so choosing the same
@@ -5481,8 +5493,17 @@ function attachScoutSuggestionHandler(outputElId) {
     function setUploadStatus(type, isProcessing, label) {
         const statusEl = document.getElementById(`${type}ProcessingStatus`);
         if (!statusEl) return;
-        statusEl.innerHTML = isProcessing ? `${UPLOAD_SPINNER_SVG}<span>${escapeHtml(label || 'Processing...')}</span>` : '';
+        // role="status" region (index.html): shown empty first, filled a beat later, so screen
+        // readers that ignore a live region revealed with its content already in place still
+        // announce it. The timer is cleared on hide so a fast parse can't refill it afterward.
+        clearTimeout(statusEl._fillT);
+        statusEl.innerHTML = '';
         statusEl.style.display = isProcessing ? 'flex' : 'none';
+        if (isProcessing) {
+            statusEl._fillT = setTimeout(() => {
+                statusEl.innerHTML = `${UPLOAD_SPINNER_SVG}<span>${escapeHtml(label || 'Processing...')}</span>`;
+            }, 100);
+        }
     }
 
     window.processSingleRankingUpload = function(type, successMsgId) {
@@ -5772,11 +5793,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
         // Update UI
         updateMarketMetaDisplay(); 
-        if (msgEl) {
-            msgEl.innerText = `Market Data (${formatText}) Pulled Successfully!`;
-            msgEl.style.display = 'block';
-            setTimeout(() => msgEl.style.display = 'none', 3500);
-        }
+        showStatusFeedback(msgEl, `Market Data (${formatText}) Pulled Successfully!`, 3500);
         
         if (outputEl) outputEl.innerHTML = ''; 
 
@@ -6000,11 +6017,7 @@ function applyMarketSettingsToUI() {
         localStorage.setItem('mds_season_market_updated', State.marketUpdatedAt);
         updateMarketMetaDisplay();
 
-        let msgEl = document.getElementById(successMsgId);
-        if (msgEl) {
-            msgEl.style.display = 'block';
-            setTimeout(() => msgEl.style.display = 'none', 2500);
-        }
+        showStatusFeedback(document.getElementById(successMsgId), null, 2500);
     }
 
     // --- TRADE VALUE CURVE ---
@@ -6648,7 +6661,7 @@ function applyMarketSettingsToUI() {
                     </div>
                 </div>
                 <div class="mls-row-actions">
-                    <button class="btn-danger" style="padding:4px 8px; border-radius:4px;" onclick="deletePlayer('${p.id}')">✕</button>
+                    <button class="btn-danger" style="padding:4px 8px; border-radius:4px;" onclick="deletePlayer('${p.id}')" aria-label="Remove ${escapeHtml(p.name)}">✕</button>
                 </div>
             </div>`;
         });
@@ -7555,8 +7568,8 @@ window.syncAllLeagues = async function(btn) {
             if (s.player) {
                 let p = s.player;
                 let lockIcon = p.isLocked 
-                    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>` 
-                    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.6;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
+                    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>` 
+                    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--text-muted); opacity: 0.6;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
                 let lockClass = p.isLocked ? "locked" : "";
                 if (State.swapSourceId === p.id) lockClass += " swapping";
 
@@ -7572,8 +7585,8 @@ window.syncAllLeagues = async function(btn) {
                 // adds them to locksList, and in that case both should treat it as a manual lock.
                 let isAutoLock = p.autoLocked && !locksList.includes(p.id);
                 let lockControl = isAutoLock
-                    ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
-                    : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')">${lockIcon}</button>`;
+                    ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" aria-label="${escapeHtml(p.name)}'s game has started. Override lock" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
+                    : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')" aria-label="Lock ${escapeHtml(p.name)}" aria-pressed="${p.isLocked ? 'true' : 'false'}">${lockIcon}</button>`;
 
                 let rankBadge = lineupRankBadge(p, rankedByRos);
 
@@ -7624,7 +7637,7 @@ window.syncAllLeagues = async function(btn) {
                     </div>
                     <div class="mls-row-actions">
                         ${getPlayerPointsHTML(p)}
-                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
                         ${lockControl}
                     </div>
                 </div>`;
@@ -7684,7 +7697,7 @@ window.syncAllLeagues = async function(btn) {
                 const rowActions = p.isTaxi
                     ? getPlayerPointsHTML(p)
                     : `${getPlayerPointsHTML(p)}
-                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>`;
+                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>`;
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass} ${p.isTaxi ? 'taxi-row' : ''}">
