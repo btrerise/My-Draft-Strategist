@@ -985,7 +985,7 @@ function playerHeadshotHTML(p) {
     // display:none, and Chromium never starts a lazy image that isn't rendered -- so turning
     // the setting off also stops the requests to Sleeper's CDN, not just the pixels.
     const img = id
-        ? `<img class="mls-headshot-img" src="${HEADSHOT_URL(id)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`
+        ? `<img class="mls-headshot-img" src="${HEADSHOT_URL(id)}" alt="" width="32" height="32" loading="lazy" decoding="async" onerror="this.remove()">`
         : '';
     return `<span class="mls-headshot${p.pos === 'DEF' ? ' mls-headshot-def' : ''}" aria-hidden="true"><span class="mls-headshot-initials">${escapeHtml(headshotInitials(p))}</span>${img}</span>`;
 }
@@ -1634,7 +1634,7 @@ function attachScoutSuggestionHandler(outputElId) {
         const minutes = totalMinutes % 60;
         const countdownStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
         const label = formatKickoffLabel(new Date(earliestMs).toISOString());
-        const clockSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+        const clockSvg = `<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
 
         if (lockingPlayers.length <= 1) {
             const p = lockingPlayers[0];
@@ -1645,7 +1645,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
 
         const namesHTML = lockingPlayers.map(p => escapeHtml(p.name)).join(', ');
-        const chevronSvg = `<svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+        const chevronSvg = `<svg aria-hidden="true" class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
         return `<div id="lockCountdownCard" class="lineup-lock-countdown-collapsible">
             <button type="button" class="lock-countdown-header btn-bare" onclick="toggleLockCountdown()" aria-expanded="false" aria-controls="lockCountdownDetail">
                 ${clockSvg}
@@ -1684,7 +1684,7 @@ function attachScoutSuggestionHandler(outputElId) {
             && !hasKickedOff(s.player));
         if (flagged.length === 0) return "";
 
-        const warnSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+        const warnSvg = `<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
 
         if (flagged.length === 1) {
             const p = flagged[0].player;
@@ -1765,8 +1765,8 @@ function attachScoutSuggestionHandler(outputElId) {
             let wIsStale = !wFresh || wFresh.isStale;
 
             let rankIcon = wIsStale 
-                ? `<span class="status-icon status-warn tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Weekly Rankings Stale or Missing</span></span>`
-                : `<span class="status-icon status-good tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Weekly Rankings Fresh</span></span>`;
+                ? `<span class="status-icon status-warn tooltip-container"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Weekly Rankings Stale or Missing</span></span>`
+                : `<span class="status-icon status-good tooltip-container"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Weekly Rankings Fresh</span></span>`;
 
             // --- Lineup Match Check ---
             let isBestBall = isBestBallLeague(l);
@@ -1789,11 +1789,11 @@ function attachScoutSuggestionHandler(outputElId) {
             if (isBestBall) {
                 lineupIcon = `<span class="badge tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); padding: 2px 6px;">BB<span class="tooltip-text">Best Ball (No Lineup Management)</span></span>`;
             } else if (!isSetup) {
-                lineupIcon = `<span class="status-icon tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span class="tooltip-text">Not Optimized Yet</span></span>`;
+                lineupIcon = `<span class="status-icon tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted);"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span class="tooltip-text">Not Optimized Yet</span></span>`;
             } else if (isMatch) {
-                lineupIcon = `<span class="status-icon status-good tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
+                lineupIcon = `<span class="status-icon status-good tooltip-container"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
             } else {
-                lineupIcon = `<span class="status-icon status-danger tooltip-container"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Action Required: Differs from Sleeper Lineup</span></span>`;
+                lineupIcon = `<span class="status-icon status-danger tooltip-container"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Action Required: Differs from Sleeper Lineup</span></span>`;
             }
 
             // --- Early Game Check ---
@@ -2794,7 +2794,7 @@ function attachScoutSuggestionHandler(outputElId) {
             if (window.showToast) window.showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
         }
         const btn = document.getElementById('rosterSyncBtn');
-        if (btn) btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing…</span>`;
+        if (btn) btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing…</span>`;
         // showChangeSummary=true: this is a single, user-initiated re-sync, so a roster diff
         // toast is useful signal. The bulk "import all leagues" path deliberately leaves this
         // off (see importAllSleeperLeagues) since a diff per league would be noisy there.
@@ -3110,7 +3110,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 let suggestion = findClosestRankedName(name);
                 if (suggestion) {
                     suggestHTML = `<div class="scout-suggest-hint">Did you mean
-                        <a href="#" class="scout-suggest-link" data-input-id="${sourceInputId}" data-original="${escapeHtml(name)}" data-suggested="${escapeHtml(suggestion)}" data-scout-type="${type}">${escapeHtml(suggestion)}</a>?</div>`;
+                        <button type="button" class="scout-suggest-link btn-bare" data-input-id="${sourceInputId}" data-original="${escapeHtml(name)}" data-suggested="${escapeHtml(suggestion)}" data-scout-type="${type}">${escapeHtml(suggestion)}</button>?</div>`;
                 }
             }
             
@@ -4338,7 +4338,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 const suggestion = findClosestRankedName(res.name);
                 if (suggestion) {
                     suggestHTML = `<div class="scout-suggest-hint">Did you mean
-                        <a href="#" class="scout-suggest-link" data-input-id="waiverInput" data-original="${escapeHtml(res.name)}" data-suggested="${escapeHtml(suggestion)}" data-scout-type="waiver">${escapeHtml(suggestion)}</a>?</div>`;
+                        <button type="button" class="scout-suggest-link btn-bare" data-input-id="waiverInput" data-original="${escapeHtml(res.name)}" data-suggested="${escapeHtml(suggestion)}" data-scout-type="waiver">${escapeHtml(suggestion)}</button>?</div>`;
                 } else if (!res.meta) {
                     suggestHTML = `<div class="scout-suggest-hint">No Sleeper player matched this name - check the spelling.</div>`;
                 }
@@ -5472,7 +5472,7 @@ function attachScoutSuggestionHandler(outputElId) {
     // Same spinner icon already used for the Sleeper sync buttons elsewhere in the app,
     // reused here so a rankings upload gives the same kind of "something is happening"
     // signal instead of going silent between file-select and the preview modal appearing.
-    const UPLOAD_SPINNER_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner" style="flex-shrink:0;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>`;
+    const UPLOAD_SPINNER_SVG = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner" style="flex-shrink:0;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>`;
 
     // Disables a rankings section's file input(s) for the duration of a parse (type is
     // 'ros' or 'weekly'), so a second file selection can't fire a second overlapping parse
@@ -6359,7 +6359,7 @@ function applyMarketSettingsToUI() {
 
         if (buyItems.length > 0) {
             html += `<div style="font-weight:bold; color:var(--primary-green); margin: 0.75rem 0 0.5rem 0; display: flex; align-items: center; gap: 6px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                 High-Value Targets (Market Sleeping)
             </div>`;
             buyItems.forEach(item => {
@@ -6386,7 +6386,7 @@ function applyMarketSettingsToUI() {
 
         if (sellItems.length > 0) {
             html += `<div style="font-weight:bold; color:#fca5a5; margin: 1.25rem 0 0.5rem 0; display: flex; align-items: center; gap: 6px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
                 Overvalued Assets (Sell High Opportunities)
             </div>`;
             sellItems.forEach(item => {
@@ -6584,9 +6584,9 @@ function applyMarketSettingsToUI() {
             <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                 <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to your Roster</div>
                 <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Dashboard)</div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload ROS Rankings (Above)</div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Evaluate your team</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Dashboard)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload ROS Rankings (Above)</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Evaluate your team</div>
                 </div>
             </div>`;
             return;
@@ -6959,9 +6959,9 @@ function applyMarketSettingsToUI() {
                 <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                     <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to the Lineup Optimizer</div>
                     <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Dashboard)</div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload Weekly Rankings (Above)</div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Click 'Optimize Lineup'</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 1. Sync your Sleeper League (Dashboard)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 2. Upload Weekly Rankings (Above)</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color:var(--primary-green); display:flex;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></span> 3. Click 'Optimize Lineup'</div>
                     </div>
                 </div>`;
             }
@@ -7257,7 +7257,7 @@ function applyMarketSettingsToUI() {
     window.optimizeAllLineups = function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
         const origText = btn.innerHTML;
-        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Optimizing All…`;
+        btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Optimizing All…`;
         btn.disabled = true;
         btn.style.opacity = '0.8';
 
@@ -7348,7 +7348,7 @@ window.syncAllLeagues = async function(btn) {
         }
 
         const origText = btn.innerHTML;
-        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing All…`;
+        btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing All…`;
         btn.disabled = true;
         btn.style.opacity = '0.8';
 
@@ -7389,7 +7389,7 @@ window.syncAllLeagues = async function(btn) {
                     // Mirrors importAllSleeperLeagues' per-league progress text below, instead
                     // of a static "Syncing All..." for the whole loop regardless of how many
                     // leagues or how long it takes.
-                    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing ${i + 1}/${sleeperLeagues.length}…`;
+                    btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing ${i + 1}/${sleeperLeagues.length}…`;
                     // processSleeperData re-optimizes the league it just synced, and the optimizer
                     // reads whatever rankings are in State -- so load THIS league's first, or every
                     // league gets a lineup built from the originally active league's rankings.
@@ -7540,9 +7540,9 @@ window.syncAllLeagues = async function(btn) {
             let isMatch = sleeperSet.size === optSet.size && [...sleeperSet].every(id => optSet.has(id));
             
             if (isMatch) {
-                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-green); display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Matches your active Sleeper lineup</div>`;
+                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-green); display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Matches your active Sleeper lineup</div>`;
             } else {
-                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: #f59e0b; display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Action Required: Differs from Sleeper lineup</div>`;
+                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: #f59e0b; display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Action Required: Differs from Sleeper lineup</div>`;
             }
         }
 
@@ -8228,7 +8228,7 @@ function renderRosterPowerStrip(teams, ctx = {}) {
                 <span class="mls-roster-power-stat-rank mls-power-cell-${powerTier(rank, N)}">${rank}</span>
             </div>`).join('')}
         </div>
-        <a href="#" class="mls-roster-power-link" onclick="scrollToPowerRankings(); return false;">See the full league breakdown and explanations below &darr;</a>`;
+        <button type="button" class="mls-roster-power-link btn-bare" onclick="scrollToPowerRankings()">See the full league breakdown and explanations below &darr;</button>`;
     el.style.display = 'block';
 }
 
@@ -8830,7 +8830,7 @@ window.runMatchupSim = async function() {
     const origText = btn ? btn.innerHTML : "";
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating…</span>`;
+        btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating…</span>`;
     }
 
     try {

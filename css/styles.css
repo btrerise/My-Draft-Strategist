@@ -4855,7 +4855,7 @@ a.nav-btn,
 }
 .mls-roster-power-stat-name { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
 .mls-roster-power-stat-rank { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
-.mls-roster-power-link { display: inline-block; margin-top: 0.55rem; font-size: 0.75rem; font-weight: 600; color: #c4b5fd; }
+.mls-roster-power-link { display: inline-block; margin-top: 0.55rem; font-size: 0.75rem; font-weight: 600; color: #c4b5fd; text-decoration: underline; }
 .mls-roster-power-link:hover { color: #ddd6fe; }
 @media (max-width: 520px) {
     /* All seven cells stay on one row at 360px: slimmer padding and labels. */

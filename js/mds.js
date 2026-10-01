@@ -846,7 +846,7 @@ window.addEventListener('popstate', (e) => {
         // 1. Capture the original button state and apply the loading spinner
         if (!isSilent && btn) {
             originalBtnHTML = btn.innerHTML;
-            btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg class="sync-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Syncing…</span>`;
+            btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" class="sync-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Syncing…</span>`;
             btn.style.pointerEvents = 'none'; // Prevents double-clicks while loading
             btn.style.opacity = '0.8';
         }
@@ -2632,7 +2632,7 @@ function parseExcel(file) {
         if (bestSteal && bestSteal.diff > 2) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--target-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--target-border); margin-top:0.5rem;">
                 <span class="recap-callout-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary-green);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary-green);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     <strong>Biggest Steal:</strong> ${escapeHtml(bestSteal.player.name)} (${escapeHtml(bestSteal.player.posDisplay)})
                 </span>
                 <span class="badge badge-value">+${Math.abs(bestSteal.diff)} Value</span>
@@ -2642,7 +2642,7 @@ function parseExcel(file) {
         if (worstReach && worstReach.diff < -5) {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--avoid-bg); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--avoid-border); margin-top:0.5rem;">
                 <span class="recap-callout-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--avoid-border);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--avoid-border);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                     <strong>Biggest Reach:</strong> ${escapeHtml(worstReach.player.name)} (${escapeHtml(worstReach.player.posDisplay)})
                 </span>
                 <span class="badge badge-reach">${worstReach.diff} Reach</span>
@@ -2921,7 +2921,7 @@ function parseExcel(file) {
                             <button class="mds-btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
                             <button class="mds-btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
                             <button class="btn-expand hide-on-desktop" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
-                                <svg class="chevron-icon" style="transform: ${p.isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <svg aria-hidden="true" class="chevron-icon" style="transform: ${p.isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
                         </div>
                     </div>
@@ -3257,7 +3257,7 @@ function parseExcel(file) {
             if (activeQueue.length > 0) {
                 let queueExpandedClass = isQueueCollapsed ? "" : " is-expanded";
                 newQueueHTML += `<button type="button" class="queue-header btn-bare${queueExpandedClass}" onclick="toggleQueueCollapse()" aria-expanded="${isQueueCollapsed ? 'false' : 'true'}" aria-label="Toggle Queue">                    <span class="queue-header-title"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</span>
-                    <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <svg aria-hidden="true" class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </button>`;
 
                 if (!isQueueCollapsed) {
