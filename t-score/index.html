@@ -305,7 +305,7 @@
 <header class="header">
     <div class="header-left">
         <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu" aria-expanded="false">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
         <a href="../" class="logo-container btn-bare" aria-label="Go to My Draft Strategist">
             <img src="../images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
@@ -328,18 +328,18 @@
             <span>Menu</span>
         </div>
         <button class="close-menu-btn" onclick="toggleMenu()" aria-label="Close Menu">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
     </div>
 
     <div class="menu-nav-links">
         <a href="../index.html" class="nav-btn premium-link-btn">
             My Draft Strategist 
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
         </a>       
         <a href="../lineup/" class="nav-btn premium-link-btn">
             My Lineup Strategist 
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </a>
     </div>
     <div id="shared-feedback-container"></div>
@@ -367,7 +367,7 @@
 <div style="max-width: 1100px; margin: 0.75rem auto 0; padding: 0 1rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
     <span id="tscoreFreshness" aria-live="polite" style="font-size: 0.8rem; color: var(--text-muted, #9ca3af);"></span>
     <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="refreshTScoreData(this)" title="Pulls the latest data from the WR and RB Google Sheets and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
         Sync with most recent data
     </button>
 </div>
@@ -604,7 +604,7 @@
         <div class="wr-content" style="display: block;">
             <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
                 <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                     View WR Model Baseline Variables
                 </summary>
                 <div class="data-table-wrapper table-container" style="margin-top: 1rem; margin-bottom: 0;">
@@ -713,7 +713,7 @@
         <div class="rb-content" style="display: none;">
             <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
                 <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                     View RB Baseline Variables
                 </summary>
                 <div class="data-table-wrapper table-container" style="margin-top: 1rem; margin-bottom: 0;">
@@ -1338,7 +1338,7 @@ function updateTscoreFreshnessLabel(timestamp) {
 
 window.refreshTScoreData = async function(btn) {
     const origText = btn ? btn.innerHTML : '';
-    if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = 'Refreshing...'; }
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = 'Refreshing…'; }
 
     try {
         const [wrPlayers, rbPlayers] = await Promise.all([fetchTScoreSheet('wr'), fetchTScoreSheet('rb')]);

@@ -79,7 +79,7 @@ function renderProgress(simOutputDiv, count) {
         countEl.textContent = countText;
         return;
     }
-    simOutputDiv.innerHTML = `<p style="display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating matchups... <span class="sim-progress-count" aria-hidden="true">${countText}</span></p>`;
+    simOutputDiv.innerHTML = `<p style="display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating matchups… <span class="sim-progress-count" aria-hidden="true">${countText}</span></p>`;
 }
 
 // Abandons the run currently on screen: stops the progress animation, drops the state it left

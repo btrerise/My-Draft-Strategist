@@ -2505,14 +2505,14 @@ function attachScoutSuggestionHandler(outputElId) {
                 autoReqs = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 };
             }
 
-            if (btn) btn.innerText = "Mapping League...";
+            if (btn) btn.innerText = "Mapping League…";
             const usersData = await getSleeperLeagueUsers(leagueId);
             let userMap = {};
             usersData.forEach(u => userMap[u.user_id] = u.display_name);
 
             const rosters = await getSleeperLeagueRosters(leagueId);
             
-            if (btn) btn.innerText = "Loading Players...";
+            if (btn) btn.innerText = "Loading Players…";
             const playerMap = preloaded.playerMap || await getSleeperPlayerMap();
 
             let myTeam = rosters.find(r => r.owner_id === userId);
@@ -2697,7 +2697,7 @@ function attachScoutSuggestionHandler(outputElId) {
         // background color, which flashButton would then capture as the color to restore to
         // once its flash finished -- permanently overriding the button's real ".btn-blue" CSS
         // color with this purple for the rest of the session after the first sync.
-        if (btn) { btn.innerText = "Syncing..."; }
+        if (btn) { btn.innerText = "Syncing…"; }
         processSleeperData(username, leagueId, btn, false);
     };
 
@@ -2716,7 +2716,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
 
         const origText = btn ? btn.innerText : "";
-        if (btn) { btn.innerText = "Finding your leagues..."; btn.disabled = true; btn.style.opacity = "0.7"; }
+        if (btn) { btn.innerText = "Finding your leagues…"; btn.disabled = true; btn.style.opacity = "0.7"; }
 
         try {
             const userId = (await getSleeperUser(username)).user_id;
@@ -2735,7 +2735,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 return;
             }
 
-            if (btn) btn.innerText = "Loading player data...";
+            if (btn) btn.innerText = "Loading player data…";
             const playerMap = await getSleeperPlayerMap();
             const preloaded = { userId, playerMap };
 
@@ -2748,7 +2748,7 @@ function attachScoutSuggestionHandler(outputElId) {
             // is the only signal there is.
             let failedLeagueNames = [];
             for (let i = 0; i < leagues.length; i++) {
-                if (btn) btn.innerText = `Syncing ${i + 1}/${leagues.length}...`;
+                if (btn) btn.innerText = `Syncing ${i + 1}/${leagues.length}…`;
                 const ok = await processSleeperData(username, leagues[i].league_id, null, true, preloaded, true, false, true);
                 if (ok) successCount++;
                 else failedLeagueNames.push(leagues[i].name || leagues[i].league_id);
@@ -2794,7 +2794,7 @@ function attachScoutSuggestionHandler(outputElId) {
             if (window.showToast) window.showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
         }
         const btn = document.getElementById('rosterSyncBtn');
-        if (btn) btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing...</span>`;
+        if (btn) btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing…</span>`;
         // showChangeSummary=true: this is a single, user-initiated re-sync, so a roster diff
         // toast is useful signal. The bulk "import all leagues" path deliberately leaves this
         // off (see importAllSleeperLeagues) since a diff per league would be noisy there.
@@ -3045,7 +3045,7 @@ function attachScoutSuggestionHandler(outputElId) {
         // banner, which already says position/rank still work either way) -- so this can't
         // assume the cache exists yet.
         if (!window.sleeperPosByName) {
-            outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Looking up player positions...</div>`;
+            outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Looking up player positions…</div>`;
             try {
                 let map = await getSleeperPlayerMap();
                 window.sleeperPosByName = {};
@@ -3513,8 +3513,8 @@ function attachScoutSuggestionHandler(outputElId) {
             : "Flags leagues where you're weak at his position (by Positional Power Rankings) and he'd move you up - where it's worth adding or trading for him.";
         const waiverInput = document.getElementById('waiverInput');
         if (waiverInput) waiverInput.placeholder = allLeagues
-            ? 'Paste the players to look up... (e.g. Isiah Pacheco, Puka Nacua)'
-            : 'Paste waiver targets here... (e.g. Isiah Pacheco, Puka Nacua)';
+            ? 'Paste the players to look up… (e.g. Isiah Pacheco, Puka Nacua)'
+            : 'Paste waiver targets here… (e.g. Isiah Pacheco, Puka Nacua)';
     }
 
     // The Waiver Wire Assistant's "Rank By" choice, resolved against what's actually loaded:
@@ -3665,12 +3665,12 @@ function attachScoutSuggestionHandler(outputElId) {
         const typeName = isWeekly ? 'Weekly' : 'ROS';
         if (derivedPos && flexNotable) return {
             title: 'Position and FLEX ranks will be derived',
-            short: 'position ranks (WR1, RB2, ...) or FLEX ranks',
+            short: 'position ranks (WR1, RB2, …) or FLEX ranks',
             detail: `This file is one overall list with no positional rank column and no FLEX list, so both are derived from its order - positions by ordering each position group, FLEX by ordering RB/WR/TE. ${typeName} exports usually include both; re-exporting with a "Pos Rank" column and a FLEX list (or uploading per-position files) would use your source's own numbers.`
         };
         if (derivedPos) return {
             title: 'Position ranks will be derived',
-            short: 'position ranks (WR1, RB2, ...)',
+            short: 'position ranks (WR1, RB2, …)',
             detail: `This file has no positional rank column, so position ranks are derived by ordering each position group by overall rank. ${typeName} exports usually include one; re-exporting with a "Pos Rank" column, or uploading per-position files, would use your source's own numbers.`
         };
         return {
@@ -4162,7 +4162,7 @@ function attachScoutSuggestionHandler(outputElId) {
             return;
         }
 
-        outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Searching ${leagues.length} league${leagues.length === 1 ? '' : 's'}...</div>`;
+        outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Searching ${leagues.length} league${leagues.length === 1 ? '' : 's'}…</div>`;
 
         // Needed specifically for the players this view is best at finding: someone unrostered
         // in every league has no globalPosMap entry anywhere to read a position off, and an
@@ -4463,8 +4463,8 @@ function attachScoutSuggestionHandler(outputElId) {
         const basisName = scan.name;
 
         const origText = btn ? btn.innerText : '';
-        if (btn) { btn.disabled = true; btn.innerText = 'Scanning...'; }
-        outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Scanning the waiver wire...</div>`;
+        if (btn) { btn.disabled = true; btn.innerText = 'Scanning…'; }
+        outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Scanning the waiver wire…</div>`;
 
         try {
             const ctx = await buildWaiverContext(league);
@@ -5227,7 +5227,7 @@ function attachScoutSuggestionHandler(outputElId) {
                 let message = toReport.slice(0, MAX_SHOWN).map(window.formatRankingsDiagnostic).join('\n\n');
                 if (toReport.length > MAX_SHOWN) {
                     const rest = toReport.length - MAX_SHOWN;
-                    message += `\n\n...and ${rest} more file${rest === 1 ? '' : 's'} with the same problem.`;
+                    message += `\n\n…and ${rest} more file${rest === 1 ? '' : 's'} with the same problem.`;
                 }
                 // Longer than the 6s error default: these messages carry a list to read and act on.
                 window.showToast(message, { isError: true, duration: 12000 });
@@ -5455,7 +5455,7 @@ function attachScoutSuggestionHandler(outputElId) {
             const alsoText = leagueChoice.add.length ? ` Also applied to ${leagueCountText(leagueChoice.add.length)}.` : '';
 
             if (isFirstTime) {
-                window.showToast(`${rankType} Rankings loaded!${alsoText} \n\nTip: We saved this as a reusable set. Use "Choose leagues..." under the set dropdown to share it with more of your leagues any time.`, { duration: 6000 });
+                window.showToast(`${rankType} Rankings loaded!${alsoText} \n\nTip: We saved this as a reusable set. Use "Choose leagues…" under the set dropdown to share it with more of your leagues any time.`, { duration: 6000 });
                 localStorage.setItem('mls_has_seen_rankings_toast', 'true');
             } else {
                 window.showToast(`${rankType} Rankings loaded successfully!${alsoText}`);
@@ -5501,7 +5501,7 @@ function attachScoutSuggestionHandler(outputElId) {
         statusEl.style.display = isProcessing ? 'flex' : 'none';
         if (isProcessing) {
             statusEl._fillT = setTimeout(() => {
-                statusEl.innerHTML = `${UPLOAD_SPINNER_SVG}<span>${escapeHtml(label || 'Processing...')}</span>`;
+                statusEl.innerHTML = `${UPLOAD_SPINNER_SVG}<span>${escapeHtml(label || 'Processing…')}</span>`;
             }, 100);
         }
     }
@@ -5543,7 +5543,7 @@ function attachScoutSuggestionHandler(outputElId) {
         setUploadInputsDisabled(type, true);
 
         const updateProgress = (done, total) => {
-            if (btn) btn.innerHTML = `${UPLOAD_SPINNER_SVG} Processing ${done}/${total}...`;
+            if (btn) btn.innerHTML = `${UPLOAD_SPINNER_SVG} Processing ${done}/${total}…`;
         };
         updateProgress(0, filesWithContext.length);
 
@@ -5684,7 +5684,7 @@ function attachScoutSuggestionHandler(outputElId) {
     window.autoFetchRosRankings = async function(btn) {
         if (!btn) return;
         const origText = btn.innerText;
-        btn.innerText = "Fetching...";
+        btn.innerText = "Fetching…";
         btn.style.opacity = "0.7";
         btn.disabled = true;
 
@@ -5774,7 +5774,7 @@ function attachScoutSuggestionHandler(outputElId) {
     const msgEl = document.getElementById('marketSuccessMsg');
     
     const origText = btn.innerText;
-    btn.innerText = "Fetching...";
+    btn.innerText = "Fetching…";
     btn.style.opacity = "0.7";
     btn.disabled = true;
 
@@ -5870,7 +5870,7 @@ window.lookupSimPlayer = async function(p) {
     const resultEl = document.getElementById('simPlayerLookupResult');
     if (!resultEl) return;
     resultEl.style.display = 'block';
-    resultEl.innerHTML = `<p class="text-helper">Looking up ${escapeHtml(p.name)}...</p>`;
+    resultEl.innerHTML = `<p class="text-helper">Looking up ${escapeHtml(p.name)}…</p>`;
 
     try {
         const nflState = await getNflState();
@@ -6463,7 +6463,7 @@ function applyMarketSettingsToUI() {
     if (!container || !exportBtn) return;
 
     const origText = exportBtn.innerText;
-    exportBtn.innerText = "Capturing...";
+    exportBtn.innerText = "Capturing…";
     
     const buttons = container.querySelectorAll('.swap-btn, .lock-btn');
     buttons.forEach(b => b.style.display = 'none');
@@ -7257,7 +7257,7 @@ function applyMarketSettingsToUI() {
     window.optimizeAllLineups = function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
         const origText = btn.innerHTML;
-        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Optimizing All...`;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Optimizing All…`;
         btn.disabled = true;
         btn.style.opacity = '0.8';
 
@@ -7348,7 +7348,7 @@ window.syncAllLeagues = async function(btn) {
         }
 
         const origText = btn.innerHTML;
-        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing All...`;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing All…`;
         btn.disabled = true;
         btn.style.opacity = '0.8';
 
@@ -7389,7 +7389,7 @@ window.syncAllLeagues = async function(btn) {
                     // Mirrors importAllSleeperLeagues' per-league progress text below, instead
                     // of a static "Syncing All..." for the whole loop regardless of how many
                     // leagues or how long it takes.
-                    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing ${i + 1}/${sleeperLeagues.length}...`;
+                    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing ${i + 1}/${sleeperLeagues.length}…`;
                     // processSleeperData re-optimizes the league it just synced, and the optimizer
                     // reads whatever rankings are in State -- so load THIS league's first, or every
                     // league gets a lineup built from the originally active league's rankings.
@@ -8392,7 +8392,7 @@ window.renderPowerRankingsTable = function(teamScores, ctx = {}) {
     if (ctx.kind === 'dynasty') {
         if (ctx.futureLabel === 'age') notes.push(`<strong>Future</strong> is each roster's future value: its value from these rankings, adjusted for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less.`);
         else if (ctx.futureLabel === 'market') notes.push(`<strong>Future</strong> is each roster's future value. Couldn't load player ages from Sleeper, so it uses dynasty Market Consensus values instead.`);
-        else if (ctx.futureLabel === 'loading') notes.push(`Loading player ages from Sleeper for the Future column...`);
+        else if (ctx.futureLabel === 'loading') notes.push(`Loading player ages from Sleeper for the Future column…`);
         else notes.push(`Couldn't load player ages from Sleeper, so there's no Future column; labels use the starting lineup alone. Pulling Dynasty Market Consensus data (Trade Finder on the Scout tab) gives a fallback.`);
         notes.push(`Labels: <strong>Contender</strong> = top-third starting lineup; <strong>Retool</strong> = mid-pack lineup with a decent future; <strong>Rebuild</strong> = bottom-third lineup, or mid-pack with a bottom-third future.`);
     } else {
@@ -8460,7 +8460,7 @@ function resolveManualPlayer(p, candidateIndex) {
 window.runGlobalInjuryAudit = async function(btn) {
     const outputEl = document.getElementById('injuryAuditOutput');
     const origText = btn.innerHTML;
-    btn.innerHTML = "Scanning Leagues...";
+    btn.innerHTML = "Scanning Leagues…";
     btn.disabled = true;
     btn.style.opacity = "0.7";
     outputEl.innerHTML = "";
@@ -8722,7 +8722,7 @@ window.runGlobalInjuryAudit = async function(btn) {
             lockedHTML = `
             <div class="info-banner" style="display:flex; margin-top: 1.25rem; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color:#fcd34d;">
                 <div class="cluster cluster-sm">
-                    <div class="info-banner-icon" style="background:#f59e0b; color:white;">i</div>
+                    <div class="info-banner-icon" aria-hidden="true" style="background:#f59e0b; color:white;">i</div>
                     <div><strong>${lockedOut.length} injured player${one ? '' : 's'} excluded (game already started):</strong> ${namesHTML}. Most platforms lock a roster spot once that player's game kicks off, so ${one ? 'this one' : 'these'} can't be moved until next week.</div>
                 </div>
             </div>`;
@@ -8830,7 +8830,7 @@ window.runMatchupSim = async function() {
     const origText = btn ? btn.innerHTML : "";
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating...</span>`;
+        btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Simulating…</span>`;
     }
 
     try {
