@@ -200,3 +200,100 @@ I checked the suites by mutating a scratch copy of the modules. Changing a boom 
 - 0A and 0B share the branch `perf/render-storage-pass`: 0B was rebased onto 0A's commit
   there, so merging that branch merges both chunks.
 - Next: 1A. It must update `tests/unit/helpers/loadUtils.mjs` (see above).
+
+### 1A — Split utils.js into boot.js and shared modules
+
+`js/utils.js` is gone. Its code was cut by line range with a script, located by its
+`// --- SECTION ---` comments. I checked that every non-blank line of utils.js landed in
+exactly one new file; the only dropped line is the `// --- SHARED UTILITIES ---` title. No
+function body changed. The only rewritten lines are declarations: `window.x = function` became
+`export const x = function`, and `function normalizeName` / `isNameMatch` / `dismissBanner`
+and `const NAME_ALIASES` gained `export`. Each new file starts with a short "moved from
+utils.js" header. The moved comments still say "this file" / "utils.js" and weren't edited.
+
+| New file | From utils.js |
+|---|---|
+| `js/boot.js` (plain script) | APP RESILIENCE block: `readJSON`, `markAppReady`, fatal banner, error listeners |
+| `js/shared/names.js` | `NAME_ALIASES`, `normalizeName`, `isNameMatch` (+ cache) |
+| `js/shared/net.js` | NETWORK FETCH WITH A TIMEOUT: `mdsFetch`, `MDS_LONG_FETCH_TIMEOUT_MS` |
+| `js/shared/html.js` | HTML ESCAPING: `escapeHtml` |
+| `js/shared/rankings/diagnostics.js` | RANKINGS UPLOAD DIAGNOSTICS + CSV QUOTE DAMAGE: `formatRankingsDiagnostic`, `findCsvQuoteProblem` |
+| `js/shared/ui/toast.js` | TOAST NOTIFICATIONS: `showToast`, `setToastsSuppressed` |
+| `js/shared/ui/confirm.js` | SHARED IN-APP CONFIRM DIALOG: `showConfirm` |
+| `js/shared/ui/focusTrap.js` | FOCUS TRAPPING FOR OVERLAYS: `createFocusTrap` |
+| `js/shared/ui/tooltips.js` | TOOLTIPS (side effects only) |
+| `js/shared/ui/fileDrop.js` | DRAG-AND-DROP FILE UPLOAD: `enableFileDrop` + the page-wide stray-drop guard |
+| `js/shared/ui/scriptLoader.js` | ON-DEMAND SCRIPT LOADING: `loadScriptOnce`, `ensureHtml2Canvas`, `loadSheetJS` |
+| `js/shared/ui/banners.js` | `dismissBanner`, `dismissBannerAndReveal`, the DOMContentLoaded hide-if-dismissed pass |
+| `js/shared/ui/feedbackForm.js` | `injectFeedbackForm` + its DOMContentLoaded hook (they were 200 lines apart) |
+| `js/shared/ui/scrollShadows.js` | SCROLL-SHADOW CUE FOR WIDE TABLES |
+| `js/shared/ui/flashButton.js` | FLASH BUTTON FEEDBACK: `flashButton` |
+| `js/shared/ui/tabHash.js` | TAB DEEP LINKS: `getTabFromHash` |
+| `js/shared/globals.js` | New. Imports all of the above and assigns the `window.*` names |
+
+The card didn't name a home for the last five rows or for the rankings diagnostics. Move them
+if a later chunk finds a better place.
+
+#### Load order (all three pages)
+
+`<script src="…/js/boot.js" defer>` then `<script type="module" src="…/js/shared/globals.js">`,
+in the exact spot where the utils.js tag was, so before `mds.js` / `mls.js` / in T-Score's
+`<head>`. boot.js keeps utils.js's `defer`. Module scripts run in document order with defer
+scripts, so globals.js has assigned everything before mds.js (defer) or mls.js (module) runs,
+and before DOMContentLoaded. The T-Score inline script runs during parsing and only touches
+these globals from DOMContentLoaded handlers or click handlers, so nothing changes for it.
+globals.js imports modules in their old utils.js order, so the load-time side effects
+(DOMContentLoaded listeners, drop guard, tooltip delegation) register in the same order.
+
+#### Conventions
+
+- **Shared modules don't import each other yet.** Bodies that called `window.showToast`,
+  `window.createFocusTrap` or `window.loadScriptOnce` still do; those calls happen at call time,
+  after globals.js has run. Switching them to imports would change bodies, so it waits for a
+  later chunk (5D or whoever touches them).
+- **New shared code goes in `js/shared/`, exported.** Add a `window.*` line to globals.js only
+  for something a non-module caller (mds.js, inline handlers, the T-Score inline script) needs.
+  Add the file to `sw.js` PRECACHE_ASSETS too: globals.js is a module graph, so one uncached
+  import kills every shared helper on a first offline load.
+- `lineup/*.js` still read `window.normalizeName` etc. through their shims. 1B replaces those
+  with imports from `js/shared/names.js` and friends.
+
+#### window.* check
+
+I loaded `/`, `/lineup/` and `/t-score/` from main and from this branch in Chromium and diffed
+`Object.getOwnPropertyNames(window)`. Nothing is new. Every explicit `window.x =` from utils.js
+is still there, plus `normalizeName`, `isNameMatch` and `dismissBanner`. Those three were
+implicit globals (classic-script function declarations) that callers use as bare names.
+Twelve implicit globals are gone. They were internal helpers, and a grep finds no reference
+outside utils.js (the two `dialogMessageHTML` hits in mls.js are comments):
+`buildConfirmDialog dialogMessageHTML escapeForDialog getFocusableElements getToastElement
+hideToast initScrollShadows injectFeedbackForm mdsFetchServiceName mdsFetchSignal
+pauseToastTimer resumeToastTimer`. utils.js's top-level `const`/`let`s (`NAME_ALIASES`,
+`MDS_FETCH_TIMEOUT_MS` …) were never window properties, and no other script used them.
+
+Also checked by hand on both builds: T-Score's Refresh with Google blocked gives the same error
+toast and re-enables the button; its inline `tscoreNormalize` reaches the shared
+`normalizeName`; `showConfirm` opens with focus on Cancel and Escape resolves `false`. With
+`js/shared/ui/toast.js` forced to 404, boot.js shows the fatal banner on all three pages.
+
+#### Other changes
+
+- `sw.js`: `/js/utils.js` replaced by boot.js, globals.js and its 15 imports. CACHE_NAME
+  `v2.8.39` → `v2.8.40`.
+- Unit tests: `names.test.mjs` imports `js/shared/names.js` directly, and `parserEnv.mjs`
+  imports `normalizeName` and `findCsvQuoteProblem` from js/shared. I deleted
+  `tests/unit/helpers/loadUtils.mjs` (the node:vm loader), since nothing needs it now.
+- The HTML comments that pointed at utils.js now point at the new files. README `/js` line updated.
+
+#### Checks run
+
+`node scripts/check-precache.mjs` OK (34 precached). `node --test` 117/117.
+`cd tests && npm run check`: 24 Playwright tests pass, screenshots identical (no baseline changed).
+
+#### Left for later chunks
+
+- Comments in `js/mds.js`, `lineup/mls.js`, `lineup/rankingsParser.js`, `sleeperApi.js` and
+  `marketDataApi.js` still say "utils.js". I didn't touch them: rule 3, and those files move in
+  1B/2x/3x. Fix them as each file moves (grep `utils.js`).
+- The "stale cached utils.js" fallbacks at the top of mds.js/mls.js stay as they are (5D).
+- Next: 1B.

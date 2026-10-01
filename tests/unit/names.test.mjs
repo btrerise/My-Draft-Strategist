@@ -1,12 +1,10 @@
-// Characterization tests for normalizeName / isNameMatch in js/utils.js (refactor chunk 0B).
-// utils.js is a plain script, so it's run in a node:vm context (see helpers/loadUtils.mjs).
+// Characterization tests for normalizeName / isNameMatch in js/shared/names.js (refactor chunk
+// 0B; the module was split out of js/utils.js in 1A).
 // Oddities pinned here on purpose are listed in docs/refactor/LOG.md.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { loadUtils } from './helpers/loadUtils.mjs';
-
-const { normalizeName, isNameMatch, NAME_ALIASES } = loadUtils();
+import { normalizeName, isNameMatch, NAME_ALIASES } from '../../js/shared/names.js';
 
 // Every NAME_ALIASES entry, with a real-looking display name for each side. The first test
 // below fails if an alias is added or removed without a matching row here.
