@@ -1,5 +1,5 @@
-// sleeperService.js
-import { getCachedData, cacheData } from './db.js';
+// sleeperStats.js (moved from lineup/sleeperService.js in refactor chunk 1B)
+import { getCachedData, cacheData } from '../storage/idb.js';
 
 const SLEEPER_BASE_URL = 'https://api.sleeper.app/v1';
 
@@ -14,7 +14,7 @@ async function getWeekStats(season, week) {
     const cacheKey = `stats_${season}_w${week}`;
 
     // The IndexedDB cache is best-effort in both directions. A read failure (storage blocked,
-    // private browsing, a connection closed mid-upgrade -- see db.js) is treated as a cache
+    // private browsing, a connection closed mid-upgrade -- see storage/idb.js) is treated as a cache
     // miss rather than thrown: this read used to sit outside the try below, so a broken cache
     // took down the whole matchup simulation even though the stats themselves were reachable.
     let cached = null;

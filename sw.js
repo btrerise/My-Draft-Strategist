@@ -27,7 +27,7 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.40';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.41';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -69,19 +69,20 @@ const PRECACHE_ASSETS = [
     '/js/shared/ui/tabHash.js',
     '/js/shared/ui/toast.js',
     '/js/shared/ui/tooltips.js',
-    '/t-score/tscore_data.js',        // classic <script> on the root page; mds.js falls back to {} without it
+    '/js/shared/storage/keys.js',
+    '/js/shared/data/tscore.js',      // classic <script> on the root page; mds.js falls back to {} without it
     '/lineup/',
     '/lineup/index.html',
     '/lineup/mls.js',
     // mls.js's static imports, and theirs:
-    '/lineup/rankingsParser.js',
-    '/lineup/sleeperApi.js',
-    '/lineup/marketDataApi.js',       // -> sleeperApi.js
+    '/js/shared/rankings/parse.js',   // -> names.js
+    '/js/shared/api/sleeper.js',
+    '/js/shared/api/market.js',       // -> sleeper.js, names.js
     '/lineup/monteCarloUi.js',        // -> statsEngine.js, spawns worker.js
-    '/lineup/sleeperService.js',      // -> db.js
+    '/js/shared/api/sleeperStats.js', // -> storage/idb.js
     '/lineup/statsEngine.js',
     '/lineup/waiverScanner.js',
-    '/lineup/db.js',
+    '/js/shared/storage/idb.js',
     '/lineup/worker.js'               // new Worker(), not an import -- see above
 ];
 

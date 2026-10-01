@@ -1,4 +1,4 @@
-// tscore_data.js
+// tscore.js (moved from t-score/tscore_data.js in refactor chunk 1B; still a plain script that defines the tScoreData global)
 // 2026 Predictive T-Score Data for Skill Positions
 const tScoreData = {
     // Wide Receivers

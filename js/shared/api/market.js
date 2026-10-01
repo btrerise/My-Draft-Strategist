@@ -5,17 +5,13 @@
 // here didn't require any restructuring, just relocating it and wiring up its one real
 // dependency (getSleeperPlayerMap, needed for LeagueLogs' player-ID lookups) as an import
 // from sleeperApi.js instead of a same-file function call.
-import { getSleeperPlayerMap } from './sleeperApi.js';
+import { getSleeperPlayerMap } from './sleeper.js';
+import { normalizeName } from '../names.js';
 
-// normalizeName lives in utils.js, a plain (non-module) script loaded before this one -- its
-// top-level `function` declaration attaches to `window`, so it's reached here explicitly via
-// `window.` rather than assumed to be a bare global, since that's the only form of cross-script
-// access a module can rely on. window.mdsFetch, used for both API calls below, comes from the
-// same place for the same reason -- it's fetch() with a timeout, so neither FantasyCalc nor
-// LeagueLogs going quiet can leave the Market Value button spinning forever.
-function normalizeName(name) {
-    return window.normalizeName(name);
-}
+// normalizeName is imported from js/shared/names.js above. window.mdsFetch, used for both API
+// calls below, is assigned by js/shared/globals.js (from js/shared/net.js) before any app module
+// runs -- it's fetch() with a timeout, so neither FantasyCalc nor LeagueLogs going quiet can
+// leave the Market Value button spinning forever.
 
 /**
  * Fetches and normalizes market-consensus player values from either FantasyCalc or

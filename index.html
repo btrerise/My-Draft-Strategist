@@ -884,13 +884,10 @@
 </nav>
 <script src="js/boot.js" defer></script>
 <script type="module" src="js/shared/globals.js"></script>
-    <!-- Was "../t-score/..." -- this file sits at the site root, so that walked above it.
-         It only ever worked because browsers clamp a leading ".." at the origin root, which
-         silently turns it back into "/t-score/...". That clamp stops covering for it the
-         moment the site is served from a subdirectory (a staging path, a project-style
-         GitHub Pages URL, or a Live Server session rooted a level up), where it would
-         resolve to a sibling folder and 404. Same file, spelled correctly. -->
-    <script src="t-score/tscore_data.js" defer></script>
+    <!-- The bundled T-Score data (defines the tScoreData global mds.js reads). Moved from
+         t-score/tscore_data.js in refactor chunk 1B. Keep the path page-relative (no leading
+         "../" or "/") so it still resolves when the site is served from a subdirectory. -->
+    <script src="js/shared/data/tscore.js" defer></script>
     <script src="js/mds.js" defer></script>
 </body>
 </html>

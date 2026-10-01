@@ -38,13 +38,9 @@ const KNOWN_NON_NAME_HEADERS = new Set([
     'adp', 'value', 'avg', 'std', 'std dev', 'best', 'worst', 'age', 'exp', 'notes'
 ]);
 
-// normalizeName and showToast live in utils.js, a plain (non-module) script loaded before
-// this one -- their top-level `function` declarations attach to `window`, so they're reached
-// here explicitly via `window.` rather than assumed to be bare globals, since that's the only
-// form of cross-script access a module can rely on.
-function normalizeName(name) {
-    return window.normalizeName(name);
-}
+// normalizeName is imported from js/shared/names.js. showToast (and findCsvQuoteProblem) are
+// still reached as window.* names, assigned by js/shared/globals.js before any app module runs.
+import { normalizeName } from '../names.js';
 
 // Optional tier cell -> number, accepting "2", "Tier 2", "T2" (anything with a digit in it).
 // null (not 999) when absent or unparseable: unlike rank there's no "unranked" sentinel to keep
@@ -387,7 +383,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 };
                 reader.readAsArrayBuffer(file);
             }, () => {
-                // SheetJS itself failed to load -- see window.loadSheetJS in js/utils.js.
+                // SheetJS itself failed to load -- see window.loadSheetJS in js/shared/ui/scriptLoader.js.
                 console.error("Failed to load SheetJS library");
                 if (typeof window.showToast === 'function') {
                     window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
@@ -404,7 +400,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                     try {
                         const diags = diagnosticsFor([parseRowsIntoCombined(dropTitleRows(results.data, parseContext), parseContext)]);
                         // Quote damage is the one results.errors entry that means rows were
-                        // lost (see findCsvQuoteProblem in js/utils.js). The XLSX branch doesn't
+                        // lost (see findCsvQuoteProblem in js/shared/rankings/diagnostics.js). The XLSX branch doesn't
                         // check: SheetJS writes its CSV with valid quoting.
                         const quote = typeof window.findCsvQuoteProblem === 'function' ? window.findCsvQuoteProblem(results, 1) : null;
                         if (quote) diags.push({ fileName: file.name, context: parseContext, reason: 'unclosed-quote', row: quote.row, rowsLost: quote.rowsLost, headersFound: [], missing: [] });
@@ -462,7 +458,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
  *     skipped tab, its first row
  *   - missing: the lowercase name headers that were looked for (only for 'no-name-column')
  *   - sheetName: set for multi-sheet workbooks, naming the tab the diagnostic describes
- * window.formatRankingsDiagnostic (js/utils.js) turns one into the user-facing message.
+ * window.formatRankingsDiagnostic (js/shared/rankings/diagnostics.js) turns one into the user-facing message.
  */
 export async function parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress } = {}) {
     let combinedPlayers = {};

@@ -24,6 +24,7 @@ import { loadScriptOnce, ensureHtml2Canvas, loadSheetJS } from './ui/scriptLoade
 import { flashButton } from './ui/flashButton.js';
 import { getTabFromHash } from './ui/tabHash.js';
 import './ui/tooltips.js';
+import { isMdsOwnedKey } from './storage/keys.js';
 
 // Top-level function declarations in utils.js (a classic script), so they were window
 // properties too. Callers use them as bare names: mds.js, mls.js, the T-Score inline script,
@@ -49,3 +50,6 @@ window.ensureHtml2Canvas = ensureHtml2Canvas;
 window.loadSheetJS = loadSheetJS;
 window.flashButton = flashButton;
 window.getTabFromHash = getTabFromHash;
+
+// Added in refactor chunk 1B for js/mds.js (a classic script, so it can't import keys.js).
+window.isMdsOwnedKey = isMdsOwnedKey;

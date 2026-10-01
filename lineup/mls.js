@@ -7,13 +7,14 @@
 // piece of mls.js currently split out. import statements must live at a module's top
 // level, which is why this sits above the IIFE rather than inside it; the imported
 // function is still just a normal binding the IIFE's closures can reference below.
-import { parseRankingsFiles } from './rankingsParser.js';
-import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from './sleeperApi.js';
-import { fetchMarketConsensusData } from './marketDataApi.js';
+import { parseRankingsFiles } from '../js/shared/rankings/parse.js';
+import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from '../js/shared/api/sleeper.js';
+import { fetchMarketConsensusData } from '../js/shared/api/market.js';
 import { runMatchupSimulation, clearSimResults, showSimNotice } from './monteCarloUi.js';
-import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from './sleeperService.js';
+import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from '../js/shared/api/sleeperStats.js';
 import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './statsEngine.js';
 import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLineup, compareForScan, matchesPosFilter } from './waiverScanner.js';
+import { isMlsOwnedKey } from '../js/shared/storage/keys.js';
 
 (function () {
     'use strict';
@@ -636,12 +637,10 @@ import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLine
     // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in mds.js -- see that
     // file's comment for why key-prefix scoping matters on a shared origin. MLS's own keys are
     // mds_season_* and mls_*. mds_handoff_roster is excluded -- transient signal from MDS,
-    // not a persistent MLS setting.
+    // not a persistent MLS setting. The filter itself is isMlsOwnedKey in
+    // js/shared/storage/keys.js.
     function getMlsOwnedKeys() {
-        return Object.keys(localStorage).filter(k =>
-            (k.startsWith('mds_season_') || k.startsWith('mls_'))
-            && k !== 'mds_handoff_roster'
-        );
+        return Object.keys(localStorage).filter(isMlsOwnedKey);
     }
 
     window.exportMlsSettings = function() {
@@ -1010,7 +1009,7 @@ window.toggleMlsHeadshots = function(show) {
 if (document.body) applyHeadshotSetting();
 
 // --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---
-// Moved to sleeperApi.js -- getSleeperPlayerMap is now imported at the top of this file.
+// Moved to js/shared/api/sleeper.js -- getSleeperPlayerMap is now imported at the top of this file.
 
 // Autocomplete Search Index
 let _playerSearchIndexPromise = null;
@@ -5668,7 +5667,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     }
     // --- SHARED MARKET-CONSENSUS FETCH ---
-    // Moved to marketDataApi.js -- fetchMarketConsensusData is now imported at the top of
+    // Moved to js/shared/api/market.js -- fetchMarketConsensusData is now imported at the top of
     // this file. It's still used the same way below (Scout tab's Power Rankings and the
     // ROS Rankings auto-fetch both call it), just no longer defined in this file.
 
