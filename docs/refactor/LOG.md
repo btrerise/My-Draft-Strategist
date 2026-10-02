@@ -43,7 +43,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   - PapaParse comes from `tests/node_modules`, pinned to the same 5.4.1 the pages use.
   - Sleeper API calls are answered from `tests/fixtures/sleeper/*.json`. These are generated
     by `node tests/fixtures/sleeper/make-fixtures.mjs`, which describes a 2-team "Fixture
-    League" for user `mds_test`, 2026 week 2. Edit the generator, not the JSON.
+    League" for user `mds_test`, 2026 week 2. Edit the generator, not the JSON. Since 3G the
+    player map also has six free agents (on no roster; `tests/fixtures/rankings-waivers.csv` ranks
+    them), and each team's week-2 matchup lists Sleeper starters, so the in-app simulator runs end
+    to end.
   - A Sleeper URL with no fixture gets a 404 and is recorded in `unmocked`. The MLS sync
     test asserts that list is empty, so a new endpoint fails loudly. Add a route in
     `SLEEPER_FIXTURES` and a file in the generator.
@@ -70,10 +73,13 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   to a second league from the preview, then a third through "Choose leagues...") and 2 MLS keyboard
   tests (`mls-keyboard.spec.mjs`, 3E: tab shortcuts, Escape, lock/undo/redo/swap by keyboard and where
   focus lands after the lineup rebuilds) and 1 MLS simulator test (`mls-sim.spec.mjs`, 3F: fixed
-  teams through the real UI module and Web Worker with `Math.random` seeded, exact numbers pinned).
-  Each runs at both widths: 66 Playwright tests in all. The smoke test's simulator run stops at "Not
-  enough roster data" with the fixture league (it never reaches the worker), so `mls-sim.spec.mjs`
-  is the one that checks the simulation itself.
+  teams through the real UI module and Web Worker with `Math.random` seeded, exact numbers pinned)
+  and 3 MLS Waiver Insights tests (`mls-waiver-insights.spec.mjs`, 3G: the in-app simulator with
+  Waiver Insights on, after a Scout scan, in a fresh page, and with no free agent that has a position).
+  Each runs at both widths: 72 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
+  only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
+  check the numbers.
 
 ### Known gaps (good follow-ups, not blockers)
 
@@ -1926,3 +1932,125 @@ position") instead of the history/kickoff message. Add a test that runs Waiver I
 page with no Scout run first. Note for that test: the fixture league rosters all 24 players in
 `tests/fixtures/rankings.csv`, so it has no free agents at all. The test needs extra unrostered
 names in its rankings.
+
+### 3G — MLS: Waiver Insights and the trade verdict as their own functions; fix Waiver Insights' free-agent positions (step 2 is a behavior change)
+
+Three commits, in this order: the baseline spec and fixtures (run against main's app code), step 1
+(two inline blocks become functions, no user-visible change) and step 2 (the Waiver Insights fix).
+No `// --- WAIVER INSIGHTS ---` or `// --- TRADE FAIRNESS VERDICT(S) ---` marker is left inside
+`runMatchupSim` or `runScout`; each now sits above its new function.
+
+| New file (under `js/mls/`) | From |
+|---|---|
+| `scout/waiverInsights.js` | `runMatchupSim`'s WAIVER INSIGHTS block (`sim/matchup.js`) → `export async function getWaiverInsights({ … })`, returning `{ waiverInsights, waiverInsightsStatus }` |
+| `trade/verdict.js` | `runScout`'s TRADE FAIRNESS VERDICT(S) block (`scout/engine.js`) → `export function buildTradeVerdictHTML(getResults, giveResults)`, returning `verdictHTML`; plus `renderTradeVerdict` (and its WAIVER ADJUSTMENT sub-marker), which nothing else called |
+| `players.js` (added) | Step 2: `ensureSleeperPosByName()`, the code from `runScout` that builds `window.sleeperPosByName` |
+
+#### Step 1: how the blocks became functions
+
+- **Parameters by scope walk** (acorn + eslint-scope in a scratch directory, as 3A–3F): the Waiver
+  Insights block reads nine `runMatchupSim` locals (`team1Players`, `lockedStarterIds`, `rosterMap`,
+  `playerMap`, `season`, `currentWeek`, `scoringKey`, `getProjectedMean`, `compareAgainstWeakestStarter`),
+  writes none of them, and only `waiverInsights` / `waiverInsightsStatus` are read after it. Nine
+  positional parameters read badly, so `getWaiverInsights` takes one object and destructures those
+  exact names; the call passes them by shorthand (`getWaiverInsights({ team1Players, … })`). The
+  verdict block reads `getResults`, `giveResults` and writes `verdictHTML`, which the function now
+  declares (`let verdictHTML;`) and returns.
+- **Lines unchanged.** A script cut each block by line range (located by its marker, boundaries
+  asserted) and wrapped it. The Waiver Insights lines are byte-identical: `scout/` files indent their
+  top level by 4 (the old IIFE), so the body lands at the same 8 spaces. The verdict block was at
+  16 spaces inside two `if`s, so it's re-indented by 8, nothing else. Checked afterwards against
+  origin/main: the multiset of trimmed non-blank lines over `js/mls/**` differs only in the file
+  headers, the imports, the wrappers (signature, `let verdictHTML;`, the two `return`s) and the two
+  call sites. No import is unused, and the set of bare globals is unchanged. Each marker moved to
+  just above its function (one comment line each, re-indented to the function's level).
+- **Imports.** `sim/matchup.js` imports `getWaiverInsights` and no longer imports
+  `getTopWaiverCandidatesByPosition`; `scout/engine.js` imports `buildTradeVerdictHTML`. Both
+  importers evaluate after every module the new files import, so the 3E/3F rule allows direct
+  imports. main.js lists each new module as a side-effect import just before the module that calls
+  it (`./trade/verdict.js` before `./scout/engine.js`, `./scout/waiverInsights.js` before
+  `./sim/matchup.js`).
+- **Evaluation order** (re-simulated: depth-first over static imports from main.js, load-time
+  statements listed, TDZ reads flagged): identical to main's, except the two new modules, each just
+  before its importer (`… trade/waiverValue → trade/verdict → scout/engine …`,
+  `… lineup/injuryAudit → scout/waiverInsights → sim/matchup → main`). Same load-time effects, no
+  TDZ reads. Neither new module has load-time code beyond imports and function declarations.
+
+#### Step 2: the fix (user-visible)
+
+**Before:** with Waiver Insights on, Run Matchup Simulations found no free agents in a page where no
+Scout action had run yet (Scan Pasted List, Analyze Trade, …) and no Market data was loaded, and
+said "No free agents could be compared against a starter you can still change this week. They
+either don't have enough game history yet…", which blamed the wrong thing (see "3F follow-up" above).
+
+**After:**
+- Waiver Insights compares free agents on a fresh page load. `getWaiverInsights` calls
+  `ensureSleeperPosByName()` before `getTopWaiverCandidatesByPosition`. That function is the code
+  `runScout` used to run inline (one `console.warn` reworded from "for position badges" to "for
+  player positions", since it now serves both). `runScout` calls it in the same place, after the
+  same "Looking up player positions…" placeholder. `window.sleeperPosByName` is still the store
+  (`getTopWaiverCandidatesByPosition` and `runScout`'s `getPos` read it), still not saved anywhere,
+  and still left unset when the player map can't load, so both callers fall back to Market data as
+  before and the next call retries.
+- When no unrostered ranked player can be given a position (zero candidates before the id, history
+  and kickoff checks), the card says: "No free agents to compare: none of the unrostered players in
+  your rankings could be matched to a position. Waiver Insights looks each name up in Sleeper's player
+  list (or Market Consensus data), so check that your rankings use the names Sleeper does. If every
+  ranked player is already on a roster in this league, there's no one to check." This is a new
+  `noCandidates` flag on `waiverInsightsStatus`, checked in `sim/ui.js` after the failed, no-rankings
+  and all-starters-kicked-off cases (those keep their messages and their precedence) and before the
+  history/kickoff message.
+- Also visible: with Market data loaded, free agents the market file gave no position (or doesn't
+  list) used to be skipped unless a Scout action had run; Sleeper's positions now cover them.
+- Unchanged: thresholds, 3 candidates per position, the win-probability math, every other message,
+  the visible app version label (bug fix only, per its comment in `lineup/index.html`).
+
+#### Tests
+
+- **Fixtures** (`make-fixtures.mjs`): six free agents (`FREE_AGENTS`, on no roster) in the player
+  map, stats and projections; each team's matchup now lists Sleeper starters, filled slot by slot.
+  The JSON diff only adds entries (and the starters); no existing player's numbers changed.
+  `mds-sync.spec.mjs`'s player-cache count reads the fixture instead of hard-coding 28.
+  `tests/fixtures/rankings-waivers.csv` is rankings.csv plus the six free agents (ranks 25–30).
+- **`helpers.mjs`**: `seedSimRandom` (the seeded page and worker from `mls-sim.spec.mjs`) and
+  `loadMlsRankings` (the ROS + Weekly upload from `mls-scout.spec.mjs`), shared now; both specs use them.
+- **New `tests/mls-waiver-insights.spec.mjs`** (kept, 3 tests × 2 widths): the real simulator with
+  Waiver Insights on (1) after Scan Pasted List, pinning the four free agents compared and the win
+  probability (committed and passing before step 1, i.e. on main's app code); (2) in a fresh page
+  with no Scout action, which must compare the same four (fails before step 2); (3) with two
+  unrostered names Sleeper doesn't know and no Market data, which must show the new message.
+- **Throwaway comparison spec** (not committed), on an origin/main worktree and on this branch at
+  both widths: in-app simulator results HTML, the position-lookup size and toasts for Waiver Insights
+  after a scan (on, then off), in a fresh page, with no rankings, with Market data only, and with
+  unknown free agents; Trade Analyzer output for 13 trades (no rankings, ROS only, one-sided either
+  way, unmatched names, a fair trade, waiver adjustment off, a bigger adjustment, Market data with
+  and without ROS); and every localStorage key. Two runs on main were byte-identical (after waiting
+  for the tooltip upgrade, which otherwise races the snapshot). **Step 1: byte-identical to main.**
+  **Step 2:** only the intended differences: the fresh-page and Market-only runs now list all four
+  free agents (the lookup exists: 34 names), the unknown-names run shows the new message, and the
+  lookup exists after the no-rankings run. All trade output is identical.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (100 precached). `node --test` 157/157.
+  `cd tests && npx playwright test`: **72/72** on the final tree (68/68 before the step-2 tests were
+  added, after the baseline commit and after step 1). **No screenshot changed.**
+
+#### Other changes
+
+- `sw.js`: `/js/mls/trade/verdict.js` before `/js/mls/scout/engine.js`, `/js/mls/scout/waiverInsights.js`
+  before `/js/mls/sim/matchup.js`. CACHE_NAME `v2.8.53` → `v2.8.54` (step 1's commit).
+- Header comments of `sim/matchup.js`, `scout/engine.js` and the two new files say what moved.
+  `trade/waiverValue.js`'s comment no longer claims the lookup is "populated during Sleeper sync".
+  `sim/ui.js`'s JSDoc for `waiverInsightsStatus` lists `noCandidates`.
+
+#### Left for later chunks
+
+- Comments inside the moved lines still point "above"/"below" at code in other files now ("Same
+  comparison as Lineup Insights above", "see lockedStarterIds above", "(Trade Finder section below)"),
+  `runScout` says "renderTradeVerdict below", and `trade/waiverValue.js` says "see renderTradeVerdict
+  above". For 5D's comment sweep.
+- The position lookup still isn't saved (it would need a storage key; 6A/6B own those), so each new
+  page builds it once from the cached player map.
+- 5C (MLS handlers, part 2) can start once 5B and this chunk are on main. Neither new file has inline
+  handlers; `sim/ui.js`'s new message has none either.
