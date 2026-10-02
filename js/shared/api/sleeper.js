@@ -117,6 +117,22 @@ export async function getSleeperDraftPicks(draftId) {
     return res.json();
 }
 
+// --- SEASON ADP ---
+/**
+ * Season-long projections for QB/RB/WR/TE, one row per player ({ player_id, stats, ... }),
+ * sorted by `orderBy`. Each row's `stats` carries Sleeper's ADP figures (adp_ppr, adp_half_ppr,
+ * adp_std, adp_2qb, ...). Draft Strategist's "Sleeper Native ADP" options read these.
+ *
+ * Note the host: api.sleeper.com, not the api.sleeper.app v1 API the rest of this file calls.
+ * Moved here from js/mds/market.js in refactor chunk 2C's follow-up; the URL and the
+ * "Sleeper API Error: <status>" message are unchanged.
+ */
+export async function getSleeperSeasonAdp(season, orderBy) {
+    const res = await window.mdsFetch(`https://api.sleeper.com/projections/nfl/${season}?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=${orderBy}`);
+    if (!res.ok) throw new Error(`Sleeper API Error: ${res.status}`);
+    return res.json();
+}
+
 // --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---
 // Sleeper's players/nfl payload is close to 5MB, and their own docs say not to call this
 // endpoint more than once a day. Previously this was only cached in the plain JS variables

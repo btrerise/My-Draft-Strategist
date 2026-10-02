@@ -782,16 +782,37 @@ would change one app's results. A later chunk can unify them as a deliberate beh
 #### Checks run
 
 - `node scripts/check-precache.mjs` OK (55 precached). `node --test` 136/136 (117 + 19 new).
-  `cd tests && npm run check`: 40 Playwright tests pass (28 existing + 12 new), **screenshots
+  `cd tests && npm run check`: 42 Playwright tests pass (28 existing + 14 new), **screenshots
   identical** (no baseline changed).
-- **Manual check (Quick-Start, ADP sync, live draft): done against stubs only, not live APIs.**
-  This container's network policy blocks `api.sleeper.app` and `developer.leaguelogs.com` (the
-  proxy answers 403), so the three flows were exercised through `mds-sync.spec.mjs` with
-  realistic payloads instead, on this branch and on main. **Still to do by hand** before or
-  after merging: on the deployed site, Quick-Start with a LeagueLogs profile, Fetch Market
-  Value, and Live Sync on a real Sleeper mock draft ID. In DevTools → Application → IndexedDB
-  the `mls_sleeper_cache` database should appear after the first upload, and a second upload
-  should make no `players/nfl` request.
+- **Live check against the real APIs** (after the owner opened the environment's network to
+  Sleeper and LeagueLogs), using the owner's real, paused draft `1410504549269053440` (12 teams,
+  14 rounds, 3rd-round reversal, 37 picks) and username `btrerise`. Ran a throwaway Playwright
+  script (not committed) on this branch **and on main**, desktop:
+  - Rankings paste: the player map (now **14.6 MB**, 12,229 players, not the ~5 MB the code
+    comments say) was downloaded once, then read from IndexedDB after a reload. Main downloaded
+    it again after the reload and has no `mls_sleeper_cache` database.
+  - Fetch Market Value, Sleeper Native ADP (PPR): applied, identical values on both.
+  - Quick-Start: fails on both with "Market Error: 410". **LeagueLogs has retired its public
+    API** (see below).
+  - Sync Sleeper Draft with the draft URL: "Sync Complete!", 37 picks, 3 on the owner's team,
+    slot names from the league members, roster limits from the league. Identical on both.
+  - Live Sync for 10 s: user/draft/league/users fetched once (the toggle's forced sync), picks
+    fetched every 3 s, pill reads LIVE; no requests after stopping. Identical on both.
+- **How to run a live check here:** Playwright's Chromium doesn't trust the egress proxy's CA, so
+  `route.continue()` to a real host fails with `ERR_CERT_AUTHORITY_INVALID`. Instead, fetch the
+  real URL from the test runner and `route.fulfill()` the page with it, running Playwright with
+  `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` (certificate checks stay
+  on). cdnjs is still blocked, so serve PapaParse from `tests/node_modules` as `helpers.mjs` does.
+
+#### LeagueLogs' public API is retired (found during 2C, not caused by it)
+
+Every `developer.leaguelogs.com` URL, on main as on this branch, now answers **HTTP 410** with
+`{"error":"deprecated","message":"The LeagueLogs public API has been retired and is no longer
+available. It may return in the future."}`. On the live site that breaks MDS's **Quick-Start**
+("Failed to load Quick-Start. Market Error: 410"), MDS's three **LeagueLogs** Fetch Market Value
+options, and MLS's **LeagueLogs** market source. FantasyCalc (MLS) and Sleeper Native ADP (MDS)
+still work. Not changed here: what to replace it with (hide the options, switch Quick-Start to
+Sleeper ADP or FantasyCalc, or wait for it to return) is the owner's call.
 
 #### Other changes
 
@@ -799,6 +820,11 @@ would change one app's results. A later chunk can unify them as a deliberate beh
   modules were already precached for MLS), so rule 6 didn't require it; served JS changed.
 - `js/shared/storage/keys.js`: the `mls_sleeper_cache` comment says both apps read it. The
   database name is unchanged (rule 4).
+- **Follow-up in the same branch, at the owner's request:** ADP sync's "Sleeper Native ADP"
+  request (`api.sleeper.com/projections/nfl/2026?...&order_by=<key>`, a different host from the
+  v1 API) moved to `getSleeperSeasonAdp(season, orderBy)` in `js/shared/api/sleeper.js`, same
+  URL and same "Sleeper API Error: <status>" message. No runbook chunk covered it. `js/mds/` now
+  makes no direct network calls. New test in `mds-sync.spec.mjs` (stubbed), and checked live.
 
 #### Left for later chunks
 
@@ -807,10 +833,10 @@ would change one app's results. A later chunk can unify them as a deliberate beh
   too, a non-ok response whose body happens to be JSON would be cached in IndexedDB for a day as
   if it were the player map, in both apps. Not fixed here because it would change MLS's toasts.
   A follow-up could check `res.ok` and throw a SyntaxError-compatible error, or skip caching
-  non-ok bodies.
-- ADP sync's **Sleeper** source still calls `api.sleeper.com/projections/...` directly (a
-  different host and endpoint from the card's `api.sleeper.app` calls). It could join
-  `js/shared/api/sleeperStats.js` later.
+  non-ok bodies. Seen live during 2C: Sleeper does send JSON error bodies (`api.sleeper.com`
+  answered a bad request with 400 `{"error":"bad-request"}`), so this isn't only theoretical.
+  It's a bug fix, not a module move, so it isn't a runbook chunk: do it as a small standalone
+  change after 2C merges (it touches `js/shared/api/sleeper.js`, which 2C edits).
 - `js/mds/*` still reads `showToast`, `flashButton`, `normalizeName`, `isNameMatch`,
   `formatRankingsDiagnostic` etc. through `window.*` / bare globals. Only the Sleeper, market
   and parser code moved to imports here.

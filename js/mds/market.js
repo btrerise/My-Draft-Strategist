@@ -4,7 +4,7 @@ import { savePlayerPool } from './storage.js';
 import { BYE_WEEKS_2026, State, saveAndRenderDraftState } from './state.js';
 import { updateMetaDisplay } from './settings.js';
 import { renderBoard } from './tracker.js';
-import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
+import { getSleeperPlayerMap, getSleeperSeasonAdp } from '../shared/api/sleeper.js';
 import { fetchLeagueLogsMarket } from '../shared/api/market.js';
 
     // --- LEAGUE LOGS INTEGRATION ---
@@ -126,9 +126,7 @@ import { fetchLeagueLogsMarket } from '../shared/api/market.js';
         
         // --- 2. SLEEPER ---
         else if (source === 'sleeper') {
-            const sleeperRes = await window.mdsFetch(`https://api.sleeper.com/projections/nfl/2026?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=${profileKey}`);
-            if (!sleeperRes.ok) throw new Error(`Sleeper API Error: ${sleeperRes.status}`);
-            const sleeperData = await sleeperRes.json();
+            const sleeperData = await getSleeperSeasonAdp(2026, profileKey);
             sleeperData.forEach(item => {
                 // Check if the specific ADP metric exists in the stats object
                 if (item.player_id && item.stats && item.stats[profileKey]) {

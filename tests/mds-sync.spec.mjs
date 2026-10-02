@@ -143,6 +143,36 @@ test.describe('Draft Strategist network features', () => {
         await expectClean(page, state);
     });
 
+    test('ADP sync from Sleeper Native ADP applies stats.<key> by Sleeper ID, and reports errors', async ({ page }) => {
+        const state = await openApp(page, '/');
+        await pasteRankings(page);
+        const adpRequests = [];
+        let adpStatus = 200;
+        await page.route(/^https:\/\/api\.sleeper\.com\/projections\/nfl\/2026\?/, (route) => {
+            adpRequests.push(route.request().url());
+            if (adpStatus !== 200) return route.fulfill({ status: adpStatus, contentType: 'application/json', body: '{"error":"bad-request"}' });
+            return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
+                { player_id: '9509', stats: { adp_half_ppr: 1.94, adp_ppr: 2.1 } },
+                { player_id: '4866', stats: { adp_half_ppr: 3.25, adp_ppr: 1.2 } },
+                { player_id: '4984', stats: { adp_ppr: 20 } }, // no half-PPR figure: left as "-"
+            ]) });
+        });
+        await page.selectOption('#adpFormatSelect', 'sleeper|adp_half_ppr');
+        await page.click('#fetchAdpBtn');
+        await expect(toast(page, 'Market Value (ADP) updated')).toBeVisible();
+        expect(adpRequests).toEqual(['https://api.sleeper.com/projections/nfl/2026?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=adp_half_ppr']);
+        const players = byName((await savedDraft(page)).pool);
+        expect([players['Bijan Robinson'].adp, players["Ja'Marr Chase"].adp, players['Josh Allen'].adp]).toEqual(['1.9', '3.3', '-']);
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        expect(meta.format).toBe('SLEEPER: Redraft - 1QB (Half-PPR)');
+
+        adpStatus = 400;
+        await page.click('#fetchAdpBtn');
+        await expect(toast(page, 'Failed to fetch live Market Value.')).toContainText('Sleeper API Error: 400');
+        state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('Sleeper API Error: 400')));
+        await expectClean(page, state);
+    });
+
     test('live Sleeper draft: sync, poll picks every 3s without refetching draft metadata, stop', async ({ page }) => {
         const state = await openApp(page, '/');
         await pasteRankings(page);
