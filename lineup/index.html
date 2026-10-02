@@ -64,10 +64,10 @@
 </script>
 </head>
 <body>
-<!-- Targets #mainApp (not #main): mls.js looks up #mainApp for swipe handling. -->
+<!-- Targets #mainApp (not #main): js/mls/nav.js looks up #mainApp for swipe handling. -->
 <a href="#mainApp" class="skip-link">Skip to content</a>
 
-<!-- Screen-reader-only announcement region for tab changes (see showTab in mls.js) --
+<!-- Screen-reader-only announcement region for tab changes (see showTab in js/mls/nav.js) --
      visually hidden via .sr-only, but announced by assistive tech whenever its text changes. -->
 <div id="tabChangeAnnouncer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
@@ -170,7 +170,7 @@
         <!-- SETUP PROGRESS: text version of the pulse prompts, with how-to and a jump button per
              unfinished step. Sits outside the tabs so it can show on Dashboard (all three steps),
              Roster (ROS step only) and Lineup (Weekly step only). Filled and shown/hidden by
-             updatePulsePrompts() in mls.js. -->
+             updatePulsePrompts() in js/mls/init.js. -->
         <section id="setupChecklist" class="setup-checklist" aria-labelledby="setupChecklistTitle" style="display: none;">
             <h2 id="setupChecklistTitle" class="setup-checklist-title">Setup Progress</h2>
             <ul class="setup-checklist-list">
@@ -570,7 +570,7 @@
         </header>
         
         <!-- Your row of the Positional Power Rankings (full table further down this tab), filled
-             by renderRosterPowerStrip in mls.js. Hidden when there's nothing to rank. -->
+             by renderRosterPowerStrip in js/mls/legacy.js. Hidden when there's nothing to rank. -->
         <div id="rosterPowerStrip" class="mls-roster-power" style="display: none;" aria-live="polite"></div>
 
         <button id="rosterSyncBtn" class="btn btn-primary mb-3" style="display: none;" onclick="syncActiveLeague()">
@@ -585,7 +585,7 @@
     </section>
     
     <!-- POSITIONAL POWER RANKINGS (moved here from the Scout tab). Generated automatically by
-         refreshPowerRankings in mls.js whenever this tab renders -- no Calculate button. -->
+         refreshPowerRankings in js/mls/legacy.js whenever this tab renders -- no Calculate button. -->
     <section class="settings-card" id="powerRankingsCard">
         <header class="card-header">
             <h3><span>Positional Power Rankings</span></h3>
@@ -1053,7 +1053,7 @@
     </section>
     
     <!-- POSITIONAL POWER RANKINGS: moved to the Roster tab (2026-09-27). This one-line pointer
-         catches people who still look for it here -- see goToPowerRankings in mls.js for the
+         catches people who still look for it here -- see goToPowerRankings in js/mls/legacy.js for the
          removal note. -->
     <section class="settings-card mls-moved-pointer" id="powerRankingsScoutPointer">
         <p class="card-desc mls-moved-pointer-text">
@@ -1415,11 +1415,11 @@
 
 <script src="../js/boot.js" defer></script>
 <script type="module" src="../js/shared/globals.js"></script>
-    <script type="module" src="mls.js"></script>
+    <script type="module" src="../js/mls/main.js"></script>
     <!-- Registers the site-wide service worker from this page too. Before this, only js/mds.js
          (the draft page) registered it, so anyone who went straight to /lineup/ never got
          offline support at all. Deliberately an inline classic script rather than part of
-         mls.js: if a module in mls.js's import chain fails, mls.js never runs -- which is
+         js/mls/: if a module in js/mls/main.js's import chain fails, none of it runs -- which is
          exactly the offline failure the service worker is there to prevent. Absolute '/sw.js'
          is required: a relative 'sw.js' here would resolve to /lineup/sw.js, which doesn't
          exist. The default scope of /sw.js is '/', covering this page and the rest of the site,

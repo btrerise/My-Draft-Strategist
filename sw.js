@@ -27,7 +27,7 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.47';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.48';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -36,9 +36,9 @@ const CACHE_NAME = 'draft-strategist-v2.8.47';  // Update this version on EVERY 
 
 // Core assets to pre-cache immediately on install.
 //
-// Every file in /lineup/'s module graph has to be listed here, not just mls.js. A module
-// <script> fails as a whole if any static import fails, so a first offline load with even one
-// of mls.js's imports uncached is a blank Lineup page -- stale-while-revalidate only fills the
+// Every file in /lineup/'s module graph (js/mls/main.js and its imports) has to be listed
+// here. A module <script> fails as a whole if any static import fails, so a first offline load
+// with even one of those imports uncached is a blank Lineup page -- stale-while-revalidate only fills the
 // gap after an online visit has already requested each file. When adding an `import` to any
 // lineup module, add the file here too. worker.js needs listing separately: it's loaded by
 // `new Worker('./worker.js')` in monteCarloUi.js, not imported, so it's outside the graph.
@@ -94,8 +94,16 @@ const PRECACHE_ASSETS = [
     '/js/shared/data/tscore.js',      // classic <script> on the root page; js/mds/ falls back to {} without it
     '/lineup/',
     '/lineup/index.html',
-    '/lineup/mls.js',
-    // mls.js's static imports, and theirs:
+    '/js/mls/main.js',                // the Lineup page's entry point (refactor 3A; was lineup/mls.js)
+    '/js/mls/legacy.js',
+    '/js/mls/compat.js',
+    '/js/mls/constants.js',
+    '/js/mls/state.js',
+    '/js/mls/helpers.js',
+    '/js/mls/nav.js',
+    '/js/mls/backup.js',
+    '/js/mls/init.js',
+    // their static imports outside js/mls/, and theirs:
     '/js/shared/rankings/parse.js',   // -> names.js
     '/js/shared/api/sleeper.js',
     '/js/shared/api/market.js',       // -> names.js

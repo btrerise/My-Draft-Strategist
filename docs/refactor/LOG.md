@@ -1166,3 +1166,129 @@ back to.
 - **Owner:** the `FFC_LISTS` KV binding is set up (Production and Preview, done with
   Cloudflare's AI agent on 2026-10-02). It takes effect with the first deployment that includes
   `functions/`, i.e. when this branch is merged to main (or a Preview deployment of it).
+
+### 3A — MLS groundwork: entry point, state, navigation, init
+
+`git mv lineup/mls.js js/mls/legacy.js`, then the IIFE wrapper (`(function () {`, `'use strict';`,
+`})();`) was dropped; the file was already a module, so nothing else about strictness changes.
+Everything above `// --- PLAYER HEADSHOTS ---` moved into the modules below. A script cut it by
+line range (top-level statements found with acorn, as in 2A) and added `export`/`import` lines;
+no other line was retyped. Checked: every non-blank line of the old mls.js (except the three IIFE
+lines and the import lines, whose paths changed) is present **exactly once** across `js/mls/*.js`
+once the `export` edits are undone (8,302 lines). Indentation is unchanged (mls.js mixes the
+IIFE's 4 spaces and column 0), so a line from the old file greps the same in the new one.
+
+| New file | From mls.js (by section marker) |
+|---|---|
+| `js/mls/main.js` | New. Entry point (`<script type="module" src="../js/mls/main.js">` in `lineup/index.html`, where the mls.js tag was). Imports `legacy.js` first, then holds the single `window.*` block: all **72** names mls.js assigned |
+| `js/mls/compat.js` | The stale-utils.js fallbacks: `readJSON` (top of the IIFE) and the `escapeHtml` forwarder (end of INITIALIZATION). Same role as `js/mds/compat.js`; 5D deletes it |
+| `js/mls/constants.js` | CONSTANTS & CONFIGURATION (`NFL_TEAMS`, `TEAM_BYES`, `ESPN_TEAM_ALIASES`, `tierTag`, `posRankTag`, the lineup-stats TTLs, `RANKING_TYPE_CONFIG`) |
+| `js/mls/state.js` | STATE MANAGEMENT: `State` (including the first LINEUP OPTIMIZER SETTINGS block, which is inside it), lineup undo/redo (`snapshotLineupState` … `redoLineupChange`), `refreshCurrentNflWeek`, `refreshGameTimes` |
+| `js/mls/helpers.js` | The status predicates at the end of STATE MANAGEMENT (`HARD_OUT_STATUSES`, `isUnavailableThisWeek`, `getShortInjuryStatus`, `SIM_EXCLUDE_STATUSES`, `isExcludedFromSimulation`, `isBestBallLeague`), UTILITY HELPERS (comments only), RANKINGS LOOKUP INDEX (`rankingIndex`), and `showStatusFeedback` / `renderHTMLInto` (unmarked, end of INITIALIZATION) |
+| `js/mls/nav.js` | DRAWER & SWIPE LOGIC, NAVIGATION LOGIC (`toggleDrawer`, `navigateFromDrawer`, the `#mainApp` touch listeners, `handleSwipe`, `updateDrawerActiveState`, `showTab`, the `popstate` listener) |
+| `js/mls/backup.js` | BACKUP & RESTORE (`getMlsOwnedKeys`, export, import, `factoryReset`) |
+| `js/mls/init.js` | INITIALIZATION: `SETUP_STEPS`, `goToSetupStep`, `renderSetupStep`, `updatePulsePrompts` |
+| `js/mls/legacy.js` | Everything from PLAYER HEADSHOTS on, unchanged apart from the edits below |
+
+**Placements by content, not marker** (as 2A did): the six status predicates sat under STATE
+MANAGEMENT but don't hold state, so they're in helpers.js. `escapeHtml`, `showStatusFeedback` and
+`renderHTMLInto` sat at column 0 after INITIALIZATION's last function, with no marker; the first is a
+stale-cache fallback (compat.js), the other two are general DOM helpers (helpers.js).
+
+**Edits in legacy.js beyond the cut:** a three-line note under the file header; import paths
+(`../js/shared/…` → `../shared/…`, `./monteCarloUi.js` etc. → `../../lineup/…`); the
+`isMlsOwnedKey` import moved to backup.js with its only caller; one import line per extracted
+module; the 63 `window.x = function` lines became `export const x = function`; `export` added to
+the six legacy functions extracted modules call (`renderLineupUI`, `gameStatusMayBeStale`,
+`loadRosterTab`, `refreshLeagueDropdown`, `getActiveLeague`, `setRankingsCardExpanded`). The old
+"Pilot ES module extraction … above the IIFE" comment is stale but left for 5D's sweep.
+
+#### window.* names
+
+The card estimated ~119; mls.js has **72** top-level `window.x = …` statements, all functions,
+no duplicates, and none that collides with another top-level name. main.js assigns all 72 in
+mls.js order, including **`window.onload`** (the page's startup handler, still in legacy.js; see
+below). main.js runs before the `load` event and before `DOMContentLoaded`, so it still fires.
+The one other `window.x =` in mls.js, `window.sleeperPosByName = {}`, is a runtime data write
+inside a function and stays as it is. `Object.getOwnPropertyNames(window)` on `/lineup/`, empty
+and after a sync, is identical to main (1,290 names).
+
+#### Load order
+
+`legacy.js`'s import list sets it: the shared/lineup imports as before, then `compat → constants →
+state → helpers → nav → backup → init` (mls.js order; `nav`/`backup`/`init` are side-effect imports
+where legacy uses nothing from them). Simulated depth-first evaluation: `compat → constants →
+state → helpers → init → nav → backup → legacy → main`. **init evaluates before nav** because nav
+imports `updatePulsePrompts` from init. init's only load-time code is the `SETUP_STEPS` object
+literal, so nothing observable moves: the load-time effects still run in mls.js order: `State`
+built from localStorage → `#mainApp` touch listeners → `popstate` listener → legacy's top level
+(headshot setting, file-input listeners, `DOMContentLoaded`/`keydown` listeners) → main's
+`window.*` block.
+
+Parser checks (same as 2A): the only load-time cross-module reference in an extracted module is
+`State`'s use of `readJSON` (compat.js has no imports, so it is always evaluated first). No
+load-time code anywhere reads one of the 72 `window.*` names (main.js now assigns them last).
+No module assigns another module's binding. No new import is shadowed by a nested declaration.
+
+#### Conventions for 3B–3F
+
+- **What goes where.** `state.js` holds `State` and the code that owns its non-UI fields (undo
+  stacks, the NFL week and kickoff-time refreshers). New shared mutable state goes in `State`,
+  not in a module-level `let` another module needs. 3D merges the second LINEUP OPTIMIZER SETTINGS
+  block (legacy.js, search the marker) into state.js. `helpers.js` holds small functions many
+  sections call: predicates and lookups that may *read* `State` but don't render a tab or write
+  storage. `constants.js` holds plain data and the tiny `tierTag`/`posRankTag` formatters.
+  Section code goes in its own file (3B's `headshots.js`, `leagues/sync.js`, …), not into helpers.
+- **Reaching legacy-only functions.** An extracted module imports them by name from
+  `./legacy.js` (a circular import, rule 5), and legacy.js gets `export` on that declaration.
+  That's the only edit legacy.js gets outside the cut. Use them only at call time. When a later
+  chunk moves such a function out of legacy.js, repoint every `from './legacy.js'` line that
+  names it (`grep -n "from './legacy.js'" js/mls/*.js`).
+- **window.* names.** `window.x = function` becomes `export const x = function` in its module,
+  and main.js's import line for it names that module. Moving a window function means moving its
+  name between main.js's import lines; the `window.x = x;` line stays put.
+- **Load order.** When adding a module, add its import to legacy.js's list at the point its code
+  sat in mls.js. Order only matters for modules with load-time code, but keeping mls.js order
+  makes that automatic. Re-run the evaluation simulation if a module has load-time effects.
+- **Paths** from `js/mls/`: shared code is `../shared/…`; the modules still in `lineup/` are
+  `../../lineup/…` until 3C/3F move them. `monteCarloUi.js` still starts the worker with
+  `new Worker('./worker.js')`, which resolves against the page URL (`/lineup/`), so the worker
+  loads exactly as before (the smoke test's simulator run covers it).
+- **Tooling.** Same as 2A: acorn in a scratch directory (`npm i acorn` outside the repo), a
+  throwaway script that assigns line ranges to modules, refuses a statement that straddles two
+  ranges or a code line left unassigned, builds imports/exports from a scope-aware walk, simulates
+  evaluation order and flags load-time cross-module references; then a second script that checks
+  every original line lands exactly once.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (64 precached). `node --test` 157/157.
+  `cd tests && npx playwright test`: 50/50, **screenshots identical** (no baseline changed),
+  including the smoke test's matchup simulator in its Web Worker.
+- Throwaway Playwright spec (not committed), run against this branch **and** origin/main at both
+  widths, with identical JSON results: window property names (empty and synced), hamburger open
+  (aria-expanded, overlay, focus) and Escape close, drawer navigation to Lineup, browser Back,
+  `goToSetupStep('ros'/'weekly')` (tab switch, card reveal, focus), swipe left/right on
+  `#mainApp`, a lineup lock toggle then undo and redo (lineup text and toasts), Factory Reset
+  cancelled (localStorage untouched), checklist text and pulse classes. No console errors.
+  Backup → restore is covered by `backup.spec.mjs` (passes).
+
+#### Other changes
+
+- `lineup/index.html`: the script tag, plus the comments that named mls.js now name the file
+  that has the code (`nav.js`, `init.js` or `legacy.js`).
+- `sw.js`: `/lineup/mls.js` replaced by the nine `js/mls/*.js` files; comment updated.
+  CACHE_NAME `v2.8.47` → `v2.8.48`. No user-visible change, so no app version label bump.
+- README: `/js` and `/lineup` lines.
+
+#### Left for later chunks
+
+- **`window.onload` → init.js.** The page's startup handler (`export const onload`, legacy.js,
+  just above `// --- EARLY GAMES LOGIC ---`) sits after PLAYER HEADSHOTS, which this card put out
+  of scope, so it's still in legacy.js. 3B (whose range it's in) or 3E (STARTUP CLEANUP → init.js)
+  should move it next to the rest of init.js. Its main.js import line moves with it.
+- Comments inside moved code still say "this file", "mls.js", "utils.js" or
+  "rankingsParser.js"; legacy.js's top-of-file comments describe the old IIFE (5D's sweep).
+- `js/mls/*` still read the shared helpers through `window.*` / bare globals (`showToast`,
+  `mdsFetch`, `normalizeName`, `createFocusTrap`…), as `js/mds/*` does.
+- Next on the MLS track: 3B.

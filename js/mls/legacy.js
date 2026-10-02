@@ -2,907 +2,28 @@
  * Fantasy Football Season & Lineup Strategist - Core Logic
  * Refactored for modular encapsulation, performance, and clean architecture.
  */
+//
+// Renamed from lineup/mls.js in refactor chunk 3A. The sections above PLAYER HEADSHOTS moved to
+// the other js/mls/ modules (see docs/refactor/LOG.md); the rest of mls.js is still here.
 
 // Pilot ES module extraction (see rankingsParser.js for rationale) -- this is the only
 // piece of mls.js currently split out. import statements must live at a module's top
 // level, which is why this sits above the IIFE rather than inside it; the imported
 // function is still just a normal binding the IIFE's closures can reference below.
-import { parseRankingsFiles } from '../js/shared/rankings/parse.js';
-import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from '../js/shared/api/sleeper.js';
-import { fetchMarketConsensusData } from '../js/shared/api/market.js';
-import { runMatchupSimulation, clearSimResults, showSimNotice } from './monteCarloUi.js';
-import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from '../js/shared/api/sleeperStats.js';
-import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './statsEngine.js';
-import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLineup, compareForScan, matchesPosFilter } from './waiverScanner.js';
-import { isMlsOwnedKey } from '../js/shared/storage/keys.js';
-
-(function () {
-    'use strict';
-
-    // Belt and braces for the service worker's stale-while-revalidate window. Assets are
-    // served from cache first (see sw.js), so there is a narrow window after a deploy where a
-    // browser could pair this file with an older cached js/utils.js from before readJSON
-    // existed. State construction below would then throw on an undefined function and blank
-    // the page -- precisely the failure readJSON was added to prevent. This local binding
-    // falls back to the old inline behavior so that can't happen; once every client is on the
-    // current utils.js it is simply never used.
-    const readJSON = window.readJSON || function (key, fallback) {
-        try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
-    };
-
-    // --- CONSTANTS & CONFIGURATION ---
-    const NFL_TEAMS = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
-    
-    const TEAM_BYES = {
-        "ARI": 11, "ATL": 12, "BAL": 14, "BUF": 12, "CAR": 11, "CHI": 7, "CIN": 12, "CLE": 10,
-        "DAL": 7, "DEN": 14, "DET": 5, "GB": 10, "HOU": 14, "IND": 14, "JAX": 12, "KC": 6,
-        "LAC": 5, "LAR": 6, "LV": 10, "MIA": 6, "MIN": 6, "NE": 14, "NO": 12, "NYG": 11,
-        "NYJ": 12, "PHI": 5, "PIT": 9, "SEA": 10, "SF": 9, "TB": 11, "TEN": 5, "WAS": 14
-    };
-
-    // ESPN's scoreboard endpoint (see refreshGameTimes below) abbreviates a handful of teams
-    // differently than Sleeper/this app do. Washington is the current known mismatch (ESPN:
-    // "WSH", everywhere else in this app: "WAS") -- mapped here so State.gameTimesByTeam keys
-    // line up with the same team codes used by TEAM_BYES, league.roster, etc.
-    const ESPN_TEAM_ALIASES = { "WSH": "WAS" };
-
-    // Small muted "(T2)" suffix for a rank shown on a player card, when the rankings file that
-    // rank came from also had a Tier column (see rankingsParser.js). Returns "" for a missing tier
-    // -- the common case, since Tier is an optional column -- so callers can append it
-    // unconditionally and cards for tier-less rankings look exactly as they always have.
-    const tierTag = (tier) => (Number.isFinite(tier) && tier > 0)
-        ? ` <span class="mls-tier" title="Tier ${tier}">(T${tier})</span>`
-        : '';
-
-    // Second rank for the Scout tab's cards: the player's position rank (and its tier), shown
-    // after their overall "Rank" so it's clear which number is which. On flex-style weekly sheets
-    // the overall rank is really a FLEX rank for RB/WR/TE, so the position rank is the only place
-    // their position tier can show. Returns "" when there's no position rank, or when it would just
-    // repeat the overall one (a QB, or a file with no separate Pos Rank column, where posRank falls
-    // back to the overall rank) -- unless the tiers differ, in which case it still has something to say.
-    const posRankTag = (obj, colorClass) => {
-        if (!obj || obj.posRank === undefined || obj.posRank === null || obj.posRank === 999) return '';
-        if (obj.posRank === obj.rank && (obj.posTier ?? null) === (obj.tier ?? null)) return '';
-        return ` <span class="mls-rank-sep">&middot;</span> Pos: <strong class="${colorClass}">#${obj.posRank}</strong>${tierTag(obj.posTier)}`;
-    };
-
-    // How long the Lineup tab's per-player projected/final points data (see refreshLineupStats)
-    // is reused before a re-render is allowed to refetch it. Deliberately short-ish rather than
-    // live: this is a companion view refreshed when the person opens or interacts with the tab,
-    // not a scoreboard that updates itself through Sunday.
-    const LINEUP_STATS_TTL_MS = 2 * 60 * 1000;
-    const LINEUP_PROJECTION_TTL_MS = 5 * 60 * 1000;
-
-    // Per-type field/key mapping shared by the Named Ranking Sets feature (see the full
-    // explanation further down, near saveRankingsAsSet) -- keeping ROS and Weekly's parallel
-    // state keys, localStorage keys, and DOM element ids in one lookup table instead of two
-    // near-duplicate code paths. Declared up here (rather than next to its main usage) because
-    // switchActiveLeague(), just below, already needs it during page load.
-    const RANKING_TYPE_CONFIG = {
-        ros: {
-            stateKey: 'rosRankings', updatedAtKey: 'rosRankingsUpdatedAt',
-            leagueLegacyDataKey: 'rosRankings', leagueLegacyUpdatedKey: 'rosRankingsUpdatedAt',
-            leagueSetIdKey: 'rosRankingSetId', setsKey: 'ros',
-            localStorageSetsKey: 'mls_ranking_sets_ros',
-            globalDataKey: 'mds_season_ros', globalUpdatedKey: 'mds_season_ros_updated',
-            selectId: 'rosRankingSetSelect', nameInputWrapId: 'rosNewSetNameWrap',
-            nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn',
-            cardId: 'rosRankingsCard', headerSetNameId: 'rosHeaderSetName',
-            leaguesRowId: 'rosSetLeaguesRow', leaguesSummaryId: 'rosSetLeaguesSummary',
-            label: 'ROS', staleAfterDays: 14
-        },
-        weekly: {
-            stateKey: 'weeklyRankings', updatedAtKey: 'weeklyRankingsUpdatedAt',
-            leagueLegacyDataKey: 'weeklyRankings', leagueLegacyUpdatedKey: 'weeklyRankingsUpdatedAt',
-            leagueSetIdKey: 'weeklyRankingSetId', setsKey: 'weekly',
-            localStorageSetsKey: 'mls_ranking_sets_weekly',
-            globalDataKey: 'mds_season_weekly', globalUpdatedKey: 'mds_season_weekly_updated',
-            selectId: 'weeklyRankingSetSelect', nameInputWrapId: 'weeklyNewSetNameWrap',
-            nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn',
-            cardId: 'weeklyRankingsCard', headerSetNameId: 'weeklyHeaderSetName',
-            leaguesRowId: 'weeklySetLeaguesRow', leaguesSummaryId: 'weeklySetLeaguesSummary',
-            label: 'Weekly', staleAfterDays: 6
-        }
-    };
-
-    // --- STATE MANAGEMENT ---
-    const State = {
-        leagues: readJSON('mds_season_leagues', []),
-        activeLeagueId: localStorage.getItem('mds_season_active_league') || null,
-        earlyTeams: readJSON('mds_season_early_teams', []),
-        rosRankings: readJSON('mds_season_ros', []),
-        weeklyRankings: readJSON('mds_season_weekly', []),
-        rosRankingsUpdatedAt: localStorage.getItem('mds_season_ros_updated') || null,
-        rankingSets: {
-            ros: readJSON('mls_ranking_sets_ros', []),
-            weekly: readJSON('mls_ranking_sets_weekly', [])
-        },
-        weeklyRankingsUpdatedAt: localStorage.getItem('mds_season_weekly_updated') || null,
-        marketRankings: readJSON('mds_season_market', []),
-        // When marketRankings was last pulled or uploaded (ms epoch). Null for market data saved
-        // before this was tracked -- updateMarketMetaDisplay shows no age rather than guess one.
-        marketUpdatedAt: localStorage.getItem('mds_season_market_updated') || null,
-        // FantasyCalc is the only source since refactor 7A (LeagueLogs retired its API), so a
-        // saved 'leaguelogs' -- or anything else -- reads as 'fantasycalc'. Same key.
-        marketSettings: Object.assign({ source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false }, readJSON('mls_market_settings', {}), { source: 'fantasycalc' }),
-        tradeSettings: readJSON('mls_trade_settings', { waiverAdjustment: true, waiverAdjustmentValue: 500 }),
-        simSettings: readJSON('mls_sim_settings', { waiverInsights: false }),
-        // Positional Power Rankings (Roster tab). source: 'custom' (the league's own rankings) |
-        // 'market' (Market Consensus). See refreshPowerRankings.
-        powerSettings: Object.assign({ source: 'custom' }, readJSON('mls_power_settings', {})),
-        // Waiver Wire Assistant Auto-Find controls (Scout tab). compare: 'lineup' (would he
-        // start?) | 'roster' (drop-candidate upgrade); basis: 'weekly' | 'ros' (scan order); pos:
-        // a position, 'FLEX', or 'ALL' (grouped by position); limit: rows per group.
-        // scope ('league' | 'all') belongs to the Scan Pasted List half of the tool, not
-        // Auto-Find -- it rides in this same object purely so it persists under the one
-        // localStorage key the rest of the Waiver Wire Assistant's settings already use.
-        // intent ('buy' | 'sell') rides along for the same reason: it only steers the All My
-        // Leagues search's Positional Power Rank recommendations (see runAllLeaguesSearch).
-        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false, scope: 'league', intent: 'buy' }, readJSON('mls_waiver_scan_settings', {})),
-        // --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
-        // flexKickoffOptimization gates optimizeFlexKickoffOrder() (see below): when on, the
-        // optimizer reassigns which flex-eligible starters sit in strict RB/WR/TE slots vs the
-        // true FLEX slot(s) so FLEX always holds the latest kickoff(s), maximizing late-swap
-        // flexibility. Defaults to true -- this is a strict improvement for anyone using their
-        // platform's real-time swap window, but some people prefer their FLEX slot to just
-        // reflect rank order without the extra slot-shuffling, hence the escape valve. This is
-        // separate from kickoff-based auto-lock (see hasKickedOff/isSleeperStarter in
-        // optimizeLineup), which always stays on -- that one is about not silently benching an
-        // already-started player, not a strategy preference, and already has its own override
-        // mechanism (per-player overrideAutoLock + Unlock All).
-        lineupSettings: readJSON('mls_lineup_settings', { flexKickoffOptimization: true }),
-        syncLogs: readJSON('mls_sync_logs', []),
-        sosMap: readJSON('mds_season_sos', {}),
-        lockedPlayersMap: readJSON('mds_season_locks_map', {}),
-        // Per-league, per-week list of player ids the person has explicitly told the auto-lock
-        // feature (see optimizeLineup) to back off of -- the failsafe for when gameTimesByTeam
-        // or Sleeper's synced starters turn out to be wrong about a specific player. Deliberately
-        // NOT part of lockedPlayersMap: that list is a season-long, user-curated set of "always
-        // start this player" decisions, while this is a narrow, week-scoped correction for one
-        // player's auto-detected state. Shape: { [leagueId]: { week: N, ids: [...] } } -- the
-        // week is stored alongside the ids so a stale override from a prior week (which would no
-        // longer make sense once gameTimesByTeam has moved on) is ignored rather than silently
-        // carried forward; see isAutoLockOverridden below.
-        autoLockOverridesMap: readJSON('mls_autolock_overrides_map', {}),
-        manualStartersMap: readJSON('mds_season_manual_starters', {}),
-        manualBenchMap: readJSON('mds_season_manual_bench', {}),
-        // leagueId -> which rankings that league's saved lineup was built from (see
-        // getLeagueRankingsStamp). Each saved player carries the posRank/flexRank it was
-        // optimized with, so a lineup saved before new rankings were assigned kept showing
-        // "Unranked" in every league except the one the upload happened in. optimizeLineup
-        // compares against this and recomputes a stale lineup instead of just re-showing it.
-        lineupRankingsStamps: readJSON('mls_lineup_rankings_stamps', {}),
-        swapSourceId: null,
-        touchStartX: 0,
-        touchEndX: 0,
-        // Not persisted -- refreshed once per page load from Sleeper's state endpoint (see
-        // refreshCurrentNflWeek() below). Starts null and stays null if that fetch fails or
-        // hasn't resolved yet; every consumer below treats null as "unknown" and simply skips
-        // bye-week detection rather than guessing, so a slow/failed fetch degrades to the old
-        // (bye-unaware) behavior instead of showing wrong information.
-        currentNflWeek: null,
-        // Not persisted -- team -> ISO kickoff timestamp for the current week, refreshed from
-        // ESPN's scoreboard endpoint (see refreshGameTimes() below) once currentNflWeek is
-        // known. Starts empty and stays empty if the fetch fails; every consumer treats a
-        // missing entry as "unknown kickoff" and skips FLEX-kickoff reordering / the kickoff
-        // badge for that player rather than guessing.
-        gameTimesByTeam: {},
-        // Which week gameTimesByTeam was last successfully fetched for, so a stale cache from
-        // an earlier week doesn't silently get reused if currentNflWeek changes mid-session.
-        gameTimesFetchedForWeek: null,
-        // Not persisted -- team -> { opp, home, state } for the current week, from the same ESPN
-        // scoreboard response as gameTimesByTeam. state is ESPN's 'pre' | 'in' | 'post'; 'post'
-        // is the only thing that counts as a finished game (kickoff having passed doesn't). Empty
-        // whenever gameTimesByTeam is; consumers treat a missing entry as unknown.
-        gamesByTeam: {},
-        // Epoch ms of the last scoreboard fetch attempt (success or not), so a game-in-progress
-        // refresh (see gameStatusMayBeStale) can't fire on every single re-render.
-        gameTimesFetchedAt: 0,
-        // Not persisted -- the season Sleeper's state endpoint reported alongside currentNflWeek.
-        // Needed to build the projections URL; null until refreshCurrentNflWeek resolves.
-        currentNflSeason: null,
-        // Not persisted -- Sleeper's weekly projections for the Lineup tab's per-player display.
-        // data is { playerId: { pts_ppr, ... } } or null if never fetched; week guards against a
-        // stale week's numbers being shown after currentNflWeek moves on.
-        lineupProjections: { week: null, data: null, fetchedAt: 0 },
-        // Not persisted -- leagueIds whose lineup optimizeLineup computed this session before
-        // lineupProjections had loaded, i.e. without the FLEX projection fallback (see
-        // compareFlexCandidates). refreshLineupStats re-optimizes such a league once projections
-        // arrive, so a lineup built from a sync that beat the projections fetch doesn't keep a
-        // posRank-only FLEX pick. Starts empty on page load: a saved lineup from an earlier
-        // visit is left as-is, same as any other saved lineup.
-        projectionlessLineups: new Set(),
-        // Not persisted -- leagueId ->{ week, points, fetchedAt, finalKey }: this roster's
-        // players_points from Sleeper's matchups endpoint. finalKey records which teams' games
-        // were final when it was fetched, so a game finishing afterwards forces a refetch.
-        lineupActualPoints: {},
-        lineupStatsRefreshing: false,
-        // Not persisted -- undo/redo history for lineup edits (swaps, lock toggles, and
-        // optimizer re-runs), per league. Deliberately session-only rather than saved to
-        // localStorage: this is "undo my last few clicks," not part of the lineup itself,
-        // and most users' mental model of undo (browser, text editors, etc.) is that it
-        // doesn't survive closing the tab. Capped at MAX_UNDO_STACK_SIZE entries per league
-        // (see pushLineupUndoSnapshot) since a long session could otherwise accumulate an
-        // unbounded number of small snapshots.
-        lineupUndoStackMap: {},
-        lineupRedoStackMap: {}
-    };
-
-    const MAX_UNDO_STACK_SIZE = 20;
-
-    // Deep-copies the current lineup-relevant state for one league (starters, bench, and the
-    // manual lock list) into a plain snapshot object, suitable for pushing onto the undo/redo
-    // stacks below. JSON round-trip is fine here -- everything in these three structures is
-    // plain data (no functions, dates, etc), and the arrays involved are small (one roster's
-    // worth of players), so the cost of this is negligible even called on every lineup edit.
-    function snapshotLineupState(leagueId) {
-        return {
-            starters: JSON.parse(JSON.stringify(State.manualStartersMap[leagueId] || [])),
-            bench: JSON.parse(JSON.stringify(State.manualBenchMap[leagueId] || [])),
-            locks: JSON.parse(JSON.stringify(State.lockedPlayersMap[leagueId] || []))
-        };
-    }
-
-    function restoreLineupState(leagueId, snapshot) {
-        State.manualStartersMap[leagueId] = snapshot.starters;
-        State.manualBenchMap[leagueId] = snapshot.bench;
-        State.lockedPlayersMap[leagueId] = snapshot.locks;
-        localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
-        localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
-        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
-    }
-
-    // Called at the start of every lineup-mutating action (swap, lock toggle, unlock-all,
-    // optimizer re-run) with a snapshot of the state as it was JUST BEFORE that action, so
-    // Ctrl+Z has something to restore. Making a new edit always clears the redo stack -- the
-    // same convention as every other undo/redo system: redo only makes sense for undos you
-    // haven't since invalidated by doing something new.
-    function pushLineupUndoSnapshot(leagueId) {
-        if (!leagueId) return;
-        if (!State.lineupUndoStackMap[leagueId]) State.lineupUndoStackMap[leagueId] = [];
-        State.lineupUndoStackMap[leagueId].push(snapshotLineupState(leagueId));
-        if (State.lineupUndoStackMap[leagueId].length > MAX_UNDO_STACK_SIZE) {
-            State.lineupUndoStackMap[leagueId].shift();
-        }
-        State.lineupRedoStackMap[leagueId] = [];
-    }
-
-    window.undoLineupChange = function() {
-        const leagueId = State.activeLeagueId;
-        const undoStack = State.lineupUndoStackMap[leagueId];
-        if (!leagueId || !undoStack || undoStack.length === 0) return;
-
-        if (!State.lineupRedoStackMap[leagueId]) State.lineupRedoStackMap[leagueId] = [];
-        State.lineupRedoStackMap[leagueId].push(snapshotLineupState(leagueId));
-
-        restoreLineupState(leagueId, undoStack.pop());
-        renderLineupUI();
-        if (typeof window.showToast === 'function') window.showToast("Undid last lineup change");
-    };
-
-    window.redoLineupChange = function() {
-        const leagueId = State.activeLeagueId;
-        const redoStack = State.lineupRedoStackMap[leagueId];
-        if (!leagueId || !redoStack || redoStack.length === 0) return;
-
-        if (!State.lineupUndoStackMap[leagueId]) State.lineupUndoStackMap[leagueId] = [];
-        State.lineupUndoStackMap[leagueId].push(snapshotLineupState(leagueId));
-
-        restoreLineupState(leagueId, redoStack.pop());
-        renderLineupUI();
-        if (typeof window.showToast === 'function') window.showToast("Redid lineup change");
-    };
-
-    // Refreshes State.currentNflWeek from Sleeper's public NFL state endpoint. Fire-and-forget:
-    // called once from window.onload, with no loading indicator and no retry, since this only
-    // upgrades the lineup optimizer's bye-week awareness -- if it's slow or fails, the app works
-    // exactly as it did before this existed.
-    function refreshCurrentNflWeek() {
-        getNflState()
-            .then(data => {
-                if (data && typeof data.week === 'number') {
-                    State.currentNflWeek = data.week;
-                    State.currentNflSeason = data.league_season || data.season || null;
-                    // Kickoff times are keyed by week, so we can't fetch them until we know
-                    // which week we're on -- chain it here rather than firing both requests
-                    // independently at page load.
-                    refreshGameTimes();
-                }
-            })
-            .catch(() => { /* leave State.currentNflWeek as null; see comment above */ });
-    }
-
-    // Refreshes State.gameTimesByTeam (team -> ISO kickoff timestamp) for the current NFL week
-    // from ESPN's public scoreboard endpoint. Like refreshCurrentNflWeek above, this is
-    // fire-and-forget with no loading indicator and no retry: it only powers the FLEX-kickoff
-    // optimizer and the kickoff badge, both of which degrade gracefully (no reordering, no
-    // badge) if this never resolves. Note this is an unofficial/undocumented ESPN endpoint --
-    // like the Sleeper endpoints elsewhere in this app, it could change shape or start
-    // rate-limiting without notice, which is exactly why every consumer treats a missing team
-    // entry as "unknown" instead of assuming success.
-    // Returns the underlying fetch promise (rather than truly firing-and-forgetting) so a
-    // caller that specifically needs kickoff data to be current -- like runMatchupSim's
-    // actual-score check below -- can await it; existing fire-and-forget callers are
-    // unaffected since they simply don't await the return value.
-    function refreshGameTimes() {
-        const week = State.currentNflWeek;
-        if (week == null) return Promise.resolve();
-        if (State.gameTimesFetchedForWeek === week && Object.keys(State.gameTimesByTeam).length > 0 && !gameStatusMayBeStale()) return Promise.resolve();
-
-        State.gameTimesFetchedAt = Date.now();
-        // mdsFetch rather than a bare fetch: a stalled ESPN request would otherwise leave this
-        // promise pending forever, which matters beyond the fire-and-forget callers -- runMatchupSim
-        // awaits this one before deciding whether to use a player's live score, so a hang here
-        // would stall the whole simulation rather than just skip a kickoff badge.
-        return window.mdsFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
-            .then(res => res.ok ? res.json() : null)
-            .then(data => {
-                if (!data || !Array.isArray(data.events)) return;
-                const map = {};
-                const games = {};
-                data.events.forEach(evt => {
-                    const iso = evt.date; // ISO 8601 UTC kickoff, shared by both competitors in the event
-                    const comp = evt.competitions && evt.competitions[0];
-                    if (!iso || !comp || !Array.isArray(comp.competitors)) return;
-                    const abbrs = comp.competitors.map(c => {
-                        const abbr = c.team && c.team.abbreviation;
-                        return abbr ? (ESPN_TEAM_ALIASES[abbr] || abbr) : null;
-                    });
-                    const gameState = (evt.status && evt.status.type && evt.status.type.state)
-                        || (comp.status && comp.status.type && comp.status.type.state) || null;
-                    comp.competitors.forEach((c, i) => {
-                        const abbr = abbrs[i];
-                        if (!abbr) return;
-                        map[abbr] = iso;
-                        // The game has exactly two competitors, so the opponent is whichever
-                        // entry isn't this one.
-                        const opp = abbrs.find((_, j) => j !== i) || null;
-                        games[abbr] = { opp, home: c.homeAway === 'home', state: gameState };
-                    });
-                });
-                if (Object.keys(map).length === 0) return; // treat an empty/malformed response as a failed fetch
-                State.gameTimesByTeam = map;
-                State.gamesByTeam = games;
-                State.gameTimesFetchedForWeek = week;
-
-                // If the person is already looking at the lineup tab, refresh it so kickoff
-                // badges and FLEX ordering reflect the newly-arrived data without requiring a
-                // manual re-optimize.
-                const activeTab = document.querySelector('.tab-content.active');
-                if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') {
-                    window.optimizeLineup(false);
-                }
-            })
-            .catch(() => { /* leave State.gameTimesByTeam as {}; see comment above */ });
-    }
-
-    // Statuses from Sleeper's player sync (see rosterDetails in processSleeperData) that mean
-    // a player has ~zero chance of playing this week. Deliberately excludes "Q" (Questionable)
-    // and "D" (Doubtful) -- those are still game-time calls, not a reason to auto-bench someone
-    // your rankings already have rated highly.
-    const HARD_OUT_STATUSES = ['OUT', 'IR', 'SUS', 'PUP', 'NFI'];
-
-    // True if a player should be avoided as an optimizer pick this week -- on bye, or flagged
-    // with a hard-out status above -- unless no eligible alternative exists at all (see
-    // findBestStarterIndex), in which case they're started anyway rather than leaving a slot
-    // empty. Locked players bypass this check entirely at the call sites below: a lock is an
-    // explicit instruction to start someone regardless of bye/injury status.
-    function isUnavailableThisWeek(p) {
-        const onBye = State.currentNflWeek != null && TEAM_BYES[p.team] === State.currentNflWeek;
-        const hardOut = p.inj && HARD_OUT_STATUSES.includes(p.inj);
-        return onBye || hardOut;
-    }
-
-    // Canonical short injury-status code for a raw Sleeper player object -- 'Q', 'D', 'OUT',
-    // 'IR', 'SUS', 'PUP', 'NFI', or null if healthy/no concern. Mirrors the same
-    // classification already used for the roster-details injury badge (see rosterDetails in
-    // processSleeperData) so "what counts as Doubtful/Out/IR" can't silently drift between
-    // the two -- kept as its own function rather than merged into that inline block since that
-    // block's job is building a display badge, not answering a yes/no eligibility question.
-    function getShortInjuryStatus(p) {
-        if (!p) return null;
-        let inj = null;
-        if (p.injury_status && p.injury_status !== "None" && p.injury_status !== "Active") inj = p.injury_status;
-        else if (p.status && ['Suspended', 'PUP', 'IR', 'NFI', 'Did Not Report'].includes(p.status)) inj = p.status;
-        if (!inj) return null;
-
-        const iUpper = inj.toUpperCase();
-        if (iUpper.includes('QUESTIONABLE')) return 'Q';
-        if (iUpper.includes('DOUBTFUL')) return 'D';
-        if (iUpper.includes('OUT')) return 'OUT';
-        if (iUpper.includes('SUSPENDED')) return 'SUS';
-        if (iUpper.includes('IR') || iUpper.includes('INJURED RESERVE')) return 'IR';
-        if (iUpper.includes('PUP')) return 'PUP';
-        if (iUpper.includes('NFI')) return 'NFI';
-        if (iUpper.includes('DID NOT REPORT') || iUpper === 'DNR') return 'DNR';
-        return inj;
-    }
-
-    // Statuses that mean a player has a real, non-trivial chance of not actually taking the
-    // field this week -- specifically the ones the Monte Carlo simulator and its Lineup
-    // Insights bench comparisons should never simulate as if they're playing normally.
-    // Deliberately a SEPARATE, stricter list from HARD_OUT_STATUSES above: that one exists for
-    // the lineup optimizer's "should I auto-start this person" decision and intentionally
-    // leaves Doubtful in play there (still a game-time call, worth trusting rankings over) --
-    // but simulating a distribution around a normal week's variance isn't a start/sit call,
-    // it's an implicit claim that this player is taking the field at all, which Doubtful
-    // specifically hasn't been decided yet, and Out/IR/PUP/NFI/Suspended/DNR already answer as
-    // no. NFI is included alongside the PUP/Suspended/DNR grouping Benton asked for -- it's the
-    // same "not injury-related but definitely not playing" category HARD_OUT_STATUSES already
-    // treats identically to PUP, so leaving it out here looked more like an oversight than a
-    // deliberate choice; flag if that's not what's wanted.
-    const SIM_EXCLUDE_STATUSES = ['D', 'OUT', 'IR', 'PUP', 'SUS', 'NFI', 'DNR'];
-
-    function isExcludedFromSimulation(p) {
-        const shortInj = getShortInjuryStatus(p);
-        return shortInj !== null && SIM_EXCLUDE_STATUSES.includes(shortInj);
-    }
-
-    // Best Ball leagues have no weekly lineup to set and (almost always) no IR slot, so every
-    // tool whose whole premise is "you need to go move somebody" has to sit them out. The
-    // formatBadge string is the only place this is recorded -- processSleeperData stamps
-    // "Best Ball" into it from leagueData.settings.best_ball, and the raw setting isn't kept
-    // on the league object afterwards. Factored out of the three near-identical inline copies
-    // that had accumulated (dashboard matrix, optimizeAllLineups' skip + its count) so a
-    // fourth caller can't drift from them.
-    function isBestBallLeague(l) {
-        return !!(l && l.formatBadge && l.formatBadge.toLowerCase().includes("best ball"));
-    }
-
-    // --- UTILITY HELPERS ---
-    // normalizeName intentionally NOT redeclared here -- it previously shadowed the
-    // shared, alias-aware version in js/utils.js (loaded before this file), which caused
-    // Sleeper-sourced names to fail matching against user-uploaded rankings for any player
-    // needing suffix stripping, accent stripping, or the alias map (e.g. Gabe Davis /
-    // Gabriel Davis). Calls to normalizeName() below now resolve to that shared version.
-    // Do not add a local normalizeName() back without updating utils.js instead.
-
-    // flashButton intentionally NOT declared here either -- previously a separate near-duplicate
-    // of mds.js's local copy. Both now consolidated into the single shared version in
-    // js/utils.js. Calls below resolve to that shared version.
-
-    // --- RANKINGS LOOKUP INDEX ---
-    // cleanName -> ranking row, for the three big rankings arrays (ROS, Weekly, Market). Nearly
-    // every consumer of these arrays looks players up by cleanName, and nearly all of them were
-    // doing it with `arr.find(r => r.cleanName === x)` from inside a loop -- O(n x m) work. The
-    // worst case was runMarketDisconnectAnalysis, which scanned all of rosRankings once per
-    // market entry: ~250,000 comparisons for two ~500-row lists.
-    //
-    // Cached in a WeakMap keyed on the ARRAY ITSELF rather than on a State field name, which is
-    // what makes this safe to hold onto: every assignment to State.rosRankings /
-    // weeklyRankings / marketRankings in this file creates a brand-new array (either a
-    // [...spread] or a []), and nothing anywhere mutates one of these arrays in place. So a
-    // rankings swap -- switching leagues, loading a named set, uploading a file -- produces a
-    // different array identity that simply misses the cache and rebuilds. There is no
-    // invalidation to remember to call, and no way for a stale index to be handed back.
-    //
-    // First entry wins, matching the .find() calls this replaces.
-    const _rankingIndexCache = new WeakMap();
-    const EMPTY_RANKING_INDEX = new Map(); // shared; callers only ever read from an index
-    function rankingIndex(arr) {
-        if (!Array.isArray(arr) || arr.length === 0) return EMPTY_RANKING_INDEX;
-        let idx = _rankingIndexCache.get(arr);
-        if (!idx) {
-            idx = new Map();
-            arr.forEach(r => {
-                if (r && r.cleanName && !idx.has(r.cleanName)) idx.set(r.cleanName, r);
-            });
-            _rankingIndexCache.set(arr, idx);
-        }
-        return idx;
-    }
-
-    // --- DRAWER & SWIPE LOGIC ---
-    // Focus trap instance for the drawer -- created lazily on first open rather than at
-    // load time, since window.createFocusTrap (from utils.js, a plain script) needs to have
-    // already run, and this module's top-level code can execute before that plain script's
-    // DOMContentLoaded-independent top-level assignment has (module scripts are deferred by
-    // spec, but this keeps the two files from having an implicit load-order dependency).
-    let drawerFocusTrap = null;
-
-    window.toggleDrawer = function() {
-        const drawer = document.getElementById('drawer');
-        const overlay = document.getElementById('drawerOverlay');
-        const hamburgerBtn = document.querySelector('.hamburger-btn');
-
-        if (!drawer || !overlay) return;
-
-        const isOpen = drawer.classList.toggle('open');
-        overlay.style.display = isOpen ? 'block' : 'none';
-
-        // Announce the new state to screen readers
-        if (hamburgerBtn) {
-            hamburgerBtn.setAttribute('aria-expanded', isOpen);
-        }
-
-        if (isOpen) {
-            // No onEscape here: the existing document-level Escape handler below already
-            // calls toggleDrawer() when the drawer is open, which (via the isOpen === false
-            // branch) deactivates this trap on its way out. Wiring a second Escape handler
-            // through the trap itself would just be two paths to the same toggle.
-            if (typeof window.createFocusTrap === 'function') {
-                drawerFocusTrap = window.createFocusTrap(drawer);
-                drawerFocusTrap.activate();
-            }
-        } else if (drawerFocusTrap) {
-            drawerFocusTrap.deactivate();
-            drawerFocusTrap = null;
-        }
-    };
-
-    window.navigateFromDrawer = function(tabId) {
-        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
-        const targetBtn = document.querySelector(`.hamburger-menu .nav-btn[data-drawer-target="${tabId}"]`);
-        if (targetBtn) targetBtn.classList.add('active-link');
-        
-        window.toggleDrawer();
-        window.showTab(tabId);
-    };
-
-    const mainAppEl = document.getElementById('mainApp');
-    if (mainAppEl) {
-        mainAppEl.addEventListener('touchstart', e => { State.touchStartX = e.changedTouches[0].screenX; }, {passive: true});
-        // handleSwipe needs the event itself (not just the recorded X positions) so it can tell
-        // whether the touch ended inside a scrollable/interactive element and skip the tab swipe.
-        mainAppEl.addEventListener('touchend', e => { State.touchEndX = e.changedTouches[0].screenX; handleSwipe(e); }, {passive: true});
-    }
-
-    function handleSwipe(e) {
-        // Skip the tab-swipe gesture entirely if the touch happened over a scrollable table,
-        // grid, or form control -- otherwise a horizontal scroll/drag inside those elements
-        // gets misread as a request to switch tabs.
-        if (e && e.target && e.target.closest('.roster-container-wrapper, .lineup-container-wrapper, .sos-table-wrapper, select, input, textarea')) {
-            return; 
-        }
-
-        // 20% of viewport width, with a floor so this doesn't get too twitchy on narrow
-        // phones (e.g. 20% of a 320px-wide screen would be 64px, which is on the edge of
-        // triggering from an imprecise scroll/tap rather than a deliberate swipe).
-        const swipeThreshold = Math.max(80, window.innerWidth * 0.2);
-        const activeTabBtn = document.querySelector('.nav-bar .nav-btn.active');
-        if (!activeTabBtn) return;
-        
-        // 'guide' is deliberately left out of the swipe order -- it's still reachable from
-        // the drawer, but swiping from Scout into a wall of documentation reads as a
-        // misfire rather than a tab change. Scout is the last swipeable tab.
-        const tabs = ['setup', 'roster', 'lineup', 'scout'];
-        const currentIdx = tabs.indexOf(activeTabBtn.getAttribute('data-target'));
-        
-        if (State.touchEndX < State.touchStartX - swipeThreshold) {
-            if (currentIdx < tabs.length - 1) {
-                window.showTab(tabs[currentIdx + 1]);
-                updateDrawerActiveState(tabs[currentIdx + 1]);
-            }
-        }
-        if (State.touchEndX > State.touchStartX + swipeThreshold) {
-            if (currentIdx > 0) {
-                window.showTab(tabs[currentIdx - 1]);
-                updateDrawerActiveState(tabs[currentIdx - 1]);
-            }
-        }
-    }
-
-    function updateDrawerActiveState(tabId) {
-        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
-        const targetBtn = document.querySelector(`.hamburger-menu .nav-btn[data-drawer-target="${tabId}"]`);
-        if (targetBtn) targetBtn.classList.add('active-link');
-    }
-
-    // --- NAVIGATION LOGIC ---
-    window.showTab = function(tabId, skipHistory = false) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        const targetTab = document.getElementById(tabId + 'Tab');
-        if (targetTab) targetTab.classList.add('active');
-
-        document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
-        const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
-        if (activeNavBtn) activeNavBtn.classList.add('active');
-
-        // Announced to screen readers via the aria-live region in index.html -- covers every
-        // way a tab can change (swipe, number-key shortcuts, hamburger menu, browser back/
-        // forward), not just one of them, since they all funnel through this one function.
-        // Reads the nav button's own visible label rather than a separate hardcoded name map,
-        // so it can't drift out of sync if a tab's label is ever renamed.
-        const announcer = document.getElementById('tabChangeAnnouncer');
-        if (announcer && activeNavBtn) {
-            const label = activeNavBtn.querySelector('span');
-            if (label) announcer.textContent = `${label.textContent} tab`;
-        }
-
-        if (tabId === 'lineup') window.optimizeLineup(false);
-        if (tabId === 'roster') loadRosterTab();
-        if (tabId === 'setup') refreshLeagueDropdown();
-        window.scrollTo(0, 0);
-
-        if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
-
-        // Push to browser history (unless explicitly skipped, e.g. when we're the ones
-        // responding to a popstate event below) so the native back button works.
-        if (!skipHistory) {
-            history.pushState({ tab: tabId }, '', `#${tabId}`);
-        }
-    };
-
-    // Catches the native back/forward button and replays it as a tab switch, passing
-    // skipHistory=true so we don't push a duplicate entry back onto the history stack.
-    window.addEventListener('popstate', (e) => {
-        if (e.state && e.state.tab) {
-            window.showTab(e.state.tab, true);
-        } else {
-            // No state = an entry we didn't push (a hand-edited hash), so honor its hash if
-            // it names a real tab.
-            window.showTab(window.getTabFromHash() || 'setup', true);
-        }
-    });
-    
-    // --- BACKUP & RESTORE ---
-    // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in mds.js -- see that
-    // file's comment for why key-prefix scoping matters on a shared origin. MLS's own keys are
-    // mds_season_* and mls_*. mds_handoff_roster is excluded -- transient signal from MDS,
-    // not a persistent MLS setting. The filter itself is isMlsOwnedKey in
-    // js/shared/storage/keys.js.
-    function getMlsOwnedKeys() {
-        return Object.keys(localStorage).filter(isMlsOwnedKey);
-    }
-
-    window.exportMlsSettings = function() {
-        const keys = getMlsOwnedKeys();
-        const data = {};
-        keys.forEach(k => data[k] = localStorage.getItem(k));
-
-        const payload = {
-            app: "MLS",
-            appName: "My Lineup Strategist",
-            exportedAt: new Date().toISOString(),
-            data: data
-        };
-
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `my-lineup-strategist-backup-${new Date().toISOString().slice(0, 10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        if (window.showToast) window.showToast("Backup downloaded!");
-    };
-
-    window.importMlsSettings = function(fileInput) {
-        const file = fileInput.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            let payload;
-            try {
-                payload = JSON.parse(e.target.result);
-            } catch (err) {
-                if (window.showToast) window.showToast("That file isn't valid JSON - couldn't read it as a backup.", { isError: true });
-                fileInput.value = "";
-                return;
-            }
-
-            if (!payload || payload.app !== "MLS" || typeof payload.data !== 'object') {
-                if (window.showToast) window.showToast("This doesn't look like a My Lineup Strategist backup file. If it's an MDS (Draft Strategist) backup, use the Import button on that app instead.", { isError: true });
-                fileInput.value = "";
-                return;
-            }
-
-            const keyCount = Object.keys(payload.data).length;
-            const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
-            const confirmMsg = `This replaces your current My Lineup Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately.`;
-
-            if (!await window.showConfirm(confirmMsg, { title: 'Restore from backup?', confirmText: 'Replace My Data', danger: true })) {
-                fileInput.value = "";
-                return;
-            }
-
-            getMlsOwnedKeys().forEach(k => localStorage.removeItem(k));
-            Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
-
-            if (window.showToast) window.showToast("Backup restored! Reloading now.");
-            setTimeout(() => { window.location.reload(); }, 900);
-        };
-        reader.readAsText(file);
-    };
-
-    window.factoryReset = async function() {
-        if (await window.showConfirm("This clears every league, cached ranking set, custom SoS grid, and setting in My Lineup Strategist.\n\nMy Draft Strategist data is not affected. This cannot be undone.", { title: 'Factory reset this app?', confirmText: 'Factory Reset', danger: true })) {
-            getMlsOwnedKeys().forEach(k => localStorage.removeItem(k));
-            window.location.reload();
-        }
-    };
-
-    // --- INITIALIZATION ---
-    // Where each setup step gets done: the tab it lives on, the card to reveal, and the control
-    // to focus once there. Shared by the checklist's buttons and goToSetupStep.
-    const SETUP_STEPS = {
-        leagues: { tab: 'setup',  tabLabel: 'Dashboard', cardId: 'setupSyncCard',      focusId: 'sleeperUsername' },
-        ros:     { tab: 'roster', tabLabel: 'Roster',    cardId: 'rosRankingsCard',    focusId: 'rosFileInput' },
-        weekly:  { tab: 'lineup', tabLabel: 'Lineup',    cardId: 'weeklyRankingsCard', focusId: 'weeklyFileInput' },
-    };
-
-    // Takes the user to where a setup step gets done: switches tab if needed, opens the
-    // rankings card if it's collapsed, scrolls it into view and focuses its first control.
-    window.goToSetupStep = function(step) {
-        const cfg = SETUP_STEPS[step];
-        if (!cfg) return;
-        const activeTab = document.querySelector('.tab-content.active');
-        if (!activeTab || activeTab.id !== cfg.tab + 'Tab') {
-            window.showTab(cfg.tab);
-            updateDrawerActiveState(cfg.tab);
-        }
-        if (step !== 'leagues') setRankingsCardExpanded(cfg.cardId, true);
-        const card = document.getElementById(cfg.cardId);
-        if (!card) return;
-        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        card.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-        const focusEl = document.getElementById(cfg.focusId);
-        if (focusEl && focusEl.offsetParent !== null) focusEl.focus({ preventScroll: true });
-    };
-
-    // Fills one setup-checklist <li>. The ✓ / — mark is decorative; the sr-only prefix
-    // carries the done/not-done state for screen readers. `how` (a sentence of instructions)
-    // and the jump button only appear on unfinished steps the user can act on right now.
-    function renderSetupStep(id, step, done, text, how, activeTabId) {
-        const li = document.getElementById(id);
-        if (!li) return;
-        li.classList.toggle('is-done', done);
-        li.classList.toggle('is-actionable', !done && !!how);
-        const mark = document.createElement('span');
-        mark.className = 'setup-step-mark';
-        mark.setAttribute('aria-hidden', 'true');
-        mark.textContent = done ? '✓' : '—';
-        const body = document.createElement('div');
-        body.className = 'setup-step-body';
-        const label = document.createElement('div');
-        label.className = 'setup-step-label';
-        const status = document.createElement('span');
-        status.className = 'sr-only';
-        status.textContent = done ? 'Done: ' : 'Not done: ';
-        label.append(status, text);
-        body.append(label);
-
-        if (!done && how) {
-            const cfg = SETUP_STEPS[step];
-            const howEl = document.createElement('p');
-            howEl.className = 'setup-step-how';
-            howEl.textContent = how;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'mls-btn-sm btn-link-inline setup-step-go';
-            btn.textContent = activeTabId === cfg.tab + 'Tab' ? 'Show me ↓' : `Go to ${cfg.tabLabel} tab →`;
-            btn.setAttribute('aria-label', `${btn.textContent.slice(0, -2)} for ${text}`);
-            btn.addEventListener('click', () => window.goToSetupStep(step));
-            body.append(howEl, btn);
-        }
-        li.replaceChildren(mark, body);
-    }
-
-    function updatePulsePrompts() {
-        // The three setup states. The checklist states them in words; the pulses below
-        // highlight whichever card is next.
-        const leagueCount = State.leagues.length;
-        const hasLeagues = leagueCount > 0;
-        const hasRos = State.rosRankings.length > 0;
-        // Best Ball sets its own lineups, so there's no weekly lineup to rank for -- the rest of
-        // the app skips it too (Optimize All, the injury audit). Count the step as done there.
-        // Like the rankings themselves, this follows the active league.
-        const activeLeague = getActiveLeague();
-        const weeklyNotNeeded = isBestBallLeague(activeLeague);
-        const hasWeekly = State.weeklyRankings.length > 0 || weeklyNotNeeded;
-
-        // Setup Checklist. Dashboard shows all three steps until everything is in place;
-        // Roster and Lineup show only their own step (ROS / Weekly) while it's unfinished --
-        // or the league step in its place, since rankings are per-league and can't be added
-        // before one exists. Hidden on every other tab.
-        const checklist = document.getElementById('setupChecklist');
-        if (checklist) {
-            const activeTab = document.querySelector('.tab-content.active');
-            const activeTabId = activeTab ? activeTab.id : '';
-            const doneState = { leagues: hasLeagues, ros: hasRos, weekly: hasWeekly };
-            const allDone = hasLeagues && hasRos && hasWeekly;
-            let visibleSteps = [];
-            if (activeTabId === 'setupTab') visibleSteps = allDone ? [] : ['leagues', 'ros', 'weekly'];
-            else if (activeTabId === 'rosterTab') visibleSteps = !hasLeagues ? ['leagues'] : (!hasRos ? ['ros'] : []);
-            else if (activeTabId === 'lineupTab') visibleSteps = !hasLeagues ? ['leagues'] : (!hasWeekly ? ['weekly'] : []);
-            checklist.style.display = visibleSteps.length > 0 ? '' : 'none';
-            [['setupStepLeagues', 'leagues'], ['setupStepRos', 'ros'], ['setupStepWeekly', 'weekly']].forEach(([id, step]) => {
-                const li = document.getElementById(id);
-                if (li) li.style.display = visibleSteps.includes(step) ? '' : 'none';
-            });
-            const title = document.getElementById('setupChecklistTitle');
-            if (title) title.textContent = `Setup Progress · ${Object.values(doneState).filter(Boolean).length} of 3 done`;
-            renderSetupStep('setupStepLeagues', 'leagues', hasLeagues,
-                hasLeagues ? `${leagueCount} league${leagueCount === 1 ? '' : 's'} synced` : 'Sync or create a league',
-                "In Add/Sync League, enter your Sleeper username and tap Import All My Leagues. Not on Sleeper? Tap Create Manual instead.",
-                activeTabId);
-            // Rankings belong to each league, so with several leagues the ROS/Weekly steps name
-            // the active one -- otherwise switching to a new league reads as "1 of 3 done" for
-            // the whole app. renderSetupStep appends labels as text, so no escaping needed.
-            const forLeague = leagueCount > 1 && activeLeague ? ` for ${activeLeague.name || 'this league'}` : '';
-            renderSetupStep('setupStepRos', 'ros', hasRos, `ROS rankings${forLeague}`,
-                hasLeagues ? "Upload a .csv or .xlsx of rest-of-season rankings, or tap Auto-Fetch ROS Rankings to pull market values." : null,
-                activeTabId);
-            renderSetupStep('setupStepWeekly', 'weekly', hasWeekly,
-                weeklyNotNeeded ? `Weekly rankings${forLeague}: not needed for Best Ball` : `Weekly rankings${forLeague} (needed for the Lineup tab)`,
-                hasLeagues ? "Upload this week's rankings as a .csv or .xlsx. Re-upload each week." : null,
-                activeTabId);
-        }
-
-        // Sync Button Pulse
-        const syncBtn = document.getElementById('mainSyncBtn');
-        if (syncBtn) syncBtn.classList.toggle('btn-pulse', !hasLeagues);
-
-        // Dashboard Sync Card Pulse
-        const syncCard = document.getElementById('setupSyncCard');
-        if (syncCard) syncCard.classList.toggle('pulse-border', !hasLeagues);
-
-        // ROS Rankings Pulse
-        const rosCard = document.getElementById('rosRankingsCard');
-        if (rosCard) rosCard.classList.toggle('pulse-border', hasLeagues && !hasRos);
-
-        // Weekly Rankings Pulse
-        const weeklyCard = document.getElementById('weeklyRankingsCard');
-        if (weeklyCard) weeklyCard.classList.toggle('pulse-border', hasLeagues && !hasWeekly);
-
-        // Navigation Element Pulses (Only Logo, and only when NOT on Dashboard tab)
-        const setupNav = document.querySelector('.logo-container');
-        const setupTab = document.getElementById('setupTab');
-        
-        if (setupNav) {
-            setupNav.classList.remove('nav-pulse');
-            // Only pulse the logo if they have zero leagues AND they are currently on another tab
-            if (State.leagues.length === 0 && setupTab && !setupTab.classList.contains('active')) {
-                setupNav.classList.add('nav-pulse');
-            }
-        }
-    }
-
-// HTML escaping for outside text (player/league/set names, teams...) placed into markup.
-// Forwards to the shared copy in js/utils.js (window.escapeHtml, used by MDS too). The
-// inline fallback covers a browser briefly pairing this file with an older cached
-// utils.js right after a deploy (see sw.js), when window.escapeHtml wouldn't exist yet.
-function escapeHtml(str) {
-    if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
-    return String(str ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-// Shows a role="status" feedback line that sits at display:none until now. Some screen
-// readers skip a live region that is revealed with its text already in it, so the box is
-// shown empty and the text goes in a beat later -- a content change, which they do announce.
-// `text` overrides the message; omitted, the element's current message is reused.
-function showStatusFeedback(el, text, hideAfterMs) {
-    if (!el) return;
-    const msg = text ?? el._feedbackText ?? el.textContent;
-    el._feedbackText = msg;
-    clearTimeout(el._feedbackShowT);
-    clearTimeout(el._feedbackHideT);
-    el.textContent = '';
-    el.style.display = 'block';
-    el._feedbackShowT = setTimeout(() => { el.textContent = msg; }, 100);
-    el._feedbackHideT = setTimeout(() => { el.style.display = 'none'; }, hideAfterMs);
-}
-
-// Parses an HTML string into a DocumentFragment using a detached <template>, then swaps
-// it into `container` in one operation. The parsing happens off-DOM (the template's
-// content is never attached to the live tree), and the fragment's children are moved
-// into place in a single call -- avoids the container sitting attached-but-empty
-// mid-rebuild the way `container.innerHTML = html` does.
-function renderHTMLInto(container, html) {
-    if (!container) return;
-    const template = document.createElement('template');
-    template.innerHTML = html;
-    container.replaceChildren(template.content);
-}
+import { parseRankingsFiles } from '../shared/rankings/parse.js';
+import { getNflState, getSleeperUser, getSleeperLeague, getSleeperLeagueUsers, getSleeperLeagueRosters, getSleeperUserLeagues, getSleeperPlayerMap, getSleeperMatchups } from '../shared/api/sleeper.js';
+import { fetchMarketConsensusData } from '../shared/api/market.js';
+import { runMatchupSimulation, clearSimResults, showSimNotice } from '../../lineup/monteCarloUi.js';
+import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from '../shared/api/sleeperStats.js';
+import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from '../../lineup/statsEngine.js';
+import { FLEX_POSITIONS, buildRankDisplayIndex, findFreeAgents, checkAgainstLineup, compareForScan, matchesPosFilter } from '../../lineup/waiverScanner.js';
+import { escapeHtml } from './compat.js';
+import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS, NFL_TEAMS, posRankTag, RANKING_TYPE_CONFIG, TEAM_BYES, tierTag } from './constants.js';
+import { pushLineupUndoSnapshot, refreshCurrentNflWeek, refreshGameTimes, State } from './state.js';
+import { getShortInjuryStatus, HARD_OUT_STATUSES, isBestBallLeague, isExcludedFromSimulation, isUnavailableThisWeek, rankingIndex, renderHTMLInto, showStatusFeedback, SIM_EXCLUDE_STATUSES } from './helpers.js';
+import './nav.js';
+import './backup.js';
+import { updatePulsePrompts } from './init.js';
 
 // --- PLAYER HEADSHOTS (Roster tab list + Lineup tab starters/bench) ---
 // Same Sleeper CDN thumbnails MDS uses on its Draft Board and roster cards. Hotlinked, never
@@ -1001,7 +122,7 @@ function applyHeadshotSetting() {
     if (toggleEl) toggleEl.checked = show;
 }
 
-window.toggleMlsHeadshots = function(show) {
+export const toggleMlsHeadshots = function(show) {
     localStorage.setItem('mls_show_headshots', show ? 'true' : 'false');
     applyHeadshotSetting();
 };
@@ -1222,7 +343,7 @@ function attachScoutSuggestionHandler(outputElId) {
     });
 }
 
-    window.onload = function() {
+    export const onload = function() {
         initManualAddForm();
         attachPlayerAutocomplete(document.getElementById('simPlayerSearch'), (p) => {
             window.lookupSimPlayer(p);
@@ -1306,7 +427,7 @@ function attachScoutSuggestionHandler(outputElId) {
         checkEarlyBannerVisibility();
     }
 
-    window.addEarlyTeam = function(team) {
+    export const addEarlyTeam = function(team) {
         if (!team) return;
         if (!State.earlyTeams.includes(team)) {
             State.earlyTeams.push(team);
@@ -1320,7 +441,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (activeTab && activeTab.id === 'lineupTab') renderLineupUI();
     };
 
-    window.removeEarlyTeam = function(team) {
+    export const removeEarlyTeam = function(team) {
         State.earlyTeams = State.earlyTeams.filter(t => t !== team);
         localStorage.setItem('mds_season_early_teams', JSON.stringify(State.earlyTeams));
         renderEarlyChips();
@@ -1428,7 +549,7 @@ function attachScoutSuggestionHandler(outputElId) {
     // LINEUP_STATS_TTL_MS. Used by refreshGameTimes to decide whether its once-per-week cache is
     // still good -- before this, a page left open from Sunday morning would never learn that
     // any game had finished.
-    function gameStatusMayBeStale() {
+    export function gameStatusMayBeStale() {
         if (Date.now() - State.gameTimesFetchedAt < LINEUP_STATS_TTL_MS) return false;
         return Object.keys(State.gamesByTeam).some(team => State.gamesByTeam[team].state !== 'post' && hasKickedOff({ team }));
     }
@@ -1722,7 +843,7 @@ function attachScoutSuggestionHandler(outputElId) {
     }
 
     // --- LEAGUE & SYNC LOGIC ---
-    function refreshLeagueDropdown() {
+    export function refreshLeagueDropdown() {
         const select = document.getElementById('headerLeagueSelect');
         renderLeagueManager();
         if (!select) return;
@@ -1870,7 +991,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     }
 
-    window.moveLeague = function(index, direction) {
+    export const moveLeague = function(index, direction) {
         if (index + direction < 0 || index + direction >= State.leagues.length) return;
         let temp = State.leagues[index];
         State.leagues[index] = State.leagues[index + direction];
@@ -1879,7 +1000,7 @@ function attachScoutSuggestionHandler(outputElId) {
         refreshLeagueDropdown();
     };
 
-    window.deleteLeagueManager = async function(leagueId) {
+    export const deleteLeagueManager = async function(leagueId) {
         // Name the league being removed. The dashboard is a stack of identical ✕ buttons, so
         // "Remove this league?" asked you to trust you'd clicked the right row -- and getting
         // it wrong costs that league's rankings assignment and sync history. The name goes in
@@ -1949,7 +1070,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }).join('|');
     }
 
-    window.switchActiveLeague = function(leagueId) {
+    export const switchActiveLeague = function(leagueId) {
         if (!leagueId) return;
         State.activeLeagueId = leagueId;
         localStorage.setItem('mds_season_active_league', State.activeLeagueId);
@@ -2001,11 +1122,11 @@ function attachScoutSuggestionHandler(outputElId) {
         clearSimResults();
     };
 
-    function getActiveLeague() {
+    export function getActiveLeague() {
         return State.leagues.find(l => l.leagueId === State.activeLeagueId) || null;
     }
 
-    window.cycleLeague = function(direction) {
+    export const cycleLeague = function(direction) {
         if (!State.leagues || State.leagues.length <= 1) return;
         
         const currentIndex = State.leagues.findIndex(l => l.leagueId === State.activeLeagueId);
@@ -2134,7 +1255,7 @@ function attachScoutSuggestionHandler(outputElId) {
         renderManualAddLog(); // show only this league's session adds
     }
 
-    window.saveRequirements = function(btn) {
+    export const saveRequirements = function(btn) {
         let league = getActiveLeague();
         if (!league) { if (window.showToast) window.showToast("Please select or add a league first.", { isError: true }); return; }
         const getInt = id => parseInt(document.getElementById(id)?.value) || 0;
@@ -2148,7 +1269,7 @@ function attachScoutSuggestionHandler(outputElId) {
         window.optimizeLineup(true);
     };
 
-    window.createManualLeague = function() {
+    export const createManualLeague = function() {
         const nameInput = document.getElementById('newLeagueName');
         const name = nameInput ? nameInput.value.trim() : "";
         if (!name) { if (window.showToast) window.showToast("Please enter a League Name to create a manual league.", { isError: true }); return; }
@@ -2194,7 +1315,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (banner) banner.style.display = 'flex';
     }
 
-    window.importDraftStrategistRoster = function() {
+    export const importDraftStrategistRoster = function() {
         const raw = localStorage.getItem('mds_handoff_roster');
         if (!raw) return;
         let payload;
@@ -2234,7 +1355,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (window.showToast) window.showToast(`Imported "${leagueObj.name}" with ${roster.length} players.`);
     };
 
-    window.dismissDraftStrategistHandoff = function() {
+    export const dismissDraftStrategistHandoff = function() {
         localStorage.removeItem('mds_handoff_roster');
         const banner = document.getElementById('handoffBanner');
         if (banner) banner.style.display = 'none';
@@ -2369,7 +1490,7 @@ function attachScoutSuggestionHandler(outputElId) {
             </ul>`;
     }
 
-    window.addManualPlayer = function(opts = {}) {
+    export const addManualPlayer = function(opts = {}) {
         let league = getActiveLeague();
         if (!league) { if (window.showToast) window.showToast("Please add or select a league first.", { isError: true }); return; }
         const nameInput = document.getElementById('manualName');
@@ -2413,7 +1534,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (opts.fromKeyboard && nameInput) nameInput.focus();
     };
 
-    window.deletePlayer = async function(playerId) {
+    export const deletePlayer = async function(playerId) {
         let league = getActiveLeague();
         if (!league) return;
         // Name the player, for the same reason deleteLeagueManager names the league: the roster
@@ -2688,7 +1809,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     }
 
-    window.addAndSyncLeague = function(btn) {
+    export const addAndSyncLeague = function(btn) {
         const username = document.getElementById('sleeperUsername')?.value.trim() || "";
         const leagueId = document.getElementById('sleeperLeagueId')?.value.trim() || "";
         if (!username || !leagueId) { if (window.showToast) window.showToast("Please enter both Sleeper Username and League ID to sync.", { isError: true }); return; }
@@ -2709,7 +1830,7 @@ function attachScoutSuggestionHandler(outputElId) {
     // fetches the user lookup and the ~5MB players list ONCE up front and passes them in via
     // the preloaded param, rather than every league in the loop re-fetching both -- Sleeper's
     // own docs ask callers not to hit the players endpoint more than once a day.
-    window.importAllSleeperLeagues = async function(btn) {
+    export const importAllSleeperLeagues = async function(btn) {
         const username = document.getElementById('sleeperUsername')?.value.trim() || "";
         if (!username) {
             if (window.showToast) window.showToast("Please enter your Sleeper Username first.", { isError: true });
@@ -2789,7 +1910,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     };
 
-    window.syncActiveLeague = function() {
+    export const syncActiveLeague = function() {
         let league = getActiveLeague();
         if (!league || !league.leagueId || league.leagueId.startsWith('manual_') || !league.username) {
             if (window.showToast) window.showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
@@ -2823,7 +1944,7 @@ function attachScoutSuggestionHandler(outputElId) {
         tbody.innerHTML = html;
     }
 
-    window.saveManualSoS = function(btn) {
+    export const saveManualSoS = function(btn) {
         NFL_TEAMS.forEach(team => {
             if (!State.sosMap[team]) State.sosMap[team] = {};
             const getVal = id => document.getElementById(id)?.value || "";
@@ -2966,7 +2087,7 @@ function attachScoutSuggestionHandler(outputElId) {
     }
 
     // --- SCOUT TAB ENGINE ---
-    window.runScout = async function(type) {
+    export const runScout = async function(type) {
         const inputEl = document.getElementById(type === 'waiver' ? 'waiverInput' : 'buyInput');
         const sellEl = document.getElementById('sellInput');
         const outputEl = document.getElementById(type === 'waiver' ? 'waiverOutput' : 'tradeOutput');
@@ -3452,7 +2573,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
     const WAIVER_SCAN_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
-    window.updateWaiverScanSetting = function(key, value) {
+    export const updateWaiverScanSetting = function(key, value) {
         State.waiverScanSettings[key] = value;
         localStorage.setItem('mls_waiver_scan_settings', JSON.stringify(State.waiverScanSettings));
         applyWaiverScanSettingsToUI();
@@ -3894,14 +3015,14 @@ function attachScoutSuggestionHandler(outputElId) {
         return [derivedNote(ctx.wkDisplay, 'weekly'), derivedNote(ctx.rosDisplay, 'ros')].filter(Boolean);
     }
 
-    window.setWaiverCompare = function(mode) {
+    export const setWaiverCompare = function(mode) {
         window.updateWaiverScanSetting('compare', mode === 'roster' ? 'roster' : 'lineup');
     };
 
     // Flipping scope clears any results already on screen: a single-league scan and an
     // all-leagues search answer different questions, and leaving the old cards up under a
     // toggle that now says something else is the kind of mismatch that gets misread.
-    window.setWaiverScope = function(scope) {
+    export const setWaiverScope = function(scope) {
         window.updateWaiverScanSetting('scope', scope === 'all' ? 'all' : 'league');
         const out = document.getElementById('waiverOutput');
         if (out) out.innerHTML = '';
@@ -3911,7 +3032,7 @@ function attachScoutSuggestionHandler(outputElId) {
     // question ("where is he?") hasn't changed, only which leagues get flagged, and the whole
     // search is a local read over stored rosters (plus the day-cached player map) -- cheap
     // enough that making someone press Search again would just be friction.
-    window.setWaiverIntent = function(intent) {
+    export const setWaiverIntent = function(intent) {
         window.updateWaiverScanSetting('intent', intent === 'sell' ? 'sell' : 'buy');
         const input = document.getElementById('waiverInput');
         const out = document.getElementById('waiverOutput');
@@ -4147,7 +3268,7 @@ function attachScoutSuggestionHandler(outputElId) {
     // adds is scrolling the results back into view once that re-render lands, since the
     // rebuilt cards can change height above or below where the person tapped. (switchActiveLeague
     // no longer scrolls to the top on its own.)
-    window.scoutGoToLeague = function(leagueId) {
+    export const scoutGoToLeague = function(leagueId) {
         if (!leagueId || leagueId === State.activeLeagueId) return;
         window.switchActiveLeague(leagueId);
         setTimeout(() => {
@@ -4438,7 +3559,7 @@ function attachScoutSuggestionHandler(outputElId) {
         return err.name === 'TypeError' && /failed to fetch|networkerror|load failed|network connection was lost/i.test(err.message || '');
     }
 
-    window.autoFindWaiverUpgrades = async function(btn) {
+    export const autoFindWaiverUpgrades = async function(btn) {
         const outputEl = document.getElementById('waiverOutput');
         if (!outputEl) return;
         const s = State.waiverScanSettings;
@@ -4848,7 +3969,7 @@ function attachScoutSuggestionHandler(outputElId) {
     }
 
     // User manually picked a different set (or legacy data, or "create new") from the dropdown.
-    window.onRankingSetSelectChange = function(type, selectEl) {
+    export const onRankingSetSelectChange = function(type, selectEl) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const val = selectEl.value;
         const nameWrap = document.getElementById(cfg.nameInputWrapId);
@@ -5037,7 +4158,7 @@ function attachScoutSuggestionHandler(outputElId) {
     function leagueCountText(n) { return `${n} league${n === 1 ? '' : 's'}`; }
 
     // "Choose leagues..." link under the set dropdown.
-    window.openRankingSetLeagues = async function(type) {
+    export const openRankingSetLeagues = async function(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const selectEl = document.getElementById(cfg.selectId);
         const val = selectEl ? selectEl.value : null;
@@ -5069,7 +4190,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
     // Deletes the currently-selected named set entirely. Any league referencing it (not just
     // the active one) falls back to unassigned, since the data it pointed to no longer exists.
-    window.deleteRankingSet = async function(type) {
+    export const deleteRankingSet = async function(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const selectEl = document.getElementById(cfg.selectId);
         const setId = selectEl ? selectEl.value : null;
@@ -5099,7 +4220,7 @@ function attachScoutSuggestionHandler(outputElId) {
     };
 
 
-    window.toggleLockCountdown = function() {
+    export const toggleLockCountdown = function() {
         const card = document.getElementById('lockCountdownCard');
         if (!card) return;
         const nowExpanded = card.classList.toggle('expanded');
@@ -5107,7 +4228,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (header) header.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
     };
 
-    window.toggleRankingsCard = function(cardId) {
+    export const toggleRankingsCard = function(cardId) {
         const card = document.getElementById(cardId);
         if (!card) return;
         const nowExpanded = card.classList.toggle('expanded');
@@ -5116,7 +4237,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (toggleBtn) toggleBtn.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
     };
 
-    function setRankingsCardExpanded(cardId, expanded) {
+    export function setRankingsCardExpanded(cardId, expanded) {
         const card = document.getElementById(cardId);
         if (!card) return;
         card.classList.toggle('expanded', expanded);
@@ -5180,13 +4301,13 @@ function attachScoutSuggestionHandler(outputElId) {
         updatePulsePrompts();
     }
 
-    window.toggleUploadMode = function(type) {
+    export const toggleUploadMode = function(type) {
         const mode = document.getElementById(`${type}UploadMode`).value;
         document.getElementById(`${type}SingleMode`).style.display = mode === 'single' ? 'block' : 'none';
         document.getElementById(`${type}MultiMode`).style.display = mode === 'multi' ? 'block' : 'none';
     };
 
-    window.togglePosInput = function(type, pos) {
+    export const togglePosInput = function(type, pos) {
         const wrap = document.getElementById(`${type}-input-wrap-${pos}`);
         if (wrap.style.display === 'none') {
             wrap.style.display = 'flex';
@@ -5397,7 +4518,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     }
 
-    window.cancelRankingsPreview = function() {
+    export const cancelRankingsPreview = function() {
         // Clear the file input(s) so the user can immediately reselect the same file --
         // browsers don't fire a 'change' event if the value hasn't actually changed.
         if (pendingRankingsUpload && pendingRankingsUpload.fileInputIds) {
@@ -5412,7 +4533,7 @@ function attachScoutSuggestionHandler(outputElId) {
         if (previewFocusTrap) { previewFocusTrap.deactivate(); previewFocusTrap = null; }
     };
 
-    window.confirmRankingsPreview = function() {
+    export const confirmRankingsPreview = function() {
         if (!pendingRankingsUpload) return;
         const { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds } = pendingRankingsUpload;
         const type = isWeekly ? 'weekly' : 'ros';
@@ -5507,7 +4628,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     }
 
-    window.processSingleRankingUpload = function(type, successMsgId) {
+    export const processSingleRankingUpload = function(type, successMsgId) {
         const fileInput = document.getElementById(`${type}FileInput`);
         if (!fileInput || !fileInput.files[0]) return;
         
@@ -5521,7 +4642,7 @@ function attachScoutSuggestionHandler(outputElId) {
             });
     };
 
-    window.processMultiRankings = function(type, successMsgId) {
+    export const processMultiRankings = function(type, successMsgId) {
         const positions = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
         let filesWithContext = [];
 
@@ -5612,11 +4733,11 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     }
 
-    window.toggleDisconnectMode = function() {
+    export const toggleDisconnectMode = function() {
         updateDisconnectThresholdUI();
     };
 
-    window.toggleDisconnectRankBasis = function() {
+    export const toggleDisconnectRankBasis = function() {
         updateDisconnectThresholdUI();
     };
 
@@ -5682,7 +4803,7 @@ function attachScoutSuggestionHandler(outputElId) {
     // requires a paid/partnership API key, and the free alternatives found either return raw
     // stats/projections rather than a ready-made ranking, or are of uncertain reliability. Rather
     // than guess at an unverified integration, Weekly Rankings stay upload-only for now.
-    window.autoFetchRosRankings = async function(btn) {
+    export const autoFetchRosRankings = async function(btn) {
         if (!btn) return;
         const origText = btn.innerText;
         btn.innerText = "Fetching…";
@@ -5769,7 +4890,7 @@ function attachScoutSuggestionHandler(outputElId) {
         }
     };
 
-    window.fetchLeagueLogsADP = async function(btn) {
+    export const fetchLeagueLogsADP = async function(btn) {
     const outputEl = document.getElementById('marketDisconnectOutput');
     const msgEl = document.getElementById('marketSuccessMsg');
     
@@ -5812,14 +4933,14 @@ function attachScoutSuggestionHandler(outputElId) {
 // auto-fetching ROS rankings. Single source of truth is State.marketSettings; every control's
 // onchange calls updateMarketSetting(), which persists it and re-syncs BOTH tabs' controls so
 // they never drift out of sync with each other.
-window.updateMarketSetting = function(key, value) {
+export const updateMarketSetting = function(key, value) {
     State.marketSettings[key] = value;
     localStorage.setItem('mls_market_settings', JSON.stringify(State.marketSettings));
     applyMarketSettingsToUI();
 };
 
 // --- TRADE ANALYZER SETTINGS (Waiver Adjustment) ---
-window.updateTradeSetting = function(key, value) {
+export const updateTradeSetting = function(key, value) {
     State.tradeSettings[key] = value;
     localStorage.setItem('mls_trade_settings', JSON.stringify(State.tradeSettings));
     applyTradeSettingsToUI();
@@ -5829,7 +4950,7 @@ window.updateTradeSetting = function(key, value) {
 // Re-runs the optimizer (non-manual, so it won't push an undo snapshot or show a toast) so
 // toggling this reflects immediately in whatever lineup is currently on screen, rather than
 // waiting for the next sync or manual "Optimize" click.
-window.updateLineupSetting = function(key, value) {
+export const updateLineupSetting = function(key, value) {
     State.lineupSettings[key] = value;
     localStorage.setItem('mls_lineup_settings', JSON.stringify(State.lineupSettings));
     applyLineupSettingsToUI();
@@ -5840,7 +4961,7 @@ window.updateLineupSetting = function(key, value) {
 
 // Just a persisted toggle -- unlike lineup/trade settings, nothing here needs to trigger a
 // re-render on its own; it's only read the next time runMatchupSim actually runs.
-window.updateSimSetting = function(key, value) {
+export const updateSimSetting = function(key, value) {
     State.simSettings[key] = value;
     localStorage.setItem('mls_sim_settings', JSON.stringify(State.simSettings));
 };
@@ -5865,7 +4986,7 @@ function applySimSettingsToUI() {
 // person" -- the actual use case here -- a projection/history-based range is the right level
 // of fidelity anyway; a live in-game update matters far less than it does for "will I win
 // this specific matchup right now."
-window.lookupSimPlayer = async function(p) {
+export const lookupSimPlayer = async function(p) {
     const resultEl = document.getElementById('simPlayerLookupResult');
     if (!resultEl) return;
     resultEl.style.display = 'block';
@@ -6215,7 +5336,7 @@ function applyMarketSettingsToUI() {
         }
     }
 
-    window.runMarketDisconnectAnalysis = function() {
+    export const runMarketDisconnectAnalysis = function() {
         const outputEl = document.getElementById('marketDisconnectOutput');
         if (!outputEl) return;
 
@@ -6410,7 +5531,7 @@ function applyMarketSettingsToUI() {
         outputEl.innerHTML = html;
     };
     // --- TEXT EXPORT (DISCORD/GROUP CHAT) ---
-    window.copyLineupAsText = function(btn) {
+    export const copyLineupAsText = function(btn) {
         if (!State.activeLeagueId) return;
         
         let league = getActiveLeague();
@@ -6448,7 +5569,7 @@ function applyMarketSettingsToUI() {
     };
 
     // --- SCREENSHOT EXPORT ---
-    window.exportLineup = async function() {
+    export const exportLineup = async function() {
     // Fetched on first use rather than on every page load -- see loadScriptOnce in utils.js.
     // The old message here ("loading, try again in a moment") was a symptom of the eager
     // <script defer> tag: the only thing the user could do was wait and re-press. Now the
@@ -6551,7 +5672,7 @@ function applyMarketSettingsToUI() {
         return !!(entry && entry.rookie);
     }
 
-    function loadRosterTab() {
+    export function loadRosterTab() {
         // Every roster change funnels through here (manual add/remove, Roster tab delete,
         // re-sync), so this keeps the Settings "Added this session" list in step with it.
         renderManualAddLog();
@@ -6696,7 +5817,7 @@ function applyMarketSettingsToUI() {
         return playerName;
     }
 
-    window.toggleLock = function(playerId) {
+    export const toggleLock = function(playerId) {
         if (!State.activeLeagueId) return;
         pushLineupUndoSnapshot(State.activeLeagueId);
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
@@ -6724,7 +5845,7 @@ function applyMarketSettingsToUI() {
     // etc -- this lets the person pull that ONE player back into normal (unlocked) territory so
     // the optimizer will freely reconsider them again, without touching anything else about the
     // lineup or affecting the season-long manual lock list.
-    window.overrideAutoLock = async function(playerId) {
+    export const overrideAutoLock = async function(playerId) {
         if (!State.activeLeagueId) return;
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         let bench = State.manualBenchMap[State.activeLeagueId] || [];
@@ -6753,7 +5874,7 @@ function applyMarketSettingsToUI() {
     // in real life. This is for clearing out manual picks made earlier in the season/week, not
     // for correcting auto-lock mistakes -- overrideAutoLock (the per-player control on an
     // auto-locked row) is the right tool for that instead.
-    window.unlockAllPlayers = async function() {
+    export const unlockAllPlayers = async function() {
         if (!State.activeLeagueId) return;
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
         if (locks.length === 0) return;
@@ -6789,7 +5910,7 @@ function applyMarketSettingsToUI() {
         }
     }
 
-    window.initiateSwap = function(playerId) {
+    export const initiateSwap = function(playerId) {
         if (State.swapSourceId === null) { State.swapSourceId = playerId; } 
         else if (State.swapSourceId === playerId) { State.swapSourceId = null; } 
         else {
@@ -6941,7 +6062,7 @@ function applyMarketSettingsToUI() {
     // ENTIRE per-league map (every league's starters, every league's bench), so doing them
     // per-iteration meant N leagues cost N full serializations of all N leagues' lineups, and
     // N full renders to display only the last one.
-    window.optimizeLineup = function(forceReset = true, isManualAction = false, opts = {}) {
+    export const optimizeLineup = function(forceReset = true, isManualAction = false, opts = {}) {
         const batch = !!opts.batch;
         let league = getActiveLeague();
         const container = document.getElementById('optimalLineupContainer');
@@ -7210,7 +6331,7 @@ function applyMarketSettingsToUI() {
         if (!batch) renderLineupUI();
     };
 
-    window.renderSyncLogs = function() {
+    export const renderSyncLogs = function() {
         const accordion = document.getElementById('syncLogAccordion');
         const content = document.getElementById('syncLogContent');
         const summary = document.getElementById('syncLogSummary');
@@ -7254,7 +6375,7 @@ function applyMarketSettingsToUI() {
         content.innerHTML = html;
     };
 
-    window.optimizeAllLineups = function(btn) {
+    export const optimizeAllLineups = function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
         const origText = btn.innerHTML;
         btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Optimizing All…`;
@@ -7336,7 +6457,7 @@ function applyMarketSettingsToUI() {
         }, 50);
     };
 
-window.syncAllLeagues = async function(btn) {
+export const syncAllLeagues = async function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
         
         // Filter out manual leagues — only sync Sleeper connections
@@ -7508,7 +6629,7 @@ window.syncAllLeagues = async function(btn) {
         return (['QB', 'K', 'DEF'].includes(p.pos) || !hasCross) ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${crossStr}`;
     }
 
-    function renderLineupUI() {
+    export function renderLineupUI() {
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
         if (!container || !benchContainer) return;
@@ -8123,7 +7244,7 @@ function resolvePowerFuture() {
 // call at the top of loadRosterTab, which every rankings upload, set change, sync and league
 // switch already funnels through. The math is a few milliseconds even for a 14-team league,
 // so recomputing on every render is cheaper than tracking what changed.
-window.updatePowerSetting = function(key, value) {
+export const updatePowerSetting = function(key, value) {
     State.powerSettings[key] = value;
     localStorage.setItem('mls_power_settings', JSON.stringify(State.powerSettings));
     refreshPowerRankings();
@@ -8235,7 +7356,7 @@ function renderRosterPowerStrip(teams, ctx = {}) {
 // Scrolls the Roster tab's Power Rankings card into view (the snapshot's link above; the Scout
 // tab's temporary pointer uses it too, via goToPowerRankings). #powerRankingsCard carries a
 // scroll-margin-top in styles.css so the sticky header doesn't cover the card title.
-window.scrollToPowerRankings = function() {
+export const scrollToPowerRankings = function() {
     const card = document.getElementById('powerRankingsCard');
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
@@ -8246,17 +7367,17 @@ window.scrollToPowerRankings = function() {
 // TODO (added 2026-09-27): recommend removing this pointer -- the #powerRankingsScoutPointer
 // section in index.html, this function, and the .mls-moved-pointer CSS -- on or after
 // 2026-10-04, once regular users have had a week to find the card's new home.
-window.goToPowerRankings = function() {
+export const goToPowerRankings = function() {
     if (typeof window.showTab === 'function') window.showTab('roster');
     setTimeout(() => window.scrollToPowerRankings(), 60);
 };
 
 // Kept for anything still calling the old Scout-tab button handler.
-window.runPositionalStrength = function() {
+export const runPositionalStrength = function() {
     refreshPowerRankings();
 };
 
-window.renderPowerRankingsTable = function(teamScores, ctx = {}) {
+export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
     let out = document.getElementById('powerRankingsOutput');
     if (!out) return;
 
@@ -8457,7 +7578,7 @@ function resolveManualPlayer(p, candidateIndex) {
         || candidates[0];
 }
 
-window.runGlobalInjuryAudit = async function(btn) {
+export const runGlobalInjuryAudit = async function(btn) {
     const outputEl = document.getElementById('injuryAuditOutput');
     const origText = btn.innerHTML;
     btn.innerHTML = "Scanning Leagues…";
@@ -8803,7 +7924,7 @@ window.runGlobalInjuryAudit = async function(btn) {
 // switchActiveLeague, addEarlyTeam, etc.) -- runMatchupSimulation itself (from
 // monteCarloUi.js) stays a pure hand-off to the Worker with no knowledge of State, matching
 // how sleeperApi.js/marketDataApi.js/rankingsParser.js are kept free of State access too.
-window.runMatchupSim = async function() {
+export const runMatchupSim = async function() {
     const btn = document.getElementById('run-sim-btn');
     const league = getActiveLeague();
 
@@ -9202,4 +8323,3 @@ window.runMatchupSim = async function() {
     // failure path (it had its own copy with no error handling at all), so it now lives in
     // js/utils.js as window.loadSheetJS alongside loadScriptOnce. The call sites above use it
     // directly; the (callback, onError) signature rankingsParser.js documents is unchanged.
-})();
