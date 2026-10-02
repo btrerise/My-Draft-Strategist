@@ -881,7 +881,10 @@ Sleeper records gained the `player_id` real ones have (all 12,229 live records h
 **Checks run.** `check-precache` OK; `node --test` 142/142; Playwright 42/42, screenshots
 identical.
 
-### Planned, not scheduled — Replace LeagueLogs (owner's direction, recorded after 2C)
+### Planned as runbook chunk 7A — Replace LeagueLogs (owner's direction, recorded after 2C)
+
+Runbook card **7A** (new Phase 7 "Data sources", added at the owner's request) carries the
+essentials and a session prompt; the detail is here.
 
 **Why.** LeagueLogs retired its public API (every URL answers 410; see 2C's entry). That breaks
 MDS's Quick-Start and its three LeagueLogs Fetch Market Value options, and MLS's LeagueLogs
@@ -933,7 +936,10 @@ rush it in.
   (which moves the market code into its own file).
 - Latest: before the 2027 draft season.
 
-### Revisit after the runbook — nflmeta.org (owner's request)
+### Revisit after the runbook — nflmeta.org (owner's request; runbook card 7B)
+
+Runbook card **7B** (needs 5D and 6B, so it runs last) turns this into a research session that
+ends in a proposal; no app changes until the owner approves it.
 
 Not a LeagueLogs replacement (no ADP, rankings, projections or trade values). Worth a look once
 every runbook chunk is done. From its official SDKs (`@nflmeta/sdk` on npm, `nflmeta` on PyPI;
