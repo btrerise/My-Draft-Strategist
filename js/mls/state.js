@@ -6,7 +6,7 @@ import { getNflState } from '../shared/api/sleeper.js';
 import { readJSON } from './compat.js';
 import { ESPN_TEAM_ALIASES } from './constants.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
-import { renderLineupUI } from './legacy.js';
+import { renderLineupUI } from './main.js';
 
     // --- STATE MANAGEMENT ---
     export const State = {

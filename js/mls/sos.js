@@ -3,7 +3,7 @@ import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
 import { NFL_TEAMS } from './constants.js';
 import { State } from './state.js';
 import { showStatusFeedback } from './helpers.js';
-import { loadRosterTab } from './legacy.js';
+import { loadRosterTab } from './main.js';
 
     // --- SOS ENGINE ---
     export function generateSoSGrid() {

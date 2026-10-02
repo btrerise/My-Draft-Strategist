@@ -5,7 +5,7 @@ import { RANKING_TYPE_CONFIG } from '../constants.js';
 import { State } from '../state.js';
 import { rankingIndex } from '../helpers.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
-import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from '../legacy.js';
+import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from '../main.js';
 
     // --- ALL-LEAGUES POSITIONAL POWER RANKS ---
     // Each league's power ranks come from THAT league's own ROS rankings (its named set, else

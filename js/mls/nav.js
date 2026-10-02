@@ -2,7 +2,7 @@
 import { State } from './state.js';
 import { updatePulsePrompts } from './init.js';
 import { refreshLeagueDropdown } from './leagues/sync.js';
-import { loadRosterTab } from './legacy.js';
+import { loadRosterTab } from './main.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at

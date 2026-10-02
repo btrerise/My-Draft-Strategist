@@ -6,7 +6,7 @@ import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { setRankingsCardExpanded } from './engine.js';
 import { resolveRankingsTarget, saveRankingsAsSet, assignSetToLeagues, openLeaguePickerDialog, leagueCountText } from './sets.js';
-import { loadRosterTab } from '../legacy.js';
+import { loadRosterTab } from '../main.js';
     // --- SHARED MARKET-CONSENSUS FETCH ---
     // Moved to js/shared/api/market.js -- fetchMarketConsensusData is now imported at the top of
     // this file. It's still used the same way below (Scout tab's Power Rankings and the

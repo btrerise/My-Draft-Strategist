@@ -9,7 +9,7 @@ import { getByeBadgeHTML } from '../lineup/gameInfo.js';
 import { renderManualAddLog } from '../leagues/addPlayer.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
-import { refreshPowerRankings } from '../legacy.js';
+import { refreshPowerRankings } from '../main.js';
 
     // --- RENDERERS ---
 
