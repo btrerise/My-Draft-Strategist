@@ -1,9 +1,18 @@
 // Moved from lineup/mls.js in refactor chunk 3A: INITIALIZATION (the setup checklist and the
-// pulse prompts). The page's window.onload handler is still in legacy.js.
-import { State } from './state.js';
+// pulse prompts). Chunk 3E added the page's window.onload handler (from legacy.js, where 3A-3D left
+// it) and STARTUP CLEANUP.
+import { State, refreshCurrentNflWeek, applyLineupSettingsToUI } from './state.js';
 import { isBestBallLeague, getActiveLeague } from './helpers.js';
 import { updateDrawerActiveState } from './nav.js';
-import { setRankingsCardExpanded } from './rankings/engine.js';
+import { setRankingsCardExpanded, updateRankingsMetaDisplay } from './rankings/engine.js';
+import { RANKING_TYPE_CONFIG } from './constants.js';
+import { attachPlayerAutocomplete, attachScoutSuggestionHandler } from './players.js';
+import { populateEarlyGameDropdown } from './lineup/earlyGames.js';
+import { loadActiveLeagueData, refreshLeagueDropdown } from './leagues/sync.js';
+import { initManualAddForm } from './leagues/addPlayer.js';
+import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
+import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
+import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs } from './legacy.js';
 
     // --- INITIALIZATION ---
     // Where each setup step gets done: the tab it lives on, the card to reveal, and the control
@@ -150,3 +159,91 @@ import { setRankingsCardExpanded } from './rankings/engine.js';
             }
         }
     }
+
+    export const onload = function() {
+        initManualAddForm();
+        attachPlayerAutocomplete(document.getElementById('simPlayerSearch'), (p) => {
+            window.lookupSimPlayer(p);
+        });
+        attachScoutSuggestionHandler('waiverOutput');
+        attachScoutSuggestionHandler('tradeOutput');
+        populateEarlyGameDropdown();
+        refreshLeagueDropdown();
+        // State starts from the flat global rankings keys -- the last upload for ANY league --
+        // and only switchActiveLeague() used to replace them with the active league's own set.
+        // So after a reload, a league on set A showed set B's players until you switched away
+        // and back, while its dropdown (and now the card header) said A. Hydrate up front, per
+        // type, and only where the league has something of its own (a saved set that still
+        // exists, or legacy data): otherwise that type keeps the global fallback, as before.
+        {
+            const bootLeague = getActiveLeague() || State.leagues[0] || null;
+            if (bootLeague) {
+                ['ros', 'weekly'].forEach(t => {
+                    const cfg = RANKING_TYPE_CONFIG[t];
+                    const setId = bootLeague[cfg.leagueSetIdKey];
+                    const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+                    const legacy = bootLeague[cfg.leagueLegacyDataKey];
+                    if (set) {
+                        State[cfg.stateKey] = [...set.data];
+                        State[cfg.updatedAtKey] = set.updatedAt;
+                    } else if (Array.isArray(legacy) && legacy.length > 0) {
+                        State[cfg.stateKey] = [...legacy];
+                        State[cfg.updatedAtKey] = bootLeague[cfg.leagueLegacyUpdatedKey] || null;
+                    }
+                });
+            }
+        }
+        updateRankingsMetaDisplay();
+        // Market data persists across reloads, but this was only ever called right after a
+        // fetch/upload -- so on a fresh page load the Trade Finder showed no count or age at all.
+        updateMarketMetaDisplay();
+        generateSoSGrid();
+        checkForDraftStrategistHandoff();
+        applyMarketSettingsToUI();
+        applyTradeSettingsToUI();
+        applyLineupSettingsToUI();
+        applySimSettingsToUI();
+        applyWaiverScanSettingsToUI();
+        updatePulsePrompts();
+        refreshCurrentNflWeek();
+        if (typeof renderSyncLogs === 'function') renderSyncLogs();
+
+        if (State.leagues.length > 0 && !State.activeLeagueId) {
+            State.activeLeagueId = State.leagues[0].leagueId;
+        }
+        if (State.activeLeagueId) {
+            const leagueSelect = document.getElementById('headerLeagueSelect');
+            if (leagueSelect) leagueSelect.value = State.activeLeagueId;
+            loadActiveLeagueData();
+        }
+        // Deep link: open the tab named in the URL hash (a reload, or a shared #lineup link),
+        // else the Dashboard. skipHistory + replaceState instead of a push: pushing here added
+        // a second history entry on every page load, so the first Back press went nowhere.
+        // Stamping this entry with its tab also means Back to it restores the right tab.
+        const initialTab = window.getTabFromHash() || 'setup';
+        window.showTab(initialTab, true);
+        history.replaceState({ tab: initialTab }, '', `#${initialTab}`);
+
+        // Last line of init on purpose: tells the safety net in utils.js that this module --
+        // and every module it imports -- evaluated all the way through and the page is
+        // genuinely usable, so a later uncaught error gets logged instead of covering a
+        // working screen with the fatal-boot banner. If any of the seven files in this
+        // module graph 404s, or anything above throws, this never runs and the banner stays
+        // armed, which is exactly the behavior we want.
+        if (typeof window.markAppReady === 'function') window.markAppReady();
+    };
+
+
+    // --- STARTUP CLEANUP ---
+document.addEventListener('DOMContentLoaded', () => {
+    // One-time cleanup of 'shared_sleeper_league_id', a league-ID handoff from MDS that was
+    // never finished: nothing in either app ever wrote the key, but MLS used to read it here
+    // and auto-click Sync on page load. MDS hands off via mds_handoff_roster instead (see
+    // checkForDraftStrategistHandoff). The key is off getMlsOwnedKeys() now, so Factory Reset
+    // can no longer clear a stale copy -- hence removing it directly. Idempotent, so it needs
+    // no "already migrated" flag; safe to delete once existing installs have loaded once.
+    try { localStorage.removeItem('shared_sleeper_league_id'); } catch (e) {}
+
+    // Tooltip tap/keyboard handling moved to js/utils.js (initInfoTooltips), shared with MDS
+    // and T-Score. The per-icon listeners that lived here only covered icons present at load.
+});
