@@ -7,11 +7,14 @@
 // normalizeName and findCsvQuoteProblem are the real ones, imported from js/shared/.
 //
 // The Papa stub is NOT PapaParse. It turns fixture text into rows the way Papa does for the
-// simple, unquoted CSV the fixtures use (header: false, skipEmptyLines: true): split lines,
-// drop lines that are exactly empty, split cells on commas. It refuses quoted input so a
-// fixture can't silently depend on quoting rules the stub doesn't implement. For Papa output
-// that plain splitting can't produce (quote errors), a fake file can carry `papaResult`,
-// which is passed to `complete` verbatim. Real Papa is async for File input; this stub is
+// simple, unquoted CSV the fixtures use (header: false): split lines, split cells on commas.
+// With skipEmptyLines, lines that are exactly empty are dropped; without it each becomes [''],
+// including the one after a trailing newline. `preview` keeps the first N rows. `unparse` joins
+// with commas and \r\n, Papa's defaults, and refuses cells that would need quoting. (Checked
+// against PapaParse 5.4.1 in refactor chunk 2C, which added the last three for stripTitleLines.)
+// It refuses quoted input so a fixture can't silently depend on quoting rules the stub doesn't
+// implement. For Papa output that plain splitting can't produce (quote errors), a fake file can
+// carry `papaResult`, which is passed to `complete` verbatim. Real Papa is async for File input; this stub is
 // synchronous, so multi-file batches finish in upload order here.
 //
 // The XLSX stub keeps each sheet as the CSV text SheetJS's sheet_to_csv would produce, so
@@ -21,9 +24,12 @@ import { findCsvQuoteProblem } from '../../../js/shared/rankings/diagnostics.js'
 
 const workbooks = new WeakMap(); // ArrayBuffer -> fake workbook
 
-function splitCsv(text) {
+function splitCsv(text, { skipEmptyLines = false, preview = 0 } = {}) {
     if (text.includes('"')) throw new Error('Papa stub: quoted CSV is not supported; use papaResult');
-    return text.split(/\r\n|\n|\r/).filter(line => line !== '').map(line => line.split(','));
+    let lines = text.split(/\r\n|\n|\r/);
+    if (skipEmptyLines) lines = lines.filter(line => line !== '');
+    if (preview > 0) lines = lines.slice(0, preview);
+    return lines.map(line => line.split(','));
 }
 
 export function installParserEnv() {
@@ -47,7 +53,16 @@ export function installParserEnv() {
                 return;
             }
             const text = typeof input === 'string' ? input : input.text;
-            config.complete({ data: splitCsv(text), errors: [], meta: {} });
+            const result = { data: splitCsv(text, config), errors: [], meta: {} };
+            // Real Papa returns the result for string input (and calls `complete` if given).
+            if (config.complete) config.complete(result);
+            return result;
+        },
+        unparse(rows) {
+            return rows.map(row => row.map(cell => {
+                if (/[",\r\n]/.test(cell)) throw new Error('Papa stub: unparse of a cell that needs quoting is not supported');
+                return cell;
+            }).join(',')).join('\r\n');
         }
     };
 

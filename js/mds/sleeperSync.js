@@ -5,6 +5,7 @@ import { savePlayerPool } from './storage.js';
 import { BYE_WEEKS_2026, State, getActiveDraft, refreshDraftDropdown, saveActiveDraftState, saveAndRenderDraftState } from './state.js';
 import { initSettingsUI } from './settings.js';
 import { renderBoard } from './tracker.js';
+import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeagueUsers, getSleeperUser } from '../shared/api/sleeper.js';
 
     // --- SLEEPER & MANUAL DRAFT CREATION LOGIC ---
     export const createManualDraft = function() {
@@ -71,7 +72,7 @@ import { renderBoard } from './tracker.js';
     // the duration. Re-fetching them 20 times a minute was ~80 redundant requests per minute
     // against Sleeper's rate limit, and four extra round-trips of latency on every tick.
     //
-    // Keyed by URL, so switching drafts or usernames simply misses and fetches fresh. Session
+    // Keyed by endpoint path, so switching drafts or usernames simply misses and fetches fresh. Session
     // -only (a plain Map, not localStorage): this is about not re-asking within one sitting,
     // not about persisting anything.
     const _sleeperMetaCache = new Map();
@@ -85,19 +86,17 @@ import { renderBoard } from './tracker.js';
     // haven't loaded returns an empty array; caching either would mean the column headers
     // never appear no matter how long the poll ran. Returning them uncached lets the next tick
     // try again, which is exactly the old behavior for those cases.
-    async function fetchSleeperMeta(url, { force = false, required = false, errorMsg = '', shouldCache = () => true } = {}) {
-        if (!force && _sleeperMetaCache.has(url)) return _sleeperMetaCache.get(url);
-
-        // mdsFetch, so a tick of the 3s live-draft poll can't hang forever. A timed-out
-        // request throws, which is what lets processSleeperDraftData's catch count the miss
-        // and flip the LIVE pill to "stalled" -- a hung fetch never reached that code at all.
-        const res = await window.mdsFetch(url);
-        if (!res.ok) {
-            if (required) throw new Error(errorMsg);
-            return null;
-        }
-        const data = await res.json();
-        if (shouldCache(data)) _sleeperMetaCache.set(url, data);
+    //
+    // `fetcher` is a js/shared/api/sleeper.js call (refactor 2C). Those go through mdsFetch, so
+    // a tick of the 3s live-draft poll can't hang forever. A timed-out request throws, which is
+    // what lets processSleeperDraftData's catch count the miss and flip the LIVE pill to
+    // "stalled" -- a hung fetch never reached that code at all. A required endpoint's fetcher
+    // throws its own error on a non-ok response; an optional one is asked for null instead,
+    // which shouldCache rejects, so the next tick tries again.
+    async function fetchSleeperMeta(key, fetcher, { force = false, shouldCache = () => true } = {}) {
+        if (!force && _sleeperMetaCache.has(key)) return _sleeperMetaCache.get(key);
+        const data = await fetcher();
+        if (shouldCache(data)) _sleeperMetaCache.set(key, data);
         return data;
     }
 
@@ -115,13 +114,13 @@ import { renderBoard } from './tracker.js';
         }
 
         try {
-            const userData = await fetchSleeperMeta(`https://api.sleeper.app/v1/user/${username}`, {
-                force: forceMeta, required: true, errorMsg: "Could not find Sleeper User.",
+            const userData = await fetchSleeperMeta(`user/${username}`, () => getSleeperUser(username, { notFoundMessage: "Could not find Sleeper User." }), {
+                force: forceMeta,
                 shouldCache: (d) => !!(d && d.user_id)
             });
             const userId = userData.user_id;
-            const dInfo = await fetchSleeperMeta(`https://api.sleeper.app/v1/draft/${draftId}`, {
-                force: forceMeta, required: true, errorMsg: "Could not fetch Draft ID details.",
+            const dInfo = await fetchSleeperMeta(`draft/${draftId}`, () => getSleeperDraft(draftId), {
+                force: forceMeta,
                 // Don't freeze a draft whose order hasn't been set yet -- draft_order arrives
                 // later and is what draftSlotNames (the grid's column headers) is built from.
                 shouldCache: (d) => !!(d && d.draft_order)
@@ -134,13 +133,13 @@ import { renderBoard } from './tracker.js';
                 let currentUsername = document.getElementById('sleeperUsername')?.value.trim() || username || draftName || "";
                 
                 try {
-                    fetchedLeague = await fetchSleeperMeta(`https://api.sleeper.app/v1/league/${dInfo.league_id}`, {
+                    fetchedLeague = await fetchSleeperMeta(`league/${dInfo.league_id}`, () => getSleeperLeague(dInfo.league_id, { nullIfNotOk: true }), {
                         force: forceMeta, shouldCache: (d) => !!(d && d.roster_positions)
                     });
                     if (fetchedLeague && !draftName) draftName = fetchedLeague.name;
 
                     // NEW: Fetch league users to map to the draft board columns
-                    const leagueUsers = await fetchSleeperMeta(`https://api.sleeper.app/v1/league/${dInfo.league_id}/users`, {
+                    const leagueUsers = await fetchSleeperMeta(`league/${dInfo.league_id}/users`, () => getSleeperLeagueUsers(dInfo.league_id, { nullIfNotOk: true }), {
                         force: forceMeta, shouldCache: (d) => Array.isArray(d) && d.length > 0
                     });
                     if (leagueUsers) {
@@ -205,9 +204,7 @@ import { renderBoard } from './tracker.js';
             }
             draftLimits.TOTAL = draftLimits.QB + draftLimits.RB + draftLimits.WR + draftLimits.TE + draftLimits.WT + draftLimits.FLEX + draftLimits.SFLEX + draftLimits.K + draftLimits.DEF + draftLimits.BENCH;
 
-            const picksRes = await window.mdsFetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
-            if (!picksRes.ok) throw new Error("Could not fetch Draft ID picks.");
-            const picksData = await picksRes.json();
+            const picksData = await getSleeperDraftPicks(draftId);
 
             // Sleeper answered, so this tick is healthy -- a tick that finds no new picks
             // still means we're hearing from them, which is exactly what the LIVE pill is

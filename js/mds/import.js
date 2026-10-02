@@ -4,6 +4,8 @@ import { findCsvQuoteProblem, formatRankingsDiagnostic } from './compat.js';
 import { savePlayerPool } from './storage.js';
 import { BYE_WEEKS_2026, State, saveAndRenderDraftState } from './state.js';
 import { updateMetaDisplay } from './settings.js';
+import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
+import { MDS_NAME_HEADERS, findHeaderRowIndex, normalizeHeader, stripTitleLines } from '../shared/rankings/parse.js';
 
     // --- FILE PARSING & DATA IMPORT ---
 const fileInput = document.getElementById('fileInput');
@@ -16,7 +18,7 @@ if (fileInput) {
         
         if (ext === 'csv') {
             // Read as text first (rather than handing Papa the File) so title lines can be
-            // stripped before the header parse; see stripTitleLines. Rankings files are small,
+            // stripped before the header parse; see stripTitleLines (js/shared/rankings/parse.js). Rankings files are small,
             // so reading the whole thing at once costs nothing over Papa's own file reading.
             file.text().then(
                 text => parseRankingsCsvText(text, null, file.name),
@@ -122,53 +124,6 @@ function parseExcel(file) {
         });
     }
 
-    // Same header matching as getVal in processData below: lowercase, trimmed, quotes stripped.
-    const MDS_NAME_HEADERS = ['player', 'name', 'player name'];
-    const normalizeHeader = h => String(h).toLowerCase().trim().replace(/['"]/g, '');
-    const hasNameHeader = row => Array.isArray(row) && row.some(h => MDS_NAME_HEADERS.includes(normalizeHeader(h)));
-    const isBlankRow = row => !Array.isArray(row) || row.every(c => String(c ?? '').trim() === '');
-
-    // Title lines above the header row. Some exports start with "Week 3 Rankings" or a
-    // source credit, and the header row is a line or two further down. Papa (header: true)
-    // and SheetJS both take the first row as headers, so the title became the only "column"
-    // and the upload failed with no name column. Takes raw rows (arrays of cells) and returns
-    // the index of the row to use as the header: the first non-blank row if it has a name
-    // column, else the first of the next few rows that does. Only a row with a Player/Name
-    // cell can move the header down, so ordinary data never does.
-    //
-    // With no name column anywhere the upload fails regardless; the fallback just decides
-    // which row the error message lists as "Found:". It's the first row with 2+ cells, which
-    // skips a one-cell title line, so the message lists the real columns (Rank, Tm, Bye)
-    // rather than "Week 3 Rankings".
-    const MAX_TITLE_ROWS = 10;
-    const filledCells = row => row.filter(c => String(c ?? '').trim() !== '').length;
-    function findHeaderRowIndex(rawRows) {
-        const first = rawRows.findIndex(r => !isBlankRow(r));
-        if (first === -1 || hasNameHeader(rawRows[first])) return Math.max(first, 0);
-        let firstTableRow = -1;
-        for (let i = first, seen = 0; i < rawRows.length && seen <= MAX_TITLE_ROWS; i++) {
-            if (isBlankRow(rawRows[i])) continue;
-            seen++;
-            if (hasNameHeader(rawRows[i])) return i;
-            if (firstTableRow === -1 && filledCells(rawRows[i]) >= 2) firstTableRow = i;
-        }
-        return firstTableRow !== -1 ? firstTableRow : first;
-    }
-
-    // Cuts title lines off CSV text (an upload or a paste) before Papa parses it with
-    // header: true, so the header lands on the real header row. Files without title lines
-    // come back untouched. With title lines, the text is parsed to rows, the title rows are
-    // dropped, and the rest goes back through Papa.unparse. That keeps quoting intact without
-    // any character-offset math (Papa's meta.cursor after `preview` rows overshoots on its
-    // fast path for quote-free text, so it can't be used as a cut point).
-    // Runs BEFORE the main parse, never inside it: calling Papa.parse from inside another
-    // parse's beforeFirstChunk corrupts the outer parse's state.
-    function stripTitleLines(text) {
-        const idx = findHeaderRowIndex(Papa.parse(text, { header: false, preview: MAX_TITLE_ROWS * 2 + 1 }).data);
-        if (idx <= 0) return text;
-        return Papa.unparse(Papa.parse(text, { header: false }).data.slice(idx));
-    }
-
     // source: { fileName, headers, sheetName?, quoteProblem? }. fileName is null for pasted
     // text; sheetName is set when the rankings came from one tab of a multi-tab workbook;
     // quoteProblem is findCsvQuoteProblem's result for CSV text. headers is the file's
@@ -216,11 +171,10 @@ function parseExcel(file) {
         let sleeperMap = {};
 
         try {
-            // The long timeout, not the 12s default: this payload is ~5MB, which a healthy
-            // download on a slow phone connection can legitimately take longer than an
-            // ordinary JSON call should. Still bounded -- just a higher ceiling.
-            let res = await window.mdsFetch('https://api.sleeper.app/v1/players/nfl', {}, window.MDS_LONG_FETCH_TIMEOUT_MS);
-            if (res.ok) sleeperMap = await res.json();
+            // The shared player map (js/shared/api/sleeper.js, refactor 2C): cached in IndexedDB
+            // for a day and shared with Lineup Strategist, so a re-upload usually skips the ~5MB
+            // download. A fresh download still gets the long fetch timeout.
+            sleeperMap = await getSleeperPlayerMap();
         } catch(err) {
             console.warn("Could not fetch Sleeper database.");
         }

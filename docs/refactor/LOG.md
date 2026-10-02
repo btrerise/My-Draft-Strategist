@@ -59,8 +59,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   These are the same functions the nav buttons call. One test also clicks a real bottom-nav
   button.
 - Coverage: 14 smoke tests and 10 screenshot tests (40 PNGs) across desktop (1280×900) and
-  phone (390×844), plus 2 backup → restore round trips (`backup.spec.mjs`, added in 1B). The MLS matchup simulator runs in its Web Worker in the smoke test, but its
-  output isn't screenshotted because it's random.
+  phone (390×844), plus 2 backup → restore round trips (`backup.spec.mjs`, added in 1B) and 6
+  MDS network tests (`mds-sync.spec.mjs`, added in 2C: player-map cache, Quick-Start, ADP sync,
+  live Sleeper draft, error toasts). The MLS matchup simulator runs in its Web Worker in the
+  smoke test, but its output isn't screenshotted because it's random.
 
 ### Known gaps (good follow-ups, not blockers)
 
@@ -704,3 +706,116 @@ it loads.
 - The live-sync check above isn't a committed test. If 2C wants it as a regression test for its
   Sleeper changes, add `draft/<id>` and `draft/<id>/picks` fixtures to
   `tests/fixtures/sleeper/make-fixtures.mjs` and `SLEEPER_FIXTURES` in `tests/helpers.mjs`.
+
+### 2C — MDS uses the shared Sleeper, market and parser code (behavior change)
+
+**What the user sees.**
+- **The Sleeper player database (~5 MB) is now cached in IndexedDB for a day**, in the same
+  `mls_sleeper_cache` database Lineup Strategist already used, and shared with it. Before, MDS
+  downloaded it on every rankings upload/paste and every Quick-Start, even twice in a row. Now
+  the first of those in a day downloads it and later ones (including after a reload, or after
+  using Lineup Strategist) read it from IndexedDB. Uploads and Quick-Start are faster and work
+  offline once the map is cached.
+- **Trade-off:** the injury status and rookie flag MDS copies from that map can now be up to a
+  day old (the age MLS already accepted; it matches Sleeper's "call at most once a day"
+  guidance). A fresh download happens once the cache is 24 h old.
+- **Quick-Start makes one request fewer.** It also fetched LeagueLogs' `/v1/players`, but only
+  as a rookie-status fallback for rows with no Sleeper entry, and those rows are skipped before
+  the fallback is read, so it never changed a result. The request and `playerMetaMap` are gone.
+  Checked: Quick-Start builds the identical pool on main and on this branch from the same stubs.
+- No wording changed. Every toast and button message is the same, including the error texts,
+  which the shared functions now take as options where they differed between the apps. Live
+  poll timing (3 s), the draft-metadata session cache and the "stalled" pill are unchanged.
+
+**What moved where.**
+
+| From | To | Notes |
+|---|---|---|
+| `js/mds/sleeperSync.js`: direct fetches of `user`, `draft`, `league`, `league/users`, `draft/picks` | `js/shared/api/sleeper.js` | New `getSleeperDraft`, `getSleeperDraftPicks` (they throw MDS's existing "Could not fetch Draft ID details." / "...picks." on a non-ok response). Extended, defaults unchanged for MLS: `getSleeperUser(username, { notFoundMessage })`, `getSleeperLeague(id, { nullIfNotOk })`, `getSleeperLeagueUsers(id, { nullIfNotOk })` |
+| `js/mds/import.js` + `js/mds/market.js`: `players/nfl` fetches | `getSleeperPlayerMap()` (existing) | Both MDS callers already caught failures and fell back to `{}`; they still do |
+| `js/mds/market.js`: LeagueLogs `/v1/market/<profile>` (Quick-Start, ADP sync) | `fetchLeagueLogsMarket(profileKey, { errorPrefix })` in `js/shared/api/market.js` | Split out of `fetchMarketConsensusData`, whose LeagueLogs branch now calls it. MDS needs raw rows with Sleeper IDs and the half-PPR profile, which `fetchMarketConsensusData` can't give, so it was extended this way rather than forked. ADP passes `errorPrefix: 'LeagueLogs Market Error'` to keep its toast |
+| `js/mds/import.js`: `MDS_NAME_HEADERS`, `normalizeHeader`, `hasNameHeader`, `isBlankRow`, `filledCells`, `findHeaderRowIndex`, `stripTitleLines` | `js/shared/rankings/parse.js`, new section `TITLE LINES ABOVE THE HEADER ROW (DRAFT STRATEGIST)` | Cut by line range with a script and dedented 4 spaces (the old IIFE indent); bodies unchanged. The first four are exported and imported back by import.js. MDS's duplicate `const MAX_TITLE_ROWS = 10` was dropped in favour of parse.js's identical one |
+
+`sleeperSync.js`'s `fetchSleeperMeta(url, opts)` became `fetchSleeperMeta(key, fetcher, opts)`:
+same cache, same `force`/`shouldCache` rules, keyed by endpoint path (`user/<name>`,
+`draft/<id>`, …) instead of the full URL. Its `required`/`errorMsg` options went away because
+the required endpoints' shared functions throw those same messages themselves; the optional
+league endpoints ask for `nullIfNotOk`, so a non-ok response still returns null and isn't cached.
+A 200 response with a `null` body (what Sleeper sends for an unknown username) behaves exactly
+as before.
+
+**Why the two title-line scans weren't unified.** parse.js now has MLS's `dropTitleRows` and
+MDS's `findHeaderRowIndex` side by side. They differ on purpose: MDS only reads a Player / Name /
+Player Name column, while MLS also accepts position-named columns ("Quarterback") and treats
+rows of known non-name headers ("Rank,Tm,Bye") as a header; MDS works on raw rows with blank
+lines and falls back to the first 2+-cell row for its error message. Making one call the other
+would change one app's results. A later chunk can unify them as a deliberate behavior change.
+
+#### Tests
+
+- `tests/unit/rankingsParser.test.mjs`: 15 new cases for MDS's title lines (written first and
+  run against a scratch copy of the original import.js functions, where they all passed, then
+  pointed at parse.js): header in row 0, blank rows first, title + blank + credit line, quoted /
+  padded / upper-case headers, position-named columns not counting, the no-name-column fallback,
+  empty input, the 11-row search depth with and without blank rows, `stripTitleLines` identity /
+  cut / preview limit, and one with **real PapaParse** for quoted cells. That one runs only when
+  `tests/node_modules` exists (`cd tests && npm install`) and is skipped otherwise, so plain
+  `node --test` still needs no install. The `exports` test now lists parse.js's five exports
+  (deliberate).
+- `tests/unit/helpers/parserEnv.mjs`: the Papa stub now honours `skipEmptyLines` (without it,
+  blank lines are `['']` rows, as real Papa gives), `preview`, and has `unparse`; it returns its
+  result for string input. Checked against PapaParse 5.4.1. parse.js always passes
+  `skipEmptyLines: true`, so the existing cases see no difference.
+- New `tests/unit/market.test.mjs`: `fetchLeagueLogsMarket` and MLS's LeagueLogs path through
+  `fetchMarketConsensusData` (same output and error wording as before), with a stubbed
+  `window.mdsFetch`.
+- New `tests/mds-sync.spec.mjs` (Playwright, desktop + phone), Sleeper and LeagueLogs stubbed
+  in the spec: the player map is fetched once across two uploads and a reload and is in
+  IndexedDB; Quick-Start's pool (order, posDisplay, ADP, rookie flag, Sleeper IDs, meta label)
+  and its request list; Quick-Start and ADP error toasts; ADP applied by Sleeper ID; a live
+  draft (URL-form draft ID, Sync, live toggle, a new pick of an unranked player applied by the
+  3 s poll, user/draft/league/users requested once per forced sync and not on silent ticks, no
+  polling after stop, board shows the pick); the unknown-user toast. **Run against main too:**
+  the only failures were the two intended changes (a second `players/nfl` download, and the
+  extra `/v1/players` request). Everything else, including the Quick-Start pool, matched.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (55 precached). `node --test` 136/136 (117 + 19 new).
+  `cd tests && npm run check`: 40 Playwright tests pass (28 existing + 12 new), **screenshots
+  identical** (no baseline changed).
+- **Manual check (Quick-Start, ADP sync, live draft): done against stubs only, not live APIs.**
+  This container's network policy blocks `api.sleeper.app` and `developer.leaguelogs.com` (the
+  proxy answers 403), so the three flows were exercised through `mds-sync.spec.mjs` with
+  realistic payloads instead, on this branch and on main. **Still to do by hand** before or
+  after merging: on the deployed site, Quick-Start with a LeagueLogs profile, Fetch Market
+  Value, and Live Sync on a real Sleeper mock draft ID. In DevTools → Application → IndexedDB
+  the `mls_sleeper_cache` database should appear after the first upload, and a second upload
+  should make no `players/nfl` request.
+
+#### Other changes
+
+- `sw.js`: CACHE_NAME `v2.8.44` → `v2.8.45`. No file added or removed (parse.js and the API
+  modules were already precached for MLS), so rule 6 didn't require it; served JS changed.
+- `js/shared/storage/keys.js`: the `mls_sleeper_cache` comment says both apps read it. The
+  database name is unchanged (rule 4).
+
+#### Left for later chunks
+
+- **`getSleeperPlayerMap` doesn't check `res.ok`** (pre-existing; MLS's error toasts rely on
+  the resulting SyntaxError, see the comments at its two catch sites in mls.js). With MDS on it
+  too, a non-ok response whose body happens to be JSON would be cached in IndexedDB for a day as
+  if it were the player map, in both apps. Not fixed here because it would change MLS's toasts.
+  A follow-up could check `res.ok` and throw a SyntaxError-compatible error, or skip caching
+  non-ok bodies.
+- ADP sync's **Sleeper** source still calls `api.sleeper.com/projections/...` directly (a
+  different host and endpoint from the card's `api.sleeper.app` calls). It could join
+  `js/shared/api/sleeperStats.js` later.
+- `js/mds/*` still reads `showToast`, `flashButton`, `normalizeName`, `isNameMatch`,
+  `formatRankingsDiagnostic` etc. through `window.*` / bare globals. Only the Sleeper, market
+  and parser code moved to imports here.
+- Comments in `js/mds/import.js` still mention `lineup/rankingsParser.js` and `js/utils.js`
+  (5D's comment sweep).
+- Unifying `dropTitleRows` and `findHeaderRowIndex` (see above) if wanted, as its own
+  behavior change.
+- Next on the MDS track: 5A (needs 2C). 6A also needs 2C (and 3F).

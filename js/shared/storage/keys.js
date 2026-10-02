@@ -58,7 +58,7 @@ export const STORAGE_KEYS = {
 // IndexedDB databases (not part of any backup -- both are re-fetchable caches).
 export const IDB_DATABASES = {
     lineupStrategist: { name: 'LineupStrategistDB', stores: ['sleeperData'] }, // js/shared/storage/idb.js
-    sleeperPlayerMap: { name: 'mls_sleeper_cache', stores: ['players'] },      // js/shared/api/sleeper.js
+    sleeperPlayerMap: { name: 'mls_sleeper_cache', stores: ['players'] },      // js/shared/api/sleeper.js (read by both apps since 2C)
 };
 
 // --- BACKUP / RESTORE OWNERSHIP ---

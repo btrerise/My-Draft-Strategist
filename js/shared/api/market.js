@@ -14,6 +14,23 @@ import { normalizeName } from '../names.js';
 // leave the Market Value button spinning forever.
 
 /**
+ * Fetches one LeagueLogs market profile (e.g. "redraft-1qb-12t-ppr1") and returns its raw rows:
+ * [{ sleeperPlayerId, overallRank, ... }], unfiltered and in LeagueLogs' order. Throws
+ * "<errorPrefix>: <status>" on a non-ok response.
+ *
+ * Split out of fetchMarketConsensusData in refactor chunk 2C so Draft Strategist's Quick-Start
+ * and ADP sync share it. Those need the Sleeper ID of every row (fetchMarketConsensusData drops
+ * it, and drops rows missing from the Sleeper map) and pass profile keys the MLS settings can't
+ * build (half-PPR). errorPrefix keeps each caller's existing toast wording.
+ */
+export async function fetchLeagueLogsMarket(profileKey, { errorPrefix = 'Market Error' } = {}) {
+    const marketRes = await window.mdsFetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
+    if (!marketRes.ok) throw new Error(`${errorPrefix}: ${marketRes.status}`);
+    const llMarket = await marketRes.json();
+    return llMarket.data;
+}
+
+/**
  * Fetches and normalizes market-consensus player values from either FantasyCalc or
  * LeagueLogs. Pure data in/out -- callers handle their own UI and State updates.
  *
@@ -65,11 +82,9 @@ export async function fetchMarketConsensusData(source, isDynastyVal, numQbsVal, 
 
         let sleeperMap = await getSleeperPlayerMap();
 
-        const marketRes = await window.mdsFetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
-        if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
-        const llMarket = await marketRes.json();
+        const llMarketData = await fetchLeagueLogsMarket(profileKey);
 
-        llMarket.data.forEach(item => {
+        llMarketData.forEach(item => {
             let sId = item.sleeperPlayerId;
             let sp = sleeperMap[sId];
             if (!sp || !sp.first_name) return;

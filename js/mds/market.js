@@ -4,6 +4,8 @@ import { savePlayerPool } from './storage.js';
 import { BYE_WEEKS_2026, State, saveAndRenderDraftState } from './state.js';
 import { updateMetaDisplay } from './settings.js';
 import { renderBoard } from './tracker.js';
+import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
+import { fetchLeagueLogsMarket } from '../shared/api/market.js';
 
     // --- LEAGUE LOGS INTEGRATION ---
     export const quickStartLeagueLogs = async function(btn) {
@@ -22,27 +24,16 @@ import { renderBoard } from './tracker.js';
         try {
             let sleeperMap = {};
             try {
-                // Long timeout for the same reason as processData's copy above: ~5MB payload.
-                let res = await window.mdsFetch('https://api.sleeper.app/v1/players/nfl', {}, window.MDS_LONG_FETCH_TIMEOUT_MS);
-                if (res.ok) sleeperMap = await res.json();
+                // The shared player map (js/shared/api/sleeper.js): cached in IndexedDB for a
+                // day and shared with Lineup Strategist, so this usually skips the ~5MB download.
+                sleeperMap = await getSleeperPlayerMap();
             } catch(e) { console.warn("Sleeper DB fetch failed", e); }
 
-            const marketRes = await window.mdsFetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
-            if (!marketRes.ok) throw new Error(`Market Error: ${marketRes.status}`);
-            const llMarket = await marketRes.json();
-
-            let playerMetaMap = {};
-            try {
-                let pRes = await window.mdsFetch(`https://developer.leaguelogs.com/v1/players`);
-                if (pRes.ok) {
-                    let pData = await pRes.json();
-                    pData.data.forEach(lp => { playerMetaMap[lp.sleeperPlayerId] = lp; });
-                }
-            } catch(e) { console.warn("LeagueLogs Meta fetch failed", e); }
+            const llMarketData = await fetchLeagueLogsMarket(profileKey);
 
             let newPlayers = [];
             let posCounters = {};
-            let sortedMarket = llMarket.data.sort((a, b) => parseFloat(a.overallRank) - parseFloat(b.overallRank));
+            let sortedMarket = llMarketData.sort((a, b) => parseFloat(a.overallRank) - parseFloat(b.overallRank));
 
             sortedMarket.forEach(item => {
                 let sId = item.sleeperPlayerId;
@@ -60,10 +51,10 @@ import { renderBoard } from './tracker.js';
                 let posDisplay = posGroup + posCounters[posGroup];
                 posCounters[posGroup]++;
 
-                let lp = playerMetaMap[sId];
-                
-                // Prefer Sleeper DB for Rookie status if we have it, else fallback to LeagueLogs
-                let isRookie = sp ? (sp.years_exp === 0 || sp.years_exp === null) : (lp ? (lp.yearsExp === 0 || lp.yearsExp === "0" || lp.yearsExp === null) : false);
+                // Rookie status from the Sleeper DB. (Until refactor 2C this also fetched
+                // LeagueLogs' /v1/players as a fallback, but rows without a Sleeper entry are
+                // skipped above, so the fallback never ran.)
+                let isRookie = sp.years_exp === 0 || sp.years_exp === null;
                 
                 // Dictionary to map full words to abbreviations
                 const injMap = { "Questionable": "Q", "Doubtful": "D", "Out": "O", "Suspended": "SUSP" };
@@ -129,10 +120,8 @@ import { renderBoard } from './tracker.js';
 
         // --- 1. LEAGUELOGS ---
         if (source === 'leaguelogs') {
-            const marketRes = await window.mdsFetch(`https://developer.leaguelogs.com/v1/market/${profileKey}`);
-            if (!marketRes.ok) throw new Error(`LeagueLogs Market Error: ${marketRes.status}`);
-            const llMarket = await marketRes.json();
-            llMarket.data.forEach(item => { adpMap[item.sleeperPlayerId] = item.overallRank; });
+            const llMarketData = await fetchLeagueLogsMarket(profileKey, { errorPrefix: 'LeagueLogs Market Error' });
+            llMarketData.forEach(item => { adpMap[item.sleeperPlayerId] = item.overallRank; });
         } 
         
         // --- 2. SLEEPER ---
