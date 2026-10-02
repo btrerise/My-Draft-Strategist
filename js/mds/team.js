@@ -1,0 +1,126 @@
+// Moved from js/mds/legacy.js (the second half of the old js/mds.js) in refactor chunk 2B:
+// the Team tab roster (renderFantasyRoster), which sat at the end of RENDER DRAFT MATRIX.
+import { escapeHtml } from './compat.js';
+import { State, getActiveDraft } from './state.js';
+
+    // `playerById` is optional: renderBoard, the main caller, already has one built for its own
+    // loop and passes it in. Without it this scanned the whole player pool once per rostered
+    // player, on every render.
+    export function renderFantasyRoster(playerById) {
+        if (State.players.length === 0) {
+            return `<div class="empty-state-card"><p>Load rankings on the Setup tab to start building your roster.</p><button class="btn btn-primary empty-state-cta" onclick="showTab('setup')">Go to Setup</button></div>`;
+        }
+
+        let draft = getActiveDraft();
+        if (!draft) return `<div style="text-align:center; color:var(--text-muted);">Select or add a draft first.</div>`;
+
+        let byId = playerById;
+        if (!byId) {
+            byId = new Map();
+            State.players.forEach(p => { if (!byId.has(p.id)) byId.set(p.id, p); });
+        }
+        let myPlayersObjects = draft.myTeam.map(id => byId.get(id)).filter(Boolean);
+        let availablePool = [...myPlayersObjects];
+        let rosterSlotsHTML = '';
+        let limits = draft.limits || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
+
+                const buildSlotHTML = (label, color, p) => {
+            if (p) {
+                let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
+                
+                // 1. Grab ID and build the image tag (crossorigin removed)
+                let playerId = p.sleeperId || p.id;
+                let imgHTML = playerId && !playerId.toString().startsWith('custom_') 
+                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" alt="" width="32" height="32" loading="lazy" decoding="async" onerror="this.style.display='none'">` 
+                    : `<div class="roster-avatar placeholder"></div>`;
+
+                return `
+                <div class="roster-slot">
+                    <div class="roster-slot-label-row">
+                        <span class="roster-label" style="color:${color}">${label}</span>
+                        ${imgHTML} <!-- Inject Image Here -->
+                        <div>
+                            <div style="font-weight: bold;">${escapeHtml(p.name)} ${rookieBadge}</div>
+                            <div style="margin-top: 2px;">
+                                <span class="badge pos-badge ${escapeHtml(p.posGroup)}">${escapeHtml(p.posDisplay)}</span>
+                                <span class="badge">${escapeHtml(p.team)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Bye: ${escapeHtml(p.bye)}</div>
+                        <button class="mds-btn-sm btn-draft" style="padding: 2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
+                    </div>
+                </div>`;
+            } else {
+                return `
+                <div class="roster-slot empty">
+                    <div class="roster-slot-label-row">
+                        <span class="roster-label" style="color:var(--text-muted)">${label}</span>
+                        <div class="roster-avatar placeholder"></div>
+                        <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
+                    </div>
+                    <div></div>
+                </div>`;
+            }
+        };
+
+        ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].forEach(pos => {
+            let count = limits[pos] || 0;
+            let color = `var(--pos-${pos.toLowerCase()}-border)`;
+            for (let i = 0; i < count; i++) {
+                let idx = availablePool.findIndex(p => p.posGroup === pos);
+                let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
+                rosterSlotsHTML += buildSlotHTML(`${pos}${i+1}`, color, p);
+            }
+        });
+
+        // NEW: Fill W/T (Wide Receiver / Tight End) Flex Slots
+        for (let i = 0; i < (limits.WT || 0); i++) {
+            let idx = availablePool.findIndex(p => ['WR', 'TE'].includes(p.posGroup));
+            let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
+            rosterSlotsHTML += buildSlotHTML('W/T', '#2dd4bf', p); // Distinct teal color
+        }
+
+        // Fill Standard W/R/T Flex Slots
+        for (let i = 0; i < (limits.FLEX || 0); i++) {
+            let idx = availablePool.findIndex(p => ['RB', 'WR', 'TE'].includes(p.posGroup));
+            let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
+            rosterSlotsHTML += buildSlotHTML('FLX', '#86efac', p);
+        }
+
+        for (let i = 0; i < (limits.SFLEX || 0); i++) {
+            let idx = availablePool.findIndex(p => ['QB', 'RB', 'WR', 'TE'].includes(p.posGroup));
+            let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
+            rosterSlotsHTML += buildSlotHTML('SFLX', '#fca5a5', p);
+        }
+
+        if (availablePool.length > 0) {
+            rosterSlotsHTML += `<div style="font-weight:bold; margin: 0.8rem 0 0.4rem 0; font-size: 0.85rem; color:var(--text-muted);">BENCH</div>`;
+            availablePool.forEach(p => { rosterSlotsHTML += buildSlotHTML('BN', 'var(--text-muted)', p); });
+        }
+
+        const bannerContainer = document.getElementById('byeWarningContainer');
+        const showByeWarnings = localStorage.getItem('ds_bye_warnings') === 'true';
+        
+        if (bannerContainer && showByeWarnings && myPlayersObjects.length > 0) {
+            let byeCounts = {};
+            let starterSlotsCount = (limits.QB||0) + (limits.RB||0) + (limits.WR||0) + (limits.TE||0) + (limits.FLEX||0) + (limits.SFLEX||0);
+            let activeStarters = myPlayersObjects.slice(0, starterSlotsCount);
+
+            activeStarters.forEach(sp => {
+                if (sp.bye && sp.bye !== "-") byeCounts[sp.bye] = (byeCounts[sp.bye] || 0) + 1;
+            });
+
+            let heavyByes = Object.keys(byeCounts).filter(bye => byeCounts[bye] >= 3);
+            if (heavyByes.length > 0) {
+                bannerContainer.innerHTML = `<div class="bye-warning-banner"><span>⚠️ WARNING: You have ${byeCounts[heavyByes[0]]} starting players on Bye in Week ${heavyByes[0]}!</span></div>`;
+            } else {
+                bannerContainer.innerHTML = '';
+            }
+        } else if (bannerContainer) {
+            bannerContainer.innerHTML = '';
+        }
+
+        return rosterSlotsHTML;
+    }

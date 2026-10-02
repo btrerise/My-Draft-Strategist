@@ -27,7 +27,7 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.43';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.44';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -51,7 +51,7 @@ const PRECACHE_ASSETS = [
     '/css/styles.css',
     '/js/mds/main.js',               // the root page's app script (a module)
     // main.js's static imports (one missing file and the whole module graph fails):
-    '/js/mds/legacy.js',
+    '/js/mds/init.js',
     '/js/mds/compat.js',
     '/js/mds/storage.js',
     '/js/mds/state.js',
@@ -64,6 +64,13 @@ const PRECACHE_ASSETS = [
     '/js/mds/queue.js',
     '/js/mds/import.js',
     '/js/mds/market.js',
+    '/js/mds/tracker.js',
+    '/js/mds/board.js',
+    '/js/mds/team.js',
+    '/js/mds/handoff.js',
+    '/js/mds/recap.js',
+    '/js/mds/export.js',
+    '/js/mds/affinity.js',
     '/js/boot.js',                    // plain script, first on every page
     '/js/shared/globals.js',          // module on every page; assigns the shared window.* names
     // globals.js's static imports (a module graph like mls.js's -- one missing file and the

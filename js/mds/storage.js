@@ -1,7 +1,7 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // DRAFT PLAYER-POOL STORAGE (v2).
 // migrateDraftStorage() runs when this module loads, and has to run before state.js builds State
-// from ds_drafts. That holds because legacy.js imports state.js before this file, and state.js
+// from ds_drafts. That holds because init.js imports state.js before this file, and state.js
 // imports this file, so this one is evaluated first. Keep it that way (see docs/refactor/LOG.md, 2A).
 import { State } from './state.js';
 

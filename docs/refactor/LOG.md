@@ -626,3 +626,81 @@ when its reader moves.
 - `js/mds/*` modules still read the shared helpers through `window.` / bare globals (`showToast`,
   `mdsFetch`, `normalizeName`, `isMdsOwnedKey`…), not imports from `js/shared/`. Same reason as 1A's
   "shared modules don't import each other yet". 2C is the natural place for the API ones.
+
+### 2B — MDS: extract the second half and delete legacy.js
+
+`js/mds/legacy.js` is gone. A script cut it by line range (top-level statements found with acorn,
+ranges placed by section marker) into the files below, and checked that every non-blank line of
+legacy.js landed in exactly one new file. The only lines dropped are legacy.js's own two-line
+"What's left of js/mds.js" note and its import block, which init.js now holds (see below). No
+function body changed. Edits beyond the cut: `export` added to `renderDraftMatrix`,
+`renderFantasyRoster` and `renderDraftRecap` (the only legacy-local names another file now
+needs); a "Moved from ... in refactor chunk 2B" header and `import` lines in each new file; the
+`from './legacy.js'` import lines in `main.js`, `state.js`, `storage.js`'s comment, `ui.js`,
+`settings.js`, `sleeperSync.js`, `queue.js` and `market.js` repointed. Indentation is unchanged.
+
+| New file | From legacy.js |
+|---|---|
+| `js/mds/tracker.js` | The player pool / queue / tier-tracker rendering: `getCallOutLists`, `getCallOutStyle`, `getTierTrackerData` (the three helpers 2A left above RENDER DRAFT MATRIX), the T-Score cache reader (`cachedEffectiveTScoreData`, `getEffectiveTScoreData`), `buildPlayerCardHTML`, `buildQueueCardHTML`, `isQueueCollapsed` + `toggleQueueCollapse`, `renderBoard`, `toggleHeadshots` |
+| `js/mds/board.js` | RENDER DRAFT MATRIX (`renderDraftMatrix`) |
+| `js/mds/team.js` | Team tab roster (`renderFantasyRoster`), which sat at the end of RENDER DRAFT MATRIX |
+| `js/mds/handoff.js` | SEND ROSTER TO LINEUP STRATEGIST |
+| `js/mds/recap.js` | `buildPickNumberIndex` / `getPickNumberForPlayer` (unmarked, just above the recap), DRAFT RECAP & ANALYSIS RENDERER, RECAP MATH TOGGLE HELPER |
+| `js/mds/export.js` | TEAM EXPORT LOGIC (`exportTeam`; it uses no other module's names, so no imports) |
+| `js/mds/affinity.js` | 5-COLOR AFFINITY SYSTEM (`cycleAffinity` only) |
+| `js/mds/init.js` | INITIALIZATION (the `DOMContentLoaded` handler, which contains POWER-USER KEYBOARD SHORTCUTS and MOBILE COLLAPSE TOGGLE), the original mds.js file header, and legacy.js's ordered import list |
+
+**Placements by content, not marker.** `getEffectiveTScoreData` sat under TEAM EXPORT LOGIC and
+`buildPlayerCardHTML`/`buildQueueCardHTML`/`renderBoard` under 5-COLOR AFFINITY SYSTEM, but they are
+pool rendering, so they're in tracker.js; affinity.js holds only `cycleAffinity`. `toggleHeadshots`
+(after renderBoard, no marker; it toggles the body class the player cards read) is in tracker.js
+too. The four player-card handlers 2A put in `ui.js` stay there: moving them wasn't needed.
+
+#### Load order
+
+`main.js` now imports `./init.js` first, where it used to import `./legacy.js`. init.js has
+legacy.js's import list unchanged in order (named imports trimmed to what init.js uses; the rest
+became side-effect imports), with the seven new modules appended. Simulated depth-first
+evaluation: `compat → storage → board → team → recap → tracker → settings → state → pwa → ui →
+gestures → backup → sleeperSync → queue → import → market → handoff → export → affinity → init →
+main`. The new modules evaluate earlier than legacy.js did (state.js now reaches tracker.js), but
+none of them has load-time code beyond `let x = null/false`, so the modules with load-time code
+still run in mds.js order: storage migration → `State` → PWA listeners → popstate → touch
+listeners → file-input listener → init's `DOMContentLoaded`. The state-before-storage trap from
+2A still holds; storage.js's comment now names init.js. No shadowing, and no module assigns
+another module's binding (same parser checks as 2A).
+
+**tScoreData stays a global** (2A left this to 2B). Its only reader, `getEffectiveTScoreData`,
+moved to tracker.js unchanged; turning `js/shared/data/tscore.js` into a module would change how
+it loads.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (55 precached). `node --test` 117/117.
+  `cd tests && npx playwright test`: 28 pass, **screenshots identical** (no baseline changed).
+- **Live sync against a stubbed draft**, run with a throwaway Playwright spec (not committed)
+  against this branch **and** origin/main, desktop and phone, with identical JSON snapshots: stub
+  `/v1/draft/<id>` and `/v1/draft/<id>/picks` (user from the fixtures), paste rankings, Sync Sleeper
+  Draft with a draft URL (2 picks applied, Team and Board render), turn on the Setup Live Sync
+  toggle (all three toggles checked, header `is-live`, announcer "Live sync on."), add 2 picks on
+  the stub (the 3s poll applies them, including a synthesized unranked player), stop from the
+  header button (toggles off, "Live sync off.", **0 picks requests in the 4s after stop**). No
+  console errors.
+- `Object.getOwnPropertyNames(window)` on `/` identical to main (1,249 names).
+
+#### Other changes
+
+- `sw.js`: `/js/mds/legacy.js` replaced by `init.js`, plus the seven new modules. CACHE_NAME
+  `v2.8.43` → `v2.8.44`. No user-visible change, so no app version label bump.
+- README `/js` line: describes `main.js` / `init.js` instead of legacy.js.
+
+#### Left for later chunks
+
+- Comments in the moved code still say "this file", "mds.js", "utils.js" or "tscore_data.js"
+  (5D's comment sweep).
+- `compat.js` (the stale-cache fallbacks) stays for 5D, as the card says.
+- `js/mds/*` still reads shared helpers via `window.*` / bare globals; 2C replaces the Sleeper,
+  market and parser ones.
+- The live-sync check above isn't a committed test. If 2C wants it as a regression test for its
+  Sleeper changes, add `draft/<id>` and `draft/<id>/picks` fixtures to
+  `tests/fixtures/sleeper/make-fixtures.mjs` and `SLEEPER_FIXTURES` in `tests/helpers.mjs`.

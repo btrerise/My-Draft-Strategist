@@ -3,7 +3,7 @@
 import { savePlayerPool } from './storage.js';
 import { BYE_WEEKS_2026, State, saveAndRenderDraftState } from './state.js';
 import { updateMetaDisplay } from './settings.js';
-import { renderBoard } from './legacy.js';
+import { renderBoard } from './tracker.js';
 
     // --- LEAGUE LOGS INTEGRATION ---
     export const quickStartLeagueLogs = async function(btn) {

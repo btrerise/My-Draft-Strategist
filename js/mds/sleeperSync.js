@@ -4,7 +4,7 @@
 import { savePlayerPool } from './storage.js';
 import { BYE_WEEKS_2026, State, getActiveDraft, refreshDraftDropdown, saveActiveDraftState, saveAndRenderDraftState } from './state.js';
 import { initSettingsUI } from './settings.js';
-import { renderBoard } from './legacy.js';
+import { renderBoard } from './tracker.js';
 
     // --- SLEEPER & MANUAL DRAFT CREATION LOGIC ---
     export const createManualDraft = function() {

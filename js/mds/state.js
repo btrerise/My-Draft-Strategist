@@ -4,7 +4,7 @@
 import { readJSON } from './compat.js';
 import { draftPoolKey, readDraftPlayerPool, savePlayerPool } from './storage.js';
 import { initSettingsUI } from './settings.js';
-import { renderBoard } from './legacy.js';
+import { renderBoard } from './tracker.js';
 
     // --- STATE MANAGEMENT ---
     export const State = {

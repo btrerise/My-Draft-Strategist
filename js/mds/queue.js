@@ -1,7 +1,7 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // toggleQueue and QUEUE REORDERING LOGIC.
 import { getActiveDraft, saveActiveDraftState } from './state.js';
-import { renderBoard } from './legacy.js';
+import { renderBoard } from './tracker.js';
 
     export const toggleQueue = function(id) {
         let draft = getActiveDraft();
