@@ -828,7 +828,7 @@ Sleeper ADP or FantasyCalc, or wait for it to return) is the owner's call.
 
 #### Left for later chunks
 
-- **`getSleeperPlayerMap` doesn't check `res.ok`** (pre-existing; MLS's error toasts rely on
+- ~~**`getSleeperPlayerMap` doesn't check `res.ok`**~~ Fixed in "2C follow-up — player-map cache" below. (pre-existing; MLS's error toasts rely on
   the resulting SyntaxError, see the comments at its two catch sites in mls.js). With MDS on it
   too, a non-ok response whose body happens to be JSON would be cached in IndexedDB for a day as
   if it were the player map, in both apps. Not fixed here because it would change MLS's toasts.
@@ -845,3 +845,38 @@ Sleeper ADP or FantasyCalc, or wait for it to return) is the owner's call.
 - Unifying `dropTitleRows` and `findHeaderRowIndex` (see above) if wanted, as its own
   behavior change.
 - Next on the MDS track: 5A (needs 2C). 6A also needs 2C (and 3F).
+
+### 2C follow-up — Sleeper player-map cache no longer stores error replies (bug fix, outside the runbook)
+
+**The bug.** `getSleeperPlayerMap` (`js/shared/api/sleeper.js`) parsed and cached whatever
+`players/nfl` returned. An HTML error page failed in `res.json()` and was never cached, but a
+non-ok reply with a JSON body (Sleeper does send these, e.g. 400 `{"error":"bad-request"}`) or
+a 200 with something other than a player map was stored in IndexedDB for a day. Both apps then
+treated every player as unknown until the day passed. Pre-existing for MLS; since 2C MDS reads
+the same cache. Done as its own change, like the line-ending fix: it's a bug fix, not a move.
+
+**The fix.**
+- A non-ok status, or a body that isn't a player map (an object whose values are records with
+  `player_id`; `isSleeperPlayerMap`), throws an error with `name: 'SleeperResponseError'` and
+  `isSleeperResponseError: true`, and nothing is cached. The last good map stays in memory and
+  in IndexedDB.
+- A cached IndexedDB entry is used only if it passes the same check, so a bad entry saved by
+  the old code is ignored and replaced on the next load.
+- `lineup/mls.js`: the two catch blocks that said "Sleeper sent back an unexpected response"
+  for a `SyntaxError` (Global Injury Audit, Matchup Simulator) now also do so for
+  `isSleeperResponseError`. Same wording as before; their comments updated. Other MLS callers
+  of `getSleeperPlayerMap` already handled a rejection (an HTML error page rejected before too);
+  where they show `err.message`, it now reads "Sleeper's player list request failed (HTTP 503)."
+  instead of a JSON parse error.
+- MDS: no change needed. Its two callers catch, warn and fall back to an empty map, as before.
+- Comments: the player map is ~15 MB now (14.6 MB, 12,229 players), not ~5 MB.
+- `sw.js` CACHE_NAME `v2.8.45` → `v2.8.46`.
+
+**Tests.** New `tests/unit/sleeperPlayerMap.test.mjs` (6 tests, with a small in-memory
+IndexedDB fake): a stale bad IndexedDB entry is replaced; a good map is served from memory;
+503 HTML, 429 JSON, and 200 with `{"error"}` / `null` / `[]` are rejected with the new error and
+leave the good map in IndexedDB. All 6 fail against the old code. `market.test.mjs`'s fake
+Sleeper records gained the `player_id` real ones have (all 12,229 live records have it; checked).
+
+**Checks run.** `check-precache` OK; `node --test` 142/142; Playwright 42/42, screenshots
+identical.

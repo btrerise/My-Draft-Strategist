@@ -134,12 +134,13 @@ export async function getSleeperSeasonAdp(season, orderBy) {
 }
 
 // --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---
-// Sleeper's players/nfl payload is close to 5MB, and their own docs say not to call this
+// Sleeper's players/nfl payload is about 15MB (14.6MB, 12,229 players, in Oct 2026; it was
+// close to 5MB when this cache was written), and their own docs say not to call this
 // endpoint more than once a day. Previously this was only cached in the plain JS variables
 // below (_sleeperPlayerMapCache/_sleeperPlayerMapPromise) -- gone the instant the page
-// reloads, so every single page load re-downloaded the whole ~5MB payload regardless.
+// reloads, so every single page load re-downloaded the whole payload regardless.
 // IndexedDB persists it across reloads without the concerns a payload this size would raise
-// in localStorage: it's asynchronous (a 5MB JSON.stringify/parse on every read would be a
+// in localStorage: it's asynchronous (a 15MB JSON.stringify/parse on every read would be a
 // real, synchronous main-thread cost), and it isn't competing against the same ~5-10MB total
 // quota localStorage shares with everything else this app already stores there.
 const SLEEPER_PLAYER_DB_NAME = 'mls_sleeper_cache';
@@ -197,6 +198,26 @@ async function setCachedSleeperPlayerMap(data) {
     }
 }
 
+// A player map is an object keyed by player ID whose values are player records. Anything else
+// -- an error body such as {"error":"..."}, null, an array -- must never be cached: it would sit
+// in IndexedDB for a day and make every player look unknown in both apps. some() stops at the
+// first record, so this costs nothing on a real map.
+function isSleeperPlayerMap(data) {
+    return !!data && typeof data === 'object' && !Array.isArray(data)
+        && Object.values(data).some(p => p && typeof p === 'object' && 'player_id' in p);
+}
+
+// Thrown when Sleeper answers but not with a player map: a non-ok status (an outage or rate
+// limit, whatever the body) or a body that isn't one. Flagged rather than named 'SyntaxError',
+// so callers can tell it apart; MLS's injury audit and matchup simulator treat it the same as
+// the SyntaxError an HTML error page causes ("Sleeper sent back an unexpected response").
+function sleeperResponseError(message) {
+    const err = new Error(message);
+    err.name = 'SleeperResponseError';
+    err.isSleeperResponseError = true;
+    return err;
+}
+
 // Consolidated Sleeper DB Cache
 let _sleeperPlayerMapCache = null;
 let _sleeperPlayerMapPromise = null;
@@ -210,17 +231,21 @@ export function getSleeperPlayerMap(options = {}) {
             // latest data) skips straight past both the in-memory AND IndexedDB caches.
             if (!options.forceRefresh) {
                 const cached = await getCachedSleeperPlayerMap();
-                if (cached && (Date.now() - cached.fetchedAt) < SLEEPER_PLAYER_CACHE_MAX_AGE_MS) {
+                // isSleeperPlayerMap: skip (and so replace) a bad entry an older version of this
+                // file may have saved, back when it cached whatever Sleeper sent.
+                if (cached && (Date.now() - cached.fetchedAt) < SLEEPER_PLAYER_CACHE_MAX_AGE_MS && isSleeperPlayerMap(cached.data)) {
                     _sleeperPlayerMapCache = cached.data;
                     return cached.data;
                 }
             }
 
-            // The long timeout, not the 12s default: this payload is ~5MB (see the cache
+            // The long timeout, not the 12s default: this payload is ~15MB (see the cache
             // comment above) and a healthy download of it on a slow phone connection can
             // legitimately outlast the ceiling an ordinary JSON call gets.
             const res = await window.mdsFetch('https://api.sleeper.app/v1/players/nfl', {}, window.MDS_LONG_FETCH_TIMEOUT_MS);
+            if (!res.ok) throw sleeperResponseError(`Sleeper's player list request failed (HTTP ${res.status}).`);
             const data = await res.json();
+            if (!isSleeperPlayerMap(data)) throw sleeperResponseError("Sleeper's player list came back in an unexpected format.");
             _sleeperPlayerMapCache = data;
             setCachedSleeperPlayerMap(data); // don't await -- this shouldn't delay callers
             return data;

@@ -47,8 +47,8 @@ describe('fetchMarketConsensusData, LeagueLogs', () => {
     test('joins the market to the Sleeper map, as before 2C', async (t) => {
         t.mock.method(console, 'error', () => {}); // "Failed to persist ... to IndexedDB"
         routes[PLAYERS] = { status: 200, body: {
-            4866: { first_name: "Ja'Marr", last_name: 'Chase', position: 'WR' },
-            9509: { first_name: 'Bijan', last_name: 'Robinson', position: 'RB' },
+            4866: { player_id: '4866', first_name: "Ja'Marr", last_name: 'Chase', position: 'WR' },
+            9509: { player_id: '9509', first_name: 'Bijan', last_name: 'Robinson', position: 'RB' },
         } };
         routes[MARKET + 'dynasty-2qb-12t-ppr1'] = { status: 200, body: { data: rows } };
         const res = await fetchMarketConsensusData('leaguelogs', 'dynasty', '2', '1', 'false', 12);
@@ -63,7 +63,7 @@ describe('fetchMarketConsensusData, LeagueLogs', () => {
     });
 
     test('a market error keeps its "Market Error" wording', async () => {
-        routes[PLAYERS] = { status: 200, body: {} }; // in case this test runs on its own
+        routes[PLAYERS] = { status: 200, body: { 1: { player_id: '1' } } }; // in case this test runs on its own
         routes[MARKET + 'redraft-1qb-12t-ppr1'] = { status: 500, body: null };
         await assert.rejects(fetchMarketConsensusData('leaguelogs', 'redraft', '1', '1', 'false', 12), { message: 'Market Error: 500' });
     });
