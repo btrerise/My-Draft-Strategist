@@ -1,7 +1,8 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3B: the rest of the
 // EARLY GAMES LOGIC section (unmarked): bye/kickoff/opponent badges, projected and final points,
 // the lineup stats refresh, the next-lock countdown, the starter injury warning, and Sleeper's
-// own starter list.
+// own starter list. Refactor 3D added toggleLockCountdown (the countdown card's expand toggle, which
+// sat among the ranking-set code) at the end.
 import { getSleeperMatchups } from '../../shared/api/sleeper.js';
 import { getWeeklyProjections } from '../../shared/api/sleeperStats.js';
 import { escapeHtml } from '../compat.js';
@@ -366,3 +367,12 @@ import { renderLineupUI } from '../legacy.js';
         if (isBestBallLeague(league)) return [];
         return (league && league.sleeperStarters) ? league.sleeperStarters.filter(id => id && id !== "0") : [];
     }
+
+
+    export const toggleLockCountdown = function() {
+        const card = document.getElementById('lockCountdownCard');
+        if (!card) return;
+        const nowExpanded = card.classList.toggle('expanded');
+        const header = card.querySelector('.lock-countdown-header');
+        if (header) header.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+    };

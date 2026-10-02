@@ -9,7 +9,8 @@ import { getActiveLeague, rankingIndex } from '../helpers.js';
 import { findClosestRankedName } from '../players.js';
 import { buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts } from './waivers.js';
 import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js';
-import { getDynamicWaiverAdjustmentValue, getMarketValue, isDraftPickName, rankToTradeValue } from '../legacy.js';
+import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
+import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 
     // --- SCOUT TAB ENGINE ---
     export const runScout = async function(type) {

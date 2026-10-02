@@ -14,7 +14,9 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { applyMarketSettingsToUI, getPowerLeagueKind, getRankingsFreshness, loadRosterTab, updateRankingsMetaDisplay } from '../legacy.js';
+import { getPowerLeagueKind, loadRosterTab } from '../legacy.js';
+import { getRankingsFreshness, updateRankingsMetaDisplay } from '../rankings/engine.js';
+import { applyMarketSettingsToUI } from '../settings.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
