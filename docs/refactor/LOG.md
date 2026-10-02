@@ -1878,12 +1878,51 @@ names, same order).
 - **The MLS track's split is done.** Next on it: 5B (inline handlers, part 1). The 72-name `window.*`
   block in main.js is unchanged. 5B/5C remove names from it as the handlers go. A window name that
   is also in the re-export line (`renderSyncLogs`) must stay exported after its window line goes.
-- `scout/waiverInsights.js` doesn't exist (see above). If someone wants WAIVER INSIGHTS in its own
-  file, that's a refactor of `runMatchupSim` (pass the locals in), so a chunk that's allowed to edit
-  logic should do it.
+- `scout/waiverInsights.js` doesn't exist (see above). The owner added runbook card **3G** for it
+  (with the trade-verdict block inside `runScout`): it turns both blocks into functions, so it's
+  marked as a logic edit, with no user-visible change allowed.
 - Comments inside the moved sim files still start `// monteCarloUi.js`, `// statsEngine.js`,
   `// worker.js` and name each other by the old file names. `js/shared/api/sleeperStats.js` refers
   to "statsEngine.js". Moved power code says "this file" about things now in other files (for
   example "Same fallback lineup the rest of this file uses" in power/shared.js). These are for 5D's
   comment sweep, along with the ones 3A–3E listed.
 - 6A (storage keys through keys.js) can start once 2C (merged) and 3F are on main.
+
+### 3F follow-up — Waiver Insights finds no free agents until the Scout tab has run (found, not fixed)
+
+**Reported by the owner while testing 3F.** In the same Sleeper league with the same ROS and Weekly
+rankings, Run Matchup Simulations with Waiver Insights on said "Checked the top 9 available free
+agents across RB WR TE…" on main, and "No free agents could be compared against a starter you can
+still change this week…" on the 3F branch, every time.
+
+**Not caused by 3F.** The code is identical on both trees. A throwaway Playwright check called
+`getTopWaiverCandidatesByPosition` on origin/main and on the 3F branch with the same rankings. Both
+returned **0 candidates** with `window.sleeperPosByName` unset, and the **same 12** candidates, in
+the same order, once it was filled.
+
+**What it depends on.** Rankings files carry no positions, so `getTopWaiverCandidatesByPosition`
+(`js/mls/trade/waiverValue.js`) takes each free agent's position from `window.sleeperPosByName` and
+otherwise from loaded Market data (`State.marketRankings`, saved in localStorage under
+`mds_season_market`). A player with neither is skipped. `window.sleeperPosByName` isn't saved and
+isn't built by a Sleeper sync. Only `runScout` (`js/mls/scout/engine.js`) builds it, so it exists
+only after Scan Pasted List, Analyze Trade or another Scout action that calls it has run in this page
+session, or after switching leagues while the Scan Pasted List box still holds names
+(`switchActiveLeague` in `leagues/sync.js` re-runs the scan then).
+With neither the cache nor Market data, Waiver Insights gets zero candidates. It then shows the
+"No free agents could be compared" message, which blames game history and kickoffs instead.
+
+So the result depends on what else the person did in that tab, and on which origin they're on (a
+preview deploy has its own localStorage, so no saved Market data). The most likely explanation for
+the report: the main session had run a Scout scan or had Market data saved, and the branch session
+had neither. To confirm in the app, run Scan Pasted List with any name on the branch, then run the
+simulation again; it should check free agents. Or reload main and run the simulation first thing;
+it should show the empty message.
+
+**Fix (a behavior change, so its own small chunk or a 3G follow-up, not 3G itself).** Have Waiver
+Insights build the position lookup when it's missing, the same way `runScout` does (a shared
+`ensureSleeperPosByName()`), or read positions from the Sleeper player map `runMatchupSim` already
+loads. Also, when there are zero candidates, say why ("no ranked free agents with a known
+position") instead of the history/kickoff message. Add a test that runs Waiver Insights in a fresh
+page with no Scout run first. Note for that test: the fixture league rosters all 24 players in
+`tests/fixtures/rankings.csv`, so it has no free agents at all. The test needs extra unrostered
+names in its rankings.
