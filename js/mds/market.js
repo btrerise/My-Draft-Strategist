@@ -1,100 +1,110 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // LEAGUE LOGS INTEGRATION (Quick-Start, ADP sync, manual ADP).
+// Refactor 7A: LeagueLogs retired its public API, so Quick-Start and Fetch Market Value use
+// Fantasy Football Calculator (js/shared/api/ffc.js) instead. The exported names keep
+// "LeagueLogs" because index.html's inline handlers call them (5A can rename them).
 import { savePlayerPool } from './storage.js';
-import { BYE_WEEKS_2026, State, saveAndRenderDraftState } from './state.js';
+import { State } from './state.js';
 import { updateMetaDisplay } from './settings.js';
 import { renderBoard } from './tracker.js';
+import { processData } from './import.js';
 import { getSleeperPlayerMap, getSleeperSeasonAdp } from '../shared/api/sleeper.js';
-import { fetchLeagueLogsMarket } from '../shared/api/market.js';
+import { FFC_FORMAT_LABELS, fetchFfcAdp, formatFfcDate } from '../shared/api/ffc.js';
+import { normalizeName } from '../shared/names.js';
 
-    // --- LEAGUE LOGS INTEGRATION ---
+    // --- FANTASY FOOTBALL CALCULATOR (FFC) INTEGRATION ---
+
+    // One sentence on where an FFC list came from, for the toasts below. FFC's lists come from
+    // mock drafts on its site, which mostly happen before the season, so after kickoff today's
+    // list gets short; the /api/ffc proxy then serves the last full list it saved, if any.
+    function describeFfcList(res, label) {
+        if (res.source === 'saved') {
+            const why = res.liveCount == null
+                ? "Fantasy Football Calculator couldn't be reached"
+                : `Today's list only has ${res.liveCount} players because few mock drafts happen this time of year`;
+            return `This is Fantasy Football Calculator's last full ${label} list, from ${formatFfcDate(res.savedAt)}. ${why}.`;
+        }
+        if (res.short) {
+            return `Fantasy Football Calculator's ${label} list is short right now because few mock drafts happen this time of year.`;
+        }
+        return '';
+    }
+
+    // FFC names team defenses "Seattle Defense" / "LA Rams Defense"; Sleeper keys each defense
+    // by team code with the full team name ("Seattle Seahawks"), which is what processData
+    // matches against. Kickers are "PK", which processData already reads as K.
+    function ffcRowsForImport(players, sleeperMap) {
+        return players
+            .filter(p => p && p.name)
+            .slice()
+            .sort((a, b) => parseFloat(a.adp) - parseFloat(b.adp))
+            .map(p => {
+                const pos = String(p.position || '').toUpperCase();
+                const team = String(p.team || '').toUpperCase();
+                let name = p.name;
+                const def = pos === 'DEF' ? sleeperMap[team] : null;
+                if (def && def.first_name && def.last_name) name = `${def.first_name} ${def.last_name}`;
+                const adp = parseFloat(p.adp);
+                return { Name: name, Pos: pos, Team: team, Bye: p.bye || '', ADP: isNaN(adp) ? '' : adp.toFixed(1) };
+            });
+    }
+
+    function selectedFfcFormat() {
+        const formatSelect = document.getElementById('adpFormatSelect');
+        if (!formatSelect) return null;
+        const [source, format] = formatSelect.value.split('|');
+        if (source !== 'ffc' || !FFC_FORMAT_LABELS[format]) return null;
+        return { format, formatText: formatSelect.options[formatSelect.selectedIndex].text };
+    }
+
     export const quickStartLeagueLogs = async function(btn) {
         const formatSelect = document.getElementById('adpFormatSelect');
         if (!formatSelect) return;
-        if (!formatSelect.value.startsWith('leaguelogs')) {
-            if (window.showToast) window.showToast("Quick-Start auto-generation is currently only supported for LeagueLogs formats. Please select a LeagueLogs option from the dropdown.", { isError: true });
+        const selected = selectedFfcFormat();
+        if (!selected) {
+            if (window.showToast) window.showToast("Quick-Start builds its player pool from Fantasy Football Calculator. Please select a Fantasy Football Calculator format from the dropdown in Step 3.", { isError: true });
             return;
         }
-        const profileKey = formatSelect.value.split('|')[1];
-        const formatText = formatSelect.options[formatSelect.selectedIndex].text;
+        const { format, formatText } = selected;
+        const label = FFC_FORMAT_LABELS[format];
 
         const originalText = btn.innerHTML;
         btn.innerHTML = "Building Quick-Start…";
 
         try {
+            const res = await fetchFfcAdp(format, { errorPrefix: 'Fantasy Football Calculator Error' });
+            if (res.players.length === 0) throw new Error(`Fantasy Football Calculator's ${label} list is empty right now.`);
+
             let sleeperMap = {};
             try {
-                // The shared player map (js/shared/api/sleeper.js): cached in IndexedDB for a
-                // day and shared with Lineup Strategist, so this usually skips the ~5MB download.
+                // Only needed here for the defenses' Sleeper names. processData reads the same
+                // map next (in memory by then; cached in IndexedDB for a day).
                 sleeperMap = await getSleeperPlayerMap();
             } catch(e) { console.warn("Sleeper DB fetch failed", e); }
 
-            const llMarketData = await fetchLeagueLogsMarket(profileKey);
-
-            let newPlayers = [];
-            let posCounters = {};
-            let sortedMarket = llMarketData.sort((a, b) => parseFloat(a.overallRank) - parseFloat(b.overallRank));
-
-            sortedMarket.forEach(item => {
-                let sId = item.sleeperPlayerId;
-                let sp = sleeperMap[sId];
-                if (!sp || !sp.first_name) return;
-
-                let cleanName = `${sp.first_name} ${sp.last_name}`;
-                let team = sp.team || "FA";
-                let bye = BYE_WEEKS_2026[team] || "-";
-                
-                let posGroup = (sp.position || "FLEX").toUpperCase();
-                if (!['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(posGroup)) return;
-
-                if (!posCounters[posGroup]) posCounters[posGroup] = 1;
-                let posDisplay = posGroup + posCounters[posGroup];
-                posCounters[posGroup]++;
-
-                // Rookie status from the Sleeper DB. (Until refactor 2C this also fetched
-                // LeagueLogs' /v1/players as a fallback, but rows without a Sleeper entry are
-                // skipped above, so the fallback never ran.)
-                let isRookie = sp.years_exp === 0 || sp.years_exp === null;
-                
-                // Dictionary to map full words to abbreviations
-                const injMap = { "Questionable": "Q", "Doubtful": "D", "Out": "O", "Suspended": "SUSP" };
-                let rawInj = sp ? sp.injury_status : null;
-                let injuryStatus = rawInj ? (injMap[rawInj] || rawInj) : null;
-                
-                let adpNum = parseFloat(item.overallRank);
-
-                newPlayers.push({
-                    id: newPlayers.length + 1, sleeperId: sId, rank: newPlayers.length + 1,
-                    name: cleanName, posGroup: posGroup, posDisplay: posDisplay, tier: "-", 
-                    team: team, bye: bye, adp: isNaN(adpNum) ? "-" : adpNum.toFixed(1), 
-                    isRookie: isRookie, 
-                    injury: injuryStatus
-                });
+            const note = describeFfcList(res, label);
+            btn.innerHTML = originalText;
+            const loaded = await processData(ffcRowsForImport(res.players, sleeperMap), btn, {
+                fileName: null,
+                headers: ['Name', 'Pos', 'Team', 'Bye', 'ADP'],
+                replace: true,
+                successLabel: "Quick-Start Loaded!",
+                successToast: res.short
+                    ? { text: `Quick-Start loaded only {count} players. ${note} Upload your own rankings for a full player pool.`, opts: { isError: true, duration: 12000 } }
+                    : { text: `Quick-Start loaded {count} players from Fantasy Football Calculator (${label} ADP).${note ? '\n\n' + note : ''}`, opts: note ? { duration: 9000 } : undefined }
             });
+            if (!loaded) return;
 
-            if (newPlayers.length > 0) {
-                State.players = newPlayers;
-                let now = new Date();
-                let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                State.rankingsMeta = { count: State.players.length, date: dateString };
-                State.adpMeta = { format: "LeagueLogs: " + formatText, date: dateString };
-
-                localStorage.setItem('ds_meta', JSON.stringify(State.rankingsMeta));
-                localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
-                savePlayerPool();
-                
-                updateMetaDisplay();
-                saveAndRenderDraftState();
-                flashButton(btn, "Quick-Start Loaded!", false, originalText);
-                if (typeof window.showToast === 'function') window.showToast("Quick-Start market rankings loaded");
-            } else {
-                throw new Error("No players generated.");
-            }
+            let now = new Date();
+            let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const listDate = res.source === 'saved' ? ` (list from ${formatFfcDate(res.savedAt)})` : '';
+            State.adpMeta = { format: "FFC: " + formatText + listDate, date: dateString };
+            localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
+            updateMetaDisplay();
         } catch(err) {
             console.error(err);
             flashButton(btn, "Fetch Error", true, originalText);
-            let adBlockerTip = err.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
-            if (window.showToast) window.showToast(`Failed to load Quick-Start.\n\n${err.message}${adBlockerTip}`, { isError: true });
+            if (window.showToast) window.showToast(`Failed to load Quick-Start.\n\n${err.message}`, { isError: true });
         }
     };
 
@@ -116,12 +126,23 @@ import { fetchLeagueLogsMarket } from '../shared/api/market.js';
     btn.innerHTML = "Fetching…";
 
     try {
-        let adpMap = {}; // Key: SleeperID (or Name string), Value: ADP
+        let adpMap = {}; // Key: SleeperID, 'name_' + normalized name, or 'def_' + team; Value: ADP
+        let ffcNote = '';
+        let listDate = '';
 
-        // --- 1. LEAGUELOGS ---
-        if (source === 'leaguelogs') {
-            const llMarketData = await fetchLeagueLogsMarket(profileKey, { errorPrefix: 'LeagueLogs Market Error' });
-            llMarketData.forEach(item => { adpMap[item.sleeperPlayerId] = item.overallRank; });
+        // --- 1. FANTASY FOOTBALL CALCULATOR ---
+        // FFC rows carry no Sleeper ID, so they're matched by name (normalizeName, which also
+        // drops suffixes like "III"), and team defenses by team code.
+        if (source === 'ffc') {
+            const res = await fetchFfcAdp(profileKey, { errorPrefix: 'Fantasy Football Calculator Error' });
+            res.players.forEach(item => {
+                if (!item || !item.name) return;
+                if (String(item.position).toUpperCase() === 'DEF' && item.team) adpMap['def_' + String(item.team).toUpperCase()] = item.adp;
+                else adpMap['name_' + normalizeName(item.name)] = item.adp;
+            });
+            ffcNote = describeFfcList(res, FFC_FORMAT_LABELS[profileKey] || profileKey);
+            if (res.source === 'saved') listDate = ` (list from ${formatFfcDate(res.savedAt)})`;
+            if (res.short) ffcNote += ' Players missing from it show no ADP.';
         } 
         
         // --- 2. SLEEPER ---
@@ -137,11 +158,13 @@ import { fetchLeagueLogsMarket } from '../shared/api/market.js';
 
         // --- APPLY TO STATE ---
         State.players.forEach(p => {
-            // Optional: fallback normalizeName function if you don't have it globally scoped
-            let cleanName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            let cleanName = normalizeName(p.name);
+            let defKey = p.posGroup === 'DEF' && p.team ? 'def_' + String(p.team).toUpperCase() : null;
             
             if (adpMap[p.sleeperId] !== undefined) {
                 p.adp = parseFloat(adpMap[p.sleeperId]).toFixed(1);
+            } else if (defKey && adpMap[defKey] !== undefined) {
+                p.adp = parseFloat(adpMap[defKey]).toFixed(1);
             } else if (adpMap['name_' + cleanName] !== undefined) {
                 p.adp = parseFloat(adpMap['name_' + cleanName]).toFixed(1);
             } else {
@@ -154,18 +177,20 @@ import { fetchLeagueLogsMarket } from '../shared/api/market.js';
 
         let now = new Date();
         let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        State.adpMeta = { format: `${source.toUpperCase()}: ${formatText}`, date: dateString };
+        State.adpMeta = { format: `${source.toUpperCase()}: ${formatText}${listDate}`, date: dateString };
         localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
         updateMetaDisplay();
 
         flashButton(btn, "Complete!", false, originalText);
-        if (typeof window.showToast === 'function') window.showToast("Market Value (ADP) updated");
+        if (typeof window.showToast === 'function') {
+            if (ffcNote) window.showToast(`Market Value (ADP) updated.\n\n${ffcNote}`, { duration: 9000 });
+            else window.showToast("Market Value (ADP) updated");
+        }
         
     } catch(err) {
             console.error(err);
             flashButton(btn, "Fetch Error", true, originalText);
-            let adBlockerTip = err.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
-            if (window.showToast) window.showToast(`Failed to fetch live Market Value.\n\n${err.message}${adBlockerTip}`, { isError: true });
+            if (window.showToast) window.showToast(`Failed to fetch live Market Value.\n\n${err.message}`, { isError: true });
         }
 };
 

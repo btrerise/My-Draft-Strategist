@@ -27,7 +27,7 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.46';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.47';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -98,7 +98,8 @@ const PRECACHE_ASSETS = [
     // mls.js's static imports, and theirs:
     '/js/shared/rankings/parse.js',   // -> names.js
     '/js/shared/api/sleeper.js',
-    '/js/shared/api/market.js',       // -> sleeper.js, names.js
+    '/js/shared/api/market.js',       // -> names.js
+    '/js/shared/api/ffc.js',          // Fantasy Football Calculator, via /api/ffc/ (refactor 7A)
     '/lineup/monteCarloUi.js',        // -> statsEngine.js, spawns worker.js
     '/js/shared/api/sleeperStats.js', // -> storage/idb.js
     '/lineup/statsEngine.js',
@@ -161,10 +162,12 @@ self.addEventListener('fetch', (event) => {
     // Only handle GET requests
     if (event.request.method !== 'GET') return;
 
-    // Skip cross-origin requests (like Sleeper and LeagueLogs APIs) so they go straight to the
-    // network untouched -- they must never be served from, or written to, the app shell cache.
+    // Skip cross-origin requests (like the Sleeper and FantasyCalc APIs) so they go straight to
+    // the network untouched -- they must never be served from, or written to, the app shell cache.
+    // Same for our own API routes (/api/..., Cloudflare Pages Functions such as the Fantasy
+    // Football Calculator proxy): live data with its own caching, not part of the app shell.
     const url = new URL(event.request.url);
-    if (url.origin !== self.location.origin) {
+    if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) {
         return;
     }
 

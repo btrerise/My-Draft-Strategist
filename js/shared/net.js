@@ -3,7 +3,7 @@
 // Comments below that say "this file" or "utils.js" were written when this was one file.
 
 // --- NETWORK FETCH WITH A TIMEOUT ---
-// Every remote call this app makes -- Sleeper, LeagueLogs, FantasyCalc, ESPN -- used to be a
+// Every remote call this app makes -- Sleeper, FFC, FantasyCalc, ESPN -- used to be a
 // bare fetch(), and fetch() has no timeout of any kind. A connection that FAILS rejects
 // promptly, and every call site already handles that. A connection that STALLS never settles
 // at all: the promise just sits there, forever, and so does everything awaiting it.
@@ -42,19 +42,20 @@ export const MDS_LONG_FETCH_TIMEOUT_MS = 30000;
 const MDS_FETCH_SERVICES = [
     ['sleeper.app', 'Sleeper'],
     ['sleeper.com', 'Sleeper'],
-    ['leaguelogs.com', 'LeagueLogs'],
     ['fantasycalc.com', 'FantasyCalc'],
     ['espn.com', 'ESPN'],
     ['google.com', 'Google Sheets']
 ];
 
 function mdsFetchServiceName(url) {
-    let host;
+    let host, path;
     try {
-        host = new URL(String(url), window.location.href).hostname;
+        ({ hostname: host, pathname: path } = new URL(String(url), window.location.href));
     } catch (e) {
         return 'The server'; // unparseable URL -- still better than naming the wrong service
     }
+    // Our own proxy for Fantasy Football Calculator (functions/api/ffc/, refactor 7A).
+    if (host === window.location.hostname && path.startsWith('/api/ffc/')) return 'Fantasy Football Calculator';
     const match = MDS_FETCH_SERVICES.find(([domain]) => host === domain || host.endsWith('.' + domain));
     return match ? match[1] : 'The server';
 }

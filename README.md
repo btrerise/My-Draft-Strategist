@@ -40,8 +40,8 @@ See [`docs/refactor/LOG.md`](docs/refactor/LOG.md) for details, including how to
 
 * **Custom Spreadsheet Upload:** Supports parsing `.csv`, `.xlsx`, and `.xls` files with flexible header mapping (Player Name, Position, Tier, Team, Bye Week, ADP/Value).
 * **Raw CSV Paste Area:** Allows users to paste raw spreadsheet rows directly into a text box for instant parsing.
-* **LeagueLogs "Quick-Start":** A one-click bootstrap option that populates the entire player pool using live market value and ADP rankings from the LeagueLogs API.
-* **Live Market Value (ADP) Syncing:** Pulls platform-wide ADP trends and market data tailored to specific league formats (Redraft 1QB/Superflex, Dynasty 1QB/Superflex, PPR/Half-PPR) and automatically flags rookies with a purple `[R]` badge.
+* **Fantasy Football Calculator "Quick-Start":** A one-click bootstrap option that populates the entire player pool from [Fantasy Football Calculator](https://fantasyfootballcalculator.com/adp)'s mock-draft ADP, fetched through a small Cloudflare Pages Function (`functions/api/ffc/`) because FFC's API can't be called from a browser.
+* **Live Market Value (ADP) Syncing:** Pulls platform-wide ADP trends and market data tailored to specific league formats (Fantasy Football Calculator and Sleeper ADP: 1QB PPR/Half-PPR/Standard, 2QB/Superflex) and automatically flags rookies with a purple `[R]` badge.
 * **Manual Market Paste Fallback:** Allows users to paste custom ADP rows if API access is restricted.
 * **Setup Screen Shortcuts & Tooltips:**
 * An interactive banner linking directly to the Info & Guide tab.

@@ -122,7 +122,9 @@ import { isMlsOwnedKey } from '../js/shared/storage/keys.js';
         // When marketRankings was last pulled or uploaded (ms epoch). Null for market data saved
         // before this was tracked -- updateMarketMetaDisplay shows no age rather than guess one.
         marketUpdatedAt: localStorage.getItem('mds_season_market_updated') || null,
-        marketSettings: readJSON('mls_market_settings', { source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false }),
+        // FantasyCalc is the only source since refactor 7A (LeagueLogs retired its API), so a
+        // saved 'leaguelogs' -- or anything else -- reads as 'fantasycalc'. Same key.
+        marketSettings: Object.assign({ source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false }, readJSON('mls_market_settings', {}), { source: 'fantasycalc' }),
         tradeSettings: readJSON('mls_trade_settings', { waiverAdjustment: true, waiverAdjustmentValue: 500 }),
         simSettings: readJSON('mls_sim_settings', { waiverInsights: false }),
         // Positional Power Rankings (Roster tab). source: 'custom' (the league's own rankings) |
@@ -2090,8 +2092,8 @@ function attachScoutSuggestionHandler(outputElId) {
     // every active-league change and after a sync (both go through loadActiveLeagueData), so
     // it's a default, not a lock: changing a dropdown still works and holds until the next
     // switch. Only what the league actually knows is set -- a manual league has no scoring or
-    // league type from Sleeper, so those keep whatever was last chosen. Source (FantasyCalc
-    // vs LeagueLogs) is a preference, not a league setting, and is left alone.
+    // league type from Sleeper, so those keep whatever was last chosen. Source is a
+    // preference, not a league setting, and is left alone (only FantasyCalc since refactor 7A).
     function applyLeagueDefaultsToMarketSettings(league) {
         if (!league) return;
         const s = State.marketSettings;
@@ -5759,8 +5761,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
         } catch (error) {
             console.error("Error auto-fetching ROS rankings:", error);
-            let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block requests containing the word 'logs' - try pausing yours.)" : "";
-            if (window.showToast) window.showToast(`Could not auto-fetch ROS rankings.\n\n${error.message}${adBlockerTip}`, { isError: true });
+            if (window.showToast) window.showToast(`Could not auto-fetch ROS rankings.\n\n${error.message}`, { isError: true });
         } finally {
             btn.innerText = origText;
             btn.style.opacity = "1";
@@ -5798,8 +5799,7 @@ function attachScoutSuggestionHandler(outputElId) {
 
     } catch (error) {
         console.error("Error fetching market data:", error);
-        let adBlockerTip = error.message.includes("Failed to fetch") ? "\n\n(Tip: Ad-blockers often block URLs containing the word 'logs'. Please pause your ad-blocker to use this feature.)" : "";
-        if (window.showToast) window.showToast(`Could not pull live market data.\n\n${error.message}${adBlockerTip}`, { isError: true });
+        if (window.showToast) window.showToast(`Could not pull live market data.\n\n${error.message}`, { isError: true });
     } finally {
         btn.innerText = origText;
         btn.style.opacity = "1";
@@ -5968,14 +5968,15 @@ function applyMarketSettingsToUI() {
         if (qbsEl) qbsEl.value = s.qbs;
         if (pprEl) pprEl.value = s.ppr;
         if (tepEl) tepEl.checked = s.tep;
-        // LeagueLogs doesn't use PPR dropdown or TEP toggle directly, so hide them
-        if (fcBlock) fcBlock.style.display = (s.source === 'fantasycalc') ? 'block' : 'none';
+        // The PPR dropdown and TEP toggle are FantasyCalc's; it's the only source since
+        // refactor 7A removed LeagueLogs, so they always show.
+        if (fcBlock) fcBlock.style.display = 'block';
     });
 
     const brandEl = document.getElementById('attributionBrand');
     const attrLink = document.getElementById('attributionLink');
-    if (brandEl) brandEl.innerText = (s.source === 'fantasycalc') ? "FantasyCalc" : "LeagueLogs";
-    if (attrLink) attrLink.href = (s.source === 'fantasycalc') ? "https://fantasycalc.com" : "https://leaguelogs.com";
+    if (brandEl) brandEl.innerText = "FantasyCalc";
+    if (attrLink) attrLink.href = "https://fantasycalc.com";
 }
     function parseMarketData(rows, successMsgId) {
         let parsed = [];
