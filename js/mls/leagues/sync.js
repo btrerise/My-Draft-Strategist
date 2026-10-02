@@ -13,7 +13,8 @@ import { updatePulsePrompts } from '../init.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
-import { applyMarketSettingsToUI, getPowerLeagueKind, getRankingsFreshness, loadRosterTab, runScout, updateRankingsMetaDisplay } from '../legacy.js';
+import { runScout } from '../scout/engine.js';
+import { applyMarketSettingsToUI, getPowerLeagueKind, getRankingsFreshness, loadRosterTab, updateRankingsMetaDisplay } from '../legacy.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
