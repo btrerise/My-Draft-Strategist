@@ -1,13 +1,13 @@
-// Characterization tests for lineup/waiverScanner.js (refactor chunk 0B).
+// Characterization tests for js/mls/scout/waiverScanner.js (lineup/waiverScanner.js until 3C; refactor chunk 0B).
 // Pins today's behavior; oddities are listed in docs/refactor/LOG.md.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import * as scanner from '../../lineup/waiverScanner.js';
+import * as scanner from '../../js/mls/scout/waiverScanner.js';
 import {
     FLEX_POSITIONS, buildRankDisplayIndex, compareForScan, matchesPosFilter, findFreeAgents,
     fillLineup, slotAcceptsPos, checkAgainstLineup
-} from '../../lineup/waiverScanner.js';
+} from '../../js/mls/scout/waiverScanner.js';
 
 describe('exports', () => {
     test('public surface is unchanged', () => {

@@ -64,15 +64,17 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   MDS network tests (`mds-sync.spec.mjs`, added in 2C, FFC cases rewritten in 7A: player-map
   cache, Quick-Start, ADP sync, live Sleeper draft, error toasts), 1 MLS market test
   (`mls-market.spec.mjs`, 7A) and 3 MLS league-entry tests (`mls-leagues.spec.mjs`, 3B: Import
-  All Leagues, the Draft Strategist roster handoff, dismissing it). Each runs at both widths: 56
-  Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
+  All Leagues, the Draft Strategist roster handoff, dismissing it) and 1 MLS Scout test
+  (`mls-scout.spec.mjs`, 3C: rankings upload, Scan Pasted List in both scopes, Auto-Find in both
+  lenses, a trade scout). Each runs at both widths: 58 Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
   smoke test, but its output isn't screenshotted because it's random.
 
 ### Known gaps (good follow-ups, not blockers)
 
 - MLS has no ranking set loaded in the seeded state, so rank-dependent UI (power rankings,
   scout results, "Unranked" badges replaced by ranks) is only covered in its empty form.
-  Chunks 3C–3E would benefit from seeding an MLS rankings upload first.
+  Chunks 3C–3E would benefit from seeding an MLS rankings upload first. (3C's `mls-scout.spec.mjs`
+  uploads the fixture rankings through the real file inputs; reuse its `loadRankings` for 3D/3E.)
 - ~~No test covers backup/restore.~~ Covered since 1B by `tests/backup.spec.mjs` (round trip in
   both apps).
 - `tests/`, `scripts/` and `docs/` are served publicly by Cloudflare Pages, because the site
@@ -1397,3 +1399,93 @@ block is untouched). legacy.js gets `export` on 4 more functions the new modules
 - Comments inside moved code still say "mls.js", "mds.js" or "rankingsParser.js" (5D's sweep).
 - Next on the MLS track: 3C (SCOUT TAB ENGINE onward). `runScout` is still in legacy.js;
   `leagues/sync.js` imports it from `../legacy.js`, so 3C repoints that line.
+
+### 3C — MLS: Scout tab and waiver tools
+
+Everything from `// --- SCOUT TAB ENGINE ---` up to `// --- RANKINGS ENGINE ---` left
+`js/mls/legacy.js` (1,695 lines; legacy.js is now 4,657). **All of 3C's scope moved; no marker in
+the card's range is left in legacy.js.** Same tooling as 3A/3B (acorn + eslint-scope in a scratch
+directory): a throwaway script assigned line ranges to modules, refused a statement straddling two
+ranges or a non-blank line left unassigned, built each module's imports from the original file's
+module-scope references, added `export` where another module now needs a name, rejected any
+cross-module write to a moved binding, and repointed the other modules' `from './legacy.js'` lines.
+Checked afterwards: every non-blank, non-import line of `js/mls/*.js` at main is present **exactly
+once** across `js/mls/**/*.js` once the added `export ` prefixes are undone; the only new lines are
+header comments. Every named import resolves to an export, no import is unused, and the set of bare
+globals the js/mls code reads is unchanged. Indentation unchanged.
+
+| New file (under `js/mls/`) | From legacy.js |
+|---|---|
+| `scout/engine.js` | SCOUT TAB ENGINE: `runScout` (its inner DYNAMIC WAIVER ADJUSTMENT, POSITION RESOLVER FOR CARD BADGES, TRADE FAIRNESS VERDICT(S) and WAIVER ADJUSTMENT blocks are inside it) and `renderTradeVerdict` |
+| `scout/waivers.js` | WAIVER WIRE ASSISTANT: AUTO-FIND, incl. its SCAN PASTED LIST and LOOKING TO sub-markers (`getSleeperMetaByName`, the waiver-scan settings, `buildWaiverContext`, the card/verdict builders, `setWaiverCompare/Scope/Intent`), **plus `autoFindWaiverUpgrades`**, which sat unmarked after ALL-LEAGUES PLAYER SEARCH |
+| `scout/waiverScanner.js` | `git mv lineup/waiverScanner.js` (content identical) |
+| `power/allLeagues.js` | ALL-LEAGUES POSITIONAL POWER RANKS (`getLeaguePowerRankings` … `renderPowerSourceNote`) |
+| `scout/allLeaguesSearch.js` | ALL-LEAGUES PLAYER SEARCH (`isFullyMappedLeague`, `LEAGUE_SEARCH_STATUS`, `scoutGoToLeague`, `runAllLeaguesSearch`) |
+| `helpers.js` (appended) | `isConnectionError`, which sat unmarked between `runAllLeaguesSearch` and `autoFindWaiverUpgrades`. Auto-Find, the Global Injury Audit and the simulator's error path all call it, so it's a shared predicate (3A's helpers.js rule), not waiver code |
+
+The trade-verdict logic stays inside `runScout` in `scout/engine.js`, as the card said; engine.js
+imports `rankToTradeValue`, `getMarketValue`, `isDraftPickName` and
+`getDynamicWaiverAdjustmentValue` from `../legacy.js`, so 3D repoints that line when it moves the
+value curve. `power/` is a new subfolder; 3F's POSITIONAL POWER RANKINGS modules go beside
+`allLeagues.js`, which imports `computePositionalPower`, `powerRankFor`, `powerTier`,
+`powerValueForRank` and `POWER_UNRANKED_RANK` from `../legacy.js` today.
+
+#### Load order
+
+legacy.js's import list gains, after `./sos.js`: `./scout/engine.js` (side-effect import),
+`./scout/waivers.js`, `./power/allLeagues.js`, `./scout/allLeaguesSearch.js`. Its old
+`../../lineup/waiverScanner.js` import is gone (nothing left in legacy.js uses it); `scout/waivers.js`
+is the only importer of `./waiverScanner.js` now. Because `leagues/sync.js` now imports `runScout`
+from `../scout/engine.js`, the four new modules and waiverScanner evaluate inside sync's subtree:
+`… leagues/addPlayer → scout/waiverScanner → power/allLeagues → scout/allLeaguesSearch →
+scout/waivers → scout/engine → leagues/sync → nav → …`. None of them has load-time code beyond
+function declarations and literal constants (`WAIVER_SCAN_POSITIONS`, `POWER_RANK_KEY`, `ordinal`,
+`LEAGUE_SEARCH_STATUS`, `_sleeperMetaByNamePromise = null`), so the load-time effects still run in
+the same order: `State` → scoutResults → nav's listeners → keys → headshots → SoS listener →
+legacy's top level → main's `window.*` block. legacy.js's own load-time code (file-input listeners,
+`DOMContentLoaded`/`keydown`, `POWER_AGE_CURVES`) references none of the moved names.
+
+**Repointed imports:** `main.js` (`runScout` → `scout/engine.js`; `autoFindWaiverUpgrades`,
+`setWaiverCompare/Scope/Intent`, `updateWaiverScanSetting` → `scout/waivers.js`; `scoutGoToLeague`
+→ `scout/allLeaguesSearch.js`; the new import lines go after the existing ones so legacy.js stays
+first; the `window.x = x;` block is untouched) and `leagues/sync.js` (`runScout`). legacy.js gets
+`export` on 10 more names the new modules call (`rankToTradeValue`, `isDraftPickName`,
+`getMarketValue`, `getDynamicWaiverAdjustmentValue`, `isAutoLockOverridden`, and the five power-math
+names above), imports `isConnectionError` from helpers.js, and imports back the moved names it still
+calls (`analyzeRankingsFile`, `applyWaiverScanSettingsToUI`, `derivedRanksWording`,
+`formatUnmatchedNames`, `getSleeperMetaByName`, `ordinal`, `isFullyMappedLeague`).
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (78 precached). `node --test` 157/157.
+  `cd tests && npx playwright test`: **58/58**, screenshots identical (no baseline changed).
+- New `tests/mls-scout.spec.mjs` (kept): uploads the fixture rankings as ROS and Weekly through the
+  real file inputs and the preview's Save, then Scan Pasted List (this league, then All My Leagues),
+  Auto-Find (Whole Roster, then Starting Lineup) and a trade scout. Passes on this branch **and**
+  on main's code.
+- Throwaway spec (not committed), run on this branch and origin/main at both widths, with
+  byte-identical JSON: both rankings previews, Scan Pasted List in the lineup and roster lenses, the
+  scope switch to All My Leagues (buy, then sell intent), Auto-Find in both lenses, a trade scout
+  with an unmatched name, then again with the waiver-adjust toggle flipped, the whole Scout tab's
+  text, and every localStorage key. No console errors.
+
+#### Other changes
+
+- `sw.js`: the four new modules and `/js/mls/scout/waiverScanner.js` added after `/js/mls/sos.js`;
+  `/lineup/waiverScanner.js` removed. CACHE_NAME `v2.8.49` → `v2.8.50`.
+- `tests/unit/waiverScanner.test.mjs` imports `../../js/mls/scout/waiverScanner.js`.
+- README: the `/js` line mentions `scout/` and `power/`; the `/lineup` line no longer lists
+  waiverScanner.js.
+- legacy.js's top note mentions 3C.
+
+#### Left for later chunks
+
+- `window.onload` → init.js (3E), unchanged from 3B's note.
+- 3D: repoint `scout/engine.js`'s `../legacy.js` import when the TRADE VALUE CURVE / DYNAMIC WAIVER
+  ADJUSTMENT VALUE functions move, and `scout/waivers.js`'s (`isAutoLockOverridden`,
+  `isDraftPickName`). Moving the trade-verdict code out of `runScout` is still optional for 3D.
+- 3F: `power/allLeagues.js` imports the power math from `../legacy.js`; repoint it to
+  `power/shared.js` etc. `lineup/` still holds `monteCarloUi.js`, `statsEngine.js`, `worker.js`.
+- Comments inside moved code still say "mls.js", "utils.js", "this file", or point at
+  `waiverScanner.js` / `rankingsParser.js` by their old locations (5D's sweep).
+- Next on the MLS track: 3D (RANKINGS ENGINE onward).

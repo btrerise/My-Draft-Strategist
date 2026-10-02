@@ -152,3 +152,20 @@ export function renderHTMLInto(container, html) {
     export function getActiveLeague() {
         return State.leagues.find(l => l.leagueId === State.activeLeagueId) || null;
     }
+
+// isConnectionError: moved from after ALL-LEAGUES PLAYER SEARCH in refactor chunk 3C (Auto-Find,
+// the Global Injury Audit and the simulator all use it).
+    // True when a thrown error means "couldn't reach the server" rather than "our own code or
+    // data broke" -- the split the Auto-Find and Global Audit catch blocks use to tell someone
+    // whether to check their connection or re-sync. Covers mdsFetch's own timeout (utils.js
+    // marks it isTimeout / names it TimeoutError), the browser reporting itself offline, and
+    // fetch()'s bare network failure, which is a TypeError whose wording differs per browser
+    // (Chrome "Failed to fetch", Firefox "NetworkError when attempting...", Safari "Load
+    // failed") -- so it's matched on all three rather than just Chrome's, which is what the
+    // adBlockerTip checks elsewhere in this file key on.
+    export function isConnectionError(err) {
+        if (!err) return false;
+        if (err.isTimeout || err.name === 'TimeoutError') return true;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+        return err.name === 'TypeError' && /failed to fetch|networkerror|load failed|network connection was lost/i.test(err.message || '');
+    }

@@ -3,7 +3,7 @@
 //
 // legacy.js is imported first. It imports every other js/mls/ module in the order their code sat
 // in mls.js, so the load-time code (State, event listeners) runs in the original order.
-import { autoFetchRosRankings, autoFindWaiverUpgrades, cancelRankingsPreview, confirmRankingsPreview, copyLineupAsText, deleteRankingSet, exportLineup, fetchLeagueLogsADP, goToPowerRankings, initiateSwap, lookupSimPlayer, onload, onRankingSetSelectChange, openRankingSetLeagues, optimizeAllLineups, optimizeLineup, overrideAutoLock, processMultiRankings, processSingleRankingUpload, renderPowerRankingsTable, renderSyncLogs, runGlobalInjuryAudit, runMarketDisconnectAnalysis, runMatchupSim, runPositionalStrength, runScout, scoutGoToLeague, scrollToPowerRankings, setWaiverCompare, setWaiverIntent, setWaiverScope, syncAllLeagues, toggleDisconnectMode, toggleDisconnectRankBasis, toggleLock, toggleLockCountdown, togglePosInput, toggleRankingsCard, toggleUploadMode, unlockAllPlayers, updateLineupSetting, updateMarketSetting, updatePowerSetting, updateSimSetting, updateTradeSetting, updateWaiverScanSetting } from './legacy.js';
+import { autoFetchRosRankings, cancelRankingsPreview, confirmRankingsPreview, copyLineupAsText, deleteRankingSet, exportLineup, fetchLeagueLogsADP, goToPowerRankings, initiateSwap, lookupSimPlayer, onload, onRankingSetSelectChange, openRankingSetLeagues, optimizeAllLineups, optimizeLineup, overrideAutoLock, processMultiRankings, processSingleRankingUpload, renderPowerRankingsTable, renderSyncLogs, runGlobalInjuryAudit, runMarketDisconnectAnalysis, runMatchupSim, runPositionalStrength, scrollToPowerRankings, syncAllLeagues, toggleDisconnectMode, toggleDisconnectRankBasis, toggleLock, toggleLockCountdown, togglePosInput, toggleRankingsCard, toggleUploadMode, unlockAllPlayers, updateLineupSetting, updateMarketSetting, updatePowerSetting, updateSimSetting, updateTradeSetting } from './legacy.js';
 import { redoLineupChange, undoLineupChange } from './state.js';
 import { navigateFromDrawer, showTab, toggleDrawer } from './nav.js';
 import { exportMlsSettings, factoryReset, importMlsSettings } from './backup.js';
@@ -15,6 +15,9 @@ import { dismissDraftStrategistHandoff, importDraftStrategistRoster } from './le
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
 import { importAllSleeperLeagues } from './leagues/importAll.js';
 import { saveManualSoS } from './sos.js';
+import { runScout } from './scout/engine.js';
+import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
+import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 
 // The names the inline handlers (onclick="..." in lineup/index.html and in HTML these modules
 // build) and the tests call, plus window.onload. They used to be `window.x = function`
