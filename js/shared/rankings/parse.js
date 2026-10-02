@@ -101,6 +101,58 @@ function dropTitleRows(rows, context) {
     return rows;
 }
 
+// --- TITLE LINES ABOVE THE HEADER ROW (DRAFT STRATEGIST) ---
+// Moved from js/mds/import.js in refactor chunk 2C. Kept separate from dropTitleRows above on
+// purpose: MDS reads only a Player / Name / Player Name column, so only those cells mark its
+// header row, and it works on raw rows that still contain blank lines. MAX_TITLE_ROWS is the
+// one defined above (both copies were 10).
+
+// Same header matching as getVal in js/mds/import.js's processData: lowercase, trimmed, quotes stripped.
+export const MDS_NAME_HEADERS = ['player', 'name', 'player name'];
+export const normalizeHeader = h => String(h).toLowerCase().trim().replace(/['"]/g, '');
+const hasNameHeader = row => Array.isArray(row) && row.some(h => MDS_NAME_HEADERS.includes(normalizeHeader(h)));
+const isBlankRow = row => !Array.isArray(row) || row.every(c => String(c ?? '').trim() === '');
+
+// Title lines above the header row. Some exports start with "Week 3 Rankings" or a
+// source credit, and the header row is a line or two further down. Papa (header: true)
+// and SheetJS both take the first row as headers, so the title became the only "column"
+// and the upload failed with no name column. Takes raw rows (arrays of cells) and returns
+// the index of the row to use as the header: the first non-blank row if it has a name
+// column, else the first of the next few rows that does. Only a row with a Player/Name
+// cell can move the header down, so ordinary data never does.
+//
+// With no name column anywhere the upload fails regardless; the fallback just decides
+// which row the error message lists as "Found:". It's the first row with 2+ cells, which
+// skips a one-cell title line, so the message lists the real columns (Rank, Tm, Bye)
+// rather than "Week 3 Rankings".
+const filledCells = row => row.filter(c => String(c ?? '').trim() !== '').length;
+export function findHeaderRowIndex(rawRows) {
+    const first = rawRows.findIndex(r => !isBlankRow(r));
+    if (first === -1 || hasNameHeader(rawRows[first])) return Math.max(first, 0);
+    let firstTableRow = -1;
+    for (let i = first, seen = 0; i < rawRows.length && seen <= MAX_TITLE_ROWS; i++) {
+        if (isBlankRow(rawRows[i])) continue;
+        seen++;
+        if (hasNameHeader(rawRows[i])) return i;
+        if (firstTableRow === -1 && filledCells(rawRows[i]) >= 2) firstTableRow = i;
+    }
+    return firstTableRow !== -1 ? firstTableRow : first;
+}
+
+// Cuts title lines off CSV text (an upload or a paste) before Papa parses it with
+// header: true, so the header lands on the real header row. Files without title lines
+// come back untouched. With title lines, the text is parsed to rows, the title rows are
+// dropped, and the rest goes back through Papa.unparse. That keeps quoting intact without
+// any character-offset math (Papa's meta.cursor after `preview` rows overshoots on its
+// fast path for quote-free text, so it can't be used as a cut point).
+// Runs BEFORE the main parse, never inside it: calling Papa.parse from inside another
+// parse's beforeFirstChunk corrupts the outer parse's state.
+export function stripTitleLines(text) {
+    const idx = findHeaderRowIndex(Papa.parse(text, { header: false, preview: MAX_TITLE_ROWS * 2 + 1 }).data);
+    if (idx <= 0) return text;
+    return Papa.unparse(Papa.parse(text, { header: false }).data.slice(idx));
+}
+
 /**
  * Parses one uploaded file (CSV or XLSX) and merges any player rank/SoS data it contains
  * into the shared accumulators. Resolves once parsing finishes -- it never rejects, since a

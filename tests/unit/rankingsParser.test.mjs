@@ -4,10 +4,16 @@
 // Oddities pinned here on purpose are listed in docs/refactor/LOG.md.
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 
 import { installParserEnv, csvFile, xlsxFile, loadSheetJSOk, loadSheetJSFails, dedent } from './helpers/parserEnv.mjs';
 import * as parser from '../../js/shared/rankings/parse.js';
 import { parseRankingsFiles } from '../../js/shared/rankings/parse.js';
+import { findHeaderRowIndex, stripTitleLines } from '../../js/shared/rankings/parse.js';
+
+// Real PapaParse, when `cd tests && npm install` has been run; null otherwise.
+let realPapa = null;
+try { realPapa = createRequire(import.meta.url)('../node_modules/papaparse'); } catch { /* not installed */ }
 
 const env = installParserEnv();
 beforeEach(() => { env.toasts.length = 0; });
@@ -20,8 +26,9 @@ const pick = (p, keys = ['name', 'rank', 'tier', 'posRank', 'posTier', 'flexRank
     Object.fromEntries(keys.map(k => [k, p[k]]));
 
 describe('exports', () => {
-    test('parseRankingsFiles is the only export', () => {
-        assert.deepEqual(Object.keys(parser), ['parseRankingsFiles']);
+    // 2C added the four MDS title-line exports (moved from js/mds/import.js).
+    test('parseRankingsFiles plus the MDS title-line helpers', () => {
+        assert.deepEqual(Object.keys(parser).sort(), ['MDS_NAME_HEADERS', 'findHeaderRowIndex', 'normalizeHeader', 'parseRankingsFiles', 'stripTitleLines']);
     });
 });
 
@@ -390,5 +397,104 @@ describe('batch plumbing', () => {
             { file: csvFile('b.csv', 'Player\nKenneth Gainwell\n'), context: 'FLEX' }
         ]);
         assert.deepEqual(res.parsedData.map(p => [p.name, p.cleanName, p.posRank, p.flexRank]), [['Kenny Gainwell', 'kennethgainwell', 1, 1]]);
+    });
+});
+
+// Draft Strategist's title-line handling (refactor chunk 2C moved it here from js/mds/import.js).
+// It is separate from MLS's dropTitleRows above on purpose: MDS only reads a Player / Name /
+// Player Name column, so only those cells mark the header row, and the rows it gets keep their
+// blank lines (SheetJS sheet_to_json with blankrows: true, or Papa without skipEmptyLines).
+describe('MDS title lines: findHeaderRowIndex / stripTitleLines', () => {
+    const rows = text => text.split('\n').map(line => line === '' ? [''] : line.split(','));
+
+    test('a header in the first row stays at 0', () => {
+        assert.equal(findHeaderRowIndex(rows('Rank,Player,Team\n1,Ja\'Marr Chase,CIN')), 0);
+    });
+
+    test('blank rows before the header are skipped', () => {
+        assert.equal(findHeaderRowIndex([[''], ['', ''], [], ['Player', 'Team'], ['Chris Olave', 'NO']]), 3);
+    });
+
+    test('title, blank line and source credit above the header (the real-world export shape)', () => {
+        const raw = rows('Week 3 PPR Rankings\n\nSource: Example Analyst (updated 9/22)\nRank,Player,Team,Pos\n1,Ja\'Marr Chase,CIN,WR');
+        assert.equal(findHeaderRowIndex(raw), 3);
+    });
+
+    test('header cells are matched lowercased, trimmed and with quotes stripped', () => {
+        assert.equal(findHeaderRowIndex([['Updated Tuesday'], ['RK', ' "PLAYER NAME" ', 'TEAM']]), 1);
+        assert.equal(findHeaderRowIndex([['Updated Tuesday'], ["'Name'", 'Pos']]), 1);
+    });
+
+    test('only Player / Name / Player Name mark a header; a position-named column does not', () => {
+        // MLS would take "Quarterback" as a name header. MDS can't read that column, so the
+        // header row is the fallback: the first row with 2+ cells.
+        assert.equal(findHeaderRowIndex(rows('Week 3\nRank,Quarterback,Team\n1,Josh Allen,BUF')), 1);
+    });
+
+    test('no name column anywhere: the first row with 2+ cells, so the error lists real columns', () => {
+        assert.equal(findHeaderRowIndex(rows('Week 3 Rankings\nRank,Tm,Bye\n1,KC,6')), 1);
+    });
+
+    test('no name column and only one-cell rows: the first non-blank row', () => {
+        assert.equal(findHeaderRowIndex(rows('\nJosh Allen\nLamar Jackson')), 1);
+    });
+
+    test('an empty sheet gives 0', () => {
+        assert.equal(findHeaderRowIndex([]), 0);
+        assert.equal(findHeaderRowIndex([[''], ['', '']]), 0);
+    });
+
+    test('non-array rows count as blank', () => {
+        assert.equal(findHeaderRowIndex([undefined, null, ['Player']]), 2);
+    });
+
+    test('the header is searched for among the first 11 non-blank rows; blank rows do not count', () => {
+        const titles = n => Array.from({ length: n }, (_, i) => [`Note ${i}`]);
+        assert.equal(findHeaderRowIndex([...titles(10), ['Player', 'Rank']]), 10);
+        // An 11th title row pushes the header out of reach. No row in reach has 2+ cells, so the
+        // fallback is the first non-blank row.
+        assert.equal(findHeaderRowIndex([...titles(11), ['Player', 'Rank']]), 0);
+        const spaced = titles(10).flatMap(r => [r, ['']]);
+        assert.equal(findHeaderRowIndex([...spaced, ['Player', 'Rank']]), 20);
+    });
+
+    test('stripTitleLines: text without title lines comes back as the same string', () => {
+        const text = 'Rank,Player\n1,Chris Olave\n';
+        assert.equal(stripTitleLines(text), text);
+    });
+
+    test('stripTitleLines: title lines and the blank line after them are cut', () => {
+        const text = dedent(`
+            Week 3 PPR Rankings
+
+            Rank,Player,Team
+            1,Ja'Marr Chase,CIN
+            2,Bijan Robinson,ATL
+        `);
+        assert.equal(stripTitleLines(text), "Rank,Player,Team\r\n1,Ja'Marr Chase,CIN\r\n2,Bijan Robinson,ATL\r\n");
+    });
+
+    test('stripTitleLines: a header beyond the 21-row preview is not found and the text is kept', () => {
+        // The preview is MAX_TITLE_ROWS * 2 + 1 = 21 rows, blank rows included.
+        const text = 'Week 3\n' + '\n'.repeat(20) + 'Player,Rank\nChris Olave,1\n';
+        assert.equal(stripTitleLines(text), text);
+    });
+
+    test('stripTitleLines: no name column, but a one-cell title line is still cut', () => {
+        assert.equal(stripTitleLines('Week 3 Rankings\nRank,Tm,Bye\n1,KC,6\n'), 'Rank,Tm,Bye\r\n1,KC,6\r\n');
+    });
+
+    // The stub can't quote, so this one runs only when tests/node_modules has the real
+    // PapaParse (cd tests && npm install). It is the case stripTitleLines re-serializes for.
+    test('stripTitleLines with real PapaParse: quoted cells survive the cut', { skip: !realPapa && 'tests/node_modules/papaparse not installed' }, () => {
+        const stub = globalThis.Papa;
+        globalThis.Papa = realPapa;
+        try {
+            const out = stripTitleLines('Week 3\nPlayer,Team\n"Smith, Jr., John",KC\n');
+            assert.equal(out, 'Player,Team\r\n"Smith, Jr., John",KC\r\n');
+            assert.deepEqual(realPapa.parse(out, { header: true, skipEmptyLines: true }).data, [{ Player: 'Smith, Jr., John', Team: 'KC' }]);
+        } finally {
+            globalThis.Papa = stub;
+        }
     });
 });

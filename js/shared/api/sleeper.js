@@ -30,23 +30,36 @@ export async function getNflState() {
     return res.ok ? res.json() : null;
 }
 
-/** Throws "User not found." on a non-ok response -- matches the original sync-a-league path. */
-export async function getSleeperUser(username) {
+/**
+ * Throws "User not found." on a non-ok response -- matches the original sync-a-league path.
+ * Draft Strategist's draft sync passes its own wording as `notFoundMessage` (refactor 2C).
+ */
+export async function getSleeperUser(username, { notFoundMessage = "User not found." } = {}) {
     const res = await window.mdsFetch(`https://api.sleeper.app/v1/user/${username}`);
-    if (!res.ok) throw new Error("User not found.");
+    if (!res.ok) throw new Error(notFoundMessage);
     return res.json();
 }
 
-/** Throws "League ID not found." on a non-ok response. */
-export async function getSleeperLeague(leagueId) {
+/**
+ * Throws "League ID not found." on a non-ok response. `nullIfNotOk` returns null instead:
+ * Draft Strategist's draft sync treats the league as optional (a mock draft has none).
+ */
+export async function getSleeperLeague(leagueId, { nullIfNotOk = false } = {}) {
     const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}`);
-    if (!res.ok) throw new Error("League ID not found.");
+    if (!res.ok) {
+        if (nullIfNotOk) return null;
+        throw new Error("League ID not found.");
+    }
     return res.json();
 }
 
-/** No ok-check, matching the original -- a non-ok response's body still gets parsed as JSON. */
-export async function getSleeperLeagueUsers(leagueId) {
+/**
+ * No ok-check by default, matching the original -- a non-ok response's body still gets parsed
+ * as JSON. `nullIfNotOk` returns null for a non-ok response instead (Draft Strategist).
+ */
+export async function getSleeperLeagueUsers(leagueId, { nullIfNotOk = false } = {}) {
     const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+    if (nullIfNotOk && !res.ok) return null;
     return res.json();
 }
 
@@ -83,6 +96,40 @@ export async function getSleeperUserLeagues(userId, season) {
 export async function getSleeperMatchups(leagueId, week) {
     const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`);
     if (!res.ok) throw new Error("Could not fetch matchups for this league/week.");
+    return res.json();
+}
+
+// --- DRAFTS ---
+// Added in refactor chunk 2C for Draft Strategist's Sleeper draft sync, which used to call
+// these endpoints directly. The error messages are the ones that sync has always shown.
+
+/** One draft's settings, draft_order and league_id. Throws "Could not fetch Draft ID details." on a non-ok response. */
+export async function getSleeperDraft(draftId) {
+    const res = await window.mdsFetch(`https://api.sleeper.app/v1/draft/${draftId}`);
+    if (!res.ok) throw new Error("Could not fetch Draft ID details.");
+    return res.json();
+}
+
+/** Every pick made so far in a draft. Throws "Could not fetch Draft ID picks." on a non-ok response. */
+export async function getSleeperDraftPicks(draftId) {
+    const res = await window.mdsFetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
+    if (!res.ok) throw new Error("Could not fetch Draft ID picks.");
+    return res.json();
+}
+
+// --- SEASON ADP ---
+/**
+ * Season-long projections for QB/RB/WR/TE, one row per player ({ player_id, stats, ... }),
+ * sorted by `orderBy`. Each row's `stats` carries Sleeper's ADP figures (adp_ppr, adp_half_ppr,
+ * adp_std, adp_2qb, ...). Draft Strategist's "Sleeper Native ADP" options read these.
+ *
+ * Note the host: api.sleeper.com, not the api.sleeper.app v1 API the rest of this file calls.
+ * Moved here from js/mds/market.js in refactor chunk 2C's follow-up; the URL and the
+ * "Sleeper API Error: <status>" message are unchanged.
+ */
+export async function getSleeperSeasonAdp(season, orderBy) {
+    const res = await window.mdsFetch(`https://api.sleeper.com/projections/nfl/${season}?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=${orderBy}`);
+    if (!res.ok) throw new Error(`Sleeper API Error: ${res.status}`);
     return res.json();
 }
 
