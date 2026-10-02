@@ -1,12 +1,23 @@
-// Draft Strategist's network features, against stubbed Sleeper and LeagueLogs endpoints
-// (refactor chunk 2C, which moved them onto js/shared/api/*). Covers the Sleeper player map's
-// IndexedDB cache, LeagueLogs Quick-Start and ADP sync, and a live Sleeper draft.
+// Draft Strategist's network features, against stubbed Sleeper and Fantasy Football Calculator
+// endpoints (refactor chunk 2C, which moved them onto js/shared/api/*; 7A replaced LeagueLogs
+// with FFC). Covers the Sleeper player map's IndexedDB cache, FFC Quick-Start and ADP sync, and
+// a live Sleeper draft.
 //
 // The fixture Sleeper routes come from helpers.mjs. Routes added here are registered later, so
-// Playwright tries them first: the draft endpoints, an unknown user, and LeagueLogs (which
-// helpers.mjs otherwise aborts).
+// Playwright tries them first: the draft endpoints, an unknown user, and /api/ffc/ (the
+// Cloudflare Pages Function, which the static test server doesn't run).
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, RANKINGS_CSV, FIXTURE_LEAGUE_ID } from './helpers.mjs';
+
+// The fixture player map plus a two-way player the way Sleeper lists Travis Hunter: position
+// DB, fantasy_positions DB and WR. Served only by the test that needs him, so the shared
+// fixtures (and MLS's rosters and screenshots) stay as they are.
+const FIXTURE_PLAYERS = JSON.parse(readFileSync(new URL('./fixtures/sleeper/players-nfl.json', import.meta.url), 'utf8'));
+const TWO_WAY_PLAYER = {
+    player_id: '12530', first_name: 'Travis', last_name: 'Hunter', full_name: 'Travis Hunter', search_full_name: 'travishunter',
+    position: 'DB', fantasy_positions: ['DB', 'WR'], team: 'JAX', years_exp: 0, status: 'Active', active: true, injury_status: null, age: 22, number: 12,
+};
 
 const DRAFT_ID = '1100000000000000001';
 const toast = (page, text) => page.locator('.toast-message').filter({ hasText: text });
@@ -18,18 +29,23 @@ function countRequests(page, re) {
     return hits;
 }
 
-/** Answers LeagueLogs market requests with `rows`, or with `status` when it isn't 200. */
-async function stubLeagueLogs(page, { rows = [], status = 200 } = {}) {
+/**
+ * Answers /api/ffc/<format> (functions/api/ffc/[format].js) with a proxy reply built from
+ * `players` (FFC's own row shape), or with `status` and `error` when status isn't 200.
+ */
+async function stubFfc(page, { players = [], source = 'live', short = false, savedAt = '2026-09-15T10:00:00.000Z', liveCount = null, status = 200, error = 'boom' } = {}) {
     const requests = [];
-    await page.route(/^https:\/\/developer\.leaguelogs\.com\//, (route) => {
-        const url = new URL(route.request().url());
-        requests.push(url.pathname);
-        if (!url.pathname.startsWith('/v1/market/')) return route.abort();
-        if (status !== 200) return route.fulfill({ status, contentType: 'text/plain', body: 'error' });
-        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: rows }) });
+    await page.route(/^http:\/\/localhost:\d+\/api\/ffc\//, (route) => {
+        requests.push(new URL(route.request().url()).pathname);
+        if (status !== 200) return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ error }) });
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+            source, short, savedAt, liveCount: liveCount ?? players.length, meta: { type: 'PPR' }, players,
+        }) });
     });
     return requests;
 }
+
+const ffcRow = (name, position, team, adp, bye = 7) => ({ player_id: 1, name, position, team, adp, adp_formatted: '', times_drafted: 10, high: 1, low: 2, stdev: 0.5, bye });
 
 async function pasteRankings(page) {
     await page.fill('#csvPasteArea', RANKINGS_CSV);
@@ -81,65 +97,137 @@ test.describe('Draft Strategist network features', () => {
         await expectClean(page, state);
     });
 
-    test('Quick-Start builds the pool from a LeagueLogs market profile', async ({ page }) => {
+    test('Quick-Start builds the pool from Fantasy Football Calculator through the upload path', async ({ page }) => {
         const state = await openApp(page, '/');
-        const llRequests = await stubLeagueLogs(page, {
-            rows: [
-                { sleeperPlayerId: '4866', overallRank: '2.2' },
-                { sleeperPlayerId: '9509', overallRank: '1.4' },
-                { sleeperPlayerId: 'BAL', overallRank: '190.5' },
-                { sleeperPlayerId: '4984', overallRank: '15' },
-                { sleeperPlayerId: '99999', overallRank: '3' }, // not in the Sleeper map: skipped
+        const ffcRequests = await stubFfc(page, {
+            players: [
+                ffcRow("Ja'Marr Chase", 'WR', 'CIN', 2.2, 10),
+                ffcRow('Bijan Robinson', 'RB', 'ATL', 1.4, 5),
+                ffcRow('Baltimore Defense', 'DEF', 'BAL', 190.5, 7), // Sleeper names it "Baltimore Ravens"
+                ffcRow('Justin Tucker', 'PK', 'BAL', 160, 7),         // FFC's "PK" is K
+                ffcRow('Josh Allen', 'QB', 'BUF', 15, 7),
+                ffcRow('Some Rookie', 'WR', 'FA', 120, 0),            // not in the Sleeper map: kept, no Sleeper ID
             ],
         });
-        await page.selectOption('#adpFormatSelect', 'leaguelogs|redraft-1qb-12t-ppr0_5');
+        await page.selectOption('#adpFormatSelect', 'ffc|half-ppr');
         await page.getByRole('button', { name: /Quick-Start/ }).first().click();
-        await expect(toast(page, 'Quick-Start market rankings loaded')).toBeVisible();
+        await expect(toast(page, 'Quick-Start loaded 6 players from Fantasy Football Calculator (Half-PPR ADP).')).toBeVisible();
 
-        expect(llRequests).toEqual(['/v1/market/redraft-1qb-12t-ppr0_5']);
+        expect(ffcRequests).toEqual(['/api/ffc/half-ppr']);
         const { pool } = await savedDraft(page);
-        expect(pool.map(p => [p.rank, p.name, p.posDisplay, p.team, p.adp, p.isRookie, p.sleeperId])).toEqual([
-            [1, 'Bijan Robinson', 'RB1', 'ATL', '1.4', false, '9509'],
-            [2, "Ja'Marr Chase", 'WR1', 'CIN', '2.2', false, '4866'],
-            [3, 'Josh Allen', 'QB1', 'BUF', '15.0', false, '4984'],
-            [4, 'Baltimore Ravens', 'DEF1', 'BAL', '190.5', true, 'BAL'],
+        expect(pool.map(p => [p.rank, p.name, p.posDisplay, p.team, String(p.bye), p.adp, p.isRookie, p.sleeperId])).toEqual([
+            [1, 'Bijan Robinson', 'RB1', 'ATL', '5', '1.4', false, '9509'],
+            [2, "Ja'Marr Chase", 'WR1', 'CIN', '10', '2.2', false, '4866'],
+            [3, 'Josh Allen', 'QB1', 'BUF', '7', '15.0', false, '4984'],
+            [4, 'Some Rookie', 'WR2', 'FA', '-', '120.0', false, 'custom_3'],
+            [5, 'Justin Tucker', 'K1', 'BAL', '7', '160.0', false, '17'],
+            [6, 'Baltimore Ravens', 'DEF1', 'BAL', '7', '190.5', true, 'BAL'],
         ]);
         const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
-        expect(meta.format).toBe('LeagueLogs: Redraft - 1QB (Half-PPR)');
+        expect(meta.format).toBe('FFC: Redraft - 1QB (Half-PPR)');
         await expectClean(page, state);
     });
 
-    test('Quick-Start reports a LeagueLogs error with the existing wording', async ({ page }) => {
+    test('Quick-Start for a rookie draft: a two-way player matches by fantasy position, defensive players are dropped', async ({ page }) => {
         const state = await openApp(page, '/');
-        await stubLeagueLogs(page, { status: 503 });
-        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
-        await expect(toast(page, 'Failed to load Quick-Start.')).toContainText('Market Error: 503');
-        // The app logs the failure itself; that is expected here.
-        state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('Market Error: 503')));
-        await expectClean(page, state);
-    });
-
-    test('ADP sync applies LeagueLogs ranks by Sleeper ID, and reports errors', async ({ page }) => {
-        const state = await openApp(page, '/');
-        await pasteRankings(page);
-        const llRequests = await stubLeagueLogs(page, {
-            rows: [
-                { sleeperPlayerId: '4866', overallRank: '3.2' },
-                { sleeperPlayerId: '9509', overallRank: '1' },
+        await page.route(/^https:\/\/api\.sleeper\.app\/v1\/players\/nfl$/, (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify({ ...FIXTURE_PLAYERS, 12530: TWO_WAY_PLAYER }),
+        }));
+        const ffcRequests = await stubFfc(page, {
+            players: [
+                ffcRow('Travis Hunter', 'WR', 'JAX', 2.1, 8),
+                ffcRow('Some Edge Rusher', 'OLB', 'NYG', 20.4, 14), // IDP: dropped
+                ffcRow('Some Rookie RB', 'RB', 'LV', 5.5, 8),
             ],
         });
-        await page.selectOption('#adpFormatSelect', 'leaguelogs|dynasty-2qb-12t-ppr1');
+        await page.selectOption('#adpFormatSelect', 'ffc|rookie');
+        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
+        await expect(toast(page, 'Quick-Start loaded 2 players from Fantasy Football Calculator (Dynasty Rookie ADP).')).toBeVisible();
+
+        expect(ffcRequests).toEqual(['/api/ffc/rookie']);
+        const { pool } = await savedDraft(page);
+        expect(pool.map(p => [p.rank, p.name, p.posDisplay, p.team, p.adp, p.isRookie, p.sleeperId])).toEqual([
+            [1, 'Travis Hunter', 'WR1', 'JAX', '2.1', true, '12530'],
+            [2, 'Some Rookie RB', 'RB1', 'LV', '5.5', false, 'custom_1'],
+        ]);
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        expect(meta.format).toBe('FFC: Dynasty - Rookie Draft');
+        await expectClean(page, state);
+    });
+
+    test('Quick-Start replaces the pool even with the aggregate toggle on', async ({ page }) => {
+        const state = await openApp(page, '/');
+        await pasteRankings(page);
+        await page.evaluate(() => { document.getElementById('aggregateToggle').checked = true; });
+        await stubFfc(page, { players: [ffcRow('Josh Allen', 'QB', 'BUF', 15)] });
+        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
+        await expect(toast(page, 'Quick-Start loaded 1 players')).toBeVisible();
+        expect((await savedDraft(page)).pool.map(p => p.name)).toEqual(['Josh Allen']);
+        await expectClean(page, state);
+    });
+
+    test('Quick-Start says when it used the last saved full list, and warns on a short one', async ({ page }) => {
+        const state = await openApp(page, '/');
+        await stubFfc(page, { source: 'saved', savedAt: '2026-09-12T10:00:00.000Z', liveCount: 29, players: [ffcRow('Josh Allen', 'QB', 'BUF', 15)] });
+        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
+        const saved = toast(page, 'Quick-Start loaded 1 players from Fantasy Football Calculator (PPR ADP).');
+        await expect(saved).toContainText("last full PPR list, from Sep 12, 2026. Today's list only has 29 players");
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        expect(meta.format).toBe('FFC: Redraft - 1QB (PPR) (list from Sep 12, 2026)');
+
+        await page.unroute(/^http:\/\/localhost:\d+\/api\/ffc\//);
+        await stubFfc(page, { short: true, players: [ffcRow('Josh Allen', 'QB', 'BUF', 15), ffcRow('Bijan Robinson', 'RB', 'ATL', 1.4)] });
+        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
+        await expect(toast(page, 'Quick-Start loaded only 2 players.')).toContainText("Fantasy Football Calculator's PPR list is short right now");
+        await expect(page.locator('.toast-error').filter({ hasText: 'loaded only 2 players' }), 'a short list is shown as an error').toBeVisible();
+        await expectClean(page, state);
+    });
+
+    test('Quick-Start reports an FFC error, and needs an FFC format', async ({ page }) => {
+        const state = await openApp(page, '/');
+        await stubFfc(page, { status: 502, error: "Fantasy Football Calculator couldn't be reached (HTTP 503)." });
+        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
+        await expect(toast(page, 'Failed to load Quick-Start.')).toContainText("Fantasy Football Calculator Error: Fantasy Football Calculator couldn't be reached (HTTP 503).");
+        // The app logs the failure itself, and the stubbed 502 counts as a local error; both expected here.
+        state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('HTTP 503') && !e.includes('/api/ffc/') && !e.includes('502')));
+
+        // An empty list (a format nobody mock-drafts this time of year, nothing saved).
+        await page.unroute(/^http:\/\/localhost:\d+\/api\/ffc\//);
+        await stubFfc(page, { short: true, players: [] });
+        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
+        await expect(toast(page, 'Failed to load Quick-Start.')).toContainText("Fantasy Football Calculator's PPR list is empty right now because few mock drafts happen this time of year.");
+        state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('list is empty right now')));
+
+        await page.selectOption('#adpFormatSelect', 'sleeper|adp_ppr');
+        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
+        await expect(toast(page, 'Quick-Start builds its player pool from Fantasy Football Calculator.')).toBeVisible();
+        await expectClean(page, state);
+    });
+
+    test('ADP sync applies FFC ADP by name, and reports errors', async ({ page }) => {
+        const state = await openApp(page, '/');
+        await pasteRankings(page);
+        const ffcRequests = await stubFfc(page, {
+            players: [
+                ffcRow("Ja'Marr Chase", 'WR', 'CIN', 3.2),
+                ffcRow('Bijan Robinson', 'RB', 'ATL', 1),
+                ffcRow('AJ Brown', 'WR', 'PHI', 40.4), // the pool says "A.J. Brown"
+            ],
+        });
+        await page.selectOption('#adpFormatSelect', 'ffc|2qb');
         await page.click('#fetchAdpBtn');
         await expect(toast(page, 'Market Value (ADP) updated')).toBeVisible();
-        expect(llRequests).toEqual(['/v1/market/dynasty-2qb-12t-ppr1']);
+        expect(ffcRequests).toEqual(['/api/ffc/2qb']);
         const players = byName((await savedDraft(page)).pool);
-        expect([players["Ja'Marr Chase"].adp, players['Bijan Robinson'].adp, players['Josh Allen'].adp]).toEqual(['3.2', '1.0', '-']);
+        expect([players["Ja'Marr Chase"].adp, players['Bijan Robinson'].adp, players['A.J. Brown'].adp, players['Josh Allen'].adp]).toEqual(['3.2', '1.0', '40.4', '-']);
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        expect(meta.format).toBe('FFC: Redraft - 2QB/Superflex');
 
-        await page.unroute(/^https:\/\/developer\.leaguelogs\.com\//);
-        await stubLeagueLogs(page, { status: 500 });
+        await page.unroute(/^http:\/\/localhost:\d+\/api\/ffc\//);
+        await stubFfc(page, { status: 500, error: 'boom' });
         await page.click('#fetchAdpBtn');
-        await expect(toast(page, 'Failed to fetch live Market Value.')).toContainText('LeagueLogs Market Error: 500');
-        state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('LeagueLogs Market Error: 500')));
+        await expect(toast(page, 'Failed to fetch live Market Value.')).toContainText('Fantasy Football Calculator Error: boom');
+        state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('Fantasy Football Calculator Error: boom') && !e.includes('/api/ffc/') && !e.includes('500')));
         await expectClean(page, state);
     });
 

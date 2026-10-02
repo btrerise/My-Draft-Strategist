@@ -5,7 +5,8 @@
 //   * PapaParse (cdnjs) is served from tests/node_modules, same pinned version as the pages.
 //   * Sleeper API calls are answered from tests/fixtures/sleeper/ (see SLEEPER_FIXTURES);
 //     any Sleeper URL without a fixture gets a 404 and is recorded in `unmocked`.
-//   * Everything else (Google Fonts, MathJax, Ko-fi image, LeagueLogs, Google Sheets) is aborted.
+//   * Everything else (Google Fonts, MathJax, Ko-fi image, FantasyCalc, Google Sheets) is aborted.
+//     /api/ffc/ (a Cloudflare Pages Function, not run by serve.mjs) 404s unless a spec stubs it.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';

@@ -1,11 +1,12 @@
-// js/shared/api/market.js (refactor chunk 2C): fetchLeagueLogsMarket, which Draft Strategist's
-// Quick-Start and ADP sync call directly, and the LeagueLogs branch of fetchMarketConsensusData
-// (Lineup Strategist), which now goes through it. window.mdsFetch is a stub that answers from
-// a URL -> response table; with no window.indexedDB the Sleeper player map is always fetched.
+// js/shared/api/market.js: fetchMarketConsensusData (Lineup Strategist's Market Consensus).
+// Refactor 7A removed LeagueLogs (its API answers 410), so FantasyCalc is the only source;
+// the LeagueLogs cases that 2C wrote here went with it. window.mdsFetch is a stub that answers
+// from a URL -> response table.
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { fetchLeagueLogsMarket, fetchMarketConsensusData } from '../../js/shared/api/market.js';
+import * as market from '../../js/shared/api/market.js';
+import { fetchMarketConsensusData } from '../../js/shared/api/market.js';
 
 let routes = {};
 const requested = [];
@@ -19,52 +20,42 @@ globalThis.window = {
     },
 };
 
-const MARKET = 'https://developer.leaguelogs.com/v1/market/';
-const PLAYERS = 'https://api.sleeper.app/v1/players/nfl';
-const rows = [
-    { sleeperPlayerId: '4866', overallRank: '2.2' },
-    { sleeperPlayerId: '9509', overallRank: '1.4' },
-    { sleeperPlayerId: '99999', overallRank: '3' },
-];
+const FC = 'https://api.fantasycalc.com/values/current';
 
 beforeEach(() => { routes = {}; requested.length = 0; });
 
-describe('fetchLeagueLogsMarket', () => {
-    test('returns the raw rows, unfiltered and in LeagueLogs order', async () => {
-        routes[MARKET + 'redraft-1qb-12t-ppr0_5'] = { status: 200, body: { data: rows } };
-        assert.deepEqual(await fetchLeagueLogsMarket('redraft-1qb-12t-ppr0_5'), rows);
-        assert.deepEqual(requested, [MARKET + 'redraft-1qb-12t-ppr0_5']);
+describe('fetchMarketConsensusData, FantasyCalc', () => {
+    test('normalizes FantasyCalc rows and passes the settings through', async () => {
+        routes[`${FC}?isDynasty=true&numQbs=2&numTeams=10&ppr=0.5&isTEP=true`] = { status: 200, body: [
+            { player: { name: "Ja'Marr Chase", position: 'WR' }, overallRank: 2 },
+            { player: { name: 'Bijan Robinson', position: 'RB' }, overallRank: '1' },
+            { player: { name: 'No Rank' }, overallRank: null },
+            { player: {}, overallRank: 3 },
+        ] };
+        const res = await fetchMarketConsensusData('fantasycalc', 'dynasty', '2', '0.5', 'true', 10);
+        assert.deepEqual(res, {
+            formatText: 'DYNASTY (Superflex, PPR: 0.5)',
+            parsed: [
+                { name: "Ja'Marr Chase", cleanName: 'jamarrchase', marketVal: 2, pos: 'WR' },
+                { name: 'Bijan Robinson', cleanName: 'bijanrobinson', marketVal: 1, pos: 'RB' },
+            ],
+        });
+        assert.equal(requested.length, 1);
     });
 
-    test('throws "Market Error: <status>" by default, or with the caller\'s prefix', async () => {
-        routes[MARKET + 'x'] = { status: 503, body: null };
-        await assert.rejects(fetchLeagueLogsMarket('x'), { message: 'Market Error: 503' });
-        await assert.rejects(fetchLeagueLogsMarket('x', { errorPrefix: 'LeagueLogs Market Error' }), { message: 'LeagueLogs Market Error: 503' });
+    test('a FantasyCalc error keeps its wording', async () => {
+        routes[`${FC}?isDynasty=false&numQbs=1&numTeams=12&ppr=1&isTEP=false`] = { status: 500, body: null };
+        await assert.rejects(fetchMarketConsensusData('fantasycalc', 'redraft', '1', '1', 'false', 12), { message: 'FantasyCalc API Error: 500' });
     });
 });
 
-describe('fetchMarketConsensusData, LeagueLogs', () => {
-    test('joins the market to the Sleeper map, as before 2C', async (t) => {
-        t.mock.method(console, 'error', () => {}); // "Failed to persist ... to IndexedDB"
-        routes[PLAYERS] = { status: 200, body: {
-            4866: { player_id: '4866', first_name: "Ja'Marr", last_name: 'Chase', position: 'WR' },
-            9509: { player_id: '9509', first_name: 'Bijan', last_name: 'Robinson', position: 'RB' },
-        } };
-        routes[MARKET + 'dynasty-2qb-12t-ppr1'] = { status: 200, body: { data: rows } };
-        const res = await fetchMarketConsensusData('leaguelogs', 'dynasty', '2', '1', 'false', 12);
-        assert.deepEqual(res, {
-            formatText: 'DYNASTY - 2QB (PPR)',
-            parsed: [
-                { name: "Ja'Marr Chase", cleanName: 'jamarrchase', marketVal: 2.2, pos: 'WR' },
-                { name: 'Bijan Robinson', cleanName: 'bijanrobinson', marketVal: 1.4, pos: 'RB' },
-            ],
-        });
-        assert.deepEqual(requested, [PLAYERS, MARKET + 'dynasty-2qb-12t-ppr1']);
+describe('LeagueLogs is gone (refactor 7A)', () => {
+    test("'leaguelogs' is rejected without a request", async () => {
+        await assert.rejects(fetchMarketConsensusData('leaguelogs', 'redraft', '1', '1', 'false', 12), { message: 'Unknown market source "leaguelogs".' });
+        assert.deepEqual(requested, []);
     });
 
-    test('a market error keeps its "Market Error" wording', async () => {
-        routes[PLAYERS] = { status: 200, body: { 1: { player_id: '1' } } }; // in case this test runs on its own
-        routes[MARKET + 'redraft-1qb-12t-ppr1'] = { status: 500, body: null };
-        await assert.rejects(fetchMarketConsensusData('leaguelogs', 'redraft', '1', '1', 'false', 12), { message: 'Market Error: 500' });
+    test('fetchLeagueLogsMarket is no longer exported', () => {
+        assert.deepEqual(Object.keys(market), ['fetchMarketConsensusData']);
     });
 });

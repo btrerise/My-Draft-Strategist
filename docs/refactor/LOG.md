@@ -47,8 +47,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   - A Sleeper URL with no fixture gets a 404 and is recorded in `unmocked`. The MLS sync
     test asserts that list is empty, so a new endpoint fails loudly. Add a route in
     `SLEEPER_FIXTURES` and a file in the generator.
-  - Everything else (Google Fonts, MathJax, Ko-fi, LeagueLogs, Google Sheets, headshot
-    images) is aborted.
+  - Everything else (Google Fonts, MathJax, Ko-fi, FantasyCalc, Google Sheets, headshot
+    images) is aborted. `/api/ffc/*` (the Cloudflare Pages Function added in 7A) isn't run by
+    `serve.mjs`, so it 404s unless a spec stubs it (`stubFfc` in `mds-sync.spec.mjs`).
   - The clock is fixed at 2026-09-15T16:00Z.
 - A test fails on any uncaught exception, any `console.error`, any local HTTP status 400 or
   higher, or the fatal boot banner (`#mds-boot-error`). `openApp()` checks this right after
@@ -59,9 +60,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   These are the same functions the nav buttons call. One test also clicks a real bottom-nav
   button.
 - Coverage: 14 smoke tests and 10 screenshot tests (40 PNGs) across desktop (1280×900) and
-  phone (390×844), plus 2 backup → restore round trips (`backup.spec.mjs`, added in 1B) and 6
-  MDS network tests (`mds-sync.spec.mjs`, added in 2C: player-map cache, Quick-Start, ADP sync,
-  live Sleeper draft, error toasts). The MLS matchup simulator runs in its Web Worker in the
+  phone (390×844), plus 2 backup → restore round trips (`backup.spec.mjs`, added in 1B), 9
+  MDS network tests (`mds-sync.spec.mjs`, added in 2C, FFC cases rewritten in 7A: player-map
+  cache, Quick-Start, ADP sync, live Sleeper draft, error toasts) and 1 MLS market test
+  (`mls-market.spec.mjs`, 7A). Each runs at both widths: 48 Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
   smoke test, but its output isn't screenshotted because it's random.
 
 ### Known gaps (good follow-ups, not blockers)
@@ -954,3 +956,213 @@ the site itself was blocked from the session):
 - **Possible uses:** bye weeks per season to replace the hard-coded `BYE_WEEKS_2026` in both
   apps (needed by the 2027 season anyway); MLS warnings when a starter is inactive or ruled
   out; power rankings or rosters for context.
+
+### 7A — Replace LeagueLogs: Fantasy Football Calculator for MDS, FantasyCalc only for MLS (behavior change)
+
+**Timing.** 3A hadn't started (main ended at the 7A planning commits), so both the MDS and the
+MLS parts are done here, before 3A and 5A as planned.
+
+**What the user sees.**
+- **Draft Strategist, Quick-Start** ("Quick-Start: Fantasy Football Calculator ADP", was
+  "Quick-Start: LeagueLogs Market") builds the player pool from Fantasy Football Calculator's
+  mock-draft ADP for the format picked in Step 3: Redraft 1QB PPR, Half-PPR or Standard, or
+  2QB/Superflex. It used to fail with "Market Error: 410". The rows go through the same code
+  as a rankings upload, so players get Sleeper IDs, injury tags and rookie flags as before. Team
+  defenses show Sleeper's names ("Seattle Seahawks"), as LeagueLogs' Quick-Start did. Quick-Start
+  still replaces the pool, even with Aggregate Rankings on.
+  - **Out of season the toast says where the list came from.** FFC's lists come from mock
+    drafts on its site, so they're full in the summer and thin after kickoff. If today's list
+    is short (under 150 players), Quick-Start uses the last full list the server saved and says
+    so ("This is Fantasy Football Calculator's last full PPR list, from Sep 12, 2026. Today's list
+    only has 29 players…"). The ADP status line then reads "FFC: Redraft - 1QB (PPR) (list from
+    Sep 12, 2026)". With no full list saved yet, it loads the short list with an error-style
+    toast: "Quick-Start loaded only 29 players… Upload your own rankings for a full player pool."
+  - With a Sleeper option selected, Quick-Start now says it needs a Fantasy Football Calculator
+    format (was: a LeagueLogs format).
+- **Draft Strategist, Fetch Market Value:** the three LeagueLogs options are replaced by an
+  "Fantasy Football Calculator (Mock-Draft ADP)" group with the same four formats. The four
+  Sleeper Native ADP options are unchanged. FFC rows have no Sleeper ID, so ADP is matched by
+  name (`normalizeName`, which ignores punctuation and suffixes such as "III") and defenses by
+  team code. The label reads "Select ADP Source & Format" (was "Select LeagueLogs Profile"),
+  and the attribution reads "ADP by Fantasy Football Calculator", linking to its ADP page.
+- **Lineup Strategist:** LeagueLogs is gone from both Market Source selects, so FantasyCalc is
+  the only choice. A saved `mls_market_settings.source` of `'leaguelogs'` (or any other value)
+  reads as `'fantasycalc'` on load; the other saved settings are kept, and the key name is
+  unchanged. The PPR/TEP controls always show, and the attribution always says FantasyCalc.
+  Help texts, tooltips and the Power Rankings source option no longer mention LeagueLogs.
+- Removed: the "ad-blockers block URLs containing 'logs'" tip from MDS's two error toasts and
+  MLS's two market toasts. It was about LeagueLogs' URL.
+- Both pages' SEO `featureList` and the README feature list name the new sources.
+
+**FFC's API, verified from this session** (fantasyfootballcalculator.com was already reachable;
+its help site, help.fantasyfootballcalculator.com, is blocked, so the terms come from search
+results quoting that page):
+- `GET https://fantasyfootballcalculator.com/api/v1/adp/<format>?teams=<n>&year=<yyyy>` →
+  `{ status: "Success", meta: { type, teams, rounds, total_drafts, start_date, end_date },
+  players: [{ player_id, name, position, team, adp, adp_formatted, times_drafted, high, low,
+  stdev, bye }] }`. `adp` is the overall pick number. `player_id` is FFC's own ID, not Sleeper's.
+  Positions are QB/RB/WR/TE/**PK**/**DEF**. Defenses are named "Seattle Defense" / "LA Rams
+  Defense". Team codes match Sleeper's exactly (all 32 checked).
+- Formats: `standard`, `half-ppr`, `ppr`, `2qb`, `dynasty`, `rookie`. **`teams` makes no
+  difference**: 8, 10, 12 and 14 return identical lists and draft counts. **There is no date
+  parameter**: start/end/date/days/from/since are all ignored. FFC picks its own recent window.
+- **List sizes.** End of 2025 preseason: PPR 249 (20 K, 23 DEF), Standard 221, 2QB 215,
+  Half-PPR 156 (only 4 K, 8 DEF), Dynasty 85, Rookie 34. Today, 2026-10-02: PPR 29, Half 54,
+  Standard 118, 2QB 200 (its window is a whole month), Dynasty and Rookie 0. So MDS offers the
+  four redraft formats and, since the follow-up below, rookie drafts; startup dynasty is left out. FFC's per-player ADP history (an undocumented graph feed on its
+  site, not used by the app) shows 2026 PPR had 226–240 players a day from July through
+  September 15, then fell off after kickoff.
+- **CORS: none.** Replies carry no `Access-Control-Allow-Origin`, with or without an `Origin`
+  header, so a browser on mydraftstrategist.com can't read them. This is why the server function
+  below exists (the owner chose it over DynastyProcess or Sleeper-only Quick-Start).
+- **Terms:** "free for personal and commercial use"; FFC asks for attribution "in the form of a
+  link or mention" (done next to both buttons) and asks not to call the API too often because
+  the data updates once a day (the function caches it).
+
+**What was added or moved where.**
+
+| File | What |
+|---|---|
+| `functions/api/ffc/[format].js` (new) | **The repo's first server code: a Cloudflare Pages Function** at `GET /api/ffc/<format>`. It fetches FFC (current UTC year, `teams=12`), keeps an edge-cache copy for 6 h (browser: 1 h), and saves each full list (150+ players) to the KV namespace bound as `FFC_LISTS`, at most once per 20 h per format. When today's list is short, or FFC is down, it serves the saved list (`source: 'saved'`, `savedAt`). With nothing saved it serves the short list (`short: true`), or answers 502 when FFC is down. Without the KV binding it still works but can't fall back. Response shape is in its header comment |
+| `js/shared/api/ffc.js` (new) | `fetchFfcAdp(format, { errorPrefix })` through `window.mdsFetch`, plus `FFC_FORMAT_LABELS` and `formatFfcDate`. Errors read "Fantasy Football Calculator Error: <proxy message or status>" |
+| `js/shared/net.js` | A timeout on `/api/ffc/` now says "Fantasy Football Calculator didn't respond in time"; the `leaguelogs.com` row is gone |
+| `js/mds/market.js` | `quickStartLeagueLogs` / `fetchLeagueLogsADP` rewritten for FFC; the window names are unchanged (rule 4; 5A can rename them). New local helpers `describeFfcList`, `ffcRowsForImport` and `selectedFfcFormat` |
+| `js/mds/import.js` | `processData` is exported and takes three new `source` options, used only by Quick-Start: `replace`, `successLabel` and `successToast`. It returns true or false. Upload and paste behave as before |
+| `js/shared/api/market.js` | `fetchLeagueLogsMarket` and `fetchMarketConsensusData`'s LeagueLogs branch removed (an unknown source now throws), along with the `getSleeperPlayerMap` import |
+| `lineup/mls.js` | `State.marketSettings` initializer maps the source to `'fantasycalc'` (and now fills missing fields from the defaults); `applyMarketSettingsToUI` hard-codes FantasyCalc; two comments; the two "logs" tips |
+| `index.html`, `lineup/index.html`, `README.md` | Labels, options, attribution and help text as above |
+| `sw.js` | `/js/shared/api/ffc.js` precached; **`/api/*` requests bypass the service worker** like cross-origin ones, so live data never lands in the app-shell cache. CACHE_NAME `v2.8.46` → `v2.8.47` |
+
+The CSS class `.leaguelogs-attribution` keeps its name (4A splits styles.css; renaming it is
+cosmetic).
+
+#### Owner action needed: the KV namespace (the saved-list fallback)
+
+The function runs as soon as this deploys: Cloudflare Pages finds `functions/` in the repo on
+its own, with no build step or settings change. Its requests count against the Workers free
+plan (100,000 a day). To turn on **"save the last full list"**, bind a KV namespace once:
+
+1. Cloudflare dashboard → **Storage & Databases → KV → Create** a namespace, e.g. `ffc-lists`.
+2. **Workers & Pages →** the site's Pages project **→ Settings → Bindings → Add → KV
+   namespace**. Variable name **`FFC_LISTS`**, namespace `ffc-lists`. Add it for Production
+   (and Preview if wanted).
+3. Redeploy (or push any commit) so the binding takes effect.
+
+Free-plan KV allows 100,000 reads and 1,000 writes a day; this uses at most about 4 writes a
+day. **The fallback can only save what it sees once it's live.** Deployed in October, today's
+lists are short, so Quick-Start loads the short list with the warning until mock drafts pick up
+next summer (FFC's 2026 history starts in January). Then it saves each full list and serves the
+last one after kickoff.
+
+Without the binding everything else works. Quick-Start just never has a saved list to fall
+back to.
+
+#### Tests
+
+- New `tests/unit/ffc.test.mjs` (13): the function with in-memory stand-ins for Cloudflare
+  (global fetch, `caches.default`, KV). It covers: formats and threshold; unknown format 404s
+  without calling FFC; a full list is served and saved; a second request comes from the edge
+  cache; no re-save within 20 h; a short list falls back to the saved one and is never saved
+  over it; a short list with nothing saved is served, marked short; works without the binding;
+  FFC down with and without a saved list (502 not cached); a non-FFC reply counts as down. Also
+  the client: proxy body, error wording, an HTML 404 reports the status.
+- `tests/unit/market.test.mjs` rewritten: the LeagueLogs cases are gone; FantasyCalc's
+  normalization and error wording; `'leaguelogs'` is rejected without a request;
+  `fetchLeagueLogsMarket` no longer exported.
+- `tests/mds-sync.spec.mjs`: the three LeagueLogs tests replaced by five FFC ones (stubbed
+  `/api/ffc/`). Quick-Start through the upload path covers order, PK→K, a defense matched by
+  team to Sleeper's ID and name, a player missing from Sleeper kept with a `custom_` ID, bye
+  and ADP. Also: replaces the pool even with Aggregate on; the saved-list and short-list
+  toasts, with the short one shown as an error; the error toast and the non-FFC-format toast;
+  ADP sync by name, including "AJ Brown" → "A.J. Brown", and its error toast.
+- New `tests/mls-market.spec.mjs`: a saved `{ source: 'leaguelogs', type: 'dynasty', qbs: '2',
+  ppr: '0.5', tep: true }` loads as FantasyCalc. Neither select offers LeagueLogs, the
+  attribution says FantasyCalc, and Fetch Market Value requests FantasyCalc with the saved
+  dynasty/superflex/half/TEP settings and stores the result. Changing a setting then saves
+  `source: 'fantasycalc'` under the same key.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (56 precached). `node --test` 155/155. Playwright 48/48
+  (`npx playwright test` in `tests/`).
+- **Intended screenshot changes** (`tests/baselines/linux/`), updated with
+  `--update-snapshots=all` for the visual spec. A redraw of `phone/tscore-avoidsTab.png` within
+  tolerance was reverted, so every other baseline is byte-identical:
+  - `desktop/mds-empty-setup.png`, `phone/mds-empty-setup.png`: Quick-Start text and button,
+    "Select ADP Source & Format", the first FFC option selected, "ADP by Fantasy Football
+    Calculator". The desktop one was within the 0.2% tolerance but is updated so the baseline
+    doesn't still show LeagueLogs.
+  - `desktop/mds-empty-guide.png`, `phone/mds-empty-guide.png`: Guide steps 1 and 3.
+  - `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the Auto-Fetch ROS and
+    Market Disconnect help text.
+- **Live check against the real FFC and Sleeper APIs** (throwaway script, not committed). The real
+  function ran in Node against fantasyfootballcalculator.com, the page was served by
+  `serve.mjs` in Chromium, `/api/ffc/*` was answered by the function, and the real Sleeper
+  player map was passed through. Real Quick-Start clicks, one per format:
+  - **Today's 2026 lists, no KV:** PPR 29, Half 54, Standard 118 → short-list warning toast;
+    2QB 200 (14 K, 14 DEF) → normal toast. Every player matched a Sleeper ID.
+  - **In-season lists** (the same run with FFC's `year` rewritten to 2025, KV bound): **PPR
+    249** (20 K, 23 DEF), **Standard 221** (17 K, 20 DEF), **2QB 215** (17 K, 19 DEF),
+    **Half-PPR 156** (4 K, 8 DEF; FFC's own Half-PPR list is thin on K/DEF). All four were
+    saved to KV. All but one player per format matched a Sleeper ID. The exception was Travis
+    Hunter: FFC lists him as WR, Sleeper as DB (`fantasy_positions` ['DB', 'WR']), so the position
+    check in `processData` rejected him (fixed in the follow-up below). Defenses come out as "Dallas Cowboys"/DAL etc., kickers as
+    K with Sleeper IDs, byes from FFC, injuries from Sleeper.
+  - **Then today again with that KV:** PPR, Half and Standard fall back to the saved lists
+    (249/156/221) with the "last full list, from <date>. Today's list only has N players" toast
+    and the "(list from …)" ADP label. 2QB (200, full) is served live.
+  - Only console errors: the aborted Google Fonts / Ko-fi requests.
+- Not checked live: the function on Cloudflare itself (edge cache, real KV). It only runs once
+  this deploys; the unit tests use stand-ins with the same API.
+
+#### Left for later chunks
+
+- **Owner:** create and bind `FFC_LISTS` (above), then try Quick-Start on the live site.
+- **5A:** rename `window.quickStartLeagueLogs` / `window.fetchLeagueLogsADP` (they now call
+  FFC) along with their handlers.
+- **5D's comment sweep:** a few comments still mention LeagueLogs (`lineup/mls.js` near ROS
+  auto-fetch and the rookie-pick detector; the 2A header in `js/mds/market.js` names the old
+  LEAGUE LOGS INTEGRATION marker). Also the `.leaguelogs-attribution` class name.
+- ~~Two-way players such as Travis Hunter fail `processData`'s position check.~~ Fixed in the
+  follow-up below.
+- `tests/`, `docs/`, `scripts/` (and now `functions/`) are served as static files by Pages; the
+  function file has no secrets.
+
+#### 7A follow-up (same branch, at the owner's request): rookie drafts, two-way players
+
+- **Rookie drafts.** Fetch Market Value and Quick-Start offer **"Dynasty - Rookie Draft"**
+  (`ffc|rookie`). Rookie drafts are only 3-4 rounds (30-48 picks in 10-12 team leagues), so
+  `FULL_LIST_MIN` in the function is now per format: 150 for the redraft formats and **30 for
+  rookie**. FFC's rookie lists from past summers ran 32 (2021), 40 (2022), 45 (2023) and 34
+  (2025); 2024 had only 14 mock drafts and an empty list. Their last ADP sits around pick 31-36,
+  so FFC covers about three rounds of a 12-team rookie draft. Picks after that are players FFC
+  didn't list. Startup dynasty (`dynasty`) is still left out: 85 players at its 2025 peak.
+- **Two-way players.** `processData` (`js/mds/import.js`) now accepts a Sleeper match when the
+  row's position is any of the player's `fantasy_positions`, not only `position`. Travis Hunter
+  (Sleeper position DB, fantasy_positions DB and WR) matches as a WR, with his Sleeper ID,
+  rookie flag and injury status. This covers rankings uploads and pastes too, not only
+  Quick-Start.
+- **FFC's defensive players are dropped** from Quick-Start (its 2022 rookie list had a DB, an OT
+  and an OLB): only QB/RB/WR/TE/PK/DEF rows are kept, as LeagueLogs' Quick-Start kept only
+  those six.
+- An empty FFC list now says why ("…is empty right now because few mock drafts happen this
+  time of year. Upload your own rankings instead."), and the saved-list toast says "Today's
+  list is empty" instead of "only has 0 players".
+- **Tests:** `ffc.test.mjs` +2 (a 34-player rookie list is full and saved; an empty one falls
+  back to the saved list). `mds-sync.spec.mjs` gained a rookie Quick-Start test. It serves the
+  fixture player map plus a Hunter-shaped player from the spec only, so the shared fixtures and
+  MLS screenshots don't change. It checks the `/api/ffc/rookie` request, Hunter matched as WR1
+  with ID 12530 and the rookie flag, an OLB dropped, and the "FFC: Dynasty - Rookie Draft"
+  label. **It fails without the import.js change.** The FFC error test also covers the
+  empty-list toast. No screenshot changed: the new option is inside the dropdown.
+- **Live check** (same throwaway script): with the 2025 lists, PPR now matches **249/249**
+  players to Sleeper (Hunter included), and the rookie list loads **34 players**, all matched,
+  as a full list, and is saved. Today's rookie list is empty: with nothing saved, Quick-Start
+  shows the empty-list error; with the saved list, it loads those 34 players with the "Today's
+  list is empty" toast.
+- Checks: `check-precache` OK, `node --test` 157/157, Playwright 50/50. CACHE_NAME stays
+  `v2.8.47` (the branch isn't merged yet, so it's still above main's `v2.8.46`); no file added
+  or removed.
+- **Owner:** the `FFC_LISTS` KV binding is set up (Production and Preview, done with
+  Cloudflare's AI agent on 2026-10-02). It takes effect with the first deployment that includes
+  `functions/`, i.e. when this branch is merged to main (or a Preview deployment of it).

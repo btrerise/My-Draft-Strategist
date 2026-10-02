@@ -54,7 +54,7 @@
   },
   "featureList": [
     "Upload custom rankings via CSV or Excel",
-    "Live Market Value (ADP) via LeagueLogs",
+    "Live Market Value via FantasyCalc",
     "Live Sleeper Draft Auto-Sync",
     "T-Score Predictive Analytics for Wide Receivers",
     "Weekly Lineup Optimizer",
@@ -509,7 +509,6 @@
                 <label for="rosMarketSourceSelect">Market Source</label>
                 <select id="rosMarketSourceSelect" class="form-input" onchange="updateMarketSetting('source', this.value)" aria-label="Select Market Source">
                     <option value="fantasycalc">FantasyCalc.com (Trade Value)</option>
-                    <option value="leaguelogs">LeagueLogs (Aggregate Market)</option>
                 </select>
             </div>
 
@@ -551,7 +550,7 @@
                 </div>
             </div>
 
-            <button id="autoFetchRosBtn" class="btn btn-secondary" style="width: 100%;" onclick="autoFetchRosRankings(this)" title="Pulls market-consensus values from FantasyCalc/LeagueLogs. These settings are shared with the Scout tab's Trade Finder - changing them here updates them there too.">
+            <button id="autoFetchRosBtn" class="btn btn-secondary" style="width: 100%;" onclick="autoFetchRosRankings(this)" title="Pulls market-consensus values from FantasyCalc. These settings are shared with the Scout tab's Trade Finder - changing them here updates them there too.">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
                 Auto-Fetch ROS Rankings
             </button>
@@ -604,7 +603,7 @@
             <label for="powerRankingsSource">Rankings Source</label>
             <select id="powerRankingsSource" class="form-input" onchange="updatePowerSetting('source', this.value)" aria-label="Select Source for Power Rankings">
                 <option value="custom" selected>My Rankings (uploaded above)</option>
-                <option value="market">Market Consensus (FantasyCalc / LeagueLogs)</option>
+                <option value="market">Market Consensus (FantasyCalc)</option>
             </select>
         </div>
 
@@ -1088,7 +1087,6 @@
         <label for="marketSourceSelect">Market Source</label>
         <select id="marketSourceSelect" class="form-input" onchange="updateMarketSetting('source', this.value)" aria-label="Select Market Source">
             <option value="fantasycalc" selected>FantasyCalc.com (Trade Value)</option>
-            <option value="leaguelogs">LeagueLogs (Aggregate Market)</option>
         </select>
     </div>
 
@@ -1235,7 +1233,7 @@
                 <ul class="guide-list">
                     <li><strong class="text-main">Preview Before Saving:</strong> Every upload opens a preview first. It flags any names that didn't match a Sleeper player (those players stay unranked everywhere in the app, so rename them to match Sleeper if needed) and lets you pick which leagues should use the file.</li>
                     <li><strong class="text-main">Ranking Sets:</strong> Each upload is saved as a named set you can share across leagues. Pick a league's set with <strong class="text-main">Ranking Set for this League</strong>, or tap "Choose leagues&hellip;" to point several leagues at the same set.</li>
-                    <li><strong class="text-main">Auto-Fetch ROS Rankings:</strong> No ROS file? Pull market consensus values from FantasyCalc or LeagueLogs instead, matched to your league type, QB format, scoring, and TE Premium. These settings are shared with the Scout tab's Trade Finder.</li>
+                    <li><strong class="text-main">Auto-Fetch ROS Rankings:</strong> No ROS file? Pull market consensus values from FantasyCalc instead, matched to your league type, QB format, scoring, and TE Premium. These settings are shared with the Scout tab's Trade Finder.</li>
                     <li><strong class="text-main">Manual SoS:</strong> Under "Edit Manual SoS Grid", enter each team's matchup rank (1-32) for QB, RB, WR, and TE, then tap "Save Manual SoS".</li>
                 </ul>
             </div>
@@ -1306,7 +1304,7 @@
             <!-- Step 10 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">10</span> Trade Finder & Market Disconnects</h4>
-                <p class="step-desc">Pull live market consensus values from <strong class="text-main">FantasyCalc</strong> or <strong class="text-main">LeagueLogs</strong> (or upload a market CSV). Use the Trade Finder to filter by flat rank gaps or percentage shifts to instantly uncover high-value buy-low targets and overvalued sell-high assets relative to your custom ROS board. <strong class="text-main">Rank Basis</strong> controls what those gaps are measured against: Overall compares each player's rank across the whole player pool, while Positional Rank compares them only against others at their own position (QB vs QB, RB vs RB, etc.). Positional Rank is the better choice in Superflex or TE Premium leagues; those formats make market consensus price entire positions differently than a standard board would, which can otherwise flag a fairly-valued player (e.g. a top QB in a Superflex league) as a false buy-low or sell-high. One thing to know: positional gaps run much smaller than overall ones; a 10-spot Overall gap is a reasonable default, but a 10-spot gap within a single position is enormous, so lower the Minimum Rank Gap (2-4 is a good starting point) when you switch to Positional Rank.</p>
+                <p class="step-desc">Pull live market consensus values from <strong class="text-main">FantasyCalc</strong> (or upload a market CSV). Use the Trade Finder to filter by flat rank gaps or percentage shifts to instantly uncover high-value buy-low targets and overvalued sell-high assets relative to your custom ROS board. <strong class="text-main">Rank Basis</strong> controls what those gaps are measured against: Overall compares each player's rank across the whole player pool, while Positional Rank compares them only against others at their own position (QB vs QB, RB vs RB, etc.). Positional Rank is the better choice in Superflex or TE Premium leagues; those formats make market consensus price entire positions differently than a standard board would, which can otherwise flag a fairly-valued player (e.g. a top QB in a Superflex league) as a false buy-low or sell-high. One thing to know: positional gaps run much smaller than overall ones; a 10-spot Overall gap is a reasonable default, but a 10-spot gap within a single position is enormous, so lower the Minimum Rank Gap (2-4 is a good starting point) when you switch to Positional Rank.</p>
             </div>
 
             <!-- Step 11 -->

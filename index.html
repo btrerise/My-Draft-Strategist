@@ -61,7 +61,7 @@
   },
   "featureList": [
     "Upload custom rankings via CSV or Excel",
-    "Live Market Value (ADP) via LeagueLogs",
+    "Live Market Value (ADP) via Fantasy Football Calculator and Sleeper",
     "Live Sleeper Draft Auto-Sync",
     "T-Score Predictive Analytics for Wide Receivers and Running Backs",
     "Weekly Lineup Optimizer",
@@ -228,9 +228,9 @@
         
         <div id="metaDisplay" class="status-badge"></div>
         
-        <p class="card-desc">Want to skip the spreadsheet? Quick-start using live Market Value rankings (Select your league format below in Step 3).</p>
+        <p class="card-desc">Want to skip the spreadsheet? Quick-start using Fantasy Football Calculator's mock-draft ADP (Select your league format below in Step 3).</p>
         <button class="btn btn-purple" onclick="quickStartLeagueLogs(this)">
-            Quick-Start: LeagueLogs Market
+            Quick-Start: Fantasy Football Calculator ADP
         </button>
         
         <div class="divider-text">OR UPLOAD CUSTOM</div>
@@ -329,12 +329,14 @@
         <div id="adpStatusDisplay" class="status-badge"></div>
 
         <div class="input-group">
-            <label for="adpFormatSelect">Select LeagueLogs Profile</label>
+            <label for="adpFormatSelect">Select ADP Source &amp; Format</label>
             <select id="adpFormatSelect" class="form-input">
-            <optgroup label="LeagueLogs (Aggregate Market)">
-                <option value="leaguelogs|redraft-1qb-12t-ppr1">Redraft - 1QB (PPR)</option>
-                <option value="leaguelogs|redraft-1qb-12t-ppr0_5">Redraft - 1QB (Half-PPR)</option>
-                <option value="leaguelogs|dynasty-2qb-12t-ppr1">Dynasty - Superflex/2QB (PPR)</option>
+            <optgroup label="Fantasy Football Calculator (Mock-Draft ADP)">
+                <option value="ffc|ppr">Redraft - 1QB (PPR)</option>
+                <option value="ffc|half-ppr">Redraft - 1QB (Half-PPR)</option>
+                <option value="ffc|standard">Redraft - 1QB (Standard)</option>
+                <option value="ffc|2qb">Redraft - 2QB/Superflex</option>
+                <option value="ffc|rookie">Dynasty - Rookie Draft</option>
             </optgroup>
             
             <optgroup label="Sleeper Native ADP">
@@ -349,9 +351,9 @@
         <button id="fetchAdpBtn" class="btn btn-purple" onclick="fetchLeagueLogsADP(this)">Fetch Market Value</button>
 
         <div class="leaguelogs-attribution">
-            <a href="https://leaguelogs.com" target="_blank" rel="noopener">
-                <span>Powered by</span>
-                <em>LeagueLogs</em>
+            <a href="https://fantasyfootballcalculator.com/adp" target="_blank" rel="noopener">
+                <span>ADP by</span>
+                <em>Fantasy Football Calculator</em>
                 <span class="dot-accent" aria-hidden="true"></span>
             </a>
         </div>
@@ -758,7 +760,7 @@
             <!-- Step 1 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">1</span> Load Rankings</h4>
-                <p class="step-desc">Upload your custom rankings as a CSV or Excel file, drop the file onto the card, or paste raw CSV text. Your file needs a <strong class="text-main">Name</strong> (or "Player") column. Rows are ranked in the order they appear, and Position, Team, Tier, and Bye columns are picked up if present. Or, use the <strong class="text-main">Quick-Start</strong> option to load live Market Value rankings directly from the LeagueLogs market (it uses the format selected in Step 3).</p>
+                <p class="step-desc">Upload your custom rankings as a CSV or Excel file, drop the file onto the card, or paste raw CSV text. Your file needs a <strong class="text-main">Name</strong> (or "Player") column. Rows are ranked in the order they appear, and Position, Team, Tier, and Bye columns are picked up if present. Or, use the <strong class="text-main">Quick-Start</strong> option to load Fantasy Football Calculator's mock-draft ADP rankings as your player pool (it uses the format selected in Step 3). Those lists are fullest before the season; after kickoff, Quick-Start uses the last full list it saved and tells you its date.</p>
                 <ul class="guide-list">
                     <li><strong class="text-main">Aggregate Rankings:</strong> Turn this on before uploading to blend the new file with your currently loaded rankings instead of replacing them. Use the slider to set how much weight each set gets.</li>
                     <li><strong class="text-main">Rookie Badges:</strong> When rankings load, the app matches players against Sleeper's database and automatically assigns Rookie badges (<span class="badge badge-rookie">R</span>) to first-year players.</li>
@@ -778,7 +780,7 @@
             <!-- Step 3 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">3</span> Live Market Value (ADP)</h4>
-                <p class="step-desc">If you uploaded custom rankings, select the LeagueLogs or Sleeper profile that matches your league format and click "Fetch Market Value" to pull in live ADP, so you know when players are actually being drafted. If a live source is unavailable, you can paste ADP values manually using the fallback box.</p>
+                <p class="step-desc">If you uploaded custom rankings, select the Fantasy Football Calculator or Sleeper format that matches your league format and click "Fetch Market Value" to pull in live ADP, so you know when players are actually being drafted. If a live source is unavailable, you can paste ADP values manually using the fallback box.</p>
             </div>
 
             <!-- Step 4 -->

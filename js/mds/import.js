@@ -124,13 +124,20 @@ function parseExcel(file) {
         });
     }
 
-    // source: { fileName, headers, sheetName?, quoteProblem? }. fileName is null for pasted
-    // text; sheetName is set when the rankings came from one tab of a multi-tab workbook;
-    // quoteProblem is findCsvQuoteProblem's result for CSV text. headers is the file's
-    // header row as written, used both to catch a missing name column before any work starts
-    // and to show the user what columns were found. The diagnostic follows the same shape as
-    // lineup/rankingsParser.js's so both apps share window.formatRankingsDiagnostic's wording.
-    async function processData(data, btn = null, source = {}) {
+    // source: { fileName, headers, sheetName?, quoteProblem?, replace?, successLabel?,
+    // successToast? }. fileName is null for pasted text; sheetName is set when the rankings
+    // came from one tab of a multi-tab workbook; quoteProblem is findCsvQuoteProblem's result
+    // for CSV text. headers is the file's header row as written, used both to catch a missing
+    // name column before any work starts and to show the user what columns were found. The
+    // diagnostic follows the same shape as lineup/rankingsParser.js's so both apps share
+    // window.formatRankingsDiagnostic's wording.
+    //
+    // Quick-Start (market.js, refactor 7A) sends Fantasy Football Calculator's rows through here
+    // too, as the rows an upload would give, and sets the last three: replace (ignore the
+    // aggregate toggle; Quick-Start always replaces the pool, as it did before), successLabel
+    // (button text) and successToast ({ text, opts } in place of "Loaded N players"; N fills
+    // in for {count}). Returns true once the pool is loaded, false otherwise.
+    export async function processData(data, btn = null, source = {}) {
         const metaEl = document.getElementById('metaDisplay');
         const originalBtnText = btn ? btn.innerHTML : "Upload";
 
@@ -149,6 +156,7 @@ function parseExcel(file) {
             if (source.fileName && fileInput) fileInput.value = '';
             // Longer than the 6s error default: the message lists columns to read and act on.
             if (window.showToast) window.showToast(formatRankingsDiagnostic(diag), { isError: true, duration: 12000 });
+            return false;
         };
 
         // Checked before the Sleeper download below (~5MB): no point fetching it for a file
@@ -188,6 +196,10 @@ function parseExcel(file) {
                 fullName: `${sp.first_name} ${sp.last_name}`,
                 lowerName: `${sp.first_name} ${sp.last_name}`.toLowerCase(),
                 pos: (sp.position || "").toUpperCase(),
+                // Every position Sleeper scores the player at: a two-way player such as Travis
+                // Hunter is position "DB" with fantasy_positions ["DB", "WR"], and rankings list
+                // him as a WR. Refactor 7A; before that he never matched a Sleeper ID.
+                fantasyPos: (Array.isArray(sp.fantasy_positions) ? sp.fantasy_positions : []).map(p => String(p).toUpperCase()),
                 team: sp.team ? sp.team.toUpperCase() : ""
             }));
 
@@ -233,7 +245,7 @@ function parseExcel(file) {
             for (let i = 0; i < sleeperArray.length; i++) {
                 let sp = sleeperArray[i];
                 let isName = typeof isNameMatch === 'function' ? isNameMatch(cleanName, sp.fullName) : cleanName.toLowerCase() === sp.lowerName;
-                let isPos = posGroup === "FLEX" || sp.pos === posGroup;
+                let isPos = posGroup === "FLEX" || sp.pos === posGroup || sp.fantasyPos.includes(posGroup);
                 
                 if (isName && isPos) {
                     fallbackId = sp.id;
@@ -279,7 +291,7 @@ function parseExcel(file) {
         });
 
         if (newPlayers.length > 0) {
-            const isAggregate = document.getElementById('aggregateToggle')?.checked;
+            const isAggregate = !source.replace && document.getElementById('aggregateToggle')?.checked;
             
             if (isAggregate && State.players.length > 0) {
                 let combinedMap = new Map();
@@ -340,8 +352,10 @@ function parseExcel(file) {
             updateMetaDisplay();
             saveAndRenderDraftState();
 
-            if (btn) flashButton(btn, "Loaded Successfully", false, originalBtnText);
-            if (typeof window.showToast === 'function') {
+            if (btn) flashButton(btn, source.successLabel || "Loaded Successfully", false, originalBtnText);
+            if (typeof window.showToast === 'function' && source.successToast) {
+                window.showToast(source.successToast.text.replace('{count}', State.players.length), source.successToast.opts);
+            } else if (typeof window.showToast === 'function') {
                 // Loaded, but an unclosed quote swallowed rows (see findCsvQuoteProblem in
                 // utils.js). Shown as an error: the list is missing players the user expects.
                 if (source.quoteProblem) {
@@ -351,8 +365,9 @@ function parseExcel(file) {
                     window.showToast(`Loaded ${State.players.length} players`);
                 }
             }
+            return true;
         } else {
             // The name column exists (checked above), so every row's name cell was blank.
-            fail('no-names-in-column');
+            return fail('no-names-in-column');
         }
     }
