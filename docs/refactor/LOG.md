@@ -62,8 +62,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
 - Coverage: 14 smoke tests and 10 screenshot tests (40 PNGs) across desktop (1280×900) and
   phone (390×844), plus 2 backup → restore round trips (`backup.spec.mjs`, added in 1B), 9
   MDS network tests (`mds-sync.spec.mjs`, added in 2C, FFC cases rewritten in 7A: player-map
-  cache, Quick-Start, ADP sync, live Sleeper draft, error toasts) and 1 MLS market test
-  (`mls-market.spec.mjs`, 7A). Each runs at both widths: 48 Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
+  cache, Quick-Start, ADP sync, live Sleeper draft, error toasts), 1 MLS market test
+  (`mls-market.spec.mjs`, 7A) and 3 MLS league-entry tests (`mls-leagues.spec.mjs`, 3B: Import
+  All Leagues, the Draft Strategist roster handoff, dismissing it). Each runs at both widths: 56
+  Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
   smoke test, but its output isn't screenshotted because it's random.
 
 ### Known gaps (good follow-ups, not blockers)
@@ -1292,3 +1294,106 @@ No module assigns another module's binding. No new import is shadowed by a neste
 - `js/mls/*` still read the shared helpers through `window.*` / bare globals (`showToast`,
   `mdsFetch`, `normalizeName`, `createFocusTrap`…), as `js/mds/*` does.
 - Next on the MLS track: 3B.
+
+### 3B — MLS: leagues, sync, headshots, SoS
+
+Everything from `// --- PLAYER HEADSHOTS ---` up to `// --- SCOUT TAB ENGINE ---` left
+`js/mls/legacy.js` (2,060 lines), **except `window.onload`** (see below). Same tooling as 3A: acorn +
+eslint-scope in a scratch directory, a throwaway script that assigns each top-level statement (with
+the comments and blank lines above it) to a module by line range, refuses an unassigned line or a
+statement that straddles a range, builds the import lines from a scope-aware walk, adds `export`
+where another module now needs a name, and simulates the evaluation order. Checked afterwards:
+every non-blank, non-import line of `js/mls/*.js` at main is present **exactly once** across
+`js/mls/**/*.js` once the added `export ` prefixes are undone; the only new lines are the header
+comments. Every named import resolves to an export (acorn link check). Indentation unchanged.
+
+| New file (under `js/mls/`) | From legacy.js |
+|---|---|
+| `lineup/headshots.js` | PLAYER HEADSHOTS (incl. its load-time `applyHeadshotSetting()` call) |
+| `players.js` | Everything under the INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP marker: the player-map indexes (`getPlayerSearchIndex`, `getCleanNameToIdIndex`), `attachPlayerAutocomplete`, `levenshtein`, `findClosestRankedName`, `attachScoutSuggestionHandler` |
+| `lineup/earlyGames.js` | EARLY GAMES LOGIC, the early-teams part (`populateEarlyGameDropdown` … `isEarlyPlayer`) |
+| `lineup/gameInfo.js` | The rest of that section, which has no marker of its own: bye/kickoff/opponent badges, `hasKickedOff`, `isGameFinal`, `gameStatusMayBeStale`, projections and points, `refreshLineupStats`, `getNextLockCountdownHTML`, `getLineupInjuryWarningHTML`, `getValidSleeperStarterIds` |
+| `leagues/sync.js` | LEAGUE & SYNC LOGIC (dropdown, League Manager, switching), the league functions after LEAGUE-SCOPED SCOUT RESULTS (`applyLeagueDefaultsToMarketSettings`, `loadActiveLeagueData`, `saveRequirements`, `createManualLeague`), and the Sleeper sync, which sat under ADD PLAYER MANUALLY / IMPORT ALL LEAGUES (`diffRosterChanges`, `formatNameList`, `processSleeperData`, `addAndSyncLeague`, `syncActiveLeague`) |
+| `leagues/scoutResults.js` | LEAGUE-SCOPED SCOUT RESULTS (`_scoutResultsLeagueId`, `clearLeagueScopedResults`) |
+| `leagues/handoff.js` | DRAFT STRATEGIST ROSTER HANDOFF |
+| `leagues/addPlayer.js` | ADD PLAYER MANUALLY (and `deletePlayer`, which sat with it) |
+| `leagues/importAll.js` | IMPORT ALL LEAGUES (`importAllSleeperLeagues`) |
+| `sos.js` | SOS ENGINE (incl. the load-time `#sosFileInput` listener) |
+| `helpers.js` (appended) | `getActiveLeague`, from LEAGUE & SYNC LOGIC. Reason below |
+
+The card said "lineup/headshots.js and players.js"; `players.js` is at the top of `js/mls/`, not in
+`lineup/`, because the player-map indexes and autocomplete serve every tab (Setup, Scout, the
+simulator's player lookup). `lineup/` and `leagues/` are new subfolders of `js/mls/`; don't confuse
+`js/mls/lineup/` with the page folder `/lineup/`.
+
+#### Why `getActiveLeague` went to helpers.js
+
+Load order forced it. `state.js` imports `gameStatusMayBeStale`, so `lineup/gameInfo.js` now
+evaluates *before* `state.js`'s body. gameInfo needs `getActiveLeague`; had that stayed in
+`leagues/sync.js`, gameInfo would pull in sync → scoutResults, whose top level reads
+`State.activeLeagueId` (`let _scoutResultsLeagueId = State.activeLeagueId;`), and that read would
+hit `State` in its TDZ. `getActiveLeague` is a one-line lookup on `State`, which is what 3A's
+conventions put in helpers.js. With it there, gameInfo's imports reach only helpers/constants/
+compat/state, none of which has load-time cross-module reads.
+
+#### Why `window.onload` is still in legacy.js
+
+3A suggested 3B move it to init.js. Doing so makes init.js import sos.js, handoff.js etc., and
+since nav.js imports init.js, `sos.js` (with its load-time `#sosFileInput` listener) would then
+evaluate before nav.js and headshots.js. Harmless (different elements), but it breaks 3A's
+"load-time effects run in mls.js order" invariant, so it stays put. 3E (STARTUP CLEANUP → init.js)
+should move it and re-run the evaluation simulation, or accept and record the reorder.
+
+#### Load order
+
+legacy.js's import list gains, after `./init.js`: `./lineup/headshots.js`, `./players.js`,
+`./lineup/earlyGames.js`, `./lineup/gameInfo.js`, `./leagues/sync.js`, `./leagues/scoutResults.js`,
+`./leagues/handoff.js`, `./leagues/addPlayer.js`, `./leagues/importAll.js`, `./sos.js` (mls.js
+order; side-effect imports where legacy uses nothing from them). Simulated evaluation:
+`compat → constants → helpers → lineup/gameInfo → state → init → lineup/earlyGames →
+leagues/scoutResults → players → leagues/addPlayer → leagues/sync → nav → backup →
+lineup/headshots → leagues/handoff → leagues/importAll → sos → legacy → main`. helpers and gameInfo
+now run before state, but neither has load-time code beyond declarations. Load-time effects, in
+order: `State` built → nav's `#mainApp` touch + `popstate` listeners → headshot setting → SoS file
+listener → legacy's own top level: the same order as mls.js. The only load-time cross-module read
+in the moved code is scoutResults' `State.activeLeagueId`, and state.js has finished by then.
+
+**Repointed imports:** `nav.js` (`refreshLeagueDropdown` → `leagues/sync.js`), `state.js`
+(`gameStatusMayBeStale` → `lineup/gameInfo.js`), `init.js` (`getActiveLeague` → `helpers.js`),
+`main.js` (the 17 window names that moved now import from their new modules; the `window.x = x;`
+block is untouched). legacy.js gets `export` on 4 more functions the new modules call
+(`getRankingsFreshness`, `updateRankingsMetaDisplay`, `applyMarketSettingsToUI`,
+`getPowerLeagueKind`), and drops the imports it no longer uses.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (74 precached). `node --test` 157 pass (1 skips only when
+  `tests/node_modules` isn't installed). `cd tests && npm run check`: **56/56**, screenshots
+  identical (no baseline changed).
+- New `tests/mls-leagues.spec.mjs` (kept): Import All Leagues (missing-username toast, then a
+  full import of the fixture user's league and its roster), Draft Strategist → Lineup Strategist
+  handoff end to end (draft in MDS, Send to Lineup Strategist, banner, Import as New League, roster
+  shows the drafted player, key removed), and dismissing the banner. Passes on this branch **and**
+  on origin/main unchanged.
+- Throwaway spec (not committed), run on this branch and origin/main at both widths with
+  byte-identical JSON: window property names (empty and synced), add/remove early teams (chips,
+  banner), Lineup tab text, create a manual league + add a player manually, Roster tab text,
+  `cycleLeague`, save a manual SoS value, headshots toggle (body class), `moveLeague`, and every
+  remaining localStorage key and value. No console errors.
+
+#### Other changes
+
+- `sw.js`: the ten new files added to PRECACHE_ASSETS after `/js/mls/init.js`. CACHE_NAME
+  `v2.8.48` → `v2.8.49`.
+- README: the `/js` line mentions `js/mls/lineup/` and `js/mls/leagues/`.
+- Header comment on each new file; legacy.js's top note mentions 3B.
+
+#### Left for later chunks
+
+- `window.onload` → init.js (3E), as above.
+- Paths from the subfolders: shared code is `../../shared/…`, the modules still in the page
+  folder are `../../../lineup/…` (`leagues/sync.js` imports `clearSimResults` that way), and
+  legacy is `../legacy.js`. 3C/3F should repoint those when they move `monteCarloUi.js` etc.
+- Comments inside moved code still say "mls.js", "mds.js" or "rankingsParser.js" (5D's sweep).
+- Next on the MLS track: 3C (SCOUT TAB ENGINE onward). `runScout` is still in legacy.js;
+  `leagues/sync.js` imports it from `../legacy.js`, so 3C repoints that line.
