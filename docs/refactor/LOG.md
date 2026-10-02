@@ -1879,8 +1879,8 @@ names, same order).
   block in main.js is unchanged. 5B/5C remove names from it as the handlers go. A window name that
   is also in the re-export line (`renderSyncLogs`) must stay exported after its window line goes.
 - `scout/waiverInsights.js` doesn't exist (see above). The owner added runbook card **3G** for it
-  (with the trade-verdict block inside `runScout`): it turns both blocks into functions, so it's
-  marked as a logic edit, with no user-visible change allowed.
+  (with the trade-verdict block inside `runScout`). Step 1 turns both blocks into functions with no
+  user-visible change; step 2 fixes the Waiver Insights bug described in "3F follow-up" below.
 - Comments inside the moved sim files still start `// monteCarloUi.js`, `// statsEngine.js`,
   `// worker.js` and name each other by the old file names. `js/shared/api/sleeperStats.js` refers
   to "statsEngine.js". Moved power code says "this file" about things now in other files (for
@@ -1888,7 +1888,7 @@ names, same order).
   comment sweep, along with the ones 3A–3E listed.
 - 6A (storage keys through keys.js) can start once 2C (merged) and 3F are on main.
 
-### 3F follow-up — Waiver Insights finds no free agents until the Scout tab has run (found, not fixed)
+### 3F follow-up — Waiver Insights finds no free agents until the Scout tab has run (found; 3G fixes it)
 
 **Reported by the owner while testing 3F.** In the same Sleeper league with the same ROS and Weekly
 rankings, Run Matchup Simulations with Waiver Insights on said "Checked the top 9 available free
@@ -1918,7 +1918,7 @@ had neither. To confirm in the app, run Scan Pasted List with any name on the br
 simulation again; it should check free agents. Or reload main and run the simulation first thing;
 it should show the empty message.
 
-**Fix (a behavior change, so its own small chunk or a 3G follow-up, not 3G itself).** Have Waiver
+**Fix: runbook card 3G, step 2** (the owner's call: 3G already opens Waiver Insights). Have Waiver
 Insights build the position lookup when it's missing, the same way `runScout` does (a shared
 `ensureSleeperPosByName()`), or read positions from the Sleeper player map `runMatchupSim` already
 loads. Also, when there are zero candidates, say why ("no ranked free agents with a known
