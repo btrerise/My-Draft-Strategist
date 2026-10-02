@@ -1,12 +1,11 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3C: SCOUT TAB ENGINE
 // (runScout, incl. dynamic waiver adjustment and the position resolver). The trade fairness verdicts
 // and renderTradeVerdict (with its waiver adjustment) moved to trade/verdict.js in 3G.
-import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { escapeHtml } from '../compat.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';
-import { findClosestRankedName } from '../players.js';
+import { ensureSleeperPosByName, findClosestRankedName } from '../players.js';
 import { buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts } from './waivers.js';
 import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
@@ -95,17 +94,7 @@ import { buildTradeVerdictHTML } from '../trade/verdict.js';
         // assume the cache exists yet.
         if (!window.sleeperPosByName) {
             outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Looking up player positions…</div>`;
-            try {
-                let map = await getSleeperPlayerMap();
-                window.sleeperPosByName = {};
-                Object.values(map).forEach(p => {
-                    if (p.first_name) {
-                        window.sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
-                    }
-                });
-            } catch (e) {
-                console.warn("Could not fetch Sleeper player map for position badges.");
-            }
+            await ensureSleeperPosByName();
         }
 
         // Indexed once for this whole Scout run -- getPos and buildCard below are both called

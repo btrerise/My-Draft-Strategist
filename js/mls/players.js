@@ -66,6 +66,27 @@ export function getCleanNameToIdIndex() {
     return _cleanNameToIdPromise;
 }
 
+// Clean name -> Sleeper position, kept on window.sleeperPosByName for the page's lifetime. Rankings
+// files carry no positions, so the Scout tab's card badges (runScout) and Waiver Insights' free-agent
+// picks (getTopWaiverCandidatesByPosition) look positions up here, with loaded Market data as their
+// fallback. Moved out of runScout in refactor 3G so Waiver Insights builds it too: before, it existed
+// only once a Scout action had run in the page. If the player map can't load, it stays unset (the
+// callers fall back to Market data) and the next call tries again.
+export async function ensureSleeperPosByName() {
+    if (window.sleeperPosByName) return;
+    try {
+        let map = await getSleeperPlayerMap();
+        window.sleeperPosByName = {};
+        Object.values(map).forEach(p => {
+            if (p.first_name) {
+                window.sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
+            }
+        });
+    } catch (e) {
+        console.warn("Could not fetch Sleeper player map for player positions.");
+    }
+}
+
 // Autocomplete Dropdown Logic
 export function attachPlayerAutocomplete(inputEl, onSelect) {
     if (!inputEl || inputEl.dataset.autocompleteAttached) return;

@@ -78,9 +78,9 @@ import { rankToTradeValue, isDraftPickName } from './valueCurve.js';
     // just applied position-by-position instead of to the whole list at once).
     export function getTopWaiverCandidatesByPosition(rosterMap, perPositionLimit) {
         // Rankings files carry a name and a rank, not a position -- window.sleeperPosByName
-        // (populated during Sleeper sync) is the same position lookup the Waiver Wire
-        // Assistant already relies on for this exact reason; market data ships its own pos
-        // field as a fallback for a player Sleeper's sync hasn't covered.
+        // (built by ensureSleeperPosByName in players.js) is the same position lookup the
+        // Waiver Wire Assistant already relies on for this exact reason; market data ships its
+        // own pos field as a fallback for a player Sleeper's sync hasn't covered.
         const marketIndex = rankingIndex(State.marketRankings);
         const getPos = (cleanName) => {
             if (window.sleeperPosByName && window.sleeperPosByName[cleanName]) return window.sleeperPosByName[cleanName];

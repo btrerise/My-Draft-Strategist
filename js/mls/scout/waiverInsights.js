@@ -1,11 +1,12 @@
 // Moved out of runMatchupSim (js/mls/sim/matchup.js) in refactor chunk 3G: the WAIVER INSIGHTS block,
-// now a function of the runMatchupSim locals it reads. Its lines are unchanged; runMatchupSim calls it
-// where the block was and passes the result to runMatchupSimulation.
+// now a function of the runMatchupSim locals it reads; runMatchupSim calls it where the block was and
+// passes the result to runMatchupSimulation. 3G's second step added the position-lookup call and
+// noCandidates (see docs/refactor/LOG.md); the block's other lines are as they were.
 import { getPlayerWeeklyScoreHistory } from '../../shared/api/sleeperStats.js';
 import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile } from '../sim/stats.js';
 import { State } from '../state.js';
 import { isExcludedFromSimulation } from '../helpers.js';
-import { getCleanNameToIdIndex } from '../players.js';
+import { ensureSleeperPosByName, getCleanNameToIdIndex } from '../players.js';
 import { hasKickedOff } from '../lineup/gameInfo.js';
 import { getTopWaiverCandidatesByPosition } from '../trade/waiverValue.js';
 
@@ -36,7 +37,7 @@ import { getTopWaiverCandidatesByPosition } from '../trade/waiverValue.js';
             // reason nothing was compared, now that already-started starters and free agents
             // are left out (see lockedStarterIds above and the candidates filter below).
             waiverInsightsStatus = {
-                checkedCount: 0, positions: [], noRankings: false, failed: false,
+                checkedCount: 0, positions: [], noRankings: false, noCandidates: false, failed: false,
                 startersAllStarted: team1Players.length > 0 && team1Players.every(p => lockedStarterIds.has(p.id)),
                 kickedOffCount: 0
             };
@@ -46,7 +47,15 @@ import { getTopWaiverCandidatesByPosition } from '../trade/waiverValue.js';
                     waiverInsightsStatus.noRankings = true;
                 }
                 const nameToIdIndex = await getCleanNameToIdIndex();
-                const candidates = getTopWaiverCandidatesByPosition(rosterMap, 3)
+                // Rankings carry no positions; candidates get theirs from this lookup (or Market
+                // data). Built here too since 3G, so it no longer depends on a Scout action having
+                // run earlier in the page.
+                await ensureSleeperPosByName();
+                const topCandidates = getTopWaiverCandidatesByPosition(rosterMap, 3);
+                // None at all means no unrostered ranked player could be given a position, before
+                // any history or kickoff check -- the card says so instead of blaming those.
+                waiverInsightsStatus.noCandidates = topCandidates.length === 0;
+                const candidates = topCandidates
                     .map(c => ({ ...c, id: nameToIdIndex[c.cleanName] }))
                     .filter(c => c.id && !isExcludedFromSimulation(playerMap[c.id]))
                     // A free agent whose game has kicked off is locked on Sleeper until next

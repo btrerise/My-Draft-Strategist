@@ -166,7 +166,7 @@ function startProgressAnimation(simOutputDiv) {
  * @param {Array<{faName, faPos, starterName, starterPos, faWinPct}>} [options.waiverInsights]
  *   - same idea as benchInsights, sourced from available free agents instead of the bench;
  *   only populated when the Waiver Insights toggle is on (see mls.js's runMatchupSim).
- * @param {{checkedCount: number, positions: string[], noRankings: boolean, failed: boolean}|null} [options.waiverInsightsStatus]
+ * @param {{checkedCount: number, positions: string[], noRankings: boolean, noCandidates: boolean, failed: boolean}|null} [options.waiverInsightsStatus]
  *   - what the waiver check actually did; null when the toggle is off. Lets the results card
  *   confirm "checked N free agents, none beat your starters" instead of showing nothing,
  *   which read the same as the check never having run.
@@ -336,6 +336,8 @@ function renderWaiverInsights(waiverInsights, status) {
         body = `<p class="sim-waiver-empty sim-waiver-empty-warn">No free agents to check yet. Waiver Insights picks its candidates from your ROS rankings (or Market Consensus data), and neither is loaded for this league.</p>`;
     } else if (status.checkedCount === 0 && status.startersAllStarted) {
         body = `<p class="sim-waiver-empty">All of your starters' games have already kicked off, so there's no lineup spot left for a free agent to take this week.</p>`;
+    } else if (status.checkedCount === 0 && status.noCandidates) {
+        body = `<p class="sim-waiver-empty sim-waiver-empty-warn">No free agents to compare: none of the unrostered players in your rankings could be matched to a position. Waiver Insights looks each name up in Sleeper's player list (or Market Consensus data), so check that your rankings use the names Sleeper does. If every ranked player is already on a roster in this league, there's no one to check.</p>`;
     } else if (status.checkedCount === 0) {
         // Three things can leave a free agent uncompared: too little game history, his own
         // game already kicked off (locked on Sleeper), or every starter he could replace has
