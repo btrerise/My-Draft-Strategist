@@ -1,5 +1,5 @@
 // monteCarloUi.js
-import { getPlayerVarianceProfile, getBoomBustRates } from './statsEngine.js';
+import { getPlayerVarianceProfile, getBoomBustRates } from './stats.js';
 
 // 1. Initialize the Web Worker.
 // Guarded because this runs at module-import time: a worker that can't be constructed (the
@@ -8,7 +8,8 @@ import { getPlayerVarianceProfile, getBoomBustRates } from './statsEngine.js';
 // simulation. On failure `worker` stays null and runMatchupSimulation reports it in place.
 let worker = null;
 try {
-    worker = new Worker('./worker.js');
+    // Resolved against the page URL (/lineup/), not this file's: js/mls/sim/worker.js (refactor 3F).
+    worker = new Worker('../js/mls/sim/worker.js');
 } catch (err) {
     console.error('Monte Carlo Worker failed to load:', err);
 }

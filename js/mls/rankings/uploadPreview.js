@@ -9,7 +9,7 @@ import { generateSoSGrid } from '../sos.js';
 import { analyzeRankingsFile, derivedRanksWording, formatUnmatchedNames } from '../scout/waivers.js';
 import { setRankingsCardExpanded } from './engine.js';
 import { resolveRankingsTarget, saveRankingsAsSet, renderLeaguePicker, readLeaguePicker, assignSetToLeagues, leagueCountText } from './sets.js';
-import { loadRosterTab } from '../legacy.js';
+import { loadRosterTab } from '../main.js';
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
         const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: window.loadSheetJS, onProgress });
 
@@ -392,3 +392,8 @@ import { loadRosterTab } from '../legacy.js';
             });
         });
     }
+
+    // loadSheetJS used to be defined here. mds.js needed the same lazy-load with the same
+    // failure path (it had its own copy with no error handling at all), so it now lives in
+    // js/utils.js as window.loadSheetJS alongside loadScriptOnce. The call sites above use it
+    // directly; the (callback, onError) signature rankingsParser.js documents is unchanged.

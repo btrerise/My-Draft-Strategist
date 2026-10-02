@@ -10,7 +10,7 @@ import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailable
 import { getByeBadgeHTML, getGameInfoHTML, hasKickedOff } from '../lineup/gameInfo.js';
 import { runScout } from './engine.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
-import { isAutoLockOverridden } from '../legacy.js';
+import { isAutoLockOverridden } from '../main.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---

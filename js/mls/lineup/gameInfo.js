@@ -9,7 +9,7 @@ import { escapeHtml } from '../compat.js';
 import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS, TEAM_BYES } from '../constants.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
-import { renderLineupUI } from '../legacy.js';
+import { renderLineupUI } from '../main.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point

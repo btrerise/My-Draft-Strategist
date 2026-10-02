@@ -7,7 +7,7 @@ import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { saveActiveLeagueState } from '../leagues/sync.js';
 import { setRankingsCardExpanded, updateRankingsMetaDisplay } from './engine.js';
-import { loadRosterTab } from '../legacy.js';
+import { loadRosterTab } from '../main.js';
 
     // --- NAMED RANKING SETS ---
     // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns

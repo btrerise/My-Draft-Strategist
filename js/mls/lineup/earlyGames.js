@@ -2,7 +2,7 @@
 // of EARLY GAMES LOGIC.
 import { NFL_TEAMS } from '../constants.js';
 import { State } from '../state.js';
-import { renderLineupUI } from '../legacy.js';
+import { renderLineupUI } from '../main.js';
 
     // --- EARLY GAMES LOGIC ---
     export function populateEarlyGameDropdown() {

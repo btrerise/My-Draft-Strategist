@@ -27,7 +27,7 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.52';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.53';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -40,8 +40,8 @@ const CACHE_NAME = 'draft-strategist-v2.8.52';  // Update this version on EVERY 
 // here. A module <script> fails as a whole if any static import fails, so a first offline load
 // with even one of those imports uncached is a blank Lineup page -- stale-while-revalidate only fills the
 // gap after an online visit has already requested each file. When adding an `import` to any
-// lineup module, add the file here too. worker.js needs listing separately: it's loaded by
-// `new Worker('./worker.js')` in monteCarloUi.js, not imported, so it's outside the graph.
+// lineup module, add the file here too. js/mls/sim/worker.js needs listing separately: it's loaded
+// by `new Worker(...)` in js/mls/sim/ui.js, not imported, so it's outside the graph.
 //
 // Note cache.addAll is all-or-nothing: one 404 in this list and NOTHING gets precached (the
 // .catch below swallows it silently). Renaming or deleting a file means updating this list.
@@ -95,7 +95,6 @@ const PRECACHE_ASSETS = [
     '/lineup/',
     '/lineup/index.html',
     '/js/mls/main.js',                // the Lineup page's entry point (refactor 3A; was lineup/mls.js)
-    '/js/mls/legacy.js',
     '/js/mls/compat.js',
     '/js/mls/constants.js',
     '/js/mls/state.js',
@@ -132,16 +131,23 @@ const PRECACHE_ASSETS = [
     '/js/mls/render/lineup.js',
     '/js/mls/render/dashboard.js',
     '/js/mls/shortcuts.js',
+    '/js/mls/power/shared.js',
+    '/js/mls/power/futureValue.js',
+    '/js/mls/power/directionLabels.js',
+    '/js/mls/power/rosterCard.js',
+    '/js/mls/power/snapshot.js',
+    '/js/mls/lineup/injuryAudit.js',
+    '/js/mls/sim/matchup.js',
+    '/js/mls/sim/ui.js',              // -> sim/stats.js, spawns sim/worker.js
+    '/js/mls/sim/stats.js',
+    '/js/mls/sim/worker.js',          // new Worker(), not an import -- see above
     // their static imports outside js/mls/, and theirs:
     '/js/shared/rankings/parse.js',   // -> names.js
     '/js/shared/api/sleeper.js',
     '/js/shared/api/market.js',       // -> names.js
     '/js/shared/api/ffc.js',          // Fantasy Football Calculator, via /api/ffc/ (refactor 7A)
-    '/lineup/monteCarloUi.js',        // -> statsEngine.js, spawns worker.js
     '/js/shared/api/sleeperStats.js', // -> storage/idb.js
-    '/lineup/statsEngine.js',
-    '/js/shared/storage/idb.js',
-    '/lineup/worker.js'               // new Worker(), not an import -- see above
+    '/js/shared/storage/idb.js'
 ];
 
 // Extensions served straight from cache while refreshing behind the scenes. Deliberately

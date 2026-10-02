@@ -4,7 +4,7 @@
 // league), and the Sleeper sync (processSleeperData and its roster diff, addAndSyncLeague,
 // syncActiveLeague), which sat under ADD PLAYER MANUALLY and IMPORT ALL LEAGUES.
 import { getSleeperLeague, getSleeperLeagueRosters, getSleeperLeagueUsers, getSleeperPlayerMap, getSleeperUser } from '../../shared/api/sleeper.js';
-import { clearSimResults } from '../../../lineup/monteCarloUi.js';
+import { clearSimResults } from '../sim/ui.js';
 import { escapeHtml } from '../compat.js';
 import { RANKING_TYPE_CONFIG } from '../constants.js';
 import { State } from '../state.js';
@@ -14,7 +14,7 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab } from '../legacy.js';
+import { getPowerLeagueKind, loadRosterTab } from '../main.js';
 import { getRankingsFreshness, updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { applyMarketSettingsToUI } from '../settings.js';
 

@@ -570,7 +570,7 @@
         </header>
         
         <!-- Your row of the Positional Power Rankings (full table further down this tab), filled
-             by renderRosterPowerStrip in js/mls/legacy.js. Hidden when there's nothing to rank. -->
+             by renderRosterPowerStrip in js/mls/power/snapshot.js. Hidden when there's nothing to rank. -->
         <div id="rosterPowerStrip" class="mls-roster-power" style="display: none;" aria-live="polite"></div>
 
         <button id="rosterSyncBtn" class="btn btn-primary mb-3" style="display: none;" onclick="syncActiveLeague()">
@@ -585,7 +585,7 @@
     </section>
     
     <!-- POSITIONAL POWER RANKINGS (moved here from the Scout tab). Generated automatically by
-         refreshPowerRankings in js/mls/legacy.js whenever this tab renders -- no Calculate button. -->
+         refreshPowerRankings in js/mls/power/rosterCard.js whenever this tab renders -- no Calculate button. -->
     <section class="settings-card" id="powerRankingsCard">
         <header class="card-header">
             <h3><span>Positional Power Rankings</span></h3>
@@ -1053,7 +1053,7 @@
     </section>
     
     <!-- POSITIONAL POWER RANKINGS: moved to the Roster tab (2026-09-27). This one-line pointer
-         catches people who still look for it here -- see goToPowerRankings in js/mls/legacy.js for the
+         catches people who still look for it here -- see goToPowerRankings in js/mls/power/rosterCard.js for the
          removal note. -->
     <section class="settings-card mls-moved-pointer" id="powerRankingsScoutPointer">
         <p class="card-desc mls-moved-pointer-text">

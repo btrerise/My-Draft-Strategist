@@ -1,4 +1,4 @@
-// Characterization tests for lineup/statsEngine.js (refactor chunk 0B).
+// Characterization tests for js/mls/sim/stats.js (lineup/statsEngine.js until 3F; refactor chunk 0B).
 // These pin what the module does TODAY, including the odd bits listed in
 // docs/refactor/LOG.md, so a later move can't change it unnoticed. If a test here fails after
 // a pure move, the move changed behavior; if a deliberate fix changes it, update the test and
@@ -6,11 +6,11 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import * as stats from '../../lineup/statsEngine.js';
+import * as stats from '../../js/mls/sim/stats.js';
 import {
     MIN_RELIABLE_GAMES, calculateMean, calculateStandardDeviation, standardNormalCDF,
     getBoomBustRates, getProbabilityBeats, getPlayerVarianceProfile
-} from '../../lineup/statsEngine.js';
+} from '../../js/mls/sim/stats.js';
 
 const close = (actual, expected, eps = 1e-9) =>
     assert.ok(Math.abs(actual - expected) < eps, `expected ${actual} to be within ${eps} of ${expected}`);

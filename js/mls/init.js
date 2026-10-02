@@ -12,7 +12,7 @@ import { loadActiveLeagueData, refreshLeagueDropdown } from './leagues/sync.js';
 import { initManualAddForm } from './leagues/addPlayer.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
-import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs } from './legacy.js';
+import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs } from './main.js';
 
     // --- INITIALIZATION ---
     // Where each setup step gets done: the tab it lives on, the card to reveal, and the control

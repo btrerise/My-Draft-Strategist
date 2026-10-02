@@ -69,8 +69,11 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   lenses, a trade scout) and 1 MLS ranking-set test (`mls-rankings.spec.mjs`, 3D: one upload applied
   to a second league from the preview, then a third through "Choose leagues...") and 2 MLS keyboard
   tests (`mls-keyboard.spec.mjs`, 3E: tab shortcuts, Escape, lock/undo/redo/swap by keyboard and where
-  focus lands after the lineup rebuilds). Each runs at both widths: 64 Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
-  smoke test, but its output isn't screenshotted because it's random.
+  focus lands after the lineup rebuilds) and 1 MLS simulator test (`mls-sim.spec.mjs`, 3F: fixed
+  teams through the real UI module and Web Worker with `Math.random` seeded, exact numbers pinned).
+  Each runs at both widths: 66 Playwright tests in all. The smoke test's simulator run stops at "Not
+  enough roster data" with the fixture league (it never reaches the worker), so `mls-sim.spec.mjs`
+  is the one that checks the simulation itself.
 
 ### Known gaps (good follow-ups, not blockers)
 
@@ -1747,3 +1750,179 @@ load-time effects changed where they register:
   `overrideAutoLock`, `unlockAllPlayers`, `deletePlayer`, Optimize/Sync All), which are now in
   `js/mls/render/*`, as its card expects. `mls-keyboard.spec.mjs` should keep passing through that.
 - Next on the MLS track: 3F.
+
+### 3F — MLS: power rankings, simulator; delete legacy.js
+
+Everything left in `js/mls/legacy.js` (from `lookupSimPlayer` through the end of `runMatchupSim`)
+moved out, and **legacy.js is deleted**. The three simulator files moved from `lineup/` to
+`js/mls/sim/` with `git mv`. `lineup/` now holds only `index.html` and `manifest.json`. Same tooling
+as 3A–3E (acorn + eslint-scope in a scratch directory): a throwaway script assigned legacy.js's line
+ranges to modules, refused a statement straddling two ranges or a code line outside every range,
+built each module's imports from legacy.js's module-scope references, added `export` where another
+new module needs a name, and rejected any cross-module write to a moved binding. Checked afterwards
+against origin/main: every non-blank, non-import line of `js/mls/**/*.js` plus the three old
+`lineup/*.js` files is present **exactly once** under `js/mls/`, once `export ` prefixes are
+ignored. The only lines that differ are comments (legacy.js's file header and its "Pilot ES module
+extraction" note, both dropped; main.js's header and the re-export comment, rewritten; the new file
+headers) and the one Worker URL line below. Every named import resolves to an export, and no import
+is unused. The set of bare globals the code reads is unchanged: the only new entries (`Worker`,
+`self`, `performance`, `requestAnimationFrame`, `cancelAnimationFrame`) come from the moved sim files,
+which the check didn't scan when they lived in `lineup/`. Indentation unchanged.
+
+| New file (under `js/mls/`) | From legacy.js |
+|---|---|
+| `power/shared.js` | POSITIONAL POWER RANKINGS: SHARED MATH (`POWER_POSITIONS` … `pickPowerStarters`), plus `computePositionalPower` and `powerTier`, which sat under FUTURE VALUE |
+| `power/futureValue.js` | FUTURE VALUE (`POWER_AGE_CURVES`, `powerAgeFactor`), plus the Sleeper age index (`_powerAgeIndex`, `_powerAgeState`, `ageFromMeta`, `ensurePowerAgeIndex`) and `resolvePowerFuture`, which sat under TEAM DIRECTION LABELS |
+| `power/directionLabels.js` | TEAM DIRECTION LABELS (`getPowerLeagueKind`, `assignPowerLabels`, `powerLabelAdvice`) |
+| `power/rosterCard.js` | POSITIONAL POWER RANKINGS: ROSTER TAB CARD (`updatePowerSetting`, `resolvePowerRankingsSource`, `refreshPowerRankings`), plus `goToPowerRankings`, `runPositionalStrength` and `renderPowerRankingsTable`, which sat after the SNAPSHOT block |
+| `power/snapshot.js` | ACTIVE ROSTER: POWER RANKINGS SNAPSHOT (`renderRosterPowerStrip`, `scrollToPowerRankings`) |
+| `lineup/injuryAudit.js` | The Global Injury Auditor (`isAuditOut`, `buildCleanNameCandidateIndex`, `resolveManualPlayer`, `runGlobalInjuryAudit`), which sat unmarked after the SNAPSHOT block. Not on the card; its button is on the Lineup tab |
+| `sim/matchup.js` | MATCHUP SIMULATOR (MONTE CARLO) (`runMatchupSim`, including its WAIVER INSIGHTS block), then `lookupSimPlayer` (3D left it at the top of legacy.js; it now sits after `runMatchupSim`, where its "the matchup simulation above it" comment says it is) |
+| `sim/ui.js` | `git mv lineup/monteCarloUi.js`. Two edits: its import is `./stats.js`, and the Worker URL (below) |
+| `sim/stats.js` | `git mv lineup/statsEngine.js` (content identical) |
+| `sim/worker.js` | `git mv lineup/worker.js` (content identical) |
+| `rankings/uploadPreview.js` (appended) | legacy.js's last four lines, an orphan comment about `loadSheetJS` ("The call sites above use it"). Its call site is in this file, so the comment went with it |
+| `main.js` | legacy.js's import list (in the same order) and its re-export line (see below) |
+
+#### Placement decisions
+
+- **By content, not marker**, as 2A and 3A did. `computePositionalPower` and `powerTier` sat under
+  `// --- FUTURE VALUE ---`, but SHARED MATH's own comment describes `computePositionalPower`, and
+  `power/allLeagues.js` imports both. The age index and `resolvePowerFuture` sat under TEAM
+  DIRECTION LABELS, but they supply the card's Future column. The card's table renderer and its
+  Scout-tab pointer sat after SNAPSHOT, but they belong to the card.
+- **WAIVER INSIGHTS stays inside `runMatchupSim`**, so there's no `scout/waiverInsights.js`. The
+  marker is indented: the block is part of `runMatchupSim`'s body and uses its locals (`league`,
+  the rosters, the score histories), so splitting it out means writing a new function, not moving
+  statements. This is the same call 3C made for the trade verdict inside `runScout`. It's the only
+  caller of `getTopWaiverCandidatesByPosition` (`trade/waiverValue.js`).
+- **The Worker URL.** `new Worker()` resolves against the page URL (`/lineup/`), not the module's,
+  so `new Worker('./worker.js')` became `new Worker('../js/mls/sim/worker.js')`, with a one-line
+  comment saying why. `scripts/check-precache.mjs` resolves Worker targets the same way, so it checks
+  the new path. I kept a plain string instead of `new URL('./worker.js', import.meta.url)`, because
+  the checker's regex only reads string literals.
+
+#### New convention: main.js is the load-order list and the re-export point
+
+With legacy.js gone, `main.js` holds what legacy.js did for the module graph:
+- **Its import list sets the load order.** It's legacy.js's list, in the same order (shared
+  modules included, so `sim/ui.js` still constructs the Worker at the same point, before `State`),
+  then the seven new modules. Each line names what main.js needs from that module (window names,
+  re-exported names). A module it needs nothing from is a side-effect import (`import './x.js';`),
+  kept only for the order. When adding a module, add its line where its code sat in mls.js.
+- **3E's re-export line moved to main.js**, as 3E suggested. Modules that evaluate before the
+  module holding a name now import it from `main.js` (`./main.js` or `../main.js`). main.js is the
+  entry, so it's mid-evaluation for the whole graph, and importing from it never triggers an
+  evaluation. The line has 14 names: 3E's seven, plus the five power-math names
+  (`power/allLeagues.js`), `getPowerLeagueKind` (`leagues/sync.js`) and `refreshPowerRankings`
+  (`render/roster.js`). All three importers evaluate before `power/*.js`. A direct import would pull
+  `power/shared.js` → `futureValue.js` → `rosterCard.js` → … in front of them. The rule from 3E
+  still holds: **import a name directly only if its module and that module's whole import subtree
+  already evaluate before the importer; otherwise import it from main.js.** The new modules
+  themselves evaluate last, so they import directly.
+
+#### Load order
+
+Simulated evaluation from `main.js` (a throwaway script: depth-first over static imports; lists every
+top-level statement that isn't a function or literal declaration; flags a load-time read of an
+import whose module hasn't finished). The result is main's order exactly, with `lineup/monteCarloUi.js`
+/ `statsEngine.js` renamed and the seven new modules where legacy.js was:
+`… render/dashboard → shortcuts → power/directionLabels → power/snapshot → power/rosterCard →
+power/futureValue → power/shared → lineup/injuryAudit → sim/matchup → main`. The list of load-time
+effects is identical, in the same order, and the TDZ check finds nothing. None of the new modules has
+load-time code beyond declarations and literals (`POWER_AGE_CURVES`, `let _powerAgeIndex = null`, …).
+
+**Repointed imports:** 14 modules' `from './legacy.js'` / `'../legacy.js'` lines now say `main.js`
+(names unchanged). `leagues/sync.js` imports `clearSimResults` from `../sim/ui.js`. main.js's
+window-name imports now come from their modules (the `window.x = x;` block is untouched: still 72
+names, same order).
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (98 precached). `node --test` 157/157.
+  `cd tests && npx playwright test`: **66/66**, screenshots identical (no baseline changed).
+- New `tests/mls-sim.spec.mjs` (kept) for the card's "sim results match pre-move output for a fixed
+  seed". It seeds `Math.random` in the page (init script) and in the worker (the test rewrites the
+  worker script on its way in), runs `runMatchupSimulation` from the app's own `sim/ui.js` with fixed
+  teams (history, projection, actual score, short-sample fallback, bench and waiver insights), and
+  posts a raw message to a fresh worker. It pins the exact numbers (93.71% / 6.29%, every player's
+  boom/bust and range, the worker's 89.7 / 10.3). It passes on this branch, **and on origin/main's
+  code** with only the two paths swapped back to `lineup/monteCarloUi.js` / `lineup/worker.js`.
+- Throwaway spec (not committed), run on origin/main and this branch at both widths with the same
+  seed. The JSON is **identical** apart from the expected file paths: window property names, the
+  power strip and the power-rankings table (rankings source, then market), `runPositionalStrength`,
+  `goToPowerRankings`, three in-app simulator runs (the last with Waiver Insights on), the fixed-team
+  simulator HTML, the raw worker result, `lookupSimPlayer` (found and not found), the Global Injury
+  Audit output, toasts, and every localStorage key and value. Run twice on main, it gave
+  byte-identical output, so the seeding is deterministic.
+- Found while doing this: with the fixture league, **"Run Simulation" never reaches the worker**. It
+  stops at "Not enough roster data to simulate this matchup yet", on main too. The smoke test only
+  checks that the results box isn't empty, so it passed without exercising the worker.
+  `mls-sim.spec.mjs` closes that gap. Making the fixture league simulate end to end would need
+  matchups and weekly stats in the Sleeper fixtures. That's a test-fixture follow-up, not an app bug.
+
+#### Other changes
+
+- `sw.js`: removed `/js/mls/legacy.js` and the three `/lineup/*.js` sim files; added the seven new
+  modules and `/js/mls/sim/{ui,stats,worker}.js` after `/js/mls/shortcuts.js`. The PRECACHE comment
+  now names `js/mls/sim/worker.js`. CACHE_NAME `v2.8.52` → `v2.8.53`.
+- `tests/unit/statsEngine.test.mjs` imports `../../js/mls/sim/stats.js` (header comment says so, in
+  waiverScanner.test.mjs's style). The file keeps its name.
+- `lineup/index.html`: three comments that pointed at `js/mls/legacy.js` now name
+  `power/snapshot.js` / `power/rosterCard.js`. Comments only, so screenshots are unaffected.
+- README: the `/js` line mentions `sim/` and says main.js's import list sets the load order; the
+  `/lineup` line no longer lists the sim files.
+
+#### Left for later chunks
+
+- **The MLS track's split is done.** Next on it: 5B (inline handlers, part 1). The 72-name `window.*`
+  block in main.js is unchanged. 5B/5C remove names from it as the handlers go. A window name that
+  is also in the re-export line (`renderSyncLogs`) must stay exported after its window line goes.
+- `scout/waiverInsights.js` doesn't exist (see above). The owner added runbook card **3G** for it
+  (with the trade-verdict block inside `runScout`). Step 1 turns both blocks into functions with no
+  user-visible change; step 2 fixes the Waiver Insights bug described in "3F follow-up" below.
+- Comments inside the moved sim files still start `// monteCarloUi.js`, `// statsEngine.js`,
+  `// worker.js` and name each other by the old file names. `js/shared/api/sleeperStats.js` refers
+  to "statsEngine.js". Moved power code says "this file" about things now in other files (for
+  example "Same fallback lineup the rest of this file uses" in power/shared.js). These are for 5D's
+  comment sweep, along with the ones 3A–3E listed.
+- 6A (storage keys through keys.js) can start once 2C (merged) and 3F are on main.
+
+### 3F follow-up — Waiver Insights finds no free agents until the Scout tab has run (found; 3G fixes it)
+
+**Reported by the owner while testing 3F.** In the same Sleeper league with the same ROS and Weekly
+rankings, Run Matchup Simulations with Waiver Insights on said "Checked the top 9 available free
+agents across RB WR TE…" on main, and "No free agents could be compared against a starter you can
+still change this week…" on the 3F branch, every time.
+
+**Not caused by 3F.** The code is identical on both trees. A throwaway Playwright check called
+`getTopWaiverCandidatesByPosition` on origin/main and on the 3F branch with the same rankings. Both
+returned **0 candidates** with `window.sleeperPosByName` unset, and the **same 12** candidates, in
+the same order, once it was filled.
+
+**What it depends on.** Rankings files carry no positions, so `getTopWaiverCandidatesByPosition`
+(`js/mls/trade/waiverValue.js`) takes each free agent's position from `window.sleeperPosByName` and
+otherwise from loaded Market data (`State.marketRankings`, saved in localStorage under
+`mds_season_market`). A player with neither is skipped. `window.sleeperPosByName` isn't saved and
+isn't built by a Sleeper sync. Only `runScout` (`js/mls/scout/engine.js`) builds it, so it exists
+only after Scan Pasted List, Analyze Trade or another Scout action that calls it has run in this page
+session, or after switching leagues while the Scan Pasted List box still holds names
+(`switchActiveLeague` in `leagues/sync.js` re-runs the scan then).
+With neither the cache nor Market data, Waiver Insights gets zero candidates. It then shows the
+"No free agents could be compared" message, which blames game history and kickoffs instead.
+
+So the result depends on what else the person did in that tab, and on which origin they're on (a
+preview deploy has its own localStorage, so no saved Market data). The most likely explanation for
+the report: the main session had run a Scout scan or had Market data saved, and the branch session
+had neither. To confirm in the app, run Scan Pasted List with any name on the branch, then run the
+simulation again; it should check free agents. Or reload main and run the simulation first thing;
+it should show the empty message.
+
+**Fix: runbook card 3G, step 2** (the owner's call: 3G already opens Waiver Insights). Have Waiver
+Insights build the position lookup when it's missing, the same way `runScout` does (a shared
+`ensureSleeperPosByName()`), or read positions from the Sleeper player map `runMatchupSim` already
+loads. Also, when there are zero candidates, say why ("no ranked free agents with a known
+position") instead of the history/kickoff message. Add a test that runs Waiver Insights in a fresh
+page with no Scout run first. Note for that test: the fixture league rosters all 24 players in
+`tests/fixtures/rankings.csv`, so it has no free agents at all. The test needs extra unrostered
+names in its rankings.

@@ -4,7 +4,7 @@ import { escapeHtml } from '../compat.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { attachPlayerAutocomplete } from '../players.js';
-import { loadRosterTab } from '../legacy.js';
+import { loadRosterTab } from '../main.js';
 
     // --- ADD PLAYER MANUALLY: keyboard fast path + "Added this session" list ---
     // Built for keying in a whole league from the keyboard: type a name, Enter picks the
