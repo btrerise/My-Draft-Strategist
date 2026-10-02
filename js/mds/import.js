@@ -196,6 +196,10 @@ function parseExcel(file) {
                 fullName: `${sp.first_name} ${sp.last_name}`,
                 lowerName: `${sp.first_name} ${sp.last_name}`.toLowerCase(),
                 pos: (sp.position || "").toUpperCase(),
+                // Every position Sleeper scores the player at: a two-way player such as Travis
+                // Hunter is position "DB" with fantasy_positions ["DB", "WR"], and rankings list
+                // him as a WR. Refactor 7A; before that he never matched a Sleeper ID.
+                fantasyPos: (Array.isArray(sp.fantasy_positions) ? sp.fantasy_positions : []).map(p => String(p).toUpperCase()),
                 team: sp.team ? sp.team.toUpperCase() : ""
             }));
 
@@ -241,7 +245,7 @@ function parseExcel(file) {
             for (let i = 0; i < sleeperArray.length; i++) {
                 let sp = sleeperArray[i];
                 let isName = typeof isNameMatch === 'function' ? isNameMatch(cleanName, sp.fullName) : cleanName.toLowerCase() === sp.lowerName;
-                let isPos = posGroup === "FLEX" || sp.pos === posGroup;
+                let isPos = posGroup === "FLEX" || sp.pos === posGroup || sp.fantasyPos.includes(posGroup);
                 
                 if (isName && isPos) {
                     fallbackId = sp.id;

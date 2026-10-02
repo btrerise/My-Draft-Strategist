@@ -14,18 +14,21 @@
 //
 // Response: { source: 'live' | 'saved', short: boolean, savedAt, liveCount, meta, players }
 //   source 'saved' = today's list was short (or FFC failed) and this is the last full list,
-//   captured at savedAt. short = true when the list being served is itself under FULL_LIST_MIN
-//   (no full list saved yet). players are FFC's rows unchanged: { name, position, team, bye,
+//   captured at savedAt. short = true when the list being served is itself under the format's
+//   FULL_LIST_MIN (no full list saved yet). players are FFC's rows unchanged: { name, position, team, bye,
 //   adp, ... } with position 'PK' for kickers and 'DEF' for team defenses.
 // Errors: { error } with 404 (unknown format) or 502 (FFC unreachable and nothing saved).
 
-// Formats offered. FFC also has 'dynasty' and 'rookie', but even in August their lists are far
-// from a draft pool (2025: 85 and 34 players), so they're left out.
-export const FFC_FORMATS = ['standard', 'half-ppr', 'ppr', '2qb'];
+// Formats offered. FFC also has 'dynasty' (startup drafts), but even in August its list is far
+// from a startup pool (2025: 85 players for a 15+ round draft), so it's left out.
+export const FFC_FORMATS = ['standard', 'half-ppr', 'ppr', '2qb', 'rookie'];
 
-// A list with at least this many players counts as a full draft pool. In-season 2025 lists ran
-// 156-249; the thin post-kickoff 2026 ones 29-200 (2QB pools its window over a whole month).
-export const FULL_LIST_MIN = 150;
+// A list with at least this many players counts as a full draft pool for its format. Redraft:
+// end-of-preseason 2025 lists ran 156-249; the thin post-kickoff 2026 ones 29-200 (2QB pools its
+// window over a whole month). Rookie drafts are only 3-4 rounds (30-48 picks in 10-12 team
+// leagues) and FFC's rookie lists run 32-45 players in a normal summer (2021-2025, except 2024's
+// 14-draft year, which was empty), so 30 counts as full there.
+export const FULL_LIST_MIN = { 'standard': 150, 'half-ppr': 150, 'ppr': 150, '2qb': 150, 'rookie': 30 };
 
 const FFC_TIMEOUT_MS = 10000;
 const EDGE_CACHE_SECONDS = 6 * 60 * 60;
@@ -84,7 +87,7 @@ export async function onRequestGet(context) {
     const now = new Date().toISOString();
     let body;
 
-    if (live && live.players.length >= FULL_LIST_MIN) {
+    if (live && live.players.length >= FULL_LIST_MIN[format]) {
         body = { source: 'live', short: false, savedAt: now, liveCount: live.players.length, meta: live.meta, players: live.players };
         if (store) {
             waitUntil((async () => {

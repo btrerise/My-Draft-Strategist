@@ -1009,7 +1009,7 @@ results quoting that page):
 - **List sizes.** End of 2025 preseason: PPR 249 (20 K, 23 DEF), Standard 221, 2QB 215,
   Half-PPR 156 (only 4 K, 8 DEF), Dynasty 85, Rookie 34. Today, 2026-10-02: PPR 29, Half 54,
   Standard 118, 2QB 200 (its window is a whole month), Dynasty and Rookie 0. So MDS offers the
-  four redraft formats only. FFC's per-player ADP history (an undocumented graph feed on its
+  four redraft formats and, since the follow-up below, rookie drafts; startup dynasty is left out. FFC's per-player ADP history (an undocumented graph feed on its
   site, not used by the app) shows 2026 PPR had 226–240 players a day from July through
   September 15, then fell off after kickoff.
 - **CORS: none.** Replies carry no `Access-Control-Allow-Origin`, with or without an `Origin`
@@ -1104,10 +1104,9 @@ back to.
   - **In-season lists** (the same run with FFC's `year` rewritten to 2025, KV bound): **PPR
     249** (20 K, 23 DEF), **Standard 221** (17 K, 20 DEF), **2QB 215** (17 K, 19 DEF),
     **Half-PPR 156** (4 K, 8 DEF; FFC's own Half-PPR list is thin on K/DEF). All four were
-    saved to KV. All but one player per format matched a Sleeper ID. The exception is Travis
+    saved to KV. All but one player per format matched a Sleeper ID. The exception was Travis
     Hunter: FFC lists him as WR, Sleeper as DB (`fantasy_positions` ['DB', 'WR']), so the position
-    check in `processData` rejects him. He stays in the pool with a `custom_` ID; a rankings
-    upload treats him the same way. Defenses come out as "Dallas Cowboys"/DAL etc., kickers as
+    check in `processData` rejected him (fixed in the follow-up below). Defenses come out as "Dallas Cowboys"/DAL etc., kickers as
     K with Sleeper IDs, byes from FFC, injuries from Sleeper.
   - **Then today again with that KV:** PPR, Half and Standard fall back to the saved lists
     (249/156/221) with the "last full list, from <date>. Today's list only has N players" toast
@@ -1124,7 +1123,46 @@ back to.
 - **5D's comment sweep:** a few comments still mention LeagueLogs (`lineup/mls.js` near ROS
   auto-fetch and the rookie-pick detector; the 2A header in `js/mds/market.js` names the old
   LEAGUE LOGS INTEGRATION marker). Also the `.leaguelogs-attribution` class name.
-- Two-way players such as Travis Hunter (Sleeper: DB) fail `processData`'s position check
-  (pre-existing, uploads too). A fix would accept Sleeper's `fantasy_positions`, as a deliberate behavior change.
+- ~~Two-way players such as Travis Hunter fail `processData`'s position check.~~ Fixed in the
+  follow-up below.
 - `tests/`, `docs/`, `scripts/` (and now `functions/`) are served as static files by Pages; the
   function file has no secrets.
+
+#### 7A follow-up (same branch, at the owner's request): rookie drafts, two-way players
+
+- **Rookie drafts.** Fetch Market Value and Quick-Start offer **"Dynasty - Rookie Draft"**
+  (`ffc|rookie`). Rookie drafts are only 3-4 rounds (30-48 picks in 10-12 team leagues), so
+  `FULL_LIST_MIN` in the function is now per format: 150 for the redraft formats and **30 for
+  rookie**. FFC's rookie lists from past summers ran 32 (2021), 40 (2022), 45 (2023) and 34
+  (2025); 2024 had only 14 mock drafts and an empty list. Their last ADP sits around pick 31-36,
+  so FFC covers about three rounds of a 12-team rookie draft. Picks after that are players FFC
+  didn't list. Startup dynasty (`dynasty`) is still left out: 85 players at its 2025 peak.
+- **Two-way players.** `processData` (`js/mds/import.js`) now accepts a Sleeper match when the
+  row's position is any of the player's `fantasy_positions`, not only `position`. Travis Hunter
+  (Sleeper position DB, fantasy_positions DB and WR) matches as a WR, with his Sleeper ID,
+  rookie flag and injury status. This covers rankings uploads and pastes too, not only
+  Quick-Start.
+- **FFC's defensive players are dropped** from Quick-Start (its 2022 rookie list had a DB, an OT
+  and an OLB): only QB/RB/WR/TE/PK/DEF rows are kept, as LeagueLogs' Quick-Start kept only
+  those six.
+- An empty FFC list now says why ("…is empty right now because few mock drafts happen this
+  time of year. Upload your own rankings instead."), and the saved-list toast says "Today's
+  list is empty" instead of "only has 0 players".
+- **Tests:** `ffc.test.mjs` +2 (a 34-player rookie list is full and saved; an empty one falls
+  back to the saved list). `mds-sync.spec.mjs` gained a rookie Quick-Start test. It serves the
+  fixture player map plus a Hunter-shaped player from the spec only, so the shared fixtures and
+  MLS screenshots don't change. It checks the `/api/ffc/rookie` request, Hunter matched as WR1
+  with ID 12530 and the rookie flag, an OLB dropped, and the "FFC: Dynasty - Rookie Draft"
+  label. **It fails without the import.js change.** The FFC error test also covers the
+  empty-list toast. No screenshot changed: the new option is inside the dropdown.
+- **Live check** (same throwaway script): with the 2025 lists, PPR now matches **249/249**
+  players to Sleeper (Hunter included), and the rookie list loads **34 players**, all matched,
+  as a full list, and is saved. Today's rookie list is empty: with nothing saved, Quick-Start
+  shows the empty-list error; with the saved list, it loads those 34 players with the "Today's
+  list is empty" toast.
+- Checks: `check-precache` OK, `node --test` 157/157, Playwright 50/50. CACHE_NAME stays
+  `v2.8.47` (the branch isn't merged yet, so it's still above main's `v2.8.46`); no file added
+  or removed.
+- **Owner:** the `FFC_LISTS` KV binding is set up (Production and Preview, done with
+  Cloudflare's AI agent on 2026-10-02). It takes effect with the first deployment that includes
+  `functions/`, i.e. when this branch is merged to main (or a Preview deployment of it).

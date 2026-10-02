@@ -6,8 +6,18 @@
 // The fixture Sleeper routes come from helpers.mjs. Routes added here are registered later, so
 // Playwright tries them first: the draft endpoints, an unknown user, and /api/ffc/ (the
 // Cloudflare Pages Function, which the static test server doesn't run).
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, RANKINGS_CSV, FIXTURE_LEAGUE_ID } from './helpers.mjs';
+
+// The fixture player map plus a two-way player the way Sleeper lists Travis Hunter: position
+// DB, fantasy_positions DB and WR. Served only by the test that needs him, so the shared
+// fixtures (and MLS's rosters and screenshots) stay as they are.
+const FIXTURE_PLAYERS = JSON.parse(readFileSync(new URL('./fixtures/sleeper/players-nfl.json', import.meta.url), 'utf8'));
+const TWO_WAY_PLAYER = {
+    player_id: '12530', first_name: 'Travis', last_name: 'Hunter', full_name: 'Travis Hunter', search_full_name: 'travishunter',
+    position: 'DB', fantasy_positions: ['DB', 'WR'], team: 'JAX', years_exp: 0, status: 'Active', active: true, injury_status: null, age: 22, number: 12,
+};
 
 const DRAFT_ID = '1100000000000000001';
 const toast = (page, text) => page.locator('.toast-message').filter({ hasText: text });
@@ -118,6 +128,33 @@ test.describe('Draft Strategist network features', () => {
         await expectClean(page, state);
     });
 
+    test('Quick-Start for a rookie draft: a two-way player matches by fantasy position, defensive players are dropped', async ({ page }) => {
+        const state = await openApp(page, '/');
+        await page.route(/^https:\/\/api\.sleeper\.app\/v1\/players\/nfl$/, (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify({ ...FIXTURE_PLAYERS, 12530: TWO_WAY_PLAYER }),
+        }));
+        const ffcRequests = await stubFfc(page, {
+            players: [
+                ffcRow('Travis Hunter', 'WR', 'JAX', 2.1, 8),
+                ffcRow('Some Edge Rusher', 'OLB', 'NYG', 20.4, 14), // IDP: dropped
+                ffcRow('Some Rookie RB', 'RB', 'LV', 5.5, 8),
+            ],
+        });
+        await page.selectOption('#adpFormatSelect', 'ffc|rookie');
+        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
+        await expect(toast(page, 'Quick-Start loaded 2 players from Fantasy Football Calculator (Dynasty Rookie ADP).')).toBeVisible();
+
+        expect(ffcRequests).toEqual(['/api/ffc/rookie']);
+        const { pool } = await savedDraft(page);
+        expect(pool.map(p => [p.rank, p.name, p.posDisplay, p.team, p.adp, p.isRookie, p.sleeperId])).toEqual([
+            [1, 'Travis Hunter', 'WR1', 'JAX', '2.1', true, '12530'],
+            [2, 'Some Rookie RB', 'RB1', 'LV', '5.5', false, 'custom_1'],
+        ]);
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        expect(meta.format).toBe('FFC: Dynasty - Rookie Draft');
+        await expectClean(page, state);
+    });
+
     test('Quick-Start replaces the pool even with the aggregate toggle on', async ({ page }) => {
         const state = await openApp(page, '/');
         await pasteRankings(page);
@@ -153,6 +190,13 @@ test.describe('Draft Strategist network features', () => {
         await expect(toast(page, 'Failed to load Quick-Start.')).toContainText("Fantasy Football Calculator Error: Fantasy Football Calculator couldn't be reached (HTTP 503).");
         // The app logs the failure itself, and the stubbed 502 counts as a local error; both expected here.
         state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('HTTP 503') && !e.includes('/api/ffc/') && !e.includes('502')));
+
+        // An empty list (a format nobody mock-drafts this time of year, nothing saved).
+        await page.unroute(/^http:\/\/localhost:\d+\/api\/ffc\//);
+        await stubFfc(page, { short: true, players: [] });
+        await page.getByRole('button', { name: /Quick-Start/ }).first().click();
+        await expect(toast(page, 'Failed to load Quick-Start.')).toContainText("Fantasy Football Calculator's PPR list is empty right now because few mock drafts happen this time of year.");
+        state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('list is empty right now')));
 
         await page.selectOption('#adpFormatSelect', 'sleeper|adp_ppr');
         await page.getByRole('button', { name: /Quick-Start/ }).first().click();

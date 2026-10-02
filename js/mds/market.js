@@ -21,7 +21,9 @@ import { normalizeName } from '../shared/names.js';
         if (res.source === 'saved') {
             const why = res.liveCount == null
                 ? "Fantasy Football Calculator couldn't be reached"
-                : `Today's list only has ${res.liveCount} players because few mock drafts happen this time of year`;
+                : res.liveCount === 0
+                    ? "Today's list is empty because few mock drafts happen this time of year"
+                    : `Today's list only has ${res.liveCount} players because few mock drafts happen this time of year`;
             return `This is Fantasy Football Calculator's last full ${label} list, from ${formatFfcDate(res.savedAt)}. ${why}.`;
         }
         if (res.short) {
@@ -32,10 +34,13 @@ import { normalizeName } from '../shared/names.js';
 
     // FFC names team defenses "Seattle Defense" / "LA Rams Defense"; Sleeper keys each defense
     // by team code with the full team name ("Seattle Seahawks"), which is what processData
-    // matches against. Kickers are "PK", which processData already reads as K.
+    // matches against. Kickers are "PK", which processData already reads as K. Defensive
+    // players (FFC's rookie lists have had a DB, OT or OLB) are dropped, as LeagueLogs'
+    // Quick-Start dropped anything but QB/RB/WR/TE/K/DEF.
+    const FFC_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'PK', 'K', 'DEF'];
     function ffcRowsForImport(players, sleeperMap) {
         return players
-            .filter(p => p && p.name)
+            .filter(p => p && p.name && FFC_POSITIONS.includes(String(p.position || '').toUpperCase()))
             .slice()
             .sort((a, b) => parseFloat(a.adp) - parseFloat(b.adp))
             .map(p => {
@@ -73,7 +78,7 @@ import { normalizeName } from '../shared/names.js';
 
         try {
             const res = await fetchFfcAdp(format, { errorPrefix: 'Fantasy Football Calculator Error' });
-            if (res.players.length === 0) throw new Error(`Fantasy Football Calculator's ${label} list is empty right now.`);
+            if (res.players.length === 0) throw new Error(`Fantasy Football Calculator's ${label} list is empty right now because few mock drafts happen this time of year. Upload your own rankings instead.`);
 
             let sleeperMap = {};
             try {

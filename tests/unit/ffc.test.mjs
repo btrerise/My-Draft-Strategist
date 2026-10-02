@@ -58,13 +58,36 @@ async function call(format, { env = { FFC_LISTS: kv } } = {}) {
 }
 
 describe('functions/api/ffc/[format].js', () => {
-    test('offers the four redraft formats; dynasty and rookie lists never fill a draft pool', () => {
-        assert.deepEqual(FFC_FORMATS, ['standard', 'half-ppr', 'ppr', '2qb']);
+    test('offers the four redraft formats and rookie drafts; startup dynasty lists never fill a pool', () => {
+        assert.deepEqual(FFC_FORMATS, ['standard', 'half-ppr', 'ppr', '2qb', 'rookie']);
         assert.deepEqual(Object.keys(FFC_FORMAT_LABELS).sort(), [...FFC_FORMATS].sort());
-        assert.equal(FULL_LIST_MIN, 150);
+        assert.deepEqual(Object.keys(FULL_LIST_MIN).sort(), [...FFC_FORMATS].sort());
+        assert.equal(FULL_LIST_MIN.ppr, 150);
+        assert.equal(FULL_LIST_MIN.rookie, 30);
     });
 
-    test('an unknown format is a 404 and FFC is not called', async () => {
+    test('rookie drafts are 3-4 rounds, so a 34-player rookie list is full and saved', async () => {
+        ffcRoutes[ffcUrl('rookie')] = { body: ffcBody(34, { type: 'Dynasty Rookie' }) };
+        const res = await call('rookie');
+        assert.equal(res.body.source, 'live');
+        assert.equal(res.body.short, false);
+        assert.equal(JSON.parse(kv.data.get('ffc:rookie')).players.length, 34);
+    });
+
+    test('a rookie list under 30 is short and falls back to the saved one', async () => {
+        ffcRoutes[ffcUrl('rookie')] = { body: ffcBody(0, { type: 'Dynasty Rookie' }) };
+        const none = await call('rookie');
+        assert.equal(none.body.short, true);
+        assert.equal(none.body.players.length, 0);
+        edge.clear();
+        kv.data.set('ffc:rookie', JSON.stringify({ savedAt: '2026-08-20T10:00:00.000Z', meta: {}, players: ffcPlayers(40) }));
+        const saved = await call('rookie');
+        assert.equal(saved.body.source, 'saved');
+        assert.equal(saved.body.liveCount, 0);
+        assert.equal(saved.body.players.length, 40);
+    });
+
+    test('an unknown format (startup dynasty included) is a 404 and FFC is not called', async () => {
         const res = await call('dynasty');
         assert.equal(res.status, 404);
         assert.match(res.body.error, /Unknown format "dynasty"/);

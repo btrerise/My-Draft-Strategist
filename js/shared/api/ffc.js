@@ -13,7 +13,8 @@ export const FFC_FORMAT_LABELS = {
     'ppr': 'PPR',
     'half-ppr': 'Half-PPR',
     'standard': 'Standard',
-    '2qb': '2QB/Superflex'
+    '2qb': '2QB/Superflex',
+    'rookie': 'Dynasty Rookie'
 };
 
 /**
