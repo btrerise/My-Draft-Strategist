@@ -880,3 +880,71 @@ Sleeper records gained the `player_id` real ones have (all 12,229 live records h
 
 **Checks run.** `check-precache` OK; `node --test` 142/142; Playwright 42/42, screenshots
 identical.
+
+### Planned, not scheduled — Replace LeagueLogs (owner's direction, recorded after 2C)
+
+**Why.** LeagueLogs retired its public API (every URL answers 410; see 2C's entry). That breaks
+MDS's Quick-Start and its three LeagueLogs Fetch Market Value options, and MLS's LeagueLogs
+market source. Not urgent: it's outside draft season, so the owner chose to plan it rather than
+rush it in.
+
+**Owner's decisions.**
+- **MDS → Fantasy Football Calculator (FFC).** Quick-Start is meant to stand in for an uploaded
+  rankings file, not just to fill an ADP column, and FFC is the closest fit to what LeagueLogs
+  gave MDS: a full ranked player list per scoring format, K and DEF included. FFC also replaces
+  the three LeagueLogs options in Fetch Market Value. The Sleeper Native ADP options stay.
+- **MLS → FantasyCalc only.** It's already MLS's default. Remove the LeagueLogs choice.
+- **MDS gets no trade values** (no FantasyCalc option in MDS).
+
+**What a session doing this should know.**
+- FFC's documented free API ([ADP REST API](https://help.fantasyfootballcalculator.com/article/42-adp-rest-api),
+  e.g. `fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2026`) returns ADP from mock
+  drafts, keyed by **player name**, not Sleeper ID. Not yet verified from a session: the
+  environment's network allowlist doesn't include `fantasyfootballcalculator.com`, so add it
+  first, then check the formats offered (standard / half-ppr / ppr / 2qb / dynasty / rookie?),
+  the response fields, K/DEF coverage, CORS for a browser call, and the terms (the help page's
+  title says free for personal and commercial use; check whether attribution is required).
+- If "rankings" should mean *expert* rankings rather than ADP, FFC's API isn't that. The
+  closest free source found is DynastyProcess's `values-players.csv` on GitHub (FantasyPros ECR,
+  1QB and 2QB, weekly, CORS allowed, ~350 players, needs its `db_playerids.csv` for Sleeper IDs).
+  Ask the owner before switching.
+- Suggested build for Quick-Start: turn FFC's rows into the same rows a rankings upload produces
+  (name, pos, team, bye, ADP) and send them through `processData` in `js/mds/import.js`. That
+  reuses its name → Sleeper ID matching, injuries, rookie flags and diagnostics instead of a
+  second copy. Put the fetch in `js/shared/api/` (new `ffc.js`, or in `market.js`), with the
+  `mdsFetch` timeout and an error message per caller like the other API modules.
+- Keep the `window.quickStartLeagueLogs` / `window.fetchLeagueLogsADP` names the inline
+  handlers call (rule 4) and change only the button text; 5A can rename them. Update the
+  LeagueLogs attribution blocks in both HTML files.
+- MLS: drop the `leaguelogs` `<option>` from both Market Source selects in `lineup/index.html`,
+  map a saved `mls_market_settings.source === 'leaguelogs'` to `'fantasycalc'` on load (keep the
+  key name, rule 4), fix the attribution link (mls.js, search `leaguelogs.com`), and remove the
+  LeagueLogs branch of `fetchMarketConsensusData` plus `fetchLeagueLogsMarket` and its tests.
+- It's a behavior change: the MDS Setup screenshots will change on purpose (update baselines
+  and list them). Bump CACHE_NAME. Rewrite the LeagueLogs tests in `tests/mds-sync.spec.mjs`
+  for FFC.
+
+**When.** One session, as a standalone job like the line-ending and player-map fixes.
+- Best: **before 3A starts.** The MLS part edits `lineup/mls.js`, which 3A–3F slice up by line
+  range; editing it first avoids conflicts. The MDS part is unaffected by the remaining chunks
+  except 5A, which rewrites the Quick-Start and Fetch Market Value `onclick` handlers, so it
+  should come before 5A too.
+- If 3A has already started: do the MDS part any time before 5A, and the MLS part right after 3D
+  (which moves the market code into its own file).
+- Latest: before the 2027 draft season.
+
+### Revisit after the runbook — nflmeta.org (owner's request)
+
+Not a LeagueLogs replacement (no ADP, rankings, projections or trade values). Worth a look once
+every runbook chunk is done. From its official SDKs (`@nflmeta/sdk` on npm, `nflmeta` on PyPI;
+the site itself was blocked from the session):
+- **Provides:** teams, rosters, player bios/careers, games, play-by-play, stats, standings,
+  history; current-season official injury reports (reported vs. game status), game-day
+  inactives, live player stats, cap space, bye weeks by season, team power rankings.
+- **Constraints:** needs an API key sent as a header, and the SDK says to use it server-side, so
+  the site would need a small proxy holding the key (a Cloudflare Pages Function fits, since the
+  site is on Pages). Responses carry no Sleeper IDs (outside IDs are stripped), so players match
+  by name (`normalizeName`). Pricing and quotas not checked.
+- **Possible uses:** bye weeks per season to replace the hard-coded `BYE_WEEKS_2026` in both
+  apps (needed by the 2027 season anyway); MLS warnings when a starter is inactive or ruled
+  out; power rankings or rosters for context.
