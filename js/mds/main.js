@@ -1,10 +1,10 @@
 // Entry point of the Draft Strategist page (<script type="module"> in index.html), added in
 // refactor chunk 2A when js/mds.js became the js/mds/ module graph.
 //
-// legacy.js is imported first. It imports every other js/mds/ module in the order their code sat
+// init.js is imported first. It imports every other js/mds/ module in the order their code sat
 // in mds.js, so the load-time code (storage migration, State, event listeners) runs in the
-// original order.
-import './legacy.js';
+// original order. (Until refactor chunk 2B this was legacy.js.)
+import './init.js';
 import { draftPlayer, switchDraftProfile, undoDraft } from './state.js';
 import { saveInlineEdit, setPosFilter, showTab, toggleCardDetails, toggleEditBar, toggleMenu } from './ui.js';
 import { resetPicksOnly, saveSettings } from './settings.js';
@@ -13,7 +13,11 @@ import { addAndSyncSleeperDraft, createManualDraft, handleSmartSync, renderLiveS
 import { handleQueueDragEnd, handleQueueDragOver, handleQueueDragStart, handleQueueDrop, moveQueueItem, toggleQueue } from './queue.js';
 import { processPaste } from './import.js';
 import { fetchLeagueLogsADP, processManualADP, quickStartLeagueLogs } from './market.js';
-import { cycleAffinity, exportTeam, sendRosterToLineupStrategist, toggleHeadshots, toggleQueueCollapse, toggleRecapMath } from './legacy.js';
+import { toggleHeadshots, toggleQueueCollapse } from './tracker.js';
+import { sendRosterToLineupStrategist } from './handoff.js';
+import { toggleRecapMath } from './recap.js';
+import { exportTeam } from './export.js';
+import { cycleAffinity } from './affinity.js';
 
 // The names the inline handlers (onclick="..." in index.html and in HTML these modules build)
 // and the tests call. They used to be `window.x = function` assignments inside mds.js; the

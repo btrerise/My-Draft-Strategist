@@ -4,7 +4,7 @@
 // (setPosFilter, toggleEditBar, toggleCardDetails, saveInlineEdit).
 import { savePlayerPool } from './storage.js';
 import { State, refreshDraftDropdown } from './state.js';
-import { renderBoard } from './legacy.js';
+import { renderBoard } from './tracker.js';
 
     // --- UI HELPERS ---
     // Generic debounce: delays calling fn until `wait` ms have passed since the last call.

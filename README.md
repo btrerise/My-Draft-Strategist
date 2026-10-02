@@ -8,7 +8,7 @@ The official repository for [My Draft Strategist](https://mydraftstrategist.com)
 
 * **`/css`** - Global stylesheet (`styles.css`) shared by every page.
 * **`/images`** - Brand assets: logos, favicons (`5775.svg`, `mls-favicon.svg`) and app icons.
-* **`/js`** - The boot safety net (`boot.js`, first script on every page), shared code (`shared/`: UI helpers exposed to the pages as `window.*` by `shared/globals.js`, the Sleeper and market-data API clients in `shared/api/`, the rankings parser, IndexedDB and storage-key registry in `shared/storage/`, and the bundled T-Score data in `shared/data/tscore.js`) and the Draft Strategist app (`mds/`: `main.js` is the entry point, `legacy.js` holds the code not yet split into modules).
+* **`/js`** - The boot safety net (`boot.js`, first script on every page), shared code (`shared/`: UI helpers exposed to the pages as `window.*` by `shared/globals.js`, the Sleeper and market-data API clients in `shared/api/`, the rankings parser, IndexedDB and storage-key registry in `shared/storage/`, and the bundled T-Score data in `shared/data/tscore.js`) and the Draft Strategist app (`mds/`: `main.js` is the entry point and holds the `window.*` exports, `init.js` sets the module load order and runs startup).
 * **`/lineup`** - The *Lineup Strategist* app: its HTML, PWA manifest and ES modules (`mls.js` and its imports).
 * **`/t-score`** - The *T-Score* tool (a single HTML page).
 * **`/scripts`, `/tests`** - Development checks only (see below). Not used by the site.

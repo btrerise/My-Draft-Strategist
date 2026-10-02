@@ -1,7 +1,7 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // INITIALIZE SETTINGS INPUTS (settings form, save, reset picks).
 import { State, getActiveDraft, saveActiveDraftState, saveAndRenderDraftState } from './state.js';
-import { renderBoard } from './legacy.js';
+import { renderBoard } from './tracker.js';
 
     // --- INITIALIZE SETTINGS INPUTS ---
     export function initSettingsUI() {
