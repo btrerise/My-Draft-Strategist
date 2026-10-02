@@ -67,8 +67,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   All Leagues, the Draft Strategist roster handoff, dismissing it) and 1 MLS Scout test
   (`mls-scout.spec.mjs`, 3C: rankings upload, Scan Pasted List in both scopes, Auto-Find in both
   lenses, a trade scout) and 1 MLS ranking-set test (`mls-rankings.spec.mjs`, 3D: one upload applied
-  to a second league from the preview, then a third through "Choose leagues..."). Each runs at both
-  widths: 60 Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
+  to a second league from the preview, then a third through "Choose leagues...") and 2 MLS keyboard
+  tests (`mls-keyboard.spec.mjs`, 3E: tab shortcuts, Escape, lock/undo/redo/swap by keyboard and where
+  focus lands after the lineup rebuilds). Each runs at both widths: 64 Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
   smoke test, but its output isn't screenshotted because it's random.
 
 ### Known gaps (good follow-ups, not blockers)
@@ -1618,3 +1619,131 @@ are the legacy names other modules still import.
   `parseRankingsFiles` import it described moved to `rankings/uploadPreview.js`. Comments inside moved
   code still say "this file", "mls.js", "utils.js" or "rankingsParser.js" (5D's sweep).
 - Next on the MLS track: 3E (RENDERERS onward).
+
+### 3E — MLS: renderers
+
+Everything from `// --- RENDERERS ---` up to `// --- POSITIONAL POWER RANKINGS: SHARED MATH ---` left
+`js/mls/legacy.js`, **plus `window.onload`**, which 3A–3D left at the top of legacy.js for this chunk
+(1,364 lines in all; legacy.js is now 1,548). All of 3E's scope moved; no marker in the card's range
+is left in legacy.js. Same tooling as 3A–3D (acorn + eslint-scope in a scratch directory): a
+throwaway script assigned line ranges to modules, refused a statement straddling two ranges or a
+code line outside any statement, built each module's imports from legacy.js's module-scope
+references, added `export` where another module now needs a name, rejected any cross-module write to
+a moved binding, and simulated the evaluation order with a check for load-time reads of
+not-yet-evaluated imports. Checked afterwards against origin/main: every non-blank, non-import line of
+`js/mls/**/*.js` is present **exactly once**, once `export ` prefixes are ignored. The only lines that
+differ are comments: the new file headers, the re-export note below, and the updated top notes of
+legacy.js and init.js. Every named import resolves to an export, no import is unused, and the set of
+bare globals the js/mls code reads is unchanged. Indentation is unchanged.
+
+**Split by tab, not one render.js.** The functions share no local state beyond the rookie index
+(one module-level `let`, read only by the Roster tab), so per-tab files work. There's no
+`render/scout.js`: nothing in RENDERERS renders the Scout tab (3C moved that code to `scout/`). What
+the section held was each tab's renderer *and* its controls, so those moved together:
+
+| New file (under `js/mls/`) | From legacy.js |
+|---|---|
+| `render/rookies.js` | ROOKIE LOOKUP (`_rookieIndex`, `getRookieIndex`, `isRookiePlayer`) |
+| `render/roster.js` | The `// --- RENDERERS ---` marker and `loadRosterTab` (Roster tab) |
+| `render/lineup.js` | Lineup tab: `setPlayerLockState`, `toggleLock`, `isAutoLockOverridden`, `overrideAutoLock`, `unlockAllPlayers`, `slotAcceptsPos`, `initiateSwap`, `optimizeFlexKickoffOrder`, `optimizeLineup`, then (after the Dashboard block) `lineupRankBadge`, `renderLineupUI` |
+| `render/dashboard.js` | Dashboard (Setup tab), one contiguous block: `renderSyncLogs` (the sync-log accordion), `optimizeAllLineups` and `syncAllLeagues` (their buttons are on the Dashboard) |
+| `init.js` (appended) | `window.onload` (`export const onload`, from the top of legacy.js) and STARTUP CLEANUP (its `DOMContentLoaded` listener), in that order |
+| `shortcuts.js` | POWER-USER KEYBOARD SHORTCUTS (MLS), the document `keydown` listener |
+
+#### New convention: early modules reach moved names through legacy.js
+
+3A's rule says to repoint every `from './legacy.js'` line that names a moved function. **3E doesn't
+do that.** The modules that import `loadRosterTab`, `renderLineupUI` or `isAutoLockOverridden`
+(`state.js`, `nav.js`, `sos.js`, `lineup/gameInfo.js`, `lineup/earlyGames.js`, `leagues/addPlayer.js`,
+`leagues/sync.js`, `scout/waivers.js`, `rankings/sets.js`, `rankings/uploadPreview.js`,
+`rankings/rosFetch.js`) all evaluate *before* the point where the new modules belong. Importing
+from legacy.js never triggers an evaluation, because legacy.js is always on the stack. Importing
+from `render/*.js` does: that module and its imports would evaluate ahead of the importer. The
+simulation showed the effect when everything was repointed. `state.js` → `render/lineup.js` →
+`leagues/sync.js` → `leagues/scoutResults.js`, whose top level reads `State.activeLeagueId` while
+`State` is still in its TDZ (a load-time crash). The headshot setting and the SoS file listener
+would also have run ahead of nav.js's listeners.
+
+So those modules keep their `../legacy.js` import lines unchanged. legacy.js imports the moved names
+and **re-exports** them, in one `export { … };` line with a comment, right after its import list.
+init.js's new `onload` imports four names the same way (`checkForDraftStrategistHandoff`,
+`generateSoSGrid`, `updateMarketMetaDisplay`, `renderSyncLogs`). Their modules (handoff, sos,
+marketDisconnect, render/dashboard) evaluate after init.js, and a direct import would pull them in
+front of nav.js. The rule for 3F and later: **a module may import a name directly only if the
+exporting module, and its whole import subtree, already evaluates before the importer. Otherwise go
+through legacy.js's re-export line.** Re-run the evaluation simulation after any import change.
+`main.js` evaluates last, so it imports directly (the 9 window names moved to its `./render/lineup.js`,
+`./render/dashboard.js` and `./init.js` lines; the `window.x = x;` block is untouched).
+
+#### Load order
+
+legacy.js's import list gains, after `./trade/export.js`: `./render/rookies.js`, `./render/roster.js`,
+`./render/lineup.js`, `./render/dashboard.js`, `./shortcuts.js` (mls.js order). Simulated evaluation
+is main's order exactly, with the five new modules just before legacy.js:
+`… scout/marketDisconnect → rankings/rosFetch → trade/export → render/rookies → render/roster →
+render/lineup → render/dashboard → shortcuts → legacy → main`. No pre-existing module moved. None of
+the new render modules has load-time code beyond declarations (`let _rookieIndex = null` etc.). Two
+load-time effects changed where they register:
+- STARTUP CLEANUP's `DOMContentLoaded` listener now registers when init.js evaluates (before nav.js)
+  instead of in legacy.js's body. It's the only `DOMContentLoaded` listener in the MLS module graph.
+  The shared ones (banners, feedback form, scroll shadows, tooltips) come from `js/shared/globals.js`,
+  a separate module script that always runs first. All of them still run in the same order, and
+  this one only removes an unused localStorage key.
+- The shortcuts `keydown` listener registers in `shortcuts.js`, right before legacy.js's body
+  instead of inside it. It's the only document `keydown` listener in the MLS module graph, and it
+  still registers during module evaluation, so it still runs before the shared tooltips one (which
+  `js/shared/ui/tooltips.js` adds at `DOMContentLoaded`).
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (92 precached). `node --test` 157/157 (with
+  `tests/node_modules` installed). `cd tests && npm run check`: **64/64**, screenshots identical (no
+  baseline changed).
+- New `tests/mls-keyboard.spec.mjs` (kept), for the card's keyboard check: tab shortcuts 1–5,
+  a digit typed in a field doesn't switch tabs, Escape closes the drawer, lock by Enter, then Tab,
+  Ctrl+Z / Ctrl+Y, swap start and cancel by Enter, and where focus lands after each rebuild. Passes
+  on this branch **and** on main's code.
+- Throwaway spec (not committed), run on this branch and an origin/main worktree at both widths, with
+  **byte-identical** JSON: STARTUP CLEANUP removing a seeded `shared_sleeper_league_id`, window
+  property names, every shortcut (tab and hash), Escape (and the focus after it), the empty Roster
+  and Lineup states, the Roster HTML (rookie/taxi/SoS badges) and header, the Lineup and Bench HTML,
+  and focus plus toasts after each keyboard action: Optimize Lineup, lock, Tab, undo/redo, swap
+  start/cancel, an invalid swap (error toast), a valid starter↔bench swap, Unlock All through its
+  confirm dialog, override auto-lock, Optimize All and Sync All (toasts, button state, sync-log
+  accordion), Shift+→, then a reload (the onload path: tab, Lineup, Roster) and every localStorage
+  key and value. "Focus retention on pool rebuilds" is unchanged. After each lineup rebuild,
+  focus is on `<body>` on both trees, and Tab goes to the next control.
+  Run-to-run noise to know about: headshot `<img>` tags in the Roster HTML come and go between runs
+  on *both* trees. The test router aborts them, and `onerror="this.remove()"` races the snapshot. The
+  spec strips them before comparing.
+
+#### Other changes
+
+- `sw.js`: the five new modules added after `/js/mls/trade/export.js`. CACHE_NAME
+  `v2.8.51` → `v2.8.52`.
+- README: the `/js` line mentions `render/`.
+- Header comment on each new file. init.js's header no longer says onload is in legacy.js.
+  legacy.js's top note mentions 3E.
+
+#### Left for later chunks
+
+- **3F (delete legacy.js) inherits the re-export line.** When legacy.js goes, the early modules
+  above need another way to reach `loadRosterTab`, `renderLineupUI` and `isAutoLockOverridden`
+  (and init.js its four names) without pulling `render/*.js` ahead of them. The hard constraint is
+  `state.js`. It must not have `leagues/scoutResults.js` in its import subtree, or
+  `let _scoutResultsLeagueId = State.activeLeagueId;` reads `State` in its TDZ. Options: move the
+  re-export line to `main.js` (also always on the stack, so it never triggers an evaluation; the
+  importers would then import from `main.js`), or accept a reordered load and prove it safe by
+  simulation. Whatever 3F picks, record it as the convention.
+- 3F's code still in legacy.js imports `slotAcceptsPos` (Waiver Insights), `loadRosterTab`,
+  `isAutoLockOverridden` and `renderLineupUI` from `render/lineup.js` / `render/roster.js`, and
+  `render/roster.js` imports `refreshPowerRankings` from `../legacy.js` (now exported). Repoint that
+  when POSITIONAL POWER RANKINGS moves. `lookupSimPlayer` is still in legacy.js for 3F's
+  `sim/matchup.js`.
+- Comments inside moved code still say "above"/"below" about functions that are now in other files
+  (for example "see undoLineupChange/redoLineupChange above" in shortcuts.js), or name "this file",
+  `mls.js` or `utils.js` (5D's sweep).
+- 5B rewrites the inline handlers in these templates (`toggleLock`, `initiateSwap`,
+  `overrideAutoLock`, `unlockAllPlayers`, `deletePlayer`, Optimize/Sync All), which are now in
+  `js/mls/render/*`, as its card expects. `mls-keyboard.spec.mjs` should keep passing through that.
+- Next on the MLS track: 3F.

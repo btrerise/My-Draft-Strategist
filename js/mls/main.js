@@ -3,11 +3,11 @@
 //
 // legacy.js is imported first. It imports every other js/mls/ module in the order their code sat
 // in mls.js, so the load-time code (State, event listeners) runs in the original order.
-import { goToPowerRankings, initiateSwap, lookupSimPlayer, onload, optimizeAllLineups, optimizeLineup, overrideAutoLock, renderPowerRankingsTable, renderSyncLogs, runGlobalInjuryAudit, runMatchupSim, runPositionalStrength, scrollToPowerRankings, syncAllLeagues, toggleLock, unlockAllPlayers, updatePowerSetting } from './legacy.js';
+import { goToPowerRankings, lookupSimPlayer, renderPowerRankingsTable, runGlobalInjuryAudit, runMatchupSim, runPositionalStrength, scrollToPowerRankings, updatePowerSetting } from './legacy.js';
 import { redoLineupChange, undoLineupChange, updateLineupSetting } from './state.js';
 import { navigateFromDrawer, showTab, toggleDrawer } from './nav.js';
 import { exportMlsSettings, factoryReset, importMlsSettings } from './backup.js';
-import { goToSetupStep } from './init.js';
+import { goToSetupStep, onload } from './init.js';
 import { toggleMlsHeadshots } from './lineup/headshots.js';
 import { addEarlyTeam, removeEarlyTeam } from './lineup/earlyGames.js';
 import { addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, moveLeague, saveRequirements, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
@@ -26,6 +26,8 @@ import { fetchLeagueLogsADP, runMarketDisconnectAnalysis, toggleDisconnectMode, 
 import { autoFetchRosRankings } from './rankings/rosFetch.js';
 import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './settings.js';
 import { copyLineupAsText, exportLineup } from './trade/export.js';
+import { initiateSwap, optimizeLineup, overrideAutoLock, toggleLock, unlockAllPlayers } from './render/lineup.js';
+import { optimizeAllLineups, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
 
 // The names the inline handlers (onclick="..." in lineup/index.html and in HTML these modules
 // build) and the tests call, plus window.onload. They used to be `window.x = function`
