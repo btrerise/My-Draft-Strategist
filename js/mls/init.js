@@ -1,9 +1,9 @@
 // Moved from lineup/mls.js in refactor chunk 3A: INITIALIZATION (the setup checklist and the
 // pulse prompts). The page's window.onload handler is still in legacy.js.
 import { State } from './state.js';
-import { isBestBallLeague } from './helpers.js';
+import { isBestBallLeague, getActiveLeague } from './helpers.js';
 import { updateDrawerActiveState } from './nav.js';
-import { getActiveLeague, setRankingsCardExpanded } from './legacy.js';
+import { setRankingsCardExpanded } from './legacy.js';
 
     // --- INITIALIZATION ---
     // Where each setup step gets done: the tab it lives on, the card to reveal, and the control

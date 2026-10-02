@@ -1,7 +1,8 @@
 // Moved from lineup/mls.js in refactor chunk 3A: DRAWER & SWIPE LOGIC and NAVIGATION LOGIC.
 import { State } from './state.js';
 import { updatePulsePrompts } from './init.js';
-import { loadRosterTab, refreshLeagueDropdown } from './legacy.js';
+import { refreshLeagueDropdown } from './leagues/sync.js';
+import { loadRosterTab } from './legacy.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at

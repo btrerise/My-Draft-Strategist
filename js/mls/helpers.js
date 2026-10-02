@@ -147,3 +147,8 @@ export function renderHTMLInto(container, html) {
     template.innerHTML = html;
     container.replaceChildren(template.content);
 }
+
+// getActiveLeague: moved from LEAGUE & SYNC LOGIC in refactor chunk 3B.
+    export function getActiveLeague() {
+        return State.leagues.find(l => l.leagueId === State.activeLeagueId) || null;
+    }
