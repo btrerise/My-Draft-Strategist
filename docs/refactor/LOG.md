@@ -927,14 +927,14 @@ rush it in.
   and list them). Bump CACHE_NAME. Rewrite the LeagueLogs tests in `tests/mds-sync.spec.mjs`
   for FFC.
 
-**When.** One session, as a standalone job like the line-ending and player-map fixes.
-- Best: **before 3A starts.** The MLS part edits `lineup/mls.js`, which 3A–3F slice up by line
+**When.** One session, right after 2C. The runbook encodes this: 7A needs 2C, and 3A and 5A
+need 7A (7A sits between 2C and 5A in the MDS lane). The reasons:
+- **Before 3A.** The MLS part edits `lineup/mls.js`, which 3A–3F slice up by line
   range; editing it first avoids conflicts. The MDS part is unaffected by the remaining chunks
   except 5A, which rewrites the Quick-Start and Fetch Market Value `onclick` handlers, so it
   should come before 5A too.
-- If 3A has already started: do the MDS part any time before 5A, and the MLS part right after 3D
+- If 3A has started anyway: do the MDS part any time before 5A, and the MLS part right after 3D
   (which moves the market code into its own file).
-- Latest: before the 2027 draft season.
 
 ### Revisit after the runbook — nflmeta.org (owner's request; runbook card 7B)
 
