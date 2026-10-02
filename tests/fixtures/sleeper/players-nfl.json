@@ -341,6 +341,24 @@
   "age": 26,
   "number": 1
  },
+ "8138": {
+  "player_id": "8138",
+  "first_name": "James",
+  "last_name": "Cook",
+  "full_name": "James Cook",
+  "search_full_name": "jamescook",
+  "position": "RB",
+  "fantasy_positions": [
+   "RB"
+  ],
+  "team": "BUF",
+  "years_exp": 4,
+  "status": "Active",
+  "active": true,
+  "injury_status": null,
+  "age": 25,
+  "number": 1
+ },
  "8150": {
   "player_id": "8150",
   "first_name": "Kyren",
@@ -377,6 +395,24 @@
   "age": 24,
   "number": 1
  },
+ "9224": {
+  "player_id": "9224",
+  "first_name": "Chase",
+  "last_name": "Brown",
+  "full_name": "Chase Brown",
+  "search_full_name": "chasebrown",
+  "position": "RB",
+  "fantasy_positions": [
+   "RB"
+  ],
+  "team": "CIN",
+  "years_exp": 3,
+  "status": "Active",
+  "active": true,
+  "injury_status": null,
+  "age": 24,
+  "number": 1
+ },
  "9226": {
   "player_id": "9226",
   "first_name": "De'Von",
@@ -388,6 +424,42 @@
    "RB"
   ],
   "team": "MIA",
+  "years_exp": 3,
+  "status": "Active",
+  "active": true,
+  "injury_status": null,
+  "age": 24,
+  "number": 1
+ },
+ "9480": {
+  "player_id": "9480",
+  "first_name": "Sam",
+  "last_name": "LaPorta",
+  "full_name": "Sam LaPorta",
+  "search_full_name": "samlaporta",
+  "position": "TE",
+  "fantasy_positions": [
+   "TE"
+  ],
+  "team": "DET",
+  "years_exp": 3,
+  "status": "Active",
+  "active": true,
+  "injury_status": null,
+  "age": 24,
+  "number": 1
+ },
+ "9488": {
+  "player_id": "9488",
+  "first_name": "Jaxon",
+  "last_name": "Smith-Njigba",
+  "full_name": "Jaxon Smith-Njigba",
+  "search_full_name": "jaxonsmithnjigba",
+  "position": "WR",
+  "fantasy_positions": [
+   "WR"
+  ],
+  "team": "SEA",
   "years_exp": 3,
   "status": "Active",
   "active": true,
@@ -429,6 +501,42 @@
   "active": true,
   "injury_status": null,
   "age": 24,
+  "number": 1
+ },
+ "9997": {
+  "player_id": "9997",
+  "first_name": "Zay",
+  "last_name": "Flowers",
+  "full_name": "Zay Flowers",
+  "search_full_name": "zayflowers",
+  "position": "WR",
+  "fantasy_positions": [
+   "WR"
+  ],
+  "team": "BAL",
+  "years_exp": 3,
+  "status": "Active",
+  "active": true,
+  "injury_status": null,
+  "age": 24,
+  "number": 1
+ },
+ "11566": {
+  "player_id": "11566",
+  "first_name": "Jayden",
+  "last_name": "Daniels",
+  "full_name": "Jayden Daniels",
+  "search_full_name": "jaydendaniels",
+  "position": "QB",
+  "fantasy_positions": [
+   "QB"
+  ],
+  "team": "WAS",
+  "years_exp": 2,
+  "status": "Active",
+  "active": true,
+  "injury_status": null,
+  "age": 23,
   "number": 1
  },
  "11604": {

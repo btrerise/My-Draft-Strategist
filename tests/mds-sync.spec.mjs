@@ -84,7 +84,7 @@ test.describe('Draft Strategist network features', () => {
             };
             req.onerror = () => resolve(-1);
         }));
-        expect(cached, 'players in the IndexedDB cache').toBe(28);
+        expect(cached, 'players in the IndexedDB cache').toBe(Object.keys(FIXTURE_PLAYERS).length);
 
         await page.reload();
         await page.waitForLoadState('networkidle');

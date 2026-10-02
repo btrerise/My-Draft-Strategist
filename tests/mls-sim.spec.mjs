@@ -5,19 +5,11 @@
 // generator in the page and, by rewriting the worker script on its way in, in the worker. A
 // failure after a pure move means the move changed the simulation.
 import { test, expect } from '@playwright/test';
-import { preparePage, expectClean } from './helpers.mjs';
-
-const SEED = `(() => { let a = 0x9E3779B9; Math.random = function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })();\n`;
+import { preparePage, expectClean, seedSimRandom } from './helpers.mjs';
 
 test('matchup simulator gives the same results for a fixed seed', async ({ page }) => {
     const state = await preparePage(page);
-    const workerUrls = [];
-    await page.addInitScript(SEED);
-    await page.route(/\/worker\.js$/, async (route) => {
-        workerUrls.push(new URL(route.request().url()).pathname);
-        const res = await route.fetch();
-        await route.fulfill({ response: res, body: SEED + await res.text() });
-    });
+    const workerUrls = await seedSimRandom(page);
     await page.goto('/lineup/');
     await page.waitForLoadState('networkidle');
 
