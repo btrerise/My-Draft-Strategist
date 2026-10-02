@@ -8773,16 +8773,17 @@ window.runGlobalInjuryAudit = async function(btn) {
         // leave behind. Three realistic causes, each with its own fix:
         //   * Connection -- the forced-fresh player map (~5MB) or a league's roster fetch
         //     failed or timed out. Common on phone data; retrying is the fix.
-        //   * SyntaxError -- neither getSleeperPlayerMap nor getSleeperLeagueRosters checks
-        //     res.ok, so when Sleeper is down or rate-limiting, its HTML/plain-text error page
-        //     gets fed to res.json() and fails here. Not the person's connection, so telling
-        //     them to check it would send them the wrong way.
+        //   * SyntaxError -- getSleeperLeagueRosters doesn't check res.ok, so when Sleeper is
+        //     down or rate-limiting, its HTML/plain-text error page gets fed to res.json() and
+        //     fails here. getSleeperPlayerMap checks, and throws an isSleeperResponseError
+        //     error instead (refactor 2C follow-up); same message. Not the person's
+        //     connection, so telling them to check it would send them the wrong way.
         //   * Anything else -- a saved league whose data isn't shaped the way the audit
         //     expects. Re-syncing rewrites it.
         let msg;
         if (isConnectionError(err)) {
             msg = `Couldn't reach Sleeper for current injury statuses, so the audit didn't finish - no leagues were checked. Check your connection and tap Run Global Audit again.`;
-        } else if (err && err.name === 'SyntaxError') {
+        } else if (err && (err.name === 'SyntaxError' || err.isSleeperResponseError)) {
             msg = `Sleeper sent back an unexpected response, so the audit didn't finish - no leagues were checked. Sleeper may be having problems; try Run Global Audit again in a few minutes.`;
         } else {
             msg = `The audit stopped partway through, so treat this as no result, not an all-clear. Some saved league data may be out of date - tap Sync All Leagues on the Dashboard, then run the audit again.`;
@@ -9172,8 +9173,9 @@ window.runMatchupSim = async function() {
         // Same three-way split as runGlobalInjuryAudit's catch, for the same reasons:
         //   * Connection -- any of the Sleeper calls above (matchups, weekly stats, the ~5MB
         //     player map) failed or timed out. Retrying is the fix.
-        //   * SyntaxError -- getSleeperPlayerMap doesn't check res.ok, so a Sleeper outage or
-        //     rate-limit page fails in res.json(). Sleeper's side, not the person's connection.
+        //   * SyntaxError / isSleeperResponseError -- a Sleeper outage or rate-limit page:
+        //     getSleeperPlayerMap throws the latter for a non-ok or malformed response (refactor
+        //     2C follow-up); other calls fail in res.json(). Sleeper's side, not the connection.
         //   * Anything else -- most likely the saved lineup/roster for this league isn't in
         //     the shape this function expects (a non-ok matchups response lands here too,
         //     which in practice means the stored league ID is stale). Re-syncing rewrites both.
@@ -9183,7 +9185,7 @@ window.runMatchupSim = async function() {
         let msg;
         if (isConnectionError(err)) {
             msg = `Couldn't reach Sleeper, so the simulation for ${leagueName} didn't run. Check your connection and tap Run Matchup Simulations again.`;
-        } else if (err && err.name === 'SyntaxError') {
+        } else if (err && (err.name === 'SyntaxError' || err.isSleeperResponseError)) {
             msg = `Sleeper sent back an unexpected response, so the simulation for ${leagueName} didn't run. Sleeper may be having problems - try again in a few minutes.`;
         } else {
             msg = `Couldn't run the simulation for ${leagueName} - its saved lineup or roster data may be out of date. Tap Sync All Leagues on the Dashboard, then run it again.`;
