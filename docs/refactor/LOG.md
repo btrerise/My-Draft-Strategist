@@ -66,7 +66,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   (`mls-market.spec.mjs`, 7A) and 3 MLS league-entry tests (`mls-leagues.spec.mjs`, 3B: Import
   All Leagues, the Draft Strategist roster handoff, dismissing it) and 1 MLS Scout test
   (`mls-scout.spec.mjs`, 3C: rankings upload, Scan Pasted List in both scopes, Auto-Find in both
-  lenses, a trade scout). Each runs at both widths: 58 Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
+  lenses, a trade scout) and 1 MLS ranking-set test (`mls-rankings.spec.mjs`, 3D: one upload applied
+  to a second league from the preview, then a third through "Choose leagues..."). Each runs at both
+  widths: 60 Playwright tests in all. The MLS matchup simulator runs in its Web Worker in the
   smoke test, but its output isn't screenshotted because it's random.
 
 ### Known gaps (good follow-ups, not blockers)
@@ -1489,3 +1491,130 @@ calls (`analyzeRankingsFile`, `applyWaiverScanSettingsToUI`, `derivedRanksWordin
 - Comments inside moved code still say "mls.js", "utils.js", "this file", or point at
   `waiverScanner.js` / `rankingsParser.js` by their old locations (5D's sweep).
 - Next on the MLS track: 3D (RANKINGS ENGINE onward).
+
+### 3D — MLS: rankings, market, trade value, exports
+
+Everything from `// --- RANKINGS ENGINE ---` up to `// --- RENDERERS ---` left `js/mls/legacy.js`
+(1,756 lines; legacy.js is now 2,901), **except `lookupSimPlayer`** (see below). All of 3D's scope
+moved; no marker in the card's range is left in legacy.js. Same tooling as 3A–3C (acorn +
+eslint-scope in a scratch directory): a throwaway script assigned line ranges to modules, refused a
+statement straddling two ranges or a non-comment line outside any statement, built each module's
+imports from the original file's module-scope references, added `export` where another module now
+needs a name, rejected any cross-module write to a moved binding, and repointed the other modules'
+`from './legacy.js'` lines. Checked afterwards: every non-blank, non-import line of `js/mls/*.js` at
+main is present **exactly once** across `js/mls/**/*.js` once `export ` prefixes are ignored; the
+only new lines are header comments. Every named import resolves to an export, no import is unused,
+and the set of bare globals the js/mls code reads is unchanged. Indentation unchanged.
+
+| New file (under `js/mls/`) | From legacy.js |
+|---|---|
+| `rankings/engine.js` | RANKINGS ENGINE (`getRankingsFreshness`), plus the unmarked rankings-card helpers that sat after `deleteRankingSet`: `toggleRankingsCard`, `setRankingsCardExpanded`, `updateRankingsMetaDisplay`, `toggleUploadMode`, `togglePosInput` |
+| `rankings/sets.js` | NAMED RANKING SETS and CHOOSING WHICH LEAGUES USE A RANKING SET (`resolveRankingsTarget` … `deleteRankingSet`, incl. the league picker and its dialog) |
+| `rankings/uploadPreview.js` | `parseFiles` (unmarked, just above the preview), RANKINGS UPLOAD PREVIEW, UPLOAD PROCESSING INDICATOR, and the load-time `#rosFileInput`/`#weeklyFileInput` listeners and drag-and-drop setup that followed them |
+| `scout/marketDisconnect.js` | MARKET DISCONNECT ENGINE (incl. its load-time `#marketFileInput` listener, the threshold controls, `processMarketUpload`), `fetchLeagueLogsADP` (the Trade Finder's market fetch; the window name is kept), `parseMarketData`, and the unmarked Trade Finder code after DYNAMIC WAIVER ADJUSTMENT VALUE: `getMarketPositionalRanks`, `updateMarketMetaDisplay`, `runMarketDisconnectAnalysis` |
+| `rankings/rosFetch.js` | SHARED MARKET-CONSENSUS FETCH (a comment only) and ROS RANKINGS AUTO-FETCH (`autoFetchRosRankings`) |
+| `settings.js` | SHARED MARKET SETTINGS, TRADE ANALYZER SETTINGS, the simulator's `updateSimSetting`/`applySimSettingsToUI` (unmarked, inside the second LINEUP OPTIMIZER SETTINGS block), `applyTradeSettingsToUI`, `applyMarketSettingsToUI` |
+| `state.js` (inserted right after `State`) | The second LINEUP OPTIMIZER SETTINGS block (`updateLineupSetting`, with its marker) and `applyLineupSettingsToUI` |
+| `trade/valueCurve.js` | TRADE VALUE CURVE (`rankToTradeValue`, `isDraftPickName`, `getMarketValue`) |
+| `trade/waiverValue.js` | DYNAMIC WAIVER ADJUSTMENT VALUE (`getDynamicWaiverAdjustmentValue`, `getTopWaiverCandidatesByPosition`) |
+| `trade/export.js` | TEXT EXPORT (DISCORD/GROUP CHAT), SCREENSHOT EXPORT (`copyLineupAsText`, `exportLineup`) |
+| `lineup/gameInfo.js` (appended) | `toggleLockCountdown`, which sat unmarked between `deleteRankingSet` and the rankings-card helpers. It expands the lock-countdown card that `getNextLockCountdownHTML` (already in gameInfo.js) renders |
+
+#### Placement decisions
+
+- **The two LINEUP OPTIMIZER SETTINGS blocks.** The card says both "merge into state.js" and
+  "optimizer settings → settings.js". I took the explicit merge: the first block is the
+  `lineupSettings` field inside `State` (key `mls_lineup_settings`, default
+  `{ flexKickoffOptimization: true }`, unchanged); the second block's `updateLineupSetting` and its
+  `applyLineupSettingsToUI` now sit right after `State` in state.js. That widens 3A's "state.js holds
+  non-UI code" rule a little (the updater writes storage and sets one checkbox). Market, trade and sim
+  settings went to `settings.js`.
+- **`parseFiles` → uploadPreview.js, not engine.js.** It sat just above RANKINGS UPLOAD PREVIEW and
+  only `processSingleRankingUpload`/`processMultiRankings` call it. Load order also needs it there: in
+  engine.js it would have made engine.js import uploadPreview.js. `init.js` and `leagues/sync.js`
+  import engine.js, so uploadPreview.js (and `sos.js`, which it imports) would then have run before
+  nav.js, and their load-time file-input listeners would have registered out of mls.js order.
+- **`lookupSimPlayer` stays in legacy.js.** It sat between the sim setting and the apply*SettingsToUI
+  functions, but it's the simulator's player lookup, so it belongs in 3F's `sim/matchup.js`.
+- **The trade-verdict code stays inside `runScout`** (`scout/engine.js`). 3C left this optional for
+  3D; splitting it would mean editing `runScout`, not moving whole statements.
+
+#### Load order
+
+legacy.js's import list gains, after `./scout/allLeaguesSearch.js`: `./rankings/engine.js`,
+`./rankings/sets.js`, `./rankings/uploadPreview.js`, `./scout/marketDisconnect.js`,
+`./rankings/rosFetch.js`, `./settings.js`, `./trade/valueCurve.js`, `./trade/waiverValue.js`,
+`./trade/export.js` (mls.js order, side-effect imports where legacy uses nothing from them), and
+`applyLineupSettingsToUI` on the `./state.js` line. legacy.js dropped the imports nothing left in it
+uses (`parseRankingsFiles`, `fetchMarketConsensusData`, `posRankTag`, and three names from
+`scout/waivers.js`). Simulated evaluation:
+`compat → constants → helpers → lineup/gameInfo → state → lineup/earlyGames → leagues/scoutResults →
+players → leagues/addPlayer → scout/waiverScanner → power/allLeagues → scout/allLeaguesSearch →
+trade/valueCurve → scout/waivers → trade/waiverValue → scout/engine → settings → leagues/sync →
+rankings/sets → rankings/engine → init → nav → backup → lineup/headshots → leagues/handoff →
+leagues/importAll → sos → rankings/uploadPreview → scout/marketDisconnect → rankings/rosFetch →
+trade/export → legacy → main`. The modules that now run early (valueCurve, waiverValue, settings,
+sets, engine) have no load-time code beyond declarations and literals (`let leaguePickerOpen = false`).
+Load-time effects, in order: `State` → scoutResults → nav's listeners → headshot setting → SoS file
+listener → rankings file-input listeners and drag-and-drop → market file listener → legacy's own top
+level → main's `window.*` block: the same order as mls.js. No load-time code reads an import from a
+module that evaluates later.
+
+**Repointed imports:** `main.js` (35 window names now import from their new modules; new import lines
+after the existing ones, `updateLineupSetting` added to the `./state.js` line; the `window.x = x;`
+block is untouched), `init.js` (`setRankingsCardExpanded` → `rankings/engine.js`), `leagues/sync.js`
+(`getRankingsFreshness`, `updateRankingsMetaDisplay` → `rankings/engine.js`;
+`applyMarketSettingsToUI` → `settings.js`), `scout/engine.js` (value curve and waiver value →
+`trade/`), `scout/waivers.js` (`isDraftPickName` → `trade/valueCurve.js`). The new modules import
+`loadRosterTab` from `../legacy.js`; `isAutoLockOverridden`, `getPowerLeagueKind` and `loadRosterTab`
+are the legacy names other modules still import.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (87 precached). `node --test` 157/157.
+  `cd tests && npm run check`: **60/60**, screenshots identical (no baseline changed).
+- New `tests/mls-rankings.spec.mjs` (kept) for the card's "ranking upload → apply to multiple
+  leagues": syncs the fixture league, creates two manual leagues, uploads ROS rankings and ticks one
+  league in the preview's "Also use this set in", checks both leagues point at the set and the third
+  doesn't, adds the third through "Choose leagues...", then switches to it and checks the set
+  dropdown and header. Passes on this branch **and** on main's code. Note for later specs: manual
+  league ids are `'manual_' + Date.now()` and the test clock is fixed, so the spec steps the clock
+  between creations (otherwise both leagues share one id).
+- Throwaway spec (not committed), run on this branch and an origin/main worktree at both widths, with
+  identical JSON apart from stack-trace file locations in two expected `console.error`s: window
+  property names, multi-file mode and position toggles, a multi-file upload preview (cancelled), ROS
+  and Weekly previews and cards, a new Weekly set shared from the preview, the "Choose leagues..."
+  dialog with Select all, switching sets, deleting a set, a market CSV upload and its meta line, the
+  Trade Finder in three mode/basis combinations (labels, thresholds, output HTML), a trade scout
+  before and after flipping the trade/market/lineup/sim settings, the settings controls, ROS
+  auto-fetch and the market fetch (both blocked, so their error paths), the lock-countdown toggle,
+  copy-as-text and screenshot export (library blocked), the Lineup tab text, and every localStorage
+  key and value. Tooltip ids (`mds-tip-N`) in the trade verdict differed once when both widths ran in
+  parallel; run singly, main and the branch match, so that's timing, not the move.
+
+#### Other changes
+
+- `sw.js`: the nine new modules added after `/js/mls/scout/waiverScanner.js`. CACHE_NAME
+  `v2.8.50` → `v2.8.51`.
+- README: the `/js` line mentions `rankings/` and `trade/`.
+- Header comment on each new file; one-line notes on state.js and lineup/gameInfo.js headers;
+  legacy.js's top note mentions 3D.
+
+#### Left for later chunks
+
+- `window.onload` → init.js (3E), unchanged from 3B's note. It now also calls
+  `updateRankingsMetaDisplay`, `updateMarketMetaDisplay` and the apply*SettingsToUI functions from
+  the 3D modules; all at call time, so moving it doesn't change that.
+- 3E: RENDERERS onward. `rankings/sets.js`, `rankings/uploadPreview.js` and `rankings/rosFetch.js`
+  import `loadRosterTab` from `../legacy.js`; repoint them when it moves.
+- 3F: `lookupSimPlayer` (legacy.js, between `onload` and `// --- RENDERERS ---`) goes to
+  `sim/matchup.js` with the simulator.
+  `trade/waiverValue.js`'s `getTopWaiverCandidatesByPosition` is used only by WAIVER INSIGHTS.
+- 7A's card allowed doing its MLS part "right after 3D" if 3A had started first. 7A ran before 3A
+  and did the MLS part itself (LOG: 7A), so nothing is pending; the market code is now in
+  `scout/marketDisconnect.js` and `settings.js` if anyone revisits it. `fetchLeagueLogsADP` keeps its
+  name for the inline handler (5C can rename it).
+- legacy.js's "Pilot ES module extraction" comment now sits above the Sleeper import, since the
+  `parseRankingsFiles` import it described moved to `rankings/uploadPreview.js`. Comments inside moved
+  code still say "this file", "mls.js", "utils.js" or "rankingsParser.js" (5D's sweep).
+- Next on the MLS track: 3E (RENDERERS onward).

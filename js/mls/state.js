@@ -1,6 +1,7 @@
 // Moved from lineup/mls.js in refactor chunk 3A: STATE MANAGEMENT (State, including the
 // LINEUP OPTIMIZER SETTINGS block inside it), lineup undo/redo, and the NFL week / kickoff-time
-// refreshers that fill State.
+// refreshers that fill State. Refactor 3D merged in the second LINEUP OPTIMIZER SETTINGS block
+// (updateLineupSetting, applyLineupSettingsToUI), right after State.
 import { getNflState } from '../shared/api/sleeper.js';
 import { readJSON } from './compat.js';
 import { ESPN_TEAM_ALIASES } from './constants.js';
@@ -129,6 +130,24 @@ import { renderLineupUI } from './legacy.js';
         lineupUndoStackMap: {},
         lineupRedoStackMap: {}
     };
+
+// --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
+// Re-runs the optimizer (non-manual, so it won't push an undo snapshot or show a toast) so
+// toggling this reflects immediately in whatever lineup is currently on screen, rather than
+// waiting for the next sync or manual "Optimize" click.
+export const updateLineupSetting = function(key, value) {
+    State.lineupSettings[key] = value;
+    localStorage.setItem('mls_lineup_settings', JSON.stringify(State.lineupSettings));
+    applyLineupSettingsToUI();
+    if (typeof window.optimizeLineup === 'function' && State.manualStartersMap[State.activeLeagueId]) {
+        window.optimizeLineup(false);
+    }
+};
+
+export function applyLineupSettingsToUI() {
+    const toggleEl = document.getElementById('flexKickoffOptimizationToggle');
+    if (toggleEl) toggleEl.checked = !!State.lineupSettings.flexKickoffOptimization;
+}
 
     const MAX_UNDO_STACK_SIZE = 20;
 

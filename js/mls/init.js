@@ -3,7 +3,7 @@
 import { State } from './state.js';
 import { isBestBallLeague, getActiveLeague } from './helpers.js';
 import { updateDrawerActiveState } from './nav.js';
-import { setRankingsCardExpanded } from './legacy.js';
+import { setRankingsCardExpanded } from './rankings/engine.js';
 
     // --- INITIALIZATION ---
     // Where each setup step gets done: the tab it lives on, the card to reveal, and the control
