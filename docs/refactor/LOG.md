@@ -2539,6 +2539,12 @@ boot.js and the six attributes above.
   the new unit test will flag). `KEYS` property names don't change with the rename, so no call site
   needs editing. The restore translation table and migration go in their own module; take the old names
   from git or spell them there (that table is the one legitimate second spelling).
+- **6B and the T-Score page:** the page reads `mds_tscore_cache_updated` on load for its "Sheet data:
+  Updated …" label (`tscore_page_cache` keeps its name). If only MDS migrates, a user who opens T-Score
+  before MDS after the update sees no label until they visit MDS or press Refresh. So the T-Score page
+  needs its own copy-on-load too. **Run 4B before 6B if you can**: once the T-Score script is a module,
+  6B can import the same migration there. Otherwise 6B has to put it in the inline classic script or in
+  `globals.js`.
 - **4B:** the T-Score script can import `KEYS` once it's a module; then `window.KEYS` can go (nothing
   else reads it).
 - `js/mds/backup.js` still reads `window.isMdsOwnedKey` although MDS is ES modules since 2A; an import
