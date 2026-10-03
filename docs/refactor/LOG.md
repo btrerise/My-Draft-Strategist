@@ -3315,7 +3315,7 @@ Owner's decisions (4E does only the approved fixes; for anything still pending, 
 | Smaller ✕ (`.close-banner-btn-sm`) | MLS's four ✕ buttons go from 1.1rem / 8px padding to 0.85rem / 0.25rem (touch target unchanged). MDS's two ✕ swap their inline style for the class, with no visible change. | pending |
 | `.danger-card` on the Injury Auditor | Red dashed border and red tint on the Injury Auditor accordion (MLS Setup, Advanced Settings), like the Danger Zone card. | pending |
 | `.mt-0` on `.leaguelogs-attribution` | (a) Make it work: the attribution line under MLS's market data loses its 1rem top margin; or (b) delete the dead `mt-0` from the markup: no visible change. | pending |
-| `.pl-6` on the two `.guide-list`s | (a) Make it work: those two lists on MLS's Guide tab get a wider indent (1.25rem → `--space-6`); or (b) delete the dead `pl-6`: no visible change. | pending |
+| `.pl-6` on the two `.guide-list`s | (a) Make it work: those two lists on MLS's Guide tab get a wider indent (1.25rem → 2rem); or (b) delete the dead `pl-6`: no visible change. | pending |
 
 `npm run compare-css` proves the scope: every difference it reports must be on an element a fix targets. The
 screenshot changes get accepted with `npm run test:update` and listed.
