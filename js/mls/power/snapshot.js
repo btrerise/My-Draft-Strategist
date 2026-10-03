@@ -42,7 +42,7 @@ export function renderRosterPowerStrip(teams, ctx = {}) {
                 <span class="mls-roster-power-stat-rank mls-power-cell-${powerTier(rank, N)}">${rank}</span>
             </div>`).join('')}
         </div>
-        <button type="button" class="mls-roster-power-link btn-bare" onclick="scrollToPowerRankings()">See the full league breakdown and explanations below &darr;</button>`;
+        <button type="button" class="mls-roster-power-link btn-bare" data-action="scrollToPowerRankings">See the full league breakdown and explanations below &darr;</button>`;
     el.style.display = 'block';
 }
 

@@ -22,15 +22,15 @@ test.describe('Lineup Strategist Scout tab', () => {
         await page.evaluate(() => window.setWaiverScope('league'));
 
         await page.evaluate(() => window.setWaiverCompare('roster'));
-        await page.locator('[onclick^="autoFindWaiverUpgrades"]').click();
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(waivers).toContainText('Top available in Fixture League by Weekly rank, compared against your weakest rostered player');
         await page.evaluate(() => window.setWaiverCompare('lineup'));
-        await page.locator('[onclick^="autoFindWaiverUpgrades"]').click();
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(waivers).toContainText('checked against your current Week 2 starting lineup');
 
         await page.fill('#buyInput', "Ja'Marr Chase");
         await page.fill('#sellInput', 'Josh Allen\nBijan Robinson');
-        await page.locator('[onclick="runScout(\'trade\')"]').click();
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
         await expect(page.locator('#tradeOutput')).toContainText('Favors Them');
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);

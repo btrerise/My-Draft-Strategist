@@ -132,7 +132,7 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
 
     const cell = (rank, tooltipHTML, extraCls = '') => `
         <td class="${tierCls(rank)} ${extraCls}">
-            <div class="tooltip-container mls-tooltip-center" ontouchstart="">
+            <div class="tooltip-container mls-tooltip-center">
                 <span class="mls-dotted-underline">${rank}</span>
                 ${tooltipHTML}
             </div>

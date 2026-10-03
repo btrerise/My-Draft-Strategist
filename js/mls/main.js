@@ -32,7 +32,7 @@ import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
 import { deleteRankingSet, onRankingSetSelectChange, openRankingSetLeagues } from './rankings/sets.js';
-import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings, processSingleRankingUpload } from './rankings/uploadPreview.js';
+import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings } from './rankings/uploadPreview.js';
 import { fetchLeagueLogsADP, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
 import { autoFetchRosRankings } from './rankings/rosFetch.js';
 import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './settings.js';
@@ -47,7 +47,7 @@ import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
 import { getPowerLeagueKind } from './power/directionLabels.js';
-import { goToPowerRankings, refreshPowerRankings, renderPowerRankingsTable, runPositionalStrength, updatePowerSetting } from './power/rosterCard.js';
+import { goToPowerRankings, refreshPowerRankings, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
 import { runGlobalInjuryAudit } from './lineup/injuryAudit.js';
 import './scout/waiverInsights.js';
@@ -62,29 +62,31 @@ import { delegate } from '../shared/ui/delegate.js';
 // others evaluate, and importing from it never triggers an evaluation.
 export { checkForDraftStrategistHandoff, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, renderLineupUI, renderSyncLogs, updateMarketMetaDisplay };
 
-// The names the inline handlers (onclick="..." in lineup/index.html and in HTML these modules
-// build) and the tests call, plus window.onload. They used to be `window.x = function`
-// assignments inside mls.js; the modules now export them, and this is the one place they become
-// globals. Phase 5 removes them as the inline handlers go. Refactor chunk 5B replaced the shell's,
-// Setup's, Roster's and Lineup's handlers with the data-action listeners at the end of this file
-// and removed the 30 names nothing else used. Of the names those handlers called, these stay
-// because something else still reads them through window:
-//   toggleDrawer: nav.js, shortcuts.js, the tests     showTab: nav.js, init.js, shortcuts.js,
-//   cycleLeague: shortcuts.js                           power/rosterCard.js, the tests
+// The names something outside this file still reads through window, plus window.onload. They used
+// to be `window.x = function` assignments inside mls.js, when inline on*="..." handlers called them;
+// the modules now export them, and this is the one place they become globals. Refactor chunks
+// 5B and 5C replaced every inline handler with the data-action listeners at the end of this file
+// and removed the names nothing else used (30 in 5B, 21 in 5C; docs/refactor/LOG.md lists them).
+// Who reads the rest:
+//   undoLineupChange, redoLineupChange, cycleLeague: shortcuts.js
+//   toggleDrawer: nav.js, shortcuts.js, the tests
+//   showTab: nav.js, init.js, shortcuts.js, power/rosterCard.js, the tests
+//   exportMlsSettings: js/boot.js (the rescue backup on a fatal boot error)
+//   goToSetupStep: init.js                      lookupSimPlayer: init.js
+//   onload: the browser                         addManualPlayer: leagues/addPlayer.js
 //   switchActiveLeague: scout/allLeaguesSearch.js, the tests
-//   optimizeLineup: state.js, leagues/*, render/*, sos.js, rankings/*, scout/waivers.js, ...
+//   runScout: players.js                        updateWaiverScanSetting: scout/waivers.js
 //   cancelRankingsPreview: rankings/uploadPreview.js
-//   confirmRankingsPreview, createManualLeague, openRankingSetLeagues: the tests
-//   toggleRankingsCard, updateMarketSetting: inline handlers outside 5B's sections (5C)
+//   scrollToPowerRankings: power/rosterCard.js
+//   optimizeLineup: state.js, leagues/*, render/*, sos.js, rankings/*, scout/waivers.js, ...
+//   createManualLeague, openRankingSetLeagues, confirmRankingsPreview, setWaiverCompare,
+//   setWaiverScope: only the tests (page.evaluate)
 window.undoLineupChange = undoLineupChange;
 window.redoLineupChange = redoLineupChange;
 window.toggleDrawer = toggleDrawer;
 window.showTab = showTab;
 window.exportMlsSettings = exportMlsSettings;
-window.importMlsSettings = importMlsSettings;
-window.factoryReset = factoryReset;
 window.goToSetupStep = goToSetupStep;
-window.toggleMlsHeadshots = toggleMlsHeadshots;
 window.onload = onload;
 window.switchActiveLeague = switchActiveLeague;
 window.cycleLeague = cycleLeague;
@@ -94,39 +96,22 @@ window.runScout = runScout;
 window.updateWaiverScanSetting = updateWaiverScanSetting;
 window.setWaiverCompare = setWaiverCompare;
 window.setWaiverScope = setWaiverScope;
-window.setWaiverIntent = setWaiverIntent;
-window.scoutGoToLeague = scoutGoToLeague;
-window.autoFindWaiverUpgrades = autoFindWaiverUpgrades;
 window.openRankingSetLeagues = openRankingSetLeagues;
-window.toggleRankingsCard = toggleRankingsCard;
 window.cancelRankingsPreview = cancelRankingsPreview;
 window.confirmRankingsPreview = confirmRankingsPreview;
-window.processSingleRankingUpload = processSingleRankingUpload;
-window.toggleDisconnectMode = toggleDisconnectMode;
-window.toggleDisconnectRankBasis = toggleDisconnectRankBasis;
-window.fetchLeagueLogsADP = fetchLeagueLogsADP;
-window.updateMarketSetting = updateMarketSetting;
-window.updateTradeSetting = updateTradeSetting;
-window.updateSimSetting = updateSimSetting;
 window.lookupSimPlayer = lookupSimPlayer;
-window.runMarketDisconnectAnalysis = runMarketDisconnectAnalysis;
 window.optimizeLineup = optimizeLineup;
-window.renderSyncLogs = renderSyncLogs;
-window.updatePowerSetting = updatePowerSetting;
 window.scrollToPowerRankings = scrollToPowerRankings;
-window.goToPowerRankings = goToPowerRankings;
-window.runPositionalStrength = runPositionalStrength;
-window.renderPowerRankingsTable = renderPowerRankingsTable;
-window.runMatchupSim = runMatchupSim;
 
 // --- DATA-ACTION EVENT DELEGATION ---
-// Refactor chunk 5B (the pattern is 5A's, js/mds/main.js): each table maps a data-action name (in
-// lineup/index.html and in the HTML leagues/sync.js, lineup/{earlyGames,gameInfo,headshots}.js and
-// render/{lineup,roster}.js build) to the code its inline on*="..." handler ran. `this` is the
+// Refactor chunks 5B and 5C (the pattern is 5A's, js/mds/main.js): each table maps a data-action
+// name (in lineup/index.html and in the HTML leagues/sync.js, lineup/{earlyGames,gameInfo,headshots}.js,
+// render/{lineup,roster}.js, scout/{waivers,allLeaguesSearch}.js and power/snapshot.js build) to the
+// code its inline on*="..." handler ran. `this` is the
 // element, as it was in the inline handler, and data-* attributes carry the arguments that used to
 // be literals in the handler. Numbers go through Number(); ids stay strings, as the handlers passed
-// them quoted. See js/shared/ui/delegate.js for how the walk works. The Scout tab, the Advanced
-// Settings card, the Power Rankings card and the Monte Carlo card still use inline handlers (5C).
+// them quoted. See js/shared/ui/delegate.js for how the walk works. No inline handler is left
+// in MLS since 5C.
 const clickActions = {
     // Drawer, header, bottom nav
     toggleDrawer() { toggleDrawer(); },
@@ -158,6 +143,13 @@ const clickActions = {
     syncActiveLeague() { syncActiveLeague(); },
     deletePlayer() { deletePlayer(this.dataset.id); },
     saveManualSoS() { saveManualSoS(this); },
+    // Setup tab: Advanced Settings card (5C)
+    addManualPlayer() { addManualPlayer(); },
+    exportMlsSettings() { exportMlsSettings(); },
+    chooseBackupFile() { document.getElementById('mlsImportFileInput').click(); },
+    factoryReset() { factoryReset(); },
+    // Roster tab: Power Rankings snapshot (power/snapshot.js) (5C)
+    scrollToPowerRankings() { scrollToPowerRankings(); },
     // Lineup tab (and render/lineup.js, lineup/earlyGames.js, lineup/gameInfo.js)
     optimizeLineup() { optimizeLineup(true, true); },
     copyLineupAsText() { copyLineupAsText(this); },
@@ -169,6 +161,22 @@ const clickActions = {
     initiateSwap() { initiateSwap(this.dataset.id); },
     removeEarlyTeam() { removeEarlyTeam(this.dataset.team); },
     runGlobalInjuryAudit() { runGlobalInjuryAudit(this); },
+    // Lineup tab: Monte Carlo card (5C)
+    runMatchupSim() { runMatchupSim(); },
+    // Scout tab (and scout/waivers.js, scout/allLeaguesSearch.js) (5C). The Sleeper sync banner
+    // uses dismissBanner above; the waiver sections' toggles use toggleRankingsCard.
+    clearWaiverScout() { document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML=''; },
+    setWaiverCompare() { setWaiverCompare(this.dataset.compare); },
+    autoFindWaiverUpgrades() { autoFindWaiverUpgrades(this); },
+    setWaiverScope() { setWaiverScope(this.dataset.scope); },
+    setWaiverIntent() { setWaiverIntent(this.dataset.intent); },
+    runScout() { runScout(this.dataset.scoutType); },
+    scoutGoToLeague() { scoutGoToLeague(this.dataset.leagueId); },
+    clearBuyInput() { document.getElementById('buyInput').value=''; },
+    clearSellInput() { document.getElementById('sellInput').value=''; },
+    goToPowerRankings() { goToPowerRankings(); },
+    fetchLeagueLogsADP() { fetchLeagueLogsADP(this); },
+    runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },
     // Rankings upload preview modal
     cancelRankingsPreview() { cancelRankingsPreview(); },
     confirmRankingsPreview() { confirmRankingsPreview(); },
@@ -183,6 +191,18 @@ const changeActions = {
     updateMarketSettingChecked() { updateMarketSetting(this.dataset.setting, this.checked); },
     updateLineupSetting() { updateLineupSetting(this.dataset.setting, this.checked); },
     addEarlyTeam() { addEarlyTeam(this.value); },
+    // 5C: Advanced Settings, Power Rankings, Monte Carlo and Scout tab controls
+    toggleMlsHeadshots() { toggleMlsHeadshots(this.checked); },
+    importMlsSettings() { importMlsSettings(this); },
+    updatePowerSetting() { updatePowerSetting(this.dataset.setting, this.value); },
+    updateSimSetting() { updateSimSetting(this.dataset.setting, this.checked); },
+    updateWaiverScanSetting() { updateWaiverScanSetting(this.dataset.setting, this.value); },
+    updateWaiverScanSettingInt() { updateWaiverScanSetting(this.dataset.setting, parseInt(this.value, 10)); },
+    updateWaiverScanSettingChecked() { updateWaiverScanSetting(this.dataset.setting, this.checked); },
+    updateTradeSettingChecked() { updateTradeSetting(this.dataset.setting, this.checked); },
+    updateTradeSetting() { updateTradeSetting(this.dataset.setting, this.value); },
+    toggleDisconnectMode() { toggleDisconnectMode(); },
+    toggleDisconnectRankBasis() { toggleDisconnectRankBasis(); },
 };
 
 // The hero logo hides itself if it fails to load; a player headshot (lineup/headshots.js) removes
