@@ -120,7 +120,7 @@ import { State, getActiveDraft } from './state.js';
                     
                     // 2. Build the image string (excluding custom uploaded players)
                     let imgHTML = playerId && !playerId.toString().startsWith('custom_') ? 
-                        `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="draft-cell-img" alt="" width="22" height="22" loading="lazy" decoding="async" onerror="this.style.display='none'">` : '';
+                        `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="draft-cell-img" alt="" width="22" height="22" loading="lazy" decoding="async" data-action="hideImage">` : '';
 
                     // 3. Inject into the cell
                     cellContent = `

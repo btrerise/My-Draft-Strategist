@@ -8,7 +8,7 @@ import { State, getActiveDraft } from './state.js';
     // player, on every render.
     export function renderFantasyRoster(playerById) {
         if (State.players.length === 0) {
-            return `<div class="empty-state-card"><p>Load rankings on the Setup tab to start building your roster.</p><button class="btn btn-primary empty-state-cta" onclick="showTab('setup')">Go to Setup</button></div>`;
+            return `<div class="empty-state-card"><p>Load rankings on the Setup tab to start building your roster.</p><button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Setup</button></div>`;
         }
 
         let draft = getActiveDraft();
@@ -31,7 +31,7 @@ import { State, getActiveDraft } from './state.js';
                 // 1. Grab ID and build the image tag (crossorigin removed)
                 let playerId = p.sleeperId || p.id;
                 let imgHTML = playerId && !playerId.toString().startsWith('custom_') 
-                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" alt="" width="32" height="32" loading="lazy" decoding="async" onerror="this.style.display='none'">` 
+                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" alt="" width="32" height="32" loading="lazy" decoding="async" data-action="hideImage">` 
                     : `<div class="roster-avatar placeholder"></div>`;
 
                 return `
@@ -49,7 +49,7 @@ import { State, getActiveDraft } from './state.js';
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Bye: ${escapeHtml(p.bye)}</div>
-                        <button class="mds-btn-sm btn-draft" style="padding: 2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
+                        <button class="mds-btn-sm btn-draft" style="padding: 2px 6px;" data-action="undoDraft" data-id="${p.id}">Undo</button>
                     </div>
                 </div>`;
             } else {

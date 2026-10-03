@@ -79,7 +79,7 @@
 
 <header class="header">
     <div class="header-left">
-        <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu" aria-expanded="false">
+        <button class="hamburger-btn" data-action="toggleMenu" aria-label="Toggle Menu" aria-expanded="false">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -87,7 +87,7 @@
             </svg>
         </button>
       
-<button type="button" class="logo-container btn-bare" onclick="showTab('setup')" aria-label="Go to Setup">
+<button type="button" class="logo-container btn-bare" data-action="showTab" data-tab="setup" aria-label="Go to Setup">
     <img src="images/5775.svg" alt="Draft Strategist Logo" class="logo-img" width="36" height="36">
     <span class="logo-text">My Draft <span>Strategist</span></span>
 </button>
@@ -95,11 +95,11 @@
     
     <!-- HEADER CONTROL DROPDOWN -->
 <div class="header-controls" style="display: flex; align-items: center; gap: 0.5rem;">
-    <select id="draftProfileSelect" class="form-input" style="font-weight: 600; font-size: 0.85rem; height: 32px; width: auto; max-width: 180px;" onchange="switchDraftProfile(this.value)" aria-label="Select Active Draft">
+    <select id="draftProfileSelect" class="form-input" style="font-weight: 600; font-size: 0.85rem; height: 32px; width: auto; max-width: 180px;" data-action="switchDraftProfile" aria-label="Select Active Draft">
         <option value="">No Drafts</option>
     </select>
 
-    <button id="headerSyncBtn" class="btn-header" onclick="handleSmartSync()" title="Manual Sync (or click to stop Live Sync)" aria-label="Sync draft now" style="padding: 0 8px; height: 32px; display: flex; align-items: center; justify-content: center;">
+    <button id="headerSyncBtn" class="btn-header" data-action="handleSmartSync" title="Manual Sync (or click to stop Live Sync)" aria-label="Sync draft now" style="padding: 0 8px; height: 32px; display: flex; align-items: center; justify-content: center;">
         <span id="syncIconWrap" style="display: flex; align-items: center; gap: 4px;">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             <span class="hide-on-mobile">Sync</span>
@@ -117,7 +117,7 @@
 </header>
 
 <!-- HAMBURGER MENU OVERLAY & DRAWER -->
-<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+<div class="menu-overlay" id="menuOverlay" data-action="toggleMenu"></div>
 
 <nav class="hamburger-menu" id="hamburgerMenu" aria-label="Main Navigation">
     <div class="menu-header">
@@ -125,29 +125,29 @@
             <img src="images/5775.svg" alt="Draft Strategist Logo" class="menu-logo-img" width="36" height="36">
             <span>Menu</span>
         </div>
-        <button class="close-menu-btn" onclick="toggleMenu()" aria-label="Close Menu">
+        <button class="close-menu-btn" data-action="toggleMenu" aria-label="Close Menu">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
     </div>
 
     <div class="menu-nav-links">
-        <button class="nav-btn active" data-target="setup" onclick="showTab('setup')">
+        <button class="nav-btn active" data-target="setup" data-action="showTab" data-tab="setup">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             Setup
         </button>
-        <button class="nav-btn" data-target="tracker" onclick="showTab('tracker')">
+        <button class="nav-btn" data-target="tracker" data-action="showTab" data-tab="tracker">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
             Tracker
         </button>
-        <button class="nav-btn" data-target="team" onclick="showTab('team')">
+        <button class="nav-btn" data-target="team" data-action="showTab" data-tab="team">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             Team
         </button>
-        <button class="nav-btn" data-target="board" onclick="showTab('board')">
+        <button class="nav-btn" data-target="board" data-action="showTab" data-tab="board">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
             Draft Board
         </button>
-        <button class="nav-btn" data-target="guide" onclick="showTab('guide')">
+        <button class="nav-btn" data-target="guide" data-action="showTab" data-tab="guide">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             User Guide
         </button>
@@ -182,7 +182,7 @@
     
     <!-- LARGE HERO LOGO -->
     <div class="setup-hero">
-        <img src="images/logo.svg" alt="My Draft Strategist" class="hero-logo" fetchpriority="high" width="1200" height="400" onerror="this.style.display='none'">
+        <img src="images/logo.svg" alt="My Draft Strategist" class="hero-logo" fetchpriority="high" width="1200" height="400" data-action="hideImage">
     </div>
 
     <!-- Cross-App Navigation Banner -->
@@ -192,22 +192,22 @@
             <span style="font-size: 0.9rem;">In-Season Mode: Switch to <strong>My Lineup Strategist</strong></span>
             <svg aria-hidden="true" class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </a>
-        <button class="close-banner-btn" onclick="dismissBanner('mlsBanner', 'ds_hide_mls_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+        <button class="close-banner-btn" data-action="dismissBanner" data-banner="mlsBanner" data-storage-key="ds_hide_mls_banner" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
     </div>
 
     <!-- Info & Guide Banner Shortcut -->
     <div class="guide-banner" id="guideBanner" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem;">
-        <button type="button" class="btn-bare" onclick="showTab('guide')" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
+        <button type="button" class="btn-bare" data-action="showTab" data-tab="guide" style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; cursor: pointer;">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>
             <span style="color: var(--primary-green); font-weight: 600; font-size: 0.9rem;">New here? Read the User Guide</span>
             <svg aria-hidden="true" class="guide-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; margin-right: 0.5rem; color: var(--primary-green);"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </button>
-        <button class="close-banner-btn" onclick="dismissBanner('guideBanner', 'ds_hide_guide_banner')" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
+        <button class="close-banner-btn" data-action="dismissBanner" data-banner="guideBanner" data-storage-key="ds_hide_guide_banner" aria-label="Dismiss Banner" style="font-size: 0.85rem; padding: 0.25rem;">✕</button>
     </div>
     
     <!-- DYNAMIC INSTALL APP PROMPT -->
     <section id="installCard" class="settings-card highlight-card" style="display: none; position: relative;">
-        <button class="close-banner-btn" onclick="dismissBanner('installCard', 'ds_hide_install_banner')" aria-label="Dismiss Banner" style="position: absolute; top: 12px; right: 12px; font-size: 1rem;">✕</button>
+        <button class="close-banner-btn" data-action="dismissBanner" data-banner="installCard" data-storage-key="ds_hide_install_banner" aria-label="Dismiss Banner" style="position: absolute; top: 12px; right: 12px; font-size: 1rem;">✕</button>
         <div class="card-header centered-header" style="border-bottom: none; margin-bottom: 0.5rem; padding-bottom: 0;">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
             <h3 class="text-blue" style="margin: 0;">Install the App</h3>
@@ -229,7 +229,7 @@
         <div id="metaDisplay" class="status-badge"></div>
         
         <p class="card-desc">Want to skip the spreadsheet? Quick-start using Fantasy Football Calculator's mock-draft ADP (Select your league format below in Step 3).</p>
-        <button class="btn btn-purple" onclick="quickStartLeagueLogs(this)">
+        <button class="btn btn-purple" data-action="quickStartFfc">
             Quick-Start: Fantasy Football Calculator ADP
         </button>
         
@@ -244,7 +244,7 @@
                     </label>
                     <span class="toggle-desc">Blend an incoming file with your currently loaded set.</span>
                 </div>
-                <input type="checkbox" id="aggregateToggle" class="toggle-switch" onchange="document.getElementById('weightSliderContainer').style.display = this.checked ? 'block' : 'none';">
+                <input type="checkbox" id="aggregateToggle" class="toggle-switch" data-action="toggleWeightSlider">
             </div>
             
             <!-- Hidden Slider Container -->
@@ -253,7 +253,7 @@
                     <span id="weightLabelOld">50% Existing</span>
                     <span id="weightLabelNew">50% New Upload</span>
                 </div>
-                <input type="range" id="weightSlider" class="mds-slider" min="0" max="100" step="1" value="50" aria-label="Blend weight for new upload" aria-valuetext="50% new, 50% existing" oninput="document.getElementById('weightLabelOld').innerText = (100 - this.value) + '% Existing'; document.getElementById('weightLabelNew').innerText = this.value + '% New Upload'; this.setAttribute('aria-valuetext', this.value + '% new, ' + (100 - this.value) + '% existing');">
+                <input type="range" id="weightSlider" class="mds-slider" min="0" max="100" step="1" value="50" aria-label="Blend weight for new upload" aria-valuetext="50% new, 50% existing" data-action="updateWeightLabels">
             </div>
         </div>
 
@@ -262,7 +262,7 @@
         
         <div class="divider-text">OR PASTE</div>
         <textarea id="csvPasteArea" class="form-input" aria-label="Paste rankings as CSV" rows="2" placeholder="Paste raw CSV text here…"></textarea>
-        <button class="btn btn-primary" onclick="processPaste(this)">Process Pasted Data</button>
+        <button class="btn btn-primary" data-action="processPaste">Process Pasted Data</button>
     </section>
 
     <!-- 2. ADD / SYNC DRAFT -->
@@ -304,12 +304,12 @@
         <span class="toggle-desc">Automatically polls Sleeper for new picks in your active draft.</span>
     </div>
     <!-- ADDED: sync-toggle class and updated onchange -->
-    <input type="checkbox" id="autoSyncToggle" class="toggle-switch sync-toggle" onchange="toggleAutoSync(this.checked, this)">
+    <input type="checkbox" id="autoSyncToggle" class="toggle-switch sync-toggle" data-action="toggleAutoSync">
 </div>
 
         <div class="button-row-dual mt-2" style="display: flex; gap: 0.5rem;">
-            <button id="syncBtn" class="btn btn-blue" style="flex: 1;" onclick="addAndSyncSleeperDraft(this)">Sync Sleeper Draft</button>
-            <button class="btn btn-purple" style="flex: 1;" onclick="createManualDraft()">Create Manual Draft</button>
+            <button id="syncBtn" class="btn btn-blue" style="flex: 1;" data-action="addAndSyncSleeperDraft">Sync Sleeper Draft</button>
+            <button class="btn btn-purple" style="flex: 1;" data-action="createManualDraft">Create Manual Draft</button>
         </div>
         <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); text-align: center;">
             <em>Note for Manual Drafts: Make sure your uploaded rankings include Kickers and Defenses if you plan to draft them!</em>
@@ -348,7 +348,7 @@
             </select>
         </div>
         
-        <button id="fetchAdpBtn" class="btn btn-purple" onclick="fetchLeagueLogsADP(this)">Fetch Market Value</button>
+        <button id="fetchAdpBtn" class="btn btn-purple" data-action="fetchMarketValue">Fetch Market Value</button>
 
         <div class="leaguelogs-attribution">
             <a href="https://fantasyfootballcalculator.com/adp" target="_blank" rel="noopener">
@@ -361,7 +361,7 @@
         <div class="input-group mt-4">
             <label for="adpPasteArea" class="text-muted font-normal">Manual Paste Fallback:</label>
             <textarea id="adpPasteArea" class="form-input" rows="2" placeholder="e.g. Christian McCaffrey, 1.01"></textarea>
-            <button class="btn btn-secondary" onclick="processManualADP(this)">Apply Manual Market Paste</button>
+            <button class="btn btn-secondary" data-action="processManualADP">Apply Manual Market Paste</button>
         </div>
     </section>
 
@@ -425,7 +425,7 @@
                 </label>
                 <span class="toggle-desc">Overlay predictive WR/RB scoring models. <a href="./t-score/" class="methodology-link" style="color: #a855f7; text-decoration: none; font-weight: 500;">Read Methodology →</a></span>
             </div>
-            <input type="checkbox" id="tscoreToggle" class="toggle-switch" onchange="saveSettings()">
+            <input type="checkbox" id="tscoreToggle" class="toggle-switch" data-action="autoSaveSettings">
         </div>
         <div class="toggle-row hide-on-desktop">
             <div class="toggle-info">
@@ -445,7 +445,7 @@
                 </label>
                 <span class="toggle-desc">Display NFL player avatars on the Draft Board.</span>
             </div>
-            <input type="checkbox" id="toggleHeadshots" class="toggle-switch" checked onchange="toggleHeadshots(this.checked)">
+            <input type="checkbox" id="toggleHeadshots" class="toggle-switch" checked data-action="toggleHeadshots">
         </div>
         <div class="toggle-row">
             <div class="toggle-info">
@@ -457,7 +457,7 @@
             </div>
             <input type="checkbox" id="thirdRoundReversalToggle" class="toggle-switch">
         </div>
-        <button class="btn btn-primary mt-2" onclick="saveSettings(this)">Save Settings</button>
+        <button class="btn btn-primary mt-2" data-action="saveSettings">Save Settings</button>
     </section>
 
     <!-- 5. CALL OUTS -->
@@ -486,14 +486,14 @@
             <textarea id="dartList" class="form-input" rows="2" placeholder="e.g. Keaton Mitchell"></textarea>
         </div>
 
-        <button class="btn btn-primary mt-2" onclick="saveSettings(this)">Save Call Outs</button>
+        <button class="btn btn-primary mt-2" data-action="saveSettings">Save Call Outs</button>
     </section>
 
     <!-- SETUP FOOTER PROMPT TO TRACKER -->
     <section class="settings-card highlight-card text-center">
         <h3 class="text-green border-none justify-center mb-1">Ready to Draft?</h3>
         <p class="card-desc mb-4">Head over to the Tracker tab to view your player pool and start making picks.</p>
-        <button class="btn btn-primary" onclick="showTab('tracker')">Go to Tracker</button>
+        <button class="btn btn-primary" data-action="showTab" data-tab="tracker">Go to Tracker</button>
     </section>
 
     <!-- BACKUP & RESTORE -->
@@ -506,9 +506,9 @@
             </div>
         </header>
         <div class="flex-column gap-2">
-            <button class="btn btn-primary" onclick="exportMdsSettings()">Export Backup</button>
-            <input type="file" id="mdsImportFileInput" accept="application/json,.json" style="display:none;" aria-label="Import backup file" onchange="importMdsSettings(this)">
-            <button class="btn btn-secondary" onclick="document.getElementById('mdsImportFileInput').click()">Import Backup</button>
+            <button class="btn btn-primary" data-action="exportMdsSettings">Export Backup</button>
+            <input type="file" id="mdsImportFileInput" accept="application/json,.json" style="display:none;" aria-label="Import backup file" data-action="importMdsSettings">
+            <button class="btn btn-secondary" data-action="chooseBackupFile">Import Backup</button>
         </div>
     </section>
 
@@ -518,8 +518,8 @@
             <h3>Reset Controls</h3>
         </header>
         <div class="flex-column gap-2">
-            <button class="btn btn-warning" onclick="resetPicksOnly()">Reset Draft Picks Only</button>
-            <button class="btn btn-danger" onclick="hardReset()">Reset Everything (Full Wipe)</button>
+            <button class="btn btn-warning" data-action="resetPicksOnly">Reset Draft Picks Only</button>
+            <button class="btn btn-danger" data-action="hardReset">Reset Everything (Full Wipe)</button>
         </div>
     </section>
 <div class="hero-kofi">
@@ -551,11 +551,11 @@
     <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; flex-grow: 1;">
         <span class="pulse-dot" style="position:static; width: 5px; height: 5px;"></span>
         <label for="trackerSyncToggle" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Live Sync</label>
-        <input type="checkbox" id="trackerSyncToggle" class="toggle-switch sync-toggle" style="transform: scale(0.85);" onchange="toggleAutoSync(this.checked, this)">
+        <input type="checkbox" id="trackerSyncToggle" class="toggle-switch sync-toggle" style="transform: scale(0.85);" data-action="toggleAutoSync">
     </div>
 
     <!-- Removed 'flex-grow' from this button so it doesn't stretch awkwardly -->
-    <button class="btn btn-warning mds-btn-sm" onclick="resetPicksOnly()" title="Reset Draft Picks">
+    <button class="btn btn-warning mds-btn-sm" data-action="resetPicksOnly" title="Reset Draft Picks">
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
         Reset Picks
     </button>
@@ -625,11 +625,11 @@
     </div>
     <input type="checkbox" id="includeRecapInExport" class="toggle-switch" checked>
 </div>
-        <button id="exportTeamBtn" class="btn btn-purple" onclick="exportTeam()" style="margin-bottom: 0;">
+        <button id="exportTeamBtn" class="btn btn-purple" data-action="exportTeam" style="margin-bottom: 0;">
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Export
     </button>
-        <button id="sendToLineupBtn" class="btn btn-secondary" onclick="sendRosterToLineupStrategist()" style="margin-bottom: 0;" title="Send this drafted roster to My Lineup Strategist as a new league">
+        <button id="sendToLineupBtn" class="btn btn-secondary" data-action="sendRosterToLineupStrategist" style="margin-bottom: 0;" title="Send this drafted roster to My Lineup Strategist as a new league">
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         Send to Lineup Strategist
     </button>
@@ -667,7 +667,7 @@
 
             <!-- Toggleable Math Breakdown -->
             <div style="margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem;">
-                <button id="toggleRecapMathBtn" aria-expanded="false" aria-controls="recapMathBreakdown" onclick="toggleRecapMath()" style="background: none; border: none; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 0;">
+                <button id="toggleRecapMathBtn" aria-expanded="false" aria-controls="recapMathBreakdown" data-action="toggleRecapMath" style="background: none; border: none; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 0;">
                     <span>Show Value Breakdown</span>
                     <svg aria-hidden="true" id="recapMathArrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </button>
@@ -728,7 +728,7 @@
     <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(0,0,0,0.15); padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
         <span class="pulse-dot" style="position:static;"></span>
         <label for="boardSyncToggle" style="font-size: 0.8rem; font-weight: 600; color: var(--text-main);">Auto-Sync</label>
-        <input type="checkbox" id="boardSyncToggle" class="toggle-switch sync-toggle" style="transform: scale(0.85); margin-left: 0.25rem;" onchange="toggleAutoSync(this.checked, this)">
+        <input type="checkbox" id="boardSyncToggle" class="toggle-switch sync-toggle" style="transform: scale(0.85); margin-left: 0.25rem;" data-action="toggleAutoSync">
     </div>
 </div>
     
@@ -739,7 +739,7 @@
                 <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
             </div>
             <p>Load rankings or sync Sleeper to generate the live draft board.</p>
-            <button class="btn btn-primary empty-state-cta" onclick="showTab('setup')">Go to Setup</button>
+            <button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Setup</button>
         </div>
     </div>
     
@@ -871,15 +871,15 @@
 </main>
 <!-- BOTTOM HYBRID NAVIGATION -->
 <nav class="nav-bar" aria-label="Bottom Navigation">
-    <button class="nav-btn" data-target="tracker" onclick="showTab('tracker')">
+    <button class="nav-btn" data-target="tracker" data-action="showTab" data-tab="tracker">
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
         <span>Tracker</span>
     </button>
-    <button class="nav-btn" data-target="team" onclick="showTab('team')">
+    <button class="nav-btn" data-target="team" data-action="showTab" data-tab="team">
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         <span>Team</span>
     </button>
-    <button class="nav-btn" data-target="board" onclick="showTab('board')">
+    <button class="nav-btn" data-target="board" data-action="showTab" data-tab="board">
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
         <span>Board</span>
     </button>
