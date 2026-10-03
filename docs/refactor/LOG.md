@@ -3288,3 +3288,72 @@ wins today. In mls.css or mds.css the app rule would load later and win instead.
 - New CSS: one app only → its app file; both apps, or a feature meant to be shared → base.css, and when it's an
   app-feature rule that has to beat earlier shared rules, at the end of base.css, as step 4 did. Before moving rules,
   run `npm run compare-css`.
+
+### Planned as runbook chunks 4E and 8A–8C (owner's request, recorded after 4D)
+
+Cleaning up the CSS turned up two kinds of follow-up work that sit outside a "no visible change" refactor. The owner
+wants both planned, so they don't become leftovers when the runbook is done:
+
+1. **Visible fixes (4E).** 4D found classes that do nothing because a later shared rule in `css/base.css` wins
+   over them. Fixing them changes how those elements look, so 4D had to leave them.
+2. **Draft Strategist versions of the shared features (Phase 8).** 4C's "share now in CSS" decisions only kept the
+   styles in `css/base.css`. Nothing in Draft Strategist (MDS) uses them yet.
+
+Both are runbook cards now. Order: 4E alongside 5E and 6B → 5D → 7B → Phase 8.
+
+#### 4E — Visible CSS fixes found in 4C and 4D (needs 4D; alongside 5E and 6B)
+
+Touches only CSS, a few class attributes in the two app pages, and the screenshot baselines. 5E (T-Score page) and
+6B (storage) don't touch those, so they can run at the same time. **5D now needs 4E**: 5D renames
+`.leaguelogs-attribution`, which one fix touches. 5D and 7B can then still promise no visible change.
+
+Owner's decisions (4E does only the approved fixes; for anything still pending, it asks first):
+
+| Fix | What changes | Owner's decision |
+|---|---|---|
+| Pulsing-card corners | Drop `border-radius: 8px` from `.pulse-border`, so a pulsing card keeps its 12px corners (MLS Setup cards). | fix (decided after 4C) |
+| Smaller ✕ (`.close-banner-btn-sm`) | MLS's four ✕ buttons go from 1.1rem / 8px padding to 0.85rem / 0.25rem (touch target unchanged). MDS's two ✕ swap their inline style for the class, with no visible change. | pending |
+| `.danger-card` on the Injury Auditor | Red dashed border and red tint on the Injury Auditor accordion (MLS Setup, Advanced Settings), like the Danger Zone card. | pending |
+| `.mt-0` on `.leaguelogs-attribution` | (a) Make it work: the attribution line under MLS's market data loses its 1rem top margin; or (b) delete the dead `mt-0` from the markup: no visible change. | pending |
+| `.pl-6` on the two `.guide-list`s | (a) Make it work: those two lists on MLS's Guide tab get a wider indent (1.25rem → `--space-6`); or (b) delete the dead `pl-6`: no visible change. | pending |
+
+`npm run compare-css` proves the scope: every difference it reports must be on an element a fix targets. The
+screenshot changes get accepted with `npm run test:update` and listed.
+
+#### Phase 8 — Shared features for Draft Strategist (after 7B)
+
+Each card moves the MLS code it needs into `js/shared/` without changing MLS (compare-css: 0 differences on MLS
+and T-Score), then builds the MDS version, and proposes the MDS details to the owner before building. Why after 7B:
+
+- **After 5D (Phase 5 done):** new markup uses `data-action` from the start, and shared code lands in the final
+  `js/shared/` layout rather than one 5D is still shrinking.
+- **After 6B:** a dismissible MDS banner needs a storage key, and freshness labels need a timestamp saved in MDS's
+  data. After 6B both are created under the new names and never need migrating.
+- **After 7B:** freshness labels change how MDS saves its rankings and ADP metadata (`js/mds/import.js`,
+  `js/mds/market.js`), which 7B may also touch.
+
+If the owner wants something sooner, 8A doesn't touch the data code and could start once 5D and 6B are merged.
+
+| Card | Features (4C numbering) | Shared code it creates | Size |
+|---|---|---|---|
+| **8A** setup guidance (needs 7B; alongside 8B) | Pulse cues (2), setup checklist (3), Danger Zone style on MDS's Reset Controls (5), info banner where the owner picks a use (6) | `js/shared/ui/setupChecklist.js` (step `<li>` builder, scroll-and-focus) | ~25k |
+| **8B** freshness and processing lines (needs 7B; alongside 8A) | "Updated 3 days ago" labels (4), "Processing…" / "Uploaded successfully" lines | `js/shared/freshness.js` (also replaces T-Score's copy of the day math), `showStatusFeedback` / `setProcessingStatus` in `js/shared/ui/` | ~20k |
+| **8C** upload preview and autocomplete (needs 8B) | Rankings upload preview; player-name autocomplete and keyboard hint, only if the owner picks a place (MDS's only name field is the Tracker search, which already filters) | preview shell and pure helpers; `attachPlayerAutocomplete` | ~30k |
+
+Already done or nothing to build: the smaller ✕ (4E), the layout and spacing helpers (CSS only). The three "later"
+features (collapsible rankings cards, segmented toggle, hide-the-hero) and the "no" items stay out of Phase 8.
+Class renames that 4C listed (`mls-preview-*`, `rankings-fresh` / `rankings-stale`, `mls-upload-processing`,
+`mls-manual-key-hint`…) happen in the card that first uses the class on MDS.
+
+Owner's decisions for Phase 8 (each card builds only what's marked "build"):
+
+| Feature | Card | Owner's decision |
+|---|---|---|
+| Pulsing "do this next" highlights | 8A | pending |
+| Setup checklist | 8A | pending |
+| Danger Zone style on Reset Controls | 8A | pending |
+| Blue info banner (and where) | 8A | pending |
+| Freshness labels (and the stale threshold for rankings and ADP) | 8B | pending |
+| "Processing…" / "Uploaded successfully" lines | 8B | pending |
+| Rankings upload preview | 8C | pending |
+| Player-name autocomplete + keyboard hint (and where) | 8C | pending |
