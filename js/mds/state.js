@@ -5,14 +5,15 @@ import { readJSON } from './compat.js';
 import { draftPoolKey, readDraftPlayerPool, savePlayerPool } from './storage.js';
 import { initSettingsUI } from './settings.js';
 import { renderBoard } from './tracker.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // --- STATE MANAGEMENT ---
     export const State = {
-        players: readJSON('ds_players', []),
-        drafts: readJSON('ds_drafts', []),
-        activeDraftId: localStorage.getItem('ds_active_draft_id') || null,
-        rankingsMeta: readJSON('ds_meta', null),
-        adpMeta: readJSON('ds_adp_meta', null),
+        players: readJSON(KEYS.mds.players, []),
+        drafts: readJSON(KEYS.mds.drafts, []),
+        activeDraftId: localStorage.getItem(KEYS.mds.activeDraftId) || null,
+        rankingsMeta: readJSON(KEYS.mds.meta, null),
+        adpMeta: readJSON(KEYS.mds.adpMeta, null),
         activePosFilter: 'ALL',
         autoSyncTimer: null,
         // Health of the live-draft poll, so the LIVE pill can tell the truth about it.
@@ -41,22 +42,22 @@ import { renderBoard } from './tracker.js';
             const defaultDraft = {
                 draftId: 'draft_default',
                 name: 'Main Draft',
-                username: localStorage.getItem('ds_username') || '',
-                settings: readJSON('ds_draft_settings', { teams: 12, rounds: 15 }),
-                limits: readJSON('ds_limits', { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1, BENCH: 5, TOTAL: 15 }),
-                draftedPlayers: readJSON('ds_drafted', []),
-                myTeam: readJSON('ds_myTeam', []),
-                rawDraftPicks: readJSON('ds_raw_picks', []),
-                totalPicks: parseInt(localStorage.getItem('ds_total_picks')) || 0,
+                username: localStorage.getItem(KEYS.mds.username) || '',
+                settings: readJSON(KEYS.mds.draftSettings, { teams: 12, rounds: 15 }),
+                limits: readJSON(KEYS.mds.limits, { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1, BENCH: 5, TOTAL: 15 }),
+                draftedPlayers: readJSON(KEYS.mds.drafted, []),
+                myTeam: readJSON(KEYS.mds.myTeam, []),
+                rawDraftPicks: readJSON(KEYS.mds.rawPicks, []),
+                totalPicks: parseInt(localStorage.getItem(KEYS.mds.totalPicks)) || 0,
                 queue: []
             };
             State.drafts = [defaultDraft];
             State.activeDraftId = 'draft_default';
-            localStorage.setItem('ds_drafts', JSON.stringify(State.drafts));
-            localStorage.setItem('ds_active_draft_id', 'draft_default');
+            localStorage.setItem(KEYS.mds.drafts, JSON.stringify(State.drafts));
+            localStorage.setItem(KEYS.mds.activeDraftId, 'draft_default');
         } else if (!State.activeDraftId || !State.drafts.some(d => d.draftId === State.activeDraftId)) {
             State.activeDraftId = State.drafts[0].draftId;
-            localStorage.setItem('ds_active_draft_id', State.activeDraftId);
+            localStorage.setItem(KEYS.mds.activeDraftId, State.activeDraftId);
         }
     }
 
@@ -80,7 +81,7 @@ import { renderBoard } from './tracker.js';
     export function saveActiveDraftState() {
         let activeDraft = getActiveDraft();
         // This used to do `activeDraft.players = [...State.players]` here, which is what put
-        // every profile's whole pool into the ds_drafts blob below. Pools now live under their
+        // every profile's whole pool into the KEYS.mds.drafts blob below. Pools now live under their
         // own keys and are written by savePlayerPool() when they actually change -- see the
         // storage notes at the top of this file. The delete keeps a v1-format draft (one whose
         // migration was deferred) from silently re-persisting its inline copy.
@@ -99,12 +100,12 @@ import { renderBoard } from './tracker.js';
                 delete activeDraft.players;
             } catch (e) {
                 // Couldn't write the rescue copy, so keep the inline one rather than dropping
-                // both. ds_drafts stays fat for now; the migration retries on the next load.
+                // both. KEYS.mds.drafts stays fat for now; the migration retries on the next load.
                 console.warn('Deferred pool rescue failed; keeping inline copy for now.', e);
             }
         }
-        localStorage.setItem('ds_drafts', JSON.stringify(State.drafts));
-        localStorage.setItem('ds_active_draft_id', State.activeDraftId || '');
+        localStorage.setItem(KEYS.mds.drafts, JSON.stringify(State.drafts));
+        localStorage.setItem(KEYS.mds.activeDraftId, State.activeDraftId || '');
     }
 
     // The common "I changed draft state and the screen needs to reflect it" pairing. Exists so
@@ -131,7 +132,7 @@ import { renderBoard } from './tracker.js';
     export const switchDraftProfile = function(draftId) {
         if (!draftId) return;
         State.activeDraftId = draftId;
-        localStorage.setItem('ds_active_draft_id', State.activeDraftId);
+        localStorage.setItem(KEYS.mds.activeDraftId, State.activeDraftId);
 
         let draft = getActiveDraft();
         if (draft) {
@@ -139,7 +140,7 @@ import { renderBoard } from './tracker.js';
             // readDraftPlayerPool checks this draft's own key first and falls back to an
             // inline v1 copy, so a profile saved before the storage migration still restores.
             const savedPool = readDraftPlayerPool(draft);
-            State.players = savedPool ? [...savedPool] : readJSON('ds_players', []);
+            State.players = savedPool ? [...savedPool] : readJSON(KEYS.mds.players, []);
             // Persists under BOTH the global key and this draft's own key, which also means a
             // profile that fell through to the global fallback now has a pool of its own and
             // won't inherit whatever another profile loads next.

@@ -10,6 +10,7 @@ import { State } from '../state.js';
 import { rankingIndex, showStatusFeedback, getActiveLeague } from '../helpers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { getRankingsFreshness } from '../rankings/engine.js';
+import { KEYS } from '../../shared/storage/keys.js';
 // --- MARKET DISCONNECT ENGINE ---
     const marketFileEl = document.getElementById('marketFileInput');
     if (marketFileEl) {
@@ -118,9 +119,9 @@ import { getRankingsFreshness } from '../rankings/engine.js';
 
         // Save to state and local storage
         State.marketRankings = parsed;
-        localStorage.setItem('mds_season_market', JSON.stringify(State.marketRankings)); // was 'mls_season_market' -- State.marketRankings is always read back from 'mds_season_market' on load (see State init above), so this key must match or fetched data silently disappears on reload
+        localStorage.setItem(KEYS.mls.market, JSON.stringify(State.marketRankings)); // was 'mls_season_market' -- State.marketRankings is always read back from KEYS.mls.market on load (see State init above), so this key must match or fetched data silently disappears on reload
         State.marketUpdatedAt = Date.now();
-        localStorage.setItem('mds_season_market_updated', State.marketUpdatedAt);
+        localStorage.setItem(KEYS.mls.marketUpdated, State.marketUpdatedAt);
 
         // Update UI
         updateMarketMetaDisplay(); 
@@ -169,11 +170,11 @@ import { getRankingsFreshness } from '../rankings/engine.js';
         });
 
         State.marketRankings = parsed;
-        localStorage.setItem('mds_season_market', JSON.stringify(State.marketRankings));
+        localStorage.setItem(KEYS.mls.market, JSON.stringify(State.marketRankings));
         // Upload time, not the file's own date -- a CSV exported last week and uploaded today
         // reads as "today". Same trade-off ROS/Weekly uploads already make.
         State.marketUpdatedAt = Date.now();
-        localStorage.setItem('mds_season_market_updated', State.marketUpdatedAt);
+        localStorage.setItem(KEYS.mls.marketUpdated, State.marketUpdatedAt);
         updateMarketMetaDisplay();
 
         showStatusFeedback(document.getElementById(successMsgId), null, 2500);

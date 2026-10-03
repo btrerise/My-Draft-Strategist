@@ -12,6 +12,7 @@ import { POWER_POSITIONS, computePositionalPower, POWER_STARTER_CARRY_CAP, power
 import { ensurePowerAgeIndex, resolvePowerFuture } from './futureValue.js';
 import { getPowerLeagueKind, assignPowerLabels, powerLabelAdvice } from './directionLabels.js';
 import { renderRosterPowerStrip } from './snapshot.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
 // --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
 // Generated automatically (no Calculate button) every time the Roster tab renders -- see the
@@ -20,7 +21,7 @@ import { renderRosterPowerStrip } from './snapshot.js';
 // so recomputing on every render is cheaper than tracking what changed.
 export const updatePowerSetting = function(key, value) {
     State.powerSettings[key] = value;
-    localStorage.setItem('mls_power_settings', JSON.stringify(State.powerSettings));
+    localStorage.setItem(KEYS.mls.powerSettings, JSON.stringify(State.powerSettings));
     refreshPowerRankings();
 };
 

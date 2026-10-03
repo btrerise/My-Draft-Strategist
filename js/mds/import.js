@@ -6,6 +6,7 @@ import { BYE_WEEKS_2026, State, saveAndRenderDraftState } from './state.js';
 import { updateMetaDisplay } from './settings.js';
 import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
 import { MDS_NAME_HEADERS, findHeaderRowIndex, normalizeHeader, stripTitleLines } from '../shared/rankings/parse.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // --- FILE PARSING & DATA IMPORT ---
 const fileInput = document.getElementById('fileInput');
@@ -347,7 +348,7 @@ function parseExcel(file) {
             let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             State.rankingsMeta = { count: State.players.length, date: dateString };
 
-            localStorage.setItem('ds_meta', JSON.stringify(State.rankingsMeta));
+            localStorage.setItem(KEYS.mds.meta, JSON.stringify(State.rankingsMeta));
             savePlayerPool();
             updateMetaDisplay();
             saveAndRenderDraftState();

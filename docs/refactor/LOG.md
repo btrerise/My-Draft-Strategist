@@ -2447,3 +2447,105 @@ rescue backup**); `goToSetupStep`, `lookupSimPlayer` (init.js); `onload` (the br
 - **Optional rename:** MLS's `fetchLeagueLogsADP` (`scout/marketDisconnect.js`, now a module-internal name
   and a `data-action` value only) could become `fetchMarketValue` like MDS's. It isn't on window any more,
   so only the declaration, main.js's import and table entry, and the attribute would change.
+
+### 6A — Route every storage key through keys.js
+
+**`js/shared/storage/keys.js` is now the only place a storage key is spelled**, apart from
+`js/boot.js` and six HTML attributes (both listed below). No key was renamed and no stored value
+changed; the registry's key list is identical to 1B's (checked by comparing the old literal list
+with the new `STORAGE_KEYS`, per owner).
+
+#### What keys.js exports now
+
+- **`KEYS`**: one named constant per key, grouped by owner: `KEYS.mds.*` (26, e.g. `KEYS.mds.drafts`,
+  `KEYS.mds.showHeadshots` for `mds_show_headshots`), `KEYS.mls.*` (30, e.g. `KEYS.mls.leagues` for
+  `mds_season_leagues`), `KEYS.shared.*` (`handoffRoster`, `sleeperLeagueId`) and `KEYS.tscore.*`
+  (`cache`, `cacheUpdated`, `pageCache`). Property names are the key minus its prefix, camelCased.
+- **`mdsDraftPoolKey(draftId)`** and `MDS_DRAFT_POOL_PREFIX` for the one dynamic key,
+  `ds_players_<draftId>`. `js/mds/storage.js`'s `draftPoolKey` is now `= mdsDraftPoolKey` (same name kept
+  for its importers).
+- Unchanged names: `MDS_PREFIX`, `MLS_PREFIXES`, `IDB_DATABASES`, `isMdsOwnedKey`, `isMlsOwnedKey`
+  (bodies untouched). `MDS_SHOW_HEADSHOTS` / `MDS_HANDOFF_ROSTER` are now aliases of the `KEYS` entries.
+  `STORAGE_KEYS` (the flat lists per owner) is derived from `KEYS`, so it can't drift.
+
+#### Call sites
+
+A script replaced each quoted key literal with its `KEYS.*` path, looked up from the registry itself
+(so a typo is impossible), and added the import after each file's last import line. Per-file counts
+matched the pre-change grep: 30 files in `js/mds`, `js/mls`, `js/shared/ui/banners.js`. By hand:
+
+- `js/mds/storage.js`: `DRAFT_POOL_KEY_PREFIX` removed (see above). Its migration `console.log` now
+  interpolates `${KEYS.mds.drafts}`; the logged text is the same.
+- **IndexedDB names** (in the registry since 1B) also come from `IDB_DATABASES` now: `js/shared/storage/idb.js`
+  (`LineupStrategistDB` / `sleeperData`) and `js/shared/api/sleeper.js` (`mls_sleeper_cache` /
+  `players`). Record keys inside those stores (`nfl_player_map`, the stats cache keys) aren't in the
+  registry and stay where they are; they're cache-internal and 6B doesn't touch them.
+- **T-Score page** (`t-score/index.html`, still an inline classic script because 4B hasn't run): it
+  can't import, so `js/shared/globals.js` assigns **`window.KEYS`** (the one new window name, on all
+  three pages) and the script reads `window.KEYS.tscore.*`. All five uses run at event time (Refresh,
+  DOMContentLoaded), after the globals module has run. 4B can switch it to an import.
+- **Comments** that spelled a key name now name the constant instead (`js/mds/{backup,storage,state,sleeperSync}.js`,
+  `js/mls/{backup,init}.js`, `js/mls/lineup/headshots.js`, `js/mls/scout/marketDisconnect.js`,
+  `js/shared/ui/banners.js`), so 6B's grep stays clean. The marketDisconnect comment keeps
+  `'mls_season_market'`: it's the name of an old bug, not a key in use.
+- **Convention:** importing `keys.js` is safe from any module, at top level too (MLS's `state.js` and
+  `constants.js` read `KEYS` while evaluating). It imports nothing, so it always evaluates before its
+  importer, and rule 5's TDZ concern doesn't apply. Keep it import-free.
+
+#### Left as text, for 6B to edit by hand
+
+- **HTML attributes** (5A turned the `dismissBanner('…')` arguments into `data-*`):
+  - `index.html`: `data-storage-key="ds_hide_mls_banner"`, `"ds_hide_guide_banner"`, `"ds_hide_install_banner"`
+    (the three MDS banner close buttons).
+  - `lineup/index.html`: `data-storage-key="mls_hide_guide_banner"` + `data-next-storage-key="mls_hide_draft_banner"`
+    (guide banner), `data-storage-key="mls_hide_draft_banner"` (draft banner),
+    `data-storage-key="mls_hide_sleeper_sync_banner"` (Scout tab's sync banner).
+  - Only the three `ds_` ones change in 6B (the `mls_` names keep their names under the agreed table).
+    The same keys are read on load through `KEYS` in `js/shared/ui/banners.js`, so the HTML and keys.js
+    must change together.
+- **`js/boot.js`**: its rescue-backup filter (`downloadRescueBackup`) still spells `mds_handoff_roster`,
+  `mds_season_`, `mls_`, `ds_`, `mds_show_headshots`. New **`tests/unit/bootKeyFilters.test.mjs`** pulls that
+  filter out of boot.js's source and checks it against `isMdsOwnedKey` / `isMlsOwnedKey` for every
+  registry key (the pool key with three sample draft ids) and a few look-alike keys. It also checks each
+  app owns exactly its registry group and no key name repeats. Verified it fails when boot.js's filter
+  drifts (changed `mds_show_headshots` in boot.js: 1 failure). If 6B restructures that filter, update
+  the test's regex.
+- `ds_mobile_collapse` in `index.html` / `js/mds/init.js` is an element id, not a storage key (the key
+  is `ds_mobile_collapse_pref`). Left alone.
+
+Grep used for the done check (every registry value plus the two IDB names, whole word):
+`grep -rnwF -f <(node -e "…STORAGE_KEYS…") js index.html lineup t-score sw.js` finds only keys.js,
+boot.js and the six attributes above.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (101 precached). `node --test` 162 (161 pass, 1 skipped as
+  before; 5 new). `cd tests && npx playwright test`: **72/72**, including `backup.spec.mjs` unchanged.
+  **No screenshot changed.**
+- **Throwaway spec (not committed), on an origin/main worktree and on this branch, both widths:** the
+  T-Score page with a seeded `tscore_page_cache` / `mds_tscore_cache_updated` (freshness label, tables),
+  its Refresh error path (toast, localStorage after), MDS's v1 → v2 draft-storage migration from a
+  seeded inline-pool `ds_drafts` (every key and value after reload), and MLS's first load (every key and
+  value). **Identical.** No leftover `serve.mjs` between runs (5A's trap).
+
+#### Other changes
+
+- `sw.js`: CACHE_NAME `v2.8.57` → `v2.8.58`. No file added or removed (the new file is a test).
+- README `/js` line: keys.js is the only place a storage key is spelled.
+
+#### Left for later chunks
+
+- **6B:** rename in `keys.js` only (plus the three `ds_hide_*` attributes and boot.js's filter, which
+  the new unit test will flag). `KEYS` property names don't change with the rename, so no call site
+  needs editing. The restore translation table and migration go in their own module; take the old names
+  from git or spell them there (that table is the one legitimate second spelling).
+- **6B and the T-Score page:** the page reads `mds_tscore_cache_updated` on load for its "Sheet data:
+  Updated …" label (`tscore_page_cache` keeps its name). If only MDS migrates, a user who opens T-Score
+  before MDS after the update sees no label until they visit MDS or press Refresh. So the T-Score page
+  needs its own copy-on-load too. **Run 4B before 6B if you can**: once the T-Score script is a module,
+  6B can import the same migration there. Otherwise 6B has to put it in the inline classic script or in
+  `globals.js`.
+- **4B:** the T-Score script can import `KEYS` once it's a module; then `window.KEYS` can go (nothing
+  else reads it).
+- `js/mds/backup.js` still reads `window.isMdsOwnedKey` although MDS is ES modules since 2A; an import
+  would retire that window name (5D-style cleanup, not done here).

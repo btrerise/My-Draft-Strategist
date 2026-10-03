@@ -18,6 +18,7 @@
 // (see getSleeperUser), the throwing version was kept here and the more lenient call site
 // was updated in mls.js to explicitly catch and continue, so its original "skip this one
 // league, keep going" behavior is preserved on purpose rather than by accident.
+import { IDB_DATABASES } from '../storage/keys.js';
 
 /**
  * Fetches Sleeper's current NFL state (week, season, etc). Returns null on a non-ok
@@ -143,8 +144,8 @@ export async function getSleeperSeasonAdp(season, orderBy) {
 // in localStorage: it's asynchronous (a 15MB JSON.stringify/parse on every read would be a
 // real, synchronous main-thread cost), and it isn't competing against the same ~5-10MB total
 // quota localStorage shares with everything else this app already stores there.
-const SLEEPER_PLAYER_DB_NAME = 'mls_sleeper_cache';
-const SLEEPER_PLAYER_STORE = 'players';
+const SLEEPER_PLAYER_DB_NAME = IDB_DATABASES.sleeperPlayerMap.name;
+const SLEEPER_PLAYER_STORE = IDB_DATABASES.sleeperPlayerMap.stores[0];
 const SLEEPER_PLAYER_CACHE_KEY = 'nfl_player_map';
 const SLEEPER_PLAYER_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // matches Sleeper's own "once a day" guidance
 

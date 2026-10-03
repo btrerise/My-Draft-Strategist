@@ -1,6 +1,7 @@
 // Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
 // js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
 // Comments below that say "this file" or "utils.js" were written when this was one file.
+import { KEYS } from '../storage/keys.js';
 
 export function dismissBanner(bannerId, storageKey) {
     const banner = document.getElementById(bannerId);
@@ -30,22 +31,22 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Check all your app banners
-    // NOTE: 'guideBanner' was previously checked against 'ds_hide_guide_banner' -- a leftover
+    // NOTE: 'guideBanner' was previously checked against KEYS.mds.hideGuideBanner -- a leftover
     // from before app-scoped storage keys (see the localStorage key scoping principle) -- while
-    // its own dismiss button has always written 'mls_hide_guide_banner'. That mismatch meant
+    // its own dismiss button has always written KEYS.mls.hideGuideBanner. That mismatch meant
     // dismissing the guide banner never actually stuck across reloads; fixed to check the same
     // key the button writes.
-    checkAndHideBanner('guideBanner', 'mls_hide_guide_banner');
-    checkAndHideBanner('mlsBanner', 'ds_hide_mls_banner');
-    checkAndHideBanner('draftBanner', 'mls_hide_draft_banner');
-    checkAndHideBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner');
-    checkAndHideBanner('installCard', 'ds_hide_install_banner');
+    checkAndHideBanner('guideBanner', KEYS.mls.hideGuideBanner);
+    checkAndHideBanner('mlsBanner', KEYS.mds.hideMlsBanner);
+    checkAndHideBanner('draftBanner', KEYS.mls.hideDraftBanner);
+    checkAndHideBanner('sleeperSyncBanner', KEYS.mls.hideSleeperSyncBanner);
+    checkAndHideBanner('installCard', KEYS.mds.hideInstallBanner);
 
     // Staggered reveal: draftBanner starts hidden (see its inline style in index.html) so it
     // never stacks with guideBanner on a first visit. Once guideBanner has been dismissed
     // (whether just now or on some earlier visit), and draftBanner itself hasn't been
     // dismissed, draftBanner takes its place.
-    if (localStorage.getItem('mls_hide_guide_banner') === 'true' && localStorage.getItem('mls_hide_draft_banner') !== 'true') {
+    if (localStorage.getItem(KEYS.mls.hideGuideBanner) === 'true' && localStorage.getItem(KEYS.mls.hideDraftBanner) !== 'true') {
         const draftBanner = document.getElementById('draftBanner');
         if (draftBanner) draftBanner.style.display = 'flex';
     }

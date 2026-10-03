@@ -1,6 +1,7 @@
 // Moved from js/mds/legacy.js (the second half of the old js/mds.js) in refactor chunk 2B:
 // SEND ROSTER TO LINEUP STRATEGIST.
 import { State, getActiveDraft } from './state.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // --- SEND ROSTER TO LINEUP STRATEGIST ---
     // MDS (mydraftstrategist.com) and MLS (mydraftstrategist.com/lineup/) are same-origin, so
@@ -39,7 +40,7 @@ import { State, getActiveDraft } from './state.js';
             timestamp: Date.now()
         };
 
-        localStorage.setItem('mds_handoff_roster', JSON.stringify(payload));
+        localStorage.setItem(KEYS.shared.handoffRoster, JSON.stringify(payload));
 
         if (window.showToast) window.showToast(`Sending ${players.length} players to Lineup Strategist…`);
         setTimeout(() => { window.location.href = './lineup/'; }, 700);

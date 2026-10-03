@@ -2,6 +2,7 @@
 // TRADE ANALYZER SETTINGS, the simulator's settings toggle, and the apply*SettingsToUI functions
 // for those three. The lineup optimizer's setting went to state.js, next to its State field.
 import { State } from './state.js';
+import { KEYS } from '../shared/storage/keys.js';
 // --- SHARED MARKET SETTINGS (Scout tab + Roster tab's ROS auto-fetch) ---
 // Both tabs have their own copy of these controls (different element IDs, prefixed "ros" on
 // the Roster tab) so the user doesn't have to navigate to Scout just to configure them before
@@ -10,14 +11,14 @@ import { State } from './state.js';
 // they never drift out of sync with each other.
 export const updateMarketSetting = function(key, value) {
     State.marketSettings[key] = value;
-    localStorage.setItem('mls_market_settings', JSON.stringify(State.marketSettings));
+    localStorage.setItem(KEYS.mls.marketSettings, JSON.stringify(State.marketSettings));
     applyMarketSettingsToUI();
 };
 
 // --- TRADE ANALYZER SETTINGS (Waiver Adjustment) ---
 export const updateTradeSetting = function(key, value) {
     State.tradeSettings[key] = value;
-    localStorage.setItem('mls_trade_settings', JSON.stringify(State.tradeSettings));
+    localStorage.setItem(KEYS.mls.tradeSettings, JSON.stringify(State.tradeSettings));
     applyTradeSettingsToUI();
 };
 
@@ -25,7 +26,7 @@ export const updateTradeSetting = function(key, value) {
 // re-render on its own; it's only read the next time runMatchupSim actually runs.
 export const updateSimSetting = function(key, value) {
     State.simSettings[key] = value;
-    localStorage.setItem('mls_sim_settings', JSON.stringify(State.simSettings));
+    localStorage.setItem(KEYS.mls.simSettings, JSON.stringify(State.simSettings));
 };
 
 export function applySimSettingsToUI() {

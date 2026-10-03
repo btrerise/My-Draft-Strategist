@@ -10,6 +10,7 @@ import { analyzeRankingsFile, derivedRanksWording, formatUnmatchedNames } from '
 import { setRankingsCardExpanded } from './engine.js';
 import { resolveRankingsTarget, saveRankingsAsSet, renderLeaguePicker, readLeaguePicker, assignSetToLeagues, leagueCountText } from './sets.js';
 import { loadRosterTab } from '../main.js';
+import { KEYS } from '../../shared/storage/keys.js';
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
         const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: window.loadSheetJS, onProgress });
 
@@ -248,7 +249,7 @@ import { loadRosterTab } from '../main.js';
         setRankingsCardExpanded(RANKING_TYPE_CONFIG[type].cardId, false);
 
         if (hasNewSos) {
-            localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
+            localStorage.setItem(KEYS.mls.sos, JSON.stringify(State.sosMap));
             generateSoSGrid();
         }
 
@@ -264,13 +265,13 @@ import { loadRosterTab } from '../main.js';
         }
         if (typeof window.showToast === 'function') {
             let rankType = isWeekly ? "Weekly" : "ROS";
-            let isFirstTime = !localStorage.getItem('mls_has_seen_rankings_toast');
+            let isFirstTime = !localStorage.getItem(KEYS.mls.hasSeenRankingsToast);
 
             const alsoText = leagueChoice.add.length ? ` Also applied to ${leagueCountText(leagueChoice.add.length)}.` : '';
 
             if (isFirstTime) {
                 window.showToast(`${rankType} Rankings loaded!${alsoText} \n\nTip: We saved this as a reusable set. Use "Choose leagues…" under the set dropdown to share it with more of your leagues any time.`, { duration: 6000 });
-                localStorage.setItem('mls_has_seen_rankings_toast', 'true');
+                localStorage.setItem(KEYS.mls.hasSeenRankingsToast, 'true');
             } else {
                 window.showToast(`${rankType} Rankings loaded successfully!${alsoText}`);
             }

@@ -11,6 +11,7 @@ import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js'
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML } from '../trade/verdict.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
     // --- SCOUT TAB ENGINE ---
     export const runScout = async function(type) {
@@ -71,7 +72,7 @@ import { buildTradeVerdictHTML } from '../trade/verdict.js';
             const hintEl = document.getElementById('tradeWaiverAdjustHint');
             if (dynamic) {
                 State.tradeSettings.waiverAdjustmentValue = dynamic.value;
-                localStorage.setItem('mls_trade_settings', JSON.stringify(State.tradeSettings));
+                localStorage.setItem(KEYS.mls.tradeSettings, JSON.stringify(State.tradeSettings));
                 if (valueEl) valueEl.value = dynamic.value;
                 if (hintEl) {
                     hintEl.style.display = 'block';

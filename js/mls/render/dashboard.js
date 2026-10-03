@@ -6,6 +6,7 @@ import { State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
 import { formatNameList, hydrateRankingsForLeague, processSleeperData, renderLeagueManager, switchActiveLeague } from '../leagues/sync.js';
 import { loadRosterTab } from './roster.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
 
     export const renderSyncLogs = function() {
@@ -91,8 +92,8 @@ import { loadRosterTab } from './roster.js';
                 // skipped these two writes (see its `batch` option): they serialize the entire
                 // per-league map every time, so leaving them in the loop meant N leagues paid for
                 // N serializations of all N leagues' lineups rather than one.
-                localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
-                localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+                localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+                localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
             } catch (err) {
                 // A bad ranking set, or a quota-exceeded write on the flush above, used to throw
                 // straight out of this timeout: toasts stayed stubbed for the rest of the session
@@ -214,12 +215,12 @@ export const syncAllLeagues = async function(btn) {
                 // Single write after the loop instead of one localStorage.setItem per league. The
                 // active league is put back first so the one saved is yours, not the last synced.
                 if (originalActiveId && State.leagues.some(x => x.leagueId === originalActiveId)) State.activeLeagueId = originalActiveId;
-                localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-                localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+                localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+                localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
 
                 // Save logs to state and local storage
                 State.syncLogs = newLogs;
-                localStorage.setItem('mls_sync_logs', JSON.stringify(State.syncLogs));
+                localStorage.setItem(KEYS.mls.syncLogs, JSON.stringify(State.syncLogs));
                 
                 // Toast a summary that accounts for every league we tried, not just the ones
                 // that worked: a miss here is a roster you'd go on to set a lineup off, so it

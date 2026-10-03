@@ -2,18 +2,19 @@
 // ROSTER HANDOFF.
 import { State } from '../state.js';
 import { loadActiveLeagueData, refreshLeagueDropdown } from './sync.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
     // --- DRAFT STRATEGIST ROSTER HANDOFF ---
     // Counterpart to sendRosterToLineupStrategist() in MDS's mds.js. Same-origin localStorage
     // is the transport -- see that function's comment for why no URL params/backend are needed.
     export function checkForDraftStrategistHandoff() {
-        const raw = localStorage.getItem('mds_handoff_roster');
+        const raw = localStorage.getItem(KEYS.shared.handoffRoster);
         if (!raw) return;
 
         let payload;
-        try { payload = JSON.parse(raw); } catch (e) { localStorage.removeItem('mds_handoff_roster'); return; }
+        try { payload = JSON.parse(raw); } catch (e) { localStorage.removeItem(KEYS.shared.handoffRoster); return; }
         if (!payload || !Array.isArray(payload.players) || payload.players.length === 0) {
-            localStorage.removeItem('mds_handoff_roster');
+            localStorage.removeItem(KEYS.shared.handoffRoster);
             return;
         }
 
@@ -26,7 +27,7 @@ import { loadActiveLeagueData, refreshLeagueDropdown } from './sync.js';
     }
 
     export const importDraftStrategistRoster = function() {
-        const raw = localStorage.getItem('mds_handoff_roster');
+        const raw = localStorage.getItem(KEYS.shared.handoffRoster);
         if (!raw) return;
         let payload;
         try { payload = JSON.parse(raw); } catch (e) { return; }
@@ -50,9 +51,9 @@ import { loadActiveLeagueData, refreshLeagueDropdown } from './sync.js';
         };
         State.leagues.push(leagueObj);
         State.activeLeagueId = newId;
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-        localStorage.setItem('mds_season_active_league', State.activeLeagueId);
-        localStorage.removeItem('mds_handoff_roster');
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
+        localStorage.removeItem(KEYS.shared.handoffRoster);
 
         const banner = document.getElementById('handoffBanner');
         if (banner) banner.style.display = 'none';
@@ -66,7 +67,7 @@ import { loadActiveLeagueData, refreshLeagueDropdown } from './sync.js';
     };
 
     export const dismissDraftStrategistHandoff = function() {
-        localStorage.removeItem('mds_handoff_roster');
+        localStorage.removeItem(KEYS.shared.handoffRoster);
         const banner = document.getElementById('handoffBanner');
         if (banner) banner.style.display = 'none';
     };

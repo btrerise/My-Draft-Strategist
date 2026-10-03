@@ -3,6 +3,7 @@
 import { NFL_TEAMS } from '../constants.js';
 import { State } from '../state.js';
 import { renderLineupUI } from '../main.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
     // --- EARLY GAMES LOGIC ---
     export function populateEarlyGameDropdown() {
@@ -19,7 +20,7 @@ import { renderLineupUI } from '../main.js';
         if (!team) return;
         if (!State.earlyTeams.includes(team)) {
             State.earlyTeams.push(team);
-            localStorage.setItem('mds_season_early_teams', JSON.stringify(State.earlyTeams));
+            localStorage.setItem(KEYS.mls.earlyTeams, JSON.stringify(State.earlyTeams));
             renderEarlyChips();
         }
         const sel = document.getElementById('earlyTeamSelect');
@@ -31,7 +32,7 @@ import { renderLineupUI } from '../main.js';
 
     export const removeEarlyTeam = function(team) {
         State.earlyTeams = State.earlyTeams.filter(t => t !== team);
-        localStorage.setItem('mds_season_early_teams', JSON.stringify(State.earlyTeams));
+        localStorage.setItem(KEYS.mls.earlyTeams, JSON.stringify(State.earlyTeams));
         renderEarlyChips();
         checkEarlyBannerVisibility();
         const activeTab = document.querySelector('.tab-content.active');

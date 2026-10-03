@@ -17,6 +17,7 @@ import { runScout } from '../scout/engine.js';
 import { getPowerLeagueKind, loadRosterTab } from '../main.js';
 import { getRankingsFreshness, updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { applyMarketSettingsToUI } from '../settings.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -172,7 +173,7 @@ import { applyMarketSettingsToUI } from '../settings.js';
         let temp = State.leagues[index];
         State.leagues[index] = State.leagues[index + direction];
         State.leagues[index + direction] = temp;
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
         refreshLeagueDropdown();
     };
 
@@ -194,9 +195,9 @@ import { applyMarketSettingsToUI } from '../settings.js';
         State.leagues = State.leagues.filter(l => l.leagueId !== leagueId);
         if (State.activeLeagueId === leagueId) {
             State.activeLeagueId = State.leagues.length > 0 ? State.leagues[0].leagueId : null;
-            localStorage.setItem('mds_season_active_league', State.activeLeagueId || "");
+            localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId || "");
         }
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
         refreshLeagueDropdown();
         loadActiveLeagueData();
         updatePulsePrompts();
@@ -249,7 +250,7 @@ import { applyMarketSettingsToUI } from '../settings.js';
     export const switchActiveLeague = function(leagueId) {
         if (!leagueId) return;
         State.activeLeagueId = leagueId;
-        localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+        localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
         
         // Keep UI elements in sync with the active state
         const headerSelect = document.getElementById('headerLeagueSelect');
@@ -348,7 +349,7 @@ import { applyMarketSettingsToUI } from '../settings.js';
                 league.weeklyRankingsUpdatedAt = State.weeklyRankingsUpdatedAt;
             }
         }
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
     }
 
     // Points the Market Consensus controls (Scout tab, plus the Roster tab's copy -- they share
@@ -372,7 +373,7 @@ import { applyMarketSettingsToUI } from '../settings.js';
         }
         if (badge) s.tep = /\bTEP\b/.test(badge);
 
-        localStorage.setItem('mls_market_settings', JSON.stringify(s));
+        localStorage.setItem(KEYS.mls.marketSettings, JSON.stringify(s));
         applyMarketSettingsToUI();
     }
 
@@ -408,7 +409,7 @@ import { applyMarketSettingsToUI } from '../settings.js';
             TE: getInt('reqTE'), FLEX: getInt('reqFLEX'), SFLEX: getInt('reqSFLEX'),
             K: getInt('reqK'), DEF: getInt('reqDEF')
         };
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
         if (btn) flashButton(btn, "Requirements Saved");
         window.optimizeLineup(true);
     };
@@ -427,8 +428,8 @@ import { applyMarketSettingsToUI } from '../settings.js';
         };
         State.leagues.push(leagueObj);
         State.activeLeagueId = newId;
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-        localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
 
         if (nameInput) nameInput.value = "";
         refreshLeagueDropdown();
@@ -628,8 +629,8 @@ import { applyMarketSettingsToUI } from '../settings.js';
             // write to localStorage once after their loop finishes, instead of every iteration
             // serializing the entire State.leagues array to disk.
             if (!skipSave) {
-                localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-                localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+                localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+                localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
             }
 
             if (!isRefresh) {
@@ -678,7 +679,7 @@ import { applyMarketSettingsToUI } from '../settings.js';
                     // and write State.leagues once after their loop, which picks this up along
                     // with that run's successes.
                     if (!skipSave) {
-                        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+                        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
                         // Single-league syncs don't otherwise re-render the dashboard, so the row
                         // would keep showing the old age label until something else redrew it.
                         // Sync All does its own render in the finally, after the whole loop.

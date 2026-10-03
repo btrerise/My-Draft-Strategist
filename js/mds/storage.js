@@ -1,31 +1,31 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // DRAFT PLAYER-POOL STORAGE (v2).
 // migrateDraftStorage() runs when this module loads, and has to run before state.js builds State
-// from ds_drafts. That holds because init.js imports state.js before this file, and state.js
+// from KEYS.mds.drafts. That holds because init.js imports state.js before this file, and state.js
 // imports this file, so this one is evaluated first. Keep it that way (see docs/refactor/LOG.md, 2A).
 import { State } from './state.js';
+import { KEYS, mdsDraftPoolKey } from '../shared/storage/keys.js';
 
     // --- DRAFT PLAYER-POOL STORAGE (v2) ---
     // Each draft profile remembers its own player pool, so switching profiles restores the
     // rankings that profile was drafted with. That pool used to live INLINE inside each draft
-    // object in `ds_drafts` -- which meant every save serialized every profile's entire pool,
+    // object in `KEYS.mds.drafts` -- which meant every save serialized every profile's entire pool,
     // whether or not it had changed. At ~600 players per pool and three profiles, a single
     // pick wrote roughly half a megabyte synchronously, and the cost grew with the number of
     // profiles rather than with the size of the change.
     //
-    // The pools now live under their own `ds_players_<draftId>` keys, written only when the
-    // pool itself actually changes (see savePlayerPool). `ds_drafts` keeps the small,
+    // The pools now live under their own `mdsDraftPoolKey(draftId)` keys, written only when the
+    // pool itself actually changes (see savePlayerPool). `KEYS.mds.drafts` keeps the small,
     // frequently-changing parts -- settings, picks, roster, queue -- and is the only thing a
     // pick has to rewrite.
     //
-    // Both the `ds_` prefix scan behind Backup/Restore and the one behind Hard Reset pick the
+    // Both the MDS_PREFIX scan behind Backup/Restore and the one behind Hard Reset pick the
     // new keys up automatically, so neither needed changing.
-    const DRAFT_POOL_KEY_PREFIX = 'ds_players_';
-    const STORAGE_VERSION_KEY = 'ds_storage_version';
-    export const PREMIGRATION_BACKUP_KEY = 'ds_drafts_premigration_backup';
+    const STORAGE_VERSION_KEY = KEYS.mds.storageVersion;
+    export const PREMIGRATION_BACKUP_KEY = KEYS.mds.draftsPremigrationBackup;
     const CURRENT_STORAGE_VERSION = '2';
 
-    export const draftPoolKey = (draftId) => DRAFT_POOL_KEY_PREFIX + draftId;
+    export const draftPoolKey = mdsDraftPoolKey;
 
     // Reads a draft's pool, checking the v2 key first and falling back to an inline v1 copy.
     // The fallback is what makes the migration below safe to fail: if it can't complete (quota
@@ -48,12 +48,12 @@ import { State } from './state.js';
 
     // The single place State.players gets persisted. Writes the global pool (the fallback for
     // a profile that has none of its own) and the active profile's pool together, so the two
-    // can't drift apart -- every site that used to call setItem('ds_players', ...) directly
+    // can't drift apart -- every site that used to call setItem(KEYS.mds.players, ...) directly
     // now calls this instead.
     export function savePlayerPool() {
         try {
             const serialized = JSON.stringify(State.players);
-            localStorage.setItem('ds_players', serialized);
+            localStorage.setItem(KEYS.mds.players, serialized);
             if (State.activeDraftId) localStorage.setItem(draftPoolKey(State.activeDraftId), serialized);
         } catch (e) {
             console.error('Could not save player pool (storage may be full):', e);
@@ -63,7 +63,7 @@ import { State } from './state.js';
 
     // One-time move of inline pools out to their own keys. Ordered so that an interruption at
     // any point leaves readable data: the backup is taken first, then every pool is written to
-    // its own key, and only then is the slimmed ds_drafts written. If the process dies before
+    // its own key, and only then is the slimmed KEYS.mds.drafts written. If the process dies before
     // that last write, both copies exist and readDraftPlayerPool prefers the new one; if it
     // dies before the pools are written, the inline copies are untouched and the version
     // marker is never set, so the migration simply runs again next load.
@@ -71,7 +71,7 @@ import { State } from './state.js';
         if (localStorage.getItem(STORAGE_VERSION_KEY) === CURRENT_STORAGE_VERSION) return;
 
         try {
-            const raw = localStorage.getItem('ds_drafts');
+            const raw = localStorage.getItem(KEYS.mds.drafts);
             if (!raw) {
                 // Nothing to migrate (new install). Mark it so this never runs again.
                 localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION);
@@ -104,9 +104,9 @@ import { State } from './state.js';
                 delete d.players;
             });
 
-            localStorage.setItem('ds_drafts', JSON.stringify(drafts));
+            localStorage.setItem(KEYS.mds.drafts, JSON.stringify(drafts));
             localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION);
-            if (moved > 0) console.log(`Draft storage migrated to v2 (${moved} player pool(s) moved out of ds_drafts).`);
+            if (moved > 0) console.log(`Draft storage migrated to v2 (${moved} player pool(s) moved out of ${KEYS.mds.drafts}).`);
         } catch (e) {
             // Deliberately swallowed. The version marker stays unset so this retries on the
             // next load, and every read path still falls back to the inline copies, so a

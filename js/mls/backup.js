@@ -4,7 +4,7 @@ import { isMlsOwnedKey } from '../shared/storage/keys.js';
     // --- BACKUP & RESTORE ---
     // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in mds.js -- see that
     // file's comment for why key-prefix scoping matters on a shared origin. MLS's own keys are
-    // mds_season_* and mls_*. mds_handoff_roster is excluded -- transient signal from MDS,
+    // the ones under MLS_PREFIXES. KEYS.shared.handoffRoster is excluded -- transient signal from MDS,
     // not a persistent MLS setting. The filter itself is isMlsOwnedKey in
     // js/shared/storage/keys.js.
     function getMlsOwnedKeys() {

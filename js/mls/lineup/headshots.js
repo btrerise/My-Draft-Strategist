@@ -1,6 +1,7 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3B: PLAYER HEADSHOTS.
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { escapeHtml } from '../compat.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
 // --- PLAYER HEADSHOTS (Roster tab list + Lineup tab starters/bench) ---
 // Same Sleeper CDN thumbnails MDS uses on its Draft Board and roster cards. Hotlinked, never
@@ -90,17 +91,17 @@ export function playerHeadshotHTML(p) {
 }
 
 // "Show Player Headshots" (Settings > Advanced Settings). Defaults on, like MDS's toggle, but
-// stored under its own mls_ key: the two apps' display settings stay independent, and the
-// mls_ prefix means Backup/Restore and Factory Reset pick it up automatically.
+// stored under its own MLS key: the two apps' display settings stay independent, and the
+// MLS prefix means Backup/Restore and Factory Reset pick it up automatically.
 function applyHeadshotSetting() {
-    const show = localStorage.getItem('mls_show_headshots') !== 'false';
+    const show = localStorage.getItem(KEYS.mls.showHeadshots) !== 'false';
     document.body.classList.toggle('mls-hide-headshots', !show);
     const toggleEl = document.getElementById('mlsHeadshotsToggle');
     if (toggleEl) toggleEl.checked = show;
 }
 
 export const toggleMlsHeadshots = function(show) {
-    localStorage.setItem('mls_show_headshots', show ? 'true' : 'false');
+    localStorage.setItem(KEYS.mls.showHeadshots, show ? 'true' : 'false');
     applyHeadshotSetting();
 };
 // Applied as soon as this module runs rather than in window.onload (which waits on every

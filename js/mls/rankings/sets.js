@@ -8,6 +8,7 @@ import { getActiveLeague } from '../helpers.js';
 import { saveActiveLeagueState } from '../leagues/sync.js';
 import { setRankingsCardExpanded, updateRankingsMetaDisplay } from './engine.js';
 import { loadRosterTab } from '../main.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
     // --- NAMED RANKING SETS ---
     // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
@@ -315,7 +316,7 @@ import { loadRosterTab } from '../main.js';
             if (add.includes(l.leagueId)) l[cfg.leagueSetIdKey] = setId;
             else if (remove.includes(l.leagueId) && l[cfg.leagueSetIdKey] === setId) l[cfg.leagueSetIdKey] = null;
         });
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
         updateSetLeaguesRow(type);
     }
 
@@ -417,7 +418,7 @@ import { loadRosterTab } from '../main.js';
         State.leagues.forEach(l => {
             if (l[cfg.leagueSetIdKey] === setId) l[cfg.leagueSetIdKey] = null;
         });
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
 
         let league = getActiveLeague();
         if (league && league[cfg.leagueSetIdKey] === null) {

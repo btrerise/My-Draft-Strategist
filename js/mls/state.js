@@ -7,32 +7,33 @@ import { readJSON } from './compat.js';
 import { ESPN_TEAM_ALIASES } from './constants.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
 import { renderLineupUI } from './main.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // --- STATE MANAGEMENT ---
     export const State = {
-        leagues: readJSON('mds_season_leagues', []),
-        activeLeagueId: localStorage.getItem('mds_season_active_league') || null,
-        earlyTeams: readJSON('mds_season_early_teams', []),
-        rosRankings: readJSON('mds_season_ros', []),
-        weeklyRankings: readJSON('mds_season_weekly', []),
-        rosRankingsUpdatedAt: localStorage.getItem('mds_season_ros_updated') || null,
+        leagues: readJSON(KEYS.mls.leagues, []),
+        activeLeagueId: localStorage.getItem(KEYS.mls.activeLeague) || null,
+        earlyTeams: readJSON(KEYS.mls.earlyTeams, []),
+        rosRankings: readJSON(KEYS.mls.ros, []),
+        weeklyRankings: readJSON(KEYS.mls.weekly, []),
+        rosRankingsUpdatedAt: localStorage.getItem(KEYS.mls.rosUpdated) || null,
         rankingSets: {
-            ros: readJSON('mls_ranking_sets_ros', []),
-            weekly: readJSON('mls_ranking_sets_weekly', [])
+            ros: readJSON(KEYS.mls.rankingSetsRos, []),
+            weekly: readJSON(KEYS.mls.rankingSetsWeekly, [])
         },
-        weeklyRankingsUpdatedAt: localStorage.getItem('mds_season_weekly_updated') || null,
-        marketRankings: readJSON('mds_season_market', []),
+        weeklyRankingsUpdatedAt: localStorage.getItem(KEYS.mls.weeklyUpdated) || null,
+        marketRankings: readJSON(KEYS.mls.market, []),
         // When marketRankings was last pulled or uploaded (ms epoch). Null for market data saved
         // before this was tracked -- updateMarketMetaDisplay shows no age rather than guess one.
-        marketUpdatedAt: localStorage.getItem('mds_season_market_updated') || null,
+        marketUpdatedAt: localStorage.getItem(KEYS.mls.marketUpdated) || null,
         // FantasyCalc is the only source since refactor 7A (LeagueLogs retired its API), so a
         // saved 'leaguelogs' -- or anything else -- reads as 'fantasycalc'. Same key.
-        marketSettings: Object.assign({ source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false }, readJSON('mls_market_settings', {}), { source: 'fantasycalc' }),
-        tradeSettings: readJSON('mls_trade_settings', { waiverAdjustment: true, waiverAdjustmentValue: 500 }),
-        simSettings: readJSON('mls_sim_settings', { waiverInsights: false }),
+        marketSettings: Object.assign({ source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false }, readJSON(KEYS.mls.marketSettings, {}), { source: 'fantasycalc' }),
+        tradeSettings: readJSON(KEYS.mls.tradeSettings, { waiverAdjustment: true, waiverAdjustmentValue: 500 }),
+        simSettings: readJSON(KEYS.mls.simSettings, { waiverInsights: false }),
         // Positional Power Rankings (Roster tab). source: 'custom' (the league's own rankings) |
         // 'market' (Market Consensus). See refreshPowerRankings.
-        powerSettings: Object.assign({ source: 'custom' }, readJSON('mls_power_settings', {})),
+        powerSettings: Object.assign({ source: 'custom' }, readJSON(KEYS.mls.powerSettings, {})),
         // Waiver Wire Assistant Auto-Find controls (Scout tab). compare: 'lineup' (would he
         // start?) | 'roster' (drop-candidate upgrade); basis: 'weekly' | 'ros' (scan order); pos:
         // a position, 'FLEX', or 'ALL' (grouped by position); limit: rows per group.
@@ -41,7 +42,7 @@ import { renderLineupUI } from './main.js';
         // localStorage key the rest of the Waiver Wire Assistant's settings already use.
         // intent ('buy' | 'sell') rides along for the same reason: it only steers the All My
         // Leagues search's Positional Power Rank recommendations (see runAllLeaguesSearch).
-        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false, scope: 'league', intent: 'buy' }, readJSON('mls_waiver_scan_settings', {})),
+        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false, scope: 'league', intent: 'buy' }, readJSON(KEYS.mls.waiverScanSettings, {})),
         // --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
         // flexKickoffOptimization gates optimizeFlexKickoffOrder() (see below): when on, the
         // optimizer reassigns which flex-eligible starters sit in strict RB/WR/TE slots vs the
@@ -53,10 +54,10 @@ import { renderLineupUI } from './main.js';
         // optimizeLineup), which always stays on -- that one is about not silently benching an
         // already-started player, not a strategy preference, and already has its own override
         // mechanism (per-player overrideAutoLock + Unlock All).
-        lineupSettings: readJSON('mls_lineup_settings', { flexKickoffOptimization: true }),
-        syncLogs: readJSON('mls_sync_logs', []),
-        sosMap: readJSON('mds_season_sos', {}),
-        lockedPlayersMap: readJSON('mds_season_locks_map', {}),
+        lineupSettings: readJSON(KEYS.mls.lineupSettings, { flexKickoffOptimization: true }),
+        syncLogs: readJSON(KEYS.mls.syncLogs, []),
+        sosMap: readJSON(KEYS.mls.sos, {}),
+        lockedPlayersMap: readJSON(KEYS.mls.locksMap, {}),
         // Per-league, per-week list of player ids the person has explicitly told the auto-lock
         // feature (see optimizeLineup) to back off of -- the failsafe for when gameTimesByTeam
         // or Sleeper's synced starters turn out to be wrong about a specific player. Deliberately
@@ -66,15 +67,15 @@ import { renderLineupUI } from './main.js';
         // week is stored alongside the ids so a stale override from a prior week (which would no
         // longer make sense once gameTimesByTeam has moved on) is ignored rather than silently
         // carried forward; see isAutoLockOverridden below.
-        autoLockOverridesMap: readJSON('mls_autolock_overrides_map', {}),
-        manualStartersMap: readJSON('mds_season_manual_starters', {}),
-        manualBenchMap: readJSON('mds_season_manual_bench', {}),
+        autoLockOverridesMap: readJSON(KEYS.mls.autolockOverridesMap, {}),
+        manualStartersMap: readJSON(KEYS.mls.manualStarters, {}),
+        manualBenchMap: readJSON(KEYS.mls.manualBench, {}),
         // leagueId -> which rankings that league's saved lineup was built from (see
         // getLeagueRankingsStamp). Each saved player carries the posRank/flexRank it was
         // optimized with, so a lineup saved before new rankings were assigned kept showing
         // "Unranked" in every league except the one the upload happened in. optimizeLineup
         // compares against this and recomputes a stale lineup instead of just re-showing it.
-        lineupRankingsStamps: readJSON('mls_lineup_rankings_stamps', {}),
+        lineupRankingsStamps: readJSON(KEYS.mls.lineupRankingsStamps, {}),
         swapSourceId: null,
         touchStartX: 0,
         touchEndX: 0,
@@ -137,7 +138,7 @@ import { renderLineupUI } from './main.js';
 // waiting for the next sync or manual "Optimize" click.
 export const updateLineupSetting = function(key, value) {
     State.lineupSettings[key] = value;
-    localStorage.setItem('mls_lineup_settings', JSON.stringify(State.lineupSettings));
+    localStorage.setItem(KEYS.mls.lineupSettings, JSON.stringify(State.lineupSettings));
     applyLineupSettingsToUI();
     if (typeof window.optimizeLineup === 'function' && State.manualStartersMap[State.activeLeagueId]) {
         window.optimizeLineup(false);
@@ -168,9 +169,9 @@ export function applyLineupSettingsToUI() {
         State.manualStartersMap[leagueId] = snapshot.starters;
         State.manualBenchMap[leagueId] = snapshot.bench;
         State.lockedPlayersMap[leagueId] = snapshot.locks;
-        localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
-        localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
-        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
+        localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+        localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
+        localStorage.setItem(KEYS.mls.locksMap, JSON.stringify(State.lockedPlayersMap));
     }
 
     // Called at the start of every lineup-mutating action (swap, lock toggle, unlock-all,
