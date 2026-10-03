@@ -5,8 +5,7 @@
 // isMdsOwnedKey / isMlsOwnedKey below, which drive each app's Backup, Restore and reset.
 //
 // Since refactor chunk 6A this file is the only place a key name is spelled: js/mds/*,
-// js/mls/*, js/shared/* and the T-Score page read them from KEYS (the T-Score page's classic
-// inline script through window.KEYS, which js/shared/globals.js assigns). The exceptions are
+// js/mls/*, js/shared/* and js/tscore/* read them from KEYS. The exceptions are
 // js/boot.js, which can't import and keeps its own copy of the two ownership filters
 // (tests/unit/bootKeyFilters.test.mjs checks them against this file), and the banner keys
 // written as data-storage-key="..." text in index.html and lineup/index.html (listed in
