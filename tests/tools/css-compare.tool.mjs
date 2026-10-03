@@ -14,8 +14,8 @@
 // minutes (28 tests, 4 workers); `-g "MLS"` or `--project desktop` runs a subset.
 // Two traps (4A): Chromium lists custom properties in stylesheet order, so property names are sorted
 // before comparing; and each state has to settle (mouse parked, focus blurred, network idle, images
-// and fonts loaded, transitions finished, endless animations paused at 0) or timing shows up as
-// differences. Toasts are hidden before each snapshot (their timers make them timing-dependent),
+// (lazy ones too) and fonts loaded, transitions finished, endless animations paused at 0) or timing
+// shows up as differences. Toasts are hidden before each snapshot (their timers make them timing-dependent),
 // except in the steps that show one on purpose, and self-hiding messages are waited out. Elements
 // are matched by position, not id (some ids are assigned at run time). Hover and focus states
 // beyond those here aren't covered: check them by reasoning about the cascade.
@@ -87,8 +87,10 @@ async function settle(page, { keepToast = false } = {}) {
         document.activeElement?.blur?.();
         if (!keepToast) for (const t of document.querySelectorAll('.mds-toast.show')) t.classList.remove('show');
         await document.fonts.ready;
-        // Off-screen loading="lazy" images never start, so this waits only for the rest.
-        const pending = [...document.images].filter((img) => !img.complete && img.loading !== 'lazy');
+        // Lazy images start (and, blocked in tests, fail and get swapped for initials) whenever they
+        // near the viewport, so load them all now and wait: both runs then see the same DOM.
+        for (const img of document.images) if (img.loading === 'lazy') img.loading = 'eager';
+        const pending = [...document.images].filter((img) => !img.complete);
         await Promise.all(pending.map((img) => new Promise((r) => { img.addEventListener('load', r); img.addEventListener('error', r); })));
         for (let i = 0; i < 3; i++) {
             await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
