@@ -714,7 +714,7 @@ import { isDraftPickName } from '../trade/valueCurve.js';
                     return `
                     <div class="rankings-card mls-waiver-section expanded" id="${sectionId}">
                         <div class="rankings-card-header mls-waiver-section-header">
-                            <h4 class="mls-waiver-section-heading"><button type="button" class="rankings-card-toggle mls-waiver-section-toggle btn-bare" onclick="toggleRankingsCard('${sectionId}')" aria-expanded="true" aria-controls="${sectionId}Body">
+                            <h4 class="mls-waiver-section-heading"><button type="button" class="rankings-card-toggle mls-waiver-section-toggle btn-bare" data-action="toggleRankingsCard" data-card="${sectionId}" aria-expanded="true" aria-controls="${sectionId}Body">
                                 <span class="mls-waiver-section-title">${g.key} &middot; <span style="color: ${count > 0 ? 'var(--primary-green)' : 'var(--text-muted)'};">${countText}</span></span>
                                 <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button></h4>

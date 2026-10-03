@@ -250,7 +250,7 @@ import { buildPowerRead, getLeaguePowerContext, POWER_RANK_KEY, renderPowerRead,
                 const isActive = r.league.leagueId === State.activeLeagueId;
                 const activeTag = isActive ? ` <span class="mls-league-search-active">Active</span>` : '';
                 const goTo = isActive ? '' :
-                    `<button class="btn btn-secondary mls-btn-sm" onclick="scoutGoToLeague('${r.league.leagueId}')" title="Make this your active league">Switch</button>`;
+                    `<button class="btn btn-secondary mls-btn-sm" data-action="scoutGoToLeague" data-league-id="${r.league.leagueId}" title="Make this your active league">Switch</button>`;
                 const format = r.league.formatBadge
                     ? `<div class="mls-league-search-format">${escapeHtml(r.league.formatBadge)}</div>` : '';
                 return `

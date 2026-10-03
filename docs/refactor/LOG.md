@@ -2334,3 +2334,116 @@ reads it, so it stays. Re-run the scan rather than trusting this list; build the
   evaluates later. The tests' three `window.*` calls could become clicks. Also a comment nit in
   `js/shared/ui/delegate.js`'s header: "The walk still calls actions nearest first. One" runs into the
   next sentence ("Two differences…"). Remove the stray "One".
+
+### 5C — MLS handlers, part 2: Scout, Trade, Power, Sim
+
+**No `on*=` attribute is left in Lineup Strategist.** `grep -rnE '\bon[a-z]+=' lineup/index.html js/mls`
+finds nothing, not even a comment. The 38 + 4 that 5B left became `data-action` attributes the same way: a script made exact string
+replacements and asserted the expected count for each pattern. Markup structure is unchanged; only
+attributes changed. The action-table entries are in `js/mls/main.js`, next to 5B's. `delegate.js` is unchanged.
+
+#### What moved
+
+| Where | Handlers |
+|---|---|
+| Setup tab, Advanced Settings card | 6: headshots toggle, Add Player, Export Backup, the backup file input, Import Backup (`chooseBackupFile`, same name as MDS), Factory Reset |
+| Roster tab, Positional Power Rankings card | 1: the source select (`updatePowerSetting`, `data-setting="source"`) |
+| Lineup tab, Monte Carlo card | 2: Waiver Insights toggle (`updateSimSetting`), Run Simulation (`runMatchupSim`) |
+| Scout tab | 29: Sleeper sync banner (5B's `dismissBanner` action), the three Clear buttons (`clearWaiverScout`, `clearBuyInput`, `clearSellInput`, each the inline code verbatim), compare/scope/intent buttons, the four waiver-scan controls, Auto-Find, Scan Pasted List, the two trade settings, Analyze Trade, Go to Power Rankings, the five market controls (5B's `updateMarketSetting` / `updateMarketSettingChecked`), Fetch Market Value (`fetchLeagueLogsADP`, not renamed), the two disconnect selects, Find Trade Targets |
+| Templates | `scout/allLeaguesSearch.js` (Switch → `scoutGoToLeague`, `data-league-id`), `scout/waivers.js` (section toggle → 5B's `toggleRankingsCard`, `data-card`), `power/snapshot.js` (`scrollToPowerRankings`), `power/rosterCard.js` (see below) |
+
+- **Arguments:** the compare, scope and intent buttons already carried `data-compare`, `data-scope` and
+  `data-intent` with the same value as their literal, so the actions read those and no attribute was added.
+  `runScout` reads `data-scout-type` (the name the "Did you mean" link already uses). New action names that
+  differ from their function (the "unique per page across event types" rule, and one per conversion):
+  `updateWaiverScanSettingInt` (the limit select's `parseInt(this.value, 10)`),
+  `updateWaiverScanSettingChecked`, `updateTradeSettingChecked`.
+- **`ontouchstart=""` on the power-table cells (`power/rosterCard.js`) is removed, not converted.** 5B left
+  the call to 5C. It was the old iOS trick that makes Safari treat an element as tappable so `:hover` and
+  taps work. That's already provided twice over: `js/shared/ui/tooltips.js` gives every tooltip trigger
+  its own click listener for exactly this reason (the cells are `data-tt-self` triggers), and `#mainApp`
+  has click listeners (5B's delegation) and touch listeners (`nav.js`'s swipe), and an ancestor below
+  `<body>` counts. No screenshot or recorded state changed. On the phone project in the comparison below,
+  tapping a cell opens its tooltip the same way on both trees. **Not checked on a real iPhone**, so if a
+  power-table tooltip stops opening on iOS, that's the place to look.
+- **delegate.js's caveats, checked for 5C's controls.** *Listeners between target and container:* the only
+  one is `attachScoutSuggestionHandler`'s click listener on `#waiverOutput` / `#tradeOutput` (`players.js`),
+  above the Switch buttons and the waiver-section toggles. It runs in the bubble phase, so it still runs after
+  the action (as it ran after the inline handler), and it only acts on `.scout-suggest-link`, which has no
+  `data-action`. The "Did you mean" link was pressed in the comparison too. *Events on detached
+  elements:* none. Each 5C action handles one event, with no follow-up like MDS's `dragend`.
+
+#### window.* names
+
+Removed **21**: `importMlsSettings factoryReset toggleMlsHeadshots setWaiverIntent scoutGoToLeague
+autoFindWaiverUpgrades toggleRankingsCard processSingleRankingUpload toggleDisconnectMode
+toggleDisconnectRankBasis fetchLeagueLogsADP updateMarketSetting updateTradeSetting updateSimSetting
+runMarketDisconnectAnalysis renderSyncLogs updatePowerSetting goToPowerRankings runPositionalStrength
+renderPowerRankingsTable runMatchupSim`. The four 5B flagged (`processSingleRankingUpload`,
+`renderSyncLogs`, `runPositionalStrength`, `renderPowerRankingsTable`) are among them; their imports in
+main.js went too, except `renderSyncLogs`, which stays in the re-export line. Found with the same scope
+analysis as 5B (acorn + eslint-scope over every file in `js/` plus `sw.js`: bare global reads, and
+`window.x` / `globalThis.x` / `self.x` member reads). No module reads any of the names as a bare global.
+Then I grepped the tests and the HTML. On `/lineup/`, a diff of `Object.getOwnPropertyNames(window)`,
+empty and after a sync, shows exactly these 21 missing compared with main, and nothing new (1,256 → 1,235).
+
+Kept **21** (main.js's comment says who reads each): `undoLineupChange`, `redoLineupChange`, `cycleLeague`
+(shortcuts.js); `toggleDrawer`, `showTab` (modules and the tests); `exportMlsSettings` (**js/boot.js's
+rescue backup**); `goToSetupStep`, `lookupSimPlayer` (init.js); `onload` (the browser); `switchActiveLeague`;
+`addManualPlayer` (addPlayer.js's Enter key); `runScout` (players.js); `updateWaiverScanSetting`
+(scout/waivers.js); `cancelRankingsPreview`; `scrollToPowerRankings` (power/rosterCard.js);
+`optimizeLineup` (many modules); and five that only the tests call through `page.evaluate`:
+`createManualLeague`, `openRankingSetLeagues`, `confirmRankingsPreview`, `setWaiverCompare`,
+`setWaiverScope` (5B also left the tests unchanged).
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (101 precached). `node --test` 157/157.
+  `cd tests && npx playwright test`: **72/72**. **No screenshot changed.**
+- **Test edit:** `tests/mls-scout.spec.mjs` clicked `[onclick^="autoFindWaiverUpgrades"]` (twice) and
+  `[onclick="runScout('trade')"]`. These are now `[data-action="autoFindWaiverUpgrades"]` and
+  `[data-action="runScout"][data-scout-type="trade"]`. Only the selectors changed; the test is otherwise unchanged.
+- **Throwaway spec (not committed), run on an origin/main worktree and on this branch, both widths, each
+  tree twice:** seeded simulator, the fixture league synced, `rankings-waivers.csv` loaded, and FantasyCalc
+  stubbed with all 30 players (ranks reversed so Market Disconnect finds gaps). It presses every control 5C
+  moved and records after each step: the active tab, hash, scroll position, focus, toasts, the confirm dialog,
+  the header league, every localStorage key and value, every form value in `#mainApp`, and `#mainApp`'s
+  whole HTML with only the swapped attributes stripped. 100 steps: the headshots toggle; Add Player (empty and
+  typed); Export (the downloaded file); Import (the file chooser, Cancel, and finally OK and its reload);
+  Factory Reset (Cancel, and finally OK); every Power Rankings source; the snapshot link; tapping a power
+  cell (`tap()` on phone); Waiver Insights on, Run Simulation, off; the sync banner; Scan, Clear; compare,
+  scope and intent by click, Enter and Space; every basis/position/limit option and starters-only; Auto-Find
+  in FLEX and in All (four sections), a section toggle by click and by Enter; the "Did you mean" link; a
+  second (manual) league, then All My Leagues and its Switch button; both trade Clears, the waiver
+  adjustment toggle and value, Analyze Trade, Go to Power Rankings; every market option and TEP, Fetch Market
+  Value; both disconnect selects, Find Trade Targets in two modes. It ends with an `ariaSnapshot` of the four
+  tabs. **Result: identical.** Two runs of the same tree differ only in scroll positions caught mid-smooth-scroll
+  under two parallel workers (one step, either tree), and main and the branch differ in nothing else. I first
+  saw two other differences that turned out to be timing: `#rosSuccessMsg` hides on a 2.5 s wall-clock timer
+  that one step raced, and a 1 px `scrollY` after Go to Power Rankings, a smooth scroll still finishing; with the
+  phone project run alone, main lands on the same 1940 as the branch. The spec now waits those out.
+- 5A's server trap applies: I checked `ps aux | grep serve.mjs` between runs, and the spec recorded the
+  `CACHE_NAME` it loaded (`v2.8.56` on main, `v2.8.57` on the branch).
+
+#### Other changes
+
+- `sw.js`: CACHE_NAME `v2.8.56` → `v2.8.57`. No file added or removed.
+- `js/mls/sim/matchup.js` header comment: `#run-sim-btn` is bound through its `data-action` now. `main.js`'s
+  comments on the window block and the delegation tables are rewritten for the end state.
+- README `/js` line: MLS's `main.js` holds the delegation and the few remaining `window.*` exports.
+
+#### Left for later chunks
+
+- **5D:** the module-internal `window.x(...)` calls (5B's list, plus `window.runScout` in players.js,
+  `window.updateWaiverScanSetting` in scout/waivers.js, `window.addManualPlayer` in addPlayer.js,
+  `window.scrollToPowerRankings` in power/rosterCard.js, `window.lookupSimPlayer` and `window.goToSetupStep`
+  in init.js, `window.undoLineupChange` / `redoLineupChange` / `cycleLeague` in shortcuts.js) could become
+  imports (mind the 3E/3F load-order rule). Each name whose last reader goes can then leave main.js's block.
+  `exportMlsSettings` (boot.js) and `onload` must stay. The five test-only names could go if the tests
+  click instead. `js/shared/globals.js`'s header still says its names serve "onclick handlers in the
+  HTML", which is now true only of the T-Score page (18 inline handlers; no runbook card covers them), and
+  it still names `mds.js` / `mls.js`. That belongs to 5D's comment sweep. The stray "One" in
+  `delegate.js`'s header (5B's note) is still there.
+- **Optional rename:** MLS's `fetchLeagueLogsADP` (`scout/marketDisconnect.js`, now a module-internal name
+  and a `data-action` value only) could become `fetchMarketValue` like MDS's. It isn't on window any more,
+  so only the declaration, main.js's import and table entry, and the attribute would change.

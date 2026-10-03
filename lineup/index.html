@@ -352,7 +352,7 @@
                 </label>
                 <span class="toggle-desc">Display NFL player photos on the Roster and Lineup tabs. Photos come from Sleeper and are left out of PNG exports.</span>
             </div>
-            <input type="checkbox" id="mlsHeadshotsToggle" class="toggle-switch" checked onchange="toggleMlsHeadshots(this.checked)">
+            <input type="checkbox" id="mlsHeadshotsToggle" class="toggle-switch" checked data-action="toggleMlsHeadshots">
         </div>
 
         <details class="sos-details-accordion">
@@ -371,7 +371,7 @@
                     <input type="text" id="manualTeam" class="form-input" placeholder="Team" autocomplete="off" aria-label="Player team">
                 </div>
                 <p id="manualKeyHint" class="mls-manual-key-hint">Tip: type a name and press <kbd>Enter</kbd> to pick it, then <kbd>Enter</kbd> again to add. Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> when there are several matches.</p>
-                <button class="btn btn-primary mt-2" onclick="addManualPlayer()">Add Player to Active Roster</button>
+                <button class="btn btn-primary mt-2" data-action="addManualPlayer">Add Player to Active Roster</button>
                 <div id="manualAddMsg" class="manual-add-feedback" role="status" aria-live="polite"></div>
                 <div id="manualAddLog" class="mls-manual-log" aria-live="polite"></div>
             </div>
@@ -380,9 +380,9 @@
         <details class="sos-details-accordion">
             <summary class="sos-summary">Backup & Restore</summary>
             <div class="accordion-body flex-column gap-2">
-                <button class="btn btn-primary" onclick="exportMlsSettings()">Export Backup</button>
-                <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" aria-label="Import backup file" onchange="importMlsSettings(this)">
-                <button class="btn btn-secondary" onclick="document.getElementById('mlsImportFileInput').click()">Import Backup</button>
+                <button class="btn btn-primary" data-action="exportMlsSettings">Export Backup</button>
+                <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" aria-label="Import backup file" data-action="importMlsSettings">
+                <button class="btn btn-secondary" data-action="chooseBackupFile">Import Backup</button>
             </div>
         </details>
 
@@ -390,7 +390,7 @@
             <summary class="sos-summary text-danger">Danger Zone</summary>
             <div class="accordion-body">
                 <p class="card-desc">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
-                <button class="btn btn-danger" onclick="factoryReset()">Factory Reset App Data</button>
+                <button class="btn btn-danger" data-action="factoryReset">Factory Reset App Data</button>
             </div>
         </details>
     </section>
@@ -601,7 +601,7 @@
 
         <div class="input-group mb-3">
             <label for="powerRankingsSource">Rankings Source</label>
-            <select id="powerRankingsSource" class="form-input" onchange="updatePowerSetting('source', this.value)" aria-label="Select Source for Power Rankings">
+            <select id="powerRankingsSource" class="form-input" data-action="updatePowerSetting" data-setting="source" aria-label="Select Source for Power Rankings">
                 <option value="custom" selected>My Rankings (uploaded above)</option>
                 <option value="market">Market Consensus (FantasyCalc)</option>
             </select>
@@ -848,11 +848,11 @@
                         </div>
                     </span>
                 </div>
-                <input type="checkbox" id="waiverInsightsToggle" class="toggle-switch" onchange="updateSimSetting('waiverInsights', this.checked)">
+                <input type="checkbox" id="waiverInsightsToggle" class="toggle-switch" data-action="updateSimSetting" data-setting="waiverInsights">
             </div>
         </div>
 
-        <button id="run-sim-btn" class="btn btn-blue mt-4" onclick="runMatchupSim()">
+        <button id="run-sim-btn" class="btn btn-blue mt-4" data-action="runMatchupSim">
             Run Matchup Simulations
         </button>
         
@@ -897,7 +897,7 @@
         <div class="info-banner-icon" aria-hidden="true">i</div>
         <div><strong>Sleeper Sync Required:</strong> To see exactly which team owns a player or if they are a Free Agent, you must sync a Sleeper league on the Dashboard. Otherwise, this tool will only display the player's Weekly/ROS ranks.</div>
     </div>
-    <button class="close-banner-btn close-banner-btn-sm ml-3" onclick="dismissBanner('sleeperSyncBanner', 'mls_hide_sleeper_sync_banner')" aria-label="Dismiss Banner" style="flex-shrink: 0;">✕</button>
+    <button class="close-banner-btn close-banner-btn-sm ml-3" data-action="dismissBanner" data-banner="sleeperSyncBanner" data-storage-key="mls_hide_sleeper_sync_banner" aria-label="Dismiss Banner" style="flex-shrink: 0;">✕</button>
 </div>
 
     <!-- WAIVER WIRE ASSISTANT -->
@@ -907,7 +907,7 @@
                 <span>Waiver Wire Assistant</span>
             </h3>
             <div class="header-actions-inline">
-                <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML='';">Clear</button>
+                <button class="btn btn-secondary mls-btn-sm" data-action="clearWaiverScout">Clear</button>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
                     <span class="tooltip-text">Auto-Find scans every player nobody in this league has rostered, sorted by your Weekly or ROS rankings. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules; "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Or paste your own list of targets below; available players are checked the same way, using the Compare Against and Rank By settings above. Switch "Search In" to All My Leagues and the same pasted list is checked against every league you've synced at once, showing where each player is a free agent, where you already own him, and who has him everywhere else. Each league also shows your Positional Power Rank at his position; set Looking To to Buy / Add or Sell / Drop and the search flags the leagues where that move makes the most sense.</span>
@@ -918,8 +918,8 @@
         <div class="input-group mb-2">
             <label id="waiverCompareLabel">Compare Against</label>
             <div class="mls-segmented" id="waiverCompareToggle" role="group" aria-labelledby="waiverCompareLabel">
-                <button type="button" class="mls-segmented-btn active" data-compare="lineup" aria-pressed="true" onclick="setWaiverCompare('lineup')">Starting Lineup</button>
-                <button type="button" class="mls-segmented-btn" data-compare="roster" aria-pressed="false" onclick="setWaiverCompare('roster')">Whole Roster</button>
+                <button type="button" class="mls-segmented-btn active" data-compare="lineup" aria-pressed="true" data-action="setWaiverCompare">Starting Lineup</button>
+                <button type="button" class="mls-segmented-btn" data-compare="roster" aria-pressed="false" data-action="setWaiverCompare">Whole Roster</button>
             </div>
             <small id="waiverCompareHint" class="text-helper mt-1">Free agents who would crack your current starting lineup this week, and who they would replace.</small>
         </div>
@@ -927,14 +927,14 @@
         <div class="settings-grid mb-2">
             <div class="input-group">
                 <label for="waiverScanBasis">Rank By</label>
-                <select id="waiverScanBasis" class="form-input" onchange="updateWaiverScanSetting('basis', this.value)" aria-label="Sort available players by Weekly or ROS rank">
+                <select id="waiverScanBasis" class="form-input" data-action="updateWaiverScanSetting" data-setting="basis" aria-label="Sort available players by Weekly or ROS rank">
                     <option value="weekly">Weekly Rank</option>
                     <option value="ros">ROS Rank</option>
                 </select>
             </div>
             <div class="input-group">
                 <label for="waiverScanPos">Position</label>
-                <select id="waiverScanPos" class="form-input" onchange="updateWaiverScanSetting('pos', this.value)" aria-label="Filter available players by position">
+                <select id="waiverScanPos" class="form-input" data-action="updateWaiverScanSetting" data-setting="pos" aria-label="Filter available players by position">
                     <option value="FLEX">FLEX (RB/WR/TE)</option>
                     <option value="ALL">All (grouped by position)</option>
                     <option value="QB">QB</option>
@@ -950,7 +950,7 @@
         <div class="settings-grid mb-3" style="align-items: center;">
             <div class="input-group">
                 <label for="waiverScanLimit">Show Top</label>
-                <select id="waiverScanLimit" class="form-input" onchange="updateWaiverScanSetting('limit', parseInt(this.value, 10))" aria-label="Number of players to show">
+                <select id="waiverScanLimit" class="form-input" data-action="updateWaiverScanSettingInt" data-setting="limit" aria-label="Number of players to show">
                     <option value="5">5</option>
                     <option value="10">10</option>
                     <option value="20">20</option>
@@ -962,12 +962,12 @@
                     <div class="toggle-info">
                         <label class="toggle-title" for="waiverScanStartersOnly">Only Would-Starts</label>
                     </div>
-                    <input type="checkbox" id="waiverScanStartersOnly" class="toggle-switch" onchange="updateWaiverScanSetting('startersOnly', this.checked)">
+                    <input type="checkbox" id="waiverScanStartersOnly" class="toggle-switch" data-action="updateWaiverScanSettingChecked" data-setting="startersOnly">
                 </div>
             </div>
         </div>
 
-        <button class="btn btn-primary" style="width: 100%;" onclick="autoFindWaiverUpgrades(this)">Auto-Find</button>
+        <button class="btn btn-primary" style="width: 100%;" data-action="autoFindWaiverUpgrades">Auto-Find</button>
 
         <hr class="card-divider">
         <div class="divider-text">OR CHECK YOUR OWN LIST</div>
@@ -975,8 +975,8 @@
         <div class="input-group mb-2">
             <label id="waiverScopeLabel">Search In</label>
             <div class="mls-segmented" id="waiverScopeToggle" role="group" aria-labelledby="waiverScopeLabel">
-                <button type="button" class="mls-segmented-btn active" data-scope="league" aria-pressed="true" onclick="setWaiverScope('league')">This League</button>
-                <button type="button" class="mls-segmented-btn" data-scope="all" aria-pressed="false" onclick="setWaiverScope('all')">All My Leagues</button>
+                <button type="button" class="mls-segmented-btn active" data-scope="league" aria-pressed="true" data-action="setWaiverScope">This League</button>
+                <button type="button" class="mls-segmented-btn" data-scope="all" aria-pressed="false" data-action="setWaiverScope">All My Leagues</button>
             </div>
             <small id="waiverScopeHint" class="text-helper mt-1">Checks these players against the league you have active, using the Compare Against and Rank By settings above.</small>
         </div>
@@ -986,14 +986,14 @@
         <div class="input-group mb-2" id="waiverIntentWrap" style="display: none;">
             <label id="waiverIntentLabel">Looking To</label>
             <div class="mls-segmented" id="waiverIntentToggle" role="group" aria-labelledby="waiverIntentLabel">
-                <button type="button" class="mls-segmented-btn active" data-intent="buy" aria-pressed="true" onclick="setWaiverIntent('buy')">Buy / Add</button>
-                <button type="button" class="mls-segmented-btn" data-intent="sell" aria-pressed="false" onclick="setWaiverIntent('sell')">Sell / Drop</button>
+                <button type="button" class="mls-segmented-btn active" data-intent="buy" aria-pressed="true" data-action="setWaiverIntent">Buy / Add</button>
+                <button type="button" class="mls-segmented-btn" data-intent="sell" aria-pressed="false" data-action="setWaiverIntent">Sell / Drop</button>
             </div>
             <small id="waiverIntentHint" class="text-helper mt-1"></small>
         </div>
 
         <textarea id="waiverInput" class="scout-textarea" aria-label="Players to check" placeholder="Paste waiver targets here… (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
-        <button id="waiverScanBtn" class="btn btn-purple mt-3" style="width: 100%;" onclick="runScout('waiver')">Scan Pasted List</button>
+        <button id="waiverScanBtn" class="btn btn-purple mt-3" style="width: 100%;" data-action="runScout" data-scout-type="waiver">Scan Pasted List</button>
 
         <div id="waiverOutput" class="scout-output-container" aria-live="polite"></div>
     </section>
@@ -1013,14 +1013,14 @@
         <!-- Players You Receive Group -->
         <div class="trade-group-header">
             <label class="text-target-label" for="buyInput"><span class="dot bg-target"></span> Players You Receive</label>
-            <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('buyInput').value='';">Clear</button>
+            <button class="btn btn-secondary mls-btn-sm" data-action="clearBuyInput">Clear</button>
         </div>
         <textarea id="buyInput" class="scout-textarea" placeholder="Players you'd get in this trade…"></textarea>
         
         <!-- Players You Give Group -->
         <div class="trade-group-header mt-3">
             <label class="text-avoid-label" for="sellInput"><span class="dot bg-avoid"></span> Players You Give Up</label>
-            <button class="btn btn-secondary mls-btn-sm" onclick="document.getElementById('sellInput').value='';">Clear</button>
+            <button class="btn btn-secondary mls-btn-sm" data-action="clearSellInput">Clear</button>
         </div>
         <textarea id="sellInput" class="scout-textarea" placeholder="Players you'd send away…"></textarea>
 
@@ -1038,16 +1038,16 @@
                         </div>
                     </span>
                 </div>
-                <input type="checkbox" id="tradeWaiverAdjustToggle" class="toggle-switch" checked onchange="updateTradeSetting('waiverAdjustment', this.checked)">
+                <input type="checkbox" id="tradeWaiverAdjustToggle" class="toggle-switch" checked data-action="updateTradeSettingChecked" data-setting="waiverAdjustment">
             </div>
             <div class="input-group" id="tradeWaiverValueWrap">
                 <label for="tradeWaiverAdjustValue">Waiver Adjustment Value (per open roster spot)</label>
-                <input type="number" id="tradeWaiverAdjustValue" class="form-input" value="500" min="0" step="50" onchange="updateTradeSetting('waiverAdjustmentValue', this.value)" aria-label="Waiver adjustment value per roster spot">
+                <input type="number" id="tradeWaiverAdjustValue" class="form-input" value="500" min="0" step="50" data-action="updateTradeSetting" data-setting="waiverAdjustmentValue" aria-label="Waiver adjustment value per roster spot">
                 <small id="tradeWaiverAdjustHint" class="text-helper mt-1" style="display: none;"></small>
             </div>
         </div>
 
-        <button class="btn btn-purple mt-4" onclick="runScout('trade')">Analyze Trade</button>
+        <button class="btn btn-purple mt-4" data-action="runScout" data-scout-type="trade">Analyze Trade</button>
         
         <div id="tradeOutput" class="scout-output-container" aria-live="polite"></div>
     </section>
@@ -1058,7 +1058,7 @@
     <section class="settings-card mls-moved-pointer" id="powerRankingsScoutPointer">
         <p class="card-desc mls-moved-pointer-text">
             <strong>Positional Power Rankings</strong> now live on the Roster tab and update automatically.
-            <button type="button" class="mls-moved-pointer-link btn-bare" onclick="goToPowerRankings()">Go to Power Rankings &rarr;</button>
+            <button type="button" class="mls-moved-pointer-link btn-bare" data-action="goToPowerRankings">Go to Power Rankings &rarr;</button>
         </p>
     </section>
 
@@ -1085,7 +1085,7 @@
     <!-- Option B: Modular Configuration Panel -->
     <div class="input-group">
         <label for="marketSourceSelect">Market Source</label>
-        <select id="marketSourceSelect" class="form-input" onchange="updateMarketSetting('source', this.value)" aria-label="Select Market Source">
+        <select id="marketSourceSelect" class="form-input" data-action="updateMarketSetting" data-setting="source" aria-label="Select Market Source">
             <option value="fantasycalc" selected>FantasyCalc.com (Trade Value)</option>
         </select>
     </div>
@@ -1094,14 +1094,14 @@
     <div class="settings-grid mb-2">
         <div class="input-group">
             <label for="marketType">League Type</label>
-            <select id="marketType" class="form-input" onchange="updateMarketSetting('type', this.value)" aria-label="League Type">
+            <select id="marketType" class="form-input" data-action="updateMarketSetting" data-setting="type" aria-label="League Type">
                 <option value="redraft">Redraft</option>
                 <option value="dynasty">Dynasty</option>
             </select>
         </div>
         <div class="input-group">
             <label for="marketQbs">QB Format</label>
-            <select id="marketQbs" class="form-input" onchange="updateMarketSetting('qbs', this.value)" aria-label="QB Format">
+            <select id="marketQbs" class="form-input" data-action="updateMarketSetting" data-setting="qbs" aria-label="QB Format">
                 <option value="1">1QB</option>
                 <option value="2">Superflex / 2QB</option>
             </select>
@@ -1113,7 +1113,7 @@
         <div class="settings-grid mb-3" style="align-items: center;">
             <div class="input-group">
                 <label for="marketPpr">PPR Scoring</label>
-                <select id="marketPpr" class="form-input" onchange="updateMarketSetting('ppr', this.value)" aria-label="PPR Scoring">
+                <select id="marketPpr" class="form-input" data-action="updateMarketSetting" data-setting="ppr" aria-label="PPR Scoring">
                     <option value="1">Full PPR (1.0)</option>
                     <option value="0.5">Half PPR (0.5)</option>
                     <option value="0">Standard (0)</option>
@@ -1124,13 +1124,13 @@
                     <div class="toggle-info">
                         <label class="toggle-title" for="marketTep">TE Premium (TEP)</label>
                     </div>
-                    <input type="checkbox" id="marketTep" class="toggle-switch" onchange="updateMarketSetting('tep', this.checked)">
+                    <input type="checkbox" id="marketTep" class="toggle-switch" data-action="updateMarketSettingChecked" data-setting="tep">
                 </div>
             </div>
         </div>
     </div>
     
-        <button id="fetchAdpBtn" class="btn btn-purple" onclick="fetchLeagueLogsADP(this)">Fetch Market Value</button>
+        <button id="fetchAdpBtn" class="btn btn-purple" data-action="fetchLeagueLogsADP">Fetch Market Value</button>
         
         <div class="leaguelogs-attribution mt-0">
             <a href="https://fantasycalc.com" target="_blank" rel="noopener" id="attributionLink">
@@ -1146,14 +1146,14 @@
     <div class="settings-grid mb-2 mt-4" style="align-items: center;">
         <div class="input-group">
             <label for="disconnectMode">Filter Mode</label>
-            <select id="disconnectMode" class="form-input" onchange="toggleDisconnectMode()">
+            <select id="disconnectMode" class="form-input" data-action="toggleDisconnectMode">
                 <option value="flat">Flat Rank Gap (e.g., 10+ spots)</option>
                 <option value="percent">Percentage Shift (e.g., 20%+ value delta)</option>
             </select>
         </div>
         <div class="input-group">
             <label for="disconnectRankBasis">Rank Basis</label>
-            <select id="disconnectRankBasis" class="form-input" onchange="toggleDisconnectRankBasis()" aria-label="Compare using Overall rank or within-position rank">
+            <select id="disconnectRankBasis" class="form-input" data-action="toggleDisconnectRankBasis" aria-label="Compare using Overall rank or within-position rank">
                 <option value="overall">Overall Rank</option>
                 <option value="positional">Positional Rank (QB vs QB, RB vs RB, etc.)</option>
             </select>
@@ -1181,7 +1181,7 @@
         </select>
     </div>
 
-    <button class="btn btn-primary mt-2" onclick="runMarketDisconnectAnalysis()">Find Trade Targets</button>
+    <button class="btn btn-primary mt-2" data-action="runMarketDisconnectAnalysis">Find Trade Targets</button>
     
     <div id="marketDisconnectOutput" class="scout-output-container" aria-live="polite"></div>
 </section>
