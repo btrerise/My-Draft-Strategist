@@ -2829,9 +2829,11 @@ Written and run against main **before** the move, then unchanged after it. Three
 
 - **6B:** the T-Score page is a module now, so its copy-on-load migration for `mds_tscore_cache_updated`
   (see 6A's note) can be an import in `js/tscore/main.js`.
-- **5x / 5D:** the T-Score page still has its inline `onclick`s (`switchTab`, `switchPosition`,
-  `toggleMenu`, `refreshTScoreData`); no Phase 5 card covers this page. `switchTab` finds its nav button
-  with `[onclick*="tabId"]`, so converting those handlers needs that selector changed too. main.js still
-  reads `window.mdsFetch`, `window.showToast`, `window.createFocusTrap` and `window.getTabFromHash`
-  (unchanged code); they could become imports. Stale "inline script" comments in main.js for 5D's sweep.
+- **5E (new runbook card, added after this chunk at the owner's request):** the T-Score page still has
+  its 18 inline `onclick`s (`switchTab`, `switchPosition`, `toggleMenu`, `refreshTScoreData`), and no
+  Phase 5 card covered this page. `switchTab` finds its nav button with `[onclick*="tabId"]`, so converting
+  those handlers needs that selector changed too. main.js still reads `window.mdsFetch`, `window.showToast`,
+  `window.createFocusTrap` and `window.getTabFromHash` (unchanged code); 5E makes them imports and fixes
+  the stale "inline script" comments in main.js. 5D now waits for 5E, and its comment sweep includes
+  `js/tscore/`.
 - **4D:** the 7 T-Score-only rules are out of base.css, so 4D can skip them.
