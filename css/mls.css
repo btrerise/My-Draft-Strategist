@@ -400,6 +400,14 @@ body.mls-hide-headshots .mls-headshot { display: none; }
     padding-top: 1.25rem;
 }
 
+.lineup-empty-state,
+.bench-empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 2rem 1rem;
+    font-size: 0.9rem;
+}
+
 /* Early Games Warning Banner */
 .early-warning-banner {
     background: rgba(245, 158, 11, 0.1);
@@ -493,6 +501,13 @@ body.mls-hide-headshots .mls-headshot { display: none; }
     height: 1px;
     background: var(--border);
 }
+.lineup-slot .slot-badge { 
+    width: 46px;
+    min-width: 46px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 0.68rem; /* small enough that "SFLEX" still fits at this fixed width */
+}
 
 /* Consolidated slot indicator for the Lineup tab (starters + bench): replaces the old
    plain-text slot-label ("RB1") + separate colored pos-badge pair with a single badge, styled
@@ -534,6 +549,17 @@ body.mls-hide-headshots .mls-headshot { display: none; }
    left padding matches the kickoff-badge's own inset, so its text starts at the same x as the
    name and kickoff lines above it rather than being thrown off by the badge's padding. */
 .mls-plain-pos { font-size: 0.75rem; font-weight: 600; padding-left: 4px; }
+
+.player-name-wrap { 
+    font-weight: 600; 
+    color: var(--text-main); 
+    line-height: 1.3; 
+    font-size: 0.95rem; 
+    /* Matches .mls-plain-pos's left padding below, so the name text and the position text on
+       the meta line start at the same x -- both are plain text with no badge chrome to offset
+       them, but the kickoff badge above still has its own small inset, hence the 4px here. */
+    padding-left: 4px;
+}
 
 .team-chip { 
     background: var(--target-bg); 
@@ -596,7 +622,33 @@ button.close-chip {
     opacity: 0.3;
     cursor: not-allowed;
 }
+
+/* Action Buttons within slots */
+.swap-btn { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
 .lock-btn { font-size: 1.1rem; background: transparent; border: none; cursor: pointer; padding: 0 0.25rem; }
+
+/* Phone sizes for the MLS-only parts of the slot rows (split from the shared block in css/base.css in 4D). */
+@media (max-width: 480px) {
+    .lineup-slot .slot-badge { 
+        width: 42px; 
+        min-width: 42px; 
+        font-size: 0.62rem; 
+    }
+    
+    .player-name-wrap { 
+        font-size: 0.85rem; 
+    }
+    
+    .swap-btn { 
+        padding: 0.3rem 0.5rem; 
+        font-size: 0.75rem; 
+    }
+    
+    .lock-btn { 
+        /* Bumps the SVG size up slightly for better touch targets */
+        transform: scale(1.1); 
+    }
+}
 /* Scout Tab Specific Styles */
 .scout-textarea { 
     width: 100%; 
@@ -1307,6 +1359,13 @@ button.close-chip {
     padding-top: 1rem;
 }
 
+.roster-empty-state {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 1.5rem 0;
+}
+
 .status-badge-meta {
     font-size: 0.75rem;
     color: var(--primary-green);
@@ -1606,9 +1665,31 @@ button.close-chip {
     scroll-margin-top: 5.5rem;
 }
 
+/* --- MODERNIZED FILE UPLOAD BUTTON --- */
+/* Reclaim horizontal space on mobile: the MLS empty states (split from the shared block in css/base.css in 4D). */
+@media (max-width: 767px) {
+    /* Optional: Ensure the empty state messages don't force awkward sizing */
+    .lineup-empty-state,
+    .bench-empty-state,
+    .roster-empty-state {
+        padding: 1.5rem 0.5rem;
+    }
+}
+
 /* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; } 
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+
+/* --- FULL-WIDTH DRAFT BOARD FOR DESKTOP --- */
+/* Accessibility: minimum touch target for the team-chip close button (split from the shared block in css/base.css in 4D). */
+.close-chip {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+}
 
 /* --- TABLE HEADER TOOLTIP FIXES --- */
 /* Player-name autocomplete dropdown */

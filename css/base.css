@@ -1086,14 +1086,6 @@ label.toggle-title,
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
 .mls-pos-badge-sizing { min-width: 26px; padding: 2px 4px; text-align: center; }
 
-.lineup-empty-state,
-.bench-empty-state {
-    text-align: center;
-    color: var(--text-muted);
-    padding: 2rem 1rem;
-    font-size: 0.9rem;
-}
-
 /* --- Lineup Slots & Roster Rows --- */
 .lineup-slot, .roster-item { 
     display: flex; 
@@ -1120,33 +1112,12 @@ label.toggle-title,
     text-align: center;
     font-size: 0.8rem;
 }
-.lineup-slot .slot-badge { 
-    width: 46px;
-    min-width: 46px;
-    flex-shrink: 0;
-    text-align: center;
-    font-size: 0.68rem; /* small enough that "SFLEX" still fits at this fixed width */
-}
 /* 2. UNIVERSAL FIX: Force whatever player data is in the middle to left-align and fill space */
 .roster-item > *:not(:first-child):not(:last-child),
 .lineup-slot > *:not(:first-child):not(:last-child) {
     flex-grow: 1;
     text-align: left;
 }
-
-.player-name-wrap { 
-    font-weight: 600; 
-    color: var(--text-main); 
-    line-height: 1.3; 
-    font-size: 0.95rem; 
-    /* Matches .mls-plain-pos's left padding below, so the name text and the position text on
-       the meta line start at the same x -- both are plain text with no badge chrome to offset
-       them, but the kickoff badge above still has its own small inset, hence the 4px here. */
-    padding-left: 4px;
-}
-
-/* Action Buttons within slots */
-.swap-btn { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
 
 /* Responsive adjustments */
 /* Responsive adjustments for optimal mobile density */
@@ -1161,29 +1132,9 @@ label.toggle-title,
         min-width: 32px; 
         font-size: 0.7rem; 
     }
-    .lineup-slot .slot-badge { 
-        width: 42px; 
-        min-width: 42px; 
-        font-size: 0.62rem; 
-    }
-    
-    .player-name-wrap { 
-        font-size: 0.85rem; 
-    }
-    
     .badge { 
         padding: 2px 4px; 
         font-size: 0.65rem; 
-    }
-    
-    .swap-btn { 
-        padding: 0.3rem 0.5rem; 
-        font-size: 0.75rem; 
-    }
-    
-    .lock-btn { 
-        /* Bumps the SVG size up slightly for better touch targets */
-        transform: scale(1.1); 
     }
 }
 
@@ -1217,14 +1168,6 @@ label.toggle-title,
 
 .text-danger {
     color: #ef4444 !important;
-}
-
-/* --- MLS ROSTER TAB SPECIFIC STYLES --- */
-.roster-empty-state {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    text-align: center;
-    padding: 1.5rem 0;
 }
 
 /* --- COLLAPSIBLE RANKINGS CARDS (Roster/Lineup tabs) ---
@@ -1314,16 +1257,6 @@ label.toggle-title,
     text-transform: none;
 }
 /* --- LIVE INDICATOR --- */
-/* The animated dot */
-.pulse-dot {
-    width: 6px;
-    height: 6px;
-    background-color: #ef4444;
-    border-radius: 50%;
-    display: inline-block;
-    animation: pulse 2s infinite;
-}
-
 @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
     70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
@@ -1344,10 +1277,9 @@ label.toggle-title,
     border-radius: 8px;
 }
 
-/* Reduced motion: stop the four pulses but keep a static highlight, so the
-   "this is next" cue survives without the animation. */
+/* Reduced motion: stop the pulses but keep a static highlight, so the
+   "this is next" cue survives without the animation. (.pulse-dot's part is in css/mds.css.) */
 @media (prefers-reduced-motion: reduce) {
-    .pulse-dot,
     .btn-pulse,
     .pulse-border,
     .nav-pulse {
@@ -1533,13 +1465,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
         /* Reduces the inner card gap from 1.5rem to 0.75rem */
         padding: 1rem 0.75rem; 
     }
-
-    /* Optional: Ensure the empty state messages don't force awkward sizing */
-    .lineup-empty-state,
-    .bench-empty-state,
-    .roster-empty-state {
-        padding: 1.5rem 0.5rem;
-    }
 }
 
 /* --- ACCESSIBILITY & MICRO-INTERACTIONS --- */
@@ -1649,36 +1574,8 @@ input[type="file"]::-webkit-file-upload-button:hover {
 }
 
 /* --- MOBILE COLLAPSIBLE CARDS --- */
-.btn-expand {
-    background: transparent;
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 0.4rem;
-}
-
 .chevron-icon {
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Mobile Default: Details hidden only if setting is enabled.
-   (Consolidated from what used to be two overlapping @media(max-width:600px) blocks here plus
-   a third small one further down -- see the single block near the PLAYER CARD GRID LAYOUT
-   section below for the live rules.) */
-
-/* Desktop Default: Details always visible, expand button hidden.
-   (Previously declared 3 times near-identically across this file -- consolidated to one.) */
-@media (min-width: 768px) {
-    .card-details {
-        display: block !important; /* Force visible */
-        margin-top: 0.25rem;
-    }
-    
-    .hide-on-desktop {
-        display: none !important;
-    }
 }
 
 /* --- PLAYER CARD GRID LAYOUT --- */
@@ -1701,10 +1598,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
 /* --- FULL-WIDTH DRAFT BOARD FOR DESKTOP --- */
 /* Accessibility: Ensure Minimum Mobile Touch Targets (44x44px) */
 .close-banner-btn,
-.close-menu-btn,
-.btn-expand,
-.edit-icon,
-.close-chip {
+.close-menu-btn {
     min-width: 44px;
     min-height: 44px;
     display: inline-flex;
