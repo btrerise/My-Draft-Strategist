@@ -1,6 +1,6 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3F: MATCHUP SIMULATOR
-// (MONTE CARLO), including its WAIVER INSIGHTS block (inside runMatchupSim), plus lookupSimPlayer,
-// the simulator card's player lookup.
+// (MONTE CARLO), plus lookupSimPlayer, the simulator card's player lookup. Its WAIVER INSIGHTS block
+// became getWaiverInsights in scout/waiverInsights.js in 3G.
 import { getNflState, getSleeperPlayerMap, getSleeperMatchups } from '../../shared/api/sleeper.js';
 import { runMatchupSimulation, clearSimResults, showSimNotice } from './ui.js';
 import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from '../../shared/api/sleeperStats.js';
@@ -10,7 +10,7 @@ import { State, refreshGameTimes } from '../state.js';
 import { getShortInjuryStatus, isExcludedFromSimulation, SIM_EXCLUDE_STATUSES, getActiveLeague, isConnectionError } from '../helpers.js';
 import { getCleanNameToIdIndex } from '../players.js';
 import { getLeagueScoringKey, hasKickedOff } from '../lineup/gameInfo.js';
-import { getTopWaiverCandidatesByPosition } from '../trade/waiverValue.js';
+import { getWaiverInsights } from '../scout/waiverInsights.js';
 import { slotAcceptsPos } from '../render/lineup.js';
 
 // --- MATCHUP SIMULATOR (MONTE CARLO) ---
@@ -297,92 +297,8 @@ export const runMatchupSim = async function() {
             benchInsights.splice(5); // top 5 by margin -- the rest would just be noise
         }
 
-        // --- WAIVER INSIGHTS ---
-        // Same comparison as Lineup Insights above, pointed at available free agents instead
-        // of your bench. Off by default (see the toggle in the Matchup Simulator card) since
-        // it costs an extra round trip this function wouldn't otherwise make: free-agent
-        // candidates come from a rankings file (a name and a rank -- no Sleeper id, no weekly
-        // score history), so getting them into the same win-probability math as everyone else
-        // here means resolving each one's Sleeper id and fetching their history separately,
-        // rather than reusing the one batched history fetch already done above for your
-        // roster and your opponent's.
-        const waiverInsights = [];
-        // What the waiver check actually did, so the results card can tell "nobody out there
-        // beats your starters" apart from "the check never ran" -- an empty waiverInsights
-        // list alone reads identically either way, which left people unsure whether the
-        // toggle had done anything at all. Stays null while the toggle is off (nothing to
-        // report). checkedCount counts only free agents that made it all the way through the
-        // comparison (resolved to a Sleeper id, had score history, had an eligible starter
-        // to measure against), so "checked N" never overstates the work.
-        let waiverInsightsStatus = null;
-        if (State.simSettings.waiverInsights) {
-            // startersAllStarted / kickedOffCount let the empty-result message name the real
-            // reason nothing was compared, now that already-started starters and free agents
-            // are left out (see lockedStarterIds above and the candidates filter below).
-            waiverInsightsStatus = {
-                checkedCount: 0, positions: [], noRankings: false, failed: false,
-                startersAllStarted: team1Players.length > 0 && team1Players.every(p => lockedStarterIds.has(p.id)),
-                kickedOffCount: 0
-            };
-            const checkedPositions = new Set();
-            try {
-                if (State.rosRankings.length === 0 && State.marketRankings.length === 0) {
-                    waiverInsightsStatus.noRankings = true;
-                }
-                const nameToIdIndex = await getCleanNameToIdIndex();
-                const candidates = getTopWaiverCandidatesByPosition(rosterMap, 3)
-                    .map(c => ({ ...c, id: nameToIdIndex[c.cleanName] }))
-                    .filter(c => c.id && !isExcludedFromSimulation(playerMap[c.id]))
-                    // A free agent whose game has kicked off is locked on Sleeper until next
-                    // week -- same "can't act on it" reasoning as the bench filter above.
-                    .filter(c => {
-                        if (!hasKickedOff({ team: (playerMap[c.id] || {}).team })) return true;
-                        waiverInsightsStatus.kickedOffCount++;
-                        return false;
-                    });
-
-                if (candidates.length > 0) {
-                    const candidateIds = candidates.map(c => c.id);
-                    const { blended: waiverHistory } = await getPlayerWeeklyScoreHistory(
-                        candidateIds, season, currentWeek, scoringKey, { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES }
-                    );
-
-                    candidates.forEach(c => {
-                        const weeklyScores = waiverHistory[c.id] || [];
-                        if (weeklyScores.length === 0) return; // same "not enough history" bar as everyone else
-
-                        const rawPlayer = playerMap[c.id] || {};
-                        const faPos = rawPlayer.position || c.pos;
-                        const profile = getPlayerVarianceProfile(weeklyScores, { projectedMean: getProjectedMean(c.id) });
-                        const result = compareAgainstWeakestStarter(profile, faPos);
-                        if (!result) return;
-
-                        waiverInsightsStatus.checkedCount++;
-                        checkedPositions.add(faPos);
-                        if (result.winPct <= 50) return;
-
-                        waiverInsights.push({
-                            faName: c.name, faPos,
-                            starterName: result.weakestStarter.name, starterPos: result.weakestStarter.pos, starterIsRookie: result.weakestStarter.isRookie,
-                            faWinPct: result.winPct
-                        });
-                    });
-
-                    waiverInsights.sort((a, b) => b.faWinPct - a.faWinPct);
-                    waiverInsights.splice(5);
-                }
-            } catch (err) {
-                // Waiver Insights is a bonus layer on top of the main simulation -- a failure
-                // here (a rankings/market fetch hiccup, an unresolvable name) shouldn't take
-                // down the matchup simulation itself. The results card still says the check
-                // didn't finish, rather than letting silence read as "no upgrades found".
-                console.error('Waiver Insights failed:', err);
-                waiverInsightsStatus.failed = true;
-            }
-            const POS_ORDER = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
-            waiverInsightsStatus.positions = [...checkedPositions].sort((a, b) =>
-                (POS_ORDER.indexOf(a) + 1 || 99) - (POS_ORDER.indexOf(b) + 1 || 99));
-        }
+        // Waiver Insights: the same comparison against available free agents (scout/waiverInsights.js).
+        const { waiverInsights, waiverInsightsStatus } = await getWaiverInsights({ team1Players, lockedStarterIds, rosterMap, playerMap, season, currentWeek, scoringKey, getProjectedMean, compareAgainstWeakestStarter });
 
         runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, waiverInsights, waiverInsightsStatus, currentWeek });
     } catch (err) {

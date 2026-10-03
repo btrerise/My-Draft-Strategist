@@ -26,9 +26,17 @@ const PLAYERS = [
     ['17', 'Justin', 'Tucker', 'K', 'BAL', 14], ['5095', 'Harrison', 'Butker', 'K', 'KC', 8],
     ['BAL', 'Baltimore', 'Ravens', 'DEF', 'BAL', 0], ['PHI', 'Philadelphia', 'Eagles', 'DEF', 'PHI', 0],
 ];
+// On no roster: the free agents Waiver Insights checks (refactor 3G). tests/fixtures/rankings-waivers.csv
+// ranks them after the 24 players in rankings.csv.
+const FREE_AGENTS = [
+    ['11566', 'Jayden', 'Daniels', 'QB', 'WAS', 2], ['8138', 'James', 'Cook', 'RB', 'BUF', 4],
+    ['9224', 'Chase', 'Brown', 'RB', 'CIN', 3], ['9488', 'Jaxon', 'Smith-Njigba', 'WR', 'SEA', 3],
+    ['9997', 'Zay', 'Flowers', 'WR', 'BAL', 3], ['9480', 'Sam', 'LaPorta', 'TE', 'DET', 3],
+];
+const ALL_PLAYERS = [...PLAYERS, ...FREE_AGENTS];
 
 const players = {};
-for (const [id, first, last, pos, team, exp] of PLAYERS) {
+for (const [id, first, last, pos, team, exp] of ALL_PLAYERS) {
     players[id] = {
         player_id: id, first_name: first, last_name: last, full_name: `${first} ${last}`,
         search_full_name: `${first}${last}`.toLowerCase().replace(/[^a-z]/g, ''),
@@ -54,7 +62,17 @@ const league = {
     settings: { type: 0, playoff_week_start: 15 },
 };
 
-const matchups = rosters.map(r => ({ roster_id: r.roster_id, matchup_id: 1, points: 0, starters: [], players: r.players }));
+// Each team's Sleeper starters, filled slot by slot from its roster in order (refactor 3G), so the
+// matchup simulator has an opponent lineup and runs end to end.
+const startersFor = (pl) => {
+    const left = [...pl];
+    const fits = { FLEX: ['RB', 'WR', 'TE'] };
+    return league.roster_positions.filter(s => s !== 'BN').map(slot => {
+        const i = left.findIndex(id => (fits[slot] || [slot]).includes(PLAYERS.find(x => x[0] === id)[3]));
+        return i === -1 ? '0' : left.splice(i, 1)[0];
+    });
+};
+const matchups = rosters.map(r => ({ roster_id: r.roster_id, matchup_id: 1, points: 0, starters: startersFor(r.players), players: r.players }));
 
 // Deterministic pseudo-random points, so variance-based features (sim, boom/bust) have
 // something to work with and every run produces the same numbers.
@@ -62,11 +80,11 @@ const BASE = { QB: 20, RB: 14, WR: 13, TE: 9, K: 8, DEF: 7 };
 function points(id, season, week) {
     let h = 0;
     for (const c of `${id}|${season}|${week}`) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    const p = PLAYERS.find(x => x[0] === id);
+    const p = ALL_PLAYERS.find(x => x[0] === id);
     const ppr = Math.round((BASE[p[3]] * (0.5 + (h % 1000) / 1000)) * 10) / 10;
     return { pts_ppr: ppr, pts_half_ppr: Math.round(ppr * 0.9 * 10) / 10, pts_std: Math.round(ppr * 0.8 * 10) / 10, gp: 1 };
 }
-const weekFile = (season, week) => Object.fromEntries(ids.map(id => [id, points(id, season, week)]));
+const weekFile = (season, week) => Object.fromEntries(ALL_PLAYERS.map(p => [p[0], points(p[0], season, week)]));
 
 const out = {
     'players-nfl.json': players,

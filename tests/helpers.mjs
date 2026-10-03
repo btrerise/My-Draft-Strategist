@@ -118,6 +118,10 @@ export async function showTab(page, tab) {
 
 export const RANKINGS_CSV = readFileSync(here('./fixtures/rankings.csv'), 'utf8');
 
+// Unrostered free agents for Waiver Insights (refactor 3G): rankings.csv plus six players the
+// fixture league's player map has but no roster holds (FREE_AGENTS in fixtures/sleeper/make-fixtures.mjs).
+export const WAIVER_RANKINGS_CSV = readFileSync(here('./fixtures/rankings-waivers.csv'), 'utf8');
+
 export const FIXTURE_LEAGUE_ID = '1000000000000000001';
 
 /** MDS: loads the 24-player fixture through the paste box, then makes five picks. */
@@ -146,4 +150,36 @@ export async function seedMls(page) {
 export async function showTScoreTab(page, tab) {
     await page.evaluate((t) => window.switchTab(t), tab);
     await expect(page.locator(`#${tab}`)).toHaveClass(/\bactive\b/);
+}
+
+/**
+ * MLS: uploads a rankings CSV as both ROS and Weekly rankings through the real file inputs and the
+ * preview's Save (added in 3C's mls-scout.spec.mjs; shared since 3G).
+ */
+export async function loadMlsRankings(page, csv = RANKINGS_CSV, count = 24) {
+    for (const inputId of ['rosFileInput', 'weeklyFileInput']) {
+        await page.setInputFiles('#' + inputId, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+        await expect(page.locator('#rankingsPreviewOverlay')).toContainText(`${count} players parsed`);
+        await page.evaluate(() => window.confirmRankingsPreview());
+        await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
+    }
+}
+
+// Seeded Math.random for the matchup simulator (added in 3F's mls-sim.spec.mjs; shared since 3G).
+const SIM_SEED = `(() => { let a = 0x9E3779B9; Math.random = function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })();\n`;
+
+/**
+ * Replaces Math.random with a seeded generator in the page (init script) and in the simulator's
+ * Web Worker (the worker script is rewritten on its way in). Call before page.goto(). Returns the
+ * list of worker script paths the page loads, filled in as it runs.
+ */
+export async function seedSimRandom(page) {
+    const workerUrls = [];
+    await page.addInitScript(SIM_SEED);
+    await page.route(/\/worker\.js$/, async (route) => {
+        workerUrls.push(new URL(route.request().url()).pathname);
+        const res = await route.fetch();
+        await route.fulfill({ response: res, body: SIM_SEED + await res.text() });
+    });
+    return workerUrls;
 }

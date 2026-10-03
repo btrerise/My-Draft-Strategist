@@ -25,6 +25,7 @@ import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDr
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
 import { importAllSleeperLeagues } from './leagues/importAll.js';
 import { generateSoSGrid, saveManualSoS } from './sos.js';
+import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
 import './power/allLeagues.js';
@@ -49,6 +50,7 @@ import { getPowerLeagueKind } from './power/directionLabels.js';
 import { goToPowerRankings, refreshPowerRankings, renderPowerRankingsTable, runPositionalStrength, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
 import { runGlobalInjuryAudit } from './lineup/injuryAudit.js';
+import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
 
 // Re-exported for the modules that evaluate before the ones these live in (refactor 3E, moved here

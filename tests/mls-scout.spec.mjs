@@ -1,22 +1,13 @@
 // Lineup Strategist Scout tab with rankings loaded (added in refactor 3C). The seeded state in the
 // smoke and screenshot tests has no rankings, so it only covers the Scout tab's empty form.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, RANKINGS_CSV } from './helpers.mjs';
-
-async function loadRankings(page) {
-    for (const inputId of ['rosFileInput', 'weeklyFileInput']) {
-        await page.setInputFiles('#' + inputId, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_CSV) });
-        await expect(page.locator('#rankingsPreviewOverlay')).toContainText('24 players parsed');
-        await page.evaluate(() => window.confirmRankingsPreview());
-        await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
-    }
-}
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings } from './helpers.mjs';
 
 test.describe('Lineup Strategist Scout tab', () => {
     test('scan a pasted list, auto-find, and scout a trade', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
-        await loadRankings(page);
+        await loadMlsRankings(page);
         await showTab(page, 'scout');
         const waivers = page.locator('#waiverOutput');
 
