@@ -2,6 +2,7 @@
 // the Team tab roster (renderFantasyRoster), which sat at the end of RENDER DRAFT MATRIX.
 import { escapeHtml } from './compat.js';
 import { State, getActiveDraft } from './state.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // `playerById` is optional: renderBoard, the main caller, already has one built for its own
     // loop and passes it in. Without it this scanned the whole player pool once per rostered
@@ -101,7 +102,7 @@ import { State, getActiveDraft } from './state.js';
         }
 
         const bannerContainer = document.getElementById('byeWarningContainer');
-        const showByeWarnings = localStorage.getItem('ds_bye_warnings') === 'true';
+        const showByeWarnings = localStorage.getItem(KEYS.mds.byeWarnings) === 'true';
         
         if (bannerContainer && showByeWarnings && myPlayersObjects.length > 0) {
             let byeCounts = {};

@@ -3,6 +3,7 @@ import { getNflState, getSleeperPlayerMap, getSleeperUser, getSleeperUserLeagues
 import { State } from '../state.js';
 import { updatePulsePrompts } from '../init.js';
 import { formatNameList, loadActiveLeagueData, processSleeperData, refreshLeagueDropdown } from './sync.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
     // --- IMPORT ALL LEAGUES (by username only) ---
     // Pulls every league a Sleeper username belongs to for the current NFL season and syncs
@@ -58,13 +59,13 @@ import { formatNameList, loadActiveLeagueData, processSleeperData, refreshLeague
             }
 
             // Single write after the loop instead of one localStorage.setItem per league.
-            localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
-            localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+            localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+            localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
 
             refreshLeagueDropdown();
             if (State.leagues.length > 0 && !State.activeLeagueId) {
                 State.activeLeagueId = State.leagues[0].leagueId;
-                localStorage.setItem('mds_season_active_league', State.activeLeagueId);
+                localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
             }
             loadActiveLeagueData();
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();

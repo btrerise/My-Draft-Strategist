@@ -8,6 +8,7 @@ import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getByeBadgeHTML, getGameInfoHTML, getLineupInjuryWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
 
     // Core lock/unlock mechanics shared by toggleLock (the manual lock icon) and the
@@ -22,7 +23,7 @@ import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js'
         if (isLocked && idx === -1) locks.push(playerId);
         else if (!isLocked && idx !== -1) locks.splice(idx, 1);
         State.lockedPlayersMap[State.activeLeagueId] = locks;
-        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
+        localStorage.setItem(KEYS.mls.locksMap, JSON.stringify(State.lockedPlayersMap));
 
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         let bench = State.manualBenchMap[State.activeLeagueId] || [];
@@ -80,7 +81,7 @@ import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js'
         if (!entry || entry.week !== State.currentNflWeek) entry = { week: State.currentNflWeek, ids: [] };
         if (!entry.ids.includes(playerId)) entry.ids.push(playerId);
         State.autoLockOverridesMap[State.activeLeagueId] = entry;
-        localStorage.setItem('mls_autolock_overrides_map', JSON.stringify(State.autoLockOverridesMap));
+        localStorage.setItem(KEYS.mls.autolockOverridesMap, JSON.stringify(State.autoLockOverridesMap));
 
         if (typeof window.showToast === 'function') {
             window.showToast("Auto-lock removed - re-optimizing");
@@ -103,7 +104,7 @@ import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js'
 
         pushLineupUndoSnapshot(State.activeLeagueId);
         State.lockedPlayersMap[State.activeLeagueId] = [];
-        localStorage.setItem('mds_season_locks_map', JSON.stringify(State.lockedPlayersMap));
+        localStorage.setItem(KEYS.mls.locksMap, JSON.stringify(State.lockedPlayersMap));
 
         if (typeof window.showToast === 'function') {
             window.showToast("All manual locks cleared - re-optimizing");
@@ -172,8 +173,8 @@ import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js'
 
             State.manualStartersMap[State.activeLeagueId] = starters;
             State.manualBenchMap[State.activeLeagueId] = bench;
-            localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
-            localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+            localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+            localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
 
             // Keep this swap "sticky" across the next sync. optimizeLineup's full recompute
             // (forced on every Sleeper sync) only protects locked players -- without this, a
@@ -524,23 +525,23 @@ import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js'
         // Written even in batch mode: it's one short string per league, not the full lineup
         // maps the batch caller defers.
         State.lineupRankingsStamps[State.activeLeagueId] = rankingsStamp;
-        localStorage.setItem('mls_lineup_rankings_stamps', JSON.stringify(State.lineupRankingsStamps));
+        localStorage.setItem(KEYS.mls.lineupRankingsStamps, JSON.stringify(State.lineupRankingsStamps));
 
         // Batch runs defer both writes to the caller -- see the note on this function's
         // signature. State above is updated either way, so a batch that somehow failed to
         // flush would lose the run, not corrupt it.
         if (!batch) {
-            localStorage.setItem('mds_season_manual_starters', JSON.stringify(State.manualStartersMap));
-            localStorage.setItem('mds_season_manual_bench', JSON.stringify(State.manualBenchMap));
+            localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+            localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
         }
 
         if (isManualAction) {
-            let hasOptimizedBefore = localStorage.getItem('mls_has_optimized');
+            let hasOptimizedBefore = localStorage.getItem(KEYS.mls.hasOptimized);
             if (!hasOptimizedBefore) {
                 if (typeof window.showToast === 'function') {
                     window.showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
                 }
-                localStorage.setItem('mls_has_optimized', 'true');
+                localStorage.setItem(KEYS.mls.hasOptimized, 'true');
             } else {
                 if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
             }

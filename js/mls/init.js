@@ -13,6 +13,7 @@ import { initManualAddForm } from './leagues/addPlayer.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
 import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs } from './main.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // --- INITIALIZATION ---
     // Where each setup step gets done: the tab it lives on, the card to reveal, and the control
@@ -236,13 +237,13 @@ import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDispla
 
     // --- STARTUP CLEANUP ---
 document.addEventListener('DOMContentLoaded', () => {
-    // One-time cleanup of 'shared_sleeper_league_id', a league-ID handoff from MDS that was
+    // One-time cleanup of KEYS.shared.sleeperLeagueId, a league-ID handoff from MDS that was
     // never finished: nothing in either app ever wrote the key, but MLS used to read it here
-    // and auto-click Sync on page load. MDS hands off via mds_handoff_roster instead (see
+    // and auto-click Sync on page load. MDS hands off via KEYS.shared.handoffRoster instead (see
     // checkForDraftStrategistHandoff). The key is off getMlsOwnedKeys() now, so Factory Reset
     // can no longer clear a stale copy -- hence removing it directly. Idempotent, so it needs
     // no "already migrated" flag; safe to delete once existing installs have loaded once.
-    try { localStorage.removeItem('shared_sleeper_league_id'); } catch (e) {}
+    try { localStorage.removeItem(KEYS.shared.sleeperLeagueId); } catch (e) {}
 
     // Tooltip tap/keyboard handling moved to js/utils.js (initInfoTooltips), shared with MDS
     // and T-Score. The per-icon listeners that lived here only covered icons present at load.

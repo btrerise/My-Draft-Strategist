@@ -4,6 +4,7 @@ import { NFL_TEAMS } from './constants.js';
 import { State } from './state.js';
 import { showStatusFeedback } from './helpers.js';
 import { loadRosterTab } from './main.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // --- SOS ENGINE ---
     export function generateSoSGrid() {
@@ -35,7 +36,7 @@ import { loadRosterTab } from './main.js';
             State.sosMap[team].WR = getVal(`sos_${team}_WR`);
             State.sosMap[team].TE = getVal(`sos_${team}_TE`);
         });
-        localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
+        localStorage.setItem(KEYS.mls.sos, JSON.stringify(State.sosMap));
         
         if (btn) flashButton(btn, "SoS Saved");
         
@@ -131,7 +132,7 @@ import { loadRosterTab } from './main.js';
                         }
                     }
 
-                    localStorage.setItem('mds_season_sos', JSON.stringify(State.sosMap));
+                    localStorage.setItem(KEYS.mls.sos, JSON.stringify(State.sosMap));
                     generateSoSGrid();
                     
                     showStatusFeedback(document.getElementById('sosSuccessMsg'), null, 3000);

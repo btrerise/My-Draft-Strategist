@@ -1355,13 +1355,13 @@ window.refreshTScoreData = async function(btn) {
         });
 
         const timestamp = Date.now();
-        localStorage.setItem('mds_tscore_cache', JSON.stringify(combined));
-        localStorage.setItem('mds_tscore_cache_updated', String(timestamp));
+        localStorage.setItem(window.KEYS.tscore.cache, JSON.stringify(combined));
+        localStorage.setItem(window.KEYS.tscore.cacheUpdated, String(timestamp));
         // Separate from the compact MDS-format cache above: this keeps the FULL per-player
         // data (ADP, stat columns, etc.) this page's own tables need, so a reload re-renders
         // the actual tables from cache too, instead of the freshness label saying "today"
         // while the visible tables still show whatever shipped in the static HTML.
-        localStorage.setItem('tscore_page_cache', JSON.stringify({ wr: wrPlayers, rb: rbPlayers }));
+        localStorage.setItem(window.KEYS.tscore.pageCache, JSON.stringify({ wr: wrPlayers, rb: rbPlayers }));
         updateTscoreFreshnessLabel(timestamp);
 
         if (window.showToast) window.showToast(`T-Score data refreshed: ${wrPlayers.length} WRs, ${rbPlayers.length} RBs.`);
@@ -1382,10 +1382,10 @@ window.refreshTScoreData = async function(btn) {
 // guarantees finishes before DOMContentLoaded fires -- this inline script itself runs earlier,
 // synchronously, so it can define these functions but can't safely CALL into Papa/js/shared yet.
 document.addEventListener('DOMContentLoaded', () => {
-    const cachedUpdatedAt = localStorage.getItem('mds_tscore_cache_updated');
+    const cachedUpdatedAt = localStorage.getItem(window.KEYS.tscore.cacheUpdated);
     if (cachedUpdatedAt) updateTscoreFreshnessLabel(cachedUpdatedAt);
 
-    const pageCacheRaw = localStorage.getItem('tscore_page_cache');
+    const pageCacheRaw = localStorage.getItem(window.KEYS.tscore.pageCache);
     if (pageCacheRaw) {
         try {
             const pageCache = JSON.parse(pageCacheRaw);

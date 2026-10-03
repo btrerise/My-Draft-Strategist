@@ -2,6 +2,7 @@
 // INITIALIZE SETTINGS INPUTS (settings form, save, reset picks).
 import { State, getActiveDraft, saveActiveDraftState, saveAndRenderDraftState } from './state.js';
 import { renderBoard } from './tracker.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // --- INITIALIZE SETTINGS INPUTS ---
     export function initSettingsUI() {
@@ -10,14 +11,14 @@ import { renderBoard } from './tracker.js';
 
         let draft = getActiveDraft();
 
-        setVal('sleeperUsername', draft && draft.username !== "Manual" ? draft.username : (localStorage.getItem('ds_username') || ""));
-        setVal('sleeperDraftId', draft && !draft.draftId.startsWith('manual_') && !draft.draftId.startsWith('draft_') ? draft.draftId : (localStorage.getItem('ds_draftId') || ""));
-        setVal('targetList', localStorage.getItem('ds_targets') || "");
-        setVal('avoidList', localStorage.getItem('ds_avoids') || "");
-        setVal('dartList', localStorage.getItem('ds_darts') || "");
-        setCheck('stackToggle', localStorage.getItem('ds_stacks') === 'true');
-        setCheck('byeWarningToggle', localStorage.getItem('ds_bye_warnings') === 'true');
-        setCheck('tscoreToggle', localStorage.getItem('ds_tscore') === 'true');
+        setVal('sleeperUsername', draft && draft.username !== "Manual" ? draft.username : (localStorage.getItem(KEYS.mds.username) || ""));
+        setVal('sleeperDraftId', draft && !draft.draftId.startsWith('manual_') && !draft.draftId.startsWith('draft_') ? draft.draftId : (localStorage.getItem(KEYS.mds.draftId) || ""));
+        setVal('targetList', localStorage.getItem(KEYS.mds.targets) || "");
+        setVal('avoidList', localStorage.getItem(KEYS.mds.avoids) || "");
+        setVal('dartList', localStorage.getItem(KEYS.mds.darts) || "");
+        setCheck('stackToggle', localStorage.getItem(KEYS.mds.stacks) === 'true');
+        setCheck('byeWarningToggle', localStorage.getItem(KEYS.mds.byeWarnings) === 'true');
+        setCheck('tscoreToggle', localStorage.getItem(KEYS.mds.tscore) === 'true');
         
         let settings = draft ? draft.settings : { teams: 12, rounds: 15, is3RR: false };
         setCheck('thirdRoundReversalToggle', settings.is3RR || false);
@@ -70,14 +71,14 @@ import { renderBoard } from './tracker.js';
         const getVal = id => document.getElementById(id)?.value.trim() || "";
         const getCheck = id => document.getElementById(id)?.checked || false;
 
-        localStorage.setItem('ds_username', getVal('sleeperUsername'));
-        localStorage.setItem('ds_draftId', getVal('sleeperDraftId'));
-        localStorage.setItem('ds_targets', document.getElementById('targetList')?.value || "");
-        localStorage.setItem('ds_avoids', document.getElementById('avoidList')?.value || "");
-        localStorage.setItem('ds_darts', document.getElementById('dartList')?.value || "");
-        localStorage.setItem('ds_stacks', getCheck('stackToggle'));
-        localStorage.setItem('ds_bye_warnings', getCheck('byeWarningToggle'));
-        localStorage.setItem('ds_tscore', getCheck('tscoreToggle'));
+        localStorage.setItem(KEYS.mds.username, getVal('sleeperUsername'));
+        localStorage.setItem(KEYS.mds.draftId, getVal('sleeperDraftId'));
+        localStorage.setItem(KEYS.mds.targets, document.getElementById('targetList')?.value || "");
+        localStorage.setItem(KEYS.mds.avoids, document.getElementById('avoidList')?.value || "");
+        localStorage.setItem(KEYS.mds.darts, document.getElementById('dartList')?.value || "");
+        localStorage.setItem(KEYS.mds.stacks, getCheck('stackToggle'));
+        localStorage.setItem(KEYS.mds.byeWarnings, getCheck('byeWarningToggle'));
+        localStorage.setItem(KEYS.mds.tscore, getCheck('tscoreToggle'));
         
         let draft = getActiveDraft();
         if (draft) {

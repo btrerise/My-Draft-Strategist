@@ -1,7 +1,9 @@
 // idb.js (moved from lineup/db.js in refactor chunk 1B)
-const DB_NAME = 'LineupStrategistDB';
+import { IDB_DATABASES } from './keys.js';
+
+const DB_NAME = IDB_DATABASES.lineupStrategist.name;
 const DB_VERSION = 1;
-const STORE_NAME = 'sleeperData';
+const STORE_NAME = IDB_DATABASES.lineupStrategist.stores[0];
 
 // The open connection, shared by every read and write below. Previously each getCachedData /
 // cacheData call opened its OWN connection to the same database and then dropped it on the

@@ -12,6 +12,7 @@ import { runScout } from './engine.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isAutoLockOverridden } from '../main.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
     // One scanner, two lenses, picked with the "Compare Against" toggle:
@@ -58,7 +59,7 @@ import { isDraftPickName } from '../trade/valueCurve.js';
 
     export const updateWaiverScanSetting = function(key, value) {
         State.waiverScanSettings[key] = value;
-        localStorage.setItem('mls_waiver_scan_settings', JSON.stringify(State.waiverScanSettings));
+        localStorage.setItem(KEYS.mls.waiverScanSettings, JSON.stringify(State.waiverScanSettings));
         applyWaiverScanSettingsToUI();
     };
 

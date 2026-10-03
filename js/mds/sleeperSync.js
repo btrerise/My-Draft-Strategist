@@ -39,7 +39,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
                 TOTAL: 15
             },
             // No inline `players` -- a new manual draft still starts from whatever rankings are
-            // currently loaded, but that pool is written to its own ds_players_<draftId> key by
+            // currently loaded, but that pool is written to its own mdsDraftPoolKey(draftId) key by
             // the savePlayerPool() call below instead of being embedded here. (Leaving it
             // embedded would still have worked, via saveActiveDraftState's rescue path for
             // v1-format drafts, but that path exists for deferred migrations -- routing a
@@ -328,7 +328,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
             //
             // _needsPlayerSave vetoes the shortcut: the picks loop above synthesizes players
             // who aren't in the uploaded rankings, and that flag means one was created and
-            // hasn't been written to ds_players yet. Bailing out with it still pending would
+            // hasn't been written to KEYS.mds.players yet. Bailing out with it still pending would
             // leave a player who exists in memory but not on disk, so let the full path run
             // and flush him. In practice this is rare -- the tick that first sees his pick has
             // a changed pick count anyway -- but it costs one comparison to be certain.
@@ -343,7 +343,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
                 limits: draftLimits,
                 // No `players` here any more: this object is rebuilt and re-serialized on
                 // every sync that finds a pick, and embedding the whole pool in it was the
-                // other half of what made ds_drafts so expensive to write. The pool lives
+                // other half of what made KEYS.mds.drafts so expensive to write. The pool lives
                 // under its own key and is saved by savePlayerPool() below when a player is
                 // actually added -- see the storage notes at the top of this file.
                 draftedPlayers: Array.from(new Set([...sleeperDrafted, ...manualDrafted])),
@@ -369,7 +369,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
             // Reached only when there's genuinely something new, or when the person asked for
             // this sync themselves -- the unchanged-silent-tick case returned above, which is
             // what keeps a board nobody has touched from being re-saved and repainted 20 times
-            // a minute. The save itself is now cheap (ds_drafts no longer carries the player
+            // a minute. The save itself is now cheap (KEYS.mds.drafts no longer carries the player
             // pools -- see the storage notes at the top of this file), so what's being avoided
             // here is mostly the full repaint of the pool, grid and recap.
             saveActiveDraftState();

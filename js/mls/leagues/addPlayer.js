@@ -5,6 +5,7 @@ import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { attachPlayerAutocomplete } from '../players.js';
 import { loadRosterTab } from '../main.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
     // --- ADD PLAYER MANUALLY: keyboard fast path + "Added this session" list ---
     // Built for keying in a whole league from the keyboard: type a name, Enter picks the
@@ -90,7 +91,7 @@ import { loadRosterTab } from '../main.js';
         if (!pToRemove) return null;
         if (league.globalRosterMap) delete league.globalRosterMap[pToRemove.cleanName];
         league.roster = league.roster.filter(p => p.id !== playerId);
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
         return pToRemove;
     }
 
@@ -165,7 +166,7 @@ import { loadRosterTab } from '../main.js';
         league.globalRosterMap = league.globalRosterMap || {};
         league.globalRosterMap[newP.cleanName] = "You";
 
-        localStorage.setItem('mds_season_leagues', JSON.stringify(State.leagues));
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
         _manualAddLog.unshift({ leagueId: league.leagueId, playerId: newP.id });
         _manualSelected = null;
         if (nameInput) nameInput.value = "";

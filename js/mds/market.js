@@ -12,6 +12,7 @@ import { processData } from './import.js';
 import { getSleeperPlayerMap, getSleeperSeasonAdp } from '../shared/api/sleeper.js';
 import { FFC_FORMAT_LABELS, fetchFfcAdp, formatFfcDate } from '../shared/api/ffc.js';
 import { normalizeName } from '../shared/names.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // --- FANTASY FOOTBALL CALCULATOR (FFC) INTEGRATION ---
 
@@ -105,7 +106,7 @@ import { normalizeName } from '../shared/names.js';
             let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const listDate = res.source === 'saved' ? ` (list from ${formatFfcDate(res.savedAt)})` : '';
             State.adpMeta = { format: "FFC: " + formatText + listDate, date: dateString };
-            localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
+            localStorage.setItem(KEYS.mds.adpMeta, JSON.stringify(State.adpMeta));
             updateMetaDisplay();
         } catch(err) {
             console.error(err);
@@ -184,7 +185,7 @@ import { normalizeName } from '../shared/names.js';
         let now = new Date();
         let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         State.adpMeta = { format: `${source.toUpperCase()}: ${formatText}${listDate}`, date: dateString };
-        localStorage.setItem('ds_adp_meta', JSON.stringify(State.adpMeta));
+        localStorage.setItem(KEYS.mds.adpMeta, JSON.stringify(State.adpMeta));
         updateMetaDisplay();
 
         flashButton(btn, "Complete!", false, originalText);

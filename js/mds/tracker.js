@@ -7,6 +7,7 @@ import { State, getActiveDraft } from './state.js';
 import { renderDraftMatrix } from './board.js';
 import { renderFantasyRoster } from './team.js';
 import { renderDraftRecap } from './recap.js';
+import { KEYS } from '../shared/storage/keys.js';
 
     // Reads and parses the three call-out lists ONCE, for a caller that is about to style many
     // player cards. getCallOutStyle below used to do this itself on every single call -- and
@@ -17,7 +18,7 @@ import { renderDraftRecap } from './recap.js';
     function getCallOutLists() {
         const parse = (key) => (localStorage.getItem(key) || "")
             .split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
-        return { targets: parse('ds_targets'), avoids: parse('ds_avoids'), darts: parse('ds_darts') };
+        return { targets: parse(KEYS.mds.targets), avoids: parse(KEYS.mds.avoids), darts: parse(KEYS.mds.darts) };
     }
 
     // `lists` is optional purely so the handful of one-off callers outside a render loop can
@@ -68,7 +69,7 @@ import { renderDraftRecap } from './recap.js';
     function getEffectiveTScoreData() {
         if (cachedEffectiveTScoreData !== null) return cachedEffectiveTScoreData;
         try {
-            const raw = localStorage.getItem('mds_tscore_cache');
+            const raw = localStorage.getItem(KEYS.tscore.cache);
             if (raw) {
                 cachedEffectiveTScoreData = JSON.parse(raw);
                 return cachedEffectiveTScoreData;
@@ -369,7 +370,7 @@ import { renderDraftRecap } from './recap.js';
         const tierTrackerEl = document.getElementById('tierTracker');
         if (tierTrackerEl) tierTrackerEl.innerHTML = trackerHTML;
 
-        let showStacks = localStorage.getItem('ds_stacks') === 'true';
+        let showStacks = localStorage.getItem(KEYS.mds.stacks) === 'true';
 
         // One pass over myTeam instead of two full map/find/filter chains over it (each of
         // which scanned the entire player pool once per rostered player) to derive the same
@@ -384,7 +385,7 @@ import { renderDraftRecap } from './recap.js';
         });
 
         // Read once per render rather than once per card -- see buildPlayerCardHTML's `ctx`.
-        const cardCtx = { callOutLists: getCallOutLists(), showTScore: localStorage.getItem('ds_tscore') === 'true' };
+        const cardCtx = { callOutLists: getCallOutLists(), showTScore: localStorage.getItem(KEYS.mds.tscore) === 'true' };
 
         let lastTier = null;
 
@@ -593,7 +594,7 @@ import { renderDraftRecap } from './recap.js';
         renderDraftRecap();
     }
 export const toggleHeadshots = function(show) {
-    localStorage.setItem('mds_show_headshots', show);
+    localStorage.setItem(KEYS.mds.showHeadshots, show);
     if (show) {
         document.body.classList.remove('hide-headshots');
     } else {

@@ -1,4 +1,5 @@
 // Moved from lineup/mls.js in refactor chunk 3A: CONSTANTS & CONFIGURATION.
+import { KEYS } from '../shared/storage/keys.js';
 
     // --- CONSTANTS & CONFIGURATION ---
     export const NFL_TEAMS = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
@@ -53,8 +54,8 @@
             stateKey: 'rosRankings', updatedAtKey: 'rosRankingsUpdatedAt',
             leagueLegacyDataKey: 'rosRankings', leagueLegacyUpdatedKey: 'rosRankingsUpdatedAt',
             leagueSetIdKey: 'rosRankingSetId', setsKey: 'ros',
-            localStorageSetsKey: 'mls_ranking_sets_ros',
-            globalDataKey: 'mds_season_ros', globalUpdatedKey: 'mds_season_ros_updated',
+            localStorageSetsKey: KEYS.mls.rankingSetsRos,
+            globalDataKey: KEYS.mls.ros, globalUpdatedKey: KEYS.mls.rosUpdated,
             selectId: 'rosRankingSetSelect', nameInputWrapId: 'rosNewSetNameWrap',
             nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn',
             cardId: 'rosRankingsCard', headerSetNameId: 'rosHeaderSetName',
@@ -65,8 +66,8 @@
             stateKey: 'weeklyRankings', updatedAtKey: 'weeklyRankingsUpdatedAt',
             leagueLegacyDataKey: 'weeklyRankings', leagueLegacyUpdatedKey: 'weeklyRankingsUpdatedAt',
             leagueSetIdKey: 'weeklyRankingSetId', setsKey: 'weekly',
-            localStorageSetsKey: 'mls_ranking_sets_weekly',
-            globalDataKey: 'mds_season_weekly', globalUpdatedKey: 'mds_season_weekly_updated',
+            localStorageSetsKey: KEYS.mls.rankingSetsWeekly,
+            globalDataKey: KEYS.mls.weekly, globalUpdatedKey: KEYS.mls.weeklyUpdated,
             selectId: 'weeklyRankingSetSelect', nameInputWrapId: 'weeklyNewSetNameWrap',
             nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn',
             cardId: 'weeklyRankingsCard', headerSetNameId: 'weeklyHeaderSetName',

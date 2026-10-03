@@ -6,8 +6,8 @@ import { State } from './state.js';
     // --- BACKUP & RESTORE ---
     // MDS and MLS share one origin (mydraftstrategist.com) and therefore one localStorage, so
     // "this app's data" has to be defined by key prefix rather than assumed to be everything.
-    // ds_* covers every MDS-specific key; mds_show_headshots is the one MDS setting that
-    // doesn't follow that prefix. mds_handoff_roster is deliberately excluded -- it's a
+    // MDS_PREFIX covers every MDS-specific key; KEYS.mds.showHeadshots is the one MDS setting that
+    // doesn't follow that prefix. KEYS.shared.handoffRoster is deliberately excluded -- it's a
     // transient signal to MLS, not a persistent setting, and backing it up would just replay
     // a stale handoff on restore. The filter itself is isMdsOwnedKey in
     // js/shared/storage/keys.js (assigned to window by js/shared/globals.js).
@@ -17,7 +17,7 @@ import { State } from './state.js';
 
     export const exportMdsSettings = function() {
         // The pre-migration snapshot is deliberately left out of backups: it's a one-time,
-        // device-local recovery artifact roughly the size of the old ds_drafts blob, so
+        // device-local recovery artifact roughly the size of the old KEYS.mds.drafts blob, so
         // including it would near-double every backup file forever to carry a copy of data
         // the export already contains in its current form. Hard Reset still clears it, since
         // that path uses getMdsOwnedKeys() unfiltered.
@@ -79,10 +79,10 @@ import { State } from './state.js';
             // that exist now) doesn't leave stale data mixed in from the current session.
             //
             // This clear-then-write order is also what makes restoring a PRE-MIGRATION backup
-            // work: such a file has no ds_storage_version key, so wiping the current one and
+            // work: such a file has no KEYS.mds.storageVersion key, so wiping the current one and
             // not restoring it leaves the marker unset, and migrateDraftStorage() converts the
             // restored v1 drafts on the reload below. A post-migration backup carries the
-            // marker and its own ds_players_<draftId> keys, so it restores as-is.
+            // marker and its own mdsDraftPoolKey(draftId) keys, so it restores as-is.
             getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
             Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
 

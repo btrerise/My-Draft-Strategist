@@ -23,6 +23,7 @@ import './queue.js';
 import './import.js';
 import './market.js';
 import { renderBoard, toggleHeadshots } from './tracker.js';
+import { KEYS } from '../shared/storage/keys.js';
 import './board.js';
 import './team.js';
 import './handoff.js';
@@ -124,7 +125,7 @@ import './affinity.js';
     // --- MOBILE COLLAPSE TOGGLE ---
         const collapseCheckbox = document.getElementById('ds_mobile_collapse');
         if (collapseCheckbox) {
-            const savedPref = localStorage.getItem('ds_mobile_collapse_pref');
+            const savedPref = localStorage.getItem(KEYS.mds.mobileCollapsePref);
             if (savedPref !== null) collapseCheckbox.checked = savedPref === 'true';
             
             const applyCollapsePref = (isChecked) => {
@@ -135,11 +136,11 @@ import './affinity.js';
             applyCollapsePref(collapseCheckbox.checked);
             
             collapseCheckbox.addEventListener('change', (e) => {
-                localStorage.setItem('ds_mobile_collapse_pref', e.target.checked);
+                localStorage.setItem(KEYS.mds.mobileCollapsePref, e.target.checked);
                 applyCollapsePref(e.target.checked);
             });
         }
-        const showHeadshots = localStorage.getItem('mds_show_headshots') !== 'false';
+        const showHeadshots = localStorage.getItem(KEYS.mds.showHeadshots) !== 'false';
         const toggleEl = document.getElementById('toggleHeadshots');
         if (toggleEl) toggleEl.checked = showHeadshots;
         toggleHeadshots(showHeadshots);
