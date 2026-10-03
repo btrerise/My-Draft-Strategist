@@ -1,0 +1,1032 @@
+/* Draft Strategist only (index.html). Loaded after css/base.css. Split from styles.css in refactor
+   chunk 4A; rules keep their original relative order. */
+
+/* --- Header League Select --- */
+#draftProfileSelect { 
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    padding: 0.4rem 2.2rem 0.4rem 0.75rem; 
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+}
+
+/* --- CARDS & LAYOUT --- */
+.centered-header {
+    justify-content: center;
+    gap: 0.5rem;
+    border-bottom: none;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0;
+}
+
+/* --- FORMS & INPUTS --- */
+/* Custom Range Slider */
+.mds-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    outline: none;
+}
+.mds-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #3b82f6; 
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+    transition: transform 0.1s ease;
+}
+.mds-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+.mds-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+    transition: transform 0.1s ease;
+}
+.mds-slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+}
+/* Keyboard focus: ring the thumb (the track is only 6px tall, so an outline there is hard to see) */
+.mds-slider:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px #0a0e17, 0 0 0 5px var(--primary-green);
+}
+.mds-slider:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px #0a0e17, 0 0 0 5px var(--primary-green);
+}
+
+/* --- BUTTONS --- */
+.btn-warning { background: rgba(245, 158, 11, 0.15); color: #fde047; border: 1px solid #f59e0b; }
+.btn-warning:hover { background: rgba(245, 158, 11, 0.25); }
+.btn-header { 
+    background-color: var(--primary-green); 
+    color: #0a0e17; /* Dark text on bright button for high contrast */
+    border: none; 
+    padding: 0.5rem 1rem; 
+    border-radius: 6px; 
+    font-weight: 600; 
+    font-size: 0.85rem; 
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    /* Spring-like transitions for hover/press states */
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+    box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+}
+
+.btn-header:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-header:active {
+    transform: translateY(1px) scale(0.96); /* Simulates a physical click */
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+}
+
+/* MDS-namespaced small button (Tracker/Queue: Pick, Taken, Undo, Save, Cancel, reorder arrows).
+   Intentionally duplicated from .btn-sm rather than reusing it, for the same reason MLS has
+   its own .mls-btn-sm below: this file is shared between both apps, and an unprefixed .btn-sm
+   used to be redefined twice in this same stylesheet (once here, once in the MLS-specific
+   section), with source order silently deciding which rule any given page got. Both apps now
+   use their own namespaced class so neither can be silently resized by the other's override.
+   Do not delete this in favor of the bare .btn-sm. */
+.mds-btn-sm {
+    padding: 0.4rem 0.8rem; 
+    border: none; 
+    border-radius: 6px; 
+    font-weight: 600; 
+    font-size: 0.75rem; 
+    cursor: pointer; 
+    font-family: inherit;
+    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.3px;
+}
+
+/* 'Taken' button - Ghost style to reduce visual noise */
+.btn-draft { 
+    background-color: transparent; 
+    color: var(--text-muted); 
+    border: 1px solid var(--border); 
+}
+
+.btn-draft:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-draft:active {
+    transform: scale(0.95); /* Simulates a physical press */
+}
+
+/* 'My Pick' button - Premium primary style with subtle glow */
+.btn-mine { 
+    background-color: var(--primary-green); 
+    color: #0a0e17; 
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+    border: 1px solid transparent;
+}
+
+.btn-mine:hover {
+    background-color: #10b981; 
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-mine:active {
+    transform: scale(0.95) translateY(0);
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+/* --- UTILITIES --- */
+.mb-1 { margin-bottom: var(--space-1); }
+
+/* --- LAYOUT PRIMITIVES --- */
+.text-green { color: var(--primary-green); }
+.text-blue { color: #60a5fa; }
+.border-none { border: none; }
+.bg-dart { background: var(--dart-border); box-shadow: 0 0 8px var(--dart-border); }
+.text-target { color: var(--target-border); }
+.text-avoid { color: var(--avoid-border); }
+.text-dart { color: var(--dart-border); }
+
+/* --- BADGES & POSITIONAL STYLING --- */
+.badge-value { background: #102a1e; color: #4ade80; border: 1px solid #34A853; }
+.badge-reach { background: #3a1515; color: #fca5a5; border: 1px solid #ea4335; }
+.status-badge { font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; background-color: #102a1e; color: #4ade80; border: 1px solid #34A853; }
+
+/* --- MDS SPECIFIC STYLES (Tracker, Board, Limits) --- */
+.tracker-header-actions {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: stretch; 
+    gap: 0.75rem; 
+    margin-bottom: 0.75rem;
+}
+
+.pick-badge {
+    background: var(--primary-green);
+    color: #0a0e17; /* High contrast dark text */
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+/* Search Bar Wrapper */
+.search-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none; /* Let clicks pass through to the input */
+}
+
+.search-input {
+    margin: 0;
+    padding-left: 2.5rem; /* Make room for the icon */
+    width: 100%;
+}
+
+/* Position Filters Grid */
+.tier-grid { 
+    display: grid; 
+    grid-template-columns: repeat(5, 1fr); 
+    gap: 0.5rem; 
+    margin-bottom: 1.5rem; 
+}
+
+.pos-filter { 
+    cursor: pointer; 
+    color: var(--text-muted);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    border: 1px solid var(--border); 
+    border-radius: 8px; 
+    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    font-size: 0.85rem;
+    font-weight: 600;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    
+    /* Visually mute non-selected filters */
+    opacity: 0.35;
+    filter: grayscale(85%);
+}
+
+.pos-filter:hover { 
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    transform: translateY(-2px);
+    
+    /* Slightly illuminate when hovering over an inactive filter */
+    opacity: 0.7;
+    filter: grayscale(40%);
+}
+
+.pos-filter.active-filter { 
+    /* Snaps the filter back to full vibrancy, inheriting its native positional color */
+    opacity: 1;
+    filter: grayscale(0%);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.08); 
+}
+
+/* Specific rule for ALL button so it turns green when active, since it lacks a positional color */
+.pos-filter.badge-all.active-filter {
+    color: var(--primary-green);
+    background: var(--target-bg);
+    border-color: var(--primary-green); 
+}
+
+/* Premium Tier Dividers (Replaces heavy green block) */
+.tier-divider { 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: var(--primary-green);
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin: 2rem 0 1rem 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.tier-divider::before,
+.tier-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--primary-green), transparent);
+    opacity: 0.3;
+}
+
+/* Player Cards Generated via JS */
+.player-pool-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.player-card { 
+    background: var(--card-bg); 
+    border: 1px solid var(--border); 
+    border-radius: 8px; 
+    padding: 1rem; 
+    display: flex; 
+    flex-direction: column;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.player-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Tracker pool render cost: renderBoard() swaps in several hundred cards on every pick. With
+   content-visibility: auto the browser skips style/layout/paint for cards that are off-screen,
+   which is where most of that cost went. Scoped to #playerPool only -- the queue and roster are
+   short lists and gain nothing.
+   contain-intrinsic-size is the placeholder height for a card that hasn't been rendered yet;
+   `auto` makes the browser remember each card's real height once it has been seen. It sizes the
+   CONTENT box -- the card's 1rem padding and 1px border are added on top -- so these are the
+   measured card heights minus 34px: desktop 114px card -> 80px, phone 108px card (collapsed and
+   uncollapsed are within ~2px) -> 74px. A wrong value only makes the scrollbar thumb drift a
+   little while scrolling -- it can't clip a card. */
+#playerPool .player-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 80px;
+}
+@media (max-width: 767px) {
+    #playerPool .player-card { contain-intrinsic-size: auto 74px; }
+}
+/* content-visibility: auto implies paint containment, which clips anything that overflows the
+   card -- the T-Score tooltip opens below the stats row and would be cut off at the card edge.
+   Drop the containment on the one card being interacted with, and lift it above its neighbours
+   (each contained card is its own stacking context, so the next card would paint over the tooltip). */
+#playerPool .player-card:hover,
+#playerPool .player-card:focus-within,
+#playerPool .player-card:has(.tooltip-text.mobile-visible) {
+    content-visibility: visible;
+    position: relative;
+    z-index: 2;
+}
+
+/* NOTE: .player-stats and .actions rules for the player-card layout live further down,
+   in the "PLAYER CARD GRID LAYOUT" section -- removed the older, now-superseded duplicates
+   that used to live here to avoid two competing definitions in this file. */
+
+/* Inline Editor (Replaces dashed border) */
+.inline-editor { 
+    display: none; 
+    background: rgba(0, 0, 0, 0.2); 
+    padding: 1rem; 
+    margin-top: 1rem; 
+    border-radius: 6px; 
+    border: 1px solid rgba(16, 185, 129, 0.3); 
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Roster Limits Table (Team Tab) */
+.limits-table { 
+    width: 100%; 
+    text-align: center; 
+    border-collapse: collapse; 
+    margin-bottom: 1.5rem; 
+}
+
+.limits-table th { 
+    padding: 0.75rem 0.5rem; 
+    border-bottom: 1px solid var(--border); 
+    font-size: 0.8rem; 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted); 
+}
+
+.limits-table td { 
+    padding: 0.75rem 0.5rem; 
+    font-weight: 600; 
+    font-size: 1rem; 
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+/* Roster Slots (Team Tab) */
+.roster-slot { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 1rem 0; 
+    border-bottom: 1px solid var(--border); 
+}
+
+.roster-slot:last-child { 
+    border-bottom: none; 
+}
+
+.roster-label { 
+    font-weight: 700; 
+    width: 45px; 
+    font-size: 0.85rem; 
+    color: var(--text-muted);
+}
+
+.roster-slot.empty { 
+    opacity: 0.5; 
+}
+
+/* Bye Warning Banner */
+.bye-warning-banner { 
+    background-color: rgba(239, 68, 68, 0.1); 
+    border: 1px solid rgba(239, 68, 68, 0.3); 
+    color: #fca5a5; 
+    padding: 1rem; 
+    border-radius: 8px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600; 
+    font-size: 0.9rem; 
+    margin-bottom: 1.25rem; 
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+}
+
+/* --- TEAM TAB UTILITIES --- */
+/* Roster list container spacing */
+.roster-list, 
+.other-drafted-list {
+    display: flex;
+    flex-direction: column;
+}
+/* --- DRAFT BOARD GRID --- */
+.board-header-group {
+    margin-bottom: 1.25rem;
+}
+
+.board-header-group h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    color: var(--text-main);
+    margin: 0;
+}
+
+.draft-board-container { 
+    width: 100%; 
+    overflow-x: auto; 
+    -webkit-overflow-scrolling: touch; 
+    padding-bottom: 1.5rem;
+    
+    /* Adds explicit padding space on the right edge so the last column can fully scroll into view */
+    padding-right: 1.5rem; 
+    
+    /* Ensures the container respects the screen width properly */
+    max-width: 100%;
+}
+
+/* Premium Empty State */
+.empty-state-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text-muted);
+    padding: 3rem 1.5rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px dashed var(--border);
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.empty-state-icon {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 50%;
+    margin-bottom: 1rem;
+    color: var(--text-muted); /* was var(--border): nearly invisible against this badge's own background */
+}
+
+.empty-state-cta {
+    margin-top: 1rem;
+    width: auto;
+}
+
+.recap-grade-box {
+    background: rgba(0,0,0,0.2);
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    text-align: center;
+}
+
+.recap-label {
+    font-size: 0.75rem;
+    color: #93c5fd;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.roster-slot-label-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.roster-slot-pos-caption {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.recap-callout-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* The actual Grid generated by JS */
+.draft-grid { 
+    display: grid;
+    grid-template-columns: repeat(var(--num-teams, 12), minmax(0, 1fr)); 
+    gap: 2px; 
+    background-color: var(--border); 
+    border: 2px solid var(--border); 
+    border-radius: 6px; 
+    width: 100%; /* Replaced rigid min-width with full container width */
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.draft-col-header { 
+    background: var(--card-bg); 
+    color: var(--text-muted); 
+    text-align: center; 
+    font-weight: 700; 
+    padding: 0.5rem 0.25rem; 
+    font-size: 0.8rem; 
+    letter-spacing: 0.5px;
+    
+    /* --- CRITICAL GRID TRUNCATION RULES --- */
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    min-width: 0; /* Forces grid children to shrink and truncate text */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.draft-col-header.mine { 
+    background: rgba(255, 255, 255, 0.15); 
+    color: #ffffff; 
+    border-bottom: 3px solid #ffffff; 
+}
+
+.draft-cell { 
+    background: var(--bg-color); 
+    padding: 0.35rem 0.3rem; 
+    min-height: 48px; /* Gives player names more breathing room */
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    text-align: center; 
+    transition: filter 0.2s;
+    gap: 2px;
+    overflow: hidden;
+    position: relative;
+    max-width: 100%;
+}
+
+.draft-cell:hover {
+    filter: brightness(1.2); /* Slight hover effect on grid cells */
+}
+
+.draft-cell.picked { 
+    border: 1px solid transparent; 
+}
+
+.draft-cell.mine { 
+    /* Soft white outer border and inner glow to highlight the cell without clashing */
+    border: 1px solid rgba(255, 255, 255, 0.3); 
+    box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.08); 
+    position: relative; 
+    z-index: 1;
+}
+
+.draft-cell-first { 
+    font-size: 0.7rem; 
+    color: var(--text-muted); 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    max-width: 100%; 
+    line-height: 1.2;
+}
+
+.draft-cell-last { 
+    font-size: 0.85rem; 
+    font-weight: 700; 
+    color: var(--text-main); 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    max-width: 100%; 
+    line-height: 1.2;
+}
+
+/* Position Colors using CSS Variables from :root */
+.draft-cell.QB { background-color: var(--pos-qb); border-left: 3px solid var(--pos-qb-border); }
+.draft-cell.RB { background-color: var(--pos-rb); border-left: 3px solid var(--pos-rb-border); }
+.draft-cell.WR { background-color: var(--pos-wr); border-left: 3px solid var(--pos-wr-border); }
+.draft-cell.TE { background-color: var(--pos-te); border-left: 3px solid var(--pos-te-border); }
+.draft-cell.K { background-color: var(--pos-k); border-left: 3px solid var(--pos-k-border); }
+.draft-cell.DEF { background-color: var(--pos-def); border-left: 3px solid var(--pos-def-border); }
+
+@media (min-width: 768px) {
+    .draft-cell-first {
+        font-size: 0.65rem;
+    }
+    .draft-cell-last {
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+}
+
+/* --- MODERNIZED FILE UPLOAD BUTTON --- */
+@media (max-width: 480px) {
+    .limits-table th, 
+    .limits-table td {
+        /* Reduces the left/right padding to free up horizontal space */
+        padding: 0.5rem 0.2rem; 
+    }
+    
+    .limits-table th {
+        font-size: 0.7rem;
+        letter-spacing: 0; /* Removes extra spacing between header letters */
+    }
+    
+    .limits-table td {
+        font-size: 0.85rem; /* Shrinks the numbers just enough to fit */
+    }
+}
+/* Premium Live State for the Sync Button */
+.btn-header.is-live {
+    background-color: rgba(239, 68, 68, 0.15); 
+    color: #ef4444; 
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.4); 
+}
+
+.btn-header.is-live:hover {
+    background-color: rgba(239, 68, 68, 0.25);
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* Stalled Live Sync: the 3s poll has missed enough ticks in a row that the board may no
+   longer match the draft. Amber rather than red so it reads as "still trying, but don't
+   trust this yet" instead of a hard failure -- the poll is deliberately still running. */
+.btn-header.is-live.is-stalled {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.45);
+}
+
+.btn-header.is-live.is-stalled:hover {
+    background-color: rgba(245, 158, 11, 0.25);
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.65), 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+/* The dot stops pulsing when stalled: the pulse is what sells "picks are arriving", and
+   that's exactly the claim we can no longer make. */
+#liveIconWrap.is-stalled .pulse-dot {
+    background-color: #f59e0b;
+    animation: none;
+    box-shadow: none;
+}
+
+.live-sync-stamp {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    opacity: 0.85;
+    white-space: nowrap;
+}
+
+/* Nothing to show while the poll is healthy -- collapse the gap the flex row would
+   otherwise leave for an empty span. */
+.live-sync-stamp:empty {
+    display: none;
+}
+/* Mobile-specific adjustments for Draft Board edge-to-edge bleed */
+@media (max-width: 767px) {
+    .draft-board-container {
+        /* Pull container out to the absolute edges. Must match .container's MOBILE padding
+           (0.5rem, not its 1.5rem desktop padding) or this overshoots and causes real
+           horizontal page overflow -- that overflow is what caused the Board tab to appear
+           "zoomed in" on mobile, with the bottom nav cut off until scrolling/zooming out. */
+        margin-left: -0.5rem; 
+        margin-right: -0.5rem;
+        width: calc(100% + 1rem);
+        max-width: none;
+        
+        /* Start grid cleanly with padding, but let it scroll fully to the edge */
+        padding-left: 0.5rem;
+        padding-right: 0.5rem; 
+        
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .draft-grid {
+        /* REMOVE the 100% width trap and nested scroll */
+        max-width: none;
+        width: max-content; 
+        overflow-x: visible;
+        min-width: 100%;
+        
+        /* THE FIX: Hardcode columns to 80px so they NEVER stretch to fit long team names */
+        grid-template-columns: repeat(var(--num-teams, 12), 80px) !important;
+    }
+
+    .draft-col-header {
+        padding: 0.5rem 0.2rem !important;
+    }
+
+    /* Ensures long names truncate elegantly in the narrower columns */
+    .draft-cell-first, 
+    .draft-cell-last {
+        font-size: 0.75rem !important; 
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+        padding: 0 1px;
+        line-height: 1.2;
+    }
+}
+.draft-cell-img {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--card-bg);
+    object-fit: cover;
+}
+/* --- ACCESSIBILITY & MICRO-INTERACTIONS --- */
+.player-card {
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* The card itself is no longer a tab stop (its buttons are), so this marks which card a
+   keyboard user is on while tabbing through its buttons. :focus-visible keeps it from
+   lighting up on a mouse click or tap. */
+.player-card:has(:focus-visible) {
+  border-color: var(--primary-green);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+/* Position filters and the edit pencil used to be a <div>/<span> and are now <button>s:
+   strip the browser's button font and chrome so they look exactly as before. */
+button.pos-filter,
+button.edit-link {
+  font-family: inherit;
+  line-height: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+button.edit-link {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.pos-filter:focus-visible,
+.edit-link:focus-visible {
+  outline: 2px solid var(--primary-green);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
+/* --- MOBILE COLLAPSIBLE CARDS --- */
+.player-card.is-expanded .chevron-icon {
+    transform: rotate(180deg);
+}
+
+.queue-header {
+    font-weight: 700;
+    color: #f59e0b;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+    width: 100%; /* <button> since Chunk 3; buttons don't stretch like the old <div> did */
+}
+
+.queue-header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.queue-header .chevron-icon {
+    color: #f59e0b;
+    flex-shrink: 0;
+}
+
+.queue-header.is-expanded .chevron-icon {
+    transform: rotate(180deg);
+}
+/* --- PLAYER CARD GRID LAYOUT --- */
+.card-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    /* Default: Actions span both rows, vertically centering them */
+    grid-template-areas:
+        "name actions"
+        "stats actions";
+    align-items: center;
+    column-gap: 0.75rem;
+    row-gap: 0.2rem;
+    width: 100%;
+}
+
+.card-details {
+    grid-area: stats;
+    min-width: 0;
+}
+
+.player-stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.4rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.edit-link {
+    cursor: pointer;
+    font-size: 0.8rem;
+    opacity: 0.75;
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    margin-left: 0; 
+}
+
+.edit-link:hover {
+    opacity: 1;
+    color: var(--primary-green);
+}
+
+/* --- SHARED CARD SUB-LAYOUT CLASSES ---
+   Extracted from repeated inline styles in buildPlayerCardHTML() / buildQueueCardHTML()
+   (js/mds.js). Each of these appeared identically in both card templates. */
+.card-top-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.card-name {
+    margin: 0;
+    font-size: 1.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+.card-bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+}
+
+.card-badges-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.card-field-label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    display: block;
+}
+
+.queue-arrow-btn {
+    padding: 2px 8px;
+    background: var(--bg-card);
+    border-color: var(--border);
+}
+
+.queue-arrow-btn:disabled {
+    opacity: 0.3;
+}
+
+/* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
+@media (max-width: 767px) {
+    body.enable-mobile-collapse .card-grid {
+        /* When enabled: Actions stay on top row, Stats span full width below */
+        grid-template-areas:
+            "name actions"
+            "stats stats";
+    }
+    
+    body.enable-mobile-collapse .card-details {
+        display: none;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        padding-right: 0; /* allow full width when collapsed -- merged in from a separate block that used to live here */
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+    
+    body.enable-mobile-collapse .player-card.is-expanded .card-details {
+        display: block;
+    }
+
+    body:not(.enable-mobile-collapse) .btn-expand {
+        display: none !important;
+    }
+}
+
+.methodology-link {
+    margin-left: 4px;
+    display: inline-block;
+}
+
+@media (max-width: 767px) {
+    .methodology-link {
+        display: block; /* Forces it to its own line */
+        margin-left: 0;
+        margin-top: 4px;
+    }
+}
+/* Instantly hides headshots when the body class is present */
+body.hide-headshots .draft-cell-img {
+    display: none !important;
+}
+/* --- ROSTER AVATARS --- */
+.roster-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.roster-avatar.placeholder {
+    background-color: transparent;
+    border: none;
+}
+
+/* --- FULL-WIDTH DRAFT BOARD FOR DESKTOP --- */
+@media (min-width: 1024px) {
+    /* THE FIX: Break #boardTab out of the 1200px .container trap to fill the monitor */
+    #boardTab {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        margin-left: calc(50% - 50vw) !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        box-sizing: border-box;
+    }
+
+    #draftMatrixContainer {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .draft-grid {
+        width: 100%;
+        /* Force all columns to distribute evenly across the full width */
+        grid-template-columns: repeat(var(--num-teams, 12), minmax(0, 1fr)) !important;
+        gap: 4px; 
+    }
+
+    /* Scale up cell heights, font sizes, and headshots on large monitors */
+    .draft-cell {
+        min-height: 80px;
+        padding: 6px 4px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden; /* Stop inner text from pushing cell boundaries */
+    }
+
+    .draft-cell-img {
+        width: 38px;  
+        height: 38px;
+        margin-bottom: 2px;
+    }
+
+    .draft-cell-first {
+        font-size: 0.8rem;
+    }
+
+    .draft-cell-last {
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    .draft-col-header {
+        font-size: 0.9rem;
+        padding: 0.75rem 0.4rem;
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+        white-space: nowrap;
+    }
+}

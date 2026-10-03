@@ -52,7 +52,7 @@ export const showToast = function(message, options = {}) {
 // Toast timing: the countdown pauses while the toast is hovered (mouse), holds focus (keyboard),
 // or -- error toasts only -- has been tapped (touch: phones have no hover, so a tap holds it
 // until ✕). Long, multi-line upload errors are the reason: they're easy to lose mid-read
-// otherwise. Success toasts are click-through except for ✕ (see .mds-toast.show in styles.css),
+// otherwise. Success toasts are click-through except for ✕ (see .mds-toast.show in css/base.css),
 // so on those only hovering or focusing the ✕ pauses them, and taps pass through to the lineup
 // underneath. toastRemaining carries the time left across a pause, so leaving the toast
 // resumes rather than restarts the countdown.

@@ -26,7 +26,8 @@
          (.xlsx upload only) load on first use instead - see loadScriptOnce in js/shared/ui/scriptLoader.js. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
 
-    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/mls.css">
     <meta property="og:title" content=" My Lineup Strategist | My Draft Strategist">
     <meta property="og:description" content="Fantasy football lineup and draft tools allowing use of custom rankings.">
     <meta property="og:image" content="https://mydraftstrategist.com/images/mls-app-icon.png">
@@ -162,7 +163,7 @@
 
         <!-- LARGE HERO LOGO: sits above the setup checklist (which lives outside the tabs), and is
              shown on the Dashboard only - hidden on other tabs by the .mls-hero rule in
-             css/styles.css, which checks whether #setupTab is the active tab. -->
+             css/mls.css, which checks whether #setupTab is the active tab. -->
         <div class="setup-hero mls-hero">
             <img src="../images/mls-logo.svg" alt="My Lineup Strategist" class="hero-logo" fetchpriority="high" width="1133" height="177" data-action="hideImage">
         </div>
@@ -400,7 +401,7 @@
             </a>
         </div>
     <!-- APP VERSION (My Lineup Strategist): update this when a deploy changes the Lineup app -
-         anything under lineup/, or shared css/styles.css / js/boot.js / js/shared/ changes that show up
+         anything under lineup/, or shared css/base.css / js/boot.js / js/shared/ changes that show up
          here. My Draft Strategist has its own number in the root index.html.
          WHEN TO BUMP: the second number (vX.Y -> vX.Y+1) on any deploy with something a
          user would notice - a new feature, a new control or badge, or a visible change in how

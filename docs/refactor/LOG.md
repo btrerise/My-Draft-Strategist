@@ -2549,3 +2549,198 @@ boot.js and the six attributes above.
   else reads it).
 - `js/mds/backup.js` still reads `window.isMdsOwnedKey` although MDS is ES modules since 2A; an import
   would retire that window name (5D-style cleanup, not done here).
+
+
+### 4A — Split styles.css into base, mds and mls
+
+**`css/styles.css` is gone.** Its 814 top-level rules (a rule, or a whole `@media` / `@keyframes` block)
+now live in `css/base.css` (264 rules, ~1,940 lines), `css/mds.css` (126, ~1,030) and `css/mls.css`
+(424, ~1,970). No rule was edited and no class renamed. Within each file the rules keep their original
+relative order. `index.html` links `base.css` then `mds.css`; `lineup/index.html` links `base.css` then
+`mls.css`; `t-score/index.html` links `base.css` only (4B adds `tscore.css` after it).
+
+#### How rules were sorted
+
+The section markers were the starting point, but most sections turned out to be mixed (e.g. BUTTONS
+holds 12 MDS-only rules among the shared ones; LAYOUT PRIMITIVES and BADGES hold dozens of MLS-only
+utilities), so the unit of moving is the top-level rule, not the section. A throwaway script (not
+committed) did the cut:
+
+1. Split the file into top-level rules, each carrying the comments above it. Concatenating them gives the
+   original file byte for byte (checked).
+2. For every selector, a page "can use" it if every class/id in it appears (whole word) in that page's
+   sources: MDS = `index.html` + `js/mds/**` + `js/shared/**` + `js/boot.js`; MLS = `lineup/index.html` +
+   `js/mls/**` + shared; T-Score = `t-score/index.html` + shared. A rule goes to `mds.css`/`mls.css` only
+   if that app is the **only** page that can use it; anything usable by two pages, by T-Score, or by no
+   class at all (element selectors, `:root`) stays in `base.css`.
+3. Dynamic class names were checked separately (a prefix of the class followed by `${` or `' +` in another
+   app's sources). One real case: MLS builds `pos-text-${pos}` (`js/mls/render/lineup.js`), so the
+   `.pos-text-*` rules (TEAM TAB UTILITIES) stay in base. MLS-only dynamic names (`.slot-badge.slot-*`,
+   `.mls-power-label-*`, `.mls-power-summary-*`, `.mls-league-search-free`, `.mls-power-cell-middle`) went to `mls.css`.
+4. Rules no page uses (dead selectors) follow their section: into the app file if the section is wholly
+   that app's, otherwise base. `@keyframes` go with the rules that use them (`btn-pulse-anim`,
+   `border-pulse-anim`, `nav-pulse-anim` → mls; `fadeIn`, `pulse`, `spin` → base).
+5. **Cascade guard.** The app file loads after `base.css`, so a moved rule now comes after every base rule,
+   including base rules that used to come after it and override it (same element, same property, equal
+   specificity). Example: the phone `@media (max-width: 480px)` block in "Lineup Slots & Roster Rows" mixes
+   shared and MLS selectors and overrides `.lineup-slot .slot-badge`, `.swap-btn`, `.player-name-wrap`
+   from earlier MLS rules; the reduced-motion block overrides `.pulse-dot`/`.btn-pulse`/`.pulse-border`/`.nav-pulse`.
+   A shared block can't be split without editing it, so instead every app rule that a later base rule could
+   override **stays in base at its original position** (checked to a fixpoint; "could" = same property or
+   shorthand, equal specificity, same pseudo-element, and the two subjects' classes appear together in some
+   `class="…"` in the sources, with `classList`-toggled classes pinned to the elements they're toggled on).
+   This keeps 30 app-only rules in base (listed below). It's conservative: a couple are false positives
+   (e.g. `.sim-team-column h4` vs the dead `.player-info h4`).
+6. The section marker comment (`/* --- NAME --- */`) is copied into each file that gets rules from that
+   section, so every file stays navigable by marker. Each file got a 2–3 line header comment. No other
+   comment changed.
+
+Mechanical check (also throwaway): parsing the three new files back into rules finds each of the 814
+original rules exactly once, byte-identical apart from the copied markers, in increasing original order
+per file. Comment open/close counts balance in all three files.
+
+#### What's in base.css
+
+**Used by two or more pages** (207 rules), by section:
+
+- **SHARED CSS VARIABLES & ROOT DESIGN TOKENS**: `:root`
+- **GLOBAL RESETS**: `*`, `.sr-only`, `.skip-link`, `.skip-link:focus-visible`, `body`, `.container`
+- **STICKY HEADER**: `.header`, `.header-left`
+- **Header League Select**: `@media (max-width: 767px) { .header, .header-left, .logo-text, .hide-on-mobile, #draftProfileSelect, #headerLeagueSelect, .league-nav-btn, .league-nav-btn svg }`
+- **HAMBURGER MENU & DRAWER**: `.menu-overlay`, `.hamburger-menu`, `html`
+- **MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (MLS only)**: `.mls-preview-overlay, .mds-modal-overlay`, `.mls-preview-modal, .mds-modal`, `.mls-preview-modal h3, .mds-modal h3`, `.mls-preview-actions, .mds-modal-actions`, `.mls-preview-actions .btn, .mds-modal-actions .btn`
+- **SHARED IN-APP CONFIRM DIALOG (showConfirm in utils.js)**: `.mds-confirm-body p`, `.mds-confirm-body p:last-child`, `.mds-modal-actions`, `.hamburger-menu.open`, `.menu-header`, `.menu-logo-section`, `.menu-logo-section span strong`, `.menu-logo-img`, `.close-menu-btn`, `.close-menu-btn:hover`, `.menu-nav-links`, `.hamburger-menu .nav-btn`, `.hamburger-menu .nav-btn svg`, `.hamburger-menu .nav-btn:hover`, `.hamburger-menu .nav-btn:hover svg`, `.hamburger-menu .nav-btn.active, .hamburger-menu .nav-btn.active-link`, `.hamburger-menu .nav-btn.active svg`, `.premium-link-btn`, `.premium-link-btn::before`, `.hamburger-menu .premium-link-btn:hover`, `.hamburger-menu .premium-link-btn:hover svg`, `.menu-footer`, `.kofi-link`, `.kofi-link:hover`, `.kofi-img`
+- **LOGO & TITLE**: `.logo-container`, `.logo-img`, `.logo-text`, `.logo-text span`, `.header-controls`
+- **BOTTOM TAB NAVIGATION**: `.nav-bar`, `.nav-bar .nav-btn`, `.nav-btn *`, `.nav-bar .nav-btn svg`, `.nav-bar .nav-btn:hover`, `.nav-bar .nav-btn:active`, `.nav-bar .nav-btn.active`, `.nav-bar .nav-btn.active svg`
+- **TAB CONTENT ANIMATIONS**: `.tab-content`, `.tab-content.active`
+- **SETUP TAB & HERO**: `.setup-hero`, `.hero-logo`, `.hero-kofi`
+- **GUIDE BANNER**: `.guide-banner`, `.guide-banner:hover`, `.guide-arrow`, `.guide-banner:hover .guide-arrow`
+- **CARDS & LAYOUT**: `.settings-card`, `.highlight-card`, `.card-header`, `.card-header h3`, `.step-num`, `.card-desc`, `.card-divider`, `.divider-text`
+- **FORMS & INPUTS**: `.input-group`, `.input-group label`, `.flex-label`, `.form-input`, `.form-input:focus`, `.text-center`, `.roster-grid`, `.roster-grid .input-group`, `.roster-grid label`, `.settings-grid`
+- **PREMIUM TOGGLE SWITCHES (Replaces checkboxes)**: `.toggle-row`, `.toggle-info`, `.toggle-title`, `label.toggle-title, .toggle-title > label`, `.toggle-desc`, `.toggle-switch`, `.toggle-switch::after`, `.toggle-switch:checked`, `.toggle-switch:checked::after`, `.toggle-switch:focus-visible`
+- **BUTTONS**: `.btn`, `.btn:hover`, `.btn:active`, `.btn-primary`, `.btn-primary:hover`, `.btn-secondary`, `.btn-secondary:hover`, `.btn-blue`, `.btn-purple`, `.btn-danger`, `.btn-danger:hover`, `.btn-sm`
+- **HAMBURGER BUTTON**: `.hamburger-btn`, `.hamburger-btn:hover`, `.hamburger-btn:active`
+- **UTILITIES**: `.flex-column`, `.gap-2`, `.mt-2`, `.mt-4`, `.mb-4`
+- **LAYOUT PRIMITIVES**: `.stack`, `.settings-grid .input-group`, `.app-version`, `.dot`, `.bg-target`, `.bg-avoid`, `.leaguelogs-attribution`, `.leaguelogs-attribution a`, `.leaguelogs-attribution span:first-child`, `.leaguelogs-attribution em`, `.dot-accent`
+- **BADGES & POSITIONAL STYLING**: `.badge`, `.lineup-slot .pos-badge, .roster-item .pos-badge, .draft-cell .pos-badge`, `.pos-badge.QB`, `.pos-badge.RB`, `.pos-badge.WR`, `.pos-badge.TE`, `.pos-badge.K`, `.pos-badge.DEF`, `.badge-rookie`, `.inj-badge`
+- **TOOLTIPS (Refined for Dark Mode)**: `.tooltip, .tooltip-container`, `.tooltip-icon`, `.tooltip-container:hover .tooltip-icon`, `.tooltip .tooltip-text, .tooltip-container .tooltip-text`, `.tooltip:hover .tooltip-text, .tooltip-container:hover .tooltip-text`, `.tooltip-icon`, `.tooltip-icon:focus-visible`, `.tooltip-icon:focus-visible + .tooltip-text:not(.tt-dismissed)`, `.tooltip-container:hover .tooltip-text.tt-dismissed:not(.mobile-visible)`, `.tooltip-container[data-tt-self]:focus-visible`, `.tooltip-container[data-tt-self]:focus-visible > .tooltip-text:not(.tt-dismissed)`, `.tooltip-text.mobile-visible`
+- **Lineup Slots & Roster Rows**: `.lineup-slot, .roster-item`, `.lineup-slot:hover, .roster-item:hover`, `.roster-item .pos-badge`, `.roster-item > *:not(:first-child):not(:last-child), .lineup-slot > *:not(:first-child):not(:last-child)`, `@media (max-width: 480px) { .lineup-slot, .roster-item, .roster-item .pos-badge, .lineup-slot .slot-badge, .player-name-wrap, .badge, .swap-btn, .lock-btn }`
+- **COLLAPSIBLE WAIVER UPGRADE SECTIONS (Scout tab, Auto-Find Upgrades)**: `.sos-table-wrapper`
+- **MLS SETUP TAB SPECIFIC STYLES**: `.button-row-dual`
+- **COLLAPSIBLE RANKINGS CARDS (Roster/Lineup tabs)**: `.sos-details-accordion`, `.sos-details-accordion[open]`, `.sos-summary`, `.sos-summary:hover`
+- **MDS SPECIFIC STYLES (Tracker, Board, Limits)**: `.flex-grow`
+- **TEAM TAB UTILITIES**: `.table-responsive`, `.table-responsive.has-scroll-shadow, .sos-table-wrapper.has-scroll-shadow`, `.pos-text-qb`, `.pos-text-rb`, `.pos-text-wr`, `.pos-text-te`, `.pos-text-k`, `.pos-text-def`, `.header-subtitle`
+- **LIVE INDICATOR**: `@media (prefers-reduced-motion: reduce) { .pulse-dot, .btn-pulse, .pulse-border, .nav-pulse, .tab-content.active }`, `.sync-spinner`
+- **INFO & GUIDE TAB**: `.guide-content`, `.guide-step`, `.step-title`, `.blue-step`, `.step-desc`, `.guide-list`, `.guide-list li`, `.text-main`
+- **DARK MODE SELECT DROPDOWNS**: `select.form-input, select`, `select.form-input:focus, select:focus`, `select option`, `optgroup`
+- **MODERNIZED FILE UPLOAD BUTTON**: `input[type="file"]::file-selector-button`, `input[type="file"]::file-selector-button:hover`, `input[type="file"]::-webkit-file-upload-button`, `input[type="file"]::-webkit-file-upload-button:hover`, `.close-banner-btn`, `.close-banner-btn:hover`, `@media (max-width: 767px) { .container, .settings-card, .lineup-empty-state, .bench-empty-state, .roster-empty-state }`
+- **ACCESSIBILITY & MICRO-INTERACTIONS**: `:where(.btn-bare)`, `.btn-bare:focus-visible`
+- **TOAST NOTIFICATIONS**: `.mds-toast`, `.mds-toast.show`, `.mds-toast.show.toast-error, .mds-toast.show .toast-dismiss-btn`, `.mds-toast.toast-error`, `.mds-toast .toast-dismiss-btn`, `.mds-toast .toast-dismiss-btn:hover`, `@media (max-width: 767px) { .mds-toast, .mds-toast.show }`
+- **MOBILE COLLAPSIBLE CARDS**: `.chevron-icon`
+- **PLAYER CARD GRID LAYOUT**: `.actions`
+- **MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT**: `.tooltip-container, .tooltip-icon, .tooltip-text`
+- **FULL-WIDTH DRAFT BOARD FOR DESKTOP**: `.close-banner-btn, .close-menu-btn, .btn-expand, .edit-icon, .close-chip`, `.close-banner-btn`, `.close-banner-btn::after`, `a.nav-btn, .nav-btn`
+- **Drag-and-drop file upload (see window.enableFileDrop in js/utils.js)**: `.mds-drop-active`, `.mds-drop-hint`, `@media (hover: none) { .mds-drop-hint }`
+
+**Used only by T-Score** (7 rules) — 4B should move these to `css/tscore.css`:
+
+- **DENSE DATA TABLE STICKY SCROLLING (SCOPED)**: `.table-container th`, `.table-container th:first-child, .table-container td:first-child`, `.table-container th:first-child`
+- **TABLE HEADER TOOLTIP FIXES**: `.table-header-tooltip`, `.table-header-tooltip .tooltip-text`, `.table-header-tooltip:hover .tooltip-text`, `.table-header-tooltip.align-right .tooltip-text`
+
+**App-only, kept in base for the cascade** (30 rules, step 5). Original styles.css line in brackets:
+MLS: `.mt-0` [1145], `.pl-6` [1159], `.close-banner-btn-sm` [1257], `.early-badge` [1321], `.bye-badge` [1323],
+`.taxi-badge` [1327], `.kickoff-badge` [1334], `.mls-lock-badge` [1343], `.mls-autolock-badge` [1349],
+`.status-icon` [1460], `.mls-pos-badge-sizing` [1550], `.mls-name-badges .badge` [1605],
+`.lineup-empty-state, .bench-empty-state` [1646], `.lineup-slot .slot-badge` [1774], `.player-name-wrap` [1828],
+`.swap-btn` [1901], `.sim-team-column h4` [2087], `.sim-bench-insights h4` [2157],
+`.trade-verdict-source-label .tooltip-text` [2354], `.sos-grid th` [2492], `.danger-card` [2662],
+`.text-danger` [2668], `.roster-empty-state` [2678], `.btn-pulse` [3498], `.pulse-border` [3508], `.nav-pulse` [3519].
+MDS: `.tracker-controls-card` [2924], `.pulse-dot` [3477], `.btn-expand` [4074],
+`@media (min-width: 768px) { .card-details, .hide-on-desktop }` [4121].
+Moving any of these to its app file needs the later shared rule that overrides it moved or split first,
+which is an edit (out of scope here).
+
+**Unused by any page** (17 rules; dead, left where their section put them):
+
+- **GUIDE BANNER**: `.guide-banner-content`
+- **UTILITIES**: `.gap-1`, `.gap-3`
+- **LAYOUT PRIMITIVES**: `.stack-xs`, `.stack-md`, `.stack-lg`, `.cluster-wrap`, `.cluster-xs`, `.cluster-lg`
+- **MDS SPECIFIC STYLES (Tracker, Board, Limits)**: `.player-card-main`, `.player-info h4`, `.toggle-container`
+- **LIVE INDICATOR**: `.live-indicator`, `.live-indicator:hover`
+- **MODERNIZED FILE UPLOAD BUTTON**: `.draft-cell-content`
+- **PLAYER CARD GRID LAYOUT**: `.player-info`, `.player-info h4`
+
+`@keyframes fadeIn`, `pulse` and `spin` are in base too.
+
+#### Other changes
+
+- `sw.js`: PRECACHE_ASSETS drops `/css/styles.css`, adds `/css/base.css`, `/css/mds.css`, `/css/mls.css`.
+  CACHE_NAME `v2.8.58` → `v2.8.59`. Every page precaches all three CSS files (the list is site-wide).
+- Comments that pointed at `styles.css` now name the file that holds the rule: `js/boot.js`,
+  `js/shared/ui/toast.js`, `js/shared/ui/scrollShadows.js` (→ base.css), `js/mls/power/snapshot.js` and the
+  `.mls-hero` note in `lineup/index.html` (→ mls.css), and the APP VERSION notes in both HTML files
+  ("shared css/base.css"). `sw.js`'s historical "~3,900-line styles.css" comment is left as is.
+- README `/css` line describes the three files.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (103 precached). `node --test` 162/162.
+  `cd tests && npx playwright test`: **72/72. No screenshot changed.**
+- **Computed-style comparison (throwaway spec, not committed), on an origin/main worktree and on this
+  branch:** in 132 page states (MDS empty and mid-draft on every tab, MLS empty / synced / with rankings
+  loaded on every tab, T-Score on every tab, plus the drag-and-drop highlight on both apps), at both
+  widths and with `prefers-reduced-motion` both off and on, every element's full computed style plus its
+  `::before`/`::after` (~230,000 elements). **0 differences.** The only unmatched element per MDS/MLS state
+  is the extra `<link>` in `<head>`. Two traps for whoever repeats this: Chromium lists custom properties
+  in stylesheet order, so sort property names before comparing; and let each state settle (move the
+  mouse off, blur focus, wait for network idle) or hover/focus and late image loads show up as noise.
+  Hover-only and other untested states are covered by the static cascade guard (step 5), not by this run.
+
+#### Left for later chunks
+
+- **4B:** link `css/tscore.css` after `base.css` on the T-Score page, and move the 7 T-Score-only rules
+  above into it (the 4B card now says so). They need the same cascade check: no later base rule may override them.
+- **5D:** `.leaguelogs-attribution` (its rules are in `css/base.css`, LAYOUT PRIMITIVES) is the class 5D renames.
+- **4C / 4D (added to the runbook after this chunk):** the 30 cascade-kept rules and 17 dead rules are 4D's job,
+  after 4C finds out which MLS features the owner wants shared with MDS. See "Planned as runbook chunks 4C / 4D"
+  below.
+- New CSS should go in the app file when only one app uses it, or in base.css when both do. If you add a
+  shared rule meant to override an app rule, remember the app file loads later: equal specificity no
+  longer wins by being later in base.css.
+
+### Planned as runbook chunks 4C / 4D (owner's request, recorded after 4A)
+
+After 4A the owner pointed out that Lineup Strategist (MLS) got most of the new features this season, and
+several will likely come to Draft Strategist (MDS) later. One example is the pulsing "do this next" highlights MLS
+shows during setup. Styles for such features should stay in `css/base.css` rather than be moved into `css/mls.css`
+now and moved back later. So the cleanup proposed at the end of 4A was split in two, and both cards are in the
+runbook:
+
+- **4C — research only (needs 4A).** Rank the MLS features whose styling has a 50%+ chance of being shared with
+  MDS, and for each one say what sharing takes: which CSS rules and what they depend on, and which JS adds the
+  classes or builds the markup, plus what of that would have to move to `js/shared/`. Findings go to the owner in
+  plain language and into a "4C — findings" LOG entry with an "Owner's decision" line per feature. No app file
+  changes.
+- **4D — CSS cleanup with no visible change (needs 4B and 4C).** Delete the 17 unused rules, move the 5 false
+  positives to `mls.css`, split the four mixed shared blocks so the app-only parts can move, and leave in base the
+  14 rules where a shared rule wins on the same element. Anything the owner marked as shared in 4C stays in, or
+  moves to, base. The card lists every rule by name.
+
+Notes for those sessions:
+
+- **Known gap, for 4C to report:** `.btn-pulse`, `.pulse-border` and `.nav-pulse` (and the reduced-motion block)
+  are in `css/base.css`, kept there by 4A's cascade guard. Their animations (`@keyframes btn-pulse-anim`,
+  `border-pulse-anim`, `nav-pulse-anim`) went to `css/mls.css`, because only MLS rules use them. If MDS used these
+  classes today, it would get the static highlight but never the pulse. Moving the three `@keyframes` to base.css
+  is safe: keyframes don't depend on order as long as each name is defined once.
+- **Moving a rule from an app file back to base.css** (whatever 4C decides) means: (1) put it at the end of
+  base.css, or anywhere in base.css after every shared rule it used to beat; (2) check that no earlier rule in the
+  app file overrides it once it loads before that file (the reverse of 4A's cascade guard); (3) bring its
+  `@keyframes`, phone-width and reduced-motion versions with it, and grep the other app for the same class names.
+  Prove it with the computed-style comparison: zero differences on MLS and T-Score.
+- **The 4A analysis tools weren't committed.** They lived in that session's scratchpad: the rule splitter, the
+  cascade-conflict checker and the computed-style comparison spec. 4D rebuilds the comparison from the method in
+  the 4A entry and commits it as an opt-in tool. The 4A entry's step list is enough to rebuild the checker too.
+- **Two utilities that do nothing today** (found while planning 4D, not fixed): `.mt-0` on `.leaguelogs-attribution`
+  and `.pl-6` on `.guide-list` lose to the shared rule (`margin-top: 1rem`, `padding-left: 1.25rem`). Making them
+  work is a visible change and the owner's call; 5D's rename of `.leaguelogs-attribution` is a natural moment.

@@ -19,7 +19,7 @@
 //
 // utils.js is a plain classic script with no imports and no dependencies, so it survives all
 // of that and can say something. Everything below is written to hold up under those
-// conditions: inline styles with literal colors rather than classes from styles.css (if the
+// conditions: inline styles with literal colors rather than classes from css/base.css (if the
 // stylesheet is what failed, a banner styled by the stylesheet is an invisible banner), and
 // no calls into the rest of this file.
 (function () {

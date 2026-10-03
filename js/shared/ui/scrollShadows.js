@@ -3,7 +3,7 @@
 // Comments below that say "this file" or "utils.js" were written when this was one file.
 
 // --- SCROLL-SHADOW CUE FOR WIDE TABLES ---
-// Toggles .has-scroll-shadow (styles.css) on/off based on actual scroll position, rather
+// Toggles .has-scroll-shadow (css/base.css) on/off based on actual scroll position, rather
 // than a static always-on shadow -- a shadow that's still showing after the user has
 // scrolled all the way to the right would be actively misleading (implying there's more to
 // see when there isn't). Applies to .table-responsive (Command Center) and .sos-table-wrapper

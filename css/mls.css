@@ -1,0 +1,1968 @@
+/* Lineup Strategist only (lineup/index.html). Loaded after css/base.css. Split from styles.css in
+   refactor chunk 4A; rules keep their original relative order. */
+
+/* --- MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (MLS only) --- */
+.mls-preview-count {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 0 0 1rem 0;
+}
+
+.mls-preview-list {
+    list-style: none;
+    margin: 0 0 1rem 0;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.mls-preview-list li {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.mls-preview-list li:last-child {
+    border-bottom: none;
+}
+
+.rankings-preview-rank {
+    color: var(--primary-green);
+    font-weight: 700;
+    font-size: 0.8rem;
+    min-width: 2.2rem;
+}
+
+.mls-preview-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    margin: 0 0 1rem 0;
+}
+
+/* Destination line directly above the preview modal's buttons. Neutral by default (new set);
+   the .is-replace variant matches .btn-danger, since that case overwrites existing data. */
+.mls-preview-target {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    margin: 0 0 1rem 0;
+}
+
+.mls-preview-target.is-replace {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* --- SETUP TAB & HERO --- */
+/* MLS: the hero sits outside the tabs (above the setup checklist), so hide it whenever the
+   Dashboard (#setupTab) isn't the active tab. */
+.container:not(:has(> #setupTab.active)) > .mls-hero {
+    display: none;
+}
+
+/* --- GUIDE BANNER --- */
+.guide-intro {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    text-wrap: pretty;
+}
+
+/* --- UTILITIES --- */
+.mt-1 { margin-top: var(--space-1); }
+.mt-3 { margin-top: var(--space-3); }.mb-0 { margin-bottom: 0; }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.ml-3 { margin-left: var(--space-3); }
+.mr-2 { margin-right: var(--space-2); }
+.pt-3 { padding-top: var(--space-3); }
+.pl-2 { padding-left: var(--space-2); }
+
+/* --- LAYOUT PRIMITIVES --- */
+.stack-sm { gap: var(--space-2); }
+
+/* .cluster: a horizontal run of items that wraps instead of overflowing, replacing ad-hoc
+   "display:flex; align-items:center; gap:...rem" inline styles used for icon+label rows,
+   button rows, and similar. */
+/* .cluster: a horizontal run of items, replacing ad-hoc "display:flex; align-items:center;
+   gap:...rem" inline styles used for icon+label rows, button rows, and similar. Every inline
+   style this replaced had no flex-wrap set (i.e. nowrap), including rows with a <select> or
+   a margin-left:auto push-to-edge element that only render correctly unwrapped -- so nowrap
+   is the default here too, matching what was actually there before. Opt into wrapping
+   explicitly with .cluster-wrap for a row of purely reflowable content (e.g. icon + long
+   text) where wrapping is actually desired on narrow screens. */
+.cluster { display: flex; align-items: center; }
+.cluster-sm { gap: var(--space-2); }
+.cluster-md { gap: var(--space-3); }
+
+/* Small text-level helper for the many "font-size: 0.75rem; color: var(--text-muted)"
+   inline captions/hints scattered through the markup. */
+.text-helper { font-size: 0.75rem; color: var(--text-muted); }
+
+/* Padding for a <details> body, replacing the repeated inline style="padding-top: 1rem;"
+   used on every accordion's content wrapper. */
+.accordion-body { padding-top: var(--space-4); }
+
+/* Modifier for a .card-header that sits directly above a list of accordions/sub-sections
+   rather than a card's main content -- no divider needed underneath it. */
+.card-header-flush { border-bottom: none; padding-bottom: 0; }
+
+/* The "or" separator row used between two alternative inputs (e.g. upload a file / auto-fetch
+   instead). Was three inline-styled divs repeated wherever this pattern appears. */
+.or-divider { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; }
+.or-divider .divider-line { flex: 1; height: 1px; background: var(--border); }
+.or-divider span { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+
+/* Groups related settings (e.g. Trade Analyzer's Waiver Adjustment) into their own visually
+   distinct sub-section, set off from the primary inputs above it with a border/background,
+   rather than letting a toggle+input run directly into a card's main content. */
+.settings-subsection {
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.settings-subsection .toggle-row { padding: 0; border: none; background: none; margin-bottom: var(--space-3); }
+.settings-subsection .input-group:last-child { margin-bottom: 0; }
+
+/* A .toggle-row that needs to sit flush inside another container (a settings-grid cell,
+   paired with a dropdown) instead of looking like its own bordered card -- was three
+   identical inline overrides (padding/border/background stripped, font-size shrunk). */
+.toggle-row-flush { padding: 0; border: none; background: none; }
+.toggle-row-flush .toggle-title { font-size: 0.85rem; }
+/* Bottom-aligns a grid cell's content with its sibling (e.g. a toggle lining up with an
+   adjacent dropdown's baseline). */
+.input-group-end { display: flex; flex-direction: column; justify-content: flex-end; }
+
+/* The collapsible "upload one file per position" panel -- identical markup duplicated for
+   ROS and Weekly rankings uploads. */
+.multi-upload-panel {
+    display: none;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+/* The row of position checkboxes inside a .multi-upload-panel -- also duplicated for ROS
+   and Weekly. */
+.pos-checkbox-row { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4); }
+.pos-checkbox-label { display: flex; align-items: center; gap: var(--space-1); font-size: 0.85rem; cursor: pointer; }
+
+/* The <fieldset> that groups a .pos-checkbox-row with its "Check the positions..." prompt, so
+   screen readers announce the prompt with each checkbox. Browser default fieldset border,
+   padding and margin are stripped so it looks the same as the old plain wrapper; min-width: 0
+   stops the fieldset from refusing to shrink on narrow phones (a browser quirk). */
+.pos-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.pos-fieldset-legend { display: block; padding: 0; font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
+
+/* A .mls-btn-sm styled to read as a plain inline text link rather than a button. */
+.btn-link-inline { background: none; padding: 0; color: var(--primary-green); }
+
+/* --- BADGES & POSITIONAL STYLING --- */
+/* Once kickoff has passed (see getKickoffBadgeHTML in mls.js), the badge swaps from the clock
+   time to "Started" -- a deeper, more solid blue so it visually reads as "locked in" rather
+   than "upcoming", pairing with the auto-lock indicator icon used on that same row. */
+.kickoff-started { background: rgba(59, 130, 246, 0.28); color: #bfdbfe; border-color: #3b82f6; }
+
+/* Lineup tab's "next lock" countdown (top of the card) -- reuses the same blue used for
+   kickoff-badge/kickoff-started above, since this is the same "kickoff time" information,
+   just summarized across the whole lineup instead of shown per-player. Deliberately not
+   red/amber: this is routine status, not a warning, so it shouldn't compete visually with
+   the "Action Required: Differs from Sleeper lineup" banner it can appear right above. */
+.lineup-lock-countdown {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #93c5fd;
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.lineup-lock-countdown-time {
+    color: #bfdbfe;
+    font-weight: 700;
+}
+
+.lineup-injury-warning {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.sim-lookup-card {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--space-4);
+}
+.sim-lookup-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+.sim-lookup-range {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+.sim-lookup-injury-flag {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #93c5fd;
+    margin-bottom: var(--space-2);
+}
+.sim-lookup-injury-flag.is-excluded {
+    color: #fca5a5;
+}
+
+/* Collapsible variant of .lineup-lock-countdown above, used when several starters share the
+   exact same earliest kickoff moment (see getNextLockCountdownHTML) -- same pill look, just
+   stacked (header row + expandable name list) instead of a single line. Collapsed by default
+   so a big Sunday-1pm-style slate with many simultaneous locks doesn't turn this into a wall
+   of names; tapping it reveals exactly who, without having to scroll into the lineup below. */
+.lineup-lock-countdown-collapsible {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #93c5fd;
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.lock-countdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    width: 100%; /* <button> since Chunk 3; buttons don't stretch like the old <div> did */
+}
+.lock-countdown-header .chevron-icon {
+    flex-shrink: 0;
+}
+.lineup-lock-countdown-collapsible.expanded .chevron-icon {
+    transform: rotate(180deg);
+}
+.lineup-lock-countdown-collapsible:not(.expanded) .lock-countdown-detail {
+    display: none;
+}
+.lock-countdown-detail {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(96, 165, 250, 0.25);
+    font-weight: 500;
+    color: #bfdbfe;
+}
+.status-good { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.status-warn { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.status-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+/* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
+
+/* Shared classes consolidated from repeated inline styles across mls.js's several player-row
+   renderers (Roster, Scout table, Lineup). Prefixed mls- deliberately: this file is shared with
+   My Draft Strategist, and an earlier un-prefixed shared class (.btn-sm) caused a real collision
+   between the two apps -- see the .mds-btn-sm note further down for the full story. */
+.mls-table-header-cell { padding: 12px 10px; }
+.mls-tooltip-center { display: flex; justify-content: center; width: 100%; }
+.mls-dotted-underline { border-bottom: 1px dotted currentColor; cursor: pointer; }
+.mls-error-text { color: var(--error-text); }
+.mls-meta-row { font-size: 0.8rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; }
+.mls-text-right { text-align: right; }
+.mls-player-row-info { display: flex; align-items: center; gap: 0.6rem; overflow: hidden; }
+.mls-player-row-text { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+
+/* MLS player headshots (Roster list + Lineup starters/bench) -- see playerHeadshotHTML in
+   lineup/mls.js. The circle always renders at a fixed size with the player's initials inside;
+   the Sleeper photo sits on top and removes itself if it fails to load, so rows keep one
+   shape and the name column starts at the same x whether or not a photo exists. */
+.mls-headshot {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.mls-headshot-initials {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+    line-height: 1;
+}
+.mls-headshot-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.mls-headshot-def .mls-headshot-initials { font-size: 0.56rem; }
+body.mls-hide-headshots .mls-headshot { display: none; }
+@media (max-width: 480px) {
+    .mls-headshot { width: 28px; height: 28px; }
+    .mls-headshot-initials { font-size: 0.56rem; }
+    .mls-headshot-def .mls-headshot-initials { font-size: 0.5rem; }
+}
+.mls-player-row-meta { margin-top: 3px; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+/* Sits between the name and the team/rank meta row -- holds status badges (injury, bye, early,
+   kickoff, Sleeper-mismatch) on their own line so a heavily-flagged player doesn't crowd the
+   name line or force ugly mid-word wraps on mobile. */
+.mls-player-badges-row { margin-top: 3px; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+/* Roster tab: injury / rookie / bye badges on the player's name line instead of a row of their
+   own, so every roster card stays two lines. inline-flex + nowrap keeps the group together:
+   on a long name at phone width the whole group drops to the next line rather than splitting.
+   The badges' own margin-left is zeroed here since the gap already spaces them. The space from
+   the name is a real space character in the markup, not a margin: a wrapped line drops its
+   leading space, so a wrapped group lines up flush under the name instead of indented. */
+.mls-name-badges { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.15rem; white-space: nowrap; vertical-align: middle; position: relative; top: -1px; }
+.mls-name-badges .inj-badge { border-color: transparent; }
+.mls-rank-badge { background: #1c2541; border: 1px solid var(--border); }
+/* Optional tier shown beside a rank on player cards ("#12 (T3)") -- see tierTag in mls.js. */
+.mls-tier { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+.mls-rank-sep { opacity: 0.5; }
+/* Opponent ("@ PHI" / "vs KC") shown right after the kickoff badge on the Lineup row's badge line
+   (see getGameInfoHTML in mls.js) -- plain text rather than another badge. The wrapper keeps the
+   two together if the line wraps. */
+.mls-game-info { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.mls-opp { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
+/* Projected (or, once the game is final, actual) points at the right edge of a Lineup row: the
+   number on top, a small caption under it saying which it is. Lives inside .mls-row-actions
+   rather than as its own flex child of .lineup-slot, since that layout stretches any middle child. */
+.mls-pts { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; min-width: 2.2rem; margin-right: 0.15rem; }
+.mls-pts-main { font-weight: 700; font-size: 0.95rem; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.mls-pts-sub { font-size: 0.6rem; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mls-pts-none .mls-pts-main { color: var(--text-muted); font-weight: 400; }
+.mls-row-actions { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+.mls-stat-blue { color: #93c5fd; }
+.mls-stat-green { color: #86efac; }
+.mls-stat-red { color: #fca5a5; }
+.mls-item-name { font-weight: bold; font-size: 0.95rem; margin-bottom: 4px; }
+.mls-item-subtext { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+.lineup-action-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.btn-flex-2 { flex: 2; margin-top: 0 !important; }
+.btn-flex-1 { flex: 1; margin-top: 0 !important; }
+
+.lineup-container-wrapper {
+    border-top: 1px solid var(--border);
+    padding-top: 1.25rem;
+}
+
+/* Early Games Warning Banner */
+.early-warning-banner {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #fde047;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+    display: none;
+    align-items: flex-start;
+    gap: 0.75rem;
+    line-height: 1.5;
+}
+
+/* Early Games Control Group */
+.early-games-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.team-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Weekly Rankings Feedback */
+.weekly-meta-display {
+    font-size: 0.75rem;
+    color: #60a5fa;
+    font-weight: 700;
+    display: none;
+    margin-bottom: 0.5rem;
+}
+
+.weekly-success-feedback {
+    color: #60a5fa;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: none;
+    text-align: center;
+    margin-top: 0.75rem;
+}
+
+/* --- Lineup Slots & Roster Rows --- */
+.lineup-slot.locked { 
+    border-color: var(--primary-green); 
+    background: var(--target-bg); 
+}
+
+.lineup-slot.swapping, .roster-item.swapping { 
+    border-color: #f59e0b; 
+    background: rgba(245, 158, 11, 0.1); 
+}
+
+.lineup-slot.empty {
+    border: 1px dashed var(--border);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+/* Taxi-squad rows at the foot of the bench. Recedes via a flatter background and a dashed
+   border -- the same "not in play" language .lineup-slot.empty already uses -- rather than
+   via opacity, which would also wash out the TAXI and injury badges these rows exist to
+   show. Everything on the row stays at full contrast; only its container steps back. */
+.lineup-slot.taxi-row {
+    border: 1px dashed var(--border);
+    background: rgba(0, 0, 0, 0.32);
+}
+
+/* Separates real bench depth from the taxi squad below it. A rule with an inset label rather
+   than a full section header: the taxi group belongs to the bench list visually (same rows,
+   same card) and a second heading here would imply a second card's worth of importance. */
+.bench-taxi-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 1rem 0 0.6rem;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.bench-taxi-divider::before,
+.bench-taxi-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+/* Consolidated slot indicator for the Lineup tab (starters + bench): replaces the old
+   plain-text slot-label ("RB1") + separate colored pos-badge pair with a single badge, styled
+   like pos-badge, showing just the slot TYPE with no player-count suffix (slotType in mls.js is
+   already digit-stripped before this renders, so "RB1"/"RB2" both just show "RB"). Fixed width
+   above keeps every row's name column starting at the same x position regardless of whether the
+   slot text is "RB" or "SFLEX".
+   The player's actual position is only shown separately (see .mls-plain-pos) when the slot type
+   itself doesn't already reveal it -- FLEX, SFLEX, and bench -- so this never duplicates info a
+   strict RB/WR/TE/QB/K/DEF slot already conveys. */
+.slot-badge {
+    display: inline-block;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-weight: bold;
+    box-sizing: border-box;
+}
+.slot-badge.slot-QB  { background-color: var(--pos-qb);  color: #fca5a5; border: 1px solid var(--pos-qb-border); }
+.slot-badge.slot-RB  { background-color: var(--pos-rb);  color: #86efac; border: 1px solid var(--pos-rb-border); }
+.slot-badge.slot-WR  { background-color: var(--pos-wr);  color: #93c5fd; border: 1px solid var(--pos-wr-border); }
+.slot-badge.slot-TE  { background-color: var(--pos-te);  color: #fde047; border: 1px solid var(--pos-te-border); }
+.slot-badge.slot-K   { background-color: var(--pos-k);   color: #e2e8f0; border: 1px solid var(--pos-k-border); }
+.slot-badge.slot-DEF { background-color: var(--pos-def); color: #e9d8fd; border: 1px solid var(--pos-def-border); }
+.slot-badge.slot-FLEX,
+.slot-badge.slot-SFLEX { background-color: rgba(168, 85, 247, 0.18); color: #d8b4fe; border: 1px solid #a855f7; }
+.slot-badge.slot-BN,
+.slot-badge.slot-ROS { background-color: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
+/* Taxi squad, at the foot of the bench list. Same muted greys as .slot-BN rather than a new
+   hue, because a taxi player is a quieter version of a bench player, not a different kind of
+   alert -- the dashed border carries the whole distinction, reading as "parked, not in play"
+   against every other slot badge's solid one. */
+.slot-badge.slot-TX { background-color: rgba(148, 163, 184, 0.06); color: var(--text-muted); border: 1px dashed var(--border); }
+
+/* Plain, unstyled position text -- deliberately NOT a badge, since a second colored pill here
+   is exactly the duplication the slot-badge consolidation above was meant to remove. Shown on
+   every row (see mls.js) so every row's meta line has the same leading element -- color comes
+   from the existing .pos-text-* utility (extended below with K/DEF) so it matches the
+   corresponding slot-badge/pos-badge color without a second color palette to maintain. Small
+   left padding matches the kickoff-badge's own inset, so its text starts at the same x as the
+   name and kickoff lines above it rather than being thrown off by the badge's padding. */
+.mls-plain-pos { font-size: 0.75rem; font-weight: 600; padding-left: 4px; }
+
+.team-chip { 
+    background: var(--target-bg); 
+    padding: 0.35rem 0.75rem; 
+    border-radius: 999px; 
+    font-size: 0.8rem; 
+    font-weight: 600; 
+    color: var(--primary-green); 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 0.5rem; 
+    border: 1px solid var(--target-border); 
+}
+
+.team-chip .close-chip { 
+    cursor: pointer; 
+    color: #fca5a5; 
+    font-size: 1rem; 
+    line-height: 1; 
+    transition: opacity 0.2s; 
+}
+
+.team-chip .close-chip:hover {
+    opacity: 0.7;
+}
+/* Now a <button> (was a <span>): drop the browser's button chrome so it looks the same. */
+button.close-chip {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+}
+.close-chip:focus-visible {
+    outline: 2px solid var(--primary-green);
+    outline-offset: -4px;
+    border-radius: 4px;
+}
+
+/* League Command Center: the league cell's content is a full-cell <button> (was a clickable
+   <td>), so it's reachable by keyboard. Padding moved here from the <td> so the whole cell
+   stays the click target. */
+.mls-league-row-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 0.5rem 0.75rem calc(0.5rem + 6px);
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.mls-league-row-btn:focus-visible {
+    outline: 2px solid var(--primary-green);
+    outline-offset: -2px;
+}
+/* ▲/▼ on the first/last league. The dimming used to be a second style="" attribute on a button
+   that already had one, which browsers ignore, so disabled arrows looked clickable. */
+.mls-league-move-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+.lock-btn { font-size: 1.1rem; background: transparent; border: none; cursor: pointer; padding: 0 0.25rem; }
+/* Scout Tab Specific Styles */
+.scout-textarea { 
+    width: 100%; 
+    min-height: 90px; 
+    background: rgba(0, 0, 0, 0.2); 
+    color: var(--text-main); 
+    border: 1px solid var(--border); 
+    border-radius: 6px; 
+    padding: 0.8rem; 
+    margin-bottom: 0.75rem; 
+    font-family: inherit; 
+    resize: vertical; 
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.scout-textarea:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.scout-result-card { 
+    background: var(--card-bg); 
+    border: 1px solid var(--border); 
+    border-radius: 8px; 
+    padding: 1rem; 
+    margin-bottom: 0.75rem; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.scout-result-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.scout-status { 
+    font-size: 0.75rem; 
+    font-weight: 700; 
+    padding: 0.35rem 0.6rem; 
+    border-radius: 999px; 
+    display: inline-block; 
+    text-align: center; 
+    letter-spacing: 0.5px;
+}
+
+.status-avail { background: var(--target-bg); color: var(--primary-green); border: 1px solid var(--target-border); }
+.status-owned { background: var(--avoid-bg); color: #fca5a5; border: 1px solid var(--avoid-border); }
+.status-mine { background: var(--dart-bg); color: #93c5fd; border: 1px solid var(--dart-border); }
+/* --- MLS SCOUT TAB SPECIFIC STYLES --- */
+
+/* Info Banner Component */
+/* --- MATCHUP SIMULATOR (MONTE CARLO) RESULTS --- */
+/* Markup for this comes from monteCarloUi.js's worker.onmessage handler. */
+.simulation-card {
+    background: var(--bg-card, #151d33);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.simulation-card h3 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+}
+
+.probability-bar-legend {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+}
+
+.legend-you { color: var(--primary-green, #10b981); }
+.legend-opp { color: var(--btn-blue-bg, #3b82f6); }
+
+.probability-bar {
+    display: flex;
+    width: 100%;
+    height: 0.6rem;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.bar-you { background: var(--primary-green, #10b981); }
+.bar-opp { background: var(--btn-blue-bg, #3b82f6); }
+
+.simulation-card small {
+    display: block;
+    margin-top: 0.6rem;
+    color: var(--text-muted);
+}
+
+/* Standalone message shown in the results container in place of a result card -- "not enough
+   roster data", a bye week, or a worker that failed to load. */
+.sim-message {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.sim-message-error {
+    color: #fca5a5;
+}
+
+.sim-fallback-note {
+    color: #fbbf24 !important;
+}
+
+.sim-lineup-note {
+    color: #93c5fd !important;
+}
+
+.sim-projection-note {
+    color: #86efac !important;
+}
+
+.sim-actual-note {
+    color: #93c5fd !important;
+}
+
+.sim-final-tag {
+    color: #93c5fd;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+}
+
+.sim-team-columns {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.sim-team-column {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.sim-player-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.sim-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+}
+
+.sim-player-row:last-child { border-bottom: none; }
+
+.sim-player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.sim-player-name { font-weight: 500; }
+
+.sim-player-boombust {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.sim-player-info .pos-badge,
+.sim-bench-row .pos-badge,
+.sim-waiver-empty .pos-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
+.sim-bust { color: #f87171; }
+.sim-boom { color: #4ade80; }
+
+.sim-player-range {
+    white-space: nowrap;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.sim-player-mean {
+    font-size: 0.75rem;
+}
+
+.sim-bench-insights {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.sim-bench-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sim-bench-row {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.sim-bench-row strong {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+/* Waiver Insights when the check ran but produced no rows (see renderWaiverInsights in
+   monteCarloUi.js): a green confirmation when nothing beat your starters, amber when the check
+   couldn't run, so an empty section never reads as "did this even do anything?". */
+.sim-waiver-empty {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 0.6rem 0.75rem;
+    border-radius: 6px;
+}
+.sim-waiver-empty-ok {
+    color: var(--text-main);
+    background: var(--target-bg);
+    border: 1px solid var(--target-border);
+}
+.sim-waiver-empty-warn {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.sim-waiver-check {
+    color: var(--primary-green);
+    font-weight: 700;
+    margin-right: 4px;
+}
+
+.info-banner {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #93c5fd;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.info-banner-icon {
+    background: #3b82f6;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: serif;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Card Header Inline Actions */
+.header-actions-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Trade Analyzer Section Headers */
+.trade-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+}
+
+.text-target-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #4ade80;
+    display: flex;
+    align-items: center;
+}
+
+.text-avoid-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fca5a5;
+    display: flex;
+    align-items: center;
+}
+
+.scout-output-container {
+    margin-top: 1.25rem;
+}
+
+/* --- COLLAPSIBLE WAIVER UPGRADE SECTIONS (Scout tab, Auto-Find Upgrades) ---
+   Reuses .rankings-card/.rankings-card-header/.rankings-card-body (see the Roster/Lineup
+   tabs' upload cards) purely for the expand/collapse mechanics -- those classes don't require
+   .settings-card, so they work fine nested inside the Waiver Wire Assistant card without
+   double-applying its box styling. .mls-waiver-section supplies its own lighter box instead. */
+.mls-waiver-section {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.mls-waiver-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.65rem 0.9rem;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Waiver section toggle: <h4><button> filling the header, title left and chevron right
+   (same layout the old role="button" header div had). */
+.mls-waiver-section-heading {
+    margin: 0;
+    font-size: inherit;
+    flex: 1;
+    min-width: 0;
+}
+.rankings-card-toggle.mls-waiver-section-toggle {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.mls-waiver-section-title {
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.mls-waiver-section-body {
+    padding: 0.9rem;
+}
+
+/* Trade Analyzer -- Fairness Verdict Banner */
+.trade-verdict-banner {
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+}
+
+.trade-verdict-source-label {
+    text-align: center;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.trade-verdict-source-label .tooltip-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 9px;}
+
+.trade-verdict-subnote {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 500;
+}
+
+.trade-verdict-totals {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.trade-verdict-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.trade-verdict-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.trade-verdict-amount {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+/* These totals are summed from whichever rankings or values the verdict is using, so they're
+   estimates -- but at 1.4rem/800 they read like settled, official numbers. "est." sits inside
+   the amount so it qualifies the figure rather than the "You Receive" label above it, and is
+   small and muted so it doesn't compete with the number it's marking. */
+.trade-verdict-est {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-right: 3px;
+}
+
+.trade-verdict-vs {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.trade-verdict-result {
+    text-align: center;
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: 0.3px;
+}
+
+.trade-verdict-diff {
+    font-weight: 600;
+    font-size: 0.85rem;
+    opacity: 0.85;
+    margin-left: 4px;
+}
+
+.trade-verdict-note {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+}
+
+.verdict-fair { border-color: var(--dart-border); background: var(--dart-bg); }
+.verdict-fair .trade-verdict-result { color: #93c5fd; }
+
+.verdict-favor-you { border-color: var(--target-border); background: var(--target-bg); }
+.verdict-favor-you .trade-verdict-result { color: var(--primary-green); }
+
+.verdict-favor-them { border-color: var(--avoid-border); background: var(--avoid-bg); }
+.verdict-favor-them .trade-verdict-result { color: #fca5a5; }
+
+.mls-stat-value { color: #fde047; }
+.mls-stat-market { color: #93c5fd; }
+
+/* MLS-namespaced small button (Setup league manager reorder/remove, Lineup swap/lock controls).
+   Renamed from a bare .btn-sm -- that selector was defined twice in this shared stylesheet
+   (once here, once in the MDS section above), and because both rules had equal specificity,
+   whichever came later in the file silently won on BOTH apps' pages. MLS now uses its own
+   namespaced class, matching the .mds-btn-sm pattern, so this sizing can never leak onto MDS's
+   buttons (or vice versa) just because someone reorders the file.
+   Fully self-contained (not just the padding/font-size/width this used to override) since these
+   buttons no longer also match the base .btn-sm rule above -- without border/cursor/etc. repeated
+   here, they'd fall back to the browser's default button chrome (visible border, 3D look).
+   Do not rename back to .btn-sm. */
+.mls-btn-sm {
+    padding: 0.25rem 0.6rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.3px;
+    width: auto !important;
+}
+/* Base (desktop) size for the header's prev/next league buttons -- unchanged from what
+   used to be inline styles. The @media (max-width: 767px) block above bumps this up for
+   mobile touch targets. */
+.league-nav-btn {
+    padding: 0.4rem 0.6rem;
+    flex-shrink: 0;
+}
+
+.sos-grid { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 0.85rem; 
+    text-align: center; 
+}
+
+.sos-grid td { 
+    padding: 0.4rem; 
+    border: 1px solid var(--border); 
+}
+
+.sos-input { 
+    width: 48px; 
+    padding: 6px; 
+    text-align: center; 
+    background: rgba(0, 0, 0, 0.3); 
+    color: var(--text-main); 
+    border: 1px solid var(--border); 
+    border-radius: 4px; 
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.sos-input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* --- MLS SETUP TAB SPECIFIC STYLES --- */
+.league-req-subtitle {
+    font-size: 0.85rem;
+    color: var(--primary-green);
+    margin-bottom: 1.25rem;
+    font-weight: 600;
+}
+
+.manual-player-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.manual-add-feedback {
+    color: var(--primary-green);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.75rem;
+    text-align: center;
+}
+.manual-add-feedback:empty { display: none; }
+.manual-add-feedback.is-error { color: #fb923c; }
+
+/* Keyboard hint -- only on devices with a real pointer (desktop), where Enter-to-add applies */
+.mls-manual-key-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0.5rem 0 0;
+}
+.mls-manual-key-hint kbd {
+    font-family: inherit;
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main);
+}
+@media (hover: none) {
+    .mls-manual-key-hint { display: none; }
+}
+
+/* "Added this session" list under Add Player Manually */
+.mls-manual-log:empty { display: none; }
+.mls-manual-log {
+    margin-top: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+.mls-manual-log-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border);
+}
+.mls-manual-log-total {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.mls-manual-log-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 260px;
+    overflow-y: auto;
+}
+.mls-manual-log-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.mls-manual-log-item:last-child { border-bottom: none; }
+.mls-manual-log-item.is-latest {
+    background: rgba(16, 185, 129, 0.10);
+    box-shadow: inset 3px 0 0 var(--primary-green);
+}
+.mls-manual-log-name {
+    color: var(--text-main);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mls-manual-log-meta {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.mls-manual-log-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary-green);
+    white-space: nowrap;
+}
+.mls-manual-log-remove {
+    margin-left: auto;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.mls-manual-log-remove:hover,
+.mls-manual-log-remove:focus-visible {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.10);
+}
+/* --- MLS ROSTER TAB SPECIFIC STYLES --- */
+
+.roster-container-wrapper {
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+}
+
+.status-badge-meta {
+    font-size: 0.75rem;
+    color: var(--primary-green);
+    font-weight: 700;
+    display: none;
+    margin-bottom: 0.5rem;
+}
+
+.rankings-fresh {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.rankings-stale {
+    color: #f59e0b;
+    font-weight: 700;
+}
+
+/* A sync that actually failed, as opposed to data that's merely aged (.rankings-stale, amber).
+   Red so it doesn't read as the same "getting old" signal -- this roster is known to be behind,
+   not just unrefreshed. Same red as .status-danger. */
+.sync-failed {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+/* --- COLLAPSIBLE RANKINGS CARDS (Roster/Lineup tabs) ---
+   The toggle is <h3><button class="rankings-card-toggle">Title + chevron</button></h3>, with
+   the freshness readout and tooltip as siblings OUTSIDE the button (a role="button" header
+   used to swallow the heading and nest the tooltip control inside it). Two CSS tricks keep
+   the old look and feel:
+   1. The button's ::after stretches over the whole header, so clicking anywhere on it still
+      toggles the card. The tooltip stays its own control without any z-index: it's positioned
+      and comes after the button in the markup, so it already paints above that layer (and no
+      z-index means its popup isn't trapped in a new stacking context).
+   2. In the ROS/Weekly cards the chevron lives inside the button but is pinned to the header's
+      right edge, where it used to sit after the tooltip. */
+.rankings-card-header {
+    cursor: pointer;
+    position: relative;
+}
+.rankings-card-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.rankings-card-toggle::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+.settings-card.rankings-card > .rankings-card-header .chevron-icon {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0.75rem; /* .card-header's padding-bottom: centre on the content, not the padding */
+    margin: auto 0;
+}
+.settings-card.rankings-card:not(.expanded) > .rankings-card-header .chevron-icon {
+    bottom: 0; /* padding-bottom is 0 when collapsed (rule below) */
+}
+.settings-card.rankings-card > .rankings-card-header > .cluster {
+    margin-right: calc(18px + var(--space-2)); /* room for the pinned chevron */
+}
+
+.rankings-card:not(.expanded) .rankings-card-body {
+    display: none;
+}
+
+/* Collapsed is the usual resting state now (picking a set collapses the card), so drop the
+   header's divider and gap that only exist to separate it from the hidden body. */
+.settings-card.rankings-card:not(.expanded) > .rankings-card-header {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.rankings-card.expanded .chevron-icon {
+    transform: rotate(180deg);
+}
+
+.header-freshness {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.header-freshness.rankings-stale {
+    color: #f59e0b;
+}
+
+/* Title + "Set: <name>" line. min-width: 0 lets a long set name truncate instead of shoving
+   the freshness readout and chevron off the edge on a phone. */
+.rankings-header-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+    margin-right: 0.5rem;
+}
+.rankings-header-set {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rankings-header-set:empty { display: none; }
+.rankings-header-set strong {
+    color: var(--primary-green);
+    font-weight: 600;
+}
+
+/* "Used in 2 of 5 leagues · Choose leagues..." under the set dropdown */
+.mls-set-leagues-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+.mls-set-leagues-summary {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.mls-set-leagues-row .btn-link-inline { margin-left: auto; }
+
+/* League checklist (upload preview + standalone picker dialog) */
+.mls-league-picker { margin: 0 0 1rem 0; }
+.mls-league-picker-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.4rem;
+}
+.mls-league-picker-head:has(> span:empty):not(:has(button)) { display: none; }
+.mls-league-picker-list {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+.mls-league-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+}
+.mls-league-picker-row:last-child { border-bottom: none; }
+.mls-league-picker-row:hover:not(.is-locked) { background: rgba(16, 185, 129, 0.06); }
+.mls-league-picker-row.is-locked { cursor: default; opacity: 0.7; }
+.mls-league-picker-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    accent-color: var(--primary-green);
+}
+.mls-league-picker-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.mls-league-picker-name {
+    font-size: 0.875rem;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mls-league-picker-note {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.success-feedback {
+    color: var(--primary-green);
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: none;
+    text-align: center;
+    margin-top: 0.75rem;
+}
+
+/* Rankings upload in-progress indicator -- shown between file selection and the preview
+   modal appearing (or an error toast), so a slow .xlsx parse never looks like nothing
+   happened. Empty/hidden by default; setUploadStatus() in mls.js fills and toggles it. */
+.mls-upload-processing {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.75rem;
+}
+
+.file-input {
+    cursor: pointer;
+    padding: 0.6rem;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* --- LIVE INDICATOR --- */
+@keyframes btn-pulse-anim {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+@keyframes border-pulse-anim {
+    0% { border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+    50% { border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 0 2px rgba(16, 185, 129, 0.1); }
+    100% { border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+}
+
+@keyframes nav-pulse-anim {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0); }
+    50% { box-shadow: 0 0 12px 2px rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); background: rgba(16, 185, 129, 0); }
+}
+
+/* Setup progress checklist (Dashboard) -- the text version of the pulse prompts */
+.setup-checklist {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: var(--space-4);
+}
+.setup-checklist-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 0 0 0.5rem;
+}
+.setup-checklist-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+.setup-checklist-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.setup-checklist-list li.is-done {
+    color: var(--text-main);
+}
+.setup-step-mark {
+    width: 1em;
+    flex-shrink: 0;
+    text-align: center;
+    font-weight: 700;
+}
+.setup-checklist-list li.is-done .setup-step-mark {
+    color: var(--primary-green);
+}
+.setup-step-body {
+    min-width: 0;
+}
+.setup-checklist-list li.is-actionable .setup-step-label {
+    color: var(--text-main);
+    font-weight: 600;
+}
+.setup-step-how {
+    margin: 0.15rem 0 0.25rem;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+.setup-step-go {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+/* goToSetupStep scrolls these into view; clear the sticky .header so the card title shows */
+#setupSyncCard,
+#rosRankingsCard,
+#weeklyRankingsCard,
+#powerRankingsCard {
+    scroll-margin-top: 5.5rem;
+}
+
+/* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; } 
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+
+/* --- TABLE HEADER TOOLTIP FIXES --- */
+/* Player-name autocomplete dropdown */
+.autocomplete-wrap { position: relative; }
+.autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: #111827;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+.autocomplete-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+.autocomplete-item:hover, .autocomplete-item.highlighted {
+    background: rgba(16, 185, 129, 0.12);
+}
+.autocomplete-meta {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-left: 0.75rem;
+    white-space: nowrap;
+}
+
+/* "Did you mean" hint on a Scout card */
+.scout-suggest-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+.scout-suggest-link { color: #fb923c; font-weight: 600; text-decoration: underline; }
+.scout-suggest-link:hover { color: #fdba74; }
+/* --- WAIVER WIRE ASSISTANT: AUTO-FIND (Scout tab) ---
+   Waiver Wire Assistant Auto-Find + Scan Pasted List. Cards reuse .scout-result-card; these add
+   the verdict line, pills, drop-candidate box, and the Compare Against toggle. See
+   autoFindWaiverUpgrades / buildWaiverContext in mls.js. */
+.mls-scan-summary { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem; padding: 0.75rem 0.9rem; background: rgba(255, 255, 255, 0.04); border-radius: 6px; }
+.mls-scan-summary strong { color: var(--text-main); }
+.mls-scan-notes { margin: 0.4rem 0 0; padding-left: 1.1rem; font-size: 0.78rem; }
+.mls-scan-notes li { margin-top: 0.2rem; }
+.mls-scan-card { align-items: flex-start; gap: 0.75rem; }
+.mls-scan-card-start { border-left: 3px solid var(--primary-green); }
+.mls-scan-main { min-width: 0; flex: 1; }
+.mls-scan-ranks { margin-top: 5px; }
+.mls-scan-verdict { font-size: 0.8rem; color: var(--text-main); margin-top: 6px; line-height: 1.4; }
+/* Own line under the verdict sentence: at phone width these two ranks wrapped mid-phrase when
+   they trailed the sentence inline. Each pair inside is .mls-nowrap, so a narrow screen breaks
+   at the comma, never inside "Wk Flex:" or between a name and its rank. */
+.mls-verdict-nums { display: block; color: var(--text-muted); margin-top: 2px; }
+.mls-muted-rank { color: var(--text-muted); font-weight: 400; }
+.mls-scan-empty { color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1rem; }
+.mls-verdict-start { background: var(--target-bg); color: var(--primary-green); border: 1px solid var(--target-border); white-space: nowrap; }
+.mls-verdict-bench { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap; }
+.mls-verdict-out { background: var(--avoid-bg); color: #fca5a5; border: 1px solid var(--avoid-border); white-space: nowrap; }
+.mls-scan-pill-stack { margin-top: 4px; }
+.mls-scan-benchmark { background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 6px; border-left: 3px solid #fca5a5; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.5; }
+.mls-scan-benchmark-title { color: #fca5a5; font-weight: bold; margin-bottom: 4px; }
+.mls-scan-benchmark-ok { margin-top: 0.35rem; color: var(--primary-green); font-weight: 600; }
+.mls-scan-benchmark-next { margin-top: 0.3rem; color: var(--text-muted); font-size: 0.8rem; }
+/* Two-option segmented toggle (Compare Against: Starting Lineup | Whole Roster). */
+.mls-segmented { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: rgba(0, 0, 0, 0.15); }
+.mls-segmented-btn { flex: 1; padding: 0.6rem 0.5rem; background: transparent; color: var(--text-muted); border: none; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.mls-segmented-btn + .mls-segmented-btn { border-left: 1px solid var(--border); }
+.mls-segmented-btn.active { background: var(--target-bg); color: var(--primary-green); }
+.mls-segmented-btn:focus-visible { outline: 2px solid var(--primary-green); outline-offset: -2px; }
+.mls-nowrap { white-space: nowrap; }
+
+/* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
+   One card per player, with a per-league ownership row beneath the header. Markup comes from
+   runAllLeaguesSearch in mls.js. The card is deliberately its own box rather than a
+   .scout-result-card: those are single-line summaries, while each of these carries a variable
+   number of league rows and needs a header/body split to stay readable at five-plus leagues. */
+.mls-league-search-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+.mls-league-search-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+.mls-league-search-name {
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.mls-league-search-team { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+
+/* Rows sit on a slightly recessed panel so the per-league list reads as the card's body
+   rather than as more header content. */
+.mls-league-search-rows {
+    background: rgba(0, 0, 0, 0.15);
+    border-top: 1px solid var(--border);
+}
+.mls-league-search-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    border-left: 3px solid transparent;
+}
+.mls-league-search-row + .mls-league-search-row { border-top: 1px solid var(--border); }
+/* Only the actionable row gets a colored edge -- marking every status would turn the list
+   into a stripe chart and bury the one row worth acting on. */
+.mls-league-search-free { border-left-color: var(--primary-green); }
+.mls-league-search-meta { min-width: 0; }
+.mls-league-search-league { font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
+.mls-league-search-format { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+.mls-league-search-active {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--primary-green);
+    border: 1px solid var(--target-border);
+    background: var(--target-bg);
+    border-radius: 999px;
+    padding: 1px 6px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+.mls-league-search-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+/* Recommended row for the chosen Buy/Sell intent (see buildPowerRead in mls.js). Wins over the
+   green free-agent edge: when a Buy/Sell verdict exists, it's the more specific signal. */
+.mls-league-search-row.mls-league-search-rec { border-left-color: #a78bfa; background: rgba(167, 139, 250, 0.06); }
+
+/* Per-league Positional Power Rank line + verdict, under the league name. Tier colors match the
+   Positional Power Rankings table's own green / neutral / red cells. */
+.mls-power-line { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+.mls-power-line strong { font-weight: 700; }
+.mls-power-strong { color: #4ade80; }
+.mls-power-middle { color: var(--text-main); }
+.mls-power-weak { color: #fca5a5; }
+.mls-power-arrow { opacity: 0.6; }
+.mls-power-src {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    border-radius: 4px;
+    padding: 0 4px;
+    margin-left: 2px;
+    cursor: help;
+}
+.mls-power-verdict {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+.mls-power-chip {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+.mls-power-chip-rec {
+    color: #c4b5fd;
+    background: rgba(167, 139, 250, 0.12);
+    border-color: rgba(167, 139, 250, 0.5);
+}
+/* Leagues scored without their own ROS rankings (market fallback) or not at all -- see
+   renderPowerSourceNote in mls.js. Amber to match the "mkt" tag it explains. */
+.mls-power-note {
+    font-size: 0.72rem;
+    color: #fbbf24;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+.mls-power-summary { font-size: 0.8rem; color: var(--text-main); margin-top: 6px; line-height: 1.5; }
+.mls-power-summary-none { color: var(--text-muted); }
+
+/* Neutral fourth state alongside status-avail/owned/mine: a league that structurally can't
+   answer the availability question (manual or handoff leagues store only your own players). */
+.mls-status-unknown {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+}
+
+@media (max-width: 520px) {
+    /* At phone width the status pill plus a Switch button crowds the league name off its
+       line; stacking the row keeps both the name and its format badge fully readable. */
+    .mls-league-search-row { align-items: flex-start; flex-direction: column; }
+    .mls-league-search-actions { width: 100%; justify-content: space-between; }
+}
+
+/* Unmatched-name warning inside the rankings upload preview modal (see openRankingsPreview). */
+.mls-preview-unmatched { background: rgba(252, 165, 165, 0.08); border: 1px solid var(--avoid-border); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.mls-preview-unmatched-title { color: #fca5a5; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
+.mls-preview-unmatched-list { font-size: 0.82rem; color: var(--text-main); line-height: 1.45; }
+.mls-preview-unmatched-hint { font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; margin: 0.4rem 0 0; }
+.mls-preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.mls-preview-derived-title { color: #93c5fd; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
+.mls-preview-derived-body { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin: 0; }
+
+/* --- POSITIONAL POWER RANKINGS (Roster tab) ---
+   Markup from renderPowerRankingsTable in mls.js. Replaces the old inline-styled table. Cell
+   colors are the same green / neutral / red thirds powerTier() uses everywhere else.
+   overflow: visible so the player tooltips aren't clipped by the table wrapper. */
+.mls-power-table-wrap { overflow: visible; border: 1px solid var(--border); border-radius: 6px; }
+.mls-power-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem; }
+.mls-power-table th {
+    padding: 10px 6px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 2px solid var(--border);
+}
+.mls-power-table td { padding: 10px 6px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.mls-power-table tbody tr:last-child td { border-bottom: none; }
+.mls-power-table .mls-power-manager { text-align: left; padding-left: 10px; }
+.mls-power-owner { color: var(--text-main); font-weight: 500; display: block; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mls-power-you td { background: rgba(147, 197, 253, 0.08); }
+.mls-power-you .mls-power-owner { font-weight: 700; }
+.mls-power-strong-col { font-weight: 800; }
+.mls-power-cell-strong { color: #4ade80; }
+.mls-power-cell-middle { color: var(--text-main); }
+.mls-power-cell-weak { color: #fca5a5; }
+/* Table tooltips: display:none (not the site-wide visibility:hidden) while closed, because a
+   hidden-but-laid-out tooltip that opens rightward still widens the page and lets it scroll
+   sideways on a phone. Selectors carry .mls-power-table .tooltip-container so they outrank the
+   site-wide .tooltip-container .tooltip-text rule. Left-hand columns open rightward, the rest
+   leftward (see buildTooltip in renderPowerRankingsTable). */
+.mls-power-table .tooltip-container .mls-power-tooltip { display: none; width: 220px; font-weight: normal; z-index: 1005; text-align: left; }
+.mls-power-table .tooltip-container:hover .mls-power-tooltip,
+.mls-power-table .tooltip-container:focus-visible .mls-power-tooltip,
+.mls-power-table .tooltip-container .mls-power-tooltip.mobile-visible { display: block; }
+/* Dismissed with Escape or a second tap/press (see initTooltips in js/utils.js). */
+.mls-power-table .tooltip-container:hover .mls-power-tooltip.tt-dismissed:not(.mobile-visible),
+.mls-power-table .tooltip-container:focus-visible .mls-power-tooltip.tt-dismissed:not(.mobile-visible) { display: none; }
+.mls-power-table .tooltip-container .mls-power-tooltip-left { left: -10px; right: auto; }
+.mls-power-table .tooltip-container .mls-power-tooltip-right { right: 0; left: auto; }
+.mls-power-tooltip-title { font-weight: 700; color: var(--text-main); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.mls-power-tooltip-empty { color: var(--text-muted); font-style: italic; font-size: 0.8rem; }
+.mls-power-tooltip-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 4px; font-size: 0.8rem; }
+.mls-power-tooltip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+.mls-power-tooltip-slot { display: inline-block; min-width: 3.4em; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; }
+.mls-power-tooltip-rank { color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
+.mls-power-balance-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.mls-power-balance { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.78rem; margin: 2px 0 6px; }
+.mls-power-balance-item { white-space: nowrap; color: var(--text-muted); }
+.mls-power-balance-item strong { color: var(--text-main); }
+.mls-power-balance-item strong.mls-power-cell-strong { color: #4ade80; }
+.mls-power-balance-item strong.mls-power-cell-weak { color: #fca5a5; }
+.mls-power-balance-foot { font-size: 0.7rem; color: var(--text-muted); margin: -2px 0 6px; }
+.mls-power-tooltip-more { color: var(--text-muted); font-size: 0.75rem; margin-top: 6px; text-align: center; }
+.mls-power-notes { margin: 0.6rem 0 0; padding-left: 1.1rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; }
+.mls-power-empty { font-size: 0.85rem; color: var(--text-muted); padding: 1rem; text-align: center; background: rgba(0, 0, 0, 0.15); border: 1px dashed var(--border); border-radius: 8px; }
+
+@media (max-width: 520px) {
+    /* Seven-plus columns on a phone: tighter cells and a narrower name column keep the table
+       inside the card without a horizontal scroller (which would clip the tooltips). */
+    .mls-power-table { font-size: 0.8rem; }
+    .mls-power-table th { padding: 8px 1px; font-size: 0.6rem; letter-spacing: 0; }
+    .mls-power-table td { padding: 9px 1px; }
+    .mls-power-table .mls-power-manager { padding-left: 6px; }
+    .mls-power-owner { max-width: 5.5rem; font-size: 0.78rem; }
+    /* The "window closing" / "young core" qualifier stays in the Your Team summary; in the
+       table it would make the Manager column the widest thing on the row. */
+    .mls-power-table .mls-power-label-note { display: none; }
+    .mls-power-table .mls-power-label { font-size: 0.55rem; padding: 0 4px; }
+    /* On a phone, anchor each tooltip to its ROW rather than its cell, so it opens across the
+       full table width just under that row -- never off either edge of the screen. */
+    .mls-power-table tbody tr { position: relative; }
+    .mls-power-table td .tooltip-container { position: static; }
+    .mls-power-table .tooltip-container .mls-power-tooltip,
+    .mls-power-table .tooltip-container .mls-power-tooltip-left,
+    .mls-power-table .tooltip-container .mls-power-tooltip-right { left: 4px; right: 4px; width: auto; top: calc(100% - 2px); }
+}
+
+/* Team direction labels (see assignPowerLabels in mls.js). Green = win now, blue = close,
+   amber = on the fence (redraft Bubble), red = sell / long odds. */
+.mls-power-label {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+.mls-power-label-note { font-weight: 600; text-transform: none; letter-spacing: 0; opacity: 0.85; }
+.mls-power-label-contender { color: #4ade80; background: rgba(74, 222, 128, 0.1); border-color: rgba(74, 222, 128, 0.45); }
+.mls-power-label-retool { color: #93c5fd; background: rgba(147, 197, 253, 0.1); border-color: rgba(147, 197, 253, 0.45); }
+.mls-power-label-bubble { color: #fbbf24; background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.45); }
+.mls-power-label-rebuild,
+.mls-power-label-longshot { color: #fca5a5; background: rgba(252, 165, 165, 0.1); border-color: rgba(252, 165, 165, 0.45); }
+
+/* "Your Team" summary above the table, edged in the label's color. */
+.mls-power-summary-card {
+    margin-bottom: 0.9rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+}
+.mls-power-summary-contender { border-left-color: #4ade80; }
+.mls-power-summary-retool { border-left-color: #93c5fd; }
+.mls-power-summary-bubble { border-left-color: #fbbf24; }
+.mls-power-summary-rebuild,
+.mls-power-summary-longshot { border-left-color: #fca5a5; }
+.mls-power-summary-head { font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mls-power-summary-head .mls-power-label { margin-top: 0; font-size: 0.7rem; }
+.mls-power-summary-facts { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+.mls-power-summary-facts strong { color: var(--text-main); }
+.mls-power-summary-advice { font-size: 0.82rem; color: var(--text-main); margin-top: 6px; line-height: 1.45; }
+
+/* Active Roster card's Power Rankings snapshot (see renderRosterPowerStrip in mls.js): your
+   own ranks only, same tier colors as the table. Seven evenly split cells fit a 360px phone. */
+.mls-roster-power {
+    margin-bottom: 0.9rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+.mls-roster-power-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 0.55rem; }
+.mls-roster-power-title { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
+.mls-roster-power-head .mls-power-label { margin-top: 0; }
+.mls-roster-power-of { font-size: 0.72rem; color: var(--text-muted); }
+.mls-roster-power-stats { display: grid; gap: 4px; } /* column count set inline: one per stat */
+.mls-roster-power-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0.35rem 0.1rem;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.18);
+}
+.mls-roster-power-stat-name { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+.mls-roster-power-stat-rank { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+.mls-roster-power-link { display: inline-block; margin-top: 0.55rem; font-size: 0.75rem; font-weight: 600; color: #c4b5fd; text-decoration: underline; }
+.mls-roster-power-link:hover { color: #ddd6fe; }
+@media (max-width: 520px) {
+    /* All seven cells stay on one row at 360px: slimmer padding and labels. */
+    .mls-roster-power { padding: 0.65rem 0.6rem; }
+    .mls-roster-power-stats { gap: 3px; }
+    .mls-roster-power-stat-name { font-size: 0.55rem; letter-spacing: 0; }
+    .mls-roster-power-stat-rank { font-size: 0.95rem; }
+}
+
+/* Scout tab's temporary "moved to the Roster tab" pointer -- see goToPowerRankings in mls.js
+   for when to remove it. */
+.mls-moved-pointer { padding-top: 0.9rem; padding-bottom: 0.9rem; }
+.mls-moved-pointer-text { margin: 0; }
+/* Now a <button> (was <a href="#">); the underline keeps the old link look. */
+.mls-moved-pointer-link { color: #c4b5fd; font-weight: 600; white-space: nowrap; text-decoration: underline; }
