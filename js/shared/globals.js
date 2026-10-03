@@ -24,7 +24,7 @@ import { loadScriptOnce, ensureHtml2Canvas, loadSheetJS } from './ui/scriptLoade
 import { flashButton } from './ui/flashButton.js';
 import { getTabFromHash } from './ui/tabHash.js';
 import './ui/tooltips.js';
-import { isMdsOwnedKey, KEYS } from './storage/keys.js';
+import { isMdsOwnedKey } from './storage/keys.js';
 
 // Top-level function declarations in utils.js (a classic script), so they were window
 // properties too. Callers use them as bare names: mds.js, mls.js, the T-Score inline script,
@@ -54,6 +54,3 @@ window.getTabFromHash = getTabFromHash;
 // Added in refactor chunk 1B for js/mds.js (a classic script, so it can't import keys.js).
 window.isMdsOwnedKey = isMdsOwnedKey;
 
-// Added in refactor chunk 6A for the T-Score page's inline script (a classic script, so it can't
-// import keys.js). It reads its storage keys from here at event time (Refresh, DOMContentLoaded).
-window.KEYS = KEYS;

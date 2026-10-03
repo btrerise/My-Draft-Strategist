@@ -75,8 +75,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   focus lands after the lineup rebuilds) and 1 MLS simulator test (`mls-sim.spec.mjs`, 3F: fixed
   teams through the real UI module and Web Worker with `Math.random` seeded, exact numbers pinned)
   and 3 MLS Waiver Insights tests (`mls-waiver-insights.spec.mjs`, 3G: the in-app simulator with
-  Waiver Insights on, after a Scout scan, in a fresh page, and with no free agent that has a position).
-  Each runs at both widths: 72 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  Waiver Insights on, after a Scout scan, in a fresh page, and with no free agent that has a position)
+  and 3 T-Score Refresh tests (`tscore-refresh.spec.mjs`, 4B: Google Sheets stubbed with small CSVs,
+  then the cached render on reload; an HTTP 500 and a blocked request for the error path).
+  Each runs at both widths: 78 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -2744,3 +2746,92 @@ Notes for those sessions:
 - **Two utilities that do nothing today** (found while planning 4D, not fixed): `.mt-0` on `.leaguelogs-attribution`
   and `.pl-6` on `.guide-list` lose to the shared rule (`margin-top: 1rem`, `padding-left: 1.25rem`). Making them
   work is a visible change and the owner's call; 5D's rename of `.leaguelogs-attribution` is a natural moment.
+
+### 4B — T-Score page: extract inline CSS and JS
+
+The T-Score page now loads like the other two: `base.css` then its own `css/tscore.css`, and
+`js/boot.js` → `js/shared/globals.js` → its own module `js/tscore/main.js`. Cut by line range with a
+script (throwaway, not committed) that asserted each range's first and last line before cutting.
+
+| From | To | Edits |
+|---|---|---|
+| `t-score/index.html` inline `<style>` (lines 20–261) | `css/tscore.css`, after the two sections below | dedented by the `<style>`'s 8 spaces; nothing else |
+| `css/base.css` DENSE DATA TABLE STICKY SCROLLING (3 rules) and TABLE HEADER TOOLTIP FIXES (4 rules), with their markers and comments | top of `css/tscore.css`, in that order | none |
+| `t-score/index.html` inline `<script>` (lines 1191–1502) | `js/tscore/main.js` (`type="module"`, in `<head>` right after globals.js) | listed below |
+
+Changes inside the moved JS (the diff against the old inline script is exactly these):
+
+- `tscoreNormalize` and `tscoreEscapeHtml` deleted; their 1 + 9 call sites call `normalizeName`
+  (`js/shared/names.js`) and `escapeHtml` (`js/shared/html.js`), imported. `tscoreNormalize` already
+  forwarded to the shared `normalizeName` whenever it existed (always, after 1A). The shared `escapeHtml`
+  also escapes `'` as `&#39;`, which renders the same.
+- `window.KEYS.tscore.*` (5 uses) → `KEYS.tscore.*`, imported from `js/shared/storage/keys.js`, as 6A
+  suggested. **`window.KEYS` is gone**: nothing else read it, so `js/shared/globals.js` no longer assigns
+  it (and no longer imports `KEYS`). keys.js's header comment updated to match.
+- A `// --- WINDOW EXPORTS ---` block at the end assigns `window.switchTab`, `switchPosition` and
+  `toggleMenu`, the names the page's inline `onclick`s call (and `tests/helpers.mjs` calls `switchTab`).
+  `window.refreshTScoreData` already assigned itself. The classic script also made seven internal helpers
+  implicit globals (`fetchTScoreSheet`, `renderTScoreTables`, `tscoreTop50RowHTML`,
+  `tscoreFilteredRowHTML`, `updateTscoreFreshnessLabel`, plus the two deleted helpers); they're module-
+  private now. A grep finds no reference to any of them outside main.js.
+- A 6-line header. Comments in the moved code that say "this inline script" weren't edited (the header
+  says so); 5D's comment sweep can fix them.
+
+**Timing.** The inline script ran during parsing; main.js now runs after parsing, after globals.js, and
+before DOMContentLoaded. Its top level only defines functions and adds `DOMContentLoaded` / `popstate`
+listeners, so nothing it does moves earlier or later in a way the page sees. Its two DOMContentLoaded
+listeners now register after globals.js's (feedback form, banners, scroll shadows, tooltips) instead of
+before; none of those touch the T-Score tables, tabs or freshness label (checked, and the comparison
+below shows no difference). The code is strict-mode clean (modules are strict).
+
+**Cascade check for the 7 rules.** tscore.css loads after base.css, so a later base.css rule that used to
+override them would now lose. The only rules after them in base.css were MOBILE COLLAPSIBLE CARDS
+(`.btn-expand`, `.card-details`/`.hide-on-desktop`), PLAYER CARD GRID LAYOUT, the `user-select` block
+for `.tooltip-container/.tooltip-icon/.tooltip-text`, the 44px touch-target block, `.close-banner-btn`,
+`a.nav-btn, .nav-btn` and the drag-and-drop rules. None sets a property the 7 rules set on the same elements.
+The rules stay ahead of the former inline CSS, as they were, so their order against it is unchanged too.
+`.table-container` and `.table-header-tooltip` appear only in `t-score/index.html` (grep of both HTML
+files, `js/` and `css/`); MLS keeps its own TABLE HEADER TOOLTIP FIXES marker in mls.css for its other rules.
+
+**Service worker.** The page now registers `/sw.js`, using the same inline classic block as
+`lineup/index.html` (end of `<body>`: it still runs if a module fails, and the path must be absolute).
+`sw.js` precaches `/css/tscore.css`, `/t-score/`, `/t-score/index.html` and `/js/tscore/main.js` (its
+imports were already listed). CACHE_NAME `v2.8.59` → `v2.8.60`. MathJax and PapaParse CDN tags unchanged.
+
+#### New test: `tests/tscore-refresh.spec.mjs`
+
+Written and run against main **before** the move, then unchanged after it. Three tests, both widths:
+
+- **Refresh, success:** Google Sheets stubbed with a small WR and RB CSV (an out-of-order rank, an
+  unknown label, a name with `<b>` and one with `'`, blank and notes rows, the `T-Score` vs `T-Score (A)`
+  header). Checks the toast, the exact HTML of the rebuilt rows, that all 8 table bodies changed, the
+  freshness label, the button's restored state, and the exact contents of `mds_tscore_cache`,
+  `mds_tscore_cache_updated` and `tscore_page_cache` (the shape MDS reads). Then reloads with the stub
+  removed: no sheet request, tables rebuilt from `tscore_page_cache` identically.
+- **Error paths:** an HTTP 500 for the RB sheet, and the default blocked request (`Failed to fetch`).
+  Each checks the error toast text, the re-enabled button, untouched tables, no storage written, and that
+  the one `console.error` is the expected error (first line only; the stack names the script's location).
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (107 precached). `node --test` 162/162.
+  `cd tests && npx playwright test`: **78/78** (72 existing + 6 new). **No screenshot changed.**
+- **Before/after comparison (throwaway spec, not committed), main vs this branch:** the T-Score page at both
+  widths, `prefers-reduced-motion` off and on, with and without a seeded `tscore_page_cache`; in each, load
+  via `#valuesTab`, every tab, the RB side of each WR/RB pair, a hovered header tooltip and a hovered
+  right-aligned one, the menu open, closed with Escape, and Back. 176 states, ~221,000 elements: every
+  element's computed style (and `::before`/`::after` where present) **identical**. Body HTML identical
+  apart from the new service-worker comment (+281 characters in every state: the 280-character comment and
+  a newline). No page errors in either. `Object.getOwnPropertyNames(window)`: only `KEYS` and the seven
+  helpers above are gone, nothing new.
+
+#### Left for later chunks
+
+- **6B:** the T-Score page is a module now, so its copy-on-load migration for `mds_tscore_cache_updated`
+  (see 6A's note) can be an import in `js/tscore/main.js`.
+- **5x / 5D:** the T-Score page still has its inline `onclick`s (`switchTab`, `switchPosition`,
+  `toggleMenu`, `refreshTScoreData`); no Phase 5 card covers this page. `switchTab` finds its nav button
+  with `[onclick*="tabId"]`, so converting those handlers needs that selector changed too. main.js still
+  reads `window.mdsFetch`, `window.showToast`, `window.createFocusTrap` and `window.getTabFromHash`
+  (unchanged code); they could become imports. Stale "inline script" comments in main.js for 5D's sweep.
+- **4D:** the 7 T-Score-only rules are out of base.css, so 4D can skip them.

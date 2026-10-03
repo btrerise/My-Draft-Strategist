@@ -1,0 +1,327 @@
+/* T-Score page (/t-score/) styles. Loaded after css/base.css.
+   Refactor 4B: the first two sections are the T-Score-only rules 4A left in base.css, moved
+   unchanged and kept ahead of the rest, as they were; everything from "T-Score Specific Styles"
+   on is the page's former inline <style>, moved unchanged apart from its indentation. */
+
+/* --- DENSE DATA TABLE STICKY SCROLLING (SCOPED) --- */
+.table-container th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--bg-surface, #121212);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1); 
+}
+
+.table-container th:first-child, 
+.table-container td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background-color: var(--bg-surface, #121212);
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.1); 
+}
+
+.table-container th:first-child {
+  z-index: 15;
+}
+
+/* --- TABLE HEADER TOOLTIP FIXES --- */
+
+/* Tooltip Container on Table Headers */
+.table-header-tooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: help;
+    border-bottom: 1px dotted var(--text-muted);
+}
+
+/* Tooltip Popup Bubble */
+.table-header-tooltip .tooltip-text {
+    visibility: hidden;
+    position: absolute;
+    z-index: 999;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    
+    /* Strict Text Wrapping & Sizing */
+    width: max-content;
+    max-width: 220px;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    box-sizing: border-box;
+    
+    /* Typography */
+    text-align: center;
+    font-weight: 400;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    text-transform: none; /* Keeps original casing without forcing layout-breaking uppercase */
+    
+    /* Styling */
+    background: rgba(15, 23, 42, 0.98);
+    color: #f1f5f9;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
+}
+
+/* Hover Trigger */
+.table-header-tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Right-side Column Alignment (Prevents horizontal scrolling & right-edge clipping) */
+.table-header-tooltip.align-right .tooltip-text {
+    left: auto;
+    right: 0;
+    transform: none;
+}
+
+/* T-Score Specific Styles */
+.tscore-hero {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, var(--bg-color) 100%);
+    border-bottom: 1px solid var(--border);
+}
+
+.tscore-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.5px;
+}
+
+.tscore-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Sticky Sub-Nav for Tabs */
+.tscore-nav-wrapper {
+    position: sticky;
+    top: 60px;
+    background: rgba(10, 14, 23, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    z-index: 90;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 600px) {
+    .tscore-nav-wrapper {
+        top: 49px;
+    }
+}
+.tscore-nav-btn {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.tscore-nav-btn:hover {
+    color: var(--text-main);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.tscore-nav-btn.active {
+    background: var(--target-bg);
+    color: var(--primary-green);
+    border-color: var(--primary-green);
+}
+
+/* Tab Content Visibility Guarantee */
+.tab-content {
+    display: none !important;
+}
+.tab-content.active {
+    display: block !important;
+}
+
+.settings-card {
+    display: block !important;
+    background: var(--card-bg, #131b2c);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    color: var(--text-main, #f3f4f6);
+}
+
+.card-desc {
+    color: var(--text-muted, #9ca3af);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+/* Editorial Reading Typography */
+.article-content {
+    max-width: 800px;
+    margin: 0 auto;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: #d1d5db;
+}
+
+.article-content h2 {
+    font-size: 1.75rem;
+    color: var(--text-main);
+    margin: 2.5rem 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.article-content h3 {
+    font-size: 1.25rem;
+    color: var(--text-main);
+    margin: 1.5rem 0 0.75rem 0;
+}
+
+.article-content p {
+    margin-bottom: 1.25rem;
+    text-wrap: pretty;
+}
+
+.article-content ul {
+    margin: 0 0 1.5rem 1.5rem;
+}
+
+.article-content li {
+    margin-bottom: 0.5rem;
+}
+
+.math-block {
+    background: rgba(0, 0, 0, 0.3);
+    border-left: 3px solid #60a5fa;
+    padding: 1rem 1.5rem;
+    border-radius: 0 8px 8px 0;
+    font-family: monospace;
+    font-size: 1.1rem;
+    margin: 1.5rem 0;
+    color: #93c5fd;
+    overflow-x: auto;
+}
+
+/* Premium Data Tables */
+.data-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    margin-bottom: 2rem;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+}
+
+.data-table th {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--card-bg, #131b2c);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background-color: var(--card-bg, #1a1a1a);
+    box-shadow: 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+.data-table th:nth-child(2) {
+    z-index: 15; 
+}
+
+.data-table td {
+    padding: 1rem;
+    font-size: 0.95rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Label Badges */
+.label-elite { color: #a855f7; background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.label-high { color: #3b82f6; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.label-strong { color: #10b981; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.label-quality { color: #f59e0b; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.label-boom { color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.label-depth { color: var(--text-muted); background: rgba(255, 255, 255, 0.1); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+
+/* Value Badges */
+.val-badge { padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; }
+.val-fire { color: #10b981; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); }
+.val-warn { color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+/* Position Toggle Styles */
+.pos-toggle-wrapper {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 1rem 0 1.5rem 0;
+}
+
+.pos-toggle-btn {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 0.5rem 1.5rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.pos-toggle-btn:hover {
+    color: var(--text-main);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pos-toggle-btn.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--primary-green);
+    border-color: var(--primary-green);
+}
