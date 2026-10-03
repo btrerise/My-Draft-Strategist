@@ -163,9 +163,6 @@
     box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
 
-/* --- UTILITIES --- */
-.mb-1 { margin-bottom: var(--space-1); }
-
 /* --- LAYOUT PRIMITIVES --- */
 .text-green { color: var(--primary-green); }
 .text-blue { color: #60a5fa; }
