@@ -646,14 +646,6 @@ html { scroll-padding-top: 5rem; }
     border-color: rgba(16, 185, 129, 0.6);
     transform: translateY(-2px);
 }
-.guide-banner-content {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--primary-green);
-    font-weight: 600;
-    font-size: 0.95rem;
-}
 .guide-arrow {
     color: var(--primary-green);
     transition: transform 0.2s;
@@ -1316,34 +1308,6 @@ label.toggle-title,
 .flex-grow {
     flex-grow: 1;
 }
-
-.player-card-main {
-    display: flex;
-    justify-content: space-between; 
-    align-items: center; 
-}
-
-.player-info h4 { 
-    margin: 0 0 0.4rem 0; 
-    color: var(--text-main); 
-    font-size: 1.05rem; 
-    display: flex; 
-    align-items: center; 
-    flex-wrap: wrap; 
-    gap: 0.4rem; 
-}
-
-/* Toggle Container (for Tracker/Team tabs) */
-.toggle-container { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    padding: 1rem; 
-    background: var(--card-bg);
-    border: 1px solid var(--border); 
-    border-radius: 8px; 
-    margin-bottom: 1rem; 
-}
 /* --- TEAM TAB UTILITIES --- */
 
 /* Horizontal scrolling for the table if on a very small mobile screen */
@@ -1383,27 +1347,6 @@ label.toggle-title,
     text-transform: none;
 }
 /* --- LIVE INDICATOR --- */
-.live-indicator {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444; /* Premium red instead of harsh neon green */
-    padding: 0.35rem 0.6rem;
-    border-radius: 999px; /* Pill shape */
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-    letter-spacing: 0.5px;
-}
-
-.live-indicator:hover {
-    background: rgba(239, 68, 68, 0.15);
-    border-color: rgba(239, 68, 68, 0.5);
-    transform: translateY(-1px);
-}
 /* The animated dot */
 .pulse-dot {
     width: 6px;
@@ -1612,13 +1555,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
 .close-banner-btn:hover {
     color: var(--text-main);
 }
-.draft-cell-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    width: 100%;
-    overflow: hidden; 
-}
 /* Reclaim horizontal space for player cards on mobile */
 @media (max-width: 767px) {
     .container {
@@ -1779,23 +1715,11 @@ input[type="file"]::-webkit-file-upload-button:hover {
 }
 
 /* --- PLAYER CARD GRID LAYOUT --- */
-.player-info {
-    grid-area: name;
-    min-width: 0;
-}
-
 .actions {
     grid-area: actions;
     display: flex;
     align-items: center;
     gap: 0.4rem;
-}
-
-.player-info h4 {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.3;
-    word-break: break-word;
 }
 
 /* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
