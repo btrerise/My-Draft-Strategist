@@ -2890,8 +2890,12 @@ until a later chunk builds the MDS version (out of scope for 4C and 4D).
   highlights show (green border and glow on the card, green tint on the logo). The runbook's "static highlight
   but never pulse" holds only for reduced-motion users. Moving the keyframes fixes it.
 - **Observed, not changed:** `.pulse-border` sets `border-radius: 8px`, so a pulsing `.settings-card` goes from
-  12px to 8px corners (both MLS and MDS; its comment says it "matches the card"). Visible change if fixed; the
-  owner's call.
+  12px to 8px corners (both MLS and MDS; its comment says it "matches the card"). **Owner's decision (after
+  4C): fix it**, so a pulsing card keeps its own corners. This is a visible change, so it can't go in 4D (no visible
+  change allowed). Do it as a small follow-up after 4D: drop `border-radius: 8px` from `.pulse-border` in base.css
+  (its only users are `.settings-card`s, 12px), update the comment, accept the changed screenshots if any show a
+  pulsing card, and list them in LOG. Leave `.nav-pulse`'s 8px: the logo button has no radius of its own, so the
+  8px rounds the highlight.
 - **JS:** `js/mls/init.js`, `updatePulsePrompts()`: toggles `btn-pulse` on `#mainSyncBtn`, `pulse-border` on
   `#setupSyncCard` / `#rosRankingsCard` / `#weeklyRankingsCard`, `nav-pulse` on `.logo-container`. Depends on MLS
   state (`State.leagues`, `State.rosRankings`, `State.weeklyRankings`, `isBestBallLeague(getActiveLeague())`).
@@ -2916,8 +2920,9 @@ until a later chunk builds the MDS version (out of scope for 4C and 4D).
   Today `.setup-step-go` (font-size 0.8rem) beats `.mls-btn-sm` (0.75rem, mls.css line ~1090) by coming later. In
   base.css it would load before mls.css and lose: the link text on MLS would shrink. `.mls-btn-sm` can't simply
   move with it, because `.lock-btn` (mls.css, earlier) shares an element with it (`class="mls-btn-sm lock-btn"`)
-  and would then win. Options for 4D: raise `.setup-step-go` to `.setup-checklist .setup-step-go` (an edit, still no
-  visible change), or leave `.setup-step-go` in mls.css and give MDS's link its own class. The other 10 rules are
+  and would then win. Options for 4D: (a) raise `.setup-step-go` to `.setup-checklist .setup-step-go` (an edit, still
+  no visible change), or (b) leave `.setup-step-go` in mls.css and give MDS's link its own class. **Owner's decision
+  (after 4C): (a).** The other 10 rules are
   plain cut and paste: their classes appear nowhere else in the CSS. `.btn-link-inline` (mls.css LAYOUT
   PRIMITIVES) can also move as is, if wanted: it already loses padding to `.mls-btn-sm` by order, and stays earlier.
 - **JS:** `js/mls/init.js`:
@@ -3011,7 +3016,7 @@ until a later chunk builds the MDS version (out of scope for 4C and 4D).
   `.btn-pulse`/`.pulse-border`/`.nav-pulse` with their part of the reduced-motion block. When splitting that block,
   only `.pulse-dot` goes to mds.css.
 - Move from mls.css to the end of base.css: the three pulse `@keyframes`; the 11 setup-checklist rules (with the
-  `.setup-step-go` fix above); `.rankings-fresh`, `.rankings-stale`, `.sync-failed`; `.info-banner`,
+  `.setup-step-go` raised to `.setup-checklist .setup-step-go`, the owner's choice (a)); `.rankings-fresh`, `.rankings-stale`, `.sync-failed`; `.info-banner`,
   `.info-banner-icon`. Keep their relative order and their comments, and copy the section marker each comes from.
   Prove each move with the computed-style comparison (0 differences on MLS and T-Score; MDS doesn't use these
   classes yet, so it shouldn't change either).
@@ -3023,3 +3028,8 @@ until a later chunk builds the MDS version (out of scope for 4C and 4D).
 - `node scripts/check-precache.mjs` OK (107 precached). `node --test` 162/162. `cd tests && npx playwright test`
   78/78, no screenshot changed. Only `docs/refactor/LOG.md` changed. No CACHE_NAME bump: no JS or CSS file was
   added, renamed or deleted.
+
+#### Left for later chunks
+
+- **Follow-up after 4D (owner's decision):** the pulsing-card corner fix described under feature 2. It's a visible
+  change, so it isn't part of 4D.
