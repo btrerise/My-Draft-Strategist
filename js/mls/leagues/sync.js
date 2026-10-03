@@ -133,7 +133,7 @@ import { applyMarketSettingsToUI } from '../settings.js';
                     ${activeIndicator}
                     <!-- A real button (was a clickable <td>) so the row can be reached with Tab and
                          switched to with Enter/Space. Fills the cell, so the click area is unchanged. -->
-                    <button type="button" class="mls-league-row-btn" data-focus-key="row:${escapeHtml(l.leagueId)}" onclick="switchActiveLeague('${l.leagueId}')" ${l.leagueId === State.activeLeagueId ? 'aria-current="true"' : ''}>
+                    <button type="button" class="mls-league-row-btn" data-focus-key="row:${escapeHtml(l.leagueId)}" data-action="switchActiveLeague" data-league-id="${l.leagueId}" ${l.leagueId === State.activeLeagueId ? 'aria-current="true"' : ''}>
                         <strong style="color: var(--text-main); font-size: 0.9rem;">${escapeHtml(l.name)}</strong>
                         ${formatText}
                         ${syncText}
@@ -146,9 +146,9 @@ import { applyMarketSettingsToUI } from '../settings.js';
                     ${lineupIcon} ${earlyIcon}
                 </td>
                 <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap;">
-                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="up:${escapeHtml(l.leagueId)}" onclick="moveLeague(${index}, -1)" ${index === 0 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} up">▲</button>
-                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="down:${escapeHtml(l.leagueId)}" onclick="moveLeague(${index}, 1)" ${index === State.leagues.length - 1 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} down">▼</button>
-                    <button class="btn-sm btn-danger" style="padding: 0.3rem 0.5rem; margin-left: 0.3rem;" onclick="deleteLeagueManager('${l.leagueId}')" aria-label="Remove ${escapeHtml(l.name)}">✕</button>
+                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="up:${escapeHtml(l.leagueId)}" data-action="moveLeague" data-index="${index}" data-direction="-1" ${index === 0 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} up">▲</button>
+                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="down:${escapeHtml(l.leagueId)}" data-action="moveLeague" data-index="${index}" data-direction="1" ${index === State.leagues.length - 1 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} down">▼</button>
+                    <button class="btn-sm btn-danger" style="padding: 0.3rem 0.5rem; margin-left: 0.3rem;" data-action="deleteLeagueManager" data-league-id="${l.leagueId}" aria-label="Remove ${escapeHtml(l.name)}">✕</button>
                 </td>
             </tr>`;
         });

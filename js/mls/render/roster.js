@@ -123,7 +123,7 @@ import { refreshPowerRankings } from '../main.js';
                     </div>
                 </div>
                 <div class="mls-row-actions">
-                    <button class="btn-danger" style="padding:4px 8px; border-radius:4px;" onclick="deletePlayer('${p.id}')" aria-label="Remove ${escapeHtml(p.name)}">✕</button>
+                    <button class="btn-danger" style="padding:4px 8px; border-radius:4px;" data-action="deletePlayer" data-id="${p.id}" aria-label="Remove ${escapeHtml(p.name)}">✕</button>
                 </div>
             </div>`;
         });

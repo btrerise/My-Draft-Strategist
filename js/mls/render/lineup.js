@@ -617,7 +617,7 @@ import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js'
         // Only shown when there's actually something to clear -- avoids a dead/no-op button
         // taking up space on the common case where nobody has manually locked anyone.
         if (locksList.length > 0) {
-            html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" onclick="unlockAllPlayers()" title="Clears season-long manual locks in this league only - does not affect players auto-locked because their game already started">Unlock All (${locksList.length})</button></div>`;
+            html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" data-action="unlockAllPlayers" title="Clears season-long manual locks in this league only - does not affect players auto-locked because their game already started">Unlock All (${locksList.length})</button></div>`;
         }
 
         // While a swap is pending, the source player's row gets an amber highlight (see
@@ -653,8 +653,8 @@ import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js'
                 // adds them to locksList, and in that case both should treat it as a manual lock.
                 let isAutoLock = p.autoLocked && !locksList.includes(p.id);
                 let lockControl = isAutoLock
-                    ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" aria-label="${escapeHtml(p.name)}'s game has started. Override lock" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" onclick="overrideAutoLock('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
-                    : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" onclick="toggleLock('${p.id}')" aria-label="Lock ${escapeHtml(p.name)}" aria-pressed="${p.isLocked ? 'true' : 'false'}">${lockIcon}</button>`;
+                    ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" aria-label="${escapeHtml(p.name)}'s game has started. Override lock" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" data-action="overrideAutoLock" data-id="${p.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
+                    : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" data-action="toggleLock" data-id="${p.id}" aria-label="Lock ${escapeHtml(p.name)}" aria-pressed="${p.isLocked ? 'true' : 'false'}">${lockIcon}</button>`;
 
                 let rankBadge = lineupRankBadge(p, rankedByRos);
 
@@ -705,7 +705,7 @@ import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js'
                     </div>
                     <div class="mls-row-actions">
                         ${getPlayerPointsHTML(p)}
-                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                        <button class="mls-btn-sm btn-secondary swap-btn" data-action="initiateSwap" data-id="${p.id}" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
                         ${lockControl}
                     </div>
                 </div>`;
@@ -765,7 +765,7 @@ import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js'
                 const rowActions = p.isTaxi
                     ? getPlayerPointsHTML(p)
                     : `${getPlayerPointsHTML(p)}
-                        <button class="mls-btn-sm btn-secondary swap-btn" onclick="initiateSwap('${p.id}')" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>`;
+                        <button class="mls-btn-sm btn-secondary swap-btn" data-action="initiateSwap" data-id="${p.id}" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>`;
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass} ${p.isTaxi ? 'taxi-row' : ''}">

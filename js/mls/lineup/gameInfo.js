@@ -295,7 +295,7 @@ import { renderLineupUI } from '../main.js';
         const namesHTML = lockingPlayers.map(p => escapeHtml(p.name)).join(', ');
         const chevronSvg = `<svg aria-hidden="true" class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
         return `<div id="lockCountdownCard" class="lineup-lock-countdown-collapsible">
-            <button type="button" class="lock-countdown-header btn-bare" onclick="toggleLockCountdown()" aria-expanded="false" aria-controls="lockCountdownDetail">
+            <button type="button" class="lock-countdown-header btn-bare" data-action="toggleLockCountdown" aria-expanded="false" aria-controls="lockCountdownDetail">
                 ${clockSvg}
                 <span>Next lock: <strong>${lockingPlayers.length} players</strong> &middot; ${label} <span class="lineup-lock-countdown-time">(in ${countdownStr})</span></span>
                 ${chevronSvg}

@@ -84,7 +84,7 @@ export function playerHeadshotHTML(p) {
     // display:none, and Chromium never starts a lazy image that isn't rendered -- so turning
     // the setting off also stops the requests to Sleeper's CDN, not just the pixels.
     const img = id
-        ? `<img class="mls-headshot-img" src="${HEADSHOT_URL(id)}" alt="" width="32" height="32" loading="lazy" decoding="async" onerror="this.remove()">`
+        ? `<img class="mls-headshot-img" src="${HEADSHOT_URL(id)}" alt="" width="32" height="32" loading="lazy" decoding="async" data-action="removeImage">`
         : '';
     return `<span class="mls-headshot${p.pos === 'DEF' ? ' mls-headshot-def' : ''}" aria-hidden="true"><span class="mls-headshot-initials">${escapeHtml(headshotInitials(p))}</span>${img}</span>`;
 }
