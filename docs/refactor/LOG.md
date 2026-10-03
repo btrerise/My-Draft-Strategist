@@ -2184,5 +2184,9 @@ arguments). They're still plain text in HTML, which 6A's card allows; 6B edits t
 - **5D:** the module-internal `window.x(...)` calls above could become imports, after which
   `window.toggleMenu/saveSettings/renderLiveSyncStatus/setPosFilter/toggleAutoSync` can go too.
   `js/shared/globals.js`'s header still mentions "onclick handlers in the HTML", which stays true until
-  5C. Also on the MDS page: `id="fetchAdpBtn"` and the `.leaguelogs-attribution` class keep their old
-  names (ids/classes are markup, out of scope here).
+  5C.
+- **5D (added to its runbook card after 5A, at the owner's request):** rename the `#fetchAdpBtn` id and
+  the `.leaguelogs-attribution` class, which kept their LeagueLogs-era names (ids and classes are
+  markup, out of scope here). Both pages use them (`index.html`, `lineup/index.html`), the class is
+  styled in `css/styles.css` (or wherever 4A puts it), and `tests/mds-sync.spec.mjs` and
+  `tests/mls-market.spec.mjs` click `#fetchAdpBtn`. The 5D card has the details.
