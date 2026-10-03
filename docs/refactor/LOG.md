@@ -2054,3 +2054,139 @@ either don't have enough game history yet…", which blamed the wrong thing (see
   page builds it once from the cached player map.
 - 5C (MLS handlers, part 2) can start once 5B and this chunk are on main. Neither new file has inline
   handlers; `sim/ui.js`'s new message has none either.
+
+### 5A — MDS: inline handlers → event delegation
+
+**No `on*=` attribute is left in Draft Strategist.** `grep -nE '\bon[a-z]+=' index.html js/mds/*.js`
+finds only a comment. The card counted 44 + 22; the real counts were **45** in `index.html` (the hero
+logo's `onerror` wasn't counted) and **28** in template strings (24 in `tracker.js`, counting the four
+drag handlers on a queue card; 3 in `team.js`; 1 in `board.js`). Each attribute was swapped by a
+script doing exact string replacements, with the expected count asserted per pattern. Markup
+structure is unchanged; only attributes changed.
+
+#### The pattern (5B and 5C reuse it)
+
+- **Markup:** `data-action="name"`, plus `data-*` attributes for the arguments the handler used to
+  pass as literals: `data-tab="setup"`, `data-id="${p.id}"`, `data-mine="true"`, `data-index="${idx}"`,
+  `data-direction="-1"`, `data-pos`, `data-banner` + `data-storage-key`.
+- **`js/shared/ui/delegate.js`** (new): `delegate(container, type, actions)` adds one listener. On each
+  event it walks `event.composedPath()` from the target up to the container and calls every matching
+  action nearest first, with `this` = the element and arguments `(event, element)`. That's the order
+  the inline handlers fired in while the event bubbled. It stops if an action stops propagation.
+  Read its header before reusing it. Things to know:
+  - **Capture phase.** It listens in the capture phase, so it also sees events that don't bubble: an
+    `<img>`'s `error`, and a script's `new Event('change')` without `bubbles: true`.
+    `tests/mds-sync.spec.mjs` dispatches exactly that on `#autoSyncToggle`, and a bubble-phase listener
+    on `#main` missed it, so that test failed until the listener moved to the capture phase.
+  - **`event.currentTarget` is the container.** Two handlers read it (`handleQueueDragStart` /
+    `handleQueueDragEnd` in `queue.js`, `toggleCardDetails` in `ui.js`). They now take the element as
+    a parameter: the only body edits, one line each plus the signature.
+  - **Detached elements.** An event fired on an element that an earlier handler detached never
+    reaches a container. The case that matters is the queue card's `dragend`. It fires after
+    `handleQueueDrop`'s `renderBoard()` has replaced the queue. The inline `ondragend` still ran on
+    the detached card and reset `draggedQueueIndex`; without it, a later stray drop on the queue
+    (dragged text, say) reordered it with the stale index. Found with a scripted drag sequence: main
+    `231 → 231`, branch `231 → 321`. So the `dragstart` action gives the card its own
+    `{ once: true }` dragend listener. **5B/5C: look for the same case** wherever a handler
+    re-renders the element its event came from.
+  - **Action names are unique per page across event types.** A checkbox's change action must not
+    also be a click action. That's why `tscoreToggle`'s `onchange="saveSettings()"` became
+    `autoSaveSettings` (no button argument), separate from the Save buttons' `saveSettings`
+    (`saveSettings(this)`).
+- **`js/mds/main.js`** now holds the action tables (`clickActions`, `changeActions`, `inputActions`,
+  `errorActions`, `dragActions`). Each entry is the inline handler's code: `this` stays `this`, and
+  literals become `this.dataset.*`, with `Number()` for ids and indexes, since the handlers compare
+  ids with `===`. The two inline-only code snippets (aggregate toggle, weight-slider labels) and the
+  Import Backup button's `.click()` moved into entries verbatim. There's one listener per container
+  and event type, on the page's five static regions: `body > header.header` (click, change),
+  `#menuOverlay`, `#hamburgerMenu`, `#main` (click, change, input, dragstart/dragover/drop, error) and
+  `body > nav.nav-bar`. They're never re-rendered, so the listeners survive every `renderBoard()`.
+- **The hero logo's early error.** The inline `onerror` was attached during parsing, and main.js runs
+  after parsing, so the logo may already have failed by then. main.js hides any
+  `img[data-action="hideImage"]` that is already `complete` with `naturalWidth === 0`. Checked with
+  the logo routed to a 404: hidden on main and on the branch.
+
+#### window.* names
+
+Removed **28**, which nothing references any more: `switchDraftProfile resetPicksOnly importMdsSettings
+hardReset toggleEditBar toggleCardDetails saveInlineEdit createManualDraft addAndSyncSleeperDraft
+handleSmartSync draftPlayer undoDraft toggleQueue handleQueueDragStart handleQueueDragOver
+handleQueueDragEnd handleQueueDrop moveQueueItem processPaste quickStartLeagueLogs fetchLeagueLogsADP
+processManualADP sendRosterToLineupStrategist toggleRecapMath exportTeam cycleAffinity
+toggleQueueCollapse toggleHeadshots`. A diff of `Object.getOwnPropertyNames(window)` on `/` shows
+exactly these 28 missing compared with main, and nothing new (1,248 → 1,220).
+
+Kept **7**, because something still reads them through `window` (main.js lists who):
+`toggleMenu` (ui.js, init.js), `saveSettings` and `renderLiveSyncStatus` (sleeperSync.js),
+`exportMdsSettings` (**js/boot.js's rescue backup**, external to the module graph), `showTab`
+(ui.js, gestures.js, init.js, **tests/helpers.mjs**), `setPosFilter` (init.js), `toggleAutoSync`
+(state.js, sleeperSync.js). Turning the module-internal `window.x(...)` calls into imports would
+retire `toggleMenu`, `saveSettings`, `renderLiveSyncStatus`, `setPosFilter` and `toggleAutoSync`, but
+that edits bodies, so it's left for 5D (or later). `exportMdsSettings` and `showTab` must stay
+regardless.
+
+`window.dismissBanner` (globals.js) is still called by the `dismissBanner` action and by MLS's inline
+handlers; it isn't MDS's to remove.
+
+**Renamed (7A left this to 5A):** `quickStartLeagueLogs` → `quickStartFfc`, `fetchLeagueLogsADP` →
+`fetchMarketValue` (named after its button, since it also handles the Sleeper ADP options;
+`fetchFfcAdp` was taken by the shared client in `js/shared/api/ffc.js`). These are the declarations in
+`market.js` and the import in main.js. Bodies are unchanged. MLS's own `window.fetchLeagueLogsADP`
+(`js/mls/scout/marketDisconnect.js`) is a different function and is untouched; 5C can rename it.
+
+#### For 6A/6B
+
+The three banner storage keys now sit in `index.html` as `data-storage-key="ds_hide_mls_banner"`,
+`"ds_hide_guide_banner"` and `"ds_hide_install_banner"` (they used to be `dismissBanner(...)`
+arguments). They're still plain text in HTML, which 6A's card allows; 6B edits them by hand.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (101 precached). `node --test` 157/157.
+  `cd tests && npx playwright test`: **72/72**. **No screenshot changed.**
+- **Throwaway spec (not committed), run on main and on this branch at both widths:** it presses every
+  control that had an inline handler and records the active tab, menu/overlay state, focus,
+  toast, confirm dialog, body class, every localStorage value, and per-step details. Covered: header,
+  hamburger, overlay, close button, menu nav, bottom nav (phone), logo, guide banner, the three banner
+  dismissals, Smart Sync, the aggregate toggle and slider (mouse and arrow keys), paste, manual ADP,
+  Quick-Start, Fetch Market Value, Sync, the T-Score/headshot toggles, both Save buttons, Create
+  Manual Draft, the draft switcher, Export/Import Backup (download, file chooser, file input), both
+  Reset dialogs, the empty-state "Go to Setup" buttons on three tabs, the queue star, color label,
+  card expand (phone), the pencil/edit bar (focus moves into the editor), Save/Cancel, the position
+  filters, queue up/down/remove/collapse, Pick/Taken from the queue and the pool, the tracker/board
+  live-sync toggles, recap math, Export Team, Undo (team and others), Send to Lineup Strategist (the
+  handoff payload and navigation), Board thumbnails and Team avatars hiding when their images fail, and
+  the hero logo's 404. It also covers **keyboard paths** (Enter on the hamburger, Escape, Enter/Space on
+  Pick, the queue star and the color label, Enter on the pencil, arrow keys on the slider) and an
+  **accessibility-tree snapshot (`ariaSnapshot`) of every tab**, empty and seeded. **Result:
+  identical** on both widths. The only difference is the renamed function in the stack trace of the
+  console error Quick-Start logs for its stubbed 404.
+- Drag and drop: Playwright's `dragTo` gives the same order on both (`123 → 231`, 3 runs per width
+  each). The hand-dispatched sequence above (dragstart, drop, dragend on the detached card, then a
+  stray drop) is identical after the fix. One unobservable ordering difference remains: the card's
+  `dragend` listener is now added at dragstart, so a listener someone else attached to the card
+  earlier runs before it (the inline handler always ran first).
+- **Trap for whoever runs a comparison like this:** `playwright.config.mjs` has
+  `reuseExistingServer: true`. A run killed from outside (I used `timeout`) leaves `node serve.mjs`
+  running on port 4173, and every later run, from any checkout, silently tests *that* tree. For a
+  while my "branch" runs served main's code. Check `ps aux | grep serve.mjs` between runs, and have
+  the throwaway spec record which build it loaded.
+
+#### Other changes
+
+- `sw.js`: `/js/shared/ui/delegate.js` added. CACHE_NAME `v2.8.54` → `v2.8.55`.
+- `js/mds/market.js` header comment: the rename. README `/js` line: what `mds/main.js` holds now.
+
+#### Left for later chunks
+
+- **5B/5C:** reuse `delegate.js`; read the two caveats in its header (listeners on elements between
+  target and container; events on detached elements). MLS's `main.js` can hold its tables the same way.
+- **5D:** the module-internal `window.x(...)` calls above could become imports, after which
+  `window.toggleMenu/saveSettings/renderLiveSyncStatus/setPosFilter/toggleAutoSync` can go too.
+  `js/shared/globals.js`'s header still mentions "onclick handlers in the HTML", which stays true until
+  5C.
+- **5D (added to its runbook card after 5A, at the owner's request):** rename the `#fetchAdpBtn` id and
+  the `.leaguelogs-attribution` class, which kept their LeagueLogs-era names (ids and classes are
+  markup, out of scope here). Both pages use them (`index.html`, `lineup/index.html`), the class is
+  styled in `css/styles.css` (or wherever 4A puts it), and `tests/mds-sync.spec.mjs` and
+  `tests/mls-market.spec.mjs` click `#fetchAdpBtn`. The 5D card has the details.

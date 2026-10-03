@@ -1,8 +1,9 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // LEAGUE LOGS INTEGRATION (Quick-Start, ADP sync, manual ADP).
 // Refactor 7A: LeagueLogs retired its public API, so Quick-Start and Fetch Market Value use
-// Fantasy Football Calculator (js/shared/api/ffc.js) instead. The exported names keep
-// "LeagueLogs" because index.html's inline handlers call them (5A can rename them).
+// Fantasy Football Calculator (js/shared/api/ffc.js) instead. Refactor 5A renamed the two
+// button handlers from quickStartLeagueLogs / fetchLeagueLogsADP to quickStartFfc /
+// fetchMarketValue, once no inline handler called them by name.
 import { savePlayerPool } from './storage.js';
 import { State } from './state.js';
 import { updateMetaDisplay } from './settings.js';
@@ -62,7 +63,7 @@ import { normalizeName } from '../shared/names.js';
         return { format, formatText: formatSelect.options[formatSelect.selectedIndex].text };
     }
 
-    export const quickStartLeagueLogs = async function(btn) {
+    export const quickStartFfc = async function(btn) {
         const formatSelect = document.getElementById('adpFormatSelect');
         if (!formatSelect) return;
         const selected = selectedFfcFormat();
@@ -113,7 +114,7 @@ import { normalizeName } from '../shared/names.js';
         }
     };
 
-    export const fetchLeagueLogsADP = async function(btn) {
+    export const fetchMarketValue = async function(btn) {
     if (State.players.length === 0) {
         flashButton(btn, "Load Rankings First", true);
         if (window.showToast) window.showToast("You must load a set of player rankings before fetching Market Value.", { isError: true });

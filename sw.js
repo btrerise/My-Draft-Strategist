@@ -27,7 +27,7 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.54';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.55';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -81,6 +81,7 @@ const PRECACHE_ASSETS = [
     '/js/shared/rankings/diagnostics.js',
     '/js/shared/ui/banners.js',
     '/js/shared/ui/confirm.js',
+    '/js/shared/ui/delegate.js',
     '/js/shared/ui/feedbackForm.js',
     '/js/shared/ui/fileDrop.js',
     '/js/shared/ui/flashButton.js',

@@ -122,9 +122,10 @@ window.addEventListener('popstate', (e) => {
             if (!isFlex && toggleBtn && toggleBtn.matches(':focus-visible')) bar.querySelector('input')?.focus();
         }
     };
-    export const toggleCardDetails = function(e, id) {
+    // expandBtn: the button that was clicked. The inline handler read it from e.currentTarget;
+    // since refactor chunk 5A the delegated listener in main.js passes it.
+    export const toggleCardDetails = function(e, id, expandBtn) {
     e.stopPropagation(); 
-    const expandBtn = e.currentTarget; // Get the button that was clicked
     const card = document.getElementById(`details-${id}`).closest('.player-card');
     
     if (card) {

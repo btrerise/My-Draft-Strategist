@@ -22,10 +22,12 @@ import { renderBoard } from './tracker.js';
 // --- QUEUE REORDERING LOGIC ---
     let draggedQueueIndex = null;
 
-    export const handleQueueDragStart = function(e, index) {
+    // `card` is the dragged queue card. The inline handler read it from e.currentTarget; since
+    // refactor chunk 5A main.js passes it (see its dragActions).
+    export const handleQueueDragStart = function(e, index, card) {
         draggedQueueIndex = index;
         e.dataTransfer.effectAllowed = 'move';
-        e.currentTarget.style.opacity = '0.4';
+        card.style.opacity = '0.4';
     };
 
     export const handleQueueDragOver = function(e) {
@@ -33,8 +35,8 @@ import { renderBoard } from './tracker.js';
         e.dataTransfer.dropEffect = 'move';
     };
 
-    export const handleQueueDragEnd = function(e) {
-        e.currentTarget.style.opacity = '1';
+    export const handleQueueDragEnd = function(e, card) {
+        card.style.opacity = '1';
         draggedQueueIndex = null;
     };
 

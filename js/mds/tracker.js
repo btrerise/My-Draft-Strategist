@@ -171,8 +171,8 @@ import { renderDraftRecap } from './recap.js';
                             ${injuryBadge}
                             ${stackBadge}
                             <div style="display: flex; align-items: center; gap: 2px;">
-                                <button type="button" onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue" aria-label="Queue ${escapeHtml(p.name)}" aria-pressed="${isQueued ? 'true' : 'false'}">${queueStarIcon}</button>
-                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Color label: ${['None', 'Green', 'Yellow', 'Orange', 'Red', 'Purple'][p.affinity || 0]}. Change color">
+                                <button type="button" data-action="toggleQueue" data-id="${p.id}" style="background: none; border: none; font-size: 1.15rem; color: ${queueStarColor}; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Toggle Queue" aria-label="Queue ${escapeHtml(p.name)}" aria-pressed="${isQueued ? 'true' : 'false'}">${queueStarIcon}</button>
+                                <button data-action="cycleAffinity" data-id="${p.id}" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Color label: ${['None', 'Green', 'Yellow', 'Orange', 'Red', 'Purple'][p.affinity || 0]}. Change color">
                                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
                                                  border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
                                                  background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
@@ -184,9 +184,9 @@ import { renderDraftRecap } from './recap.js';
                         
                         <!-- Bottom Right: Draft Actions & Chevron -->
                         <div class="actions" style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
-                            <button class="mds-btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
-                            <button class="mds-btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
-                            <button class="btn-expand hide-on-desktop" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" onclick="toggleCardDetails(event, ${p.id})" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
+                            <button class="mds-btn-sm btn-draft" data-action="draftPlayer" data-id="${p.id}" data-mine="false" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
+                            <button class="mds-btn-sm btn-mine" data-action="draftPlayer" data-id="${p.id}" data-mine="true" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
+                            <button class="btn-expand hide-on-desktop" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" data-action="toggleCardDetails" data-id="${p.id}" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
                                 <svg aria-hidden="true" class="chevron-icon" style="transform: ${p.isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
                         </div>
@@ -196,7 +196,7 @@ import { renderDraftRecap } from './recap.js';
                 <div class="card-details" id="details-${p.id}">
                     <div class="player-stats">
                         <span>${escapeHtml(p.team)} | Bye: ${escapeHtml(p.bye)}${adpText}${valueBadgeHTML}</span>
-                        <button type="button" class="edit-link" onclick="toggleEditBar(${p.id})" title="Edit Details" aria-label="Edit ${escapeHtml(p.name)}'s details" aria-expanded="${p.isEditing ? 'true' : 'false'}" aria-controls="inline-edit-${p.id}">
+                        <button type="button" class="edit-link" data-action="toggleEditBar" data-id="${p.id}" title="Edit Details" aria-label="Edit ${escapeHtml(p.name)}'s details" aria-expanded="${p.isEditing ? 'true' : 'false'}" aria-controls="inline-edit-${p.id}">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px;" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                         </button>
                     </div>
@@ -219,8 +219,8 @@ import { renderDraftRecap } from './recap.js';
                                 <input type="text" id="edit-bye-val-${p.id}" value="${escapeHtml(p.bye)}" style="width:45px;">
                             </div>
                             <div style="margin-left:auto; display:flex; gap:4px; align-self:flex-end;">
-                                <button class="mds-btn-sm btn-mine" style="padding:0.4rem 0.8rem;" onclick="saveInlineEdit(${p.id})">Save</button>
-                                <button class="mds-btn-sm btn-draft" style="padding:0.4rem 0.6rem;" onclick="toggleEditBar(${p.id})">Cancel</button>
+                                <button class="mds-btn-sm btn-mine" style="padding:0.4rem 0.8rem;" data-action="saveInlineEdit" data-id="${p.id}">Save</button>
+                                <button class="mds-btn-sm btn-draft" style="padding:0.4rem 0.6rem;" data-action="toggleEditBar" data-id="${p.id}">Cancel</button>
                             </div>
                         </div>
                     </div>
@@ -232,10 +232,7 @@ import { renderDraftRecap } from './recap.js';
             <div class="player-card queue-card" 
                  data-player-id="${p.id}"
                  draggable="true" 
-                 ondragstart="handleQueueDragStart(event, ${idx})" 
-                 ondragover="handleQueueDragOver(event)" 
-                 ondragend="handleQueueDragEnd(event)" 
-                 ondrop="handleQueueDrop(event, ${idx})"
+                 data-action="queueDrag" data-index="${idx}"
                  style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.04); padding: 0.75rem; text-align: left;">
                  
                 <div style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: stretch;">
@@ -253,12 +250,12 @@ import { renderDraftRecap } from './recap.js';
                         
                         <!-- Left Side: Arrows, Badges, Star & Affinity -->
                         <div class="card-badges-row">
-                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, -1)" ${isFirst ? 'disabled' : ''} aria-label="Move ${escapeHtml(p.name)} up the queue">▲</button>
-                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" onclick="moveQueueItem(${idx}, 1)" ${isLast ? 'disabled' : ''} aria-label="Move ${escapeHtml(p.name)} down the queue">▼</button>
+                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" data-action="moveQueueItem" data-index="${idx}" data-direction="-1" ${isFirst ? 'disabled' : ''} aria-label="Move ${escapeHtml(p.name)} up the queue">▲</button>
+                            <button class="mds-btn-sm btn-secondary queue-arrow-btn" data-action="moveQueueItem" data-index="${idx}" data-direction="1" ${isLast ? 'disabled' : ''} aria-label="Move ${escapeHtml(p.name)} down the queue">▼</button>
                             <span class="badge pos-badge ${escapeHtml(p.posGroup)}">${escapeHtml(p.posDisplay)}</span>
                             <div style="display: flex; align-items: center; gap: 2px;">
-                                <button onclick="toggleQueue(${p.id})" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue" aria-label="Remove ${escapeHtml(p.name)} from queue">★</button>
-                                <button onclick="cycleAffinity(event, ${p.id})" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Color label: ${['None', 'Green', 'Yellow', 'Orange', 'Red', 'Purple'][p.affinity || 0]}. Change color">
+                                <button data-action="toggleQueue" data-id="${p.id}" style="background: none; border: none; font-size: 1.15rem; color: #f59e0b; cursor: pointer; padding: 0 4px; transform: translateY(-1px);" title="Remove from Queue" aria-label="Remove ${escapeHtml(p.name)} from queue">★</button>
+                                <button data-action="cycleAffinity" data-id="${p.id}" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Color Label" aria-label="Color label: ${['None', 'Green', 'Yellow', 'Orange', 'Red', 'Purple'][p.affinity || 0]}. Change color">
                                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; 
                                                  border: 2px solid ${['var(--text-muted)', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
                                                  background-color: ${['transparent', '#10b981', '#eab308', '#f97316', '#ef4444', '#a855f7'][p.affinity || 0]}; 
@@ -270,8 +267,8 @@ import { renderDraftRecap } from './recap.js';
                         
                         <!-- Right Side: Draft Actions -->
                         <div style="display: flex; gap: 0.4rem; flex-shrink: 0; align-items: center;">
-                            <button class="mds-btn-sm btn-draft" onclick="draftPlayer(${p.id}, false)" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
-                            <button class="mds-btn-sm btn-mine" onclick="draftPlayer(${p.id}, true)" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
+                            <button class="mds-btn-sm btn-draft" data-action="draftPlayer" data-id="${p.id}" data-mine="false" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
+                            <button class="mds-btn-sm btn-mine" data-action="draftPlayer" data-id="${p.id}" data-mine="true" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
                         </div>
                     </div>
                 </div>
@@ -313,11 +310,11 @@ import { renderDraftRecap } from './recap.js';
         if (State.players.length === 0) {
             if (tierTrackerElEarly) tierTrackerElEarly.innerHTML = '';
             if (poolEl) {
-                poolEl.innerHTML = `<div class="empty-state-card"><p>Load rankings on the Setup tab to see your player pool here.</p><button class="btn btn-primary empty-state-cta" onclick="showTab('setup')">Go to Setup</button></div>`;
+                poolEl.innerHTML = `<div class="empty-state-card"><p>Load rankings on the Setup tab to see your player pool here.</p><button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Setup</button></div>`;
             }
             if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster();
             if (otherEl) {
-                otherEl.innerHTML = `<div class="empty-state-card"><p>Drafted players from other teams will show up here once you're synced or tracking picks.</p><button class="btn btn-primary empty-state-cta" onclick="showTab('setup')">Go to Setup</button></div>`;
+                otherEl.innerHTML = `<div class="empty-state-card"><p>Drafted players from other teams will show up here once you're synced or tracking picks.</p><button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Setup</button></div>`;
             }
             const limitsBodyElEmpty = document.getElementById('limitsBody');
             if (limitsBodyElEmpty) {
@@ -357,7 +354,7 @@ import { renderDraftRecap } from './recap.js';
 
         const trackers = getTierTrackerData(draftedSet);
         let isAllActive = !Array.isArray(State.activePosFilter) || State.activePosFilter.length === 0;
-        let trackerHTML = `<button type="button" class="badge badge-all pos-filter ${isAllActive ? 'active-filter' : ''}" onclick="setPosFilter('ALL')" aria-pressed="${isAllActive}" aria-label="Show all positions"><span>ALL</span></button>`;
+        let trackerHTML = `<button type="button" class="badge badge-all pos-filter ${isAllActive ? 'active-filter' : ''}" data-action="setPosFilter" data-pos="ALL" aria-pressed="${isAllActive}" aria-label="Show all positions"><span>ALL</span></button>`;
 
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             // If ALL is active, everything lights up. Otherwise, check if this specific pos is selected.
@@ -367,7 +364,7 @@ import { renderDraftRecap } from './recap.js';
             // none of them is individually "on".
             const isPicked = !isAllActive && State.activePosFilter.includes(pos);
             const tLabel = trackers[pos] ? `top available tier ${trackers[pos].tier}, ${trackers[pos].count} left` : 'none left';
-            trackerHTML += `<button type="button" class="badge pos-badge ${pos} pos-filter ${isActive}" onclick="setPosFilter('${pos}')" aria-pressed="${isPicked}" aria-label="Filter ${pos}, ${tLabel}"><span>${pos}</span><span style="font-size:0.65rem; opacity:0.9;">${tText}</span></button>`;
+            trackerHTML += `<button type="button" class="badge pos-badge ${pos} pos-filter ${isActive}" data-action="setPosFilter" data-pos="${pos}" aria-pressed="${isPicked}" aria-label="Filter ${pos}, ${tLabel}"><span>${pos}</span><span style="font-size:0.65rem; opacity:0.9;">${tText}</span></button>`;
         });
         const tierTrackerEl = document.getElementById('tierTracker');
         if (tierTrackerEl) tierTrackerEl.innerHTML = trackerHTML;
@@ -522,7 +519,7 @@ import { renderDraftRecap } from './recap.js';
 
             if (activeQueue.length > 0) {
                 let queueExpandedClass = isQueueCollapsed ? "" : " is-expanded";
-                newQueueHTML += `<button type="button" class="queue-header btn-bare${queueExpandedClass}" onclick="toggleQueueCollapse()" aria-expanded="${isQueueCollapsed ? 'false' : 'true'}" aria-label="Toggle Queue">                    <span class="queue-header-title"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</span>
+                newQueueHTML += `<button type="button" class="queue-header btn-bare${queueExpandedClass}" data-action="toggleQueueCollapse" aria-expanded="${isQueueCollapsed ? 'false' : 'true'}" aria-label="Toggle Queue">                    <span class="queue-header-title"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</span>
                     <svg aria-hidden="true" class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </button>`;
 
@@ -559,7 +556,7 @@ import { renderDraftRecap } from './recap.js';
                     newOtherHTML += `
                         <div class="roster-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border);">
                             <div style="color: var(--text-muted);"><strike>${escapeHtml(p.name)}</strike> <span class="badge">${escapeHtml(p.posGroup)}</span></div>
-                            <button class="mds-btn-sm btn-draft" style="padding:2px 6px;" onclick="undoDraft(${p.id})">Undo</button>
+                            <button class="mds-btn-sm btn-draft" style="padding:2px 6px;" data-action="undoDraft" data-id="${p.id}">Undo</button>
                         </div>`;
                 }
             });
