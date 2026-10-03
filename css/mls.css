@@ -164,7 +164,6 @@
    renderers (Roster, Scout table, Lineup). Prefixed mls- deliberately: this file is shared with
    My Draft Strategist, and an earlier un-prefixed shared class (.btn-sm) caused a real collision
    between the two apps -- see the .mds-btn-sm note further down for the full story. */
-.mls-table-header-cell { padding: 12px 10px; }
 .mls-tooltip-center { display: flex; justify-content: center; width: 100%; }
 .mls-dotted-underline { border-bottom: 1px dotted currentColor; cursor: pointer; }
 .mls-error-text { color: var(--error-text); }
