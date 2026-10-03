@@ -2837,3 +2837,189 @@ Written and run against main **before** the move, then unchanged after it. Three
   the stale "inline script" comments in main.js. 5D now waits for 5E, and its comment sweep includes
   `js/tscore/`.
 - **4D:** the 7 T-Score-only rules are out of base.css, so 4D can skip them.
+
+### 4C — findings: Lineup Strategist styles Draft Strategist will likely share
+
+**Research only. No app file, CSS file or test changed.** Started from `css/mls.css` and the MLS rules 4A kept in
+`css/base.css`, grouped the classes into features users see, found each one's markup and JS by grepping its class
+names in `lineup/index.html` and `js/mls/`, and estimated how likely MDS is to use it from what MDS has today
+(`index.html`, `js/mds/`). The owner decided per feature; 4D carries out the decisions.
+
+#### Ranked list (50% or more)
+
+| # | Feature | Chance | CSS | JS | Size | Owner's decision |
+|---|---|---|---|---|---|---|
+| 1 | Smaller ✕ on dismissible banners | 90% | already in base (1 rule) | none | small | share now in CSS |
+| 2 | Pulsing "do this next" highlights | 85% | 3 rules + reduced-motion block in base; 3 `@keyframes` in mls.css | `updatePulsePrompts` (MLS state) | small | share now in CSS |
+| 3 | Setup checklist | 70% | 11 class rules in mls.css (+1 MLS-id rule that stays) | `renderSetupStep`, `goToSetupStep`, `updatePulsePrompts` | medium | share now in CSS |
+| 4 | "Updated 3 days ago" freshness labels | 65% | 3 rules in mls.css | `getRankingsFreshness` (pure) + 3 callers | small–medium | share now in CSS |
+| 5 | Danger Zone card | 60% | already in base (2 rules) | none | small | share now in CSS |
+| 6 | Blue info banner with a round "i" | 55% | 2 rules in mls.css | none (static markup + 1 template string) | small | share now in CSS |
+
+"Share now in CSS" means: these rules stay in, or move to, `css/base.css` in 4D. No MDS markup or JS is added
+until a later chunk builds the MDS version (out of scope for 4C and 4D).
+
+#### 1. Smaller ✕ on dismissible banners — 90% — Owner's decision: share now in CSS
+
+- **What it is:** a smaller close button for banners with little vertical room.
+- **Why MDS:** MDS already gets the same look by hand: `#mlsBanner` and `#guideBanner`'s ✕ in `index.html` carry
+  `style="font-size: 0.85rem; padding: 0.25rem;"`, which is exactly this rule (`--space-1` is `0.25rem`).
+- **CSS:** `css/base.css`, LAYOUT PRIMITIVES: `.close-banner-btn-sm` (1 rule). Kept in base by 4A's cascade guard;
+  4D's card already leaves it there. Tokens: `--space-1`. No phone, reduced-motion or animation versions.
+  Move: none needed.
+- **JS:** none. Banner dismissal is already shared (`js/shared/ui/banners.js`, `dismissBanner`).
+- **Names:** fine.
+
+#### 2. Pulsing "do this next" highlights — 85% — Owner's decision: share now in CSS
+
+- **What it is:** a pulsing ring or border on whatever setup step comes next: MLS pulses the Sync button, the next
+  card (Sync, ROS rankings, Weekly rankings) and the logo while you're on another tab.
+- **Why MDS:** MDS has the same kind of setup, five numbered cards (Load Rankings, Add / Sync Draft, ADP, Roster
+  Limits, Call Outs) and a "Ready to Draft?" card; MDS's logo is the same `.logo-container` button.
+- **CSS:** `css/base.css`, LIVE INDICATOR: `.btn-pulse`, `.pulse-border`, `.nav-pulse` (3 rules) and the
+  `@media (prefers-reduced-motion: reduce)` block, which also holds `.pulse-dot` (MDS) and `.tab-content.active`
+  (shared). `css/mls.css`, LIVE INDICATOR: `@keyframes btn-pulse-anim`, `border-pulse-anim`, `nav-pulse-anim`.
+  No tokens (hard-coded blue and green). Reduced-motion version: yes (the block above). Phone version: none.
+- **Move:** the three `@keyframes` to base.css. Plain cut and paste: keyframes don't depend on order, each name is
+  defined once, and no other file defines these names (base has `fadeIn`, `pulse`, `spin`). In 4D step 3, keep
+  `.btn-pulse`/`.pulse-border`/`.nav-pulse` in base's reduced-motion block and move only `.pulse-dot` to mds.css.
+- **Known gap, measured:** I added the three classes to MDS's first Setup card, `#syncBtn` and `.logo-container` in a
+  headless Chromium (throwaway script, not committed). With normal motion, `animation-name` resolves to the MLS
+  names but `document.getAnimations()` lists only `fadeIn` and `pulse`: **no highlight at all**, not even a
+  static one, because `.btn-pulse` sets nothing but the animation. Only with reduced motion on do the static
+  highlights show (green border and glow on the card, green tint on the logo). The runbook's "static highlight
+  but never pulse" holds only for reduced-motion users. Moving the keyframes fixes it.
+- **Observed, not changed:** `.pulse-border` sets `border-radius: 8px`, so a pulsing `.settings-card` goes from
+  12px to 8px corners (both MLS and MDS; its comment says it "matches the card"). Visible change if fixed; the
+  owner's call.
+- **JS:** `js/mls/init.js`, `updatePulsePrompts()`: toggles `btn-pulse` on `#mainSyncBtn`, `pulse-border` on
+  `#setupSyncCard` / `#rosRankingsCard` / `#weeklyRankingsCard`, `nav-pulse` on `.logo-container`. Depends on MLS
+  state (`State.leagues`, `State.rosRankings`, `State.weeklyRankings`, `isBestBallLeague(getActiveLeague())`).
+  Called from 7 places (`nav.js`, `rankings/engine.js`, `leagues/importAll.js`, `leagues/sync.js`, `init.js`).
+  Shared: nothing is needed, as each toggle is one `classList.toggle(name, condition)`. A tiny
+  `setPulse(el, kind, on)` in `js/shared/ui/` is optional. Stays per app: which element pulses when.
+- **Names:** fine (`btn-pulse`, `pulse-border`, `nav-pulse`).
+
+#### 3. Setup checklist — 70% — Owner's decision: share now in CSS
+
+- **What it is:** a "Setup Progress · 1 of 3 done" box at the top of the Dashboard listing the steps with ✓ or —;
+  unfinished steps get a sentence of instructions and a "Show me ↓" / "Go to Roster tab →" link that switches tab,
+  opens the card, scrolls to it and focuses its first control.
+- **Why MDS:** MDS's setup is five numbered cards in one long scroll with no summary of what's done.
+- **CSS:** `css/mls.css`, LIVE INDICATOR (lines ~1508–1574): `.setup-checklist`, `.setup-checklist-title`,
+  `.setup-checklist-list`, `.setup-checklist-list li`, `li.is-done`, `.setup-step-mark`, `li.is-done .setup-step-mark`,
+  `.setup-step-body`, `li.is-actionable .setup-step-label`, `.setup-step-how`, `.setup-step-go` (11 rules). The 12th,
+  `#setupSyncCard, #rosRankingsCard, #weeklyRankingsCard, #powerRankingsCard { scroll-margin-top }`, names MLS card
+  ids and **stays in mls.css** (MDS would add its own). Tokens: `--card-bg`, `--border`, `--space-4`, `--text-muted`,
+  `--text-main`, `--primary-green`; uses base's `.sr-only`. No phone, reduced-motion or animation versions.
+- **Move: needs the cascade check.** The jump link is `<button class="mls-btn-sm btn-link-inline setup-step-go">`.
+  Today `.setup-step-go` (font-size 0.8rem) beats `.mls-btn-sm` (0.75rem, mls.css line ~1090) by coming later. In
+  base.css it would load before mls.css and lose: the link text on MLS would shrink. `.mls-btn-sm` can't simply
+  move with it, because `.lock-btn` (mls.css, earlier) shares an element with it (`class="mls-btn-sm lock-btn"`)
+  and would then win. Options for 4D: raise `.setup-step-go` to `.setup-checklist .setup-step-go` (an edit, still no
+  visible change), or leave `.setup-step-go` in mls.css and give MDS's link its own class. The other 10 rules are
+  plain cut and paste: their classes appear nowhere else in the CSS. `.btn-link-inline` (mls.css LAYOUT
+  PRIMITIVES) can also move as is, if wanted: it already loses padding to `.mls-btn-sm` by order, and stays earlier.
+- **JS:** `js/mls/init.js`:
+  - `renderSetupStep(id, step, done, text, how, activeTabId)` builds each `<li>` (mark, sr-only status, label, how
+    text, jump button). Generic apart from reading `SETUP_STEPS` and calling `window.goToSetupStep`.
+  - `goToSetupStep(step)` uses `window.showTab`, `updateDrawerActiveState` (`js/mls/nav.js`) and
+    `setRankingsCardExpanded` (`js/mls/rankings/engine.js`); the reduced-motion-aware scroll and focus part is generic.
+  - `updatePulsePrompts()` decides which steps show on which tab, from MLS state.
+  - Shared candidates: a `js/shared/ui/setupChecklist.js` with `renderSetupStep(li, { done, label, how, goLabel,
+    onGo })` and `scrollToCard(card, focusEl)`. Stays per app: the step list, the done conditions, the per-tab
+    visibility, the tab switch.
+- **Names:** `mls-btn-sm` on the jump link would read oddly in shared markup.
+
+#### 4. "Updated 3 days ago" freshness labels — 65% — Owner's decision: share now in CSS
+
+- **What it is:** a short age label after loaded data: muted "Updated today", amber "Updated 9 days ago —
+  consider refreshing", red "Last sync failed · roster from 3 days ago".
+- **Why MDS:** MDS shows fixed dates ("Loaded: 220 players on 9/15/2026 at 10:00 AM", "Fetched: FFC … on …")
+  in `#metaDisplay` / `#adpStatusDisplay`. ADP moves daily in draft season, so an amber "Fetched 9 days ago" fits.
+- **CSS:** `css/mls.css`, MLS ROSTER TAB SPECIFIC STYLES: `.rankings-fresh`, `.rankings-stale`, `.sync-failed`
+  (3 rules). Tokens: `--text-muted`. No media versions. Not part of the decision, staying in mls.css:
+  `.status-badge-meta` (MLS's meta line; MDS has its own `.status-badge` in mds.css) and, under COLLAPSIBLE RANKINGS
+  CARDS, `.header-freshness` and `.header-freshness.rankings-stale` (card-header copy of the label).
+- **Move:** plain cut and paste. The only other rules on the same elements are `.header-freshness` (already beats
+  `.rankings-stale` on color by order today, and still would) and `.header-freshness.rankings-stale` (higher
+  specificity). Spans in league rows also carry inline styles, which win either way.
+- **JS:** `getRankingsFreshness(timestamp, staleAfterDays, verb)` in `js/mls/rankings/engine.js` is pure (no
+  `State`). Callers: `updateRankingsMetaDisplay` (same file), `renderLeagueManager` (`js/mls/leagues/sync.js`, the
+  "Synced …" / "Last sync failed" line), `updateMarketMetaDisplay` (`js/mls/scout/marketDisconnect.js`). The same day
+  math is copied in `js/tscore/main.js` (`updateTscoreFreshnessLabel`). Shared candidate: move the function to
+  `js/shared/` (for example `js/shared/freshness.js`), which T-Score could use too. MDS would also need to save a
+  timestamp: `State.rankingsMeta` / `State.adpMeta` (`js/mds/import.js`, `js/mds/market.js`) store only a formatted
+  date string. That's a new field inside the existing `mds_` objects, not a new key; old saved data has no
+  timestamp and falls back to the neutral text, as MLS does.
+- **Names:** `rankings-fresh` / `rankings-stale` (already used for league sync and market data, not only
+  rankings) and `getRankingsFreshness` would read oddly in shared code. Rename candidates only.
+
+#### 5. Danger Zone card — 60% — Owner's decision: share now in CSS
+
+- **What it is:** a card with a red dashed border and red title for destructive actions (MLS: "Danger Zone" with
+  Factory Reset, and the Global Injury Auditor card).
+- **Why MDS:** MDS's "Reset Controls" card (Reset Draft Picks Only, Reset Everything) is a plain `settings-card`;
+  adding `danger-card` would match.
+- **CSS:** `css/base.css`, MLS SETUP TAB SPECIFIC STYLES: `.danger-card`, `.text-danger` (2 rules; `.text-danger`
+  uses `!important`). Kept in base by 4A's cascade guard; 4D's card already leaves them there. Tokens: `--card-bg`.
+  Move: none needed.
+- **JS:** none (static markup in `lineup/index.html`).
+- **Names:** fine.
+
+#### 6. Blue info banner with a round "i" — 55% — Owner's decision: share now in CSS
+
+- **What it is:** a blue notice box with a round "i" badge: MLS's "Roster found from My Draft Strategist" handoff
+  banner, "Sleeper Sync Required" on Scout, and red/amber versions on the Injury Auditor.
+- **Why MDS:** MDS has no in-page notice style today. It uses toasts, the green `.status-badge` line, and small italic
+  inline-styled notes (the manual-draft kicker note under Add / Sync Draft).
+- **CSS:** `css/mls.css`, `.info-banner` and `.info-banner-icon` (2 rules). They sit under the MATCHUP SIMULATOR
+  (MONTE CARLO) RESULTS marker, because their "Info Banner Component" comment ended up above that marker under MLS
+  SCOUT TAB SPECIFIC STYLES. No tokens, no media versions. The red and amber versions are inline styles (in
+  `lineup/index.html` and `js/mls/lineup/injuryAudit.js`), not classes. The banner markup also uses `.cluster`,
+  `.cluster-sm`, `.ml-3` (mls.css, not shared by this decision) and `.close-banner-btn-sm` (base).
+- **Move:** plain cut and paste to the end of base.css. Elements carrying it also carry only `mb-4` (base, earlier),
+  which it already beats and still would.
+- **JS:** none needed. Static markup in `lineup/index.html` (`#handoffBanner`, `#sleeperSyncBanner`, Injury
+  Auditor); one template string in `js/mls/lineup/injuryAudit.js` (`runGlobalInjuryAudit`). `#handoffBanner` is
+  shown and hidden by `js/mls/leagues/handoff.js`; dismissal goes through the shared `dismissBanner`. A dismissible
+  MDS banner needs its own storage key (registry in `js/shared/storage/keys.js`).
+- **Names:** fine.
+
+#### Under 50% (not shared; no decision needed)
+
+- **Round status icons** (green check / amber warning / red X; `.status-icon` in base, `.status-good`/`-warn`/
+  `-danger` in mls.css BADGES): 40%. MDS has no per-row status list; its sync status lives in the LIVE pill.
+  `.status-icon` stays in base anyway (4D).
+- **Rankings upload preview** (count, top players, unmatched names, replace warning): 40%.
+- **"Processing…" line and "Uploaded successfully" message**: 35%. MDS already shows "Processing players…" in
+  `#metaDisplay` and flashes the button.
+- **Player headshots**: 35%.
+- **Collapsible rankings cards with freshness in the header**: 30%. MDS has its own collapsible cards.
+- **Two-option segmented toggle** (`.mls-segmented`): 30%.
+- **Player-name autocomplete**: 25%.
+- **Keyboard hint** (`.mls-manual-key-hint`): 25%.
+- **Layout helpers** (`.cluster*`, `.text-helper`, `.or-divider`, `.settings-subsection`, `.toggle-row-flush`, spacing
+  utilities): not a feature users see; useful if MDS's inline styles are ever cleaned up.
+- **Hide the hero off the Dashboard** (`.mls-hero`): 5%. MDS's hero is already inside its Setup tab.
+- **Lineup, Roster, Scout, Trade, Simulator, Power rankings, Waivers, SoS, league picker, manual-add log, lock
+  countdown, injury pill, kickoff/bye/taxi/lock badges**: under 10%. These are in-season only.
+
+#### For 4D
+
+- Keep in base: `.close-banner-btn-sm`, `.danger-card`, `.text-danger` (already planned), and
+  `.btn-pulse`/`.pulse-border`/`.nav-pulse` with their part of the reduced-motion block. When splitting that block,
+  only `.pulse-dot` goes to mds.css.
+- Move from mls.css to the end of base.css: the three pulse `@keyframes`; the 11 setup-checklist rules (with the
+  `.setup-step-go` fix above); `.rankings-fresh`, `.rankings-stale`, `.sync-failed`; `.info-banner`,
+  `.info-banner-icon`. Keep their relative order and their comments, and copy the section marker each comes from.
+  Prove each move with the computed-style comparison (0 differences on MLS and T-Score; MDS doesn't use these
+  classes yet, so it shouldn't change either).
+- Stays in mls.css: the checklist's MLS-id `scroll-margin-top` rule, `.status-badge-meta`, `.header-freshness` (both
+  rules), `.mls-btn-sm`, `.cluster*`.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (107 precached). `node --test` 162/162. `cd tests && npx playwright test`
+  78/78, no screenshot changed. Only `docs/refactor/LOG.md` changed. No CACHE_NAME bump: no JS or CSS file was
+  added, renamed or deleted.
