@@ -52,6 +52,7 @@ import { scrollToPowerRankings } from './power/snapshot.js';
 import { runGlobalInjuryAudit } from './lineup/injuryAudit.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
+import { delegate } from '../shared/ui/delegate.js';
 
 // Re-exported for the modules that evaluate before the ones these live in (refactor 3E, moved here
 // from legacy.js in 3F; see docs/refactor/LOG.md). Importing them from render/*.js, power/*.js or
@@ -64,11 +65,20 @@ export { checkForDraftStrategistHandoff, computePositionalPower, generateSoSGrid
 // The names the inline handlers (onclick="..." in lineup/index.html and in HTML these modules
 // build) and the tests call, plus window.onload. They used to be `window.x = function`
 // assignments inside mls.js; the modules now export them, and this is the one place they become
-// globals. Phase 5 removes them as the inline handlers go.
+// globals. Phase 5 removes them as the inline handlers go. Refactor chunk 5B replaced the shell's,
+// Setup's, Roster's and Lineup's handlers with the data-action listeners at the end of this file
+// and removed the 30 names nothing else used. Of the names those handlers called, these stay
+// because something else still reads them through window:
+//   toggleDrawer: nav.js, shortcuts.js, the tests     showTab: nav.js, init.js, shortcuts.js,
+//   cycleLeague: shortcuts.js                           power/rosterCard.js, the tests
+//   switchActiveLeague: scout/allLeaguesSearch.js, the tests
+//   optimizeLineup: state.js, leagues/*, render/*, sos.js, rankings/*, scout/waivers.js, ...
+//   cancelRankingsPreview: rankings/uploadPreview.js
+//   confirmRankingsPreview, createManualLeague, openRankingSetLeagues: the tests
+//   toggleRankingsCard, updateMarketSetting: inline handlers outside 5B's sections (5C)
 window.undoLineupChange = undoLineupChange;
 window.redoLineupChange = redoLineupChange;
 window.toggleDrawer = toggleDrawer;
-window.navigateFromDrawer = navigateFromDrawer;
 window.showTab = showTab;
 window.exportMlsSettings = exportMlsSettings;
 window.importMlsSettings = importMlsSettings;
@@ -76,22 +86,10 @@ window.factoryReset = factoryReset;
 window.goToSetupStep = goToSetupStep;
 window.toggleMlsHeadshots = toggleMlsHeadshots;
 window.onload = onload;
-window.addEarlyTeam = addEarlyTeam;
-window.removeEarlyTeam = removeEarlyTeam;
-window.moveLeague = moveLeague;
-window.deleteLeagueManager = deleteLeagueManager;
 window.switchActiveLeague = switchActiveLeague;
 window.cycleLeague = cycleLeague;
-window.saveRequirements = saveRequirements;
 window.createManualLeague = createManualLeague;
-window.importDraftStrategistRoster = importDraftStrategistRoster;
-window.dismissDraftStrategistHandoff = dismissDraftStrategistHandoff;
 window.addManualPlayer = addManualPlayer;
-window.deletePlayer = deletePlayer;
-window.addAndSyncLeague = addAndSyncLeague;
-window.importAllSleeperLeagues = importAllSleeperLeagues;
-window.syncActiveLeague = syncActiveLeague;
-window.saveManualSoS = saveManualSoS;
 window.runScout = runScout;
 window.updateWaiverScanSetting = updateWaiverScanSetting;
 window.setWaiverCompare = setWaiverCompare;
@@ -99,41 +97,116 @@ window.setWaiverScope = setWaiverScope;
 window.setWaiverIntent = setWaiverIntent;
 window.scoutGoToLeague = scoutGoToLeague;
 window.autoFindWaiverUpgrades = autoFindWaiverUpgrades;
-window.onRankingSetSelectChange = onRankingSetSelectChange;
 window.openRankingSetLeagues = openRankingSetLeagues;
-window.deleteRankingSet = deleteRankingSet;
-window.toggleLockCountdown = toggleLockCountdown;
 window.toggleRankingsCard = toggleRankingsCard;
-window.toggleUploadMode = toggleUploadMode;
-window.togglePosInput = togglePosInput;
 window.cancelRankingsPreview = cancelRankingsPreview;
 window.confirmRankingsPreview = confirmRankingsPreview;
 window.processSingleRankingUpload = processSingleRankingUpload;
-window.processMultiRankings = processMultiRankings;
 window.toggleDisconnectMode = toggleDisconnectMode;
 window.toggleDisconnectRankBasis = toggleDisconnectRankBasis;
-window.autoFetchRosRankings = autoFetchRosRankings;
 window.fetchLeagueLogsADP = fetchLeagueLogsADP;
 window.updateMarketSetting = updateMarketSetting;
 window.updateTradeSetting = updateTradeSetting;
-window.updateLineupSetting = updateLineupSetting;
 window.updateSimSetting = updateSimSetting;
 window.lookupSimPlayer = lookupSimPlayer;
 window.runMarketDisconnectAnalysis = runMarketDisconnectAnalysis;
-window.copyLineupAsText = copyLineupAsText;
-window.exportLineup = exportLineup;
-window.toggleLock = toggleLock;
-window.overrideAutoLock = overrideAutoLock;
-window.unlockAllPlayers = unlockAllPlayers;
-window.initiateSwap = initiateSwap;
 window.optimizeLineup = optimizeLineup;
 window.renderSyncLogs = renderSyncLogs;
-window.optimizeAllLineups = optimizeAllLineups;
-window.syncAllLeagues = syncAllLeagues;
 window.updatePowerSetting = updatePowerSetting;
 window.scrollToPowerRankings = scrollToPowerRankings;
 window.goToPowerRankings = goToPowerRankings;
 window.runPositionalStrength = runPositionalStrength;
 window.renderPowerRankingsTable = renderPowerRankingsTable;
-window.runGlobalInjuryAudit = runGlobalInjuryAudit;
 window.runMatchupSim = runMatchupSim;
+
+// --- DATA-ACTION EVENT DELEGATION ---
+// Refactor chunk 5B (the pattern is 5A's, js/mds/main.js): each table maps a data-action name (in
+// lineup/index.html and in the HTML leagues/sync.js, lineup/{earlyGames,gameInfo,headshots}.js and
+// render/{lineup,roster}.js build) to the code its inline on*="..." handler ran. `this` is the
+// element, as it was in the inline handler, and data-* attributes carry the arguments that used to
+// be literals in the handler. Numbers go through Number(); ids stay strings, as the handlers passed
+// them quoted. See js/shared/ui/delegate.js for how the walk works. The Scout tab, the Advanced
+// Settings card, the Power Rankings card and the Monte Carlo card still use inline handlers (5C).
+const clickActions = {
+    // Drawer, header, bottom nav
+    toggleDrawer() { toggleDrawer(); },
+    navigateFromDrawer() { navigateFromDrawer(this.dataset.tab); },
+    showTab() { showTab(this.dataset.tab); },
+    cycleLeague() { cycleLeague(Number(this.dataset.direction)); },
+    // Setup tab: banners, Draft Strategist handoff, Command Center, Add/Sync League, requirements
+    dismissBannerAndReveal() { window.dismissBannerAndReveal(this.dataset.banner, this.dataset.storageKey, this.dataset.nextBanner, this.dataset.nextStorageKey); },
+    dismissBanner() { window.dismissBanner(this.dataset.banner, this.dataset.storageKey); },
+    importDraftStrategistRoster() { importDraftStrategistRoster(); },
+    dismissDraftStrategistHandoff() { dismissDraftStrategistHandoff(); },
+    syncAllLeagues() { syncAllLeagues(this); },
+    optimizeAllLineups() { optimizeAllLineups(this); },
+    addAndSyncLeague() { addAndSyncLeague(this); },
+    createManualLeague() { createManualLeague(); },
+    importAllSleeperLeagues() { importAllSleeperLeagues(this); },
+    saveRequirements() { saveRequirements(this); },
+    // Command Center league rows (leagues/sync.js)
+    switchActiveLeague() { switchActiveLeague(this.dataset.leagueId); },
+    moveLeague() { moveLeague(Number(this.dataset.index), Number(this.dataset.direction)); },
+    deleteLeagueManager() { deleteLeagueManager(this.dataset.leagueId); },
+    // ROS (Roster tab) and Weekly (Lineup tab) rankings cards
+    toggleRankingsCard() { toggleRankingsCard(this.dataset.card); },
+    deleteRankingSet() { deleteRankingSet(this.dataset.type); },
+    openRankingSetLeagues() { openRankingSetLeagues(this.dataset.type); },
+    processMultiRankings() { processMultiRankings(this.dataset.type, this.dataset.successMsgId); },
+    autoFetchRosRankings() { autoFetchRosRankings(this); },
+    // Roster tab (and render/roster.js), SoS
+    syncActiveLeague() { syncActiveLeague(); },
+    deletePlayer() { deletePlayer(this.dataset.id); },
+    saveManualSoS() { saveManualSoS(this); },
+    // Lineup tab (and render/lineup.js, lineup/earlyGames.js, lineup/gameInfo.js)
+    optimizeLineup() { optimizeLineup(true, true); },
+    copyLineupAsText() { copyLineupAsText(this); },
+    exportLineup() { exportLineup(); },
+    toggleLockCountdown() { toggleLockCountdown(); },
+    unlockAllPlayers() { unlockAllPlayers(); },
+    overrideAutoLock() { overrideAutoLock(this.dataset.id); },
+    toggleLock() { toggleLock(this.dataset.id); },
+    initiateSwap() { initiateSwap(this.dataset.id); },
+    removeEarlyTeam() { removeEarlyTeam(this.dataset.team); },
+    runGlobalInjuryAudit() { runGlobalInjuryAudit(this); },
+    // Rankings upload preview modal
+    cancelRankingsPreview() { cancelRankingsPreview(); },
+    confirmRankingsPreview() { confirmRankingsPreview(); },
+};
+
+const changeActions = {
+    selectActiveLeague() { switchActiveLeague(this.value); },
+    onRankingSetSelectChange() { onRankingSetSelectChange(this.dataset.type, this); },
+    toggleUploadMode() { toggleUploadMode(this.dataset.type); },
+    togglePosInput() { togglePosInput(this.dataset.type, this.dataset.pos); },
+    updateMarketSetting() { updateMarketSetting(this.dataset.setting, this.value); },
+    updateMarketSettingChecked() { updateMarketSetting(this.dataset.setting, this.checked); },
+    updateLineupSetting() { updateLineupSetting(this.dataset.setting, this.checked); },
+    addEarlyTeam() { addEarlyTeam(this.value); },
+};
+
+// The hero logo hides itself if it fails to load; a player headshot (lineup/headshots.js) removes
+// itself, leaving the initials underneath.
+const errorActions = {
+    hideImage() { this.style.display='none'; },
+    removeImage() { this.remove(); },
+};
+
+// The page's static regions, each with one listener per event type it needs. None of them is ever
+// re-rendered, so the listeners survive every tab and lineup rebuild.
+const drawerOverlay = document.getElementById('drawerOverlay');
+const drawer = document.getElementById('drawer');
+const header = document.querySelector('body > header.header');
+const mainApp = document.getElementById('mainApp');
+const navBar = document.querySelector('body > nav.nav-bar');
+const rankingsPreviewOverlay = document.getElementById('rankingsPreviewOverlay');
+
+for (const container of [drawerOverlay, drawer, header, mainApp, navBar, rankingsPreviewOverlay]) delegate(container, 'click', clickActions);
+delegate(header, 'change', changeActions);
+delegate(mainApp, 'change', changeActions);
+delegate(mainApp, 'error', errorActions);
+// The inline onerror was attached while the HTML was parsed. This module runs after parsing, so
+// an image in the static HTML (the hero logo) may already have failed: hide it now.
+mainApp.querySelectorAll('img[data-action="hideImage"]').forEach(img => {
+    if (img.complete && img.naturalWidth === 0) errorActions.hideImage.call(img);
+});

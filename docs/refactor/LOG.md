@@ -2190,3 +2190,147 @@ arguments). They're still plain text in HTML, which 6A's card allows; 6B edits t
   markup, out of scope here). Both pages use them (`index.html`, `lineup/index.html`), the class is
   styled in `css/styles.css` (or wherever 4A puts it), and `tests/mds-sync.spec.mjs` and
   `tests/mls-market.spec.mjs` click `#fetchAdpBtn`. The 5D card has the details.
+
+### 5B — MLS handlers, part 1: shell, Setup, Roster, Lineup
+
+**83 inline handlers became `data-action` attributes**: 70 in `lineup/index.html` and 13 in template
+strings. No `on*=` attribute is left in 5B's sections. Same method as 5A: a script made exact string
+replacements and asserted the expected count for each pattern. Markup structure is unchanged; only
+attributes changed. `js/mls/main.js` holds the action tables. **5C reuses `js/shared/ui/delegate.js` as
+it is** (5A's helper; read 5A's "The pattern" above and the file's header).
+
+#### Which sections (where the card was ambiguous)
+
+The page has no Trade, Power, Sim or Settings tab, so I took the card's out-of-scope list as sections
+inside the tabs:
+
+| Done in 5B | Left for 5C (still inline) |
+|---|---|
+| Drawer overlay, drawer, header (hamburger, logo, league prev/next/select), hero logo, bottom nav | — |
+| Setup tab: guide/draft banners, the Draft Strategist handoff, Command Center (Sync All, Optimize All), Add/Sync League, Import All, Active League Requirements | Setup tab: the **Advanced Settings** card (headshots toggle, Add Player Manually, Backup & Restore, Factory Reset): 6 handlers |
+| Roster tab: the ROS rankings card (including its market-consensus controls), Sync roster, Strength of Schedule | Roster tab: the **Positional Power Rankings** card's source select: 1 |
+| Lineup tab: the Weekly rankings card, Optimize/Copy/Export, FLEX kickoff toggle, Early Games, Global Injury Auditor | Lineup tab: the **Monte Carlo** card (Waiver Insights toggle, Run Simulation): 2 |
+| The rankings upload preview modal (Cancel, Save) | The **Scout tab** (Waiver Wire Assistant, Trade Analyzer, the Power Rankings pointer, Trade Finder, Sleeper sync banner): 29 |
+| Templates: `render/lineup.js` (5), `render/roster.js` (1), plus the ones rendered into these sections from outside `render/`: `leagues/sync.js` (4, the Command Center league rows), `lineup/earlyGames.js` (1), `lineup/gameInfo.js` (1, the lock countdown), `lineup/headshots.js` (1, the headshot `onerror`) | Templates: `scout/allLeaguesSearch.js` (1), `scout/waivers.js` (1), `power/snapshot.js` (1), `power/rosterCard.js` (1, an empty `ontouchstart=""`, the iOS `:hover` trick; 5C decides whether it counts) |
+
+The card's 107 was low: MLS had **108** in `lineup/index.html` and **18** in `js/mls/` (one of them a
+comment in `sim/matchup.js`). 5C has **38 + 4** left. `grep -nE '\bon[a-z]+=' lineup/index.html` lists
+lines in only those four out-of-scope regions now.
+
+#### Action tables (`js/mls/main.js`, end of the file)
+
+- `clickActions` (40), `changeActions` (8), `errorActions` (2). Each entry is the inline handler's
+  code: `this` stays `this`, literals became `this.dataset.*`. `Number()` for `cycleLeague`'s direction
+  and `moveLeague`'s index and direction. Player, league and team ids stay strings, because the handlers
+  passed them quoted (`toggleLock('${p.id}')`). The values are Sleeper digits, `p_<timestamp>`,
+  `manual_<timestamp>` and team codes, so the HTML-decoded `data-*` value is the same string the JS
+  literal was.
+- **New `data-*` names:** `data-tab`, `data-direction`, `data-index`, `data-id`, `data-league-id`,
+  `data-team`, `data-card`, `data-type` (`'ros'`/`'weekly'`), `data-pos`, `data-success-msg-id`,
+  `data-setting`, and for the banners `data-banner`, `data-storage-key`, `data-next-banner`,
+  `data-next-storage-key`. Nothing in `css/`, `js/` or the tests selected on any of these before.
+- **Names that differ from the function** (the "unique per page across event types" rule):
+  `selectActiveLeague` is the header `<select>`'s change action, while `switchActiveLeague` is the
+  Command Center row button's click action; `updateMarketSettingChecked` is the TEP checkbox
+  (`this.checked`), and `updateMarketSetting` is the selects (`this.value`). `removeImage` is the
+  headshot's `this.remove()`; `hideImage` is the hero logo's (same as MDS).
+- **Containers:** `#drawerOverlay`, `#drawer`, `body > header.header`, `#mainApp`, `body > nav.nav-bar`
+  and `#rankingsPreviewOverlay`, all in the static HTML and never replaced. Click on all six; change on
+  the header and `#mainApp`; error on `#mainApp`. 5C needs no new container for the Scout tab, the
+  Advanced Settings card or the Power and Monte Carlo cards (all inside `#mainApp`). Add a table entry,
+  and add `input` to the delegated types if a handler needs it.
+- **The hero logo's early error:** handled as in 5A (an already-failed `img[data-action="hideImage"]` is
+  hidden when main.js runs). Checked with the logo routed to a 404: hidden on main and on the branch.
+- **delegate.js's two caveats, checked for MLS:**
+  - *Listeners between the target and the container:* none for 5B's controls. The `addEventListener`
+    calls in `js/mls` and `js/shared` are on file inputs, the manual-add box (Advanced Settings), the
+    Scout output, the setup checklist's buttons, the league picker modal and toasts. None of these is
+    a 5B control or an ancestor of one. The tooltip click/keydown listeners are capture listeners on
+    `document`, so they still run first, and their `stopPropagation()` still keeps a tooltip tap from
+    reaching an action.
+  - *Events on detached elements:* none. Every 5B action handles the one event that re-renders its
+    element (lock, swap, override, the league rows, chips). No follow-up event (like MDS's `dragend`)
+    is handled.
+  - **5C:** the Scout tab's `attachScoutSuggestionHandler` (`players.js`) adds a click listener to
+    `#waiverOutput` / `#tradeOutput`. Before you add actions inside those outputs, check the ordering
+    it would change.
+
+#### window.* names
+
+Removed **30**, which nothing references any more: `navigateFromDrawer importDraftStrategistRoster
+dismissDraftStrategistHandoff syncAllLeagues optimizeAllLineups addAndSyncLeague importAllSleeperLeagues
+saveRequirements onRankingSetSelectChange deleteRankingSet toggleUploadMode togglePosInput
+processMultiRankings autoFetchRosRankings syncActiveLeague saveManualSoS copyLineupAsText exportLineup
+updateLineupSetting addEarlyTeam runGlobalInjuryAudit moveLeague deleteLeagueManager removeEarlyTeam
+toggleLockCountdown unlockAllPlayers overrideAutoLock toggleLock initiateSwap deletePlayer`. Found with a
+scope analysis (acorn + eslint-scope, scratch directory) over every file in `js/`: no module reads any of
+the 72 names as a bare global, so only `window.x` member reads count. Then I grepped the tests, the HTML
+and the template strings that are still inline. On `/lineup/`, a diff of `Object.getOwnPropertyNames(window)`,
+empty and after a sync, shows exactly these 30 missing compared with main, and nothing new (1,286 → 1,256).
+
+Kept, of the names 5B's handlers called (main.js's comment lists them): `toggleDrawer`, `showTab`,
+`cycleLeague`, `switchActiveLeague`, `optimizeLineup`, `cancelRankingsPreview` (other modules call them
+through `window`); `confirmRankingsPreview`, `createManualLeague`, `openRankingSetLeagues` (only the tests
+call them, through `page.evaluate`; I left the tests unchanged); `toggleRankingsCard` and
+`updateMarketSetting` (inline handlers 5C still has to move). `window.dismissBanner` and
+`window.dismissBannerAndReveal` belong to `js/shared/globals.js`; MLS's Scout tab still uses the first.
+
+**For 5C:** four names in the block already have no reader at all, no inline handler, no
+`window.x` read and no test: `processSingleRankingUpload` (the file inputs' listeners call the import),
+`renderSyncLogs` (keep it in the re-export line), `runPositionalStrength` and `renderPowerRankingsTable`.
+They weren't 5B's handlers, so I left them. `window.onload` also shows up as unread, but the browser
+reads it, so it stays. Re-run the scan rather than trusting this list; build the name list with
+`sed -n 's/^window\.\([A-Za-z]*\) = .*/\1/p' js/mls/main.js`.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (101 precached). `node --test` 157/157.
+  `cd tests && npx playwright test`: **72/72**. **No screenshot changed.** `mls-keyboard.spec.mjs`
+  (lock, swap and focus by keyboard) passes unchanged.
+- **Throwaway spec (not committed), run on an origin/main worktree and on this branch at both widths:**
+  it presses every control 5B moved and records the active tab, drawer/overlay/hamburger state, the
+  active nav button, focus, every `showToast` message (wrapped by an init script), the copied text,
+  the confirm dialog, the preview and league-picker overlays, the header league list, the prev/next
+  state, the rankings cards' and lock countdown's `aria-expanded`, the HTML of ten regions (Command
+  Center rows, sync log, roster, lineup, bench, early-games chips, injury audit, the three banners)
+  with only the swapped attributes stripped, and every localStorage key and value. It ends with an
+  `ariaSnapshot` of the three tabs, the header, the drawer and the bottom nav. It covers the hamburger
+  (click, Enter), the overlay, the close button, all five drawer links, Escape, the logo, the four
+  bottom-nav buttons (phone), the guide banner (go, dismiss and reveal), the draft banner dismissal,
+  Sync (empty and the fixture league), Create Manual (empty and named), prev/next, the header
+  select, Import All, Sync All, Optimize All, the league rows (switch, move down, move up by keyboard,
+  remove: cancel then OK), Save Requirements, handoff import and dismiss, both rankings cards (toggle
+  by click and keyboard, upload with the preview's Cancel and Save buttons, set select, Choose leagues,
+  delete set with cancel, multi-file mode, position checkboxes by click and Space, Combine & Process),
+  the five ROS market controls (and the Scout copies they sync), Auto-Fetch (error path), Sync roster,
+  Save Manual SoS, Remove Player (cancel, OK), Optimize, Copy, Export (error path), the FLEX toggle,
+  early games (add twice, remove), the injury audit, lock (click, Enter), Unlock All, swap (start,
+  cancel, starter↔bench, by Space and Enter), and the hero logo's 404. With kickoff times set through
+  the app's own `State` (one team past, the rest future), the lock countdown appears (toggled by Enter
+  and by click) and so does the override-lock button (cancel, then OK). These two never render with the
+  plain fixture. **Result: identical** on both widths (107 and 111 steps). The only difference is the
+  handler's frame name in the stack trace of the console error Auto-Fetch logs for its aborted fetch.
+  Two runs on main were byte-identical. No headshot `<img>` that failed to load was left in the page on
+  either tree.
+- 5A's trap applies: `reuseExistingServer: true` means a leftover `node serve.mjs` serves whichever tree
+  started it. I checked `ps aux | grep serve.mjs` between runs, and the spec recorded which build it loaded.
+
+#### Other changes
+
+- `sw.js`: CACHE_NAME `v2.8.55` → `v2.8.56`. No file added (`delegate.js` is already precached since 5A).
+- README `/js` line: MLS's `main.js` holds the delegation too.
+
+#### Left for later chunks
+
+- **5C:** the 38 + 4 handlers in the table above; the 5C comments under "Action tables" and
+  "window.* names". `tests/mls-scout.spec.mjs` clicks `[onclick^="autoFindWaiverUpgrades"]` (twice), so
+  5C must change that selector when it moves Auto-Find (for example to `[data-action="autoFindWaiverUpgrades"]`
+  or a role/name locator). That's a test edit, not an app change. `sim/matchup.js`'s header comment
+  still says `#run-sim-btn` is bound via `onclick`, and `js/shared/globals.js` still mentions onclick
+  handlers; update both when the last one goes.
+- **5D:** the module-internal `window.x(...)` calls (`window.optimizeLineup`, `window.showTab`,
+  `window.toggleDrawer`, `window.cycleLeague`, `window.switchActiveLeague`, `window.cancelRankingsPreview`
+  …) could become imports. Watch the 3E/3F load-order rule: import from `main.js` when the exporter
+  evaluates later. The tests' three `window.*` calls could become clicks. Also a comment nit in
+  `js/shared/ui/delegate.js`'s header: "The walk still calls actions nearest first. One" runs into the
+  next sentence ("Two differences…"). Remove the stray "One".

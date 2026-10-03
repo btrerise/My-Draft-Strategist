@@ -57,7 +57,7 @@ import { renderLineupUI } from '../main.js';
         }
         let html = "";
         State.earlyTeams.forEach(t => {
-            html += `<div class="team-chip">${t} <button type="button" class="close-chip" onclick="removeEarlyTeam('${t}')" aria-label="Remove ${t} from Early Games">✕</button></div>`;
+            html += `<div class="team-chip">${t} <button type="button" class="close-chip" data-action="removeEarlyTeam" data-team="${t}" aria-label="Remove ${t} from Early Games">✕</button></div>`;
         });
         container.innerHTML = html;
         restoreChipFocus();
