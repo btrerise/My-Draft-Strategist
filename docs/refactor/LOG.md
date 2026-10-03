@@ -2991,37 +2991,133 @@ until a later chunk builds the MDS version (out of scope for 4C and 4D).
   MDS banner needs its own storage key (registry in `js/shared/storage/keys.js`).
 - **Names:** fine.
 
-#### Under 50% (not shared; no decision needed)
+#### Under 50%: owner's second round
 
-- **Round status icons** (green check / amber warning / red X; `.status-icon` in base, `.status-good`/`-warn`/
-  `-danger` in mls.css BADGES): 40%. MDS has no per-row status list; its sync status lives in the LIVE pill.
-  `.status-icon` stays in base anyway (4D).
-- **Rankings upload preview** (count, top players, unmatched names, replace warning): 40%.
-- **"Processing…" line and "Uploaded successfully" message**: 35%. MDS already shows "Processing players…" in
-  `#metaDisplay` and flashes the button.
-- **Player headshots**: 35%.
-- **Collapsible rankings cards with freshness in the header**: 30%. MDS has its own collapsible cards.
-- **Two-option segmented toggle** (`.mls-segmented`): 30%.
-- **Player-name autocomplete**: 25%.
-- **Keyboard hint** (`.mls-manual-key-hint`): 25%.
-- **Layout helpers** (`.cluster*`, `.text-helper`, `.or-divider`, `.settings-subsection`, `.toggle-row-flush`, spacing
-  utilities): not a feature users see; useful if MDS's inline styles are ever cleaned up.
-- **Hide the hero off the Dashboard** (`.mls-hero`): 5%. MDS's hero is already inside its Setup tab.
-- **Lineup, Roster, Scout, Trade, Simulator, Power rankings, Waivers, SoS, league picker, manual-add log, lock
-  countdown, injury pill, kickoff/bye/taxi/lock badges**: under 10%. These are in-season only.
+The first presentation listed these in one line each with no decision. The owner then went back over them; their
+decisions are below. Two corrections to that first list:
+
+- **Player headshots**: MDS already shows headshots on the draft board, with its own styles (`.draft-cell-img`,
+  `body.hide-headshots` in mds.css) and its own show/hide setting (`toggleHeadshots`, `js/mds/tracker.js`).
+  MLS's are separate (`.mls-headshot*`, `body.mls-hide-headshots`). Two implementations; no decision asked.
+- **MDS's "collapsible cards"** are not the same feature as MLS's: in MDS, Tracker player cards hide their extra
+  details on phones when the "mobile collapse" setting is on (`body.enable-mobile-collapse`, mds.css; `js/mds/init.js`).
+
+| Feature | Chance (first round) | Owner's decision |
+|---|---|---|
+| Rankings upload preview window | 40% | share now in CSS |
+| "Processing…" line and "Uploaded successfully" message | 35% | share now in CSS |
+| Player-name autocomplete | 25% | share now in CSS |
+| Keyboard hint ("press Enter to add") | 25% | share now in CSS |
+| Layout and spacing helpers (keep the full set, move `.mb-1` to base) | n/a (not seen by users) | share now in CSS |
+| Collapsible rankings cards | 30% | later |
+| Two-option segmented toggle | 30% | later |
+| Hide the hero off the Dashboard | 5% | later |
+| Round status icons | 40% | not asked (no) |
+| Everything in-season-only (Lineup, Roster, Scout, Trade, Sim, Power, Waivers, SoS, league picker, manual-add log, lock countdown, injury pill, kickoff/bye/taxi/lock badges) | under 10% | not asked (no) |
+
+I re-ran the 4A-style static cascade check (throwaway script) on every rule below: for each moved rule, any
+staying rule in the same app file with equal specificity, the same pseudo-element, a property in common, and classes
+that appear together in some `class="…"`, that comes *before* it today (it wins now, would lose once the moved rule
+loads earlier). Nothing came up apart from `.setup-step-go` vs `.mls-btn-sm` (feature 3 above) and a few hits on
+element selectors (`kbd`, `li`) against different elements, which are false positives. So every move below is a
+plain cut and paste to the end of base.css.
+
+**Rankings upload preview window — share now in CSS.** A window that opens after picking a rankings file: player
+count, the top players, files or tabs that were skipped, names that matched no player, a note when position ranks
+will be worked out, where the set will be saved (red when it replaces one), then "Looks Good, Save It" / Cancel.
+- CSS (15 rules, mls.css): under MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (MLS only):
+  `.mls-preview-count`, `.mls-preview-list`, `.mls-preview-list li`, `.mls-preview-list li:last-child`,
+  `.rankings-preview-rank`, `.mls-preview-note`, `.mls-preview-target`, `.mls-preview-target.is-replace`; at the end of
+  ALL-LEAGUES PLAYER SEARCH: `.mls-preview-unmatched`, `-title`, `-list`, `-hint`, `.mls-preview-derived`, `-title`,
+  `-body`. The overlay, box, heading and button row are already shared (`.mls-preview-overlay, .mds-modal-overlay`
+  and friends in base). Tokens: `--text-muted`, `--border`, `--primary-green`, `--text-main`, `--avoid-border`,
+  `--dart-border`. No media versions. The league checklist inside it (`.mls-league-picker*`) **stays in mls.css**:
+  MDS has no leagues.
+- JS (large): `js/mls/rankings/uploadPreview.js`: `parseFiles`, `openRankingsPreview`, `confirmRankingsPreview`,
+  `cancelRankingsPreview`. Tied to MLS: `State`, ranking sets and league targets (`rankings/sets.js`), SoS, ROS/Weekly.
+  Pure and shareable: `formatUnmatchedNames`, `derivedRanksWording` (`js/mls/scout/waivers.js`); `analyzeRankingsFile`
+  (same file) needs only the shared Sleeper player map. The open/close with a focus trap is a generic shell. MDS
+  side: `processData` (`js/mds/import.js`) applies an upload at once, so MDS would have to parse, show the preview,
+  and apply on confirm. MDS parses through its own path, not `parseRankingsFiles`.
+- Names: every `mls-preview-*` class and `rankings-preview-rank` would read oddly in shared code.
+
+**"Processing…" line and "Uploaded successfully" message — share now in CSS.** MLS shows a line with a spinning
+icon while a file is read, then a green "Uploaded Successfully!" line. MDS does it differently: it writes
+"Processing players and building database…" into its green `#metaDisplay` status box (`.status-badge`, mds.css)
+and changes the button text (`js/mds/import.js`, `processData`). Nothing is common today; sharing MLS's look lets MDS
+switch to it later.
+- CSS (3 rules, mls.css): `.weekly-success-feedback` (blue variant, MLS LINEUP & ROSTER TAB SPECIFIC STYLES),
+  `.success-feedback` and `.mls-upload-processing` (COLLAPSIBLE RANKINGS CARDS). The spinner uses `.sync-spinner`
+  (already in base). Tokens: `--primary-green`, `--text-muted`. No media versions.
+- JS (small): `showStatusFeedback(el, text, hideAfterMs)` (`js/mls/helpers.js`) is generic; `setUploadStatus(type, …)`
+  and `UPLOAD_SPINNER_SVG` (`js/mls/rankings/uploadPreview.js`) are generic apart from finding the element by a
+  `${type}ProcessingStatus` id. Shared candidate: a `js/shared/ui/` module with `showStatusFeedback` and a
+  `setProcessingStatus(el, on, label)` that takes the element.
+- Names: `mls-upload-processing`, and `weekly-success-feedback` (it's just the blue variant).
+
+**Player-name autocomplete — share now in CSS.** Type two letters of a name and a list of matching players (with
+position and team) drops down; arrow keys and Enter pick one. MLS uses it in Add Player Manually and the
+Simulator's player lookup.
+- CSS (6 rules, mls.css, under the TABLE HEADER TOOLTIP FIXES marker, comment "Player-name autocomplete
+  dropdown"): `.autocomplete-wrap`, `.autocomplete-dropdown`, `.autocomplete-item`, `.autocomplete-item:hover,
+  .autocomplete-item.highlighted`, `.autocomplete-meta`. Tokens: `--border`, `--text-muted`. No media versions.
+- JS (small): `attachPlayerAutocomplete(inputEl, onSelect)` and `getPlayerSearchIndex()` in `js/mls/players.js`. No
+  `State`: they need only `getSleeperPlayerMap` (already `js/shared/api/sleeper.js`, which MDS loads since 2C),
+  `escapeHtml` and `window.showToast`. Could move whole to `js/shared/ui/` (for example `playerAutocomplete.js`).
+  Callers: `initManualAddForm` (`js/mls/leagues/addPlayer.js`) and the page `onload` (`js/mls/init.js`).
+- Names: fine.
+
+**Keyboard hint — share now in CSS.** The small "Press Enter to add" line with a key drawn as a keycap, shown only
+on devices with a mouse or trackpad.
+- CSS (3 rules, mls.css, MLS SETUP TAB SPECIFIC STYLES): `.mls-manual-key-hint`, `.mls-manual-key-hint kbd`,
+  `@media (hover: none) { .mls-manual-key-hint }`. Tokens: `--text-muted`, `--border`, `--text-main`.
+- JS: none (static markup in `lineup/index.html`; the Enter behavior is in the autocomplete and `addPlayer.js`).
+- Names: `mls-manual-key-hint`.
+
+**Layout and spacing helpers — share now in CSS; keep the full set and move `.mb-1` to base.** Small helpers for
+spacing and rows, not something users see.
+- CSS (26 rules, mls.css UTILITIES and LAYOUT PRIMITIVES): `.mt-1`, `.mt-3`, `.mb-0`, `.mb-2`, `.mb-3`, `.ml-3`,
+  `.mr-2`, `.pt-3`, `.pl-2`, `.stack-sm`, `.cluster`, `.cluster-sm`, `.cluster-md`, `.text-helper`, `.accordion-body`,
+  `.card-header-flush`, `.or-divider` (3 rules), `.settings-subsection` (3), `.toggle-row-flush` (2),
+  `.input-group-end`, `.btn-link-inline`. Not included: `.multi-upload-panel`, `.pos-checkbox-row`,
+  `.pos-checkbox-label`, `.pos-fieldset`, `.pos-fieldset-legend`, which belong to MLS's per-position upload, and stay.
+  Note: `.mt-3 { … }.mb-0 { … }` share one line in mls.css; cut by rule, not by line.
+- `.mb-1` (mds.css, the only MDS-only spacing size; used once in `index.html`) moves to base too. Same check:
+  nothing in mds.css would start beating it.
+- Already in base: `.flex-column`, `.gap-2`, `.mt-2`, `.mt-4`, `.mb-4`, `.stack` (both apps use them), and the 8 unused
+  sizes `.gap-1`, `.gap-3`, `.stack-xs`, `.stack-md`, `.stack-lg`, `.cluster-wrap`, `.cluster-xs`, `.cluster-lg`
+  (4A's dead-rule list). The owner chose to keep these: **4D doesn't delete them**, which answers the card's
+  "ask the owner whether to keep the full scale" question.
+- JS: none (`.cluster`, `.text-helper` appear in a few MLS template strings; nothing toggles them).
+
+**Later** (stay in mls.css; 4D moves nothing for them):
+- **Collapsible rankings cards**: MLS's ROS (Roster tab) and Weekly (Lineup tab) rankings cards fold to one header
+  line with the title, set name and "Updated…"; the Scout waiver sections reuse the toggle. COLLAPSIBLE RANKINGS
+  CARDS rules, `.header-freshness`, `.rankings-header-*`; JS `toggleRankingsCard`, `setRankingsCardExpanded`
+  (`js/mls/rankings/engine.js`).
+- **Two-option segmented toggle**: "Compare Against: Starting Lineup | Whole Roster" and "Search In: This League |
+  All My Leagues" in Scout's Waiver Wire Assistant. 5 rules (`.mls-segmented*`, mls.css WAIVER WIRE ASSISTANT); JS in
+  `js/mls/scout/waivers.js`.
+- **Hide the hero off the Dashboard**: 1 rule (`.container:not(:has(> #setupTab.active)) > .mls-hero`, mls.css SETUP
+  TAB & HERO). MDS gets the same effect by keeping its hero inside `#setupTab`; it would only need the rule if its
+  hero moved out of the tab.
 
 #### For 4D
 
 - Keep in base: `.close-banner-btn-sm`, `.danger-card`, `.text-danger` (already planned), and
   `.btn-pulse`/`.pulse-border`/`.nav-pulse` with their part of the reduced-motion block. When splitting that block,
-  only `.pulse-dot` goes to mds.css.
-- Move from mls.css to the end of base.css: the three pulse `@keyframes`; the 11 setup-checklist rules (with the
-  `.setup-step-go` raised to `.setup-checklist .setup-step-go`, the owner's choice (a)); `.rankings-fresh`, `.rankings-stale`, `.sync-failed`; `.info-banner`,
-  `.info-banner-icon`. Keep their relative order and their comments, and copy the section marker each comes from.
-  Prove each move with the computed-style comparison (0 differences on MLS and T-Score; MDS doesn't use these
-  classes yet, so it shouldn't change either).
+  only `.pulse-dot` goes to mds.css. Also keep the 8 unused spacing sizes (step 1 now deletes only the other 9
+  unused rules).
+- Move from mls.css to the end of base.css: the three pulse `@keyframes`; the 11 setup-checklist rules (with
+  `.setup-step-go` raised to `.setup-checklist .setup-step-go`, the owner's choice (a)); `.rankings-fresh`,
+  `.rankings-stale`, `.sync-failed`; `.info-banner`, `.info-banner-icon`; the 15 upload-preview rules; the 3
+  processing/success rules; the 6 autocomplete rules; the 3 keyboard-hint rules; the 26 layout helpers. Move `.mb-1`
+  from mds.css too. Keep their relative order and their comments, and copy the section marker each comes from.
+  Prove each move with the computed-style comparison (0 differences on all three pages).
 - Stays in mls.css: the checklist's MLS-id `scroll-margin-top` rule, `.status-badge-meta`, `.header-freshness` (both
-  rules), `.mls-btn-sm`, `.cluster*`.
+  rules), `.mls-btn-sm`, `.mls-league-picker*`, the per-position upload rules, and the three "later" features.
+- 4D is a bigger move than its card planned (about 60 more rules). If it runs long, session rule 1 applies: stop at
+  a clean step and log what's left.
 
 #### Checks run
 
