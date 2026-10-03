@@ -2698,14 +2698,49 @@ which is an edit (out of scope here).
 
 #### Left for later chunks
 
-- **4B:** link `css/tscore.css` after `base.css` on the T-Score page, and consider moving the 7
-  T-Score-only rules above into it (they'd need the same cascade check: no later base rule may override them).
+- **4B:** link `css/tscore.css` after `base.css` on the T-Score page, and move the 7 T-Score-only rules
+  above into it (the 4B card now says so). They need the same cascade check: no later base rule may override them.
 - **5D:** `.leaguelogs-attribution` (its rules are in `css/base.css`, LAYOUT PRIMITIVES) is the class 5D renames.
-- **Possible follow-up (not in the runbook):** the 30 cascade-kept rules and 17 dead rules could leave base.css
-  once someone is allowed to edit rules (split the mixed `@media` blocks per app, delete dead selectors).
-  The mixed blocks are the phone `@media (max-width: 480px)` in "Lineup Slots & Roster Rows", the
-  reduced-motion block in LIVE INDICATOR, the `@media (max-width: 767px)` at the end of MODERNIZED FILE UPLOAD
-  BUTTON, and the close-button/`.btn-expand` block in FULL-WIDTH DRAFT BOARD FOR DESKTOP.
+- **4C / 4D (added to the runbook after this chunk):** the 30 cascade-kept rules and 17 dead rules are 4D's job,
+  after 4C finds out which MLS features the owner wants shared with MDS. See "Planned as runbook chunks 4C / 4D"
+  below.
 - New CSS should go in the app file when only one app uses it, or in base.css when both do. If you add a
   shared rule meant to override an app rule, remember the app file loads later: equal specificity no
   longer wins by being later in base.css.
+
+### Planned as runbook chunks 4C / 4D (owner's request, recorded after 4A)
+
+After 4A the owner pointed out that Lineup Strategist (MLS) got most of the new features this season, and
+several will likely come to Draft Strategist (MDS) later. One example is the pulsing "do this next" highlights MLS
+shows during setup. Styles for such features should stay in `css/base.css` rather than be moved into `css/mls.css`
+now and moved back later. So the cleanup proposed at the end of 4A was split in two, and both cards are in the
+runbook:
+
+- **4C — research only (needs 4A).** Rank the MLS features whose styling has a 50%+ chance of being shared with
+  MDS, and for each one say what sharing takes: which CSS rules and what they depend on, and which JS adds the
+  classes or builds the markup, plus what of that would have to move to `js/shared/`. Findings go to the owner in
+  plain language and into a "4C — findings" LOG entry with an "Owner's decision" line per feature. No app file
+  changes.
+- **4D — CSS cleanup with no visible change (needs 4B and 4C).** Delete the 17 unused rules, move the 5 false
+  positives to `mls.css`, split the four mixed shared blocks so the app-only parts can move, and leave in base the
+  14 rules where a shared rule wins on the same element. Anything the owner marked as shared in 4C stays in, or
+  moves to, base. The card lists every rule by name.
+
+Notes for those sessions:
+
+- **Known gap, for 4C to report:** `.btn-pulse`, `.pulse-border` and `.nav-pulse` (and the reduced-motion block)
+  are in `css/base.css`, kept there by 4A's cascade guard. Their animations (`@keyframes btn-pulse-anim`,
+  `border-pulse-anim`, `nav-pulse-anim`) went to `css/mls.css`, because only MLS rules use them. If MDS used these
+  classes today, it would get the static highlight but never the pulse. Moving the three `@keyframes` to base.css
+  is safe: keyframes don't depend on order as long as each name is defined once.
+- **Moving a rule from an app file back to base.css** (whatever 4C decides) means: (1) put it at the end of
+  base.css, or anywhere in base.css after every shared rule it used to beat; (2) check that no earlier rule in the
+  app file overrides it once it loads before that file (the reverse of 4A's cascade guard); (3) bring its
+  `@keyframes`, phone-width and reduced-motion versions with it, and grep the other app for the same class names.
+  Prove it with the computed-style comparison: zero differences on MLS and T-Score.
+- **The 4A analysis tools weren't committed.** They lived in that session's scratchpad: the rule splitter, the
+  cascade-conflict checker and the computed-style comparison spec. 4D rebuilds the comparison from the method in
+  the 4A entry and commits it as an opt-in tool. The 4A entry's step list is enough to rebuild the checker too.
+- **Two utilities that do nothing today** (found while planning 4D, not fixed): `.mt-0` on `.leaguelogs-attribution`
+  and `.pl-6` on `.guide-list` lose to the shared rule (`margin-top: 1rem`, `padding-left: 1.25rem`). Making them
+  work is a visible change and the owner's call; 5D's rename of `.leaguelogs-attribution` is a natural moment.
