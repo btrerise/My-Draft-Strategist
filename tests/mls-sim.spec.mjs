@@ -22,8 +22,12 @@ test('matchup simulator gives the same results for a fixed seed', async ({ page 
             currentSeasonScores: Array.from({ length: Math.min(n, 2) }, (_, i) => base + i),
             ...extra,
         });
-        const t1 = [mk('Alpha QB', 'QB', 22, 9), mk('Bravo RB', 'RB', 14, 6, { projectedMean: 16.5 }), mk('Charlie WR', 'WR', 12, 2), mk('Delta TE', 'TE', 8, 12, { actualScore: 11.2 })];
-        const t2 = [mk('Echo QB', 'QB', 20, 8), mk('Fox RB', 'RB', 15, 10), mk('Golf WR', 'WR', 13, 1, { projectedMean: 9 }), mk('Hotel TE', 'TE', 7, 0)];
+        // Refactor 9B: a kicker and a defense per team. India K and Lima K are typical; Juliet DEF
+        // averages below zero (weeks -7, 0, -4, 3, -1); Kilo DEF averages 1.5 from two games, so the model answers.
+        const t1 = [mk('Alpha QB', 'QB', 22, 9), mk('Bravo RB', 'RB', 14, 6, { projectedMean: 16.5 }), mk('Charlie WR', 'WR', 12, 2), mk('Delta TE', 'TE', 8, 12, { actualScore: 11.2 }),
+            mk('India K', 'K', 8, 6), mk('Juliet DEF', 'DEF', -2, 5)];
+        const t2 = [mk('Echo QB', 'QB', 20, 8), mk('Fox RB', 'RB', 15, 10), mk('Golf WR', 'WR', 13, 1, { projectedMean: 9 }), mk('Hotel TE', 'TE', 7, 0),
+            mk('Kilo DEF', 'DEF', 3, 2), mk('Lima K', 'K', 9, 10)];
         ui.runMatchupSimulation(t1, t2, {
             lineupDiffersFromSleeper: true, currentWeek: 2,
             benchInsights: [{ benchName: 'Bench Guy', benchPos: 'WR', starterName: 'Charlie WR', starterPos: 'WR', benchWinPct: 0.55 }],
@@ -46,7 +50,7 @@ test('matchup simulator gives the same results for a fixed seed', async ({ page 
     });
 
     expect(workerUrls).toEqual(['/js/mls/sim/worker.js', '/js/mls/sim/worker.js']);
-    expect(text).toContain('Your Team: 93.71% Opponent: 6.29%');
+    expect(text).toContain('Your Team: 84.77% Opponent: 15.23%');
     expect(text).toContain('0 ties in 10,000 simulations');
     // Refactor 9A: a score exactly on a QB/RB/WR/TE line counts. Alpha QB's history has one 24 (was 22.2%),
     // Echo QB's one 24 (was 12.5%), Fox RB's one 20 (was 0%). The model-based numbers can't change.
@@ -58,6 +62,11 @@ test('matchup simulator gives the same results for a fixed seed', async ({ page 
     expect(text).toContain('Charlie WR Bust: 27.2% • Boom: 2.7% ~5.55–15.45 (10.5 avg)');
     expect(text).toContain('Golf WR Bust: 33.8% • Boom: 0.1% ~5.4–12.6 (9 proj)');
     expect(text).toContain('Hotel TE Bust: 100% • Boom: 0% ~0–0 (0 avg)');
+    // Refactor 9B: K/DEF lines are 0.5x and 1.5x the player's own average. Pinned on main before the fix.
+    expect(text).toContain('India K Bust: 16.7% • Boom: 16.7% 4–11.34 (7.67 avg)');
+    expect(text).toContain('Lima K Bust: 10% • Boom: 10% 5.62–12.58 (9.1 avg)');
+    expect(text).toContain('Juliet DEF Bust: 60% • Boom: 60% 0–2.03 (-1.8 avg)');
+    expect(text).toContain('Kilo DEF Bust: 44% • Boom: 44% ~0–6.45 (1.5 avg)');
     expect(raw).toEqual({ team1WinProb: 89.7, team2WinProb: 10.3, ties: 0, iterations: 5000, fallbackCount: 1, projectionCount: 0, actualCount: 1 });
     await expectClean(page, state);
 });
