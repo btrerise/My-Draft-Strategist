@@ -3847,7 +3847,8 @@ js/ folder in `git ls-files` appears in it.
 #### Left for later
 
 - Nothing from 5D's card. The unused spacing helpers (`.gap-1`, `.gap-3`, `.stack-*`, `.cluster-*`, `.mt-0`,
-  `.pl-6`) stay until after Phase 8, as the owner decided after 4E. The 0B findings get their own card
+  `.pl-6`) stay until after Phase 8, as the owner decided after 4E. Runbook card **8D** (added after 5D, owner's
+  approval) deletes the ones still unused once 8A–8C are merged. As of 5D none of the ten is used outside css/. The 0B findings get their own card
   (planned below).
 - Next: 7B (needs 5D and 6B), then Phase 8.
 
