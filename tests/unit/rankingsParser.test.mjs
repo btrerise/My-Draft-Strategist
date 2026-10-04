@@ -200,21 +200,23 @@ describe('per-position uploads', () => {
         assert.deepEqual(pick(p.devonachane, ['rank', 'posRank', 'flexRank']), { rank: 4, posRank: 2, flexRank: 4 });
     });
 
-    test('CURRENT BEHAVIOR: "Quarterback" as the name header works in a QB upload but not a single-file one', async () => {
+    // Refactor 9A: in a single-file upload these headers used to switch on the horizontal layout,
+    // which found no "... player" column and failed with no-name-column.
+    test('"Quarterback", "Running Back" and "Flex" name headers work in single-file and per-position uploads', async () => {
         const text = 'Rank,Quarterback\n1,Josh Allen\n';
         const asQb = await parse([{ file: csvFile('qb.csv', text), context: 'QB' }]);
         assert.deepEqual(asQb.parsedData.map(p => p.cleanName), ['joshallen']);
-        // In SINGLE context a "quarterback" header switches to the horizontal layout, which
-        // then finds no "... player" column.
         const asSingle = await parse(single(csvFile('qb.csv', text)));
-        assert.deepEqual(asSingle.parsedData, []);
-        assert.deepEqual(asSingle.diagnostics, [{
-            fileName: 'qb.csv', context: 'SINGLE', reason: 'no-name-column', headersFound: ['Rank', 'Quarterback'],
-            missing: ['qb player', 'rb player', 'wr player', 'te player', 'k player', 'def team', 'flex player']
-        }]);
-        // "Wide Receiver" doesn't trigger the horizontal layout, so it works in SINGLE.
-        const wr = await parse(single(csvFile('wr.csv', 'Rank,Wide Receiver\n1,Puka Nacua\n')));
-        assert.deepEqual(wr.parsedData.map(p => p.cleanName), ['pukanacua']);
+        assert.deepEqual(asSingle.diagnostics, []);
+        assert.deepEqual(asSingle.parsedData.map(p => [p.cleanName, p.rank]), [['joshallen', 1]]);
+        for (const [header, name, clean] of [['Running Back', 'Bijan Robinson', 'bijanrobinson'], ['FLEX', 'Puka Nacua', 'pukanacua'], ['Wide Receiver', 'Puka Nacua', 'pukanacua']]) {
+            const res = await parse(single(csvFile('x.csv', `Rank,${header},Tier\n4,${name},2\n`)));
+            assert.deepEqual(res.diagnostics, [], header);
+            assert.deepEqual(res.parsedData.map(p => pick(p, ['cleanName', 'rank', 'tier'])), [{ cleanName: clean, rank: 4, tier: 2 }], header);
+        }
+        // A title line naming a position is no longer taken for a header row.
+        const titled = await parse(single(csvFile('t.csv', 'Quarterback Rankings - Week 3\nRank,Player\n1,Josh Allen\n')));
+        assert.deepEqual(titled.parsedData.map(p => p.cleanName), ['joshallen']);
     });
 });
 
@@ -248,9 +250,21 @@ describe('horizontal (side-by-side) weekly sheet', () => {
         ]);
     });
 
-    test('horizontal header with no name columns', async () => {
-        const res = await parse(single(csvFile('h.csv', 'QB Rank,Running Back\n1,x\n')));
+    test('horizontal header with no usable name columns', async () => {
+        // A name column needs a rank column to its left; "QB Player" in column 0 has none. (Before 9A
+        // this used 'QB Rank,Running Back', which is a vertical list now; see the per-position tests.)
+        const res = await parse(single(csvFile('h.csv', 'QB Player,RB Rank\nx,1\n')));
         assert.equal(res.diagnostics[0].reason, 'no-name-column');
+    });
+    test('any "<POS> Player" or "DEF Team" column marks the horizontal layout, not just QB/RB/FLEX', async () => {
+        const res = await parse(single(csvFile('h.csv', 'WR Rank,WR Player,WR Tier,DEF Rank,DEF Team\n1,Puka Nacua,1,1,Ravens\n')));
+        assert.deepEqual(res.diagnostics, []);
+        const p = byName(res.parsedData);
+        assert.deepEqual(pick(p.pukanacua, ['rank', 'tier', 'posRank', 'posTier']), { rank: 1, tier: 1, posRank: 1, posTier: 1 });
+        assert.equal(p.ravens.posRank, 1);
+        // A vertical file whose header merely contains "player" stays vertical.
+        const v = await parse(single(csvFile('v.csv', 'Rank,Player Name,Team\n1,Josh Allen,BUF\n')));
+        assert.deepEqual(v.parsedData.map(x => x.cleanName), ['joshallen']);
     });
     test('horizontal header with name columns but no data rows', async () => {
         const res = await parse(single(csvFile('h.csv', 'QB Rank,QB Player\n')));

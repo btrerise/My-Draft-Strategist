@@ -74,15 +74,14 @@ function parseSosValue(cell) {
 }
 
 // Combined horizontal sheet (old format or the newer 'wk1' format): positions side by side,
-// each with its own rank/name columns. Only applies to single-file uploads.
+// each with its own rank/name columns. Only applies to single-file uploads. Recognized by the
+// name columns the horizontal parser reads ("QB Player" ... "FLEX Player", "DEF Team"), since a
+// sheet without one yields no players anyway. Refactor 9A: a "Quarterback", "Running Back" or
+// "Flex" header also switched this on, so a plain list headed that way failed in a single-file
+// upload ("no name column") while working in a per-position one. Those are vertical name headers.
 function isHorizontalLayout(headers, context) {
     return (context === 'SINGLE') && headers.some(h =>
-        h.includes('quarterback') ||
-        h.includes('running back') ||
-        h === 'flex' ||
-        h.includes('qb player') ||
-        h.includes('rb player') ||
-        h.includes('flex player')
+        /\b(qb|rb|wr|te|k|flex)\s+player\b/.test(h) || h === 'def team'
     );
 }
 
