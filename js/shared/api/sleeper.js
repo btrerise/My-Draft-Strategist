@@ -6,8 +6,7 @@
 // State/localStorage, updating buttons) stays in js/mls/ (and js/mds/) and is unaffected by this
 // split; it just calls these functions instead of calling fetch() directly.
 //
-// Every call here goes through window.mdsFetch (js/shared/net.js, assigned to window by
-// js/shared/globals.js before this module runs) rather than fetch() directly, so none of
+// Every call here goes through mdsFetch (js/shared/net.js) rather than fetch() directly, so none of
 // them can hang forever on a stalled connection. That's the one behavior this file adds on top of a bare fetch; the ok-checks
 // and error messages below are still exactly what their original call sites had.
 //
@@ -19,6 +18,7 @@
 // was updated in lineup/mls.js to explicitly catch and continue, so its original "skip this one
 // league, keep going" behavior is preserved on purpose rather than by accident.
 import { IDB_DATABASES } from '../storage/keys.js';
+import { mdsFetch, MDS_LONG_FETCH_TIMEOUT_MS } from '../net.js';
 
 /**
  * Fetches Sleeper's current NFL state (week, season, etc). Returns null on a non-ok
@@ -27,7 +27,7 @@ import { IDB_DATABASES } from '../storage/keys.js';
  * a normal, recoverable case, not an error worth surfacing to the user.
  */
 export async function getNflState() {
-    const res = await window.mdsFetch('https://api.sleeper.app/v1/state/nfl');
+    const res = await mdsFetch('https://api.sleeper.app/v1/state/nfl');
     return res.ok ? res.json() : null;
 }
 
@@ -36,7 +36,7 @@ export async function getNflState() {
  * Draft Strategist's draft sync passes its own wording as `notFoundMessage` (refactor 2C).
  */
 export async function getSleeperUser(username, { notFoundMessage = "User not found." } = {}) {
-    const res = await window.mdsFetch(`https://api.sleeper.app/v1/user/${username}`);
+    const res = await mdsFetch(`https://api.sleeper.app/v1/user/${username}`);
     if (!res.ok) throw new Error(notFoundMessage);
     return res.json();
 }
@@ -46,7 +46,7 @@ export async function getSleeperUser(username, { notFoundMessage = "User not fou
  * Draft Strategist's draft sync treats the league as optional (a mock draft has none).
  */
 export async function getSleeperLeague(leagueId, { nullIfNotOk = false } = {}) {
-    const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}`);
+    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}`);
     if (!res.ok) {
         if (nullIfNotOk) return null;
         throw new Error("League ID not found.");
@@ -59,20 +59,20 @@ export async function getSleeperLeague(leagueId, { nullIfNotOk = false } = {}) {
  * as JSON. `nullIfNotOk` returns null for a non-ok response instead (Draft Strategist).
  */
 export async function getSleeperLeagueUsers(leagueId, { nullIfNotOk = false } = {}) {
-    const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
     if (nullIfNotOk && !res.ok) return null;
     return res.json();
 }
 
 /** No ok-check, matching the original -- a non-ok response's body still gets parsed as JSON. */
 export async function getSleeperLeagueRosters(leagueId) {
-    const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
     return res.json();
 }
 
 /** Throws "Could not fetch leagues for this user." on a non-ok response. */
 export async function getSleeperUserLeagues(userId, season) {
-    const res = await window.mdsFetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${season}`);
+    const res = await mdsFetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${season}`);
     if (!res.ok) throw new Error("Could not fetch leagues for this user.");
     return res.json();
 }
@@ -95,7 +95,7 @@ export async function getSleeperUserLeagues(userId, season) {
  * UI keeps showing the projection after the fact purely for comparison, not as a live estimate.
  */
 export async function getSleeperMatchups(leagueId, week) {
-    const res = await window.mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`);
+    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`);
     if (!res.ok) throw new Error("Could not fetch matchups for this league/week.");
     return res.json();
 }
@@ -106,14 +106,14 @@ export async function getSleeperMatchups(leagueId, week) {
 
 /** One draft's settings, draft_order and league_id. Throws "Could not fetch Draft ID details." on a non-ok response. */
 export async function getSleeperDraft(draftId) {
-    const res = await window.mdsFetch(`https://api.sleeper.app/v1/draft/${draftId}`);
+    const res = await mdsFetch(`https://api.sleeper.app/v1/draft/${draftId}`);
     if (!res.ok) throw new Error("Could not fetch Draft ID details.");
     return res.json();
 }
 
 /** Every pick made so far in a draft. Throws "Could not fetch Draft ID picks." on a non-ok response. */
 export async function getSleeperDraftPicks(draftId) {
-    const res = await window.mdsFetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
+    const res = await mdsFetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
     if (!res.ok) throw new Error("Could not fetch Draft ID picks.");
     return res.json();
 }
@@ -129,7 +129,7 @@ export async function getSleeperDraftPicks(draftId) {
  * "Sleeper API Error: <status>" message are unchanged.
  */
 export async function getSleeperSeasonAdp(season, orderBy) {
-    const res = await window.mdsFetch(`https://api.sleeper.com/projections/nfl/${season}?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=${orderBy}`);
+    const res = await mdsFetch(`https://api.sleeper.com/projections/nfl/${season}?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=${orderBy}`);
     if (!res.ok) throw new Error(`Sleeper API Error: ${res.status}`);
     return res.json();
 }
@@ -243,7 +243,7 @@ export function getSleeperPlayerMap(options = {}) {
             // The long timeout, not the 12s default: this payload is ~15MB (see the cache
             // comment above) and a healthy download of it on a slow phone connection can
             // legitimately outlast the ceiling an ordinary JSON call gets.
-            const res = await window.mdsFetch('https://api.sleeper.app/v1/players/nfl', {}, window.MDS_LONG_FETCH_TIMEOUT_MS);
+            const res = await mdsFetch('https://api.sleeper.app/v1/players/nfl', {}, MDS_LONG_FETCH_TIMEOUT_MS);
             if (!res.ok) throw sleeperResponseError(`Sleeper's player list request failed (HTTP ${res.status}).`);
             const data = await res.json();
             if (!isSleeperPlayerMap(data)) throw sleeperResponseError("Sleeper's player list came back in an unexpected format.");

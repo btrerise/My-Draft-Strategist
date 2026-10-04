@@ -1,7 +1,7 @@
 // getSleeperPlayerMap (js/shared/api/sleeper.js): what it caches. Added with the 2C follow-up
 // that stopped it caching Sleeper error replies as if they were the player list.
 //
-// window.mdsFetch answers from `next`; indexedDB is a minimal in-memory fake (open, one store,
+// fetch answers from `next` (the real mdsFetch from js/shared/net.js wraps it); indexedDB is a minimal in-memory fake (open, one store,
 // get/put) so the IndexedDB cache path really runs. The module keeps an in-memory copy once a
 // fetch succeeds, so tests run in order: the first one is the only non-forced call that reaches
 // IndexedDB, the rest pass forceRefresh (which skips both caches, as the injury audit does).
@@ -32,21 +32,19 @@ const fakeIndexedDB = {
 let next = null; // { status, body } or { status, text } for a non-JSON body
 let fetches = 0;
 globalThis.indexedDB = fakeIndexedDB;
-globalThis.window = {
-    indexedDB: fakeIndexedDB,
-    MDS_LONG_FETCH_TIMEOUT_MS: 60000,
-    async mdsFetch() {
-        fetches++;
-        const r = next;
-        return {
-            ok: r.status >= 200 && r.status < 300,
-            status: r.status,
-            json: async () => {
-                if ('text' in r) throw new SyntaxError(`Unexpected token '<', "${r.text.slice(0, 10)}"... is not valid JSON`);
-                return r.body;
-            },
-        };
-    },
+globalThis.window = { indexedDB: fakeIndexedDB };
+globalThis.fetch = async () => {
+    fetches++;
+    const r = next;
+    return {
+        ok: r.status >= 200 && r.status < 300,
+        status: r.status,
+        json: async () => {
+            if ('text' in r) throw new SyntaxError(`Unexpected token '<', "${r.text.slice(0, 10)}"... is not valid JSON`);
+            return r.body;
+        },
+        text: async () => ('text' in r ? r.text : JSON.stringify(r.body)),
+    };
 };
 
 const { getSleeperPlayerMap } = await import('../../js/shared/api/sleeper.js');

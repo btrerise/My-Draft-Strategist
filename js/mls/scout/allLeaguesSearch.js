@@ -7,6 +7,8 @@ import { getActiveLeague, rankingIndex } from '../helpers.js';
 import { findClosestRankedName } from '../players.js';
 import { getSleeperMetaByName } from './waivers.js';
 import { buildPowerRead, getLeaguePowerContext, POWER_RANK_KEY, renderPowerRead, renderPowerSourceNote } from '../power/allLeagues.js';
+import { normalizeName } from '../../shared/names.js';
+import { switchActiveLeague } from '../main.js';
 
     // --- ALL-LEAGUES PLAYER SEARCH (Scout tab: Scan Pasted List -> "All My Leagues") ---
     // Answers "where does this player stand across everything I'm in?" -- one card per player,
@@ -48,7 +50,7 @@ import { buildPowerRead, getLeaguePowerContext, POWER_RANK_KEY, renderPowerRead,
     // no longer scrolls to the top on its own.)
     export const scoutGoToLeague = function(leagueId) {
         if (!leagueId || leagueId === State.activeLeagueId) return;
-        window.switchActiveLeague(leagueId);
+        switchActiveLeague(leagueId);
         setTimeout(() => {
             const out = document.getElementById('waiverOutput');
             if (out) out.scrollIntoView({ behavior: 'smooth', block: 'start' });

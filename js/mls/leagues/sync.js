@@ -14,10 +14,14 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab } from '../main.js';
+import { getPowerLeagueKind, loadRosterTab, optimizeLineup } from '../main.js';
 import { getRankingsFreshness, updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { applyMarketSettingsToUI } from '../settings.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { flashButton } from '../../shared/ui/flashButton.js';
+import { normalizeName } from '../../shared/names.js';
+import { showConfirm } from '../../shared/ui/confirm.js';
+import { showToast } from '../../shared/ui/toast.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -191,7 +195,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         const recovery = /^(manual|handoff)_/.test(leagueId)
             ? "It wasn't synced from Sleeper, so you'd have to set it up again by hand."
             : 'You can sync it again from Sleeper later.';
-        if (!await window.showConfirm(`This removes ${leagueLabel} and its saved settings from the app. ${recovery}`, { title: 'Remove this league?', confirmText: 'Remove League', danger: true })) return;
+        if (!await showConfirm(`This removes ${leagueLabel} and its saved settings from the app. ${recovery}`, { title: 'Remove this league?', confirmText: 'Remove League', danger: true })) return;
         State.leagues = State.leagues.filter(l => l.leagueId !== leagueId);
         if (State.activeLeagueId === leagueId) {
             State.activeLeagueId = State.leagues.length > 0 ? State.leagues[0].leagueId : null;
@@ -202,7 +206,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         loadActiveLeagueData();
         updatePulsePrompts();
         if (typeof loadRosterTab === 'function') loadRosterTab();
-        if (typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+        optimizeLineup(false);
     };
 
     // Loads a league's own ROS/Weekly rankings into State (its saved named set, else the
@@ -278,7 +282,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
-        if (activeTab === 'lineupTab') window.optimizeLineup(false);
+        if (activeTab === 'lineupTab') optimizeLineup(false);
         if (activeTab === 'rosterTab') loadRosterTab();
         
         const waiverInput = document.getElementById('waiverInput');
@@ -402,7 +406,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 
     export const saveRequirements = function(btn) {
         let league = getActiveLeague();
-        if (!league) { if (window.showToast) window.showToast("Please select or add a league first.", { isError: true }); return; }
+        if (!league) { showToast("Please select or add a league first.", { isError: true }); return; }
         const getInt = id => parseInt(document.getElementById(id)?.value) || 0;
         league.reqs = {
             QB: getInt('reqQB'), RB: getInt('reqRB'), WR: getInt('reqWR'),
@@ -411,13 +415,13 @@ import { KEYS } from '../../shared/storage/keys.js';
         };
         localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
         if (btn) flashButton(btn, "Requirements Saved");
-        window.optimizeLineup(true);
+        optimizeLineup(true);
     };
 
     export const createManualLeague = function() {
         const nameInput = document.getElementById('newLeagueName');
         const name = nameInput ? nameInput.value.trim() : "";
-        if (!name) { if (window.showToast) window.showToast("Please enter a League Name to create a manual league.", { isError: true }); return; }
+        if (!name) { showToast("Please enter a League Name to create a manual league.", { isError: true }); return; }
 
         let newId = 'manual_' + Date.now();
         let leagueObj = {
@@ -642,17 +646,17 @@ import { KEYS } from '../../shared/storage/keys.js';
                 loadActiveLeagueData();
             }
             
-            window.optimizeLineup(true); 
+            optimizeLineup(true); 
             loadRosterTab();
             
             if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
 
-            if (rosterDiff && (rosterDiff.added.length || rosterDiff.dropped.length || rosterDiff.newlyOut.length) && window.showToast) {
+            if (rosterDiff && (rosterDiff.added.length || rosterDiff.dropped.length || rosterDiff.newlyOut.length)) {
                 const parts = [];
                 if (rosterDiff.added.length) parts.push(`Added: ${formatNameList(rosterDiff.added)}`);
                 if (rosterDiff.dropped.length) parts.push(`Dropped: ${formatNameList(rosterDiff.dropped)}`);
                 if (rosterDiff.newlyOut.length) parts.push(`Now OUT: ${formatNameList(rosterDiff.newlyOut)}`);
-                window.showToast(parts.join(' · '));
+                showToast(parts.join(' · '));
             }
 
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
@@ -692,7 +696,7 @@ import { KEYS } from '../../shared/storage/keys.js';
                 console.error(e);
             }
             if (btn) flashButton(btn, "Sync Failed", true, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
-            if (!suppressErrorToast && window.showToast) window.showToast(`Sync Error:\n${err.message}`, { isError: true });
+            if (!suppressErrorToast) showToast(`Sync Error:\n${err.message}`, { isError: true });
             return false;
         }
     }
@@ -700,7 +704,7 @@ import { KEYS } from '../../shared/storage/keys.js';
     export const addAndSyncLeague = function(btn) {
         const username = document.getElementById('sleeperUsername')?.value.trim() || "";
         const leagueId = document.getElementById('sleeperLeagueId')?.value.trim() || "";
-        if (!username || !leagueId) { if (window.showToast) window.showToast("Please enter both Sleeper Username and League ID to sync.", { isError: true }); return; }
+        if (!username || !leagueId) { showToast("Please enter both Sleeper Username and League ID to sync.", { isError: true }); return; }
         // Just the label changes here -- flashButton (called inside processSleeperData once
         // the sync finishes) handles the actual color flash and restores the button to its
         // "Sync Sleeper" text afterward. Previously this line also force-set an inline
@@ -714,7 +718,7 @@ import { KEYS } from '../../shared/storage/keys.js';
     export const syncActiveLeague = function() {
         let league = getActiveLeague();
         if (!league || !league.leagueId || league.leagueId.startsWith('manual_') || !league.username) {
-            if (window.showToast) window.showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
+            showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
         }
         const btn = document.getElementById('rosterSyncBtn');
         if (btn) btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing…</span>`;

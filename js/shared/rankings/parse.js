@@ -38,9 +38,11 @@ const KNOWN_NON_NAME_HEADERS = new Set([
     'adp', 'value', 'avg', 'std', 'std dev', 'best', 'worst', 'age', 'exp', 'notes'
 ]);
 
-// normalizeName is imported from js/shared/names.js. showToast (and findCsvQuoteProblem) are
-// still reached as window.* names, assigned by js/shared/globals.js before any app module runs.
+// Shared helpers are imports. showToast is only the default: parseRankingsFiles takes the toast
+// function as an option too, like loadSheetJS, so the unit tests can record toasts without a DOM.
 import { normalizeName } from '../names.js';
+import { showToast as defaultShowToast } from '../ui/toast.js';
+import { findCsvQuoteProblem } from './diagnostics.js';
 
 // Optional tier cell -> number, accepting "2", "Tier 2", "T2" (anything with a digit in it).
 // null (not 999) when absent or unparseable: unlike rank there's no "unranked" sentinel to keep
@@ -173,7 +175,7 @@ export function stripTitleLines(text) {
  * @param {{value: boolean}} hasNewSosRef - boxed boolean so this function can report "found new
  *   SoS data" back alongside the diagnostic it resolves with.
  */
-function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef) {
+function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef, showToast) {
     return new Promise((resolve) => {
         const file = fileObj.file;
         const parseContext = fileObj.context;
@@ -420,26 +422,20 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                         resolve(diagnosticsFor(sheetResults));
                     } catch (err) {
                         console.error("Error reading Excel file:", err);
-                        if (typeof window.showToast === 'function') {
-                            window.showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
-                        }
+                        showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
                         resolve(unreadable());
                     }
                 };
                 reader.onerror = () => {
                     console.error("Error reading file:", file.name);
-                    if (typeof window.showToast === 'function') {
-                        window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
-                    }
+                    showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                     resolve(unreadable());
                 };
                 reader.readAsArrayBuffer(file);
             }, () => {
-                // SheetJS itself failed to load -- see window.loadSheetJS in js/shared/ui/scriptLoader.js.
+                // SheetJS itself failed to load -- see loadSheetJS in js/shared/ui/scriptLoader.js.
                 console.error("Failed to load SheetJS library");
-                if (typeof window.showToast === 'function') {
-                    window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
-                }
+                showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
                 resolve(unreadable());
             });
         } else {
@@ -454,14 +450,12 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                         // Quote damage is the one results.errors entry that means rows were
                         // lost (see findCsvQuoteProblem in js/shared/rankings/diagnostics.js). The XLSX branch doesn't
                         // check: SheetJS writes its CSV with valid quoting.
-                        const quote = typeof window.findCsvQuoteProblem === 'function' ? window.findCsvQuoteProblem(results, 1) : null;
+                        const quote = findCsvQuoteProblem(results, 1);
                         if (quote) diags.push({ fileName: file.name, context: parseContext, reason: 'unclosed-quote', row: quote.row, rowsLost: quote.rowsLost, headersFound: [], missing: [] });
                         resolve(diags);
                     } catch (err) {
                         console.error("Error parsing file:", file.name, err);
-                        if (typeof window.showToast === 'function') {
-                            window.showToast(`Couldn't process "${file.name}". Check that it's a rankings file and try again.`, { isError: true });
-                        }
+                        showToast(`Couldn't process "${file.name}". Check that it's a rankings file and try again.`, { isError: true });
                         resolve(unreadable());
                     }
                 },
@@ -470,9 +464,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 // settled and the upload stalled on its progress indicator.
                 error: err => {
                     console.error("Error reading file:", file.name, err);
-                    if (typeof window.showToast === 'function') {
-                        window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
-                    }
+                    showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                     resolve(unreadable());
                 }
             });
@@ -489,6 +481,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
  * @param {Object} options
  * @param {Function} options.loadSheetJS - (onSuccess, onError) => void; loads the SheetJS lib.
  * @param {Function} [options.onProgress] - (completedCount, totalCount) => void.
+ * @param {Function} [options.showToast] - (message, options) => void; defaults to js/shared/ui/toast.js's.
  * @returns {Promise<{parsedData: Array, hasNewSos: boolean, sosUpdates: Object, diagnostics: Array}>}
  *
  * `diagnostics` lists, in upload order, one entry per file that contributed NO players, plus
@@ -510,9 +503,9 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
  *     skipped tab, its first row
  *   - missing: the lowercase name headers that were looked for (only for 'no-name-column')
  *   - sheetName: set for multi-sheet workbooks, naming the tab the diagnostic describes
- * window.formatRankingsDiagnostic (js/shared/rankings/diagnostics.js) turns one into the user-facing message.
+ * formatRankingsDiagnostic (js/shared/rankings/diagnostics.js) turns one into the user-facing message.
  */
-export async function parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress } = {}) {
+export async function parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress, showToast = defaultShowToast } = {}) {
     let combinedPlayers = {};
     let sosUpdates = {};
     let hasNewSosRef = { value: false };
@@ -522,7 +515,7 @@ export async function parseRankingsFiles(filesWithContext, { loadSheetJS, onProg
     if (typeof onProgress === 'function') onProgress(completed, total);
 
     const perFile = await Promise.all(filesWithContext.map(f =>
-        parseSingleFile(f, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef).then(diags => {
+        parseSingleFile(f, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef, showToast).then(diags => {
             completed++;
             if (typeof onProgress === 'function') onProgress(completed, total);
             return diags;

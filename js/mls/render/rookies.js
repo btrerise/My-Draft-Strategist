@@ -1,5 +1,6 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: ROOKIE LOOKUP (the Roster tab "R" badge).
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
+import { normalizeName } from '../../shared/names.js';
 
     // --- ROOKIE LOOKUP (Roster tab "R" badge) ---
     // Rookie status isn't stored on league.roster -- it comes from Sleeper's years_exp (0 in a

@@ -8,10 +8,10 @@
 // fetchMarketConsensusData's LeagueLogs branch are gone, and with them this file's import of
 // getSleeperPlayerMap. Draft Strategist's ADP sources moved to ./ffc.js.
 import { normalizeName } from '../names.js';
+import { mdsFetch } from '../net.js';
 
-// normalizeName is imported from js/shared/names.js above. window.mdsFetch, used for the API
-// call below, is assigned by js/shared/globals.js (from js/shared/net.js) before any app module
-// runs -- it's fetch() with a timeout, so FantasyCalc going quiet can't leave the Market
+// normalizeName and mdsFetch are imported above. mdsFetch, used for the API call below, is
+// fetch() with a timeout, so FantasyCalc going quiet can't leave the Market
 // Value button spinning forever.
 
 /**
@@ -33,7 +33,7 @@ export async function fetchMarketConsensusData(source, isDynastyVal, numQbsVal, 
 
     // --- 1. FANTASYCALC ---
     if (source === 'fantasycalc') {
-        const fcRes = await window.mdsFetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
+        const fcRes = await mdsFetch(`https://api.fantasycalc.com/values/current?isDynasty=${isDynastyBool}&numQbs=${numQbsVal}&numTeams=${teamCount}&ppr=${ppr}&isTEP=${isTEP}`);
         if (!fcRes.ok) throw new Error(`FantasyCalc API Error: ${fcRes.status}`);
         const fcData = await fcRes.json();
 

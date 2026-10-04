@@ -12,6 +12,8 @@ import { getCleanNameToIdIndex } from '../players.js';
 import { getLeagueScoringKey, hasKickedOff } from '../lineup/gameInfo.js';
 import { getWaiverInsights } from '../scout/waiverInsights.js';
 import { slotAcceptsPos } from '../render/lineup.js';
+import { normalizeName } from '../../shared/names.js';
+import { showToast } from '../../shared/ui/toast.js';
 
 // --- MATCHUP SIMULATOR (MONTE CARLO) ---
 // Bound to #run-sim-btn through its data-action="runMatchupSim" (the click table in
@@ -33,13 +35,13 @@ export const runMatchupSim = async function() {
     if (!league || league.leagueId.startsWith('manual_')) {
         const msg = "Sync a Sleeper league on the Dashboard first.";
         showSimNotice(msg);
-        if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
+        showToast(msg, { isError: true });
         return;
     }
     if (!league.rosterId) {
         const msg = "Re-sync this league from the Dashboard to enable simulations.";
         showSimNotice(msg);
-        if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
+        showToast(msg, { isError: true });
         return;
     }
 
@@ -58,7 +60,7 @@ export const runMatchupSim = async function() {
         if (!nflState || typeof nflState.week !== 'number') {
             const msg = "Sleeper didn't return the current NFL week, so the simulation didn't run. Sleeper may be having problems - try Run Matchup Simulations again in a few minutes.";
             showSimNotice(msg, { isError: true });
-            if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
+            showToast(msg, { isError: true });
             return;
         }
         const currentWeek = nflState.week;
@@ -68,7 +70,7 @@ export const runMatchupSim = async function() {
         if (currentWeek < 2) {
             const msg = "Not enough completed weeks yet to estimate variance.";
             showSimNotice(msg);
-            if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
+            showToast(msg, { isError: true });
             return;
         }
 
@@ -88,14 +90,14 @@ export const runMatchupSim = async function() {
         if (!myEntry || !myEntry.matchup_id) {
             const msg = `No matchup found for Week ${currentWeek} (bye week?).`;
             showSimNotice(msg);
-            if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
+            showToast(msg, { isError: true });
             return;
         }
         const oppEntry = matchups.find(m => m.matchup_id === myEntry.matchup_id && m.roster_id !== league.rosterId);
         if (!oppEntry) {
             const msg = "Couldn't find an opponent for this week's matchup.";
             showSimNotice(msg);
-            if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
+            showToast(msg, { isError: true });
             return;
         }
 
@@ -217,13 +219,11 @@ export const runMatchupSim = async function() {
         const team1Players = toPlayerObjs(myStarters, myEntry);
         const team2Players = toPlayerObjs(oppStarters, oppEntry);
 
-        if (typeof window.showToast === 'function') {
-            const exclusionNotes = [];
-            if (excludedCount > 0) exclusionNotes.push(`${excludedCount} without enough game history yet`);
-            if (injuryExcludedCount > 0) exclusionNotes.push(`${injuryExcludedCount} listed as Doubtful, Out, or IR`);
-            if (exclusionNotes.length > 0) {
-                window.showToast(`${exclusionNotes.join(' and ')} excluded from the simulation.`);
-            }
+        const exclusionNotes = [];
+        if (excludedCount > 0) exclusionNotes.push(`${excludedCount} without enough game history yet`);
+        if (injuryExcludedCount > 0) exclusionNotes.push(`${injuryExcludedCount} listed as Doubtful, Out, or IR`);
+        if (exclusionNotes.length > 0) {
+            showToast(`${exclusionNotes.join(' and ')} excluded from the simulation.`);
         }
 
         // "Bench Player Y outscored Starting Player Z X% of the time" -- for each bench
@@ -323,7 +323,7 @@ export const runMatchupSim = async function() {
             msg = `Couldn't run the simulation for ${leagueName} - its saved lineup or roster data may be out of date. Tap Sync All Leagues on the Dashboard, then run it again.`;
         }
         showSimNotice(msg, { isError: true });
-        if (typeof window.showToast === 'function') window.showToast(msg, { isError: true });
+        showToast(msg, { isError: true });
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = origText; }
     }

@@ -2,6 +2,9 @@
 // (DISCORD/GROUP CHAT) and SCREENSHOT EXPORT (copyLineupAsText, exportLineup).
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
+import { showToast } from '../../shared/ui/toast.js';
+import { flashButton } from '../../shared/ui/flashButton.js';
+import { ensureHtml2Canvas } from '../../shared/ui/scriptLoader.js';
     // --- TEXT EXPORT (DISCORD/GROUP CHAT) ---
     export const copyLineupAsText = function(btn) {
         if (!State.activeLeagueId) return;
@@ -10,7 +13,7 @@ import { getActiveLeague } from '../helpers.js';
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         
         if (starters.length === 0 || !starters.some(s => s.player)) {
-            if (window.showToast) window.showToast("No players in lineup to copy.", { isError: true });
+            showToast("No players in lineup to copy.", { isError: true });
             return;
         }
 
@@ -32,11 +35,11 @@ import { getActiveLeague } from '../helpers.js';
         const finalString = textLines.join('\n');
         
         navigator.clipboard.writeText(finalString).then(() => {
-            if (btn && window.flashButton) window.flashButton(btn, "Copied!");
-            if (window.showToast) window.showToast("Lineup copied to clipboard!");
+            if (btn) flashButton(btn, "Copied!");
+            showToast("Lineup copied to clipboard!");
         }).catch(err => {
             console.error("Copy failed:", err);
-            if (window.showToast) window.showToast("Failed to copy. Your browser may not support this.", { isError: true });
+            showToast("Failed to copy. Your browser may not support this.", { isError: true });
         });
     };
 
@@ -46,8 +49,8 @@ import { getActiveLeague } from '../helpers.js';
     // The old message here ("loading, try again in a moment") was a symptom of the eager
     // <script defer> tag: the only thing the user could do was wait and re-press. Now the
     // press itself starts the download and the export continues once it lands.
-    if (!(await window.ensureHtml2Canvas())) {
-        if (window.showToast) window.showToast("Couldn't load the screenshot library. Check your connection and try again.", { isError: true });
+    if (!(await ensureHtml2Canvas())) {
+        showToast("Couldn't load the screenshot library. Check your connection and try again.", { isError: true });
         return;
     }
 
@@ -94,7 +97,7 @@ import { getActiveLeague } from '../helpers.js';
         link.click();
     } catch (err) {
         console.error("Export failed:", err); 
-        if (window.showToast) window.showToast("Export failed. Please try again.", { isError: true });
+        showToast("Export failed. Please try again.", { isError: true });
     } finally {
         buttons.forEach(b => b.style.display = 'inline-block');
         screenOnly.forEach(e => e.style.display = '');

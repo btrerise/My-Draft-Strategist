@@ -7,6 +7,8 @@ import { getActiveLeague } from '../helpers.js';
 import { setRankingsCardExpanded } from './engine.js';
 import { resolveRankingsTarget, saveRankingsAsSet, assignSetToLeagues, openLeaguePickerDialog, leagueCountText } from './sets.js';
 import { loadRosterTab } from '../main.js';
+import { showConfirm } from '../../shared/ui/confirm.js';
+import { showToast } from '../../shared/ui/toast.js';
     // --- SHARED MARKET-CONSENSUS FETCH ---
     // Moved to js/shared/api/market.js -- fetchMarketConsensusData is now imported at the top of
     // this file. It's still used the same way below (Scout tab's Power Rankings and the
@@ -58,12 +60,12 @@ import { loadRosterTab } from '../main.js';
                 const leagueNote = target.leagueCount === 1
                     ? 'It is used by 1 league.'
                     : `It is used by ${target.leagueCount} leagues.`;
-                const confirmed = await window.showConfirm(
+                const confirmed = await showConfirm(
                     `The ${rosRankings.length} players just fetched (${formatText}) will replace the saved set "${target.name}".\n\n${leagueNote} This can't be undone.`,
                     { title: 'Replace saved set?', confirmText: 'Replace Set', danger: true }
                 );
                 if (!confirmed) {
-                    if (window.showToast) window.showToast(`Nothing was changed — "${target.name}" is untouched.`);
+                    showToast(`Nothing was changed — "${target.name}" is untouched.`);
                     return;
                 }
             }
@@ -71,7 +73,7 @@ import { loadRosterTab } from '../main.js';
             const savedSetId = saveRankingsAsSet('ros', rosRankings);
             setRankingsCardExpanded('rosRankingsCard', false);
 
-            if (window.showToast) window.showToast(`ROS Rankings pulled: ${rosRankings.length} players (${formatText})`);
+            showToast(`ROS Rankings pulled: ${rosRankings.length} players (${formatText})`);
 
             const activeTab = document.querySelector('.tab-content.active');
             if (activeTab && activeTab.id === 'rosterTab') loadRosterTab();
@@ -94,13 +96,13 @@ import { loadRosterTab } from '../main.js';
                 });
                 if (choice && choice.add.length) {
                     assignSetToLeagues('ros', newSet.id, { add: choice.add });
-                    if (window.showToast) window.showToast(`"${newSet.name}" also applied to ${leagueCountText(choice.add.length)}.`);
+                    showToast(`"${newSet.name}" also applied to ${leagueCountText(choice.add.length)}.`);
                 }
             }
 
         } catch (error) {
             console.error("Error auto-fetching ROS rankings:", error);
-            if (window.showToast) window.showToast(`Could not auto-fetch ROS rankings.\n\n${error.message}`, { isError: true });
+            showToast(`Could not auto-fetch ROS rankings.\n\n${error.message}`, { isError: true });
         } finally {
             btn.innerText = origText;
             btn.style.opacity = "1";

@@ -34,7 +34,7 @@ import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
 import { deleteRankingSet, onRankingSetSelectChange, openRankingSetLeagues } from './rankings/sets.js';
 import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings } from './rankings/uploadPreview.js';
-import { fetchLeagueLogsADP, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
+import { fetchMarketValue, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
 import { autoFetchRosRankings } from './rankings/rosFetch.js';
 import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './settings.js';
 import './trade/valueCurve.js';
@@ -54,6 +54,7 @@ import { runGlobalInjuryAudit } from './lineup/injuryAudit.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
 import { delegate } from '../shared/ui/delegate.js';
+import { dismissBannerAndReveal, dismissBanner } from '../shared/ui/banners.js';
 
 // Re-exported for the modules that evaluate before the ones these live in (refactor 3E, moved here
 // from legacy.js in 3F; see docs/refactor/LOG.md). Importing them from render/*.js, power/*.js or
@@ -61,48 +62,19 @@ import { delegate } from '../shared/ui/delegate.js';
 // state.js would then read State in its TDZ, and the headshot/SoS/market load-time code would run
 // out of mls.js order. main.js is the entry module, so it is always mid-evaluation while the
 // others evaluate, and importing from it never triggers an evaluation.
-export { checkForDraftStrategistHandoff, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, renderLineupUI, renderSyncLogs, updateMarketMetaDisplay };
+export { checkForDraftStrategistHandoff, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, renderLineupUI, renderSyncLogs, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
+// For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
+// this same instance) instead of reading the functions off window.
+export { confirmRankingsPreview, createManualLeague, openRankingSetLeagues, setWaiverCompare, setWaiverScope, toggleDrawer };
 
-// The names something outside this file still reads through window, plus window.onload. They used
-// to be `window.x = function` assignments inside mls.js, when inline on*="..." handlers called them;
-// the modules now export them, and this is the one place they become globals. Refactor chunks
-// 5B and 5C replaced every inline handler with the data-action listeners at the end of this file
-// and removed the names nothing else used (30 in 5B, 21 in 5C; docs/refactor/LOG.md lists them).
-// Who reads the rest:
-//   undoLineupChange, redoLineupChange, cycleLeague: shortcuts.js
-//   toggleDrawer: nav.js, shortcuts.js, the tests
-//   showTab: nav.js, init.js, shortcuts.js, power/rosterCard.js, the tests
+// The only window.* names left. Until refactor chunk 5D this block held every name something read
+// through window (originally the inline on*="..." handlers); 5B and 5C replaced the handlers with
+// the data-action listeners at the end of this file, and 5D turned the remaining window.x(...) calls
+// into imports (docs/refactor/LOG.md lists them). These two have readers outside the module graph:
 //   exportMlsSettings: js/boot.js (the rescue backup on a fatal boot error)
-//   goToSetupStep: init.js                      lookupSimPlayer: init.js
-//   onload: the browser                         addManualPlayer: leagues/addPlayer.js
-//   switchActiveLeague: scout/allLeaguesSearch.js, the tests
-//   runScout: players.js                        updateWaiverScanSetting: scout/waivers.js
-//   cancelRankingsPreview: rankings/uploadPreview.js
-//   scrollToPowerRankings: power/rosterCard.js
-//   optimizeLineup: state.js, leagues/*, render/*, sos.js, rankings/*, scout/waivers.js, ...
-//   createManualLeague, openRankingSetLeagues, confirmRankingsPreview, setWaiverCompare,
-//   setWaiverScope: only the tests (page.evaluate)
-window.undoLineupChange = undoLineupChange;
-window.redoLineupChange = redoLineupChange;
-window.toggleDrawer = toggleDrawer;
-window.showTab = showTab;
+//   onload: the browser (the page's startup handler, js/mls/init.js)
 window.exportMlsSettings = exportMlsSettings;
-window.goToSetupStep = goToSetupStep;
 window.onload = onload;
-window.switchActiveLeague = switchActiveLeague;
-window.cycleLeague = cycleLeague;
-window.createManualLeague = createManualLeague;
-window.addManualPlayer = addManualPlayer;
-window.runScout = runScout;
-window.updateWaiverScanSetting = updateWaiverScanSetting;
-window.setWaiverCompare = setWaiverCompare;
-window.setWaiverScope = setWaiverScope;
-window.openRankingSetLeagues = openRankingSetLeagues;
-window.cancelRankingsPreview = cancelRankingsPreview;
-window.confirmRankingsPreview = confirmRankingsPreview;
-window.lookupSimPlayer = lookupSimPlayer;
-window.optimizeLineup = optimizeLineup;
-window.scrollToPowerRankings = scrollToPowerRankings;
 
 // --- DATA-ACTION EVENT DELEGATION ---
 // Refactor chunks 5B and 5C (the pattern is 5A's, js/mds/main.js): each table maps a data-action
@@ -120,8 +92,8 @@ const clickActions = {
     showTab() { showTab(this.dataset.tab); },
     cycleLeague() { cycleLeague(Number(this.dataset.direction)); },
     // Setup tab: banners, Draft Strategist handoff, Command Center, Add/Sync League, requirements
-    dismissBannerAndReveal() { window.dismissBannerAndReveal(this.dataset.banner, this.dataset.storageKey, this.dataset.nextBanner, this.dataset.nextStorageKey); },
-    dismissBanner() { window.dismissBanner(this.dataset.banner, this.dataset.storageKey); },
+    dismissBannerAndReveal() { dismissBannerAndReveal(this.dataset.banner, this.dataset.storageKey, this.dataset.nextBanner, this.dataset.nextStorageKey); },
+    dismissBanner() { dismissBanner(this.dataset.banner, this.dataset.storageKey); },
     importDraftStrategistRoster() { importDraftStrategistRoster(); },
     dismissDraftStrategistHandoff() { dismissDraftStrategistHandoff(); },
     syncAllLeagues() { syncAllLeagues(this); },
@@ -176,7 +148,7 @@ const clickActions = {
     clearBuyInput() { document.getElementById('buyInput').value=''; },
     clearSellInput() { document.getElementById('sellInput').value=''; },
     goToPowerRankings() { goToPowerRankings(); },
-    fetchLeagueLogsADP() { fetchLeagueLogsADP(this); },
+    fetchMarketValue() { fetchMarketValue(this); },
     runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },
     // Rankings upload preview modal
     cancelRankingsPreview() { cancelRankingsPreview(); },

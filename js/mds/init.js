@@ -13,7 +13,7 @@
 import { State, ensureDefaultDraft, refreshDraftDropdown } from './state.js';
 import './storage.js';
 import './pwa.js';
-import { debounce } from './ui.js';
+import { debounce, toggleMenu, setPosFilter, showTab } from './ui.js';
 import './gestures.js';
 import { initSettingsUI, updateMetaDisplay, updateTotalRounds } from './settings.js';
 import './backup.js';
@@ -29,6 +29,7 @@ import './handoff.js';
 import './recap.js';
 import './export.js';
 import './affinity.js';
+import { getTabFromHash } from '../shared/ui/tabHash.js';
 
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -59,7 +60,7 @@ import './affinity.js';
             // are the two keyboard-accessible ways to exit the menu.
             const openMenu = document.getElementById('hamburgerMenu');
             if (e.key === 'Escape' && openMenu && openMenu.classList.contains('open')) {
-                window.toggleMenu();
+                toggleMenu();
                 return;
             }
 
@@ -88,34 +89,34 @@ import './affinity.js';
                     }
                     break;
                 case 'a': // Filter All
-                    if (typeof window.setPosFilter === 'function') window.setPosFilter('ALL');
+                    setPosFilter('ALL');
                     break;
                 case 'q': // Filter QB
-                    if (typeof window.setPosFilter === 'function') window.setPosFilter('QB');
+                    setPosFilter('QB');
                     break;
                 case 'r': // Filter RB
-                    if (typeof window.setPosFilter === 'function') window.setPosFilter('RB');
+                    setPosFilter('RB');
                     break;
                 case 'w': // Filter WR
-                    if (typeof window.setPosFilter === 'function') window.setPosFilter('WR');
+                    setPosFilter('WR');
                     break;
                 case 't': // Filter TE
-                    if (typeof window.setPosFilter === 'function') window.setPosFilter('TE');
+                    setPosFilter('TE');
                     break;
                 case '1':
-                    if (typeof window.showTab === 'function') window.showTab('setup');
+                    showTab('setup');
                     break;
                 case '2':
-                    if (typeof window.showTab === 'function') window.showTab('tracker');
+                    showTab('tracker');
                     break;
                 case '3':
-                    if (typeof window.showTab === 'function') window.showTab('team');
+                    showTab('team');
                     break;
                 case '4':
-                    if (typeof window.showTab === 'function') window.showTab('board');
+                    showTab('board');
                     break;
                 case '5':
-                    if (typeof window.showTab === 'function') window.showTab('guide');
+                    showTab('guide');
                     break;
             }
         });
@@ -148,8 +149,8 @@ import './affinity.js';
         // Runs after everything above so the board has its data before showTab renders it.
         // replaceState stamps this first history entry with its tab, so pressing Back to it
         // later restores the right tab instead of falling through to Setup.
-        const initialTab = window.getTabFromHash() || 'setup';
-        if (initialTab !== 'setup') window.showTab(initialTab, true);
+        const initialTab = getTabFromHash() || 'setup';
+        if (initialTab !== 'setup') showTab(initialTab, true);
         history.replaceState({ tab: initialTab }, '');
 
         // Last line of init on purpose: tells the safety net in js/boot.js that this script

@@ -18,7 +18,7 @@ try { realPapa = createRequire(import.meta.url)('../node_modules/papaparse'); } 
 const env = installParserEnv();
 beforeEach(() => { env.toasts.length = 0; });
 
-const parse = (files, opts = {}) => parseRankingsFiles(files, { loadSheetJS: loadSheetJSOk, ...opts });
+const parse = (files, opts = {}) => parseRankingsFiles(files, { loadSheetJS: loadSheetJSOk, showToast: env.showToast, ...opts });
 const single = file => [{ file, context: 'SINGLE' }];
 const byName = parsedData => Object.fromEntries(parsedData.map(p => [p.cleanName, p]));
 // Some fields are only set on some branches; this compares a fixed set so absent === undefined is explicit.

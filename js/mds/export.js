@@ -1,5 +1,7 @@
 // Moved from js/mds/legacy.js (the second half of the old js/mds.js) in refactor chunk 2B:
 // TEAM EXPORT LOGIC.
+import { ensureHtml2Canvas } from '../shared/ui/scriptLoader.js';
+import { showToast } from '../shared/ui/toast.js';
 
     // --- TEAM EXPORT LOGIC ---
     export const exportTeam = async function() {
@@ -8,8 +10,8 @@
         // the eager <script defer> tag: the only thing the user could do was wait and
         // re-press. Now the press itself starts the download and the export continues once
         // it lands.
-        if (!(await window.ensureHtml2Canvas())) {
-            if (window.showToast) window.showToast("Couldn't load the screenshot library. Check your connection and try again.", { isError: true });
+        if (!(await ensureHtml2Canvas())) {
+            showToast("Couldn't load the screenshot library. Check your connection and try again.", { isError: true });
             return;
         }
 
@@ -65,7 +67,7 @@
             link.click();
         } catch (err) {
             console.error("Export failed:", err); 
-            if (window.showToast) window.showToast("Export failed. Please try again.", { isError: true });
+            showToast("Export failed. Please try again.", { isError: true });
         } finally {
             buttons.forEach(b => b.style.display = '');
             if (exportBtn) exportBtn.innerText = origText;

@@ -5,6 +5,8 @@
 import { savePlayerPool } from './storage.js';
 import { State, refreshDraftDropdown } from './state.js';
 import { renderBoard } from './tracker.js';
+import { createFocusTrap } from '../shared/ui/focusTrap.js';
+import { getTabFromHash } from '../shared/ui/tabHash.js';
 
     // --- UI HELPERS ---
     // Generic debounce: delays calling fn until `wait` ms have passed since the last call.
@@ -43,10 +45,8 @@ import { renderBoard } from './tracker.js';
     }
 
     if (isOpen) {
-        if (typeof window.createFocusTrap === 'function') {
-            menuFocusTrap = window.createFocusTrap(menu);
-            menuFocusTrap.activate();
-        }
+        menuFocusTrap = createFocusTrap(menu);
+        menuFocusTrap.activate();
     } else if (menuFocusTrap) {
         menuFocusTrap.deactivate();
         menuFocusTrap = null;
@@ -63,7 +63,7 @@ import { renderBoard } from './tracker.js';
         .forEach(btn => btn.classList.add('active'));
 
     const menu = document.getElementById('hamburgerMenu');
-    if (menu && menu.classList.contains('open')) window.toggleMenu();
+    if (menu && menu.classList.contains('open')) toggleMenu();
 
     if (['tracker', 'team', 'board'].includes(tabId)) renderBoard();
     if (tabId === 'setup') refreshDraftDropdown();
@@ -78,11 +78,11 @@ import { renderBoard } from './tracker.js';
 window.addEventListener('popstate', (e) => {
     if (e.state && e.state.tab) {
         // Pass 'true' so we don't accidentally create an infinite history loop
-        window.showTab(e.state.tab, true); 
+        showTab(e.state.tab, true); 
     } else {
         // No state = an entry we didn't push (a hand-edited hash, or an in-page link), so
         // honor its hash if it names a real tab.
-        window.showTab(window.getTabFromHash() || 'setup', true);
+        showTab(getTabFromHash() || 'setup', true);
     }
 });
 

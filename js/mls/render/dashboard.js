@@ -7,6 +7,8 @@ import { isBestBallLeague } from '../helpers.js';
 import { formatNameList, hydrateRankingsForLeague, processSleeperData, renderLeagueManager, switchActiveLeague } from '../leagues/sync.js';
 import { loadRosterTab } from './roster.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { setToastsSuppressed, showToast } from '../../shared/ui/toast.js';
+import { optimizeLineup } from './lineup.js';
 
 
     export const renderSyncLogs = function() {
@@ -71,7 +73,7 @@ import { KEYS } from '../../shared/storage/keys.js';
             let workingOn = null;
 
             // Suppress the per-league toast optimizeLineup fires; one summary goes out below.
-            if (typeof window.setToastsSuppressed === 'function') window.setToastsSuppressed(true);
+            setToastsSuppressed(true);
 
             try {
                 State.leagues.forEach(l => {
@@ -84,7 +86,7 @@ import { KEYS } from '../../shared/storage/keys.js';
                     // Hydrate this league's own rankings so the optimizer uses the correct set
                     hydrateRankingsForLeague(l);
 
-                    window.optimizeLineup(true, false, { batch: true });
+                    optimizeLineup(true, false, { batch: true });
                 });
                 workingOn = null;
 
@@ -103,7 +105,7 @@ import { KEYS } from '../../shared/storage/keys.js';
             } finally {
                 // However the run ended, the app has to come back usable: toasts on, the user's
                 // real league re-selected, the button clickable.
-                if (typeof window.setToastsSuppressed === 'function') window.setToastsSuppressed(false);
+                setToastsSuppressed(false);
 
                 // switchActiveLeague re-hydrates the real active league's rankings (the loop
                 // above left State.rosRankings/weeklyRankings pointing at whichever league it
@@ -127,10 +129,10 @@ import { KEYS } from '../../shared/storage/keys.js';
                 const msg = workingOn
                     ? `Stopped at "${workingOn.name || 'Unnamed league'}", so leagues after it weren't re-optimized. Try Optimize All again.`
                     : "Lineups were optimized, but saving them or restoring your league didn't finish. Try Optimize All again.";
-                if (window.showToast) window.showToast(msg, { isError: true });
+                showToast(msg, { isError: true });
             } else {
                 let managedLeaguesCount = State.leagues.filter(l => !isBestBallLeague(l)).length;
-                if (window.showToast) window.showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
+                showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
             }
         }, 50);
     };
@@ -142,7 +144,7 @@ export const syncAllLeagues = async function(btn) {
         const sleeperLeagues = State.leagues.filter(l => l.leagueId && !l.leagueId.startsWith('manual_') && l.username && l.username !== "Manual");
         
         if (sleeperLeagues.length === 0) {
-            if (window.showToast) window.showToast("No Sleeper-synced leagues to refresh.", { isError: true });
+            showToast("No Sleeper-synced leagues to refresh.", { isError: true });
             return;
         }
 
@@ -181,7 +183,7 @@ export const syncAllLeagues = async function(btn) {
                 // eight or more leagues), and restoring only on the happy path used to mean the
                 // catch's error toast went to a no-op stub and every toast in the app stayed
                 // dead for the rest of the session.
-                if (typeof window.setToastsSuppressed === 'function') window.setToastsSuppressed(true);
+                setToastsSuppressed(true);
 
                 for (let i = 0; i < sleeperLeagues.length; i++) {
                     let l = sleeperLeagues[i];
@@ -237,13 +239,11 @@ export const syncAllLeagues = async function(btn) {
                 // A partial sync is shown as an error so it doesn't read like an all-clear --
                 // that also gets it the dismiss button and a longer window, which it needs:
                 // there are league names in there the person has to read and act on.
-                if (window.showToast) {
-                    window.showToast(summaryMsg, {
-                        isError: failedCount > 0,
-                        force: true,
-                        duration: failedCount > 0 ? 9000 : undefined
-                    });
-                }
+                showToast(summaryMsg, {
+                    isError: failedCount > 0,
+                    force: true,
+                    duration: failedCount > 0 ? 9000 : undefined
+                });
 
                 // Re-render the logs accordion
                 renderSyncLogs();
@@ -260,9 +260,9 @@ export const syncAllLeagues = async function(btn) {
                 const msg = isQuota
                     ? "Synced your leagues, but there wasn't enough browser storage to save them. Remove a league you no longer use, then try again."
                     : "An error occurred while syncing leagues.";
-                if (window.showToast) window.showToast(msg, { isError: true, force: true });
+                showToast(msg, { isError: true, force: true });
             } finally {
-                if (typeof window.setToastsSuppressed === 'function') window.setToastsSuppressed(false);
+                setToastsSuppressed(false);
 
                 btn.innerHTML = origText;
                 btn.disabled = false;
@@ -278,7 +278,7 @@ export const syncAllLeagues = async function(btn) {
                 // Refresh data states natively
                 if (typeof renderLeagueManager === 'function') renderLeagueManager();
                 if (typeof loadRosterTab === 'function') loadRosterTab();
-                if (typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+                optimizeLineup(false);
             }
         }, 50);
     };

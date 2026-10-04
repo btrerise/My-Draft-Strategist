@@ -1,5 +1,4 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js; app modules may also import it directly.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- FLASH BUTTON FEEDBACK ---
 // Shared by Draft Strategist and Lineup Strategist (previously two separate near-identical copies).

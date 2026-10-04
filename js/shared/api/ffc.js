@@ -5,8 +5,9 @@
 // (functions/api/ffc/[format].js), which fetches FFC, caches it, and falls back to the last
 // full list it saved when today's is short. See that file for the response shape.
 //
-// window.mdsFetch (js/shared/net.js, assigned by js/shared/globals.js) gives the request its
+// mdsFetch (js/shared/net.js) gives the request its
 // timeout; net.js names "Fantasy Football Calculator" in a timeout message for /api/ffc/ URLs.
+import { mdsFetch } from '../net.js';
 
 // Formats Draft Strategist offers, as FFC names them -> the label shown in the app.
 export const FFC_FORMAT_LABELS = {
@@ -27,7 +28,7 @@ export const FFC_FORMAT_LABELS = {
  *   meta: object, players: Array<{ name: string, position: string, team: string, bye: number, adp: number }> }>}
  */
 export async function fetchFfcAdp(format, { errorPrefix = 'Fantasy Football Calculator Error' } = {}) {
-    const res = await window.mdsFetch(`/api/ffc/${encodeURIComponent(format)}`);
+    const res = await mdsFetch(`/api/ffc/${encodeURIComponent(format)}`);
     let body = null;
     try {
         body = await res.json();

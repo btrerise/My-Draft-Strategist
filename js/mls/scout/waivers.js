@@ -10,9 +10,10 @@ import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailable
 import { getByeBadgeHTML, getGameInfoHTML, hasKickedOff } from '../lineup/gameInfo.js';
 import { runScout } from './engine.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
-import { isAutoLockOverridden } from '../main.js';
+import { isAutoLockOverridden, optimizeLineup } from '../main.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { normalizeName } from '../../shared/names.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
     // One scanner, two lenses, picked with the "Compare Against" toggle:
@@ -196,7 +197,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         const wkDisplay = buildRankDisplayIndex(State.weeklyRankings, getPos);
         const rosDisplay = buildRankDisplayIndex(State.rosRankings, getPos);
 
-        if (!State.manualStartersMap[State.activeLeagueId]) window.optimizeLineup(false);
+        if (!State.manualStartersMap[State.activeLeagueId]) optimizeLineup(false);
         const currentStarters = (State.manualStartersMap[State.activeLeagueId] || [])
             .map(st => ({ slotType: st.slot.replace(/[0-9]/g, ''), player: st.player }));
         const lineupReady = currentStarters.length > 0 && checkRankings.length > 0;
@@ -500,14 +501,14 @@ import { KEYS } from '../../shared/storage/keys.js';
     }
 
     export const setWaiverCompare = function(mode) {
-        window.updateWaiverScanSetting('compare', mode === 'roster' ? 'roster' : 'lineup');
+        updateWaiverScanSetting('compare', mode === 'roster' ? 'roster' : 'lineup');
     };
 
     // Flipping scope clears any results already on screen: a single-league scan and an
     // all-leagues search answer different questions, and leaving the old cards up under a
     // toggle that now says something else is the kind of mismatch that gets misread.
     export const setWaiverScope = function(scope) {
-        window.updateWaiverScanSetting('scope', scope === 'all' ? 'all' : 'league');
+        updateWaiverScanSetting('scope', scope === 'all' ? 'all' : 'league');
         const out = document.getElementById('waiverOutput');
         if (out) out.innerHTML = '';
     };
@@ -517,7 +518,7 @@ import { KEYS } from '../../shared/storage/keys.js';
     // search is a local read over stored rosters (plus the day-cached player map) -- cheap
     // enough that making someone press Search again would just be friction.
     export const setWaiverIntent = function(intent) {
-        window.updateWaiverScanSetting('intent', intent === 'sell' ? 'sell' : 'buy');
+        updateWaiverScanSetting('intent', intent === 'sell' ? 'sell' : 'buy');
         const input = document.getElementById('waiverInput');
         const out = document.getElementById('waiverOutput');
         if (State.waiverScanSettings.scope === 'all' && input && input.value.trim() !== '' && out && out.innerHTML.trim() !== '') {

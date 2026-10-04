@@ -1,6 +1,7 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // GESTURE HANDLING.
 import { State } from './state.js';
+import { showTab } from './ui.js';
 
     // --- GESTURE HANDLING ---
     function handleGesture(e) {
@@ -30,10 +31,10 @@ import { State } from './state.js';
 
         if (diffX < 0 && currentIdx < tabs.length - 1) {
             // Swiped Left -> Next Tab
-            window.showTab(tabs[currentIdx + 1]);
+            showTab(tabs[currentIdx + 1]);
         } else if (diffX > 0 && currentIdx > 0) {
             // Swiped Right -> Previous Tab
-            window.showTab(tabs[currentIdx - 1]);
+            showTab(tabs[currentIdx - 1]);
         }
     }
 }

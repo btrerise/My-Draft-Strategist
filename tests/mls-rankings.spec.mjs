@@ -1,7 +1,7 @@
 // Lineup Strategist ranking sets across leagues (added in refactor 3D): one rankings upload applied
 // to a second league from the upload preview, then to a third through "Choose leagues...".
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, seedMls, RANKINGS_CSV, FIXTURE_LEAGUE_ID, FIXED_NOW } from './helpers.mjs';
+import { openApp, expectClean, seedMls, RANKINGS_CSV, FIXTURE_LEAGUE_ID, FIXED_NOW, callApp } from './helpers.mjs';
 
 const toast = (page, text) => page.locator('.toast-message').filter({ hasText: text });
 const rosSetIds = (page) => page.evaluate(() =>
@@ -16,9 +16,9 @@ test.describe('Lineup Strategist ranking sets', () => {
         for (const [i, name] of ['Second League', 'Third League'].entries()) {
             await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + (i + 1) * 1000));
             await page.locator('#newLeagueName').evaluate((el, v) => { el.value = v; }, name);
-            await page.evaluate(() => window.createManualLeague());
+            await callApp(page, 'createManualLeague');
         }
-        await page.evaluate((id) => window.switchActiveLeague(id), FIXTURE_LEAGUE_ID);
+        await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
 
         // Upload ROS rankings in the Fixture League and tick Second League in the preview.
         await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_CSV) });
@@ -27,7 +27,7 @@ test.describe('Lineup Strategist ranking sets', () => {
         const picker = page.locator('#rankingsPreviewLeagues');
         await expect(picker).toContainText('Also use this set in');
         await picker.locator('label', { hasText: 'Second League' }).locator('input').check();
-        await page.evaluate(() => window.confirmRankingsPreview());
+        await callApp(page, 'confirmRankingsPreview');
         await expect(preview).toBeHidden();
 
         let ids = await rosSetIds(page);
@@ -38,7 +38,8 @@ test.describe('Lineup Strategist ranking sets', () => {
 
         // "Choose leagues..." adds the third league to the same set.
         // Not awaited: it resolves when the dialog closes.
-        await page.evaluate(() => { window.openRankingSetLeagues('ros'); });
+        // Not awaited: the picker it opens waits for a click.
+        await page.evaluate(async () => { (await import('/js/mls/main.js')).openRankingSetLeagues('ros'); });
         const dialog = page.locator('#rankingLeaguesOverlay');
         await expect(dialog).toBeVisible();
         await dialog.locator('label', { hasText: 'Third League' }).locator('input').check();
@@ -49,7 +50,7 @@ test.describe('Lineup Strategist ranking sets', () => {
 
         // Switching to another league shows that set and its players.
         const third = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).find(l => l.name === 'Third League').leagueId);
-        await page.evaluate((id) => window.switchActiveLeague(id), third);
+        await callApp(page, 'switchActiveLeague', third);
         await expect(page.locator('#rosRankingSetSelect')).toHaveValue(setId);
         await expect(page.locator('#rosHeaderSetName')).not.toBeEmpty();
         expect(await page.evaluate(() => (localStorage.getItem('mls_ros') || '').includes('Josh Allen'))).toBe(true);

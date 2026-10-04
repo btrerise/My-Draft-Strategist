@@ -11,8 +11,10 @@ import { renderBoard } from './tracker.js';
 import { processData } from './import.js';
 import { getSleeperPlayerMap, getSleeperSeasonAdp } from '../shared/api/sleeper.js';
 import { FFC_FORMAT_LABELS, fetchFfcAdp, formatFfcDate } from '../shared/api/ffc.js';
-import { normalizeName } from '../shared/names.js';
+import { normalizeName, isNameMatch } from '../shared/names.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { flashButton } from '../shared/ui/flashButton.js';
+import { showToast } from '../shared/ui/toast.js';
 
     // --- FANTASY FOOTBALL CALCULATOR (FFC) INTEGRATION ---
 
@@ -69,7 +71,7 @@ import { KEYS } from '../shared/storage/keys.js';
         if (!formatSelect) return;
         const selected = selectedFfcFormat();
         if (!selected) {
-            if (window.showToast) window.showToast("Quick-Start builds its player pool from Fantasy Football Calculator. Please select a Fantasy Football Calculator format from the dropdown in Step 3.", { isError: true });
+            showToast("Quick-Start builds its player pool from Fantasy Football Calculator. Please select a Fantasy Football Calculator format from the dropdown in Step 3.", { isError: true });
             return;
         }
         const { format, formatText } = selected;
@@ -111,14 +113,14 @@ import { KEYS } from '../shared/storage/keys.js';
         } catch(err) {
             console.error(err);
             flashButton(btn, "Fetch Error", true, originalText);
-            if (window.showToast) window.showToast(`Failed to load Quick-Start.\n\n${err.message}`, { isError: true });
+            showToast(`Failed to load Quick-Start.\n\n${err.message}`, { isError: true });
         }
     };
 
     export const fetchMarketValue = async function(btn) {
     if (State.players.length === 0) {
         flashButton(btn, "Load Rankings First", true);
-        if (window.showToast) window.showToast("You must load a set of player rankings before fetching Market Value.", { isError: true });
+        showToast("You must load a set of player rankings before fetching Market Value.", { isError: true });
         return;
     }
 
@@ -189,15 +191,13 @@ import { KEYS } from '../shared/storage/keys.js';
         updateMetaDisplay();
 
         flashButton(btn, "Complete!", false, originalText);
-        if (typeof window.showToast === 'function') {
-            if (ffcNote) window.showToast(`Market Value (ADP) updated.\n\n${ffcNote}`, { duration: 9000 });
-            else window.showToast("Market Value (ADP) updated");
-        }
+        if (ffcNote) showToast(`Market Value (ADP) updated.\n\n${ffcNote}`, { duration: 9000 });
+        else showToast("Market Value (ADP) updated");
         
     } catch(err) {
             console.error(err);
             flashButton(btn, "Fetch Error", true, originalText);
-            if (window.showToast) window.showToast(`Failed to fetch live Market Value.\n\n${err.message}`, { isError: true });
+            showToast(`Failed to fetch live Market Value.\n\n${err.message}`, { isError: true });
         }
 };
 
@@ -253,7 +253,7 @@ import { KEYS } from '../shared/storage/keys.js';
                 return;
             }
 
-            let matchedPlayer = State.players.find(p => typeof isNameMatch === 'function' ? isNameMatch(p.name, pName) : p.name.toLowerCase() === pName.toLowerCase());
+            let matchedPlayer = State.players.find(p => isNameMatch(p.name, pName));
             if (matchedPlayer) { matchedPlayer.adp = parseFloat(newAdp).toFixed(1); matchedCount++; }
         });
 

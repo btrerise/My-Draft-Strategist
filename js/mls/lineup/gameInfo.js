@@ -9,7 +9,7 @@ import { escapeHtml } from '../../shared/html.js';
 import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS, TEAM_BYES } from '../constants.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
-import { renderLineupUI } from '../main.js';
+import { renderLineupUI, optimizeLineup } from '../main.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -179,7 +179,7 @@ import { renderLineupUI } from '../main.js';
         // re-renders, which calls back in here with nothing left to redo.
         if (State.projectionlessLineups.has(league.leagueId) && lineupProjectionsLoaded()) {
             State.projectionlessLineups.delete(league.leagueId); // cleared first so this can never loop
-            window.optimizeLineup(true);
+            optimizeLineup(true);
             return;
         }
 

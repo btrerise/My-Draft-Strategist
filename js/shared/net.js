@@ -1,5 +1,4 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js; app modules may also import it directly.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- NETWORK FETCH WITH A TIMEOUT ---
 // Every remote call this app makes -- Sleeper, FFC, FantasyCalc, ESPN -- used to be a
@@ -95,7 +94,7 @@ function mdsFetchSignal(ms, callerSignal) {
  *
  * @param {string} url
  * @param {RequestInit} [opts] - passed through; a `signal` here is honored alongside the timeout
- * @param {number} [ms=12000] - pass window.MDS_LONG_FETCH_TIMEOUT_MS for multi-megabyte payloads
+ * @param {number} [ms=12000] - pass MDS_LONG_FETCH_TIMEOUT_MS for multi-megabyte payloads
  * @returns {Promise<Response>} rejects with a TimeoutError whose .message is user-facing
  *   ("Sleeper didn't respond in time...") and whose .isTimeout is true, so a call site that
  *   wants to distinguish a timeout from a 404 can, while one that just toasts err.message

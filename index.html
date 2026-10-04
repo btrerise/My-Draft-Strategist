@@ -887,13 +887,11 @@
 </nav>
 <script src="js/boot.js" defer></script>
 <script type="module" src="js/shared/globals.js"></script>
-    <!-- The bundled T-Score data (defines the tScoreData global js/mds/ reads). Moved from
-         t-score/tscore_data.js in refactor chunk 1B. Keep the path page-relative (no leading
-         "../" or "/") so it still resolves when the site is served from a subdirectory. -->
-    <script src="js/shared/data/tscore.js" defer></script>
     <!-- The Draft Strategist app: js/mds/main.js and its imports (refactor chunk 2A; this was
          js/mds.js, a defer script). Module scripts run in document order with defer scripts,
-         so this still runs after boot.js, globals.js and tscore.js, and before DOMContentLoaded. -->
+         so this still runs after boot.js and globals.js, and before DOMContentLoaded. The bundled
+         T-Score data (js/shared/data/tscore.js) is one of its imports since refactor 5D; until
+         then it was a separate defer script here that defined a tScoreData global. -->
     <script type="module" src="js/mds/main.js"></script>
 </body>
 </html>

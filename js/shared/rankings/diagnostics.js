@@ -1,5 +1,4 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js; app modules may also import it directly.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- RANKINGS UPLOAD DIAGNOSTICS ---
 // Turns one per-file diagnostic into the message the user sees. Diagnostics come from

@@ -4,7 +4,7 @@
 // to <body>; Tab then resumes from where that button was. 3E checked this is unchanged; a later
 // change that keeps focus on the rebuilt button should update this spec on purpose.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, RANKINGS_CSV } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, RANKINGS_CSV, callApp } from './helpers.mjs';
 
 const activeTab = page => page.evaluate(() => document.querySelector('.tab-content.active')?.id);
 const blur = page => page.evaluate(() => document.activeElement && document.activeElement.blur());
@@ -22,7 +22,7 @@ test.describe('Lineup Strategist keyboard', () => {
         await page.keyboard.press('3');
         expect(await activeTab(page)).toBe('setupTab');
 
-        await page.evaluate(() => window.toggleDrawer());
+        await callApp(page, 'toggleDrawer');
         await expect(page.locator('#drawer')).toHaveClass(/\bopen\b/);
         await page.keyboard.press('Escape');
         await expect(page.locator('#drawer')).not.toHaveClass(/\bopen\b/);
@@ -35,7 +35,7 @@ test.describe('Lineup Strategist keyboard', () => {
         for (const inputId of ['rosFileInput', 'weeklyFileInput']) {
             await page.setInputFiles('#' + inputId, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_CSV) });
             await expect(page.locator('#rankingsPreviewOverlay')).toContainText('24 players parsed');
-            await page.evaluate(() => window.confirmRankingsPreview());
+            await callApp(page, 'confirmRankingsPreview');
             await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
         }
         await showTab(page, 'lineup');

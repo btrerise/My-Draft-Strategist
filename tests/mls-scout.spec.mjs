@@ -1,7 +1,7 @@
 // Lineup Strategist Scout tab with rankings loaded (added in refactor 3C). The seeded state in the
 // smoke and screenshot tests has no rankings, so it only covers the Scout tab's empty form.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp } from './helpers.mjs';
 
 test.describe('Lineup Strategist Scout tab', () => {
     test('scan a pasted list, auto-find, and scout a trade', async ({ page }) => {
@@ -16,15 +16,15 @@ test.describe('Lineup Strategist Scout tab', () => {
         await expect(waivers).toContainText('Your list, checked in Fixture League by Weekly rank');
         await expect(waivers).toContainText("Ja'Marr Chase");
 
-        await page.evaluate(() => window.setWaiverScope('all'));
+        await callApp(page, 'setWaiverScope', 'all');
         await page.click('#waiverScanBtn');
         await expect(waivers).toContainText('Searched 1 league for 3 players.');
-        await page.evaluate(() => window.setWaiverScope('league'));
+        await callApp(page, 'setWaiverScope', 'league');
 
-        await page.evaluate(() => window.setWaiverCompare('roster'));
+        await callApp(page, 'setWaiverCompare', 'roster');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(waivers).toContainText('Top available in Fixture League by Weekly rank, compared against your weakest rostered player');
-        await page.evaluate(() => window.setWaiverCompare('lineup'));
+        await callApp(page, 'setWaiverCompare', 'lineup');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(waivers).toContainText('checked against your current Week 2 starting lineup');
 

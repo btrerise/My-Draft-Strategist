@@ -9,6 +9,8 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getByeBadgeHTML, getGameInfoHTML, getLineupInjuryWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { showToast } from '../../shared/ui/toast.js';
+import { showConfirm } from '../../shared/ui/confirm.js';
 
 
     // Core lock/unlock mechanics shared by toggleLock (the manual lock icon) and the
@@ -46,9 +48,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         let isLocking = !locks.includes(playerId);
         let playerName = setPlayerLockState(playerId, isLocking) || 'Player';
 
-        if (typeof window.showToast === 'function') {
-            window.showToast(`${playerName} is ${isLocking ? 'locked' : 'unlocked'}`);
-        }
+        showToast(`${playerName} is ${isLocking ? 'locked' : 'unlocked'}`);
         renderLineupUI();
     };
 
@@ -74,7 +74,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         let found = starters.find(s => s.player && s.player.id === playerId);
         let playerName = found ? found.player.name : (bench.find(p => p.id === playerId) || {}).name || 'This player';
 
-        if (!await window.showConfirm(`${playerName}'s game shows as already started. Only override this if that's wrong; doing so lets the optimizer freely move or bench them again.`, { title: 'Override the auto-lock?', confirmText: 'Override Lock' })) return;
+        if (!await showConfirm(`${playerName}'s game shows as already started. Only override this if that's wrong; doing so lets the optimizer freely move or bench them again.`, { title: 'Override the auto-lock?', confirmText: 'Override Lock' })) return;
 
         pushLineupUndoSnapshot(State.activeLeagueId);
         let entry = State.autoLockOverridesMap[State.activeLeagueId];
@@ -83,10 +83,8 @@ import { KEYS } from '../../shared/storage/keys.js';
         State.autoLockOverridesMap[State.activeLeagueId] = entry;
         localStorage.setItem(KEYS.mls.autolockOverridesMap, JSON.stringify(State.autoLockOverridesMap));
 
-        if (typeof window.showToast === 'function') {
-            window.showToast("Auto-lock removed - re-optimizing");
-        }
-        window.optimizeLineup(true);
+        showToast("Auto-lock removed - re-optimizing");
+        optimizeLineup(true);
     };
 
     // Bulk-clears the season-long MANUAL lock list for the active league only -- deliberately
@@ -100,16 +98,14 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (!State.activeLeagueId) return;
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
         if (locks.length === 0) return;
-        if (!await window.showConfirm(`This clears all ${locks.length} manual lock${locks.length === 1 ? '' : 's'} in this league. Players auto-locked because their game already started stay locked.`, { title: 'Unlock all locked players?', confirmText: 'Unlock All' })) return;
+        if (!await showConfirm(`This clears all ${locks.length} manual lock${locks.length === 1 ? '' : 's'} in this league. Players auto-locked because their game already started stay locked.`, { title: 'Unlock all locked players?', confirmText: 'Unlock All' })) return;
 
         pushLineupUndoSnapshot(State.activeLeagueId);
         State.lockedPlayersMap[State.activeLeagueId] = [];
         localStorage.setItem(KEYS.mls.locksMap, JSON.stringify(State.lockedPlayersMap));
 
-        if (typeof window.showToast === 'function') {
-            window.showToast("All manual locks cleared - re-optimizing");
-        }
-        window.optimizeLineup(true);
+        showToast("All manual locks cleared - re-optimizing");
+        optimizeLineup(true);
     };
 
     // True if `pos` is allowed to occupy a slot of type `slotType` ('QB', 'RB', 'WR', 'TE',
@@ -156,9 +152,7 @@ import { KEYS } from '../../shared/storage/keys.js';
             let p2Fits = !p2TargetSlotType || slotAcceptsPos(p2TargetSlotType, p2Obj.pos);
 
             if (!p1Fits || !p2Fits) {
-                if (typeof window.showToast === 'function') {
-                    window.showToast(`Can't swap ${p1Obj.name} (${p1Obj.pos}) with ${p2Obj.name} (${p2Obj.pos}); that position doesn't fit that slot.`, { isError: true });
-                }
+                showToast(`Can't swap ${p1Obj.name} (${p1Obj.pos}) with ${p2Obj.name} (${p2Obj.pos}); that position doesn't fit that slot.`, { isError: true });
                 State.swapSourceId = null;
                 renderLineupUI();
                 return;
@@ -538,12 +532,10 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (isManualAction) {
             let hasOptimizedBefore = localStorage.getItem(KEYS.mls.hasOptimized);
             if (!hasOptimizedBefore) {
-                if (typeof window.showToast === 'function') {
-                    window.showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
-                }
+                showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
                 localStorage.setItem(KEYS.mls.hasOptimized, 'true');
             } else {
-                if (typeof window.showToast === 'function') window.showToast("Optimal lineup set");
+                showToast("Optimal lineup set");
             }
         }
 

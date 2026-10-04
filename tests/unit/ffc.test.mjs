@@ -178,20 +178,21 @@ describe('functions/api/ffc/[format].js', () => {
 
 describe('js/shared/api/ffc.js fetchFfcAdp', () => {
     let reply;
+    let lastUrl;
     beforeEach(() => {
         reply = null;
-        globalThis.window = {
-            async mdsFetch(url) {
-                window.lastUrl = url;
-                return { ok: reply.status === 200, status: reply.status, json: async () => { if (reply.html) throw new SyntaxError('Unexpected token <'); return reply.body; } };
-            },
+        lastUrl = null;
+        // The real mdsFetch (js/shared/net.js) wraps fetch; afterEach above restores the real one.
+        globalThis.fetch = async (url) => {
+            lastUrl = url;
+            return { ok: reply.status === 200, status: reply.status, json: async () => { if (reply.html) throw new SyntaxError('Unexpected token <'); return reply.body; }, text: async () => '' };
         };
     });
 
     test('returns the proxy body', async () => {
         reply = { status: 200, body: { source: 'live', short: false, players: [{ name: 'A' }] } };
         assert.deepEqual(await fetchFfcAdp('ppr'), reply.body);
-        assert.equal(window.lastUrl, '/api/ffc/ppr');
+        assert.equal(lastUrl, '/api/ffc/ppr');
     });
 
     test('a proxy error reads "<prefix>: <its message>"', async () => {

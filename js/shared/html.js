@@ -1,5 +1,4 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js; app modules may also import it directly.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- HTML ESCAPING ---
 // The one copy for both apps and the T-Score page: js/mds/, js/mls/ and js/tscore/ import it. Use it on any outside text placed into an HTML string: player

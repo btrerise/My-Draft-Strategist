@@ -1,5 +1,4 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js; app modules may also import it directly.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- TAB DEEP LINKS ---
 // Every tab switch writes its tab to the URL hash (#tracker, #lineup, #top50Tab...), so a reload

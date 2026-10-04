@@ -1,5 +1,5 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js; app modules may also import it directly.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
+// js/shared/globals.js also puts showToast on window for js/boot.js, a plain script.
 
 // --- TOAST NOTIFICATIONS ---
 // Batch operations (optimizeAllLineups, syncAllLeagues) call a per-league routine that toasts

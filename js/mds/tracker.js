@@ -8,6 +8,8 @@ import { renderDraftMatrix } from './board.js';
 import { renderFantasyRoster } from './team.js';
 import { renderDraftRecap } from './recap.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { normalizeName } from '../shared/names.js';
+import { tScoreData } from '../shared/data/tscore.js';
 
     // Reads and parses the three call-out lists ONCE, for a caller that is about to style many
     // player cards. getCallOutStyle below used to do this itself on every single call -- and
@@ -77,7 +79,7 @@ import { KEYS } from '../shared/storage/keys.js';
         } catch (e) {
             console.error('Could not parse cached T-Score data, falling back to bundled tscore_data.js:', e);
         }
-        cachedEffectiveTScoreData = (typeof tScoreData !== 'undefined') ? tScoreData : {};
+        cachedEffectiveTScoreData = tScoreData;
         return cachedEffectiveTScoreData;
     }
 
@@ -104,7 +106,7 @@ import { KEYS } from '../shared/storage/keys.js';
         }
         
         if (['WR', 'RB'].includes(p.posGroup) && ctx.showTScore) {
-            const normFunc = (typeof normalizeName === 'function') ? normalizeName : (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normFunc = normalizeName;
             const normName = normFunc(p.name); 
             const tInfo = getEffectiveTScoreData()[normName];
             

@@ -1,5 +1,4 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js; app modules may also import it directly.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- ON-DEMAND SCRIPT LOADING ---
 // Loads a third-party script the first time something actually needs it, and returns the same
@@ -44,7 +43,7 @@ export const loadScriptOnce = function(src, globalName) {
 // rather than silently doing nothing.
 export const ensureHtml2Canvas = async function() {
     try {
-        await window.loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas');
+        await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas');
         return typeof html2canvas !== 'undefined';
     } catch (err) {
         return false;
@@ -59,7 +58,7 @@ export const ensureHtml2Canvas = async function() {
 // Keeps the (callback, onError) signature rather than returning the promise, because
 // js/shared/rankings/parse.js takes this function as an injected parameter and documents that shape.
 export const loadSheetJS = function(callback, onError) {
-    window.loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX')
+    loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX')
         .then(
             () => callback(),
             // Two arguments rather than .then().catch() on purpose: onError means "the library

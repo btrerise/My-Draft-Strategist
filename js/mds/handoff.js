@@ -2,6 +2,7 @@
 // SEND ROSTER TO LINEUP STRATEGIST.
 import { State, getActiveDraft } from './state.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { showToast } from '../shared/ui/toast.js';
 
     // --- SEND ROSTER TO LINEUP STRATEGIST ---
     // MDS (mydraftstrategist.com) and MLS (mydraftstrategist.com/lineup/) are same-origin, so
@@ -11,7 +12,7 @@ import { KEYS } from '../shared/storage/keys.js';
     export const sendRosterToLineupStrategist = function() {
         const draft = getActiveDraft();
         if (!draft || !draft.myTeam || draft.myTeam.length === 0) {
-            if (window.showToast) window.showToast("Draft a roster first before sending it to Lineup Strategist.");
+            showToast("Draft a roster first before sending it to Lineup Strategist.");
             return;
         }
 
@@ -42,6 +43,6 @@ import { KEYS } from '../shared/storage/keys.js';
 
         localStorage.setItem(KEYS.shared.handoffRoster, JSON.stringify(payload));
 
-        if (window.showToast) window.showToast(`Sending ${players.length} players to Lineup Strategist…`);
+        showToast(`Sending ${players.length} players to Lineup Strategist…`);
         setTimeout(() => { window.location.href = './lineup/'; }, 700);
     };

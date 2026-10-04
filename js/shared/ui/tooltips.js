@@ -1,5 +1,5 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js; app modules may also import it directly.
+// Moved verbatim from js/utils.js in refactor chunk 1A. Has load-time side effects, so js/shared/globals.js
+// imports it on every page (in the old utils.js order); code that uses its exports imports it too.
 
 // --- TOOLTIPS ---
 // Shared by MDS, MLS and T-Score. Before this, tooltips only opened on mouse hover: their

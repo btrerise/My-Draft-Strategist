@@ -1,6 +1,8 @@
 // Moved from lineup/mls.js in refactor chunk 3A: BACKUP & RESTORE.
 import { isMlsOwnedKey, isMlsOwnedOrLegacyKey } from '../shared/storage/keys.js';
 import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
+import { showToast } from '../shared/ui/toast.js';
+import { showConfirm } from '../shared/ui/confirm.js';
 
     // --- BACKUP & RESTORE ---
     // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in js/mds/backup.js -- see that
@@ -39,7 +41,7 @@ import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        if (window.showToast) window.showToast("Backup downloaded!");
+        showToast("Backup downloaded!");
     };
 
     export const importMlsSettings = function(fileInput) {
@@ -52,13 +54,13 @@ import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
             try {
                 payload = JSON.parse(e.target.result);
             } catch (err) {
-                if (window.showToast) window.showToast("That file isn't valid JSON - couldn't read it as a backup.", { isError: true });
+                showToast("That file isn't valid JSON - couldn't read it as a backup.", { isError: true });
                 fileInput.value = "";
                 return;
             }
 
             if (!payload || payload.app !== "MLS" || typeof payload.data !== 'object') {
-                if (window.showToast) window.showToast("This doesn't look like a My Lineup Strategist backup file. If it's an MDS (Draft Strategist) backup, use the Import button on that app instead.", { isError: true });
+                showToast("This doesn't look like a My Lineup Strategist backup file. If it's an MDS (Draft Strategist) backup, use the Import button on that app instead.", { isError: true });
                 fileInput.value = "";
                 return;
             }
@@ -69,7 +71,7 @@ import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
             const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
             const confirmMsg = `This replaces your current My Lineup Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately.`;
 
-            if (!await window.showConfirm(confirmMsg, { title: 'Restore from backup?', confirmText: 'Replace My Data', danger: true })) {
+            if (!await showConfirm(confirmMsg, { title: 'Restore from backup?', confirmText: 'Replace My Data', danger: true })) {
                 fileInput.value = "";
                 return;
             }
@@ -77,14 +79,14 @@ import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
             getMlsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
             Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
 
-            if (window.showToast) window.showToast("Backup restored! Reloading now.");
+            showToast("Backup restored! Reloading now.");
             setTimeout(() => { window.location.reload(); }, 900);
         };
         reader.readAsText(file);
     };
 
     export const factoryReset = async function() {
-        if (await window.showConfirm("This clears every league, cached ranking set, custom SoS grid, and setting in My Lineup Strategist.\n\nMy Draft Strategist data is not affected. This cannot be undone.", { title: 'Factory reset this app?', confirmText: 'Factory Reset', danger: true })) {
+        if (await showConfirm("This clears every league, cached ranking set, custom SoS grid, and setting in My Lineup Strategist.\n\nMy Draft Strategist data is not affected. This cannot be undone.", { title: 'Factory reset this app?', confirmText: 'Factory Reset', danger: true })) {
             getMlsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
             window.location.reload();
         }

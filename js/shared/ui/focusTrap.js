@@ -1,5 +1,4 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js; app modules may also import it directly.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- FOCUS TRAPPING FOR OVERLAYS ---
 // Shared by the hamburger drawer and the rankings preview modal (js/mls/nav.js, js/mls/rankings/uploadPreview.js) so a

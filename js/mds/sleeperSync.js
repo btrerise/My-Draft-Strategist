@@ -3,9 +3,12 @@
 // Sleeper's draft metadata, and the live-sync status pill and toggle.
 import { savePlayerPool } from './storage.js';
 import { BYE_WEEKS_2026, State, getActiveDraft, refreshDraftDropdown, saveActiveDraftState, saveAndRenderDraftState } from './state.js';
-import { initSettingsUI } from './settings.js';
+import { initSettingsUI, saveSettings } from './settings.js';
 import { renderBoard } from './tracker.js';
 import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeagueUsers, getSleeperUser } from '../shared/api/sleeper.js';
+import { normalizeName } from '../shared/names.js';
+import { flashButton } from '../shared/ui/flashButton.js';
+import { showToast } from '../shared/ui/toast.js';
 
     // --- SLEEPER & MANUAL DRAFT CREATION LOGIC ---
     export const createManualDraft = function() {
@@ -61,7 +64,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
         if (nameInput) nameInput.value = "";
         refreshDraftDropdown();
         initSettingsUI();
-        if (window.showToast) window.showToast(`Manual Draft '${draftName}' created!`);
+        showToast(`Manual Draft '${draftName}' created!`);
     };
 
     // --- SESSION CACHE FOR SLEEPER'S STATIC DRAFT METADATA ---
@@ -212,7 +215,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
             // outcome of a good poll is the unchanged-silent-tick early return further down.
             State.lastLiveSyncAt = Date.now();
             State.liveSyncFailStreak = 0;
-            if (typeof window.renderLiveSyncStatus === 'function') window.renderLiveSyncStatus();
+            renderLiveSyncStatus();
 
             let sleeperDrafted = [];
             let sleeperMyTeam = [];
@@ -233,7 +236,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
                 // State.players grow as it went).
                 const bySleeperId = new Map();
                 const byCleanName = new Map();
-                const normFn = (typeof normalizeName === 'function') ? normalizeName : (s) => String(s || '').toLowerCase();
+                const normFn = normalizeName;
                 State.players.forEach(p => {
                     if (p.sleeperId !== undefined && p.sleeperId !== null && !bySleeperId.has(p.sleeperId)) bySleeperId.set(p.sleeperId, p);
                     const clean = normFn(p.name);
@@ -400,7 +403,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
             // them. The timer is deliberately left running: a rate limit or a dropped
             // connection clears on its own, and killing the poll turns a blip into a dead board.
             State.liveSyncFailStreak = (State.liveSyncFailStreak || 0) + 1;
-            if (typeof window.renderLiveSyncStatus === 'function') window.renderLiveSyncStatus();
+            renderLiveSyncStatus();
 
             // 3. Restore pointer events and pass the original HTML to the error flash
             if (!isSilent && btn) {
@@ -408,7 +411,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
                 btn.style.opacity = '1';
                 flashButton(btn, "Sync Failed", true, originalBtnHTML);
             }
-            if (!isSilent && window.showToast) window.showToast(`Sleeper Sync Error:\n${err.message}`, { isError: true });
+            if (!isSilent) showToast(`Sleeper Sync Error:\n${err.message}`, { isError: true });
         }
     }
 
@@ -425,19 +428,19 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
         }
 
         if (!username || !draftId) {
-            if (window.showToast) window.showToast("Please enter both Username and Draft ID.", { isError: true });
+            showToast("Please enter both Username and Draft ID.", { isError: true });
             return;
         }
         
         // Force a save to lock in the new credentials instantly
-        if (typeof window.saveSettings === 'function') window.saveSettings(null, true);
+        saveSettings(null, true);
 
         processSleeperDraftData(username, draftId, btn, false);
     };
 
     export const handleSmartSync = function() {
         if (State.autoSyncTimer) {
-            window.toggleAutoSync(false);
+            toggleAutoSync(false);
             const toggleEl = document.getElementById('autoSyncToggle');
             if (toggleEl) toggleEl.checked = false;
         } else {
@@ -456,11 +459,11 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
             targetDraftId = targetDraftId || (draft ? draft.draftId : "");
 
             if (!targetUser || targetUser === "Manual" || !targetDraftId) {
-                if (window.showToast) window.showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
+                showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
                 return;
             }
 
-            if (typeof window.saveSettings === 'function') window.saveSettings(null, true);
+            saveSettings(null, true);
             processSleeperDraftData(targetUser, targetDraftId, document.getElementById('headerSyncBtn'), false);
         }
     };
@@ -581,15 +584,13 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
             targetDraftId = targetDraftId || (draft ? draft.draftId : "");
 
             if (!targetUser || targetUser === "Manual" || !targetDraftId) {
-                if (window.showToast) window.showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
+                showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
                 document.querySelectorAll('.sync-toggle').forEach(el => el.checked = false);
                 return;
             }
 
             // Lock in settings (which also grabs the visual input values we just cleaned)
-            if (typeof window.saveSettings === 'function') {
-                window.saveSettings(null, true);
-            }
+            saveSettings(null, true);
 
             // Update UI styling for Live State
             if (syncWrap) syncWrap.style.display = 'none';
@@ -613,7 +614,7 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
                 }, 3000); 
             }
             // After the timer exists, so the pill reads as live rather than idle.
-            window.renderLiveSyncStatus();
+            renderLiveSyncStatus();
 
         } else {
             // Stop Sync & Revert UI
@@ -629,6 +630,6 @@ import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeag
             // Drop the stalled styling with the timer, so turning Live Sync back on doesn't
             // inherit an amber button from the last session.
             State.liveSyncFailStreak = 0;
-            window.renderLiveSyncStatus();
+            renderLiveSyncStatus();
         }
     };

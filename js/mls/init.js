@@ -12,8 +12,9 @@ import { loadActiveLeagueData, refreshLeagueDropdown } from './leagues/sync.js';
 import { initManualAddForm } from './leagues/addPlayer.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
-import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs } from './main.js';
+import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs, showTab, lookupSimPlayer } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { getTabFromHash } from '../shared/ui/tabHash.js';
 
     // --- INITIALIZATION ---
     // Where each setup step gets done: the tab it lives on, the card to reveal, and the control
@@ -31,7 +32,7 @@ import { KEYS } from '../shared/storage/keys.js';
         if (!cfg) return;
         const activeTab = document.querySelector('.tab-content.active');
         if (!activeTab || activeTab.id !== cfg.tab + 'Tab') {
-            window.showTab(cfg.tab);
+            showTab(cfg.tab);
             updateDrawerActiveState(cfg.tab);
         }
         if (step !== 'leagues') setRankingsCardExpanded(cfg.cardId, true);
@@ -75,7 +76,7 @@ import { KEYS } from '../shared/storage/keys.js';
             btn.className = 'mls-btn-sm btn-link-inline setup-step-go';
             btn.textContent = activeTabId === cfg.tab + 'Tab' ? 'Show me ↓' : `Go to ${cfg.tabLabel} tab →`;
             btn.setAttribute('aria-label', `${btn.textContent.slice(0, -2)} for ${text}`);
-            btn.addEventListener('click', () => window.goToSetupStep(step));
+            btn.addEventListener('click', () => goToSetupStep(step));
             body.append(howEl, btn);
         }
         li.replaceChildren(mark, body);
@@ -164,7 +165,7 @@ import { KEYS } from '../shared/storage/keys.js';
     export const onload = function() {
         initManualAddForm();
         attachPlayerAutocomplete(document.getElementById('simPlayerSearch'), (p) => {
-            window.lookupSimPlayer(p);
+            lookupSimPlayer(p);
         });
         attachScoutSuggestionHandler('waiverOutput');
         attachScoutSuggestionHandler('tradeOutput');
@@ -221,8 +222,8 @@ import { KEYS } from '../shared/storage/keys.js';
         // else the Dashboard. skipHistory + replaceState instead of a push: pushing here added
         // a second history entry on every page load, so the first Back press went nowhere.
         // Stamping this entry with its tab also means Back to it restores the right tab.
-        const initialTab = window.getTabFromHash() || 'setup';
-        window.showTab(initialTab, true);
+        const initialTab = getTabFromHash() || 'setup';
+        showTab(initialTab, true);
         history.replaceState({ tab: initialTab }, '', `#${initialTab}`);
 
         // Last line of init on purpose: tells the safety net in js/boot.js that this module --
