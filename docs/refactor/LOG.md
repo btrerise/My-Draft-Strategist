@@ -4086,8 +4086,8 @@ defenses' seasons and 6% of kicker stretches. One constant covers both, since no
   `thresholdTests` and the JSDoc follow. Nothing else changed: no new export, so `exports` in statsEngine.test.mjs stays.
 - The floor applies in every tier: counted weeks (blended, current season), the projection model and the
   too-few-games model. A mean of 4 or more gives exactly the lines it gave before.
-- **K/DEF lines stay strict** (9A): exactly 2 or 6 doesn't count. With the floor the lines are at least 4 points apart,
-  so they can no longer meet. Making them inclusive is a separate choice the owner hasn't been asked to make.
+- K/DEF lines stayed strict in this commit (9A): exactly 2 or 6 didn't count. With the floor the lines are at least 4
+  points apart, so they can no longer meet. **The follow-up below makes them inclusive** (owner's decision).
 - `js/mls/sim/ui.js` is unchanged: it shows whatever `getBoomBustRates` returns.
 
 #### What a user sees
@@ -4142,8 +4142,34 @@ rarely under 4 (2026 weeks 4 and 5: at most one kicker and one defense a week un
 - **Unknown positions** (IDP such as LB, DL, DB) go through the same branch, so they get the same floor of 4. They can't reach
   the simulator today: league sync drops IDP slots (9A's trace for #9), so only QB/RB/WR/TE/FLEX/SFLEX/K/DEF start.
   If IDP support comes, its lines need their own decision; 4 points means something different for a linebacker.
-- **K/DEF lines are still strict.** Inclusive lines are now safe (they can't meet), but changing them would move K/DEF
-  numbers for anyone with a week exactly on a line, so it's the owner's call.
-- **A user-adjustable floor** would need a new setting and storage key (outside this card). Not built.
+- **A user-adjustable floor** would need a new setting and storage key (outside this card). Not built. The owner
+  chose to leave this and the IDP item above for another time.
 - The simulator reads Sleeper's default scoring (`pts_ppr` / `pts_half_ppr` / `pts_std`), not a league's custom scoring,
   so the floor's scale matches every league. A league that scores defenses very differently still sees default-scoring numbers.
+
+#### Follow-up: K/DEF lines inclusive (owner's decision, same branch)
+
+After reading the leftovers, the owner decided K/DEF lines should count a week exactly on the line, as QB/RB/WR/TE
+have since 9A. 9A kept them strict only because a player with no data had both lines at 0; the floor rules that out
+(the lines are at least 2 and 6, 4 points apart).
+
+- `js/mls/sim/stats.js`: `thresholdTests` is now one inclusive test (`<=` bust, `>=` boom) for every position. The
+  `inclusive` argument is gone from it, `computeEmpiricalBoomBust`, `computeModelBoomBust` and `getBoomBustRates`.
+  The model's stdDev-0 case follows. The normal-curve numbers can't change: a single exact value has probability 0.
+- **What a user sees: a kicker's or defense's week exactly on a line now counts.** That's common, because K/DEF scores
+  are mostly whole numbers and the floor's lines (2 and 6) are too. Measured on Sleeper's weekly scores with the floor
+  in place, before → after:
+  - 2025 full seasons: no kicker changes; one defense, the Jets, goes **52.9 / 17.6 → 52.9 / 29.4** (weeks of exactly 6).
+  - 3-game stretches in 2025: 5.2% of kicker and 13.2% of defense stretches change.
+  - 2026 weeks 1–3: Dicker K [2, 1, 9] **33 / 33 → 67 / 33**; Ryland K [15, 1, 14] **33 / 0 → 33 / 33**; Zvada K [4, 8, 12]
+    **0 / 0 → 33 / 33**; Miami DEF [4, −4, 2] **33 / 0 → 67 / 0**.
+- Tests (`statsEngine.test.mjs`, still 33 cases): "K / DEF lines stay strict…" → "…are inclusive since 9B" (mean 8 with
+  weeks [4, 12, 8]: 33.3 / 33.3, was 0 / 0; a hundredth inside a line doesn't count; on the floor's lines [2, 6, 2, 6]:
+  50 / 50, was 0 / 0). Updated for weeks on a line: the small-average cases (75 / 25, was 50 / 25; 3.99: 50 / 50, was
+  25 / 25), "averaging at least the floor" (now checked against `<=` / `>=`, so it no longer passes on main), the default
+  K case (4 on the bust line: 50%, was 25%), and the stdDev-0 cases (a kicker exactly on its own bust or boom line is
+  100%, was 0; a new one at exactly 2). Mutation check: with the strict code (`1505988`), those 5 fail.
+- `mls-sim.spec.mjs`: **pins unchanged.** None of India K's, Lima K's or Juliet DEF's weeks lands exactly on a line,
+  and Kilo DEF's numbers come from the model.
+- Checks: `node --test` 192/192, check-precache OK, Playwright 92/92, no screenshot changed. CACHE_NAME stays at
+  `v2.8.67`: this branch hasn't merged or deployed, so one bump covers both commits (main is at v2.8.66).
