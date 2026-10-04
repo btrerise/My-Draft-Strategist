@@ -68,9 +68,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   load, so a broken import reports the missing file (for example `HTTP 404: /lineup/dbx.js`).
 - Seeded states: `seedMds()` pastes `fixtures/rankings.csv` (24 players) and makes 5 picks.
   `seedMls()` syncs the fixture league by league ID.
-- Tabs are opened with `window.showTab(id)` (MDS/MLS) or `window.switchTab(id)` (T-Score).
-  These are the same functions the nav buttons call. One test also clicks a real bottom-nav
-  button.
+- Tabs are opened with `window.showTab(id)` (MDS/MLS), the same function the nav buttons call. On
+  T-Score (since 5E) `showTScoreTab` dispatches a click on the tab's nav button, which runs its
+  `data-action`. One test also clicks a real bottom-nav button.
 - Coverage: 14 smoke tests and 10 screenshot tests (40 PNGs) across desktop (1280×900) and
   phone (390×844), plus 2 backup → restore round trips (`backup.spec.mjs`, added in 1B), 9
   MDS network tests (`mds-sync.spec.mjs`, added in 2C, FFC cases rewritten in 7A: player-map
@@ -3446,3 +3446,93 @@ The screenshots disable animations, so the pulse itself isn't in them.
   `.cluster-lg`) plus `.mt-0` and `.pl-6`, unused since 4E. Phase 8's new Draft Strategist markup may use some of
   them, so don't delete any before then. Afterwards, grep `index.html`, `lineup/index.html`, `t-score/`, `js/` and
   `functions/` for each one, list the ones still unused for the owner, and delete only the ones the owner drops.
+
+### 5E — T-Score page: inline handlers → event delegation; shared helpers as imports
+
+**No `on*=` attribute is left in `t-score/index.html`, and `js/tscore/main.js` assigns no `window.*`
+name.** `grep -nE '\bon[a-z]+=' t-score/index.html` and `grep -nE '^\s*window\.[A-Za-z]+ *=' js/tscore/main.js`
+both find nothing. The 18 attributes were swapped by a script making exact string replacements, with the
+expected count asserted per pattern (same method as 5A–5C). Only attributes changed in the markup.
+
+#### What changed
+
+| Where | Change |
+|---|---|
+| `t-score/index.html` | 3 × `onclick="toggleMenu()"` → `data-action="toggleMenu"`; 6 × `onclick="switchTab('…', this)"` → `data-action="switchTab" data-tab="…"`; 8 × `onclick="switchPosition('wr'\|'rb', '…Tab')"` → `data-action="switchPosition" data-tab="…Tab"` (the WR/RB argument is read from the button's existing `data-pos`, which always equalled it); `onclick="refreshTScoreData(this)"` → `data-action="refreshTScoreData"` |
+| `js/tscore/main.js`, end | `// --- WINDOW EXPORTS ---` (3 names) replaced by `// --- DATA-ACTION EVENT DELEGATION ---`: one `clickActions` table and one `delegate(container, 'click', clickActions)` per container: `body > header.header`, `#menuOverlay`, `#hamburgerMenu`, `.tscore-nav-wrapper`, `#tscoreRefreshBtn` (it sits in an unnamed wrapper, so it is its own container) and `#main` (the WR/RB buttons). All are static and never re-rendered. |
+| `js/tscore/main.js`, `switchTab` | The one logic change: `.tscore-nav-btn[onclick*="${tabId}"]` → `.tscore-nav-btn[data-tab="${tabId}"]`. |
+| `js/tscore/main.js`, `refreshTScoreData` | `window.refreshTScoreData = async function(btn) {…};` → `async function refreshTScoreData(btn) {…}`. Body unchanged apart from the toast lines below. |
+| `js/tscore/main.js`, imports | `window.mdsFetch`, `window.showToast`, `window.createFocusTrap`, `window.getTabFromHash` → imports from `js/shared/net.js`, `ui/toast.js`, `ui/focusTrap.js`, `ui/tabHash.js`; plus `delegate` from `ui/delegate.js`. globals.js already imports all five modules and runs first, so no module evaluates earlier or later than before. |
+| `tests/helpers.mjs`, `showTScoreTab` | `window.switchTab(t)` → `locator('.tscore-nav-btn[data-tab="…"]').dispatchEvent('click')`, so no window name had to stay. `dispatchEvent`, not `click()`: a real click first scrolls the button into view, and the nav row scrolls sideways at phone width, which would move the screenshots. It passes the button as `switchTab`'s second argument where the old call passed nothing; both are "not `true`", so both push history. |
+
+- **`switchTab`'s second argument.** The inline handlers passed `this` as `skipHistory`. The action still
+  does (`switchTab(this.dataset.tab, this)`), so a nav click still pushes a history entry.
+- **Dead fallbacks removed (the card allowed this if noted).** With imports, the guards were always true:
+  `if (window.showToast) … else window.alert(…)` (error path) and `if (window.showToast)` (success) are now
+  plain `showToast(…)` calls; `typeof window.createFocusTrap === 'function'` and
+  `typeof window.getTabFromHash === 'function' && …` are gone. The `window.alert` branch could only run if
+  globals.js hadn't loaded, and then main.js's own imports fail too, so it was unreachable either way.
+- **Comments:** the header, the auto-refresh and `fetchTScoreSheet` notes, and the two `DOMContentLoaded`
+  comments no longer describe an inline script or `window.*` reads. The two `DOMContentLoaded` waits stay
+  (the module runs after Papa and js/shared/ now, so they aren't needed, but removing them would move the
+  cached render and the deep-link tab switch).
+
+#### delegate.js's two caveats, checked for this page
+
+- *Listeners between the target and the container:* none. On this page the shared modules add click
+  listeners only on `document` (tooltips, capture phase, so still first), on toast elements, and on tooltip
+  triggers (`.table-header-tooltip` cells inside the tables, which hold no action buttons). The focus
+  trap's `keydown` is on `#hamburgerMenu`, a different event type. `scrollShadows.js` listens for `scroll`.
+- *Events on detached elements:* none. No action re-renders its own button. `refreshTScoreData` rewrites
+  the button's `innerHTML`, so the `<svg>` inside it is replaced, but `composedPath()` is fixed at dispatch
+  and the button stays. The comparison below clicks the svg itself too.
+
+#### window.* names
+
+Removed **4**: `switchTab`, `switchPosition`, `toggleMenu`, `refreshTScoreData`. A grep of `js/`, the HTML
+and `tests/` finds no other reader. On `/t-score/`, a diff of `Object.getOwnPropertyNames(window)` shows
+exactly these 4 missing compared with main, and nothing new.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (107 precached). `node --test` 162/162.
+  `cd tests && npx playwright test`: **78/78**, including `tscore-refresh.spec.mjs` (unchanged), the T-Score
+  smoke test and the T-Score screenshots. **No screenshot changed.**
+- **`npm run compare-css -- -g "T-Score"`** (4B's computed-style comparison, as the 4D tool): 7 states,
+  13,685 elements, **0 differences** at both widths with reduced motion off and on. The tool imports
+  `showTScoreTab` from the working tree, and the new selector finds nothing in main's markup, so for this run
+  only the helper's selector also matched `[onclick*="'tab'"]` (not committed). **For whoever runs
+  compare-css against a ref older than 5E:** the T-Score scenario fails on the ref side for the same reason;
+  make the same temporary edit.
+- **Throwaway spec (not committed), main vs this branch, both widths:** with every local file served from
+  `origin/main` or from the working tree (compare-css's routing). It records after each step: the hash,
+  `history.length` and `history.state`, the active tab, every nav and WR/RB button's class and
+  `aria-pressed`, the WR/RB content display, the menu class, overlay display and hamburger `aria-expanded`,
+  the focused element, the toasts, the Refresh button's state and HTML, the freshness label, localStorage,
+  scroll positions (window and the nav row), and the whole body HTML with only `onclick` / `data-action` /
+  `data-tab` stripped. Steps: a click on each nav button, Enter and Space on nav buttons, RB/WR by click,
+  Space and Enter in all four tabs, four Backs and a Forward, the menu (click, Tab, Escape, Enter, close
+  button, overlay click, and taps on phone), Refresh with stubbed sheets (click), its HTTP 500 path (Enter)
+  and a click on its icon, same-document hash changes (`#valuesTab`, `#tab-2024`, `#sleepersTab`, an
+  unknown hash, none), and **real page loads** of `/t-score/#valuesTab`, `#tab-2024`, `#top50Tab` and
+  `#nope` from another document, each followed by a nav click, Back and a reload. **Result: identical**
+  (62 steps on desktop, 64 on phone), and the same two expected `console.error`s on both. After a nav
+  click, a hash deep link and Back, exactly one nav button is `.active` with `aria-pressed="true"` (an
+  unknown hash falls back to The Research). The only difference is the 4 window names above.
+- 5A's server trap: no `serve.mjs` was left running between runs (`ps aux | grep serve.mjs`).
+
+#### Other changes
+
+- `sw.js`: CACHE_NAME `v2.8.62` → `v2.8.63`. No file added (`delegate.js` has been precached since 5A).
+- README `/t-score` line: main.js imports the shared helpers and holds the page's delegation.
+- This file's "How the tests work": how `showTScoreTab` opens a tab.
+
+#### Left for later chunks
+
+- **5D:** `js/shared/globals.js` no longer has a T-Score reader: every name it sets that main.js uses
+  (`normalizeName`, `escapeHtml`, `mdsFetch`, `showToast`, `createFocusTrap`, `getTabFromHash`) is now an
+  import there (checked with a grep of each globals.js name). The page still loads globals.js, for its
+  side-effect modules (feedback form, scroll shadows, tooltips); 5D decides how. Its header still lists "the T-Score page's inline script, and onclick handlers in the HTML" as readers;
+  no page has an inline handler any more. 5D's comment sweep of `js/tscore/` found nothing else left here.
+- **6B:** unchanged from 4B: the T-Score copy-on-load migration for `mds_tscore_cache_updated` can be an
+  import in `js/tscore/main.js`.

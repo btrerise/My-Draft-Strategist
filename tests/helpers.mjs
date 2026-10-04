@@ -146,9 +146,13 @@ export async function seedMls(page) {
     await page.waitForLoadState('networkidle');
 }
 
-/** T-Score tabs use their own switchTab(tabId, skipHistory) from the page's inline script. */
+/**
+ * T-Score: clicks the tab's nav button (its data-action="switchTab" runs through the page's
+ * delegated listener, js/tscore/main.js). dispatchEvent rather than click(), because a real click
+ * first scrolls the button into view, and the nav row scrolls sideways on phones.
+ */
 export async function showTScoreTab(page, tab) {
-    await page.evaluate((t) => window.switchTab(t), tab);
+    await page.locator(`.tscore-nav-btn[data-tab="${tab}"]`).dispatchEvent('click');
     await expect(page.locator(`#${tab}`)).toHaveClass(/\bactive\b/);
 }
 
