@@ -3998,8 +3998,8 @@ the ranks themselves didn't change). The parse.js export list now includes `pars
 
 #### Left for later
 
-- **K/DEF Boom/Bust when the player averages zero or less** (found while fixing #1; not on 0B's list; no
-  runbook card yet). K/DEF lines are 0.5× and 1.5× the player's own mean (`js/mls/sim/stats.js`,
+- **K/DEF Boom/Bust when the player averages zero or less** (found while fixing #1; not on 0B's list;
+  planned as runbook card **9B**, see below). K/DEF lines are 0.5× and 1.5× the player's own mean (`js/mls/sim/stats.js`,
   `DEFAULT_BUST_MULTIPLIER` / `DEFAULT_BOOM_MULTIPLIER`). With a negative mean the bust line sits above the boom
   line, so one week can be a bust and a boom at once. A defense averaging −2 with weeks [−2, −2, −1, −4, 0]
   shows **Bust 60% • Boom 80%** (lines at −1 and −3); with too few games, the model gives Bust 59.9% • Boom
@@ -4009,3 +4009,32 @@ the ranks themselves didn't change). The parse.js export list now includes `pars
   for K/DEF as for the other positions, or base the lines on spread (mean ± k·stdDev). It changes the
   simulator's K/DEF numbers, and `mls-sim.spec.mjs` has no K/DEF player today.
 - Next: Phase 8 (8B and 8C build on how Draft Strategist imports rankings; 9A didn't touch MDS's import).
+
+### Planned as runbook chunk 9B — K/DEF Boom/Bust for averages of zero or less (owner's request, recorded after 9A)
+
+The owner asked for 9A's leftover K/DEF problem (9A entry, "Left for later") to get a phase of its own. Runbook
+card **9B** in Phase 9 fixes it. It needs 9A (it builds on 9A's `thresholdTests` in `js/mls/sim/stats.js`), and
+since it touches only the simulator it can run alongside 7B and any Phase 8 card.
+
+**The problem, in short.** K/DEF Boom/Bust lines are 0.5× and 1.5× the player's own average. With an average of
+zero or less the bust line sits above the boom line, so one week can be both: a defense averaging −2 shows Bust
+60% • Boom 80%. Near zero the lines squeeze together (average 1 → lines at 0.5 and 1.5, 45% / 45%). QB/RB/WR/TE
+use fixed lines and aren't affected.
+
+**Options for the owner** (9B shows each with real numbers before building):
+
+| Option | What it does | Upside | Downside |
+|---|---|---|---|
+| (a) Hide | No Boom/Bust for a K/DEF averaging zero or less; the simulator says why | Smallest change | Doesn't fix the squeeze just above zero (average 1 still shows 45% / 45%) |
+| (b) Fixed lines | Point lines for K and DEF, like the other positions, with values the owner picks | Consistent with QB/RB/WR/TE; a boom means the same thing for every kicker | stats.js deliberately avoided K/DEF numbers with no published source; the owner has to choose them |
+| (c) Spread | Lines at the average ± a multiple of the player's standard deviation | Lines never cross | Where the numbers come from the normal model (projections, early season), every player gets the same % (about 16% each at ±1), so they stop telling players apart |
+| (d) Floor | Keep today's relative lines, but measure them from at least a floor: max(average, N points) | Fixes negative and near-zero averages; normal averages keep today's numbers | The owner picks N |
+
+**Recommendation:** (d), the smallest change that removes both problems and leaves typical kickers and
+defenses as they are. (b) instead if the owner already has lines in mind.
+
+**Owner's decision:** pending (9B asks first).
+
+**Tests 9B flips:** the K/DEF cases in `tests/unit/statsEngine.test.mjs` ("K / DEF (and any unknown pos)…",
+"K / DEF lines stay strict…", the stdDev-0 K cases). `tests/mls-sim.spec.mjs` has no K/DEF player today, so 9B adds
+a kicker and a negative-average defense there, pinned on main first.
