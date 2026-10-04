@@ -158,7 +158,7 @@ export const isLegacyKey = (k) => renamedKey(k) !== k;
 
 // --- BACKUP / RESTORE OWNERSHIP ---
 // The key filters each app's Backup, Restore, Hard Reset / Factory Reset use. Moved here from
-// getMdsOwnedKeys() in js/mds.js and getMlsOwnedKeys() in lineup/mls.js in 1B. js/boot.js's
+// getMdsOwnedKeys() and getMlsOwnedKeys() (now js/mds/backup.js and js/mls/backup.js) in 1B. js/boot.js's
 // rescue backup keeps its own copy of the *OrLegacy* filters on purpose: it has to work when no
 // module has loaded, so keep it in step by hand if these ever change
 // (tests/unit/bootKeyFilters.test.mjs checks it).

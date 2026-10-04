@@ -42,7 +42,7 @@ import { getActiveLeague } from '../helpers.js';
 
     // --- SCREENSHOT EXPORT ---
     export const exportLineup = async function() {
-    // Fetched on first use rather than on every page load -- see loadScriptOnce in utils.js.
+    // Fetched on first use rather than on every page load -- see loadScriptOnce in js/shared/ui/scriptLoader.js.
     // The old message here ("loading, try again in a moment") was a symptom of the eager
     // <script defer> tag: the only thing the user could do was wait and re-press. Now the
     // press itself starts the download and the export continues once it lands.

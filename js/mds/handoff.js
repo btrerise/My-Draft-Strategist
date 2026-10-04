@@ -7,7 +7,7 @@ import { KEYS } from '../shared/storage/keys.js';
     // MDS (mydraftstrategist.com) and MLS (mydraftstrategist.com/lineup/) are same-origin, so
     // they already share localStorage directly -- no URL params or backend needed. This writes
     // the drafted roster to a shared key that MLS's Setup tab checks for on load and offers to
-    // import as a new league. See mls.js's checkForDraftStrategistHandoff().
+    // import as a new league. See checkForDraftStrategistHandoff() in js/mls/leagues/handoff.js.
     export const sendRosterToLineupStrategist = function() {
         const draft = getActiveDraft();
         if (!draft || !draft.myTeam || draft.myTeam.length === 0) {

@@ -1,9 +1,9 @@
 // --- SLEEPER API CLIENT (ES MODULE) ---
-// Second module pulled out of mls.js's single IIFE (see rankingsParser.js for the first).
+// Second module pulled out of lineup/mls.js's single IIFE (see js/shared/rankings/parse.js for the first).
 // This one is a thin client: every export here is "fetch this endpoint, parse the JSON,
 // maybe throw a specific error" -- nothing more. All the business logic that used to sit
 // right next to these fetch calls (building league objects, diffing rosters, writing to
-// State/localStorage, updating buttons) stays behind in mls.js and is unaffected by this
+// State/localStorage, updating buttons) stays in js/mls/ (and js/mds/) and is unaffected by this
 // split; it just calls these functions instead of calling fetch() directly.
 //
 // Every call here goes through window.mdsFetch (js/shared/net.js, assigned to window by
@@ -12,11 +12,11 @@
 // and error messages below are still exactly what their original call sites had.
 //
 // Each function's error-handling (whether it throws on a non-ok response, and with what
-// message) intentionally matches whatever its original call site(s) in mls.js already did,
+// message) intentionally matches whatever its original call site(s) in lineup/mls.js already did,
 // even where that's inconsistent across endpoints -- this is a pure extraction, not a pass
 // to make error handling more uniform. Where two call sites for the same endpoint disagreed
 // (see getSleeperUser), the throwing version was kept here and the more lenient call site
-// was updated in mls.js to explicitly catch and continue, so its original "skip this one
+// was updated in lineup/mls.js to explicitly catch and continue, so its original "skip this one
 // league, keep going" behavior is preserved on purpose rather than by accident.
 import { IDB_DATABASES } from '../storage/keys.js';
 
@@ -89,7 +89,7 @@ export async function getSleeperUserLeagues(userId, season) {
  * on that roster (not just starters). Sleeper pre-populates this with 0 for every one of
  * them before their games even kick off, then replaces it with the real number as stats come
  * in -- so a caller needs to check for a POSITIVE value, not just a defined one, to tell
- * "hasn't played yet" apart from "played and scored 0." The Monte Carlo simulation (mls.js's
+ * "hasn't played yet" apart from "played and scored 0." The Monte Carlo simulation (js/mls/sim/matchup.js's
  * runMatchupSim) reads this, positive-value-checked, to use a player's actual in-progress or
  * final score instead of their pre-game projection once one genuinely exists -- Sleeper's own
  * UI keeps showing the projection after the fact purely for comparison, not as a live estimate.

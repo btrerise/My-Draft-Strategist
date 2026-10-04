@@ -5,7 +5,7 @@ import { loadActiveLeagueData, refreshLeagueDropdown } from './sync.js';
 import { KEYS } from '../../shared/storage/keys.js';
 
     // --- DRAFT STRATEGIST ROSTER HANDOFF ---
-    // Counterpart to sendRosterToLineupStrategist() in MDS's mds.js. Same-origin localStorage
+    // Counterpart to sendRosterToLineupStrategist() in js/mds/handoff.js. Same-origin localStorage
     // is the transport -- see that function's comment for why no URL params/backend are needed.
     export function checkForDraftStrategistHandoff() {
         const raw = localStorage.getItem(KEYS.shared.handoffRoster);

@@ -19,7 +19,7 @@ import { renderBoard } from './tracker.js';
     }
 
     // flashButton intentionally NOT declared here -- previously shadowed the shared version
-    // now in js/utils.js (loaded before this file). Calls below resolve to that shared version.
+    // now in js/shared/ui/flashButton.js (loaded before this file). Calls below resolve to that shared version.
 
     // Focus trap for the open drawer, mirroring MLS's toggleDrawer. No onEscape: the
     // document-level Escape handler in the keydown listener already calls toggleMenu()

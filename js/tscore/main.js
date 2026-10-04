@@ -21,9 +21,9 @@ migrateKeyNames('tscore');
 // --- T-SCORE SHEET AUTO-REFRESH ---
 // Pulls the WR/RB Google Sheets (published to web as CSV, so no auth is needed -- the call
 // goes through mdsFetch purely for its timeout, see below) and refreshes every data
-// table on this page, plus caches a copy in localStorage that mds.js checks before falling
-// back to the bundled tscore_data.js -- see that file's buildPlayerCardHTML() for the read
-// side of this. This page and MDS share an origin (mydraftstrategist.com), so localStorage
+// table on this page, plus caches a copy in localStorage that Draft Strategist checks before falling
+// back to the bundled js/shared/data/tscore.js -- see buildPlayerCardHTML() in js/mds/tracker.js
+// for the read side of this. This page and MDS share an origin (mydraftstrategist.com), so localStorage
 // is already visible to both without any extra work.
 const TSCORE_SHEET_URLS = {
     wr: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9ckcq-TOC3soaHNBwbZEGBzd8goU4j10x8UJ4qjIH79_f_oSsf7rZUghstUQ24DYbBTvXr5hAConB/pub?output=csv',
@@ -165,8 +165,8 @@ async function refreshTScoreData(btn) {
 
         renderTScoreTables(wrPlayers, rbPlayers);
 
-        // Build the same {cleanName: {s, l, c}} shape tscore_data.js already uses, so
-        // mds.js's lookup logic doesn't need to know or care whether it's reading the
+        // Build the same {cleanName: {s, l, c}} shape js/shared/data/tscore.js already uses, so
+        // js/mds/tracker.js's lookup logic doesn't need to know or care whether it's reading the
         // bundled static file or this cached override.
         const combined = {};
         [...wrPlayers, ...rbPlayers].forEach(p => {

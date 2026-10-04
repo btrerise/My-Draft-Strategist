@@ -15,7 +15,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: window.loadSheetJS, onProgress });
 
         // The parser module returns SoS data rather than writing to State directly (it has no
-        // access to State at all -- see rankingsParser.js), so it's merged in here instead.
+        // access to State at all -- see js/shared/rankings/parse.js), so it's merged in here instead.
         Object.entries(sosUpdates).forEach(([team, posMap]) => {
             if (!State.sosMap[team]) State.sosMap[team] = {};
             Object.assign(State.sosMap[team], posMap);
@@ -35,7 +35,7 @@ import { KEYS } from '../../shared/storage/keys.js';
             });
             // Unreadable files were already toasted by the parser, where the error was caught,
             // so only the other diagnostics are reported here. Each one names its file and says
-            // what was wrong (see window.formatRankingsDiagnostic in js/utils.js).
+            // what was wrong (see formatRankingsDiagnostic in js/shared/rankings/diagnostics.js).
             const toReport = diagnostics.filter(d => d.reason !== 'unreadable');
             if (toReport.length > 0 && typeof window.showToast === 'function') {
                 const MAX_SHOWN = 3;
@@ -86,7 +86,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (skippedEl) {
             if (skipped.length > 0) {
                 // Whole files that failed, single workbook tabs skipped as notes, and rows lost to
-                // an unclosed quote (see rankingsParser.js), counted separately so the title says
+                // an unclosed quote (see js/shared/rankings/parse.js), counted separately so the title says
                 // which it was: e.g. "1 tab left out, 3 rows lost".
                 const tabs = skipped.filter(d => d.reason === 'tab-without-header').length;
                 const quoteDiags = skipped.filter(d => d.reason === 'unclosed-quote');
@@ -373,12 +373,12 @@ import { KEYS } from '../../shared/storage/keys.js';
     if (rosFileEl) rosFileEl.addEventListener('change', () => processSingleRankingUpload('ros', 'rosSuccessMsg'));
     if (weeklyFileEl) weeklyFileEl.addEventListener('change', () => processSingleRankingUpload('weekly', 'weeklySuccessMsg'));
 
-    // Drag-and-drop onto either rankings card (window.enableFileDrop, js/utils.js). The drop
+    // Drag-and-drop onto either rankings card (window.enableFileDrop, js/shared/ui/fileDrop.js). The drop
     // is handed to the same file input the picker uses, so it goes through the exact same
     // path. Single-file mode: the whole card is the target. Multiple-files mode: a file has
     // to land on a visible position box, because the card alone can't say which position it
     // is; that box's input gets it, and "Combine & Process Files" runs the batch as usual.
-    // typeof check: an older cached utils.js right after a deploy won't have the helper yet.
+    // typeof check: written for an older cached utils.js right after a deploy (no longer possible).
     if (typeof window.enableFileDrop === 'function') {
         ['ros', 'weekly'].forEach(type => {
             window.enableFileDrop(document.getElementById(`${type}RankingsCard`), {
@@ -394,7 +394,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         });
     }
 
-    // loadSheetJS used to be defined here. mds.js needed the same lazy-load with the same
+    // loadSheetJS used to be defined here. Draft Strategist needed the same lazy-load with the same
     // failure path (it had its own copy with no error handling at all), so it now lives in
-    // js/utils.js as window.loadSheetJS alongside loadScriptOnce. The call sites above use it
-    // directly; the (callback, onError) signature rankingsParser.js documents is unchanged.
+    // js/shared/ui/scriptLoader.js as window.loadSheetJS alongside loadScriptOnce. The call sites above use it
+    // directly; the (callback, onError) signature js/shared/rankings/parse.js documents is unchanged.

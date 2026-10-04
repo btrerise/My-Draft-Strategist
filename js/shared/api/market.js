@@ -1,7 +1,7 @@
 // --- MARKET CONSENSUS DATA (FANTASYCALC) API CLIENT (ES MODULE) ---
-// Third module pulled out of mls.js's single IIFE (see rankingsParser.js and sleeperApi.js
-// for the first two). This was already written as a pure, self-contained function before
-// this split -- "no DOM access, no state writes" was true in mls.js already -- so moving it
+// Third module pulled out of lineup/mls.js's single IIFE (see js/shared/rankings/parse.js and
+// js/shared/api/sleeper.js for the first two). This was already written as a pure, self-contained function before
+// this split -- "no DOM access, no state writes" was true in lineup/mls.js already -- so moving it
 // here didn't require any restructuring.
 //
 // Refactor 7A removed LeagueLogs (its public API now answers 410): fetchLeagueLogsMarket and

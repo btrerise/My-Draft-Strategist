@@ -83,7 +83,7 @@ async function buildScoreHistory(playerIds, season, startWeek, endWeek, scoringK
  * Both views are returned, rather than just the merged one, because callers don't all want
  * the same trade-off: the Monte Carlo mean/stdDev is fine leaning on blended data (some
  * historical basis beats none for a stable estimate), but Boom/Bust specifically needs to
- * know which games actually happened THIS season -- see statsEngine.js's tiered
+ * know which games actually happened THIS season -- see js/mls/sim/stats.js's tiered
  * getBoomBustRates, which prefers currentSeasonOnly once the season has matured enough that
  * last year's role isn't the best available signal for a player's role today.
  *
@@ -97,7 +97,7 @@ async function buildScoreHistory(playerIds, season, startWeek, endWeek, scoringK
  * @param {Object} [options]
  * @param {number} [options.minGamesBeforeSupplementing=3] - a player's current-season sample
  *   must be at least this long before prior-season data is skipped for them; matches
- *   statsEngine.js's own reliability threshold so a player isn't measured as "reliable" here
+ *   js/mls/sim/stats.js's own reliability threshold so a player isn't measured as "reliable" here
  *   but then flagged as a fallback estimate there, or vice versa.
  * @returns {Promise<{blended: Object, currentSeasonOnly: Object}>} a week is silently skipped
  *   for a player if they have no entry that week (bye, DNP, not yet in the league, etc.)

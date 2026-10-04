@@ -15,7 +15,7 @@ import { loadRosterTab } from '../main.js';
     // --- ROS RANKINGS AUTO-FETCH ---
     // Reuses the exact same market-consensus fetch already proven for Scout's Power Rankings.
     // This is a deliberately narrower feature than "auto-fetch rankings" in general: ROS
-    // (rest-of-season) value maps directly onto what FantasyCalc/LeagueLogs already provide
+    // (rest-of-season) value maps directly onto what FantasyCalc already provides
     // (a single overall value per player, no week-specific data). Weekly Rankings do NOT get
     // an equivalent auto-fetch -- the real expert-consensus weekly rankings source (FantasyPros)
     // requires a paid/partnership API key, and the free alternatives found either return raw

@@ -225,7 +225,7 @@ import { KEYS } from '../shared/storage/keys.js';
         window.showTab(initialTab, true);
         history.replaceState({ tab: initialTab }, '', `#${initialTab}`);
 
-        // Last line of init on purpose: tells the safety net in utils.js that this module --
+        // Last line of init on purpose: tells the safety net in js/boot.js that this module --
         // and every module it imports -- evaluated all the way through and the page is
         // genuinely usable, so a later uncaught error gets logged instead of covering a
         // working screen with the fatal-boot banner. If any of the seven files in this
@@ -245,6 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // no "already migrated" flag; safe to delete once existing installs have loaded once.
     try { localStorage.removeItem(KEYS.shared.sleeperLeagueId); } catch (e) {}
 
-    // Tooltip tap/keyboard handling moved to js/utils.js (initInfoTooltips), shared with MDS
+    // Tooltip tap/keyboard handling moved to js/shared/ui/tooltips.js, shared with MDS
     // and T-Score. The per-icon listeners that lived here only covered icons present at load.
 });

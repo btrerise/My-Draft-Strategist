@@ -3,7 +3,7 @@ import { isMlsOwnedKey, isMlsOwnedOrLegacyKey } from '../shared/storage/keys.js'
 import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
 
     // --- BACKUP & RESTORE ---
-    // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in mds.js -- see that
+    // Counterpart to MDS's exportMdsSettings/importMdsSettings/hardReset in js/mds/backup.js -- see that
     // file's comment for why key-prefix scoping matters on a shared origin. MLS's own keys are
     // the ones under MLS_PREFIX. KEYS.shared.handoffRoster is excluded -- transient signal from MDS,
     // not a persistent MLS setting. The filters are in js/shared/storage/keys.js. Since 6B, Backup

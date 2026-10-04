@@ -1,6 +1,5 @@
 // Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// js/shared/globals.js; app modules may also import it directly.
 
 // --- ON-DEMAND SCRIPT LOADING ---
 // Loads a third-party script the first time something actually needs it, and returns the same
@@ -9,7 +8,7 @@
 // Both apps previously loaded html2canvas (~200KB) from a <script defer> tag on every single
 // page load, for a screenshot-export button most sessions never press. `defer` kept it off the
 // critical rendering path, but it still cost the download, the parse and the memory on a phone
-// every time either app opened. mls.js already had exactly this pattern for SheetJS
+// every time either app opened. Lineup Strategist already had exactly this pattern for SheetJS
 // (loadSheetJS, used only when someone uploads an .xlsx) -- this generalizes it so the same
 // reasoning can apply to any heavy, rarely-used dependency, and so both apps share one copy.
 //
@@ -27,7 +26,7 @@ export const loadScriptOnce = function(src, globalName) {
         script.onload = () => resolve();
         // Clear the cached promise on failure so a later attempt (after reconnecting, or
         // after an ad-blocker is paused) genuinely retries instead of replaying this
-        // rejection forever. Same reasoning as getPlayerSearchIndex's error path in mls.js.
+        // rejection forever. Same reasoning as getPlayerSearchIndex's error path in js/mls/players.js.
         script.onerror = () => {
             script.remove();
             _loadedScriptPromises.delete(src);
@@ -53,12 +52,12 @@ export const ensureHtml2Canvas = async function() {
 };
 
 // Lazy-loads SheetJS (XLSX) on first use, so the many sessions that never upload an .xlsx
-// don't pay for it. Previously lived only inside mls.js; mds.js had its own inline copy with
+// don't pay for it. Previously lived only inside lineup/mls.js; js/mds.js had its own inline copy with
 // no failure path at all, so a blocked/offline CDN left an .xlsx upload dead-ended in total
 // silence. Shared here so both apps get the same error handling.
 //
 // Keeps the (callback, onError) signature rather than returning the promise, because
-// rankingsParser.js takes this function as an injected parameter and documents that shape.
+// js/shared/rankings/parse.js takes this function as an injected parameter and documents that shape.
 export const loadSheetJS = function(callback, onError) {
     window.loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX')
         .then(

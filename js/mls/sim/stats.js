@@ -1,4 +1,4 @@
-// statsEngine.js
+// js/mls/sim/stats.js (lineup/statsEngine.js until refactor chunk 3F)
 
 /**
  * Calculates the mean (average) of an array of weekly scores.
@@ -238,7 +238,7 @@ export function getProbabilityBeats(profileA, profileB) {
 // here only as a floor, not a measurement. getPlayerVarianceProfile reports usedFallback so
 // callers can label these players' ranges as estimated rather than implying it's the same rigor
 // as a full-sample standard deviation.
-// Exported so other modules (e.g. sleeperService.js's prior-season supplementation) use the
+// Exported so other modules (e.g. js/shared/api/sleeperStats.js's prior-season supplementation) use the
 // exact same "is this sample big enough" threshold rather than a second hardcoded copy that
 // could silently drift out of sync with this one.
 export const MIN_RELIABLE_GAMES = 3;

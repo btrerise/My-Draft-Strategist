@@ -19,7 +19,7 @@ import { KEYS } from '../../shared/storage/keys.js';
     //   Starting Lineup -- which available players would crack your lineup THIS week, and who
     //                      they'd replace. Adds each free agent to your current starters and
     //                      re-runs the optimizer's own slotting (see checkAgainstLineup in
-    //                      waiverScanner.js), so a WR pickup that bumps your FLEX RB says so.
+    //                      scout/waiverScanner.js), so a WR pickup that bumps your FLEX RB says so.
     //   Whole Roster    -- which available players rank ahead of your weakest rostered player
     //                      at the position (the drop candidate). This is the original Auto-Find
     //                      Upgrades behavior, now run against one chosen rankings set.

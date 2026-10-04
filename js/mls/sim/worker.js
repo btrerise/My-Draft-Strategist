@@ -20,7 +20,7 @@ function randomNormal() {
 // correlation applied to every QB+pass-catcher pair on the same real team, rather than a
 // figure weighted by each player's target share -- a reasonable first pass without target-
 // share data this app doesn't currently track. One tunable constant, same pattern as other
-// single-number estimates elsewhere in this app (e.g. mls.js's waiver-adjustment tiering).
+// single-number estimates elsewhere in this app (e.g. the waiver-adjustment tiering in js/mls/trade/waiverValue.js).
 const QB_STACK_CORRELATION = 0.35;
 
 /**
@@ -65,7 +65,7 @@ function buildStackGroups(players) {
  * Everyone outside a stack group draws an ordinary independent normal, unchanged from before.
  *
  * A locked-in player (stdDev === 0, from getPlayerVarianceProfile's actualScore handling in
- * statsEngine.js -- their real game has already happened this week) falls out of this
+ * sim/stats.js -- their real game has already happened this week) falls out of this
  * naturally: stdDev multiplies whatever shared+individual factor they'd have drawn, so at 0
  * it always resolves to exactly their real score regardless of whether they're in a stack.
  * That also means a same-team stack can never end up half-locked, half-simulated -- every
@@ -84,7 +84,7 @@ function simulateTeamScore(players, stackGroups) {
         const p = players[i];
 
         // A locked-in player (stdDev === 0, an actual already-played result -- see
-        // getPlayerVarianceProfile's actualScore handling in statsEngine.js) is a real
+        // getPlayerVarianceProfile's actualScore handling in sim/stats.js) is a real
         // recorded fact, not a random draw, so it's added as-is with no floor: a real game
         // can legitimately produce a negative fantasy score (a lost fumble, a pick-six, an
         // injury-shortened outing with more penalty than production), and clamping that up to

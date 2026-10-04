@@ -1,10 +1,10 @@
-// monteCarloUi.js
+// js/mls/sim/ui.js (lineup/monteCarloUi.js until refactor chunk 3F)
 import { getPlayerVarianceProfile, getBoomBustRates } from './stats.js';
 
 // 1. Initialize the Web Worker.
 // Guarded because this runs at module-import time: a worker that can't be constructed (the
 // file didn't deploy, the browser refuses workers for this origin) would throw here, before
-// mls.js finished importing, and take the entire Lineup Strategist down rather than just the
+// js/mls/main.js finished importing, and take the entire Lineup Strategist down rather than just the
 // simulation. On failure `worker` stays null and runMatchupSimulation reports it in place.
 let worker = null;
 try {
@@ -122,7 +122,7 @@ export const clearSimResults = () => {
 };
 
 // Shows an explanation in place of a result, for the cases where a run can't proceed at all
-// (too early in the season, a bye week, no opponent). Exported so mls.js's runMatchupSim can
+// (too early in the season, a bye week, no opponent). Exported so runMatchupSim (sim/matchup.js) can
 // use the same surface its results appear in instead of only firing a toast that disappears.
 export const showSimNotice = (message, { isError = false } = {}) => {
     renderSimMessage(message, { isError });
@@ -165,13 +165,13 @@ function startProgressAnimation(simOutputDiv) {
  *   caller); this module only renders them, it doesn't compute or validate the matchups.
  * @param {Array<{faName, faPos, starterName, starterPos, faWinPct}>} [options.waiverInsights]
  *   - same idea as benchInsights, sourced from available free agents instead of the bench;
- *   only populated when the Waiver Insights toggle is on (see mls.js's runMatchupSim).
+ *   only populated when the Waiver Insights toggle is on (see runMatchupSim in sim/matchup.js).
  * @param {{checkedCount: number, positions: string[], noRankings: boolean, noCandidates: boolean, failed: boolean}|null} [options.waiverInsightsStatus]
  *   - what the waiver check actually did; null when the toggle is off. Lets the results card
  *   confirm "checked N free agents, none beat your starters" instead of showing nothing,
  *   which read the same as the check never having run.
  * @param {number} [options.currentWeek] - the current NFL week, passed straight through to
- *   getBoomBustRates' tier 2 gate (see statsEngine.js).
+ *   getBoomBustRates' tier 2 gate (see sim/stats.js).
  */
 export const runMatchupSimulation = (team1Players, team2Players, options = {}) => {
     const { lineupDiffersFromSleeper = false, benchInsights = [], waiverInsights = [], waiverInsightsStatus = null, currentWeek = null } = options;
@@ -288,7 +288,7 @@ function renderPlayerList(profiles) {
     return `<ul class="sim-player-list">${rows}</ul>`;
 }
 
-// Bench comparisons the caller found no sensible starter to weigh against (see mls.js's
+// Bench comparisons the caller found no sensible starter to weigh against (see sim/matchup.js's
 // runMatchupSim) never make it into benchInsights at all -- so anything that does arrive
 // here is worth showing, and this only decides how to lay out however many there are.
 function renderBenchInsights(benchInsights) {
@@ -311,7 +311,7 @@ function renderBenchInsights(benchInsights) {
 // Free-agent comparisons that beat your weakest eligible starter at their position -- same
 // shape and same ">50% win probability" bar as renderBenchInsights above, just sourced from
 // available waivers instead of your own bench. Only ever receives anything when the Waiver
-// Insights toggle is on (see mls.js's runMatchupSim).
+// Insights toggle is on (see runMatchupSim in sim/matchup.js).
 //
 // Unlike Lineup Insights, an empty result here still gets a section whenever the toggle is on:
 // the person explicitly asked for this check, so silence would leave them guessing whether it

@@ -1,8 +1,8 @@
 // --- WAIVER WIRE ASSISTANT LOGIC (ES MODULE) ---
 // Pure logic behind the Scout tab's Waiver Wire Assistant (Auto-Find and Scan Pasted List):
 // which free agents to show, what their weekly positional / FLEX ranks are, and whether each
-// one would crack your current starting lineup. Same extraction pattern as rankingsParser.js -- nothing here touches the
-// DOM, localStorage, or mls.js's State. The caller injects everything league-specific
+// one would crack your current starting lineup. Same extraction pattern as js/shared/rankings/parse.js -- nothing here touches the
+// DOM, localStorage, or js/mls/state.js's State. The caller injects everything league-specific
 // (position lookup, lock/availability checks) as plain callbacks, so this whole file runs
 // under Node for validation without a browser.
 
@@ -14,7 +14,7 @@ const isRanked = (v) => v !== undefined && v !== null && v !== UNRANKED;
 const rankOr999 = (v) => (isRanked(v) ? v : UNRANKED);
 
 // --- DISPLAY RANKS (Wk Pos Rank / Wk Flex Rank) ---
-// rankingsParser.js stores posRank/flexRank for every player, but for a SINGLE-file upload
+// js/shared/rankings/parse.js stores posRank/flexRank for every player, but for a SINGLE-file upload
 // without a Pos Rank column it backfills both with the player's overall rank (see its
 // "Fallback" branch). Shown as-is, that makes WR3 read as "Pos #9" and gives QBs a "Flex
 // Rank". So per position group -- and for the FLEX group as a whole -- this detects that
@@ -55,7 +55,7 @@ export function buildRankDisplayIndex(rankings, getPos) {
             pos,
             // Overall rank, straight from the file. ROS exports carry Overall + Positional and no
             // FLEX list, so for ROS this -- not a derived flexRank -- is the cross-position number
-            // the UI shows ("ROS Overall #106"); see crossKind in mls.js's waiverCompareLine.
+            // the UI shows ("ROS Overall #106"); see crossKind in waiverCompareLine (js/mls/scout/waivers.js).
             rank: isRanked(r.rank) ? r.rank : null,
             tier: r.tier ?? null,
             posRank: isRanked(r.posRank) ? r.posRank : null,
@@ -149,7 +149,7 @@ export function findFreeAgents(rankings, { posFilter, getPos, isRostered, isExcl
 
 // --- LINEUP SIMULATION ---
 // Fills a set of starter slots from a candidate pool using the exact same rules as
-// optimizeLineup in mls.js (strict slots by posRank, FLEX by flexRank-then-posRank, SFLEX by
+// optimizeLineup in js/mls/render/lineup.js (strict slots by posRank, FLEX by flexRank-then-posRank, SFLEX by
 // QB posRank -> FLEX flexRank -> FLEX posRank, locked players placed first, unavailable
 // players only as a last resort so no slot is left empty). If the two ever drift apart, this
 // tool would claim a free agent "starts" when the optimizer wouldn't actually start him --

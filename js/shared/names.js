@@ -1,6 +1,5 @@
 // Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// js/shared/globals.js; app modules may also import it directly.
 
 // Cache of raw name -> normalized result. normalizeName() is called repeatedly on the
 // same player names during sorting/matching (roster syncs, rankings uploads, waiver
@@ -13,7 +12,7 @@ const _normalizeNameCache = new Map();
 // Hoisted to module scope from inside normalizeName and isNameMatch, which each declared their
 // own identical copy of this object literal -- meaning a fresh 11-key object was allocated on
 // every cache miss and on every isNameMatch call. Building an index over Sleeper's ~11,000
-// -player map (mls.js does this in several places) is thousands of those allocations for an
+// -player map (js/mls/ does this in several places) is thousands of those allocations for an
 // object that never changes.
 export const NAME_ALIASES = {
     'kennygainwell': 'kennethgainwell',

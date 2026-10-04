@@ -60,7 +60,7 @@ import { KEYS } from '../shared/storage/keys.js';
 
     // Reads the T-Score cache the T-Score page's "Refresh from Google Sheets" button writes to
     // localStorage (same origin as this page, so it's already visible here with no extra work).
-    // Falls back to the bundled tscore_data.js if no cache exists yet, or if it fails to parse.
+    // Falls back to the bundled js/shared/data/tscore.js if no cache exists yet, or if it fails to parse.
     // Memoized per page load: buildPlayerCardHTML() below calls this once per player per render
     // (potentially hundreds of times), so re-reading and re-parsing localStorage on every call
     // would be wasteful -- if the T-Score page writes a fresher cache mid-session, MDS picks it

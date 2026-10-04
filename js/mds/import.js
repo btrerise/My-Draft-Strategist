@@ -47,10 +47,10 @@ if (fileInput) {
         }
     });
 
-    // Drag-and-drop anywhere on the upload card (window.enableFileDrop, js/utils.js). The
+    // Drag-and-drop anywhere on the upload card (window.enableFileDrop, js/shared/ui/fileDrop.js). The
     // dropped file is handed to this same input and fires the listener above, so a drop and
-    // a picked file take the identical path. typeof check: an older cached utils.js right
-    // after a deploy won't have the helper yet.
+    // a picked file take the identical path. typeof check: written for an older cached utils.js
+    // right after a deploy (no longer possible).
     if (typeof window.enableFileDrop === 'function') {
         window.enableFileDrop(fileInput.closest('.settings-card') || fileInput.parentElement, { pickInput: () => fileInput });
     }
@@ -130,8 +130,8 @@ function parseExcel(file) {
     // came from one tab of a multi-tab workbook; quoteProblem is findCsvQuoteProblem's result
     // for CSV text. headers is the file's header row as written, used both to catch a missing
     // name column before any work starts and to show the user what columns were found. The
-    // diagnostic follows the same shape as lineup/rankingsParser.js's so both apps share
-    // window.formatRankingsDiagnostic's wording.
+    // diagnostic follows the same shape as js/shared/rankings/parse.js's so both apps share
+    // formatRankingsDiagnostic's wording (js/shared/rankings/diagnostics.js).
     //
     // Quick-Start (market.js, refactor 7A) sends Fantasy Football Calculator's rows through here
     // too, as the rows an upload would give, and sets the last three: replace (ignore the
@@ -358,7 +358,7 @@ function parseExcel(file) {
                 window.showToast(source.successToast.text.replace('{count}', State.players.length), source.successToast.opts);
             } else if (typeof window.showToast === 'function') {
                 // Loaded, but an unclosed quote swallowed rows (see findCsvQuoteProblem in
-                // utils.js). Shown as an error: the list is missing players the user expects.
+                // js/shared/rankings/diagnostics.js). Shown as an error: the list is missing players the user expects.
                 if (source.quoteProblem) {
                     const q = { fileName: source.fileName || null, reason: 'unclosed-quote', row: source.quoteProblem.row, rowsLost: source.quoteProblem.rowsLost, headersFound: [], missing: [] };
                     window.showToast(`Loaded ${State.players.length} players, but some are missing.\n${formatRankingsDiagnostic(q)}`, { isError: true, duration: 12000 });

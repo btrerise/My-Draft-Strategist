@@ -321,7 +321,7 @@ import { KEYS } from '../../shared/storage/keys.js';
     }
 
     // Standalone picker dialog. Resolves { add, remove } on Save, or null on Cancel / Escape /
-    // backdrop click. Same close behavior as showConfirm in utils.js.
+    // backdrop click. Same close behavior as showConfirm in js/shared/ui/confirm.js.
     let leaguePickerOpen = false;
     export function openLeaguePickerDialog(type, set, { title, intro, allowRemove = false, confirmText = 'Save', cancelText = 'Cancel' } = {}) {
         const overlay = document.getElementById('rankingLeaguesOverlay');

@@ -1,6 +1,5 @@
 // Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// js/shared/globals.js; app modules may also import it directly.
 
 // --- NETWORK FETCH WITH A TIMEOUT ---
 // Every remote call this app makes -- Sleeper, FFC, FantasyCalc, ESPN -- used to be a
@@ -30,7 +29,7 @@
 // enough that a person staring at a spinner gets an answer while they're still waiting on it.
 const MDS_FETCH_TIMEOUT_MS = 12000;
 
-// Sleeper's players/nfl payload is close to 5MB (see sleeperApi.js's cache comment). The
+// Sleeper's players/nfl payload is close to 5MB (see the cache comment in js/shared/api/sleeper.js). The
 // default above would abort a perfectly healthy download of it on a slow connection, so its
 // callers pass this instead. Still bounded -- the point of this whole wrapper is that there
 // is always a ceiling, not that some requests are exempt from one.

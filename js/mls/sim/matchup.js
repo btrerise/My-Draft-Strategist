@@ -16,8 +16,8 @@ import { slotAcceptsPos } from '../render/lineup.js';
 // --- MATCHUP SIMULATOR (MONTE CARLO) ---
 // Bound to #run-sim-btn through its data-action="runMatchupSim" (the click table in
 // js/mls/main.js; an inline onclick handler until refactor chunk 5C) -- runMatchupSimulation
-// itself (from monteCarloUi.js) stays a pure hand-off to the Worker with no knowledge of State, matching
-// how sleeperApi.js/marketDataApi.js/rankingsParser.js are kept free of State access too.
+// itself (from sim/ui.js) stays a pure hand-off to the Worker with no knowledge of State, matching
+// how js/shared/api/sleeper.js, api/market.js and rankings/parse.js are kept free of State access too.
 export const runMatchupSim = async function() {
     const btn = document.getElementById('run-sim-btn');
     const league = getActiveLeague();

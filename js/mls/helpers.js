@@ -79,15 +79,15 @@ import { State } from './state.js';
 
     // --- UTILITY HELPERS ---
     // normalizeName intentionally NOT redeclared here -- it previously shadowed the
-    // shared, alias-aware version in js/utils.js (loaded before this file), which caused
+    // shared, alias-aware version in js/shared/names.js (loaded before this file), which caused
     // Sleeper-sourced names to fail matching against user-uploaded rankings for any player
     // needing suffix stripping, accent stripping, or the alias map (e.g. Gabe Davis /
     // Gabriel Davis). Calls to normalizeName() below now resolve to that shared version.
-    // Do not add a local normalizeName() back without updating utils.js instead.
+    // Do not add a local normalizeName() back without updating js/shared/names.js instead.
 
     // flashButton intentionally NOT declared here either -- previously a separate near-duplicate
-    // of mds.js's local copy. Both now consolidated into the single shared version in
-    // js/utils.js. Calls below resolve to that shared version.
+    // of js/mds.js's local copy. Both now consolidated into the single shared version in
+    // js/shared/ui/flashButton.js. Calls below resolve to that shared version.
 
     // --- RANKINGS LOOKUP INDEX ---
     // cleanName -> ranking row, for the three big rankings arrays (ROS, Weekly, Market). Nearly
@@ -157,7 +157,7 @@ export function renderHTMLInto(container, html) {
 // the Global Injury Audit and the simulator all use it).
     // True when a thrown error means "couldn't reach the server" rather than "our own code or
     // data broke" -- the split the Auto-Find and Global Audit catch blocks use to tell someone
-    // whether to check their connection or re-sync. Covers mdsFetch's own timeout (utils.js
+    // whether to check their connection or re-sync. Covers mdsFetch's own timeout (js/shared/net.js
     // marks it isTimeout / names it TimeoutError), the browser reporting itself offline, and
     // fetch()'s bare network failure, which is a TypeError whose wording differs per browser
     // (Chrome "Failed to fetch", Firefox "NetworkError when attempting...", Safari "Load

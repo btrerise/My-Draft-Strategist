@@ -1,19 +1,19 @@
 // --- RANKINGS FILE PARSER (ES MODULE) ---
-// Pilot module: this is the first piece pulled out of mls.js's single IIFE into a real
+// Pilot module: this is the first piece pulled out of lineup/mls.js's single IIFE into a real
 // ES module, as a test of the pattern before splitting anything else out. It owns turning
 // uploaded CSV/XLSX files into a combined { name, cleanName, rank, posRank, flexRank }
 // player map -- nothing about the DOM, the preview modal, or app State lives here.
 //
-// Deliberately self-contained: instead of importing loadSheetJS/State/etc. from mls.js
+// Deliberately self-contained: instead of importing loadSheetJS/State/etc. from js/mls/
 // (which would recreate the same tight coupling this split is meant to reduce, and risks a
-// circular import since mls.js needs to import THIS module too), the caller injects
+// circular import since js/mls/ needs to import THIS module too), the caller injects
 // loadSheetJS as a parameter, and this module returns plain data (including any
 // Strength-of-Schedule values it found) for the caller to merge into its own State --
 // it never reaches into anyone else's global state directly.
 //
-// NFL_TEAMS is duplicated here rather than imported from mls.js: it's a static, essentially
+// NFL_TEAMS is duplicated here rather than imported from js/mls/constants.js: it's a static, essentially
 // never-changing list of 32 abbreviations, so a second copy is a non-issue, and it keeps this
-// module usable/testable without mls.js's IIFE ever having to export anything just for this.
+// module usable/testable without js/mls/ ever having to export anything just for this.
 const NFL_TEAMS = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
 const TEAM_ALIASES = { "JAC": "JAX", "WSH": "WAS" };
 
@@ -166,8 +166,8 @@ export function stripTitleLines(text) {
  * caller knows they've already been reported.
  *
  * @param {{file: File, context: string}} fileObj - context is 'SINGLE', 'QB', 'FLEX', etc.
- * @param {Function} loadSheetJS - injected so this module never needs to import mls.js's
- *   private SheetJS-loader; same (callback, onError) signature as the original.
+ * @param {Function} loadSheetJS - injected so this module never needs to import the
+ *   SheetJS loader (js/shared/ui/scriptLoader.js); same (callback, onError) signature as the original.
  * @param {Object} combinedPlayers - accumulator, mutated in place across all files in a batch.
  * @param {Object} sosUpdates - accumulator of { TEAM: { POS: sosValue } }, mutated in place.
  * @param {{value: boolean}} hasNewSosRef - boxed boolean so this function can report "found new

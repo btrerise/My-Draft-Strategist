@@ -153,7 +153,7 @@ import './affinity.js';
         if (initialTab !== 'setup') window.showTab(initialTab, true);
         history.replaceState({ tab: initialTab }, '');
 
-        // Last line of init on purpose: tells the safety net in utils.js that this script
+        // Last line of init on purpose: tells the safety net in js/boot.js that this script
         // evaluated all the way through and the page is genuinely usable, so a later uncaught
         // error gets logged instead of covering a working screen with the fatal-boot banner.
         // If anything above throws, this never runs and the banner stays armed -- which is

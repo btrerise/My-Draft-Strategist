@@ -1,6 +1,5 @@
 // Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// js/shared/globals.js; app modules may also import it directly.
 
 // --- TAB DEEP LINKS ---
 // Every tab switch writes its tab to the URL hash (#tracker, #lineup, #top50Tab...), so a reload

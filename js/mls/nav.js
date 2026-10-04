@@ -6,8 +6,8 @@ import { loadRosterTab } from './main.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at
-    // load time, since window.createFocusTrap (from utils.js, a plain script) needs to have
-    // already run, and this module's top-level code can execute before that plain script's
+    // load time, since window.createFocusTrap (js/shared/ui/focusTrap.js, set by js/shared/globals.js)
+    // needs to have already run, and this module's top-level code can execute before that script's
     // DOMContentLoaded-independent top-level assignment has (module scripts are deferred by
     // spec, but this keeps the two files from having an implicit load-order dependency).
     let drawerFocusTrap = null;

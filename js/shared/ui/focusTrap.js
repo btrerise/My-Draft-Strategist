@@ -1,9 +1,8 @@
 // Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// js/shared/globals.js; app modules may also import it directly.
 
 // --- FOCUS TRAPPING FOR OVERLAYS ---
-// Shared by the hamburger drawer and the rankings preview modal (both in mls.js) so a
+// Shared by the hamburger drawer and the rankings preview modal (js/mls/nav.js, js/mls/rankings/uploadPreview.js) so a
 // keyboard user Tabbing through an open overlay stays inside it instead of tabbing into the
 // page behind it -- previously neither one did this, despite the preview modal's markup
 // already declaring role="dialog" aria-modal="true", a promise the JS wasn't keeping.
