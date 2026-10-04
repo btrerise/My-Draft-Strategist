@@ -951,15 +951,15 @@ label.toggle-title,
 .bg-target { background: var(--target-border); box-shadow: 0 0 8px var(--target-border); }
 .bg-avoid { background: var(--avoid-border); box-shadow: 0 0 8px var(--avoid-border); }
 
-/* LeagueLogs Attribution */
-.leaguelogs-attribution { margin-top: 1rem; text-align: center; }
-.leaguelogs-attribution a {
+/* Market-source attribution under Fetch Market Value (renamed from its LeagueLogs-era class in refactor 5D) */
+.market-attribution { margin-top: 1rem; text-align: center; }
+.market-attribution a {
     display: inline-flex; align-items: baseline; gap: 6px;
     font-family: Georgia, 'Times New Roman', serif; font-size: 14px;
     line-height: 1; color: currentColor; text-decoration: none;
 }
-.leaguelogs-attribution span:first-child { color: var(--text-muted); }
-.leaguelogs-attribution em { font-weight: 600; letter-spacing: -0.01em; color: var(--text-main); font-style: normal; }
+.market-attribution span:first-child { color: var(--text-muted); }
+.market-attribution em { font-weight: 600; letter-spacing: -0.01em; color: var(--text-main); font-style: normal; }
 .dot-accent { width: 5px; height: 5px; border-radius: 50%; background: #ffe24c; display: inline-block; }
 
 /* --- BADGES & POSITIONAL STYLING --- */

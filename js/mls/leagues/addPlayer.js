@@ -1,6 +1,6 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3B: ADD PLAYER MANUALLY
 // (and deletePlayer, which sat with it).
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { attachPlayerAutocomplete } from '../players.js';

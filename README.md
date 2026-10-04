@@ -6,17 +6,62 @@ The official repository for [My Draft Strategist](https://mydraftstrategist.com)
 
 ## Project Structure
 
-* **`/css`** - `base.css` (shared by every page: tokens, resets, chrome, forms, buttons, badges, tooltips, toasts, shared cards, and the Lineup Strategist features chosen for sharing with Draft Strategist), then each app's own stylesheet: `mds.css` (Draft Strategist, root `index.html`), `mls.css` (Lineup Strategist) and `tscore.css` (the T-Score page).
-* **`/images`** - Brand assets: logos, favicons (`5775.svg`, `mls-favicon.svg`) and app icons.
-* **`/js`** - The boot safety net (`boot.js`, first script on every page), shared code (`shared/`: UI helpers exposed to the pages as `window.*` by `shared/globals.js`, the Sleeper and market-data API clients in `shared/api/`, the rankings parser, IndexedDB and the storage-key registry in `shared/storage/` (`keys.js`, the only place a storage key is spelled, and `keyMigration.js`, which carries data saved under the pre-6B key names over to the current ones), and the bundled T-Score data in `shared/data/tscore.js`) the Draft Strategist app (`mds/`: `main.js` is the entry point and holds the `data-action` event delegation (via `shared/ui/delegate.js`) and the few remaining `window.*` exports, `init.js` sets the module load order and runs startup) and the Lineup Strategist app (`mls/`: `main.js` is the entry point and holds the `data-action` event delegation (via `shared/ui/delegate.js`) and the few remaining `window.*` exports; section modules sit beside it or, grouped by area, in `lineup/`, `leagues/`, `scout/` (incl. the pure `waiverScanner.js`), `power/`, `rankings/`, `trade/`, `render/` (the Roster, Lineup and Dashboard tabs) and `sim/` (the matchup simulator: its UI, the stats engine and the Web Worker); `main.js`'s import list sets the load order).
-* **`/lineup`** - The *Lineup Strategist* app: its HTML and PWA manifest. The app code is in `js/mls/`.
-* **`/t-score`** - The *T-Score* tool's page. Its script is `js/tscore/main.js` (it imports the shared helpers and holds the page's `data-action` event delegation) and its styles `css/tscore.css`.
-* **`/scripts`, `/tests`** - Development checks only (see below). Not used by the site.
-* **Root Files:**
-  * `index.html` - Draft Strategist, the main page of the site.
-  * `sw.js` - Progressive Web App service worker for caching.
-  * `manifest.json` - PWA web app manifest configuration.
-  * `robots.txt`, `sitemap.xml`, `llms.txt` - Crawler and discovery files.
+No build step: every file below is served as it is in the repo. Each page loads `js/boot.js` first, then `js/shared/globals.js`, then its own entry module.
+
+```text
+index.html               Draft Strategist (the main page of the site)
+lineup/                  Lineup Strategist: index.html and its PWA manifest.json
+t-score/                 The T-Score page: index.html
+sw.js                    Service worker (offline cache; PRECACHE_ASSETS lists every JS and CSS file)
+manifest.json            PWA manifest for Draft Strategist
+robots.txt, sitemap.xml, llms.txt   Crawler and discovery files
+
+css/
+  base.css               Shared by every page: tokens, resets, chrome, forms, buttons, badges, tooltips,
+                         toasts, shared cards, and the Lineup Strategist features shared with Draft Strategist
+  mds.css                Draft Strategist only
+  mls.css                Lineup Strategist only
+  tscore.css             T-Score page only
+
+js/
+  boot.js                Plain script, first on every page: safe storage reads (readJSON), the fatal-boot
+                         banner and the rescue backup
+  shared/                Code more than one page uses (ES modules)
+    globals.js           Puts the shared helpers on window for code that still reads them there
+    names.js, net.js, html.js    Name matching, fetch with a timeout (mdsFetch), HTML escaping
+    api/                 Sleeper (sleeper.js, sleeperStats.js), FantasyCalc (market.js), Fantasy Football
+                         Calculator (ffc.js)
+    rankings/            Rankings file parser (parse.js) and its error messages (diagnostics.js)
+    storage/             keys.js (the only place a storage key is spelled), keyMigration.js (pre-6B key
+                         names to current ones), idb.js (IndexedDB)
+    ui/                  Toasts, confirm dialog, focus trap, tooltips, banners, file drop, script loader,
+                         data-action event delegation (delegate.js) and other small helpers
+    data/tscore.js       Bundled T-Score data (a plain script that defines the tScoreData global)
+  mds/                   Draft Strategist. main.js is the entry point (data-action delegation, the few
+                         window.* exports left); init.js sets the module load order and runs startup.
+                         One module per area: state, storage, import, market, sleeperSync, tracker,
+                         board, team, recap, export, handoff, backup, settings, and so on
+  mls/                   Lineup Strategist. main.js is the entry point (data-action delegation, the few
+                         window.* exports left) and its import list sets the load order. Top-level
+                         modules (state, helpers, nav, init, backup, settings, players, sos, shortcuts...)
+                         plus one folder per area:
+    leagues/             League sync, Import All Leagues, the Draft Strategist roster handoff, Add Player
+    lineup/              Headshots, game info, early games, injury audit
+    rankings/            Rankings engine, ranking sets, the upload preview, ROS auto-fetch
+    scout/               Scout tab engine, waiver tools (incl. the pure waiverScanner.js), Waiver Insights,
+                         market disconnect, all-leagues search
+    power/               Positional power rankings
+    trade/               Trade value curve, verdict, waiver value, text/screenshot export
+    render/              Roster, Lineup and Dashboard tabs, rookie lookup
+    sim/                 Matchup simulator: matchup.js, its UI (ui.js), the stats engine (stats.js) and the
+                         Web Worker (worker.js)
+  tscore/main.js         The T-Score page's script
+
+functions/api/ffc/       Cloudflare Pages Function: proxies Fantasy Football Calculator's ADP API (no CORS)
+images/                  Logos, favicons and app icons
+scripts/, tests/         Development checks (see below). Not used by the site
+docs/refactor/LOG.md     Notes from the module-structure refactor, and how to run the checks
+```
 
 ## Hosting
 Hosted and deployed statically via Cloudflare Pages. There is no build step: files are served as they are in the repo.

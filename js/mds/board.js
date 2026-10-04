@@ -1,6 +1,6 @@
 // Moved from js/mds/legacy.js (the second half of the old js/mds.js) in refactor chunk 2B:
 // RENDER DRAFT MATRIX.
-import { escapeHtml } from './compat.js';
+import { escapeHtml } from '../shared/html.js';
 import { State, getActiveDraft } from './state.js';
 
     // --- RENDER DRAFT MATRIX ---

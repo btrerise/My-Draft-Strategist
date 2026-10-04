@@ -10,7 +10,6 @@
 // the order that code had in mds.js. state.js must come before storage.js (see storage.js).
 // The modules 2B added come last; they only declare things. This file's DOMContentLoaded
 // listener registers after every other module's load-time code, as it did at the end of mds.js.
-import './compat.js';
 import { State, ensureDefaultDraft, refreshDraftDropdown } from './state.js';
 import './storage.js';
 import './pwa.js';

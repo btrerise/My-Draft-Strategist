@@ -3,7 +3,7 @@
 // refreshers that fill State. Refactor 3D merged in the second LINEUP OPTIMIZER SETTINGS block
 // (updateLineupSetting, applyLineupSettingsToUI), right after State.
 import { getNflState } from '../shared/api/sleeper.js';
-import { readJSON } from './compat.js';
+// readJSON is js/boot.js's window.readJSON (boot.js is a plain script, so it can't be imported).
 import { ESPN_TEAM_ALIASES } from './constants.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
 import { renderLineupUI } from './main.js';

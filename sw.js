@@ -27,7 +27,7 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.64';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.65';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -56,7 +56,6 @@ const PRECACHE_ASSETS = [
     // main.js's static imports (one missing file and the whole module graph fails):
     '/js/mds/migrateKeys.js',        // first import: the 6B storage-key rename
     '/js/mds/init.js',
-    '/js/mds/compat.js',
     '/js/mds/storage.js',
     '/js/mds/state.js',
     '/js/mds/pwa.js',
@@ -105,7 +104,6 @@ const PRECACHE_ASSETS = [
     '/lineup/index.html',
     '/js/mls/main.js',                // the Lineup page's entry point (refactor 3A; was lineup/mls.js)
     '/js/mls/migrateKeys.js',         // first import: the 6B storage-key rename
-    '/js/mls/compat.js',
     '/js/mls/constants.js',
     '/js/mls/state.js',
     '/js/mls/helpers.js',

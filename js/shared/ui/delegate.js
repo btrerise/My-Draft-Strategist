@@ -24,7 +24,7 @@
 //
 // The listener runs in the capture phase, so it also sees events that don't bubble: an
 // <img>'s `error`, or a script's `new Event('change')` without `bubbles: true`. An inline
-// handler on the element saw those too. The walk still calls actions nearest first. One
+// handler on the element saw those too. The walk still calls actions nearest first.
 // Two differences from inline handlers remain; check for both before reusing this elsewhere:
 //   - A listener added with addEventListener on an element between the target and the container
 //     now runs after the actions, not before (Draft Strategist has none).

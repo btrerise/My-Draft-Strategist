@@ -5,7 +5,7 @@
 // syncActiveLeague), which sat under ADD PLAYER MANUALLY and IMPORT ALL LEAGUES.
 import { getSleeperLeague, getSleeperLeagueRosters, getSleeperLeagueUsers, getSleeperPlayerMap, getSleeperUser } from '../../shared/api/sleeper.js';
 import { clearSimResults } from '../sim/ui.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, HARD_OUT_STATUSES, isBestBallLeague } from '../helpers.js';

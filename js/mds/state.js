@@ -1,7 +1,7 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // STATE MANAGEMENT and INITIALIZE DEFAULT DRAFT FALLBACK, plus
 // draftPlayer/undoDraft, which sat at the end of the Sleeper section.
-import { readJSON } from './compat.js';
+// readJSON is js/boot.js's window.readJSON (boot.js is a plain script, so it can't be imported).
 import { draftPoolKey, readDraftPlayerPool, savePlayerPool } from './storage.js';
 import { initSettingsUI } from './settings.js';
 import { renderBoard } from './tracker.js';

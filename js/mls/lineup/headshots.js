@@ -1,6 +1,6 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3B: PLAYER HEADSHOTS.
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { KEYS } from '../../shared/storage/keys.js';
 
 // --- PLAYER HEADSHOTS (Roster tab list + Lineup tab starters/bench) ---

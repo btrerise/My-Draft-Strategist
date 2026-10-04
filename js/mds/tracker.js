@@ -2,7 +2,7 @@
 // the player pool, queue and tier-tracker rendering: the call-out and tier helpers that sat
 // above RENDER DRAFT MATRIX, the T-Score cache reader, buildPlayerCardHTML/buildQueueCardHTML,
 // the queue collapse toggle, renderBoard and toggleHeadshots.
-import { escapeHtml } from './compat.js';
+import { escapeHtml } from '../shared/html.js';
 import { State, getActiveDraft } from './state.js';
 import { renderDraftMatrix } from './board.js';
 import { renderFantasyRoster } from './team.js';

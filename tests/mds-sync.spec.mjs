@@ -215,7 +215,7 @@ test.describe('Draft Strategist network features', () => {
             ],
         });
         await page.selectOption('#adpFormatSelect', 'ffc|2qb');
-        await page.click('#fetchAdpBtn');
+        await page.click('#fetchMarketValueBtn');
         await expect(toast(page, 'Market Value (ADP) updated')).toBeVisible();
         expect(ffcRequests).toEqual(['/api/ffc/2qb']);
         const players = byName((await savedDraft(page)).pool);
@@ -225,7 +225,7 @@ test.describe('Draft Strategist network features', () => {
 
         await page.unroute(/^http:\/\/localhost:\d+\/api\/ffc\//);
         await stubFfc(page, { status: 500, error: 'boom' });
-        await page.click('#fetchAdpBtn');
+        await page.click('#fetchMarketValueBtn');
         await expect(toast(page, 'Failed to fetch live Market Value.')).toContainText('Fantasy Football Calculator Error: boom');
         state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('Fantasy Football Calculator Error: boom') && !e.includes('/api/ffc/') && !e.includes('500')));
         await expectClean(page, state);
@@ -246,7 +246,7 @@ test.describe('Draft Strategist network features', () => {
             ]) });
         });
         await page.selectOption('#adpFormatSelect', 'sleeper|adp_half_ppr');
-        await page.click('#fetchAdpBtn');
+        await page.click('#fetchMarketValueBtn');
         await expect(toast(page, 'Market Value (ADP) updated')).toBeVisible();
         expect(adpRequests).toEqual(['https://api.sleeper.com/projections/nfl/2026?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=adp_half_ppr']);
         const players = byName((await savedDraft(page)).pool);
@@ -255,7 +255,7 @@ test.describe('Draft Strategist network features', () => {
         expect(meta.format).toBe('SLEEPER: Redraft - 1QB (Half-PPR)');
 
         adpStatus = 400;
-        await page.click('#fetchAdpBtn');
+        await page.click('#fetchMarketValueBtn');
         await expect(toast(page, 'Failed to fetch live Market Value.')).toContainText('Sleeper API Error: 400');
         state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('Sleeper API Error: 400')));
         await expectClean(page, state);

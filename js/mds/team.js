@@ -1,6 +1,6 @@
 // Moved from js/mds/legacy.js (the second half of the old js/mds.js) in refactor chunk 2B:
 // the Team tab roster (renderFantasyRoster), which sat at the end of RENDER DRAFT MATRIX.
-import { escapeHtml } from './compat.js';
+import { escapeHtml } from '../shared/html.js';
 import { State, getActiveDraft } from './state.js';
 import { KEYS } from '../shared/storage/keys.js';
 

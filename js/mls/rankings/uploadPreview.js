@@ -2,7 +2,7 @@
 // just above the preview), RANKINGS UPLOAD PREVIEW and UPLOAD PROCESSING INDICATOR, including the
 // load-time listeners on the rankings file inputs and the drag-and-drop setup.
 import { parseRankingsFiles } from '../../shared/rankings/parse.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { generateSoSGrid } from '../sos.js';

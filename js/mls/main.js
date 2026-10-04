@@ -10,7 +10,6 @@ import '../shared/api/sleeper.js';
 import './sim/ui.js';
 import '../shared/api/sleeperStats.js';
 import './sim/stats.js';
-import './compat.js';
 import './constants.js';
 import { redoLineupChange, undoLineupChange, updateLineupSetting } from './state.js';
 import './helpers.js';

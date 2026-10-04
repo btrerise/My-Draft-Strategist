@@ -1,7 +1,7 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Dashboard (Setup tab) part of RENDERERS. The
 // sync-log accordion (renderSyncLogs) and the Optimize All / Sync All buttons.
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
 import { formatNameList, hydrateRankingsForLeague, processSleeperData, renderLeagueManager, switchActiveLeague } from '../leagues/sync.js';

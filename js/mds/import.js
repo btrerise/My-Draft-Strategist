@@ -1,6 +1,6 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // FILE PARSING & DATA IMPORT.
-import { findCsvQuoteProblem, formatRankingsDiagnostic } from './compat.js';
+import { findCsvQuoteProblem, formatRankingsDiagnostic } from '../shared/rankings/diagnostics.js';
 import { savePlayerPool } from './storage.js';
 import { BYE_WEEKS_2026, State, saveAndRenderDraftState } from './state.js';
 import { updateMetaDisplay } from './settings.js';

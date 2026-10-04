@@ -4,7 +4,7 @@
 // unmarked Trade Finder code after the value curve: getMarketPositionalRanks,
 // updateMarketMetaDisplay, runMarketDisconnectAnalysis.
 import { fetchMarketConsensusData } from '../../shared/api/market.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { rankingIndex, showStatusFeedback, getActiveLeague } from '../helpers.js';

@@ -5,7 +5,7 @@
 // sat among the ranking-set code) at the end.
 import { getSleeperMatchups } from '../../shared/api/sleeper.js';
 import { getWeeklyProjections } from '../../shared/api/sleeperStats.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS, TEAM_BYES } from '../constants.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';

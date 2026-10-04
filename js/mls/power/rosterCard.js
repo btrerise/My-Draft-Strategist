@@ -2,7 +2,7 @@
 // RANKINGS: ROSTER TAB CARD, plus the card's table renderer and Scout-tab pointer
 // (goToPowerRankings, runPositionalStrength, renderPowerRankingsTable), which sat after ACTIVE
 // ROSTER: POWER RANKINGS SNAPSHOT.
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';

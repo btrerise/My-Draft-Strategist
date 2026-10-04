@@ -3,7 +3,7 @@
 // ALL-LEAGUES PLAYER SEARCH).
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { buildRankDisplayIndex, checkAgainstLineup, compareForScan, findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';

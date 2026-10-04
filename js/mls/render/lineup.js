@@ -1,6 +1,6 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Lineup tab part of RENDERERS. Locks, swaps, the
 // optimizer (optimizeLineup) and the lineup renderer (renderLineupUI).
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { TEAM_BYES, tierTag } from '../constants.js';
 import { pushLineupUndoSnapshot, State } from '../state.js';
 import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } from '../helpers.js';

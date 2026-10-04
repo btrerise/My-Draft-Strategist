@@ -1,6 +1,6 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3C: ALL-LEAGUES POSITIONAL
 // POWER RANKS.
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG } from '../constants.js';
 import { State } from '../state.js';
 import { rankingIndex } from '../helpers.js';

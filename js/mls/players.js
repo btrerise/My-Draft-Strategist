@@ -2,7 +2,7 @@
 // INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP marker -- the player-map indexes (autocomplete search
 // index, clean name -> Sleeper id), the autocomplete dropdown, and the "did you mean" matcher.
 import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
-import { escapeHtml } from './compat.js';
+import { escapeHtml } from '../shared/html.js';
 import { State } from './state.js';
 
 // --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---

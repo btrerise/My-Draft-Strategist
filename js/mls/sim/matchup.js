@@ -5,7 +5,7 @@ import { getNflState, getSleeperPlayerMap, getSleeperMatchups } from '../../shar
 import { runMatchupSimulation, clearSimResults, showSimNotice } from './ui.js';
 import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from '../../shared/api/sleeperStats.js';
 import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './stats.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { State, refreshGameTimes } from '../state.js';
 import { getShortInjuryStatus, isExcludedFromSimulation, SIM_EXCLUDE_STATUSES, getActiveLeague, isConnectionError } from '../helpers.js';
 import { getCleanNameToIdIndex } from '../players.js';

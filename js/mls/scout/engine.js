@@ -1,7 +1,7 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3C: SCOUT TAB ENGINE
 // (runScout, incl. dynamic waiver adjustment and the position resolver). The trade fairness verdicts
 // and renderTradeVerdict (with its waiver adjustment) moved to trade/verdict.js in 3G.
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';

@@ -1,7 +1,7 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3D: NAMED RANKING SETS
 // and CHOOSING WHICH LEAGUES USE A RANKING SET (the set dropdown, saving an upload as a set, the
 // league picker and its dialog, deleting a set).
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
