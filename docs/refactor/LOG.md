@@ -3838,7 +3838,11 @@ js/ folder in `git ls-files` appears in it.
 - **Throwaway comparison (not committed), main vs branch, both widths:** MDS keyboard shortcuts 1–5 and
   a/q/r/w/t, Back, Escape, and a swipe. Identical active tab, hash and filter state at every step, with the
   same console output (3 blocked external requests on both).
-- `npm run compare-css` (main vs this branch, both widths, reduced motion on and off): result added below once the run finishes.
+- `npm run compare-css` (main vs this branch, both widths, reduced motion on and off): MLS and T-Score
+  **0 differences** in every state. MDS: exactly one entry per state, `only in origin/main: html>body:1>script:4`, which is
+  the `<script src="js/shared/data/tscore.js">` tag this chunk removed (tScoreData is an import now). A script
+  element isn't rendered; every other element on MDS matches main. The tool exits red on MDS for that reason
+  until this merges.
 
 #### Left for later
 
