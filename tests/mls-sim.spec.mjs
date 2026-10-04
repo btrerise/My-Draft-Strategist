@@ -62,11 +62,13 @@ test('matchup simulator gives the same results for a fixed seed', async ({ page 
     expect(text).toContain('Charlie WR Bust: 27.2% • Boom: 2.7% ~5.55–15.45 (10.5 avg)');
     expect(text).toContain('Golf WR Bust: 33.8% • Boom: 0.1% ~5.4–12.6 (9 proj)');
     expect(text).toContain('Hotel TE Bust: 100% • Boom: 0% ~0–0 (0 avg)');
-    // Refactor 9B: K/DEF lines are 0.5x and 1.5x the player's own average. Pinned on main before the fix.
+    // Refactor 9B: K/DEF lines are 0.5x and 1.5x of max(average, 4). The kickers average over 4, so they
+    // keep their numbers. Juliet DEF (avg -1.8) was 60% / 60% at lines -0.9 / -2.7, now 2 / 6; Kilo DEF
+    // (avg 1.5, model) was 44% / 44% at lines 0.75 / 2.25. Win probabilities are unchanged.
     expect(text).toContain('India K Bust: 16.7% • Boom: 16.7% 4–11.34 (7.67 avg)');
     expect(text).toContain('Lima K Bust: 10% • Boom: 10% 5.62–12.58 (9.1 avg)');
-    expect(text).toContain('Juliet DEF Bust: 60% • Boom: 60% 0–2.03 (-1.8 avg)');
-    expect(text).toContain('Kilo DEF Bust: 44% • Boom: 44% ~0–6.45 (1.5 avg)');
+    expect(text).toContain('Juliet DEF Bust: 80% • Boom: 0% 0–2.03 (-1.8 avg)');
+    expect(text).toContain('Kilo DEF Bust: 54% • Boom: 18.2% ~0–6.45 (1.5 avg)');
     expect(raw).toEqual({ team1WinProb: 89.7, team2WinProb: 10.3, ties: 0, iterations: 5000, fallbackCount: 1, projectionCount: 0, actualCount: 1 });
     await expectClean(page, state);
 });
