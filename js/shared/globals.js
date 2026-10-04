@@ -1,56 +1,23 @@
-// The window.* names js/utils.js used to define, for code that isn't an ES module yet: js/mds.js
-// (a classic script), lineup/mls.js and its imports (which read window.normalizeName etc.),
-// the T-Score page's inline script, and onclick="..." handlers in the HTML.
+// Page-wide setup that every page runs before its app module: the shared modules with load-time
+// side effects, and the one window.* name the shared code still provides.
 //
-// Loaded on every page as <script type="module"> right after js/boot.js and before the page's
-// app script. Module scripts run in document order with defer scripts, so everything below is
-// defined before js/mds.js or lineup/mls.js runs, and before DOMContentLoaded.
+// Loaded on every page as <script type="module"> right after js/boot.js and before the page's app
+// module (js/mds/main.js, js/mls/main.js, js/tscore/main.js). Module scripts run in document order
+// with defer scripts, so this has run before any app module and before DOMContentLoaded.
 //
-// The imports are in the order their code sat in utils.js, so the modules with load-time side
-// effects (DOMContentLoaded listeners, the stray-drop guard, tooltip delegation) register them
-// in the same order as before.
-import { normalizeName, isNameMatch } from './names.js';
-import { MDS_LONG_FETCH_TIMEOUT_MS, mdsFetch } from './net.js';
+// Until refactor chunk 5D this file put about twenty shared helpers on window, for code that
+// couldn't import them: the old classic scripts, then inline handlers, then module code still
+// written as window.showToast(...). 5D turned all of those into imports, so what's left is:
+//   - window.showToast for js/boot.js, a plain script that can't import (it toasts a corrupt
+//     storage key it had to skip);
+//   - the side-effect modules, imported here in the order their code sat in the old js/utils.js, so
+//     their DOMContentLoaded listeners, the stray-drop guard and tooltip delegation register in
+//     the same order as before.
 import './ui/feedbackForm.js';
-import { createFocusTrap } from './ui/focusTrap.js';
-import { showConfirm } from './ui/confirm.js';
 import './ui/scrollShadows.js';
-import { dismissBanner, dismissBannerAndReveal } from './ui/banners.js';
-import { setToastsSuppressed, showToast } from './ui/toast.js';
-import { formatRankingsDiagnostic, findCsvQuoteProblem } from './rankings/diagnostics.js';
-import { enableFileDrop } from './ui/fileDrop.js';
-import { escapeHtml } from './html.js';
-import { loadScriptOnce, ensureHtml2Canvas, loadSheetJS } from './ui/scriptLoader.js';
-import { flashButton } from './ui/flashButton.js';
-import { getTabFromHash } from './ui/tabHash.js';
+import './ui/banners.js';
+import { showToast } from './ui/toast.js';
+import './ui/fileDrop.js';
 import './ui/tooltips.js';
-import { isMdsOwnedKey } from './storage/keys.js';
 
-// Top-level function declarations in utils.js (a classic script), so they were window
-// properties too. Callers use them as bare names: mds.js, mls.js, the T-Score inline script,
-// and the banners' onclick handlers.
-window.normalizeName = normalizeName;
-window.isNameMatch = isNameMatch;
-window.dismissBanner = dismissBanner;
-
-// Explicit window.* assignments in utils.js.
-window.MDS_LONG_FETCH_TIMEOUT_MS = MDS_LONG_FETCH_TIMEOUT_MS;
-window.mdsFetch = mdsFetch;
-window.createFocusTrap = createFocusTrap;
-window.showConfirm = showConfirm;
-window.dismissBannerAndReveal = dismissBannerAndReveal;
-window.setToastsSuppressed = setToastsSuppressed;
 window.showToast = showToast;
-window.formatRankingsDiagnostic = formatRankingsDiagnostic;
-window.enableFileDrop = enableFileDrop;
-window.escapeHtml = escapeHtml;
-window.findCsvQuoteProblem = findCsvQuoteProblem;
-window.loadScriptOnce = loadScriptOnce;
-window.ensureHtml2Canvas = ensureHtml2Canvas;
-window.loadSheetJS = loadSheetJS;
-window.flashButton = flashButton;
-window.getTabFromHash = getTabFromHash;
-
-// Added in refactor chunk 1B for js/mds.js (a classic script, so it can't import keys.js).
-window.isMdsOwnedKey = isMdsOwnedKey;
-

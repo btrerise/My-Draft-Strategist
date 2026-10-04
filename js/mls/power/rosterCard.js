@@ -2,7 +2,7 @@
 // RANKINGS: ROSTER TAB CARD, plus the card's table renderer and Scout-tab pointer
 // (goToPowerRankings, runPositionalStrength, renderPowerRankingsTable), which sat after ACTIVE
 // ROSTER: POWER RANKINGS SNAPSHOT.
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
@@ -11,8 +11,9 @@ import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { POWER_POSITIONS, computePositionalPower, POWER_STARTER_CARRY_CAP, powerTier } from './shared.js';
 import { ensurePowerAgeIndex, resolvePowerFuture } from './futureValue.js';
 import { getPowerLeagueKind, assignPowerLabels, powerLabelAdvice } from './directionLabels.js';
-import { renderRosterPowerStrip } from './snapshot.js';
+import { renderRosterPowerStrip, scrollToPowerRankings } from './snapshot.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { showTab } from '../nav.js';
 
 // --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
 // Generated automatically (no Calculate button) every time the Roster tab renders -- see the
@@ -93,8 +94,8 @@ export function refreshPowerRankings() {
 // section in index.html, this function, and the .mls-moved-pointer CSS -- on or after
 // 2026-10-04, once regular users have had a week to find the card's new home.
 export const goToPowerRankings = function() {
-    if (typeof window.showTab === 'function') window.showTab('roster');
-    setTimeout(() => window.scrollToPowerRankings(), 60);
+    showTab('roster');
+    setTimeout(() => scrollToPowerRankings(), 60);
 };
 
 // Kept for anything still calling the old Scout-tab button handler.

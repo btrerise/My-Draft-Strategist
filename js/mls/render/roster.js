@@ -1,6 +1,6 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Roster tab renderer (loadRosterTab), the first
 // function under RENDERERS.
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { TEAM_BYES, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { rankingIndex, getActiveLeague } from '../helpers.js';

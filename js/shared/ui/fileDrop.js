@@ -1,6 +1,6 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// Moved verbatim from js/utils.js in refactor chunk 1A. Has load-time side effects, so js/shared/globals.js
+// imports it on every page (in the old utils.js order); code that uses its exports imports it too.
+import { showToast } from './toast.js';
 
 // --- DRAG-AND-DROP FILE UPLOAD ---
 // Lets a file be dropped onto an upload area instead of going through the file picker. A
@@ -50,29 +50,29 @@ export const enableFileDrop = function(zone, { pickInput, refuseMessage } = {}) 
     const input = pickInput(e);
     if (!input) {
       const msg = typeof refuseMessage === 'function' ? refuseMessage(e) : '';
-      if (msg) window.showToast(msg, { isError: true });
+      if (msg) showToast(msg, { isError: true });
       return;
     }
     if (input.disabled) {
-      window.showToast('Wait for the current upload to finish, then drop the file again.', { isError: true });
+      showToast('Wait for the current upload to finish, then drop the file again.', { isError: true });
       return;
     }
     if (files.length > 1) {
-      window.showToast(`Drop one file at a time here (you dropped ${files.length}).`, { isError: true });
+      showToast(`Drop one file at a time here (you dropped ${files.length}).`, { isError: true });
       return;
     }
     const file = files[0];
     const exts = String(input.accept || '').split(',').map(s => s.trim().toLowerCase()).filter(s => s.startsWith('.'));
     if (exts.length && !exts.some(ext => file.name.toLowerCase().endsWith(ext))) {
       const list = exts.length > 1 ? `${exts.slice(0, -1).join(', ')} or ${exts[exts.length - 1]}` : exts[0];
-      window.showToast(`"${file.name}" isn't a file this upload can read. Drop a ${list} file.`, { isError: true });
+      showToast(`"${file.name}" isn't a file this upload can read. Drop a ${list} file.`, { isError: true });
       return;
     }
     try {
       input.files = files; // shows the file's name in the input, same as picking it
     } catch (err) {
       console.error('Could not attach dropped file:', err);
-      window.showToast("Your browser didn't accept the dropped file. Use the file picker instead.", { isError: true });
+      showToast("Your browser didn't accept the dropped file. Use the file picker instead.", { isError: true });
       return;
     }
     input.dispatchEvent(new Event('change', { bubbles: true }));

@@ -1,7 +1,7 @@
 // Moved from js/mds/legacy.js (the second half of the old js/mds.js) in refactor chunk 2B:
 // the pick-number helpers above DRAFT RECAP & ANALYSIS RENDERER, that section, and
 // RECAP MATH TOGGLE HELPER.
-import { escapeHtml } from './compat.js';
+import { escapeHtml } from '../shared/html.js';
 import { State, getActiveDraft } from './state.js';
 
     // Resolves the overall pick number a player was actually drafted at. Sleeper syncs have

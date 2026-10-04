@@ -185,14 +185,14 @@ const menu = async (page, snap) => {
 };
 
 const toasts = async (page, snap) => {
-    await page.evaluate(() => window.showToast('Saved to this device'));
+    await page.evaluate(async () => (await import('/js/shared/ui/toast.js')).showToast('Saved to this device'));
     await snap('toast', { keepToast: true });
-    await page.evaluate(() => window.showToast('Something went wrong', { isError: true }));
+    await page.evaluate(async () => (await import('/js/shared/ui/toast.js')).showToast('Something went wrong', { isError: true }));
     await snap('error toast', { keepToast: true });
 };
 
 const confirmDialog = async (page, snap) => {
-    await page.evaluate(() => { window.__cssCompareConfirm = window.showConfirm('Reset everything?', { danger: true, confirmText: 'Reset' }); });
+    await page.evaluate(async () => { window.__cssCompareConfirm = (await import('/js/shared/ui/confirm.js')).showConfirm('Reset everything?', { danger: true, confirmText: 'Reset' }); });
     await expect(page.locator('.mds-modal')).toBeVisible();
     await snap('confirm dialog');
     await page.locator('.mds-modal').getByRole('button', { name: 'Cancel' }).click();
@@ -273,7 +273,7 @@ const SCENARIOS = {
             await page.setInputFiles('#' + inputId, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_CSV) });
             await expect(page.locator('#rankingsPreviewOverlay')).toContainText('24 players parsed');
             await snap(`${inputId} preview`);
-            await page.evaluate(() => window.confirmRankingsPreview());
+            await page.evaluate(async () => ((await import('/js/mls/main.js')).confirmRankingsPreview ?? window.confirmRankingsPreview)());
             await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
             await snap(`${inputId} saved`);
             // The "Uploaded successfully" line hides itself on a timer; wait it out so later
@@ -289,7 +289,7 @@ const SCENARIOS = {
         await page.click('#waiverScanBtn');
         await page.waitForLoadState('networkidle');
         await snap('scout, pasted list scanned');
-        await page.evaluate(() => window.setWaiverCompare('roster'));
+        await page.evaluate(async () => ((await import('/js/mls/main.js')).setWaiverCompare ?? window.setWaiverCompare)('roster'));
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await page.waitForLoadState('networkidle');
         await snap('scout, auto-find');
@@ -322,7 +322,7 @@ const SCENARIOS = {
     },
     'MLS handoff banner': async (page, snap) => {
         await open(page, '/lineup/');
-        await page.evaluate(() => localStorage.setItem('mds_handoff_roster', JSON.stringify({
+        await page.evaluate(() => localStorage.setItem('shared_handoff_roster', JSON.stringify({
             sourceLeagueName: 'Handoff Test', players: [{ name: 'Josh Allen', pos: 'QB', team: 'BUF' }], reqs: null,
         })));
         await page.reload();

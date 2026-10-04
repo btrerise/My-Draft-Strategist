@@ -4,6 +4,8 @@ import { PREMIGRATION_BACKUP_KEY } from './storage.js';
 import { State } from './state.js';
 import { isMdsOwnedKey, isMdsOwnedOrLegacyKey } from '../shared/storage/keys.js';
 import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
+import { showToast } from '../shared/ui/toast.js';
+import { showConfirm } from '../shared/ui/confirm.js';
 
     // --- BACKUP & RESTORE ---
     // MDS and MLS share one origin (mydraftstrategist.com) and therefore one localStorage, so
@@ -48,7 +50,7 @@ import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        if (window.showToast) window.showToast("Backup downloaded!");
+        showToast("Backup downloaded!");
     };
 
     export const importMdsSettings = function(fileInput) {
@@ -61,13 +63,13 @@ import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
             try {
                 payload = JSON.parse(e.target.result);
             } catch (err) {
-                if (window.showToast) window.showToast("That file isn't valid JSON - couldn't read it as a backup.", { isError: true });
+                showToast("That file isn't valid JSON - couldn't read it as a backup.", { isError: true });
                 fileInput.value = "";
                 return;
             }
 
             if (!payload || payload.app !== "MDS" || typeof payload.data !== 'object') {
-                if (window.showToast) window.showToast("This doesn't look like a My Draft Strategist backup file. If it's an MLS (Lineup Strategist) backup, use the Import button on that app instead.", { isError: true });
+                showToast("This doesn't look like a My Draft Strategist backup file. If it's an MLS (Lineup Strategist) backup, use the Import button on that app instead.", { isError: true });
                 fileInput.value = "";
                 return;
             }
@@ -78,7 +80,7 @@ import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
             const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
             const confirmMsg = `This replaces your current My Draft Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately.`;
 
-            if (!await window.showConfirm(confirmMsg, { title: 'Restore from backup?', confirmText: 'Replace My Data', danger: true })) {
+            if (!await showConfirm(confirmMsg, { title: 'Restore from backup?', confirmText: 'Replace My Data', danger: true })) {
                 fileInput.value = "";
                 return;
             }
@@ -94,14 +96,14 @@ import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
             getMdsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
             Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
 
-            if (window.showToast) window.showToast("Backup restored! Reloading now.");
+            showToast("Backup restored! Reloading now.");
             setTimeout(() => { window.location.reload(); }, 900);
         };
         reader.readAsText(file);
     };
 
     export const hardReset = async function() {
-        if (await window.showConfirm("This deletes every saved draft, custom ranking set, and setting in My Draft Strategist.\n\nMy Lineup Strategist data is not affected. This can't be undone.", { title: 'Delete all My Draft Strategist data?', confirmText: 'Delete Everything', danger: true })) {
+        if (await showConfirm("This deletes every saved draft, custom ranking set, and setting in My Draft Strategist.\n\nMy Lineup Strategist data is not affected. This can't be undone.", { title: 'Delete all My Draft Strategist data?', confirmText: 'Delete Everything', danger: true })) {
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
             getMdsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
             window.location.reload();

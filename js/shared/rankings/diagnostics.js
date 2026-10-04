@@ -1,10 +1,8 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- RANKINGS UPLOAD DIAGNOSTICS ---
 // Turns one per-file diagnostic into the message the user sees. Diagnostics come from
-// rankingsParser.js's parseRankingsFiles (MLS) and from mds.js's processData (MDS), both
+// js/shared/rankings/parse.js's parseRankingsFiles (MLS) and from js/mds/import.js's processData (MDS), both
 // shaped { fileName, reason, headersFound, missing, sheetName? } -- see parseRankingsFiles for
 // what each reason means. Kept here so both apps describe the same problem in the same words.
 //

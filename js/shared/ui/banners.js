@@ -1,6 +1,5 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// Moved verbatim from js/utils.js in refactor chunk 1A. Has load-time side effects, so js/shared/globals.js
+// imports it on every page (in the old utils.js order); code that uses its exports imports it too.
 import { KEYS } from '../storage/keys.js';
 
 export function dismissBanner(bannerId, storageKey) {

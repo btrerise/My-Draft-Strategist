@@ -3,8 +3,11 @@ import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
 import { NFL_TEAMS } from './constants.js';
 import { State } from './state.js';
 import { showStatusFeedback } from './helpers.js';
-import { loadRosterTab } from './main.js';
+import { loadRosterTab, optimizeLineup } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { flashButton } from '../shared/ui/flashButton.js';
+import { normalizeName } from '../shared/names.js';
+import { showToast } from '../shared/ui/toast.js';
 
     // --- SOS ENGINE ---
     export function generateSoSGrid() {
@@ -42,7 +45,7 @@ import { KEYS } from '../shared/storage/keys.js';
         
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
-        if (activeTab === 'lineupTab') window.optimizeLineup(true);
+        if (activeTab === 'lineupTab') optimizeLineup(true);
         else if (activeTab === 'rosterTab') loadRosterTab();
     };
 
@@ -126,9 +129,7 @@ import { KEYS } from '../shared/storage/keys.js';
                             });
                         } catch (err) {
                             console.error("Couldn't resolve player teams for SoS file:", err);
-                            if (typeof window.showToast === 'function') {
-                                window.showToast("SoS file uploaded, but player teams couldn't be resolved. Check your connection and try again.", { isError: true });
-                            }
+                            showToast("SoS file uploaded, but player teams couldn't be resolved. Check your connection and try again.", { isError: true });
                         }
                     }
 
@@ -143,9 +144,7 @@ import { KEYS } from '../shared/storage/keys.js';
                 error: function(err) {
                     console.error("Error reading file:", file.name, err);
                     sosFileInput.value = '';
-                    if (typeof window.showToast === 'function') {
-                        window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
-                    }
+                    showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                 }
             });
         });

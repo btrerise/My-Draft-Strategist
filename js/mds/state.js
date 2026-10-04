@@ -1,11 +1,13 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // STATE MANAGEMENT and INITIALIZE DEFAULT DRAFT FALLBACK, plus
 // draftPlayer/undoDraft, which sat at the end of the Sleeper section.
-import { readJSON } from './compat.js';
+// readJSON is js/boot.js's window.readJSON (boot.js is a plain script, so it can't be imported).
 import { draftPoolKey, readDraftPlayerPool, savePlayerPool } from './storage.js';
 import { initSettingsUI } from './settings.js';
 import { renderBoard } from './tracker.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { toggleAutoSync } from './main.js';
+import { showToast } from '../shared/ui/toast.js';
 
     // --- STATE MANAGEMENT ---
     export const State = {
@@ -148,7 +150,7 @@ import { KEYS } from '../shared/storage/keys.js';
 
             initSettingsUI();
             if (draft.username === "Manual" && State.autoSyncTimer) {
-                window.toggleAutoSync(false);
+                toggleAutoSync(false);
                 const toggleEl = document.getElementById('autoSyncToggle');
                 if (toggleEl) toggleEl.checked = false;
             }
@@ -167,7 +169,7 @@ import { KEYS } from '../shared/storage/keys.js';
             saveAndRenderDraftState();
 
             let p = State.players.find(x => x.id === id);
-            if (p && typeof window.showToast === 'function') window.showToast(`${p.name} drafted`);
+            if (p) showToast(`${p.name} drafted`);
         }
     };
 
@@ -179,5 +181,5 @@ import { KEYS } from '../shared/storage/keys.js';
         saveAndRenderDraftState();
 
         let p = State.players.find(x => x.id === id);
-        if (p && typeof window.showToast === 'function') window.showToast(`${p.name} returned to pool`);
+        if (p) showToast(`${p.name} returned to pool`);
     };

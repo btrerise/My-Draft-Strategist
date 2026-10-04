@@ -3,11 +3,13 @@
 // refreshers that fill State. Refactor 3D merged in the second LINEUP OPTIMIZER SETTINGS block
 // (updateLineupSetting, applyLineupSettingsToUI), right after State.
 import { getNflState } from '../shared/api/sleeper.js';
-import { readJSON } from './compat.js';
+// readJSON is js/boot.js's window.readJSON (boot.js is a plain script, so it can't be imported).
 import { ESPN_TEAM_ALIASES } from './constants.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
-import { renderLineupUI } from './main.js';
+import { renderLineupUI, optimizeLineup } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { showToast } from '../shared/ui/toast.js';
+import { mdsFetch } from '../shared/net.js';
 
     // --- STATE MANAGEMENT ---
     export const State = {
@@ -140,8 +142,8 @@ export const updateLineupSetting = function(key, value) {
     State.lineupSettings[key] = value;
     localStorage.setItem(KEYS.mls.lineupSettings, JSON.stringify(State.lineupSettings));
     applyLineupSettingsToUI();
-    if (typeof window.optimizeLineup === 'function' && State.manualStartersMap[State.activeLeagueId]) {
-        window.optimizeLineup(false);
+    if (State.manualStartersMap[State.activeLeagueId]) {
+        optimizeLineup(false);
     }
 };
 
@@ -199,7 +201,7 @@ export function applyLineupSettingsToUI() {
 
         restoreLineupState(leagueId, undoStack.pop());
         renderLineupUI();
-        if (typeof window.showToast === 'function') window.showToast("Undid last lineup change");
+        showToast("Undid last lineup change");
     };
 
     export const redoLineupChange = function() {
@@ -212,7 +214,7 @@ export function applyLineupSettingsToUI() {
 
         restoreLineupState(leagueId, redoStack.pop());
         renderLineupUI();
-        if (typeof window.showToast === 'function') window.showToast("Redid lineup change");
+        showToast("Redid lineup change");
     };
 
     // Refreshes State.currentNflWeek from Sleeper's public NFL state endpoint. Fire-and-forget:
@@ -256,7 +258,7 @@ export function applyLineupSettingsToUI() {
         // promise pending forever, which matters beyond the fire-and-forget callers -- runMatchupSim
         // awaits this one before deciding whether to use a player's live score, so a hang here
         // would stall the whole simulation rather than just skip a kickoff badge.
-        return window.mdsFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
+        return mdsFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
             .then(res => res.ok ? res.json() : null)
             .then(data => {
                 if (!data || !Array.isArray(data.events)) return;
@@ -291,8 +293,8 @@ export function applyLineupSettingsToUI() {
                 // badges and FLEX ordering reflect the newly-arrived data without requiring a
                 // manual re-optimize.
                 const activeTab = document.querySelector('.tab-content.active');
-                if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') {
-                    window.optimizeLineup(false);
+                if (activeTab && activeTab.id === 'lineupTab') {
+                    optimizeLineup(false);
                 }
             })
             .catch(() => { /* leave State.gameTimesByTeam as {}; see comment above */ });

@@ -95,7 +95,7 @@ export async function expectClean(page, { errors }) {
 /**
  * Opens a page, waits for the network to go quiet, and fails straight away if loading
  * produced errors -- so a broken import reports the 404 rather than a confusing
- * "window.showTab is not a function" further down the test.
+ * "showTab is not a function" further down the test.
  */
 export async function openApp(page, path) {
     const state = await preparePage(page);
@@ -110,9 +110,24 @@ export const MDS_TABS = ['setup', 'tracker', 'team', 'board', 'guide'];
 export const MLS_TABS = ['setup', 'roster', 'lineup', 'scout', 'guide'];
 export const TSCORE_TABS = ['researchTab', 'top50Tab', 'valuesTab', 'avoidsTab', 'sleepersTab', 'tab-2024'];
 
-/** Shows a tab the way a user would on MDS or MLS: window.showTab, same as the nav buttons call. */
+/**
+ * Calls a function the page's app module exports (js/mds/main.js on /, js/mls/main.js on /lineup/)
+ * and returns its result. import() of the same URL returns the page's own module instance, so this
+ * runs exactly the function the app's buttons run. Until refactor 5D these were window globals; the
+ * window fallback keeps `npm run compare-css`, which runs these helpers against origin/main's build,
+ * working on a build from before 5D. Harmless once main has 5D.
+ */
+export async function callApp(page, name, ...args) {
+    return page.evaluate(async ([fn, fnArgs]) => {
+        const entry = location.pathname.startsWith('/lineup') ? '/js/mls/main.js' : '/js/mds/main.js';
+        const f = (await import(entry))[fn] ?? window[fn];
+        return f(...fnArgs);
+    }, [name, args]);
+}
+
+/** Shows a tab the way a user would on MDS or MLS: showTab, same as the nav buttons call. */
 export async function showTab(page, tab) {
-    await page.evaluate((t) => window.showTab(t), tab);
+    await callApp(page, 'showTab', tab);
     await expect(page.locator(`#${tab}Tab`)).toHaveClass(/\bactive\b/);
 }
 
@@ -164,7 +179,7 @@ export async function loadMlsRankings(page, csv = RANKINGS_CSV, count = 24) {
     for (const inputId of ['rosFileInput', 'weeklyFileInput']) {
         await page.setInputFiles('#' + inputId, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
         await expect(page.locator('#rankingsPreviewOverlay')).toContainText(`${count} players parsed`);
-        await page.evaluate(() => window.confirmRankingsPreview());
+        await callApp(page, 'confirmRankingsPreview');
         await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
     }
 }

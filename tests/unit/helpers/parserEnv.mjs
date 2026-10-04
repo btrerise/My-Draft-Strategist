@@ -1,10 +1,9 @@
 // Browser stand-ins for js/shared/rankings/parse.js, which reads these globals at call time:
-//   window.findCsvQuoteProblem, window.showToast  (js/shared/globals.js)
-//   (window.normalizeName is still installed, but parse.js imports names.js directly since 1B)
 //   Papa      (PapaParse, CDN script)
 //   XLSX      (SheetJS, loaded on demand through the injected loadSheetJS)
 //   FileReader
-// normalizeName and findCsvQuoteProblem are the real ones, imported from js/shared/.
+// parse.js imports normalizeName and findCsvQuoteProblem itself (refactor 5D). Toasts are recorded
+// by `showToast`, which tests pass to parseRankingsFiles as its showToast option.
 //
 // The Papa stub is NOT PapaParse. It turns fixture text into rows the way Papa does for the
 // simple, unquoted CSV the fixtures use (header: false): split lines, split cells on commas.
@@ -36,11 +35,7 @@ export function installParserEnv() {
     const utils = { normalizeName, findCsvQuoteProblem };
     const toasts = [];
 
-    globalThis.window = {
-        normalizeName: utils.normalizeName,
-        findCsvQuoteProblem: utils.findCsvQuoteProblem,
-        showToast: (message, options) => toasts.push({ message, options })
-    };
+    const showToast = (message, options) => toasts.push({ message, options });
 
     globalThis.Papa = {
         parse(input, config) {
@@ -84,7 +79,7 @@ export function installParserEnv() {
         }
     };
 
-    return { toasts, utils };
+    return { toasts, utils, showToast };
 }
 
 // Fake File objects. Only `name` is read by the parser itself; the rest feeds the stubs.

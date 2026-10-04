@@ -1,6 +1,5 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
+// js/shared/globals.js also puts showToast on window for js/boot.js, a plain script.
 
 // --- TOAST NOTIFICATIONS ---
 // Batch operations (optimizeAllLineups, syncAllLeagues) call a per-league routine that toasts

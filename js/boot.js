@@ -1,35 +1,35 @@
 // Moved verbatim from the top of js/utils.js in refactor chunk 1A. Still a plain classic
 // script with no dependencies, and still the first local <script> on every page. The rest of
-// what was utils.js now lives in js/shared/ (see js/shared/globals.js); "showToast, further
-// down this file" and the other utils.js references in the comments below mean that code.
+// what was utils.js now lives in js/shared/ (showToast in js/shared/ui/toast.js, loadScriptOnce in
+// js/shared/ui/scriptLoader.js).
 
 // --- APP RESILIENCE: SAFE STORAGE READS + FATAL BOOT ERROR SAFETY NET ---
-// This block is deliberately the first thing in this file, and utils.js is deliberately the
-// first <script> on every page -- ahead of js/mds.js, and ahead of lineup/mls.js, which is an
-// ES module with six sibling imports. That ordering is the entire point of putting it here.
+// This block is deliberately the first thing in this file, and boot.js is deliberately the
+// first <script> on every page -- ahead of each page's ES module graph (js/mds/main.js,
+// js/mls/main.js, js/tscore/main.js). That ordering is the entire point of putting it here.
 //
 // The failure it exists for: if anything throws while the app's main script is being
-// EVALUATED -- one corrupt localStorage key, a 404 on any file in mls.js's import graph, a
+// EVALUATED -- one corrupt localStorage key, a 404 on any file in the app's import graph, a
 // syntax error -- that script never finishes. None of its window.* functions ever get
 // defined, so every button on the page is inert and every tab stays empty. The page isn't
 // obviously broken, it's worse: the HTML parsed fine, so it looks normal and simply does
 // nothing, with the only evidence sitting in a console the person will never open. The code
-// that would normally report a problem (showToast, further down this file) is part of the
+// that would normally report a problem (showToast, in js/shared/ui/toast.js) is part of the
 // app that just died, so it can't report this one.
 //
-// utils.js is a plain classic script with no imports and no dependencies, so it survives all
+// boot.js is a plain classic script with no imports and no dependencies, so it survives all
 // of that and can say something. Everything below is written to hold up under those
 // conditions: inline styles with literal colors rather than classes from css/base.css (if the
 // stylesheet is what failed, a banner styled by the stylesheet is an invisible banner), and
-// no calls into the rest of this file.
+// no calls into js/shared/.
 (function () {
     let appReady = false;
     let bannerShown = false;
     const corruptKeys = [];
     let corruptToastTimer = null;
 
-    // Called by mds.js and mls.js once their first render has completed -- see the
-    // markAppReady() call at the end of each app's init. After that point the app is
+    // Called by js/mds/init.js and js/mls/init.js once their first render has completed -- see
+    // the markAppReady() call at the end of each app's init. After that point the app is
     // demonstrably usable, so an uncaught error is a bug in one feature rather than a dead
     // page, and the handlers below go quiet (console only) instead of throwing a full-width
     // "the app didn't load" banner over a screen the person is happily using.
@@ -37,14 +37,14 @@
         appReady = true;
     };
 
-    // Backstop for any page that never calls markAppReady() -- t-score/index.html runs its
-    // own inline script and has no init function to hang it off, and a page added later
+    // Backstop for any page that never calls markAppReady() -- the T-Score page
+    // (js/tscore/main.js) has no init function to hang it off, and a page added later
     // shouldn't have to remember. Without this, such a page stays armed forever and shows a
     // fatal "didn't load" banner for an ordinary runtime error twenty minutes into a session.
     //
     // setTimeout rather than the load handler itself, because this listener is registered
     // before any app code runs and would otherwise fire FIRST -- marking the page ready a
-    // moment before mls.js's own window.onload init gets a chance to throw. Deferring by a
+    // moment before js/mls/init.js's window.onload init gets a chance to throw. Deferring by a
     // tick puts it behind every synchronous load handler on the page.
     //
     // This does not weaken the case this block exists for: a script that dies during
@@ -260,7 +260,7 @@
 
     // Capture phase, because a <script> or <link> that fails to load fires its error event on
     // the element itself and that event does not bubble -- it is only reachable from window
-    // during capture. That is exactly the "one of mls.js's seven modules 404s" case, so a
+    // during capture. That is exactly the "one of js/mls/'s modules 404s" case, so a
     // bubble-phase-only listener would miss the failure this block was written for.
     window.addEventListener('error', function (e) {
         const target = e.target;
@@ -274,11 +274,11 @@
         // never raise this banner.
         //
         // And only SAME-ORIGIN ones. A blocked or offline CDN (PapaParse, MathJax, and the
-        // html2canvas/SheetJS that loadScriptOnce injects further down this file) costs one
+        // html2canvas/SheetJS that loadScriptOnce in js/shared/ui/scriptLoader.js injects) costs one
         // optional feature, and each of those already has its own failure path; announcing
         // "the app didn't load" because an ad blocker ate a CDN would be a false alarm on a
         // page that works. A same-origin script failing is the real case this exists for --
-        // that's mds.js, or any of the seven files in mls.js's module graph.
+        // that's any file in js/mds/'s, js/mls/'s or js/tscore/'s module graph.
         if (tag === 'SCRIPT' || tag === 'LINK') {
             const url = target.src || target.href || '';
             if (!isSameOrigin(url)) {

@@ -21,24 +21,19 @@ import { toggleRecapMath } from './recap.js';
 import { exportTeam } from './export.js';
 import { cycleAffinity } from './affinity.js';
 import { delegate } from '../shared/ui/delegate.js';
+import { dismissBanner } from '../shared/ui/banners.js';
 
-// The window.* names other code still calls. They used to be `window.x = function` assignments
-// inside mds.js, which inline onclick="..." handlers called; refactor chunk 5A replaced those
-// handlers with the data-action listeners below and removed every name nothing else uses.
-// These remain because something outside the inline handlers reads them through window:
-//   toggleMenu: ui.js (showTab) and init.js (Escape key)
-//   saveSettings, renderLiveSyncStatus: sleeperSync.js
+// toggleAutoSync: state.js imports it from here. sleeperSync.js evaluates after state.js, so a direct
+// import would evaluate it (and its imports) early; main.js is the entry module, always mid-evaluation
+// while the others run, so importing from it never triggers an evaluation. showTab: for the
+// Playwright tests (`import('/js/mds/main.js')` in the page returns this same instance).
+export { showTab, toggleAutoSync };
+
+// The only window.* name left. Until refactor chunk 5D this block held every name something read
+// through window (originally the inline onclick="..." handlers); 5A replaced the handlers with the
+// data-action listeners below, and 5D turned the remaining window.x(...) calls into imports.
 //   exportMdsSettings: js/boot.js's rescue backup (works even when this module graph failed)
-//   showTab: ui.js (back button), gestures.js, init.js, and the tests (tests/helpers.mjs)
-//   setPosFilter: init.js (keyboard shortcuts)
-//   toggleAutoSync: state.js and sleeperSync.js
-window.toggleMenu = toggleMenu;
-window.saveSettings = saveSettings;
 window.exportMdsSettings = exportMdsSettings;
-window.showTab = showTab;
-window.setPosFilter = setPosFilter;
-window.renderLiveSyncStatus = renderLiveSyncStatus;
-window.toggleAutoSync = toggleAutoSync;
 
 // --- DATA-ACTION EVENT DELEGATION ---
 // Refactor chunk 5A: each table maps a data-action name (in index.html and in the HTML
@@ -50,7 +45,7 @@ const clickActions = {
     toggleMenu() { toggleMenu(); },
     showTab() { showTab(this.dataset.tab); },
     handleSmartSync() { handleSmartSync(); },
-    dismissBanner() { window.dismissBanner(this.dataset.banner, this.dataset.storageKey); },
+    dismissBanner() { dismissBanner(this.dataset.banner, this.dataset.storageKey); },
     quickStartFfc() { quickStartFfc(this); },
     processPaste() { processPaste(this); },
     addAndSyncSleeperDraft() { addAndSyncSleeperDraft(this); },

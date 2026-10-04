@@ -1,7 +1,7 @@
 // js/shared/api/market.js: fetchMarketConsensusData (Lineup Strategist's Market Consensus).
 // Refactor 7A removed LeagueLogs (its API answers 410), so FantasyCalc is the only source;
-// the LeagueLogs cases that 2C wrote here went with it. window.mdsFetch is a stub that answers
-// from a URL -> response table.
+// the LeagueLogs cases that 2C wrote here went with it. fetch is a stub (under the real mdsFetch,
+// js/shared/net.js) that answers from a URL -> response table.
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -10,14 +10,11 @@ import { fetchMarketConsensusData } from '../../js/shared/api/market.js';
 
 let routes = {};
 const requested = [];
-globalThis.window = {
-    MDS_LONG_FETCH_TIMEOUT_MS: 60000,
-    async mdsFetch(url) {
-        requested.push(url);
-        const r = routes[url];
-        if (!r) throw new Error(`unexpected fetch: ${url}`);
-        return { ok: r.status === 200, status: r.status, json: async () => r.body };
-    },
+globalThis.fetch = async (url) => {
+    requested.push(url);
+    const r = routes[url];
+    if (!r) throw new Error(`unexpected fetch: ${url}`);
+    return { ok: r.status === 200, status: r.status, json: async () => r.body, text: async () => JSON.stringify(r.body) };
 };
 
 const FC = 'https://api.fantasycalc.com/values/current';

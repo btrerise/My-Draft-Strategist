@@ -2,14 +2,14 @@
 import { State } from './state.js';
 import { updatePulsePrompts } from './init.js';
 import { refreshLeagueDropdown } from './leagues/sync.js';
-import { loadRosterTab } from './main.js';
+import { loadRosterTab, optimizeLineup } from './main.js';
+import { createFocusTrap } from '../shared/ui/focusTrap.js';
+import { getTabFromHash } from '../shared/ui/tabHash.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at
-    // load time, since window.createFocusTrap (from utils.js, a plain script) needs to have
-    // already run, and this module's top-level code can execute before that plain script's
-    // DOMContentLoaded-independent top-level assignment has (module scripts are deferred by
-    // spec, but this keeps the two files from having an implicit load-order dependency).
+    // load time (written when createFocusTrap was a window global that might not exist yet;
+    // it's an import since refactor 5D, and creating it on first use is still fine).
     let drawerFocusTrap = null;
 
     export const toggleDrawer = function() {
@@ -32,10 +32,8 @@ import { loadRosterTab } from './main.js';
             // calls toggleDrawer() when the drawer is open, which (via the isOpen === false
             // branch) deactivates this trap on its way out. Wiring a second Escape handler
             // through the trap itself would just be two paths to the same toggle.
-            if (typeof window.createFocusTrap === 'function') {
-                drawerFocusTrap = window.createFocusTrap(drawer);
-                drawerFocusTrap.activate();
-            }
+            drawerFocusTrap = createFocusTrap(drawer);
+            drawerFocusTrap.activate();
         } else if (drawerFocusTrap) {
             drawerFocusTrap.deactivate();
             drawerFocusTrap = null;
@@ -47,8 +45,8 @@ import { loadRosterTab } from './main.js';
         const targetBtn = document.querySelector(`.hamburger-menu .nav-btn[data-drawer-target="${tabId}"]`);
         if (targetBtn) targetBtn.classList.add('active-link');
         
-        window.toggleDrawer();
-        window.showTab(tabId);
+        toggleDrawer();
+        showTab(tabId);
     };
 
     const mainAppEl = document.getElementById('mainApp');
@@ -82,13 +80,13 @@ import { loadRosterTab } from './main.js';
         
         if (State.touchEndX < State.touchStartX - swipeThreshold) {
             if (currentIdx < tabs.length - 1) {
-                window.showTab(tabs[currentIdx + 1]);
+                showTab(tabs[currentIdx + 1]);
                 updateDrawerActiveState(tabs[currentIdx + 1]);
             }
         }
         if (State.touchEndX > State.touchStartX + swipeThreshold) {
             if (currentIdx > 0) {
-                window.showTab(tabs[currentIdx - 1]);
+                showTab(tabs[currentIdx - 1]);
                 updateDrawerActiveState(tabs[currentIdx - 1]);
             }
         }
@@ -121,7 +119,7 @@ import { loadRosterTab } from './main.js';
             if (label) announcer.textContent = `${label.textContent} tab`;
         }
 
-        if (tabId === 'lineup') window.optimizeLineup(false);
+        if (tabId === 'lineup') optimizeLineup(false);
         if (tabId === 'roster') loadRosterTab();
         if (tabId === 'setup') refreshLeagueDropdown();
         window.scrollTo(0, 0);
@@ -139,10 +137,10 @@ import { loadRosterTab } from './main.js';
     // skipHistory=true so we don't push a duplicate entry back onto the history stack.
     window.addEventListener('popstate', (e) => {
         if (e.state && e.state.tab) {
-            window.showTab(e.state.tab, true);
+            showTab(e.state.tab, true);
         } else {
             // No state = an entry we didn't push (a hand-edited hash), so honor its hash if
             // it names a real tab.
-            window.showTab(window.getTabFromHash() || 'setup', true);
+            showTab(getTabFromHash() || 'setup', true);
         }
     });

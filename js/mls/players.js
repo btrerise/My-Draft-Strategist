@@ -2,8 +2,11 @@
 // INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP marker -- the player-map indexes (autocomplete search
 // index, clean name -> Sleeper id), the autocomplete dropdown, and the "did you mean" matcher.
 import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
-import { escapeHtml } from './compat.js';
+import { escapeHtml } from '../shared/html.js';
 import { State } from './state.js';
+import { normalizeName } from '../shared/names.js';
+import { showToast } from '../shared/ui/toast.js';
+import { runScout } from './main.js';
 
 // --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---
 // Moved to js/shared/api/sleeper.js -- getSleeperPlayerMap is now imported at the top of this file.
@@ -32,9 +35,9 @@ function getPlayerSearchIndex() {
         // reconnecting) actually retries instead of replaying this same rejected promise
         // forever -- unlike a successful result, a rejection here was never being retried.
         _playerSearchIndexPromise = null;
-        if (!_playerSearchIndexErrorShown && typeof window.showToast === 'function') {
+        if (!_playerSearchIndexErrorShown) {
             _playerSearchIndexErrorShown = true;
-            window.showToast("Couldn't load player data for search. Check your connection and try again.", { isError: true });
+            showToast("Couldn't load player data for search. Check your connection and try again.", { isError: true });
         }
         throw err;
     });
@@ -66,20 +69,22 @@ export function getCleanNameToIdIndex() {
     return _cleanNameToIdPromise;
 }
 
-// Clean name -> Sleeper position, kept on window.sleeperPosByName for the page's lifetime. Rankings
+// Clean name -> Sleeper position, kept in sleeperPosByName for the page's lifetime (a live export;
+// window.sleeperPosByName until refactor 5D). Rankings
 // files carry no positions, so the Scout tab's card badges (runScout) and Waiver Insights' free-agent
 // picks (getTopWaiverCandidatesByPosition) look positions up here, with loaded Market data as their
 // fallback. Moved out of runScout in refactor 3G so Waiver Insights builds it too: before, it existed
 // only once a Scout action had run in the page. If the player map can't load, it stays unset (the
 // callers fall back to Market data) and the next call tries again.
+export let sleeperPosByName;
 export async function ensureSleeperPosByName() {
-    if (window.sleeperPosByName) return;
+    if (sleeperPosByName) return;
     try {
         let map = await getSleeperPlayerMap();
-        window.sleeperPosByName = {};
+        sleeperPosByName = {};
         Object.values(map).forEach(p => {
             if (p.first_name) {
-                window.sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
+                sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
             }
         });
     } catch (e) {
@@ -234,6 +239,6 @@ export function attachScoutSuggestionHandler(outputElId) {
         if (idx !== -1) {
             inputEl.value = inputEl.value.slice(0, idx) + link.dataset.suggested + inputEl.value.slice(idx + original.length);
         }
-        window.runScout(link.dataset.scoutType);
+        runScout(link.dataset.scoutType);
     });
 }

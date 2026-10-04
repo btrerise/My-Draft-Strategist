@@ -34,7 +34,7 @@ test('a saved LeagueLogs market source becomes FantasyCalc, and the fetch works'
     await expect(page.locator('#attributionLink')).toHaveAttribute('href', 'https://fantasycalc.com');
     await expect(page.locator('#attributionBrand')).toHaveText('FantasyCalc');
 
-    await page.click('#scoutTab #fetchAdpBtn');
+    await page.click('#scoutTab #fetchMarketValueBtn');
     await expect(page.locator('#marketSuccessMsg')).toContainText('Pulled Successfully');
     // The other saved settings were kept: dynasty, superflex, half PPR, TE premium.
     expect(fcRequests).toEqual(['https://api.fantasycalc.com/values/current?isDynasty=true&numQbs=2&numTeams=12&ppr=0.5&isTEP=true']);

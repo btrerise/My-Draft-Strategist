@@ -1,12 +1,17 @@
 // Moved from js/mds.js in refactor chunk 2A:
 // FILE PARSING & DATA IMPORT.
-import { findCsvQuoteProblem, formatRankingsDiagnostic } from './compat.js';
+import { findCsvQuoteProblem, formatRankingsDiagnostic } from '../shared/rankings/diagnostics.js';
 import { savePlayerPool } from './storage.js';
 import { BYE_WEEKS_2026, State, saveAndRenderDraftState } from './state.js';
 import { updateMetaDisplay } from './settings.js';
 import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
 import { MDS_NAME_HEADERS, findHeaderRowIndex, normalizeHeader, stripTitleLines } from '../shared/rankings/parse.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { flashButton } from '../shared/ui/flashButton.js';
+import { isNameMatch } from '../shared/names.js';
+import { showToast } from '../shared/ui/toast.js';
+import { loadSheetJS } from '../shared/ui/scriptLoader.js';
+import { enableFileDrop } from '../shared/ui/fileDrop.js';
 
     // --- FILE PARSING & DATA IMPORT ---
 const fileInput = document.getElementById('fileInput');
@@ -26,34 +31,31 @@ if (fileInput) {
                 err => {
                     console.error("Error reading file:", file.name, err);
                     fileInput.value = '';
-                    if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
+                    showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                 }
             );
         } else if (ext === 'xlsx' || ext === 'xls') {
             // Fetches SheetJS on first use. The onError path matters: with an ad blocker, an
             // offline phone or a cdnjs outage the script never loads, and without this the
             // upload used to dead-end with nothing on screen at all.
-            window.loadSheetJS(() => parseExcel(file), () => {
+            loadSheetJS(() => parseExcel(file), () => {
                 console.error("Failed to load SheetJS library");
-                if (window.showToast) window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
+                showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
             });
         } else if (ext === 'numbers') {
             // Apple Numbers' file format isn't a spreadsheet format our parser (SheetJS) can
             // read -- it's a proprietary zip/binary format, not CSV/XLSX under the hood.
             // Point to Numbers' own CSV export rather than silently failing on a fake attempt.
-            if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
+            showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
         } else {
-            if (window.showToast) window.showToast("Please upload a .csv, .xlsx, or .xls file", { isError: true });
+            showToast("Please upload a .csv, .xlsx, or .xls file", { isError: true });
         }
     });
 
-    // Drag-and-drop anywhere on the upload card (window.enableFileDrop, js/utils.js). The
+    // Drag-and-drop anywhere on the upload card (enableFileDrop, js/shared/ui/fileDrop.js). The
     // dropped file is handed to this same input and fires the listener above, so a drop and
-    // a picked file take the identical path. typeof check: an older cached utils.js right
-    // after a deploy won't have the helper yet.
-    if (typeof window.enableFileDrop === 'function') {
-        window.enableFileDrop(fileInput.closest('.settings-card') || fileInput.parentElement, { pickInput: () => fileInput });
-    }
+    // a picked file take the identical path.
+    enableFileDrop(fileInput.closest('.settings-card') || fileInput.parentElement, { pickInput: () => fileInput });
 }
 
 // Helper function that processes the Excel file
@@ -94,12 +96,12 @@ function parseExcel(file) {
             processData(XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "", range: startRow }), null, source);
         } catch (err) {
             console.error("Error reading Excel file:", err);
-            if (window.showToast) window.showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
+            showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
         }
     };
     reader.onerror = () => {
         console.error("Error reading file:", file.name);
-        if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
+        showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
     };
     reader.readAsArrayBuffer(file);
 }
@@ -130,8 +132,8 @@ function parseExcel(file) {
     // came from one tab of a multi-tab workbook; quoteProblem is findCsvQuoteProblem's result
     // for CSV text. headers is the file's header row as written, used both to catch a missing
     // name column before any work starts and to show the user what columns were found. The
-    // diagnostic follows the same shape as lineup/rankingsParser.js's so both apps share
-    // window.formatRankingsDiagnostic's wording.
+    // diagnostic follows the same shape as js/shared/rankings/parse.js's so both apps share
+    // formatRankingsDiagnostic's wording (js/shared/rankings/diagnostics.js).
     //
     // Quick-Start (market.js, refactor 7A) sends Fantasy Football Calculator's rows through here
     // too, as the rows an upload would give, and sets the last three: replace (ignore the
@@ -156,7 +158,7 @@ function parseExcel(file) {
             // Clear the picker so choosing the same file again (after fixing it) fires 'change'.
             if (source.fileName && fileInput) fileInput.value = '';
             // Longer than the 6s error default: the message lists columns to read and act on.
-            if (window.showToast) window.showToast(formatRankingsDiagnostic(diag), { isError: true, duration: 12000 });
+            showToast(formatRankingsDiagnostic(diag), { isError: true, duration: 12000 });
             return false;
         };
 
@@ -245,7 +247,7 @@ function parseExcel(file) {
             // Iterate over the pre-built array instead of running Object.entries() 
             for (let i = 0; i < sleeperArray.length; i++) {
                 let sp = sleeperArray[i];
-                let isName = typeof isNameMatch === 'function' ? isNameMatch(cleanName, sp.fullName) : cleanName.toLowerCase() === sp.lowerName;
+                let isName = isNameMatch(cleanName, sp.fullName);
                 let isPos = posGroup === "FLEX" || sp.pos === posGroup || sp.fantasyPos.includes(posGroup);
                 
                 if (isName && isPos) {
@@ -354,16 +356,16 @@ function parseExcel(file) {
             saveAndRenderDraftState();
 
             if (btn) flashButton(btn, source.successLabel || "Loaded Successfully", false, originalBtnText);
-            if (typeof window.showToast === 'function' && source.successToast) {
-                window.showToast(source.successToast.text.replace('{count}', State.players.length), source.successToast.opts);
-            } else if (typeof window.showToast === 'function') {
+            if (source.successToast) {
+                showToast(source.successToast.text.replace('{count}', State.players.length), source.successToast.opts);
+            } else {
                 // Loaded, but an unclosed quote swallowed rows (see findCsvQuoteProblem in
-                // utils.js). Shown as an error: the list is missing players the user expects.
+                // js/shared/rankings/diagnostics.js). Shown as an error: the list is missing players the user expects.
                 if (source.quoteProblem) {
                     const q = { fileName: source.fileName || null, reason: 'unclosed-quote', row: source.quoteProblem.row, rowsLost: source.quoteProblem.rowsLost, headersFound: [], missing: [] };
-                    window.showToast(`Loaded ${State.players.length} players, but some are missing.\n${formatRankingsDiagnostic(q)}`, { isError: true, duration: 12000 });
+                    showToast(`Loaded ${State.players.length} players, but some are missing.\n${formatRankingsDiagnostic(q)}`, { isError: true, duration: 12000 });
                 } else {
-                    window.showToast(`Loaded ${State.players.length} players`);
+                    showToast(`Loaded ${State.players.length} players`);
                 }
             }
             return true;

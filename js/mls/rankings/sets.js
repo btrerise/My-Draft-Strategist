@@ -1,14 +1,17 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3D: NAMED RANKING SETS
 // and CHOOSING WHICH LEAGUES USE A RANKING SET (the set dropdown, saving an upload as a set, the
 // league picker and its dialog, deleting a set).
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { saveActiveLeagueState } from '../leagues/sync.js';
 import { setRankingsCardExpanded, updateRankingsMetaDisplay } from './engine.js';
-import { loadRosterTab } from '../main.js';
+import { loadRosterTab, optimizeLineup } from '../main.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { createFocusTrap } from '../../shared/ui/focusTrap.js';
+import { showToast } from '../../shared/ui/toast.js';
+import { showConfirm } from '../../shared/ui/confirm.js';
 
     // --- NAMED RANKING SETS ---
     // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
@@ -219,7 +222,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab && activeTab.id === 'rosterTab' && typeof loadRosterTab === 'function') loadRosterTab();
-        if (activeTab && activeTab.id === 'lineupTab' && typeof window.optimizeLineup === 'function') window.optimizeLineup(false);
+        if (activeTab && activeTab.id === 'lineupTab') optimizeLineup(false);
     };
 
     // --- CHOOSING WHICH LEAGUES USE A RANKING SET ---
@@ -321,7 +324,7 @@ import { KEYS } from '../../shared/storage/keys.js';
     }
 
     // Standalone picker dialog. Resolves { add, remove } on Save, or null on Cancel / Escape /
-    // backdrop click. Same close behavior as showConfirm in utils.js.
+    // backdrop click. Same close behavior as showConfirm in js/shared/ui/confirm.js.
     let leaguePickerOpen = false;
     export function openLeaguePickerDialog(type, set, { title, intro, allowRemove = false, confirmText = 'Save', cancelText = 'Cancel' } = {}) {
         const overlay = document.getElementById('rankingLeaguesOverlay');
@@ -359,10 +362,8 @@ import { KEYS } from '../../shared/storage/keys.js';
             okBtn.addEventListener('click', onOk);
             cancelBtn.addEventListener('click', onCancel);
             overlay.addEventListener('mousedown', onBackdrop);
-            if (typeof window.createFocusTrap === 'function') {
-                trap = window.createFocusTrap(overlay, { onEscape: () => settle(null) });
-                trap.activate();
-            }
+            trap = createFocusTrap(overlay, { onEscape: () => settle(null) });
+            trap.activate();
         });
     }
 
@@ -375,11 +376,11 @@ import { KEYS } from '../../shared/storage/keys.js';
         const val = selectEl ? selectEl.value : null;
 
         if (!val || val === '__new__') {
-            if (window.showToast) window.showToast("Please select a saved ranking set first.", { isError: true });
+            showToast("Please select a saved ranking set first.", { isError: true });
             return;
         }
         if (val === '__legacy__') {
-            if (window.showToast) window.showToast("Legacy data can't be shared with other leagues. Upload it as a new set first.", { isError: true });
+            showToast("Legacy data can't be shared with other leagues. Upload it as a new set first.", { isError: true });
             return;
         }
         const set = State.rankingSets[cfg.setsKey].find(s => s.id === val);
@@ -391,12 +392,12 @@ import { KEYS } from '../../shared/storage/keys.js';
         });
         if (!result) return;
         if (result.add.length === 0 && result.remove.length === 0) {
-            if (window.showToast) window.showToast('No changes made.');
+            showToast('No changes made.');
             return;
         }
         assignSetToLeagues(type, set.id, result);
         const usedCount = State.leagues.filter(l => l[cfg.leagueSetIdKey] === set.id).length;
-        if (window.showToast) window.showToast(`"${set.name}" is now used in ${leagueCountText(usedCount)}.`);
+        showToast(`"${set.name}" is now used in ${leagueCountText(usedCount)}.`);
     };
 
     // Deletes the currently-selected named set entirely. Any league referencing it (not just
@@ -410,7 +411,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         const set = State.rankingSets[cfg.setsKey].find(s => s.id === setId);
         if (!set) return;
 
-        if (!await window.showConfirm("Any league using this set will need a new one selected. This can't be undone.", { title: `Delete "${set.name}"?`, confirmText: 'Delete Set', danger: true })) return;
+        if (!await showConfirm("Any league using this set will need a new one selected. This can't be undone.", { title: `Delete "${set.name}"?`, confirmText: 'Delete Set', danger: true })) return;
 
         State.rankingSets[cfg.setsKey] = State.rankingSets[cfg.setsKey].filter(s => s.id !== setId);
         localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
@@ -426,6 +427,6 @@ import { KEYS } from '../../shared/storage/keys.js';
             State[cfg.updatedAtKey] = null;
         }
 
-        if (window.showToast) window.showToast(`Deleted "${set.name}".`);
+        showToast(`Deleted "${set.name}".`);
         updateRankingsMetaDisplay();
     };

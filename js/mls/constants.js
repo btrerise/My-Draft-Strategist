@@ -18,7 +18,7 @@ import { KEYS } from '../shared/storage/keys.js';
     export const ESPN_TEAM_ALIASES = { "WSH": "WAS" };
 
     // Small muted "(T2)" suffix for a rank shown on a player card, when the rankings file that
-    // rank came from also had a Tier column (see rankingsParser.js). Returns "" for a missing tier
+    // rank came from also had a Tier column (see js/shared/rankings/parse.js). Returns "" for a missing tier
     // -- the common case, since Tier is an optional column -- so callers can append it
     // unconditionally and cards for tier-less rankings look exactly as they always have.
     export const tierTag = (tier) => (Number.isFinite(tier) && tier > 0)

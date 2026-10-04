@@ -40,7 +40,7 @@ const COMPARED = [
 test.describe('Lineup Strategist Waiver Insights', () => {
     test('compares free agents after a Scan Pasted List run', async ({ page }) => {
         const state = await openSeeded(page);
-        // Scan Pasted List builds the position lookup (window.sleeperPosByName) as a side effect.
+        // Scan Pasted List builds the position lookup (sleeperPosByName, js/mls/players.js) as a side effect.
         await showTab(page, 'scout');
         await page.fill('#waiverInput', 'Jayden Daniels');
         await page.click('#waiverScanBtn');
@@ -56,7 +56,7 @@ test.describe('Lineup Strategist Waiver Insights', () => {
 
     test('compares free agents in a fresh page with no Scout action first', async ({ page }) => {
         const state = await openSeeded(page);
-        expect(await page.evaluate(() => window.sleeperPosByName === undefined), 'no position lookup yet').toBe(true);
+        expect(await page.evaluate(async () => (await import('/js/mls/players.js')).sleeperPosByName === undefined), 'no position lookup yet').toBe(true);
 
         const insights = await runSimWithWaiverInsights(page);
         const text = (await insights.textContent()).replace(/\s+/g, ' ').trim();
@@ -74,7 +74,7 @@ test.describe('Lineup Strategist Waiver Insights', () => {
         const insights = await runSimWithWaiverInsights(page);
         await expect(insights).toContainText('No free agents to compare: none of the unrostered players in your rankings could be matched to a position.');
         await expect(insights).not.toContainText("don't have enough game history");
-        expect(await page.evaluate(() => Object.keys(window.sleeperPosByName || {}).length), 'position lookup built').toBeGreaterThan(0);
+        expect(await page.evaluate(async () => Object.keys((await import('/js/mls/players.js')).sleeperPosByName || {}).length), 'position lookup built').toBeGreaterThan(0);
         await expectClean(page, state);
     });
 });

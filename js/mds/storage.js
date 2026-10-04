@@ -5,6 +5,7 @@
 // imports this file, so this one is evaluated first. Keep it that way (see docs/refactor/LOG.md, 2A).
 import { State } from './state.js';
 import { KEYS, mdsDraftPoolKey } from '../shared/storage/keys.js';
+import { showToast } from '../shared/ui/toast.js';
 
     // --- DRAFT PLAYER-POOL STORAGE (v2) ---
     // Each draft profile remembers its own player pool, so switching profiles restores the
@@ -57,7 +58,7 @@ import { KEYS, mdsDraftPoolKey } from '../shared/storage/keys.js';
             if (State.activeDraftId) localStorage.setItem(draftPoolKey(State.activeDraftId), serialized);
         } catch (e) {
             console.error('Could not save player pool (storage may be full):', e);
-            if (window.showToast) window.showToast("Couldn't save your rankings - browser storage may be full.", { isError: true });
+            showToast("Couldn't save your rankings - browser storage may be full.", { isError: true });
         }
     }
 

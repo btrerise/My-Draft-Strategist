@@ -1,7 +1,7 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3F: ACTIVE ROSTER: POWER
 // RANKINGS SNAPSHOT (renderRosterPowerStrip, and scrollToPowerRankings, the strip's link to the
 // card).
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { powerTier } from './shared.js';
 
 // --- ACTIVE ROSTER: POWER RANKINGS SNAPSHOT ---

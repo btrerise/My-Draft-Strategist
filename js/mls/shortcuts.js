@@ -1,5 +1,8 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: POWER-USER KEYBOARD SHORTCUTS (MLS). Registers
 // its document keydown listener when the module evaluates.
+import { toggleDrawer, showTab } from './nav.js';
+import { cycleLeague } from './leagues/sync.js';
+import { undoLineupChange, redoLineupChange } from './state.js';
 
 // --- POWER-USER KEYBOARD SHORTCUTS (MLS) ---
 document.addEventListener('keydown', (e) => {
@@ -9,7 +12,7 @@ document.addEventListener('keydown', (e) => {
     // are the two keyboard-accessible ways to exit the menu.
     const openDrawer = document.getElementById('drawer');
     if (e.key === 'Escape' && openDrawer && openDrawer.classList.contains('open')) {
-        window.toggleDrawer();
+        toggleDrawer();
         return;
     }
 
@@ -21,12 +24,12 @@ document.addEventListener('keydown', (e) => {
     // Shift + Arrow keys to quickly cycle leagues
     if (e.shiftKey && e.key === 'ArrowLeft') {
         e.preventDefault();
-        if (typeof window.cycleLeague === 'function') window.cycleLeague(-1);
+        cycleLeague(-1);
         return;
     }
     if (e.shiftKey && e.key === 'ArrowRight') {
         e.preventDefault();
-        if (typeof window.cycleLeague === 'function') window.cycleLeague(1);
+        cycleLeague(1);
         return;
     }
 
@@ -35,20 +38,20 @@ document.addEventListener('keydown', (e) => {
     // see pushLineupUndoSnapshot and undoLineupChange/redoLineupChange above for scope.
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault();
-        if (typeof window.undoLineupChange === 'function') window.undoLineupChange();
+        undoLineupChange();
         return;
     }
     if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
         e.preventDefault();
-        if (typeof window.redoLineupChange === 'function') window.redoLineupChange();
+        redoLineupChange();
         return;
     }
 
     switch(e.key) {
-        case '1': if (typeof window.showTab === 'function') window.showTab('setup'); break;
-        case '2': if (typeof window.showTab === 'function') window.showTab('roster'); break;
-        case '3': if (typeof window.showTab === 'function') window.showTab('lineup'); break;
-        case '4': if (typeof window.showTab === 'function') window.showTab('scout'); break;
-        case '5': if (typeof window.showTab === 'function') window.showTab('guide'); break;
+        case '1': showTab('setup'); break;
+        case '2': showTab('roster'); break;
+        case '3': showTab('lineup'); break;
+        case '4': showTab('scout'); break;
+        case '5': showTab('guide'); break;
     }
 });

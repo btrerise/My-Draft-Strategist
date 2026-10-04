@@ -2,16 +2,17 @@
 // SEND ROSTER TO LINEUP STRATEGIST.
 import { State, getActiveDraft } from './state.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { showToast } from '../shared/ui/toast.js';
 
     // --- SEND ROSTER TO LINEUP STRATEGIST ---
     // MDS (mydraftstrategist.com) and MLS (mydraftstrategist.com/lineup/) are same-origin, so
     // they already share localStorage directly -- no URL params or backend needed. This writes
     // the drafted roster to a shared key that MLS's Setup tab checks for on load and offers to
-    // import as a new league. See mls.js's checkForDraftStrategistHandoff().
+    // import as a new league. See checkForDraftStrategistHandoff() in js/mls/leagues/handoff.js.
     export const sendRosterToLineupStrategist = function() {
         const draft = getActiveDraft();
         if (!draft || !draft.myTeam || draft.myTeam.length === 0) {
-            if (window.showToast) window.showToast("Draft a roster first before sending it to Lineup Strategist.");
+            showToast("Draft a roster first before sending it to Lineup Strategist.");
             return;
         }
 
@@ -42,6 +43,6 @@ import { KEYS } from '../shared/storage/keys.js';
 
         localStorage.setItem(KEYS.shared.handoffRoster, JSON.stringify(payload));
 
-        if (window.showToast) window.showToast(`Sending ${players.length} players to Lineup Strategist…`);
+        showToast(`Sending ${players.length} players to Lineup Strategist…`);
         setTimeout(() => { window.location.href = './lineup/'; }, 700);
     };

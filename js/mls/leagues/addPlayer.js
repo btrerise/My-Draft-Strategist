@@ -1,11 +1,14 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3B: ADD PLAYER MANUALLY
 // (and deletePlayer, which sat with it).
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { attachPlayerAutocomplete } from '../players.js';
-import { loadRosterTab } from '../main.js';
+import { loadRosterTab, optimizeLineup } from '../main.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { normalizeName } from '../../shared/names.js';
+import { showToast } from '../../shared/ui/toast.js';
+import { showConfirm } from '../../shared/ui/confirm.js';
 
     // --- ADD PLAYER MANUALLY: keyboard fast path + "Added this session" list ---
     // Built for keying in a whole league from the keyboard: type a name, Enter picks the
@@ -55,7 +58,7 @@ import { KEYS } from '../../shared/storage/keys.js';
             if (e.key !== 'Enter' || e.defaultPrevented || e.repeat || e.isComposing) return;
             if (_manualSelected && nameEl.value.trim() === _manualSelected.name) {
                 e.preventDefault();
-                window.addManualPlayer({ fromKeyboard: true });
+                addManualPlayer({ fromKeyboard: true });
                 return;
             }
             // Name was typed but never picked. Saving it on Enter would make every typo a
@@ -73,7 +76,7 @@ import { KEYS } from '../../shared/storage/keys.js';
             teamEl.addEventListener('keydown', (e) => {
                 if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
                 e.preventDefault();
-                window.addManualPlayer({ fromKeyboard: true });
+                addManualPlayer({ fromKeyboard: true });
             });
         }
 
@@ -102,7 +105,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (!league) return;
         const removed = removePlayerFromLeague(league, playerId);
         if (!removed) { renderManualAddLog(); return; }
-        window.optimizeLineup(true);
+        optimizeLineup(true);
         loadRosterTab(); // also re-renders the log
         setManualAddMsg(`Removed ${removed.name}`, { clearAfterMs: 4000 });
         const nameEl = document.getElementById('manualName');
@@ -138,7 +141,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 
     export const addManualPlayer = function(opts = {}) {
         let league = getActiveLeague();
-        if (!league) { if (window.showToast) window.showToast("Please add or select a league first.", { isError: true }); return; }
+        if (!league) { showToast("Please add or select a league first.", { isError: true }); return; }
         const nameInput = document.getElementById('manualName');
         const posInput = document.getElementById('manualPos');
         const teamInput = document.getElementById('manualTeam');
@@ -147,7 +150,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         const pos = posInput ? posInput.value : "FLEX";
         const team = teamInput ? teamInput.value.trim().toUpperCase() || "FA" : "FA";
 
-        if (!name) { if (window.showToast) window.showToast("Please enter a player name.", { isError: true }); return; }
+        if (!name) { showToast("Please enter a player name.", { isError: true }); return; }
 
         const cleanName = normalizeName(name);
         league.roster = league.roster || [];
@@ -172,7 +175,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (nameInput) nameInput.value = "";
         if (teamInput) teamInput.value = "";
         setManualAddMsg("");
-        window.optimizeLineup(true);
+        optimizeLineup(true);
         loadRosterTab(); // also re-renders the "Added this session" list
 
         // Keyboard adds keep the cursor in the name field for the next player. Button taps
@@ -189,9 +192,9 @@ import { KEYS } from '../../shared/storage/keys.js';
         // from Sleeper; dialogMessageHTML escapes the body, so it goes in raw here.
         const player = (league.roster || []).find(p => p.id === playerId);
         const playerLabel = player && player.name ? `"${player.name}"` : 'this player';
-        if (await window.showConfirm(`This takes ${playerLabel} off your active roster in this league. You can add them back from the Roster tab.`, { title: 'Remove player?', confirmText: 'Remove', danger: true })) {
+        if (await showConfirm(`This takes ${playerLabel} off your active roster in this league. You can add them back from the Roster tab.`, { title: 'Remove player?', confirmText: 'Remove', danger: true })) {
             removePlayerFromLeague(league, playerId);
-            window.optimizeLineup(true);
+            optimizeLineup(true);
             loadRosterTab();
         }
     };

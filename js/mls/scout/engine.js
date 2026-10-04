@@ -1,17 +1,18 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3C: SCOUT TAB ENGINE
 // (runScout, incl. dynamic waiver adjustment and the position resolver). The trade fairness verdicts
 // and renderTradeVerdict (with its waiver adjustment) moved to trade/verdict.js in 3G.
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';
-import { ensureSleeperPosByName, findClosestRankedName } from '../players.js';
+import { ensureSleeperPosByName, findClosestRankedName, sleeperPosByName } from '../players.js';
 import { buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts } from './waivers.js';
 import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML } from '../trade/verdict.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { normalizeName } from '../../shared/names.js';
 
     // --- SCOUT TAB ENGINE ---
     export const runScout = async function(type) {
@@ -93,7 +94,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         // without a synced Sleeper league at all (per the tool's own "Sleeper Sync Required"
         // banner, which already says position/rank still work either way) -- so this can't
         // assume the cache exists yet.
-        if (!window.sleeperPosByName) {
+        if (!sleeperPosByName) {
             outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Looking up player positions…</div>`;
             await ensureSleeperPosByName();
         }
@@ -106,7 +107,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 
         const getPos = (cleanName) => {
             if (league && league.globalPosMap && league.globalPosMap[cleanName]) return league.globalPosMap[cleanName];
-            if (window.sleeperPosByName && window.sleeperPosByName[cleanName]) return window.sleeperPosByName[cleanName];
+            if (sleeperPosByName && sleeperPosByName[cleanName]) return sleeperPosByName[cleanName];
             let mPlayer = marketIndex.get(cleanName);
             if (mPlayer && mPlayer.pos) return mPlayer.pos;
             return "UNK";

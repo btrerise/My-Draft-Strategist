@@ -1,10 +1,11 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3F: the Global Injury
 // Auditor (Lineup tab), which sat unmarked after ACTIVE ROSTER: POWER RANKINGS SNAPSHOT.
 import { getNflState, getSleeperUser, getSleeperLeagueRosters, getSleeperPlayerMap } from '../../shared/api/sleeper.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { State, refreshGameTimes } from '../state.js';
 import { isBestBallLeague, isConnectionError } from '../helpers.js';
 import { hasKickedOff } from './gameInfo.js';
+import { normalizeName } from '../../shared/names.js';
 
 // A player this audit considers a genuine problem to leave in an active slot. Deliberately
 // narrower than HARD_OUT_STATUSES / getShortInjuryStatus's full vocabulary: Questionable and

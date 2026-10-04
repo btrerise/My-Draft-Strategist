@@ -3,6 +3,7 @@
 import { State } from '../state.js';
 import { rankingIndex, getActiveLeague } from '../helpers.js';
 import { rankToTradeValue, isDraftPickName } from './valueCurve.js';
+import { sleeperPosByName } from '../players.js';
 
     // --- DYNAMIC WAIVER ADJUSTMENT VALUE ---
     // The Trade Analyzer's waiver-adjustment credit (see renderTradeVerdict above) used to be
@@ -77,13 +78,13 @@ import { rankToTradeValue, isDraftPickName } from './valueCurve.js';
     // back to market consensus for that position only (mirroring the same per-tier fallback,
     // just applied position-by-position instead of to the whole list at once).
     export function getTopWaiverCandidatesByPosition(rosterMap, perPositionLimit) {
-        // Rankings files carry a name and a rank, not a position -- window.sleeperPosByName
+        // Rankings files carry a name and a rank, not a position -- sleeperPosByName
         // (built by ensureSleeperPosByName in players.js) is the same position lookup the
         // Waiver Wire Assistant already relies on for this exact reason; market data ships its
         // own pos field as a fallback for a player Sleeper's sync hasn't covered.
         const marketIndex = rankingIndex(State.marketRankings);
         const getPos = (cleanName) => {
-            if (window.sleeperPosByName && window.sleeperPosByName[cleanName]) return window.sleeperPosByName[cleanName];
+            if (sleeperPosByName && sleeperPosByName[cleanName]) return sleeperPosByName[cleanName];
             const mPlayer = marketIndex.get(cleanName);
             return (mPlayer && mPlayer.pos) ? mPlayer.pos : null;
         };

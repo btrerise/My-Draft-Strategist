@@ -3,6 +3,9 @@
 import { State, getActiveDraft, saveActiveDraftState, saveAndRenderDraftState } from './state.js';
 import { renderBoard } from './tracker.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { flashButton } from '../shared/ui/flashButton.js';
+import { showConfirm } from '../shared/ui/confirm.js';
+import { showToast } from '../shared/ui/toast.js';
 
     // --- INITIALIZE SETTINGS INPUTS ---
     export function initSettingsUI() {
@@ -111,7 +114,7 @@ import { KEYS } from '../shared/storage/keys.js';
     export const resetPicksOnly = async function() {
         let draft = getActiveDraft();
         if (!draft) return;
-        if (await window.showConfirm(`This puts '${draft.name}' back at pick 1.01. Your rankings and settings aren't affected.`, { title: 'Reset draft picks?', confirmText: 'Reset Picks', danger: true })) {
+        if (await showConfirm(`This puts '${draft.name}' back at pick 1.01. Your rankings and settings aren't affected.`, { title: 'Reset draft picks?', confirmText: 'Reset Picks', danger: true })) {
             draft.draftedPlayers = [];
             draft.myTeam = [];
             draft.rawDraftPicks = [];
@@ -120,7 +123,7 @@ import { KEYS } from '../shared/storage/keys.js';
             
             // The timeout ensures the heavy DOM render doesn't swallow the animation
             setTimeout(() => {
-                if (typeof window.showToast === 'function') window.showToast("Draft picks reset to 1.01");
+                showToast("Draft picks reset to 1.01");
             }, 100);
         }
     };

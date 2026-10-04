@@ -21,7 +21,7 @@ import { rankingIndex } from '../helpers.js';
     // Detects a rookie draft pick asset ("2027 1st (Early)", "2026 2nd", "2025 3rd Round",
     // etc.) by shape -- a draft year plus a round ordinal -- rather than by trusting any one
     // market source's internal "position" field, which isn't consistently documented across
-    // FantasyCalc/LeagueLogs and isn't worth taking on faith. No real NFL player's name will
+    // market sources (FantasyCalc; LeagueLogs before refactor 7A) and isn't worth taking on faith. No real NFL player's name will
     // ever contain both a 4-digit year and a round ordinal, so this is a safe, source-agnostic
     // classifier. Used to keep picks out of contexts where they're not actually a fit: they're
     // never "rostered" in globalRosterMap (nobody's Sleeper roster contains a pick), so without

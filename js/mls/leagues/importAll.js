@@ -4,6 +4,7 @@ import { State } from '../state.js';
 import { updatePulsePrompts } from '../init.js';
 import { formatNameList, loadActiveLeagueData, processSleeperData, refreshLeagueDropdown } from './sync.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { showToast } from '../../shared/ui/toast.js';
 
     // --- IMPORT ALL LEAGUES (by username only) ---
     // Pulls every league a Sleeper username belongs to for the current NFL season and syncs
@@ -15,7 +16,7 @@ import { KEYS } from '../../shared/storage/keys.js';
     export const importAllSleeperLeagues = async function(btn) {
         const username = document.getElementById('sleeperUsername')?.value.trim() || "";
         if (!username) {
-            if (window.showToast) window.showToast("Please enter your Sleeper Username first.", { isError: true });
+            showToast("Please enter your Sleeper Username first.", { isError: true });
             return;
         }
 
@@ -35,7 +36,7 @@ import { KEYS } from '../../shared/storage/keys.js';
             const leagues = await getSleeperUserLeagues(userId, season);
 
             if (!leagues || leagues.length === 0) {
-                if (window.showToast) window.showToast(`No ${season} NFL leagues found for that username.`, { isError: true });
+                showToast(`No ${season} NFL leagues found for that username.`, { isError: true });
                 return;
             }
 
@@ -77,16 +78,14 @@ import { KEYS } from '../../shared/storage/keys.js';
             // A partial import gets the longer window (and with it the dismiss button), matching
             // syncAllLeagues: there are league names in there to read and act on, and the
             // default duration isn't enough to do that.
-            if (window.showToast) {
-                window.showToast(summary, {
-                    isError: failCount > 0,
-                    duration: failCount > 0 ? 9000 : undefined
-                });
-            }
+            showToast(summary, {
+                isError: failCount > 0,
+                duration: failCount > 0 ? 9000 : undefined
+            });
 
         } catch (err) {
             console.error(err);
-            if (window.showToast) window.showToast(`Could not import leagues:\n${err.message}`, { isError: true });
+            showToast(`Could not import leagues:\n${err.message}`, { isError: true });
         } finally {
             if (btn) { btn.innerText = origText; btn.disabled = false; btn.style.opacity = "1"; }
         }

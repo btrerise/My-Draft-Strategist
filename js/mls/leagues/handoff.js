@@ -3,9 +3,11 @@
 import { State } from '../state.js';
 import { loadActiveLeagueData, refreshLeagueDropdown } from './sync.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { normalizeName } from '../../shared/names.js';
+import { showToast } from '../../shared/ui/toast.js';
 
     // --- DRAFT STRATEGIST ROSTER HANDOFF ---
-    // Counterpart to sendRosterToLineupStrategist() in MDS's mds.js. Same-origin localStorage
+    // Counterpart to sendRosterToLineupStrategist() in js/mds/handoff.js. Same-origin localStorage
     // is the transport -- see that function's comment for why no URL params/backend are needed.
     export function checkForDraftStrategistHandoff() {
         const raw = localStorage.getItem(KEYS.shared.handoffRoster);
@@ -63,7 +65,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (leagueSelect) leagueSelect.value = newId;
         loadActiveLeagueData();
 
-        if (window.showToast) window.showToast(`Imported "${leagueObj.name}" with ${roster.length} players.`);
+        showToast(`Imported "${leagueObj.name}" with ${roster.length} players.`);
     };
 
     export const dismissDraftStrategistHandoff = function() {

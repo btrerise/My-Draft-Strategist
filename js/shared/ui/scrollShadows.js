@@ -1,6 +1,5 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// Moved verbatim from js/utils.js in refactor chunk 1A. Has load-time side effects, so js/shared/globals.js
+// imports it on every page (in the old utils.js order); code that uses its exports imports it too.
 
 // --- SCROLL-SHADOW CUE FOR WIDE TABLES ---
 // Toggles .has-scroll-shadow (css/base.css) on/off based on actual scroll position, rather
@@ -8,7 +7,7 @@
 // scrolled all the way to the right would be actively misleading (implying there's more to
 // see when there isn't). Applies to .table-responsive (Command Center) and .sos-table-wrapper
 // (SoS grid) only; the Power Rankings heatmap intentionally doesn't use overflow-x: auto
-// (see its own comment in mls.js -- tooltips would get clipped), so it's excluded here too.
+// (see its own comment in css/mls.css -- tooltips would get clipped), so it's excluded here too.
 function initScrollShadows() {
     const SCROLL_SHADOW_SELECTOR = '.table-responsive, .sos-table-wrapper';
 

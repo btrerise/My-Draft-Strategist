@@ -1,9 +1,8 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
+import { createFocusTrap } from './focusTrap.js';
 
 // --- SHARED IN-APP CONFIRM DIALOG ---
-// window.showConfirm() replaces window.confirm() across all three pages. Native confirm()
+// showConfirm() replaces window.confirm() across all three pages. Native confirm()
 // freezes the whole page, can't be styled to match the app, and on mobile browsers renders
 // with the site's origin in its title bar, which reads like a security warning rather than
 // a question the app is asking. This keeps the same "stop and answer" semantics but inside
@@ -121,9 +120,7 @@ export const showConfirm = function(message, options = {}) {
 
         // Cancel is first in the DOM, so the trap lands initial focus there rather than on a
         // destructive confirm button - Enter on an unread dialog does the safe thing.
-        if (typeof window.createFocusTrap === 'function') {
-            trap = window.createFocusTrap(overlay, { onEscape: () => settle(false) });
-            trap.activate();
-        }
+        trap = createFocusTrap(overlay, { onEscape: () => settle(false) });
+        trap.activate();
     });
 };

@@ -1,6 +1,4 @@
-// Moved verbatim from js/utils.js in refactor chunk 1A. Loaded as an ES module through
-// js/shared/globals.js, which assigns its exports to the same window.* names utils.js set.
-// Comments below that say "this file" or "utils.js" were written when this was one file.
+// Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- NETWORK FETCH WITH A TIMEOUT ---
 // Every remote call this app makes -- Sleeper, FFC, FantasyCalc, ESPN -- used to be a
@@ -30,7 +28,7 @@
 // enough that a person staring at a spinner gets an answer while they're still waiting on it.
 const MDS_FETCH_TIMEOUT_MS = 12000;
 
-// Sleeper's players/nfl payload is close to 5MB (see sleeperApi.js's cache comment). The
+// Sleeper's players/nfl payload is close to 5MB (see the cache comment in js/shared/api/sleeper.js). The
 // default above would abort a perfectly healthy download of it on a slow connection, so its
 // callers pass this instead. Still bounded -- the point of this whole wrapper is that there
 // is always a ceiling, not that some requests are exempt from one.
@@ -96,7 +94,7 @@ function mdsFetchSignal(ms, callerSignal) {
  *
  * @param {string} url
  * @param {RequestInit} [opts] - passed through; a `signal` here is honored alongside the timeout
- * @param {number} [ms=12000] - pass window.MDS_LONG_FETCH_TIMEOUT_MS for multi-megabyte payloads
+ * @param {number} [ms=12000] - pass MDS_LONG_FETCH_TIMEOUT_MS for multi-megabyte payloads
  * @returns {Promise<Response>} rejects with a TimeoutError whose .message is user-facing
  *   ("Sleeper didn't respond in time...") and whose .isTimeout is true, so a call site that
  *   wants to distinguish a timeout from a 404 can, while one that just toasts err.message

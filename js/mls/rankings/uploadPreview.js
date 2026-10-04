@@ -2,20 +2,25 @@
 // just above the preview), RANKINGS UPLOAD PREVIEW and UPLOAD PROCESSING INDICATOR, including the
 // load-time listeners on the rankings file inputs and the drag-and-drop setup.
 import { parseRankingsFiles } from '../../shared/rankings/parse.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { generateSoSGrid } from '../sos.js';
 import { analyzeRankingsFile, derivedRanksWording, formatUnmatchedNames } from '../scout/waivers.js';
 import { setRankingsCardExpanded } from './engine.js';
 import { resolveRankingsTarget, saveRankingsAsSet, renderLeaguePicker, readLeaguePicker, assignSetToLeagues, leagueCountText } from './sets.js';
-import { loadRosterTab } from '../main.js';
+import { loadRosterTab, optimizeLineup } from '../main.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
+import { showToast } from '../../shared/ui/toast.js';
+import { formatRankingsDiagnostic } from '../../shared/rankings/diagnostics.js';
+import { createFocusTrap } from '../../shared/ui/focusTrap.js';
+import { enableFileDrop } from '../../shared/ui/fileDrop.js';
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
-        const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: window.loadSheetJS, onProgress });
+        const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: loadSheetJS, onProgress });
 
         // The parser module returns SoS data rather than writing to State directly (it has no
-        // access to State at all -- see rankingsParser.js), so it's merged in here instead.
+        // access to State at all -- see js/shared/rankings/parse.js), so it's merged in here instead.
         Object.entries(sosUpdates).forEach(([team, posMap]) => {
             if (!State.sosMap[team]) State.sosMap[team] = {};
             Object.assign(State.sosMap[team], posMap);
@@ -35,17 +40,17 @@ import { KEYS } from '../../shared/storage/keys.js';
             });
             // Unreadable files were already toasted by the parser, where the error was caught,
             // so only the other diagnostics are reported here. Each one names its file and says
-            // what was wrong (see window.formatRankingsDiagnostic in js/utils.js).
+            // what was wrong (see formatRankingsDiagnostic in js/shared/rankings/diagnostics.js).
             const toReport = diagnostics.filter(d => d.reason !== 'unreadable');
-            if (toReport.length > 0 && typeof window.showToast === 'function') {
+            if (toReport.length > 0) {
                 const MAX_SHOWN = 3;
-                let message = toReport.slice(0, MAX_SHOWN).map(window.formatRankingsDiagnostic).join('\n\n');
+                let message = toReport.slice(0, MAX_SHOWN).map(formatRankingsDiagnostic).join('\n\n');
                 if (toReport.length > MAX_SHOWN) {
                     const rest = toReport.length - MAX_SHOWN;
                     message += `\n\n…and ${rest} more file${rest === 1 ? '' : 's'} with the same problem.`;
                 }
                 // Longer than the 6s error default: these messages carry a list to read and act on.
-                window.showToast(message, { isError: true, duration: 12000 });
+                showToast(message, { isError: true, duration: 12000 });
             }
             return;
         }
@@ -86,7 +91,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (skippedEl) {
             if (skipped.length > 0) {
                 // Whole files that failed, single workbook tabs skipped as notes, and rows lost to
-                // an unclosed quote (see rankingsParser.js), counted separately so the title says
+                // an unclosed quote (see js/shared/rankings/parse.js), counted separately so the title says
                 // which it was: e.g. "1 tab left out, 3 rows lost".
                 const tabs = skipped.filter(d => d.reason === 'tab-without-header').length;
                 const quoteDiags = skipped.filter(d => d.reason === 'unclosed-quote');
@@ -108,7 +113,7 @@ import { KEYS } from '../../shared/storage/keys.js';
                 skipped.forEach(d => {
                     const row = document.createElement('div');
                     row.style.marginBottom = '0.35rem';
-                    row.textContent = window.formatRankingsDiagnostic(d);
+                    row.textContent = formatRankingsDiagnostic(d);
                     listEl.appendChild(row);
                 });
                 skippedEl.style.display = 'block';
@@ -205,8 +210,8 @@ import { KEYS } from '../../shared/storage/keys.js';
         const overlay = document.getElementById('rankingsPreviewOverlay');
         if (overlay) overlay.style.display = 'flex';
 
-        if (typeof window.createFocusTrap === 'function' && overlay) {
-            previewFocusTrap = window.createFocusTrap(overlay, { onEscape: () => window.cancelRankingsPreview() });
+        if (overlay) {
+            previewFocusTrap = createFocusTrap(overlay, { onEscape: () => cancelRankingsPreview() });
             previewFocusTrap.activate();
         }
     }
@@ -255,7 +260,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
-        if (activeTab === 'lineupTab') window.optimizeLineup(true);
+        if (activeTab === 'lineupTab') optimizeLineup(true);
         if (activeTab === 'rosterTab') loadRosterTab();
 
         let msgEl = document.getElementById(successMsgId);
@@ -263,18 +268,16 @@ import { KEYS } from '../../shared/storage/keys.js';
             msgEl.style.display = 'block';
             setTimeout(() => msgEl.style.display = 'none', 2500);
         }
-        if (typeof window.showToast === 'function') {
-            let rankType = isWeekly ? "Weekly" : "ROS";
-            let isFirstTime = !localStorage.getItem(KEYS.mls.hasSeenRankingsToast);
+        let rankType = isWeekly ? "Weekly" : "ROS";
+        let isFirstTime = !localStorage.getItem(KEYS.mls.hasSeenRankingsToast);
 
-            const alsoText = leagueChoice.add.length ? ` Also applied to ${leagueCountText(leagueChoice.add.length)}.` : '';
+        const alsoText = leagueChoice.add.length ? ` Also applied to ${leagueCountText(leagueChoice.add.length)}.` : '';
 
-            if (isFirstTime) {
-                window.showToast(`${rankType} Rankings loaded!${alsoText} \n\nTip: We saved this as a reusable set. Use "Choose leagues…" under the set dropdown to share it with more of your leagues any time.`, { duration: 6000 });
-                localStorage.setItem(KEYS.mls.hasSeenRankingsToast, 'true');
-            } else {
-                window.showToast(`${rankType} Rankings loaded successfully!${alsoText}`);
-            }
+        if (isFirstTime) {
+            showToast(`${rankType} Rankings loaded!${alsoText} \n\nTip: We saved this as a reusable set. Use "Choose leagues…" under the set dropdown to share it with more of your leagues any time.`, { duration: 6000 });
+            localStorage.setItem(KEYS.mls.hasSeenRankingsToast, 'true');
+        } else {
+            showToast(`${rankType} Rankings loaded successfully!${alsoText}`);
         }
 
         pendingRankingsUpload = null;
@@ -347,7 +350,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         });
 
         if (filesWithContext.length === 0) {
-            if (window.showToast) window.showToast("Please select and upload at least one positional file.", { isError: true });
+            showToast("Please select and upload at least one positional file.", { isError: true });
             return;
         }
 
@@ -373,28 +376,24 @@ import { KEYS } from '../../shared/storage/keys.js';
     if (rosFileEl) rosFileEl.addEventListener('change', () => processSingleRankingUpload('ros', 'rosSuccessMsg'));
     if (weeklyFileEl) weeklyFileEl.addEventListener('change', () => processSingleRankingUpload('weekly', 'weeklySuccessMsg'));
 
-    // Drag-and-drop onto either rankings card (window.enableFileDrop, js/utils.js). The drop
+    // Drag-and-drop onto either rankings card (enableFileDrop, js/shared/ui/fileDrop.js). The drop
     // is handed to the same file input the picker uses, so it goes through the exact same
     // path. Single-file mode: the whole card is the target. Multiple-files mode: a file has
     // to land on a visible position box, because the card alone can't say which position it
     // is; that box's input gets it, and "Combine & Process Files" runs the batch as usual.
-    // typeof check: an older cached utils.js right after a deploy won't have the helper yet.
-    if (typeof window.enableFileDrop === 'function') {
-        ['ros', 'weekly'].forEach(type => {
-            window.enableFileDrop(document.getElementById(`${type}RankingsCard`), {
-                pickInput: e => {
-                    if (document.getElementById(`${type}UploadMode`)?.value !== 'multi') {
-                        return document.getElementById(`${type}FileInput`);
-                    }
-                    const wrap = e.target instanceof Element ? e.target.closest(`[id^="${type}-input-wrap-"]`) : null;
-                    return (wrap && wrap.style.display !== 'none') ? wrap.querySelector('input[type="file"]') : null;
-                },
-                refuseMessage: () => "You're in Multiple Files mode: drop each file onto its position's box. Tick a position above to show its box."
-            });
+    ['ros', 'weekly'].forEach(type => {
+        enableFileDrop(document.getElementById(`${type}RankingsCard`), {
+            pickInput: e => {
+                if (document.getElementById(`${type}UploadMode`)?.value !== 'multi') {
+                    return document.getElementById(`${type}FileInput`);
+                }
+                const wrap = e.target instanceof Element ? e.target.closest(`[id^="${type}-input-wrap-"]`) : null;
+                return (wrap && wrap.style.display !== 'none') ? wrap.querySelector('input[type="file"]') : null;
+            },
+            refuseMessage: () => "You're in Multiple Files mode: drop each file onto its position's box. Tick a position above to show its box."
         });
-    }
+    });
 
-    // loadSheetJS used to be defined here. mds.js needed the same lazy-load with the same
+    // loadSheetJS used to be defined here. Draft Strategist needed the same lazy-load with the same
     // failure path (it had its own copy with no error handling at all), so it now lives in
-    // js/utils.js as window.loadSheetJS alongside loadScriptOnce. The call sites above use it
-    // directly; the (callback, onError) signature rankingsParser.js documents is unchanged.
+    // js/shared/ui/scriptLoader.js alongside loadScriptOnce. The call sites above import it; the (callback, onError) signature js/shared/rankings/parse.js documents is unchanged.

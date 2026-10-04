@@ -1,6 +1,7 @@
-// tscore.js (moved from t-score/tscore_data.js in refactor chunk 1B; still a plain script that defines the tScoreData global)
+// tscore.js (moved from t-score/tscore_data.js in refactor chunk 1B). An ES module since refactor 5D: js/mds/tracker.js
+// imports tScoreData (until then a plain <script> in index.html that defined it as a global).
 // 2026 Predictive T-Score Data for Skill Positions
-const tScoreData = {
+export const tScoreData = {
     // Wide Receivers
     "pukanacua": { s: 96.44, l: "Elite", c: "label-elite" },
     "jaxonsmithnjigba": { s: 94.51, l: "Elite", c: "label-elite" },

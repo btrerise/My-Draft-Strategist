@@ -1,16 +1,19 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3D: MARKET DISCONNECT
 // ENGINE (the market file upload and its load-time listener, the Trade Finder threshold controls),
-// fetchLeagueLogsADP (the Trade Finder's market fetch; window name kept), parseMarketData, and the
+// fetchMarketValue (the Trade Finder's market fetch; fetchLeagueLogsADP until refactor 5D), parseMarketData, and the
 // unmarked Trade Finder code after the value curve: getMarketPositionalRanks,
 // updateMarketMetaDisplay, runMarketDisconnectAnalysis.
 import { fetchMarketConsensusData } from '../../shared/api/market.js';
-import { escapeHtml } from '../compat.js';
+import { escapeHtml } from '../../shared/html.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { rankingIndex, showStatusFeedback, getActiveLeague } from '../helpers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { getRankingsFreshness } from '../rankings/engine.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { normalizeName } from '../../shared/names.js';
+import { showToast } from '../../shared/ui/toast.js';
+import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
 // --- MARKET DISCONNECT ENGINE ---
     const marketFileEl = document.getElementById('marketFileInput');
     if (marketFileEl) {
@@ -68,11 +71,11 @@ import { KEYS } from '../../shared/storage/keys.js';
                 error: err => {
                     console.error("Error reading file:", file.name, err);
                     fileInput.value = '';
-                    if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
+                    showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                 }
             });
         } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
-            window.loadSheetJS(() => {            
+            loadSheetJS(() => {            
                 const reader = new FileReader();
                 reader.onload = e => {
                     try {
@@ -82,26 +85,26 @@ import { KEYS } from '../../shared/storage/keys.js';
                         Papa.parse(csvStr, { header: true, skipEmptyLines: true, complete: results => parseMarketData(results.data, successMsgId) });
                     } catch (err) {
                         console.error("Error reading Excel file:", err);
-                        if (window.showToast) window.showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
+                        showToast(`Couldn't read "${file.name}"; it may be corrupted or in an unsupported format. Try re-saving it as .xlsx or .csv and uploading again.`, { isError: true });
                     }
                 };
                 reader.onerror = () => {
                     console.error("Error reading file:", file.name);
-                    if (window.showToast) window.showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
+                    showToast(`Couldn't read "${file.name}" from disk. Try selecting the file again.`, { isError: true });
                 };
                 reader.readAsArrayBuffer(file);
             }, () => {
                 console.error("Failed to load SheetJS library");
-                if (window.showToast) window.showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
+                showToast(`Couldn't load the Excel file reader, so "${file.name}" wasn't processed. Check your connection and try again, or save the file as .csv instead.`, { isError: true });
             });
         } else if (filename.endsWith('.numbers')) {
-            if (window.showToast) window.showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
+            showToast("Numbers files aren't supported directly. In Numbers, use File > Export To > CSV, then upload that file instead.", { isError: true });
         } else {
-            if (window.showToast) window.showToast("Unsupported file format. Please upload a .csv, .xlsx, or .xls file.", { isError: true });
+            showToast("Unsupported file format. Please upload a .csv, .xlsx, or .xls file.", { isError: true });
         }
     }
 
-    export const fetchLeagueLogsADP = async function(btn) {
+    export const fetchMarketValue = async function(btn) {
     const outputEl = document.getElementById('marketDisconnectOutput');
     const msgEl = document.getElementById('marketSuccessMsg');
     
@@ -131,7 +134,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 
     } catch (error) {
         console.error("Error fetching market data:", error);
-        if (window.showToast) window.showToast(`Could not pull live market data.\n\n${error.message}`, { isError: true });
+        showToast(`Could not pull live market data.\n\n${error.message}`, { isError: true });
     } finally {
         btn.innerText = origText;
         btn.style.opacity = "1";
@@ -150,7 +153,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         let posKey = Object.keys(sample).find(k => /^pos/i.test(k) || /position/i.test(k));
 
         if (!nameKey || !rankKey) {
-            if (window.showToast) window.showToast("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.", { isError: true });
+            showToast("Could not automatically detect 'Player' and 'Overall Rank' columns in your market file.", { isError: true });
             return;
         }
 
