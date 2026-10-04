@@ -910,7 +910,7 @@ button.edit-link {
 
 /* --- SHARED CARD SUB-LAYOUT CLASSES ---
    Extracted from repeated inline styles in buildPlayerCardHTML() / buildQueueCardHTML()
-   (js/mds.js). Each of these appeared identically in both card templates. */
+   (js/mds/tracker.js). Each of these appeared identically in both card templates. */
 .card-top-row {
     display: flex;
     align-items: center;

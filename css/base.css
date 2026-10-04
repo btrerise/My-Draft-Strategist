@@ -35,7 +35,7 @@
     
     --stack-color: #f97316;
 
-    /* Status colors for flashButton (js/utils.js), the error toast border, and inline error
+    /* Status colors for flashButton (js/shared/ui/flashButton.js), the error toast border, and inline error
        text. These used to be referenced with hard-coded fallbacks but never defined.
        --error-color is the strong red for fills and borders. --error-text is the lighter red
        for text on dark cards, where #ea4335 would be too dim to read comfortably. */
@@ -254,7 +254,7 @@ html { scroll-padding-top: 5rem; }
 
 /* --- MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (MLS only) --- */
 /* The .mds-modal-overlay / .mds-modal pair is the generic backdrop-and-card treatment, also
-   used by the shared confirm dialog (showConfirm in utils.js). The .mls-preview-* selectors
+   used by the shared confirm dialog (showConfirm in js/shared/ui/confirm.js). The .mls-preview-* selectors
    alongside them are the original names this markup shipped with, kept so the preview modal
    in lineup/index.html needs no change. */
 .mls-preview-overlay,
@@ -307,7 +307,7 @@ html { scroll-padding-top: 5rem; }
     flex: 1;
 }
 
-/* --- SHARED IN-APP CONFIRM DIALOG (showConfirm in utils.js) --- */
+/* --- SHARED IN-APP CONFIRM DIALOG (showConfirm in js/shared/ui/confirm.js) --- */
 /* Used by MDS, MLS and T-Score in place of window.confirm(). The backdrop and card chrome are
    the generalized .mds-modal-overlay/.mds-modal pair above (same rules the rankings preview
    modal uses), so only the message body and the button row are specific to this dialog. */
@@ -995,7 +995,7 @@ label.toggle-title,
 .early-badge { background: #fbbc04; color: #0b132b; font-weight: bold; border: 1px solid #f59e0b; padding: 1px 4px; font-size: 0.70rem; margin-left: 4px;}
 .inj-badge { background: #ea4335; color: white; border: none; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
 /* Shown only when a player's bye falls on the CURRENTLY active NFL week (see
-   getByeBadgeHTML() in mls.js) -- distinct from inj-badge's solid red (hard-out) and
+   getByeBadgeHTML() in js/mls/lineup/gameInfo.js) -- distinct from inj-badge's solid red (hard-out) and
    early-badge's yellow (early kickoff) so all three read as different kinds of "heads up". */
 .bye-badge { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid #f97316; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
 
@@ -1006,12 +1006,12 @@ label.toggle-title,
    collide on one row anyway (a taxi row's slot badge is always TX, never FLEX). */
 .taxi-badge { background: #281442; color: #e9d8fd; border: 1px solid #9f7aea; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
 
-/* Kickoff-time badge (see getKickoffBadgeHTML() in mls.js) -- neutral/informational blue, since
+/* Kickoff-time badge (see getKickoffBadgeHTML() in js/mls/lineup/gameInfo.js) -- neutral/informational blue, since
    unlike bye/inj/early this isn't a warning, just a fact the person can use to verify FLEX
    kickoff ordering at a glance. */
 .kickoff-badge { background: rgba(96, 165, 250, 0.15); color: #93c5fd; border: 1px solid #60a5fa; padding: 1px 4px; font-size: 0.65rem; font-weight: 600; margin-left: 4px; }
 
-/* Lock-state text badges on Lineup starter rows (see lockBadge in renderLineupUI, mls.js).
+/* Lock-state text badges on Lineup starter rows (see lockBadge in renderLineupUI, js/mls/render/lineup.js).
    Colours match each padlock icon's tint -- green for a manual season-long lock, blue for an
    auto-lock at kickoff -- so badge and icon read as one signal, but the words carry the meaning
    on their own (the tint alone was the only difference before, and title= never shows on touch). */
@@ -1056,8 +1056,8 @@ label.toggle-title,
     visibility: visible; opacity: 1; transform: translateY(0);
 }
 
-/* Keyboard: an icon with keyboard focus shows its tooltip (see initInfoTooltips in
-   js/utils.js), unless Escape/Enter dismissed it. cursor: pointer on the icon is also what
+/* Keyboard: an icon with keyboard focus shows its tooltip (see initTooltips in
+   js/shared/ui/tooltips.js), unless Escape/Enter dismissed it. cursor: pointer on the icon is also what
    makes iOS Safari deliver the tap to the document-level handler at all. */
 .tooltip-icon { cursor: pointer; }
 .tooltip-icon:focus-visible {
@@ -1073,7 +1073,7 @@ label.toggle-title,
     visibility: hidden; opacity: 0;
 }
 /* Icon-less tooltips, where the badge/status icon/cell itself is the trigger (data-tt-self is
-   set by initTooltips in js/utils.js): League Command Center status icons and badges, Power
+   set by initTooltips in js/shared/ui/tooltips.js): League Command Center status icons and badges, Power
    Rankings cells, the T-Score badge on Draft Tracker cards. */
 .tooltip-container[data-tt-self]:focus-visible {
     outline: 2px solid var(--primary-green);
@@ -1243,7 +1243,7 @@ label.toggle-title,
 }
 
 /* Scroll-shadow cue: a subtle inset shadow on the right edge, toggled by initScrollShadows()
-   in utils.js rather than always-on, so it only appears while there's actually more content
+   in js/shared/ui/scrollShadows.js rather than always-on, so it only appears while there's actually more content
    to scroll to and disappears once the user reaches the end. Shared by .table-responsive
    (Command Center) and .sos-table-wrapper (Strength of Schedule grid) -- deliberately NOT
    applied to the Positional Power Rankings heatmap, which uses overflow: visible on purpose
@@ -1562,7 +1562,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
 /* Pointer events, only while shown and only where needed. A success toast stays click-through
    except for its ✕: it lands over the lower lineup rows, and quick lock/swap taps must reach
    the buttons underneath. Error toasts take the whole box, so a long message can be hovered or
-   tapped to hold it open (see getToastElement in utils.js). Nothing hidden takes taps -- an
+   tapped to hold it open (see getToastElement in js/shared/ui/toast.js). Nothing hidden takes taps -- an
    invisible toast parked over the bottom nav must not swallow them. */
 .mds-toast.show.toast-error,
 .mds-toast.show .toast-dismiss-btn {
@@ -1659,7 +1659,7 @@ a.nav-btn,
 .nav-btn {
     text-decoration: none;
 }
-/* --- Drag-and-drop file upload (see window.enableFileDrop in js/utils.js) --- */
+/* --- Drag-and-drop file upload (see enableFileDrop in js/shared/ui/fileDrop.js) --- */
 /* The card (or MLS position box) under a dragged file. An outline rather than a border so
    nothing shifts; the tint makes the whole target read as one drop area. */
 .mds-drop-active {
@@ -1916,7 +1916,7 @@ a.nav-btn,
 
 /* Rankings upload in-progress indicator -- shown between file selection and the preview
    modal appearing (or an error toast), so a slow .xlsx parse never looks like nothing
-   happened. Empty/hidden by default; setUploadStatus() in mls.js fills and toggles it. */
+   happened. Empty/hidden by default; setUploadStatus() in js/mls/rankings/uploadPreview.js fills and toggles it. */
 .mls-upload-processing {
     display: none;
     align-items: center;
@@ -2026,7 +2026,7 @@ a.nav-btn,
 
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
    One card per player, with a per-league ownership row beneath the header. Markup comes from
-   runAllLeaguesSearch in mls.js. The card is deliberately its own box rather than a
+   runAllLeaguesSearch in js/mls/scout/allLeaguesSearch.js. The card is deliberately its own box rather than a
    .scout-result-card: those are single-line summaries, while each of these carries a variable
    number of league rows and needs a header/body split to stay readable at five-plus leagues. */
 /* Unmatched-name warning inside the rankings upload preview modal (see openRankingsPreview). */

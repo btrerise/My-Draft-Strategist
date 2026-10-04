@@ -41,7 +41,7 @@
 .pos-fieldset-legend { display: block; padding: 0; font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
 
 /* --- BADGES & POSITIONAL STYLING --- */
-/* Once kickoff has passed (see getKickoffBadgeHTML in mls.js), the badge swaps from the clock
+/* Once kickoff has passed (see getKickoffBadgeHTML in js/mls/lineup/gameInfo.js), the badge swaps from the clock
    time to "Started" -- a deeper, more solid blue so it visually reads as "locked in" rather
    than "upcoming", pairing with the auto-lock indicator icon used on that same row. */
 .kickoff-started { background: rgba(59, 130, 246, 0.28); color: #bfdbfe; border-color: #3b82f6; }
@@ -160,9 +160,9 @@
 
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
 
-/* Shared classes consolidated from repeated inline styles across mls.js's several player-row
-   renderers (Roster, Scout table, Lineup). Prefixed mls- deliberately: this file is shared with
-   My Draft Strategist, and an earlier un-prefixed shared class (.btn-sm) caused a real collision
+/* Shared classes consolidated from repeated inline styles across the old lineup/mls.js's several
+   player-row renderers (Roster, Scout table, Lineup). Prefixed mls- deliberately: these rules sat in
+   styles.css, shared with My Draft Strategist, until refactor 4A, and an earlier un-prefixed shared class (.btn-sm) caused a real collision
    between the two apps -- see the .mds-btn-sm note further down for the full story. */
 .mls-tooltip-center { display: flex; justify-content: center; width: 100%; }
 .mls-dotted-underline { border-bottom: 1px dotted currentColor; cursor: pointer; }
@@ -173,7 +173,7 @@
 .mls-player-row-text { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
 
 /* MLS player headshots (Roster list + Lineup starters/bench) -- see playerHeadshotHTML in
-   lineup/mls.js. The circle always renders at a fixed size with the player's initials inside;
+   js/mls/lineup/headshots.js. The circle always renders at a fixed size with the player's initials inside;
    the Sleeper photo sits on top and removes itself if it fails to load, so rows keep one
    shape and the name column starts at the same x whether or not a photo exists. */
 .mls-headshot {
@@ -230,11 +230,11 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 .mls-name-badges .badge { margin-left: 0; padding: 1px 4px; font-size: 0.65rem; line-height: 1.3; border-style: solid; border-width: 1px; }
 .mls-name-badges .inj-badge { border-color: transparent; }
 .mls-rank-badge { background: #1c2541; border: 1px solid var(--border); }
-/* Optional tier shown beside a rank on player cards ("#12 (T3)") -- see tierTag in mls.js. */
+/* Optional tier shown beside a rank on player cards ("#12 (T3)") -- see tierTag in js/mls/constants.js. */
 .mls-tier { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
 .mls-rank-sep { opacity: 0.5; }
 /* Opponent ("@ PHI" / "vs KC") shown right after the kickoff badge on the Lineup row's badge line
-   (see getGameInfoHTML in mls.js) -- plain text rather than another badge. The wrapper keeps the
+   (see getGameInfoHTML in js/mls/lineup/gameInfo.js) -- plain text rather than another badge. The wrapper keeps the
    two together if the line wraps. */
 .mls-game-info { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
 .mls-opp { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
@@ -368,7 +368,7 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 
 /* Consolidated slot indicator for the Lineup tab (starters + bench): replaces the old
    plain-text slot-label ("RB1") + separate colored pos-badge pair with a single badge, styled
-   like pos-badge, showing just the slot TYPE with no player-count suffix (slotType in mls.js is
+   like pos-badge, showing just the slot TYPE with no player-count suffix (slotType in js/mls/render/lineup.js is
    already digit-stripped before this renders, so "RB1"/"RB2" both just show "RB"). Fixed width
    above keeps every row's name column starting at the same x position regardless of whether the
    slot text is "RB" or "SFLEX".
@@ -400,7 +400,7 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 
 /* Plain, unstyled position text -- deliberately NOT a badge, since a second colored pill here
    is exactly the duplication the slot-badge consolidation above was meant to remove. Shown on
-   every row (see mls.js) so every row's meta line has the same leading element -- color comes
+   every row (see js/mls/render/) so every row's meta line has the same leading element -- color comes
    from the existing .pos-text-* utility (extended below with K/DEF) so it matches the
    corresponding slot-badge/pos-badge color without a second color palette to maintain. Small
    left padding matches the kickoff-badge's own inset, so its text starts at the same x as the
@@ -561,7 +561,7 @@ button.close-chip {
 
 /* Info Banner Component */
 /* --- MATCHUP SIMULATOR (MONTE CARLO) RESULTS --- */
-/* Markup for this comes from monteCarloUi.js's worker.onmessage handler. */
+/* Markup for this comes from js/mls/sim/ui.js's worker.onmessage handler. */
 .simulation-card {
     background: var(--bg-card, #151d33);
     border: 1px solid var(--border);
@@ -749,7 +749,7 @@ button.close-chip {
 }
 
 /* Waiver Insights when the check ran but produced no rows (see renderWaiverInsights in
-   monteCarloUi.js): a green confirmation when nothing beat your starters, amber when the check
+   js/mls/sim/ui.js): a green confirmation when nothing beat your starters, amber when the check
    couldn't run, so an empty section never reads as "did this even do anything?". */
 .sim-waiver-empty {
     margin: 0;
@@ -1387,7 +1387,7 @@ button.close-chip {
 /* --- WAIVER WIRE ASSISTANT: AUTO-FIND (Scout tab) ---
    Waiver Wire Assistant Auto-Find + Scan Pasted List. Cards reuse .scout-result-card; these add
    the verdict line, pills, drop-candidate box, and the Compare Against toggle. See
-   autoFindWaiverUpgrades / buildWaiverContext in mls.js. */
+   autoFindWaiverUpgrades / buildWaiverContext in js/mls/scout/waivers.js. */
 .mls-scan-summary { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem; padding: 0.75rem 0.9rem; background: rgba(255, 255, 255, 0.04); border-radius: 6px; }
 .mls-scan-summary strong { color: var(--text-main); }
 .mls-scan-notes { margin: 0.4rem 0 0; padding-left: 1.1rem; font-size: 0.78rem; }
@@ -1421,7 +1421,7 @@ button.close-chip {
 
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
    One card per player, with a per-league ownership row beneath the header. Markup comes from
-   runAllLeaguesSearch in mls.js. The card is deliberately its own box rather than a
+   runAllLeaguesSearch in js/mls/scout/allLeaguesSearch.js. The card is deliberately its own box rather than a
    .scout-result-card: those are single-line summaries, while each of these carries a variable
    number of league rows and needs a header/body split to stay readable at five-plus leagues. */
 .mls-league-search-card {
@@ -1489,7 +1489,7 @@ button.close-chip {
     gap: 0.5rem;
     flex-shrink: 0;
 }
-/* Recommended row for the chosen Buy/Sell intent (see buildPowerRead in mls.js). Wins over the
+/* Recommended row for the chosen Buy/Sell intent (see buildPowerRead in js/mls/power/allLeagues.js). Wins over the
    green free-agent edge: when a Buy/Sell verdict exists, it's the more specific signal. */
 .mls-league-search-row.mls-league-search-rec { border-left-color: #a78bfa; background: rgba(167, 139, 250, 0.06); }
 
@@ -1542,7 +1542,7 @@ button.close-chip {
     border-color: rgba(167, 139, 250, 0.5);
 }
 /* Leagues scored without their own ROS rankings (market fallback) or not at all -- see
-   renderPowerSourceNote in mls.js. Amber to match the "mkt" tag it explains. */
+   renderPowerSourceNote in js/mls/power/allLeagues.js. Amber to match the "mkt" tag it explains. */
 .mls-power-note {
     font-size: 0.72rem;
     color: #fbbf24;
@@ -1568,7 +1568,7 @@ button.close-chip {
 }
 
 /* --- POSITIONAL POWER RANKINGS (Roster tab) ---
-   Markup from renderPowerRankingsTable in mls.js. Replaces the old inline-styled table. Cell
+   Markup from renderPowerRankingsTable in js/mls/power/rosterCard.js. Replaces the old inline-styled table. Cell
    colors are the same green / neutral / red thirds powerTier() uses everywhere else.
    overflow: visible so the player tooltips aren't clipped by the table wrapper. */
 .mls-power-table-wrap { overflow: visible; border: 1px solid var(--border); border-radius: 6px; }
@@ -1601,7 +1601,7 @@ button.close-chip {
 .mls-power-table .tooltip-container:hover .mls-power-tooltip,
 .mls-power-table .tooltip-container:focus-visible .mls-power-tooltip,
 .mls-power-table .tooltip-container .mls-power-tooltip.mobile-visible { display: block; }
-/* Dismissed with Escape or a second tap/press (see initTooltips in js/utils.js). */
+/* Dismissed with Escape or a second tap/press (see initTooltips in js/shared/ui/tooltips.js). */
 .mls-power-table .tooltip-container:hover .mls-power-tooltip.tt-dismissed:not(.mobile-visible),
 .mls-power-table .tooltip-container:focus-visible .mls-power-tooltip.tt-dismissed:not(.mobile-visible) { display: none; }
 .mls-power-table .tooltip-container .mls-power-tooltip-left { left: -10px; right: auto; }
@@ -1644,7 +1644,7 @@ button.close-chip {
     .mls-power-table .tooltip-container .mls-power-tooltip-right { left: 4px; right: 4px; width: auto; top: calc(100% - 2px); }
 }
 
-/* Team direction labels (see assignPowerLabels in mls.js). Green = win now, blue = close,
+/* Team direction labels (see assignPowerLabels in js/mls/power/directionLabels.js). Green = win now, blue = close,
    amber = on the fence (redraft Bubble), red = sell / long odds. */
 .mls-power-label {
     display: inline-block;
@@ -1685,7 +1685,7 @@ button.close-chip {
 .mls-power-summary-facts strong { color: var(--text-main); }
 .mls-power-summary-advice { font-size: 0.82rem; color: var(--text-main); margin-top: 6px; line-height: 1.45; }
 
-/* Active Roster card's Power Rankings snapshot (see renderRosterPowerStrip in mls.js): your
+/* Active Roster card's Power Rankings snapshot (see renderRosterPowerStrip in js/mls/power/snapshot.js): your
    own ranks only, same tier colors as the table. Seven evenly split cells fit a 360px phone. */
 .mls-roster-power {
     margin-bottom: 0.9rem;
@@ -1720,7 +1720,7 @@ button.close-chip {
     .mls-roster-power-stat-rank { font-size: 0.95rem; }
 }
 
-/* Scout tab's temporary "moved to the Roster tab" pointer -- see goToPowerRankings in mls.js
+/* Scout tab's temporary "moved to the Roster tab" pointer -- see goToPowerRankings in js/mls/power/rosterCard.js
    for when to remove it. */
 .mls-moved-pointer { padding-top: 0.9rem; padding-bottom: 0.9rem; }
 .mls-moved-pointer-text { margin: 0; }
