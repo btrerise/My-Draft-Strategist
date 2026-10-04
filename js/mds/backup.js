@@ -2,17 +2,23 @@
 // BACKUP & RESTORE (export, import, hard reset).
 import { PREMIGRATION_BACKUP_KEY } from './storage.js';
 import { State } from './state.js';
+import { isMdsOwnedKey, isMdsOwnedOrLegacyKey } from '../shared/storage/keys.js';
+import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
 
     // --- BACKUP & RESTORE ---
     // MDS and MLS share one origin (mydraftstrategist.com) and therefore one localStorage, so
     // "this app's data" has to be defined by key prefix rather than assumed to be everything.
-    // MDS_PREFIX covers every MDS-specific key; KEYS.mds.showHeadshots is the one MDS setting that
-    // doesn't follow that prefix. KEYS.shared.handoffRoster is deliberately excluded -- it's a
+    // MDS_PREFIX covers every MDS key. KEYS.shared.handoffRoster is deliberately left out -- it's a
     // transient signal to MLS, not a persistent setting, and backing it up would just replay
-    // a stale handoff on restore. The filter itself is isMdsOwnedKey in
-    // js/shared/storage/keys.js (assigned to window by js/shared/globals.js).
+    // a stale handoff on restore. The filters are in js/shared/storage/keys.js. Since 6B, Backup
+    // takes today's names only (isMdsOwnedKey), while Restore and Hard Reset also clear the
+    // pre-6B names this browser may still hold (isMdsOwnedOrLegacyKey).
     function getMdsOwnedKeys() {
-        return Object.keys(localStorage).filter(window.isMdsOwnedKey);
+        return Object.keys(localStorage).filter(isMdsOwnedKey);
+    }
+
+    function getMdsOwnedOrLegacyKeys() {
+        return Object.keys(localStorage).filter(isMdsOwnedOrLegacyKey);
     }
 
     export const exportMdsSettings = function() {
@@ -66,7 +72,9 @@ import { State } from './state.js';
                 return;
             }
 
-            const keyCount = Object.keys(payload.data).length;
+            // A backup saved before 6B uses the old key names; this gives them today's.
+            const data = renameLegacyKeys(payload.data);
+            const keyCount = Object.keys(data).length;
             const exportedDate = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString() : "an unknown date";
             const confirmMsg = `This replaces your current My Draft Strategist data with this backup (from ${exportedDate}, ${keyCount} settings).\n\nYour current data will be lost unless you've backed it up separately.`;
 
@@ -83,8 +91,8 @@ import { State } from './state.js';
             // not restoring it leaves the marker unset, and migrateDraftStorage() converts the
             // restored v1 drafts on the reload below. A post-migration backup carries the
             // marker and its own mdsDraftPoolKey(draftId) keys, so it restores as-is.
-            getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
-            Object.keys(payload.data).forEach(k => localStorage.setItem(k, payload.data[k]));
+            getMdsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
+            Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
 
             if (window.showToast) window.showToast("Backup restored! Reloading now.");
             setTimeout(() => { window.location.reload(); }, 900);
@@ -95,7 +103,7 @@ import { State } from './state.js';
     export const hardReset = async function() {
         if (await window.showConfirm("This deletes every saved draft, custom ranking set, and setting in My Draft Strategist.\n\nMy Lineup Strategist data is not affected. This can't be undone.", { title: 'Delete all My Draft Strategist data?', confirmText: 'Delete Everything', danger: true })) {
             if (State.autoSyncTimer) clearInterval(State.autoSyncTimer);
-            getMdsOwnedKeys().forEach(k => localStorage.removeItem(k));
+            getMdsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
             window.location.reload();
         }
     };

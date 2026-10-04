@@ -5,7 +5,7 @@ import { openApp, expectClean, seedMls, RANKINGS_CSV, FIXTURE_LEAGUE_ID, FIXED_N
 
 const toast = (page, text) => page.locator('.toast-message').filter({ hasText: text });
 const rosSetIds = (page) => page.evaluate(() =>
-    Object.fromEntries(JSON.parse(localStorage.getItem('mds_season_leagues')).map(l => [l.name, l.rosRankingSetId])));
+    Object.fromEntries(JSON.parse(localStorage.getItem('mls_leagues')).map(l => [l.name, l.rosRankingSetId])));
 
 test.describe('Lineup Strategist ranking sets', () => {
     test('a rankings upload applies to several leagues', async ({ page }) => {
@@ -48,11 +48,11 @@ test.describe('Lineup Strategist ranking sets', () => {
         expect(ids['Third League']).toBe(setId);
 
         // Switching to another league shows that set and its players.
-        const third = await page.evaluate(() => JSON.parse(localStorage.getItem('mds_season_leagues')).find(l => l.name === 'Third League').leagueId);
+        const third = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).find(l => l.name === 'Third League').leagueId);
         await page.evaluate((id) => window.switchActiveLeague(id), third);
         await expect(page.locator('#rosRankingSetSelect')).toHaveValue(setId);
         await expect(page.locator('#rosHeaderSetName')).not.toBeEmpty();
-        expect(await page.evaluate(() => (localStorage.getItem('mds_season_ros') || '').includes('Josh Allen'))).toBe(true);
+        expect(await page.evaluate(() => (localStorage.getItem('mls_ros') || '').includes('Josh Allen'))).toBe(true);
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
         await expectClean(page, state);

@@ -217,12 +217,17 @@
         if (!mls && typeof window.exportMdsSettings === 'function') return window.exportMdsSettings();
 
         try {
-            // Same key filters as getMlsOwnedKeys() in mls.js and getMdsOwnedKeys() in mds.js.
+            // Same key filters as isMlsOwnedOrLegacyKey / isMdsOwnedOrLegacyKey in
+            // js/shared/storage/keys.js: the app's keys under today's names and their pre-6B ones
+            // (ds_*, mds_season_*), because a page that failed to load may never have run the
+            // 6B rename. Restore renames the old ones; where a file has both, the new one wins.
+            // MDS's mds_ prefix also covers MLS's old mds_season_* keys and the old hand-off and
+            // T-Score cache names, which belong to neither backup.
             const keys = Object.keys(localStorage).filter(function (k) {
-                if (k === 'mds_handoff_roster') return false;
-                return mls
-                    ? (k.indexOf('mds_season_') === 0 || k.indexOf('mls_') === 0)
-                    : (k.indexOf('ds_') === 0 || k === 'mds_show_headshots');
+                if (mls) return k.indexOf('mls_') === 0 || k.indexOf('mds_season_') === 0;
+                if (k.indexOf('ds_') === 0) return true;
+                return k.indexOf('mds_') === 0 && k.indexOf('mds_season_') !== 0
+                    && k !== 'mds_handoff_roster' && k !== 'mds_tscore_cache' && k !== 'mds_tscore_cache_updated';
             });
             const data = {};
             keys.forEach(function (k) { data[k] = localStorage.getItem(k); });

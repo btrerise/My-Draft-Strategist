@@ -57,10 +57,10 @@ async function pasteRankings(page) {
 /** The active draft's player pool and record, as saved to localStorage. */
 async function savedDraft(page) {
     return page.evaluate(() => {
-        const active = localStorage.getItem('ds_active_draft_id');
-        const drafts = JSON.parse(localStorage.getItem('ds_drafts') || '[]');
+        const active = localStorage.getItem('mds_active_draft_id');
+        const drafts = JSON.parse(localStorage.getItem('mds_drafts') || '[]');
         const draft = drafts.find(d => d.draftId === active) || null;
-        const pool = JSON.parse(localStorage.getItem('ds_players_' + active) || '[]');
+        const pool = JSON.parse(localStorage.getItem('mds_players_' + active) || '[]');
         return { active, draft, pool };
     });
 }
@@ -123,7 +123,7 @@ test.describe('Draft Strategist network features', () => {
             [5, 'Justin Tucker', 'K1', 'BAL', '7', '160.0', false, '17'],
             [6, 'Baltimore Ravens', 'DEF1', 'BAL', '7', '190.5', true, 'BAL'],
         ]);
-        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('mds_adp_meta')));
         expect(meta.format).toBe('FFC: Redraft - 1QB (Half-PPR)');
         await expectClean(page, state);
     });
@@ -150,7 +150,7 @@ test.describe('Draft Strategist network features', () => {
             [1, 'Travis Hunter', 'WR1', 'JAX', '2.1', true, '12530'],
             [2, 'Some Rookie RB', 'RB1', 'LV', '5.5', false, 'custom_1'],
         ]);
-        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('mds_adp_meta')));
         expect(meta.format).toBe('FFC: Dynasty - Rookie Draft');
         await expectClean(page, state);
     });
@@ -172,7 +172,7 @@ test.describe('Draft Strategist network features', () => {
         await page.getByRole('button', { name: /Quick-Start/ }).first().click();
         const saved = toast(page, 'Quick-Start loaded 1 players from Fantasy Football Calculator (PPR ADP).');
         await expect(saved).toContainText("last full PPR list, from Sep 12, 2026. Today's list only has 29 players");
-        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('mds_adp_meta')));
         expect(meta.format).toBe('FFC: Redraft - 1QB (PPR) (list from Sep 12, 2026)');
 
         await page.unroute(/^http:\/\/localhost:\d+\/api\/ffc\//);
@@ -220,7 +220,7 @@ test.describe('Draft Strategist network features', () => {
         expect(ffcRequests).toEqual(['/api/ffc/2qb']);
         const players = byName((await savedDraft(page)).pool);
         expect([players["Ja'Marr Chase"].adp, players['Bijan Robinson'].adp, players['A.J. Brown'].adp, players['Josh Allen'].adp]).toEqual(['3.2', '1.0', '40.4', '-']);
-        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('mds_adp_meta')));
         expect(meta.format).toBe('FFC: Redraft - 2QB/Superflex');
 
         await page.unroute(/^http:\/\/localhost:\d+\/api\/ffc\//);
@@ -251,7 +251,7 @@ test.describe('Draft Strategist network features', () => {
         expect(adpRequests).toEqual(['https://api.sleeper.com/projections/nfl/2026?season_type=regular&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=adp_half_ppr']);
         const players = byName((await savedDraft(page)).pool);
         expect([players['Bijan Robinson'].adp, players["Ja'Marr Chase"].adp, players['Josh Allen'].adp]).toEqual(['1.9', '3.3', '-']);
-        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('ds_adp_meta')));
+        const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('mds_adp_meta')));
         expect(meta.format).toBe('SLEEPER: Redraft - 1QB (Half-PPR)');
 
         adpStatus = 400;

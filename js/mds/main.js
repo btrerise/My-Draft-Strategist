@@ -3,7 +3,9 @@
 //
 // init.js is imported first. It imports every other js/mds/ module in the order their code sat
 // in mds.js, so the load-time code (storage migration, State, event listeners) runs in the
-// original order. (Until refactor chunk 2B this was legacy.js.)
+// original order. (Until refactor chunk 2B this was legacy.js.) Only migrateKeys.js (6B) comes
+// before it: it renames old storage keys, so it has to run before anything reads storage.
+import './migrateKeys.js';
 import './init.js';
 import { draftPlayer, switchDraftProfile, undoDraft } from './state.js';
 import { saveInlineEdit, setPosFilter, showTab, toggleCardDetails, toggleEditBar, toggleMenu } from './ui.js';
