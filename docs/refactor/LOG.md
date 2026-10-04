@@ -3378,7 +3378,7 @@ removed, so PRECACHE_ASSETS is unchanged. Visible version labels: the owner chos
 
 | Fix | Change | What users see |
 |---|---|---|
-| Pulsing-card corners | `.pulse-border` (base.css, LIVE INDICATOR) no longer sets `border-radius: 8px`; its comment now says the element keeps its own corners. `.nav-pulse`'s 8px stays (the logo button has no radius of its own). | MLS Setup: a pulsing card (`#setupSyncCard` with no leagues, `#rosRankingsCard` / `#weeklyRankingsCard` until rankings are loaded) keeps the 12px corners of every other `.settings-card` instead of switching to 8px. |
+| Pulsing-card corners | `.pulse-border` (base.css, LIVE INDICATOR) no longer sets `border-radius: 8px`; its comment now says the element keeps its own corners. `.nav-pulse`'s 8px stays (the logo button has no radius of its own). | A pulsing card (`#setupSyncCard` on Setup with no leagues; `#rosRankingsCard` on Roster and `#weeklyRankingsCard` on Lineup until rankings are loaded) keeps the 12px corners of every other `.settings-card` instead of switching to 8px. |
 | Smaller ✕ | `.close-banner-btn-sm` → `.close-banner-btn.close-banner-btn-sm`, in place (base.css, next to `.settings-grid .input-group`), with a comment saying why. That was the smaller change: one selector instead of moving the rule past FULL-WIDTH DRAFT BOARD. Specificity 0,2,0 beats both later `.close-banner-btn` rules; no rule in mds.css or mls.css targets the ✕. | MLS's four ✕ buttons (`#guideBanner`, `#draftBanner`, `#sleeperSyncBanner`, the handoff banner) go from 17.6px text with 8px padding to 13.6px (0.85rem) with 4px (0.25rem). Still at least 44×44px, and the `::after` hit area (8px beyond the box) is unchanged. |
 | MDS ✕ uses the class | `#mlsBanner` and `#guideBanner` ✕ in index.html: inline `style="font-size: 0.85rem; padding: 0.25rem;"` → `class="close-banner-btn close-banner-btn-sm"` (`--space-1` is 0.25rem). The install card's ✕ keeps its own inline style (different size and position). | Nothing: compare-css 0 differences on MDS. |
 | Danger Zone | New `.sos-details-accordion.danger-card` (base.css, right after `.sos-details-accordion[open]`) with `.danger-card`'s border and background. It sits after `[open]` (same specificity), so the red style also wins when the accordion is open. | MLS Setup → Advanced Settings → Danger Zone: red dashed border and the faint red-to-card gradient, like the Global Injury Auditor card, instead of the plain grey border and dark fill. Open, it keeps the red dashed border instead of the green "open" border every other accordion gets. No hover rule applies to the accordion; the summary text stays red (`.text-danger` is `!important`). |
@@ -3420,10 +3420,10 @@ is 4E's. Updated (10), pixels changed:
 
 | PNG (desktop / phone) | What changed |
 |---|---|
-| `mls-empty-setup` (55,355 / 17,623 px) | ✕ on the Guide banner; corners of the pulsing Sync, ROS and Weekly cards; the Danger Zone accordion |
-| `mls-league-setup` (54,959 / 17,258 px) | ✕ on the Sleeper-sync banner; corners of the pulsing ROS and Weekly cards; the Danger Zone accordion |
-| `mls-league-roster`, `mls-league-lineup` (≈400 px each) | ✕ on the Sleeper-sync banner; the pulsing cards' corners where they show |
-| `mls-league-scout` (84 / 102 px) | ✕ on the Sleeper-sync banner |
+| `mls-empty-setup` (55,355 / 17,623 px) | the Guide banner's ✕; the pulsing Add/Sync League card's corners; the Danger Zone accordion |
+| `mls-league-setup` (54,959 / 17,258 px) | a banner ✕; the Danger Zone accordion |
+| `mls-league-roster`, `mls-league-lineup` (≈400 px each) | the corners of the pulsing ROS card (Roster tab) and Weekly card (Lineup tab), which pulse because the fixture has no rankings loaded |
+| `mls-league-scout` (84 / 102 px) | a banner ✕ |
 
 Checked by eye in side-by-side crops: the smaller ✕, the red dashed Danger Zone, the rounder pulsing-card corner.
 The screenshots disable animations, so the pulse itself isn't in them.
