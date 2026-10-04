@@ -129,21 +129,43 @@ describe('getBoomBustRates', () => {
         });
     });
     test('tier 2 gate: week 4, too few current games, or a non-number week all fall to tier 3', () => {
-        const tier3 = { bustRate: 20, boomRate: 20, bustThreshold: 7.5, boomThreshold: 20, isEstimated: false, tier: 'blended' };
+        const tier3 = { bustRate: 40, boomRate: 40, bustThreshold: 7.5, boomThreshold: 20, isEstimated: false, tier: 'blended' };
         assert.deepEqual(getBoomBustRates(wr, blended), tier3);
         assert.deepEqual(getBoomBustRates(wr, blended, { currentWeek: 4, currentSeasonScores: [25, 3, 10] }), tier3);
         assert.deepEqual(getBoomBustRates(wr, blended, { currentWeek: 6, currentSeasonScores: [25, 3] }), tier3);
         assert.deepEqual(getBoomBustRates(wr, blended, { currentWeek: '6', currentSeasonScores: [25, 3, 10] }), tier3);
     });
-    test('tier 3 thresholds are strict: exactly 7.5 is not a bust, exactly 20 is not a boom', () => {
-        // blended = [5, 7.5, 20, 21, 8]: only 5 busts (< 7.5), only 21 booms (> 20).
+    // Refactor 9A: these were strict (exactly 20 was not a boom), pinned by 0B as CURRENT BEHAVIOR.
+    test('tier 3 thresholds are inclusive for QB/RB/WR/TE: exactly 7.5 is a bust, exactly 20 is a boom', () => {
+        // blended = [5, 7.5, 20, 21, 8]: 5 and 7.5 bust (<= 7.5), 20 and 21 boom (>= 20).
         const r = getBoomBustRates(wr, blended);
-        assert.equal(r.bustRate, 20);
-        assert.equal(r.boomRate, 20);
-        // Same for QB at 24/12: a 24-point week is not a boom, a 12-point week is not a bust.
+        assert.equal(r.bustRate, 40);
+        assert.equal(r.boomRate, 40);
+        // Same for QB at 24/12: a 24-point week is a boom, a 12-point week is a bust.
         assert.deepEqual(getBoomBustRates({ mean: 24, stdDev: 5, pos: 'QB' }, [24, 24, 12, 12]), {
-            bustRate: 0, boomRate: 0, bustThreshold: 12, boomThreshold: 24, isEstimated: false, tier: 'blended'
+            bustRate: 50, boomRate: 50, bustThreshold: 12, boomThreshold: 24, isEstimated: false, tier: 'blended'
         });
+    });
+    test('each position line: on it counts, a hundredth inside it does not', () => {
+        const rates = (pos, scores) => {
+            const r = getBoomBustRates({ mean: 12, stdDev: 5, pos }, scores);
+            return [r.bustRate, r.boomRate];
+        };
+        assert.deepEqual(rates('QB', [12, 24, 12.01, 23.99]), [25, 25]);
+        assert.deepEqual(rates('RB', [7, 20, 7.01, 19.99]), [25, 25]);
+        assert.deepEqual(rates('WR', [7.5, 20, 7.51, 19.99]), [25, 25]);
+        assert.deepEqual(rates('TE', [5.5, 15, 5.51, 14.99]), [25, 25]);
+        // tier 2 (current season) uses the same test.
+        const cur = getBoomBustRates({ mean: 12, stdDev: 5, pos: 'TE' }, [], { currentWeek: 6, currentSeasonScores: [5.5, 15, 10] });
+        assert.deepEqual([cur.tier, cur.bustRate, cur.boomRate], ['current-season', 33.3, 33.3]);
+    });
+    test('K / DEF lines stay strict, so a player with no points is not a boom and a bust at once', () => {
+        // mean 8: lines at 4 and 12, and exactly 4 / 12 don't count.
+        const k = getBoomBustRates({ mean: 8, stdDev: 3, pos: 'K' }, [4, 12, 8]);
+        assert.deepEqual([k.bustRate, k.boomRate], [0, 0]);
+        // mean 0: both lines are 0. Inclusive would make every 0 a boom and a bust.
+        const def = getBoomBustRates({ mean: 0, stdDev: 2, pos: 'DEF' }, [0, 0, 0]);
+        assert.deepEqual([def.bustThreshold, def.boomThreshold, def.bustRate, def.boomRate], [0, 0, 0, 0]);
     });
     test('tier 4: too little blended data falls back to the model, flagged isEstimated', () => {
         assert.deepEqual(getBoomBustRates(wr, [5, 20]), {
@@ -174,7 +196,7 @@ describe('getBoomBustRates', () => {
         const r = getBoomBustRates(wr, blended, { bustMultiplier: 0.1, boomMultiplier: 9 });
         assert.deepEqual([r.bustThreshold, r.boomThreshold], [7.5, 20]);
     });
-    test('stdDev 0 in the model: all-or-nothing, strict comparisons', () => {
+    test('stdDev 0 in the model: all-or-nothing; on the line counts for QB/RB/WR/TE only', () => {
         assert.deepEqual(getBoomBustRates({ mean: 8, stdDev: 0, pos: 'K' }, []), {
             bustRate: 0, boomRate: 0, bustThreshold: 4, boomThreshold: 12, isEstimated: true, tier: 'model-fallback'
         });
@@ -182,7 +204,16 @@ describe('getBoomBustRates', () => {
             bustRate: 0, boomRate: 100, bustThreshold: 12, boomThreshold: 24, isEstimated: true, tier: 'model-fallback'
         });
         assert.equal(getBoomBustRates({ mean: 5, stdDev: 0, pos: 'RB' }, []).bustRate, 100);
-        assert.equal(getBoomBustRates({ mean: 20, stdDev: 0, pos: 'RB' }, []).boomRate, 0);
+        // Refactor 9A: exactly on the line counts (both were 0 before).
+        assert.equal(getBoomBustRates({ mean: 20, stdDev: 0, pos: 'RB' }, []).boomRate, 100);
+        assert.equal(getBoomBustRates({ mean: 7, stdDev: 0, pos: 'RB' }, []).bustRate, 100);
+        // No data at all for a kicker: mean 0, stdDev 0. Still neither.
+        const k0 = getBoomBustRates({ mean: 0, stdDev: 0, pos: 'K' }, []);
+        assert.deepEqual([k0.bustRate, k0.boomRate], [0, 0]);
+        // A K exactly on its own line doesn't count either: mean 8 -> lines 4 / 12 never equal 8,
+        // so check with a multiplier of 1 (both lines at the mean).
+        const k1 = getBoomBustRates({ mean: 8, stdDev: 0, pos: 'K' }, [], { bustMultiplier: 1, boomMultiplier: 1 });
+        assert.deepEqual([k1.bustRate, k1.boomRate], [0, 0]);
     });
 });
 

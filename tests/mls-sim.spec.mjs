@@ -48,7 +48,11 @@ test('matchup simulator gives the same results for a fixed seed', async ({ page 
     expect(workerUrls).toEqual(['/js/mls/sim/worker.js', '/js/mls/sim/worker.js']);
     expect(text).toContain('Your Team: 93.71% Opponent: 6.29%');
     expect(text).toContain('0 ties in 10,000 simulations');
-    expect(text).toContain('Alpha QB Bust: 0% • Boom: 22.2% 18.25–25.31 (21.78 avg)');
+    // Refactor 9A: a score exactly on a QB/RB/WR/TE line counts. Alpha QB's history has one 24 (was 22.2%),
+    // Echo QB's one 24 (was 12.5%), Fox RB's one 20 (was 0%). The model-based numbers can't change.
+    expect(text).toContain('Alpha QB Bust: 0% • Boom: 33.3% 18.25–25.31 (21.78 avg)');
+    expect(text).toContain('Echo QB Bust: 0% • Boom: 25% 16.8–23.7 (20.25 avg)');
+    expect(text).toContain('Fox RB Bust: 0% • Boom: 10% 11.62–18.58 (15.1 avg)');
     expect(text).toContain('Bravo RB Bust: 0.5% • Boom: 17% 12.83–20.17 (16.5 proj)');
     expect(text).toContain('Delta TE Final 11.2 pts (actual)');
     expect(text).toContain('Charlie WR Bust: 27.2% • Boom: 2.7% ~5.55–15.45 (10.5 avg)');
