@@ -3368,6 +3368,7 @@ Owner's decisions for Phase 8 (recorded after 4D; each card builds only what's m
 | "Processing…" / "Uploaded successfully" lines | 8B | **build** |
 | Rankings upload preview | 8C | **build** |
 | Player-name autocomplete + keyboard hint (and where) | 8C | **no**: no MDS field needs it (the Tracker search already filters as you type), so 8C was trimmed to the preview |
+| Fix: MDS's guide banner doesn't stay dismissed (found in 6B; see the 6B entry) | 8A | **build** (owner's decision after 6B): it's MDS's setup guidance, which 8A already reworks. Make `banners.js` check each page's own key on load (`KEYS.mds.hideGuideBanner` on `/`, `KEYS.mls.hideGuideBanner` on `/lineup/`), keeping MLS's staggered reveal. Visible on MDS only: a dismissed guide banner stays hidden after a reload. |
 
 ### 4E — Visible CSS fixes found in 4C and 4D (behavior change: visible on Lineup Strategist only)
 
@@ -3662,10 +3663,19 @@ None intended, and the screenshots are unchanged. What a user can notice:
 - `node scripts/check-precache.mjs` OK (110 precached). `node --test` 177/177 (15 new, 162 as before).
 - `cd tests && npx playwright test`: **88/88** (10 new). **No screenshot changed.**
 
+#### Owner's decisions (after review)
+
+- **Moving instead of copying when storage is full:** keep as is.
+- **Deleting the old keys:** about two weeks after `v2.8.64` (this chunk) is live. The owner has few users
+  so far, and Sleeper-league data is easy to restore by re-syncing, so no longer wait is needed.
+- **MDS's guide banner that doesn't stay dismissed:** fold the fix into 8A (row added to the Phase 8 table in
+  "Planned as runbook chunks 4E and 8A–8C").
+
 #### Left for later chunks
 
 - **Delete the old keys** (card: a later release, once a CACHE_NAME bump has been live, so no stale cached
-  script still reads them). Not a runbook card yet. That release would: remove each page's old keys on load
+  script still reads them). Owner's timing: about two weeks after this chunk's deploy. Not a runbook card yet.
+  That release would: remove each page's old keys on load
   (the `ds_*` and `mds_season_*` prefixes, the three whole names), behind a new marker; keep
   `LEGACY_KEY_RENAMES`, `renamedKey` and `renameLegacyKeys` **permanently** (old backup files); keep the
   `isLegacyKey` exclusion in `isMdsOwnedKey` until no browser can hold an old key (it costs nothing, so
@@ -3677,4 +3687,4 @@ None intended, and the screenshots are unchanged. What a user can notice:
   `mds_hide_guide_banner` (`ds_hide_guide_banner` before), but banners.js hides `#guideBanner` on load by
   `mls_hide_guide_banner`, the key Lineup Strategist's ✕ writes. Its comment describes the fix for MLS; on
   MDS a dismissed guide banner comes back on reload (unless MLS's was dismissed too). Same before and
-  after 6B. A fix would check each page's own key.
+  after 6B. A fix would check each page's own key. **8A fixes it** (owner's decision).
