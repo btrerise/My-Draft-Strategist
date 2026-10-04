@@ -3309,15 +3309,15 @@ Touches only CSS, a few class attributes in the two app pages, and the screensho
 6B (storage) don't touch those, so they can run at the same time. **5D now needs 4E**: 5D renames
 `.leaguelogs-attribution`, which one fix touches. 5D and 7B can then still promise no visible change.
 
-Owner's decisions (4E does only the approved fixes; for anything still pending, it asks first):
+Owner's decisions (recorded after 4D; 4E does only the approved fixes):
 
 | Fix | What changes | Owner's decision |
 |---|---|---|
 | Pulsing-card corners | Drop `border-radius: 8px` from `.pulse-border`, so a pulsing card keeps its 12px corners (MLS Setup cards). | fix (decided after 4C) |
-| Smaller ✕ (`.close-banner-btn-sm`) | MLS's four ✕ buttons go from 1.1rem / 8px padding to 0.85rem / 0.25rem (touch target unchanged). MDS's two ✕ swap their inline style for the class, with no visible change. | pending |
-| `.danger-card` on the Danger Zone accordion | Red dashed border and red tint on MLS's Danger Zone accordion (Factory Reset; Setup, Advanced Settings), like the Global Injury Auditor card already has. | pending |
-| `.mt-0` on `.leaguelogs-attribution` | (a) Make it work: the attribution line under MLS's market data loses its 1rem top margin; or (b) delete the dead `mt-0` from the markup: no visible change. | pending |
-| `.pl-6` on the two `.guide-list`s | (a) Make it work: those two lists on MLS's Guide tab get a wider indent (1.25rem → 2rem); or (b) delete the dead `pl-6`: no visible change. | pending |
+| Smaller ✕ (`.close-banner-btn-sm`) | MLS's four ✕ buttons go from 1.1rem / 8px padding to 0.85rem / 0.25rem (touch target unchanged). MDS's two ✕ swap their inline style for the class, with no visible change. | **fix**: both apps then show the same small ✕ |
+| `.danger-card` on the Danger Zone accordion | Red dashed border and red tint on MLS's Danger Zone accordion (Factory Reset; Setup, Advanced Settings), like the Global Injury Auditor card already has. | **fix**: it's the Factory Reset, what the style is for |
+| `.mt-0` on `.leaguelogs-attribution` | (a) Make it work: the attribution line under MLS's market data loses its 1rem top margin; or (b) delete the dead `mt-0` from the markup: no visible change. | **(b) delete the dead class**: MDS's same line keeps the 1rem gap; dropping it would press the line against the button |
+| `.pl-6` on the two `.guide-list`s | (a) Make it work: those two lists on MLS's Guide tab get a wider indent (1.25rem → 2rem); or (b) delete the dead `pl-6`: no visible change. | **(b) delete the dead class**: MDS's Guide lists use the plain indent; these lists have no bullets |
 
 `npm run compare-css` proves the scope: every difference it reports must be on an element a fix targets. The
 screenshot changes get accepted with `npm run test:update` and listed.
@@ -3340,22 +3340,23 @@ If the owner wants something sooner, 8A doesn't touch the data code and could st
 |---|---|---|---|
 | **8A** setup guidance (needs 7B; alongside 8B) | Pulse cues (2), setup checklist (3), Danger Zone style on MDS's Reset Controls (5), info banner where the owner picks a use (6) | `js/shared/ui/setupChecklist.js` (step `<li>` builder, scroll-and-focus) | ~25k |
 | **8B** freshness and processing lines (needs 7B; alongside 8A) | "Updated 3 days ago" labels (4), "Processing…" / "Uploaded successfully" lines | `js/shared/freshness.js` (also replaces T-Score's copy of the day math), `showStatusFeedback` / `setProcessingStatus` in `js/shared/ui/` | ~20k |
-| **8C** upload preview and autocomplete (needs 8B) | Rankings upload preview; player-name autocomplete and keyboard hint, only if the owner picks a place (MDS's only name field is the Tracker search, which already filters) | preview shell and pure helpers; `attachPlayerAutocomplete` | ~30k |
+| **8C** upload preview (needs 8B) | Rankings upload preview | preview shell and pure helpers | ~25k |
 
 Already done or nothing to build: the smaller ✕ (4E), the layout and spacing helpers (CSS only). The three "later"
 features (collapsible rankings cards, segmented toggle, hide-the-hero) and the "no" items stay out of Phase 8.
-Class renames that 4C listed (`mls-preview-*`, `rankings-fresh` / `rankings-stale`, `mls-upload-processing`,
-`mls-manual-key-hint`…) happen in the card that first uses the class on MDS.
+Class renames that 4C listed (`mls-preview-*`, `rankings-fresh` / `rankings-stale`, `mls-upload-processing`…)
+happen in the card that first uses the class on MDS. The autocomplete, keyboard hint and info banner stay MLS-only
+for now (owner's decisions below), so their classes keep their names.
 
-Owner's decisions for Phase 8 (each card builds only what's marked "build"):
+Owner's decisions for Phase 8 (recorded after 4D; each card builds only what's marked "build"):
 
 | Feature | Card | Owner's decision |
 |---|---|---|
-| Pulsing "do this next" highlights | 8A | pending |
-| Setup checklist | 8A | pending |
-| Danger Zone style on Reset Controls | 8A | pending |
-| Blue info banner (and where) | 8A | pending |
-| Freshness labels (and the stale threshold for rankings and ADP) | 8B | pending |
-| "Processing…" / "Uploaded successfully" lines | 8B | pending |
-| Rankings upload preview | 8C | pending |
-| Player-name autocomplete + keyboard hint (and where) | 8C | pending |
+| Pulsing "do this next" highlights | 8A | **build** |
+| Setup checklist | 8A | **build** |
+| Danger Zone style on Reset Controls | 8A | **build** |
+| Blue info banner (and where) | 8A | **not yet**: no MDS message needs it today; revisit when one does |
+| Freshness labels (and the stale threshold for rankings and ADP) | 8B | **build**: rankings stale after 14 days, ADP after 3 (MLS's ROS-rankings and market-data limits) |
+| "Processing…" / "Uploaded successfully" lines | 8B | **build** |
+| Rankings upload preview | 8C | **build** |
+| Player-name autocomplete + keyboard hint (and where) | 8C | **no**: no MDS field needs it (the Tracker search already filters as you type), so 8C was trimmed to the preview |
