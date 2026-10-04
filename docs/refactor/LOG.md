@@ -4163,6 +4163,9 @@ For the record, since the owner said no:
 
 #### Runbook cards proposed
 
+Both cards are on the runbook page (added after 7B at the owner's request, with 7C in Phase 7 and 9C in Phase 9).
+The runbook's card text is the fuller version; the summaries below give the reasoning.
+
 **7C — One bye-week table for both apps, generated from nflverse** (behavior change: MLS's byes become correct;
 ~10k tok; needs 7B; can run alongside Phase 8 and 9B). **Owner's decision: yes.**
 
