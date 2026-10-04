@@ -38,7 +38,7 @@ test('a saved LeagueLogs market source becomes FantasyCalc, and the fetch works'
     await expect(page.locator('#marketSuccessMsg')).toContainText('Pulled Successfully');
     // The other saved settings were kept: dynasty, superflex, half PPR, TE premium.
     expect(fcRequests).toEqual(['https://api.fantasycalc.com/values/current?isDynasty=true&numQbs=2&numTeams=12&ppr=0.5&isTEP=true']);
-    const market = await page.evaluate(() => JSON.parse(localStorage.getItem('mds_season_market')));
+    const market = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_market')));
     expect(market.map(p => p.name)).toEqual(["Ja'Marr Chase", 'Bijan Robinson']);
 
     // Changing any market setting saves the mapped source under the same key.

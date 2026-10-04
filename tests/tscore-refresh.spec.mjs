@@ -69,8 +69,8 @@ test('Refresh pulls both sheets, re-renders every table and caches them for the 
     for (const id of BODY_IDS) expect(after[id], id).not.toBe(staticBodies[id]);
 
     const stored = await page.evaluate(() => ({
-        cache: JSON.parse(localStorage.getItem('mds_tscore_cache')),
-        updated: localStorage.getItem('mds_tscore_cache_updated'),
+        cache: JSON.parse(localStorage.getItem('tscore_cache')),
+        updated: localStorage.getItem('tscore_cache_updated'),
         page: JSON.parse(localStorage.getItem('tscore_page_cache')),
     }));
     // The compact {cleanName: {s, l, c}} map MDS reads, keyed by the shared normalizeName.
@@ -115,7 +115,8 @@ async function expectRefreshError(page, state, expectedMessage, errorType = 'Err
     expect(await btn.innerHTML()).toBe(origHtml);
     expect(await bodies(page)).toEqual(staticBodies);
     await expect(page.locator('#tscoreFreshness')).toHaveText('');
-    expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.includes('tscore')))).toEqual([]);
+    // Nothing cached. (The page writes one key on load since 6B: the marker of its storage-key rename.)
+    expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.includes('tscore')))).toEqual(['tscore_key_names_version']);
     // refreshTScoreData logs the error with console.error; that's the only error expected.
     // Only its first line is compared: the stack under it names the script's file and lines.
     expect(state.errors.map(e => e.split('\n')[0])).toEqual([`console.error: ${errorType}: ${expectedMessage}`]);

@@ -35,7 +35,7 @@ test.describe('Lineup Strategist league entry', () => {
         await page.locator('#handoffBanner').getByRole('button', { name: 'Import as New League' }).click();
         await expect(toast(page, /Imported ".*" with \d+ players\./)).toBeVisible();
         await expect(page.locator('#handoffBanner')).toBeHidden();
-        expect(await page.evaluate(() => localStorage.getItem('mds_handoff_roster'))).toBeNull();
+        expect(await page.evaluate(() => localStorage.getItem('shared_handoff_roster'))).toBeNull();
         await showTab(page, 'roster');
         await expect(page.locator('#rosterTab')).toContainText("Ja'Marr Chase");
         await expectClean(page, state);
@@ -43,7 +43,7 @@ test.describe('Lineup Strategist league entry', () => {
 
     test('dismissing the handoff banner drops the roster', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
-        await page.evaluate(() => localStorage.setItem('mds_handoff_roster', JSON.stringify({
+        await page.evaluate(() => localStorage.setItem('shared_handoff_roster', JSON.stringify({
             sourceLeagueName: 'Handoff Test', players: [{ name: 'Josh Allen', pos: 'QB', team: 'BUF' }], reqs: null,
         })));
         await page.reload();
@@ -51,7 +51,7 @@ test.describe('Lineup Strategist league entry', () => {
         await expect(page.locator('#handoffBannerText')).toContainText('"Handoff Test" (1 players)');
         await page.locator('#handoffBanner').getByRole('button', { name: 'Dismiss' }).click();
         await expect(page.locator('#handoffBanner')).toBeHidden();
-        expect(await page.evaluate(() => localStorage.getItem('mds_handoff_roster'))).toBeNull();
+        expect(await page.evaluate(() => localStorage.getItem('shared_handoff_roster'))).toBeNull();
         await page.reload();
         await page.waitForLoadState('networkidle');
         await expect(page.locator('#handoffBanner')).toBeHidden();

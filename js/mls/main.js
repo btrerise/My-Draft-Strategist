@@ -3,7 +3,9 @@
 //
 // The imports below are in the order the code sat in mls.js (they were legacy.js's import list
 // until 3F deleted legacy.js), so the load-time code (State, event listeners) runs in the original
-// order. Imports that name nothing are there only to keep that order.
+// order. Imports that name nothing are there only to keep that order. migrateKeys.js (6B) comes
+// first: it renames old storage keys, so it has to run before anything reads storage.
+import './migrateKeys.js';
 import '../shared/api/sleeper.js';
 import './sim/ui.js';
 import '../shared/api/sleeperStats.js';

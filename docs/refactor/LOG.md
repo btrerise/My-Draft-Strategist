@@ -86,8 +86,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   and 3 MLS Waiver Insights tests (`mls-waiver-insights.spec.mjs`, 3G: the in-app simulator with
   Waiver Insights on, after a Scout scan, in a fresh page, and with no free agent that has a position)
   and 3 T-Score Refresh tests (`tscore-refresh.spec.mjs`, 4B: Google Sheets stubbed with small CSVs,
-  then the cached render on reload; an HTTP 500 and a blocked request for the error path).
-  Each runs at both widths: 78 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  then the cached render on reload; an HTTP 500 and a blocked request for the error path) and 3
+  storage-key rename tests (`key-migration.spec.mjs`, 6B: all three pages opened on a pre-6B
+  localStorage snapshot, and both resets). `backup.spec.mjs` has 4 tests since 6B (round trip and a
+  pre-6B backup file, per app). Each runs at both widths: 88 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -3366,6 +3368,7 @@ Owner's decisions for Phase 8 (recorded after 4D; each card builds only what's m
 | "Processing…" / "Uploaded successfully" lines | 8B | **build** |
 | Rankings upload preview | 8C | **build** |
 | Player-name autocomplete + keyboard hint (and where) | 8C | **no**: no MDS field needs it (the Tracker search already filters as you type), so 8C was trimmed to the preview |
+| Fix: MDS's guide banner doesn't stay dismissed (found in 6B; see the 6B entry) | 8A | **build** (owner's decision after 6B): it's MDS's setup guidance, which 8A already reworks. Make `banners.js` check each page's own key on load (`KEYS.mds.hideGuideBanner` on `/`, `KEYS.mls.hideGuideBanner` on `/lineup/`), keeping MLS's staggered reveal. Visible on MDS only: a dismissed guide banner stays hidden after a reload. |
 
 ### 4E — Visible CSS fixes found in 4C and 4D (behavior change: visible on Lineup Strategist only)
 
@@ -3536,3 +3539,152 @@ exactly these 4 missing compared with main, and nothing new.
   no page has an inline handler any more. 5D's comment sweep of `js/tscore/` found nothing else left here.
 - **6B:** unchanged from 4B: the T-Score copy-on-load migration for `mds_tscore_cache_updated` can be an
   import in `js/tscore/main.js`.
+
+### 6B — Rename storage keys to mds_ / mls_ prefixes (behavior change: no visible difference intended)
+
+**Each app now has one localStorage prefix: `mds_` for Draft Strategist, `mls_` for Lineup Strategist.**
+Renamed as the 1B planning table says (entry "Planned as runbook chunks 6A / 6B"):
+
+| Before | After | Keys |
+|---|---|---|
+| `ds_*` | `mds_*`, same suffix | all 25 MDS keys and `ds_players_<draftId>` → `mds_players_<draftId>` (`mds_show_headshots` unchanged) |
+| `mds_season_*` | `mls_*`, same suffix | the 13 MLS keys (the other 17 MLS keys already started `mls_`) |
+| `mds_handoff_roster` | `shared_handoff_roster` | the MDS → MLS hand-off |
+| `mds_tscore_cache`, `mds_tscore_cache_updated` | `tscore_cache`, `tscore_cache_updated` | the T-Score page's cache, read by MDS |
+
+Not renamed: `shared_sleeper_league_id`, `tscore_page_cache`, the IndexedDB databases (card), and the
+record keys inside IndexedDB (6A). `ds_mobile_collapse` in `index.html` / `js/mds/init.js` is an element
+id, not a key, and stays.
+
+#### What changed
+
+- **`js/shared/storage/keys.js`**: the `KEYS` values, by a `sed` limited to the four `KEYS` groups (42
+  lines; `KEYS` property names are unchanged, so no call site changed). `MDS_PREFIX` is `'mds_'`;
+  `MLS_PREFIXES` (two prefixes) became `MLS_PREFIX = 'mls_'`. `MDS_SHOW_HEADSHOTS` / `MDS_HANDOFF_ROSTER`
+  are gone (only the old filters used them). Three new keys, the rename markers: `KEYS.mds.keyNamesVersion`
+  (`mds_key_names_version`), `KEYS.mls.keyNamesVersion`, `KEYS.tscore.keyNamesVersion`.
+  New section **`// --- OLD NAMES (before refactor chunk 6B) ---`**: the permanent old → new table
+  (`LEGACY_KEY_RENAMES`: three whole names, then the `ds_` and `mds_season_` prefix rules),
+  `renamedKey(k)` and `isLegacyKey(k)`. It's in keys.js rather than a module of its own because the
+  ownership filters need it and keys.js must stay import-free (6A's convention).
+- **Filters** (keys.js, BACKUP / RESTORE OWNERSHIP):
+  - `isMdsOwnedKey(k)` = starts with `mds_` **and isn't an old name**. The old names are still in users'
+    browsers and three kinds of them start with `mds_` (MLS's `mds_season_*`, the old hand-off and the old
+    T-Score cache), so this exclusion is what the card's "mind the order" asks for: MDS's backup and Hard
+    Reset can't take MLS data while the old keys exist. `isMlsOwnedKey(k)` = starts with `mls_`.
+    **Backup exports these, so a backup holds today's names only.**
+  - New `isMdsOwnedOrLegacyKey` / `isMlsOwnedOrLegacyKey` add the app's own old prefix (`ds_` /
+    `mds_season_`). **Restore, Hard Reset and Factory Reset clear these**, so an old copy can't outlive a
+    reset or mix into a restore.
+- **`js/shared/storage/keyMigration.js`** (new; imports only keys.js):
+  - `migrateKeyNames(page)` copies the old keys a page uses to their new names, once, behind its marker
+    (like `migrateDraftStorage()`'s `mds_storage_version`). MDS copies `ds_*` and the T-Score cache; MLS
+    copies `mds_season_*` and the hand-off; T-Score copies its cache. **A page never copies the other app's
+    keys.** It never overwrites a key that already exists under its new name, and keeps the old key.
+    The marker is what stops a deleted new key (the hand-off MLS consumes, a reset) being copied back from
+    its old name on the next load.
+  - **Storage full:** both apps share one quota and MDS's player pools / MLS's ranking sets are large, so
+    copying everything can fail. On the first failed copy it switches to *moving*: drops the old copies of
+    the keys it already copied, then moves the rest (rewriting the old key first, so storage that refuses
+    every write throws before anything is removed, and putting it back if the new name doesn't fit). Any
+    error leaves the marker unset and logs `Storage key rename deferred:`; the next load retries and skips
+    keys already copied. This is the one case where old keys are removed now.
+  - `renameLegacyKeys(data)` renames the keys of a backup file. When a file has both names of a key
+    (boot.js's rescue backup takes both), the new name's value wins.
+- **Where it runs:** `js/mds/migrateKeys.js` and `js/mls/migrateKeys.js` (new, one call each) are the
+  **first import** of `js/mds/main.js` / `js/mls/main.js`, so they evaluate before anything reads storage
+  (MDS's `storage.js` draft migration and MLS's `state.js` read it at top level). Keep them first.
+  `js/tscore/main.js` calls `migrateKeyNames('tscore')` at top level (its reads wait for DOMContentLoaded).
+  `js/shared/globals.js` runs before these, but it reads no key at load (banners.js waits for
+  DOMContentLoaded).
+- **Restore** (`js/mds/backup.js`, `js/mls/backup.js`): runs the file through `renameLegacyKeys`, clears
+  the app's keys under both names, writes the renamed data. The confirm dialog's "N settings" counts the
+  renamed data (the same number for any file the apps wrote, except a rescue file holding both names).
+  MDS's backup.js now imports its filters instead of reading `window.isMdsOwnedKey`.
+- **`js/boot.js`** rescue backup: each app's keys under **both** names (isMdsOwnedOrLegacyKey /
+  isMlsOwnedOrLegacyKey), because a page that failed to load may never have run the rename. Restore turns
+  the result into new names.
+- **`index.html`**: the three `data-storage-key="ds_hide_…_banner"` attributes → `mds_hide_…_banner`.
+- `sw.js`: the three new files precached; CACHE_NAME `v2.8.63` → `v2.8.64`. README `/js` line.
+
+#### User-visible difference
+
+None intended, and the screenshots are unchanged. What a user can notice:
+- **Backup files** made from now on use the new key names. Restoring one with an older version of the app
+  (a stale cached page) would write keys that version doesn't read. Old backup files restore in the new
+  version.
+- The confirm dialog's settings count can differ from before for a boot.js rescue file that has both names.
+- **localStorage use roughly doubles** for these keys until the old ones are deleted (see below); if
+  storage is too full for that, the keys are moved instead.
+- **Transition edge (accepted):** a tab that was already open on the old code keeps reading and writing
+  the old names. Anything it saves after the new code has run once on that page isn't carried over (the
+  rename runs once). E.g. a roster sent from an old Draft Strategist tab after the new Lineup Strategist
+  has loaded doesn't show up there. A reload of the old tab gets the new code.
+- Each page writes one new key on its first load, its rename marker. (`tscore-refresh.spec.mjs` asserted
+  the T-Score page writes no `tscore` key when Refresh fails; it now expects `tscore_key_names_version`.)
+
+#### Tests
+
+- **Fixtures, `tests/fixtures/pre-6b/`**, captured from main's code (before any 6B change) by a throwaway
+  spec, not committed: `storage.json` is the whole localStorage after a T-Score Refresh (stubbed sheets),
+  `seedMls` + `loadMlsRankings` + dismissing MLS's guide banner, `seedMds` + dismissing MDS's Lineup
+  Strategist banner, plus a hand-off roster written as `mds_handoff_roster`. `mds-backup.json` /
+  `mls-backup.json` are the files main's real Export Backup buttons downloaded from that state.
+  `tests/unit/helpers/pre6bKeys.mjs` lists every pre-6B key name, generated from main's keys.js.
+- **`tests/key-migration.spec.mjs`** (new, 3 tests × 2 widths): (1) seeds the snapshot, opens `/`: every
+  `ds_*` and old T-Score value is under its new name, every old key is kept, MLS's keys are byte-identical,
+  the hand-off isn't touched, the dismissed banner stays hidden, the Team and Board tabs show the draft.
+  Then `/lineup/`: `mds_season_*` copied, the hand-off arrives as `shared_handoff_roster` and its banner
+  shows, MDS's keys are untouched; dismissing the hand-off and reloading doesn't bring it back (the
+  marker); the roster shows. Then `/t-score/`: "Sheet data: Updated today". (2) T-Score opened first still
+  shows its label and touches only `tscore_` keys. (3) Hard Reset and Factory Reset clear their app's keys
+  under both names and leave the other app's, the hand-off and the T-Score keys.
+  Checked it fails with MLS's `migrateKeys.js` import removed.
+- **`tests/backup.spec.mjs`**: the round trips use the new names, and also plant the other app's keys under
+  old names (`mds_season_*`, `ds_*`, `mds_tscore_cache`), both hand-off names and this app's own old names:
+  the backup has none of them, restore clears the app's own old names and leaves the rest. Two new tests
+  restore `fixtures/pre-6b/{mds,mls}-backup.json` into a browser holding old-name keys and check every value
+  under its new name, no old name left, the other app's keys untouched, and the UI. Checked the MDS one
+  fails without `renameLegacyKeys` (writing old names would pass the value checks, since the rename on the
+  reload copies them; the "no old names left" check catches it).
+- **`tests/unit/keyMigration.test.mjs`** (new, 15 tests): the table against every pre-6B name; current
+  names unchanged; no collisions; no old name in either backup filter; `migrateKeyNames` per page against an
+  in-memory Storage (old in, new out, nothing lost, nothing else added but the marker, other app's old keys
+  not copied); runs once; never overwrites a newer value; storage nearly full (moves, nothing lost); storage
+  refusing every write (nothing changed, retries); `renameLegacyKeys`.
+- **`tests/unit/bootKeyFilters.test.mjs`**: boot.js is checked against the `*OrLegacy` filters, over every
+  registry key and every pre-6B name. Checked it fails when boot.js drops `ds_`.
+- Renamed literals in `mds-sync`, `mls-leagues`, `mls-market`, `mls-rankings` and `tscore-refresh` specs.
+  `tests/tools/css-compare.tool.mjs` still seeds `mds_handoff_roster`: it runs main's code and this code
+  side by side, and the rename copies it, so it works for both.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (110 precached). `node --test` 177/177 (15 new, 162 as before).
+- `cd tests && npx playwright test`: **88/88** (10 new). **No screenshot changed.**
+
+#### Owner's decisions (after review)
+
+- **Moving instead of copying when storage is full:** keep as is.
+- **Deleting the old keys:** about two weeks after `v2.8.64` (this chunk) is live. The owner has few users
+  so far, and Sleeper-league data is easy to restore by re-syncing, so no longer wait is needed.
+- **MDS's guide banner that doesn't stay dismissed:** fold the fix into 8A (row added to the Phase 8 table in
+  "Planned as runbook chunks 4E and 8A–8C").
+
+#### Left for later chunks
+
+- **Delete the old keys** (card: a later release, once a CACHE_NAME bump has been live, so no stale cached
+  script still reads them). Owner's timing: about two weeks after this chunk's deploy. Not a runbook card yet.
+  That release would: remove each page's old keys on load
+  (the `ds_*` and `mds_season_*` prefixes, the three whole names), behind a new marker; keep
+  `LEGACY_KEY_RENAMES`, `renamedKey` and `renameLegacyKeys` **permanently** (old backup files); keep the
+  `isLegacyKey` exclusion in `isMdsOwnedKey` until no browser can hold an old key (it costs nothing, so
+  keeping it is simplest); the `*OrLegacy` filters and boot.js's old-name clauses can go then.
+- **5D:** `window.isMdsOwnedKey` (set by `js/shared/globals.js`) has no reader now; MDS's backup.js imports
+  its filters.
+- **Phase 8:** new keys get today's names (`mds_` / `mls_`) and need no migration.
+- **Found, not changed (pre-existing, for the owner):** Draft Strategist's guide-banner ✕ writes
+  `mds_hide_guide_banner` (`ds_hide_guide_banner` before), but banners.js hides `#guideBanner` on load by
+  `mls_hide_guide_banner`, the key Lineup Strategist's ✕ writes. Its comment describes the fix for MLS; on
+  MDS a dismissed guide banner comes back on reload (unless MLS's was dismissed too). Same before and
+  after 6B. A fix would check each page's own key. **8A fixes it** (owner's decision).
