@@ -3441,3 +3441,8 @@ The screenshots disable animations, so the pulse itself isn't in them.
   screenshot change should regenerate on main first, so their diff shows only their own change.
 - Phase 8A uses `danger-card` on MDS's Reset Controls: if that's a `<details class="sos-details-accordion">`, the
   new `.sos-details-accordion.danger-card` rule already covers it.
+- **After Phase 8 (owner's decision, recorded after 4E): revisit the unused spacing helpers in one go.** That's
+  the 8 sizes kept in 4D (`.gap-1`, `.gap-3`, `.stack-xs`, `.stack-md`, `.stack-lg`, `.cluster-wrap`, `.cluster-xs`,
+  `.cluster-lg`) plus `.mt-0` and `.pl-6`, unused since 4E. Phase 8's new Draft Strategist markup may use some of
+  them, so don't delete any before then. Afterwards, grep `index.html`, `lineup/index.html`, `t-score/`, `js/` and
+  `functions/` for each one, list the ones still unused for the owner, and delete only the ones the owner drops.
