@@ -4040,3 +4040,163 @@ with the owner before building. The other options aren't built.
 **Tests 9B flips:** the K/DEF cases in `tests/unit/statsEngine.test.mjs` ("K / DEF (and any unknown pos)…",
 "K / DEF lines stay strict…", the stdDev-0 K cases). `tests/mls-sim.spec.mjs` has no K/DEF player today, so 9B adds
 a kicker and a negative-average defense there, pinned on main first.
+
+### 7B — Revisit nflmeta.org (research; owner's decisions recorded)
+
+**Research only. No app file, test or `sw.js` changed** (no `CACHE_NAME` bump needed). Started from "Revisit after
+the runbook — nflmeta.org" above. 5D and 6B were confirmed merged to main first.
+
+**Outcome: don't use nflmeta.org for anything now.** The owner said no to every nflmeta.org use. The one follow-up
+is a bye-week fix that needs no API key (card 7C below). This research also turned up a name-lookup bug (card 9C
+below, owner's decision pending).
+
+#### How the research was done
+
+- **nflmeta.org itself could not be reached.** The environment's network policy denies it (proxy `403` for
+  `nflmeta.org`, `www.` and `api.`; WebFetch is blocked too), and a session can't change that policy. The owner
+  would change it under the cloud environment's settings → Network access → Custom → Allowed domains.
+- Read instead: the official SDK `@nflmeta/sdk` 0.1.6 (npm, 2026-09-17), and the public source repo
+  `philippebourdon/NFLMeta` at `d793f28` (2026-09-13). The repo holds the API route handlers, SDKs, MCP server
+  and part of the site (the pricing and terms pages' text isn't in it). Two web searches returned text from
+  `nflmeta.org/faq`.
+- **Not confirmed:** the price of each paid plan, the Free plan's monthly *request* quota, the full terms of
+  service, and live response shapes for byes, injuries and inactives (the SDK types them as `UnknownRecord`).
+  None of these changes the decisions below, but read them before reopening this.
+
+#### What nflmeta.org offers (as of the dates above)
+
+- **Auth:** an API key in the `X-NFLMeta-Key` header on every `/api/v1/*` route. The SDK says to use it
+  server-side. A Free key returns `402 payment_method_required` until a card is verified (nothing is charged).
+- **Plans:** Free, Builder, Pro, Team. Per-minute limits are 20 / 120 / 500 / 1,500 requests (FAQ). There are
+  three meters per UTC month: requests, rows, and the per-minute limit. A Free key gets **25,000 rows a month**
+  (source comment in `plays/summary`). `GET /api/v1/usage` reports what's left. Pages hold up to 500 rows.
+- **Terms (FAQ):** **the Free plan does not permit commercial use.** Commercial use needs Builder, Pro or Team
+  "regardless of request volume". Normal application caching is allowed, but a cache may not keep a standing copy
+  of the database or get around plan limits. Attribution is required where NFLMeta or an underlying source (for
+  example nflverse) requires it. This site has Ko-fi tip links on both apps, so whether it counts as
+  commercial would have to be confirmed with NFLMeta.
+- **No outside IDs:** `api-response-scrub.ts` strips every cross-reference ID (Sleeper, ESPN, GSIS and the rest)
+  from every response, and `/players/{key}/ids` returns only NFLMeta's own `player_key` (a slug like
+  `josh-allen-1996`). Linking players to Sleeper means matching names.
+- **Endpoints relevant to the uses:** `GET /api/v1/byes/{year}` (`data.byes[]` with `bye_week` or `bye_weeks`);
+  `GET /api/v1/injuries?season&week&team&status` (weekly reports, `report_status` vs `game_status`, plus
+  `meta.current_reserves`); `GET /api/v1/games/{id}/inactives` (`confirmed` or `not_available`, where
+  `not_available` means "not collected yet", not "everyone active"; needs NFLMeta's game ID from
+  `GET /api/v1/games?season&week`); `GET /api/v1/season/{year}/power-rankings`, `/teams/{abbr}/power-rankings`;
+  `GET /api/v1/rosters?year&team&position`; and also depth charts, transactions and live scores. NFLMeta's
+  own agent guide calls injury reports and depth charts "dated snapshots… not live medical news".
+
+#### Findings per use, with the owner's decisions
+
+| Use | Finding | Recommendation | Owner's decision |
+|---|---|---|---|
+| Bye weeks by season | NFLMeta has them, but so does nflverse's schedule file, with no key, no quota and CORS open (see below). **MLS's table is the 2024 schedule** (wrong for 29 of 32 teams in 2026) | Shared table by season, regenerated yearly from nflverse; not nflmeta.org | **Yes, shared table + nflverse (card 7C)** |
+| Game-day inactives | The one thing the apps don't have. Fits the Free row allowance (about 11k of 25k rows a month, see below) but needs an account, a key, a proxy plus KV, game-ID and team-code mapping, and name matching. Blocked first by the commercial-use term | Build only if NFLMeta confirms a tip-supported site may use Free, or a paid plan is chosen | **No** |
+| Official injury designations | MLS already uses Sleeper's `injury_status`/`status` (optimizer `isUnavailableThisWeek`, badges, Injury Auditor). NFLMeta adds report vs. game status and practice participation, about 2,500 rows a week league-wide | Skip | **No** |
+| Power rankings / rosters for context | NFL-team media rankings aren't fantasy value, and "power rankings" would be confused with MLS's own Power tab. Rosters are already in Sleeper's player map | Skip | **No (neither)** |
+
+#### Bye weeks: what's wrong today (a live bug, fixed by card 7C)
+
+Checked against nflverse's schedule (`nflverse/nfldata` `data/games.csv`, 2026 regular season, 272 games, 18
+weeks; nflverse writes the Rams as `LA`):
+
+- **MDS `BYE_WEEKS_2026`** (`js/mds/state.js`; used in `js/mds/import.js` and `js/mds/sleeperSync.js`): correct for
+  all 32 teams.
+- **MLS `TEAM_BYES`** (`js/mls/constants.js`): matches the **2024** schedule exactly and is wrong for 29 of 32 teams
+  in 2026 (2025: 30 wrong). It drives `isUnavailableThisWeek` (`js/mls/helpers.js`, the optimizer avoids starting
+  "bye" players), the BYE badge and the blank points figure (`js/mls/lineup/gameInfo.js`), the "(bye)" suffix in
+  `render/lineup.js` and `render/roster.js`, and the waiver verdict's "On bye this week" (`scout/waivers.js`).
+  Example, week 5 of 2026: MLS treats DET, LAC, PHI and TEN as on bye (they play), and plays CAR and KC (they're
+  on bye).
+
+**nflverse as the source:** `https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv` answers
+with `access-control-allow-origin: *`, needs no key, and covers every season (2.2 MB, so it's for a script, not for
+page loads). A team's bye = the weeks 1–18 it has no game. That reproduced MDS's 2026 table exactly. The repo has
+no LICENSE file (checked), and bye weeks are schedule facts, but credit nflverse in the README anyway.
+
+#### Name matching: how well NFLMeta's players would link to Sleeper's
+
+NFLMeta couldn't be reached, so this used the nearest real roster with official NFL names: nflverse's 2026 rosters
+(week 4; `full_name` and `football_name` come from the league's own roster data, which NFLMeta also cites as a
+source). That roster carries `sleeper_id`, which gives the right answer to check against. Matched with
+`normalizeName` from `js/shared/names.js` against Sleeper's live player map (`/v1/players/nfl`, fetched 2026-10-04):
+
+| Set | App's index (`getCleanNameToIdIndex`, first match wins) | Name + team + position |
+|---|---|---|
+| Active QB/RB/WR/TE/K (522) | 98.1% right, 1.3% wrong player, 0.6% no match | **99.4%** right, 0 wrong |
+| Active, Sleeper `search_rank` ≤ 300 (245) | 97.6% right, **2.4% wrong player** | **100%** right |
+| All statuses (764) | 97.9% right | 99.3% right, 1 wrong |
+
+The only misses within a team are nickname vs. legal name: Bam/Zonovan Knight, Andrew/Drew Ogletree,
+Mitchell/Mitch Tinsley. A last-name + team + position fallback would catch those. Using `football_name` instead of
+`full_name` did slightly worse (Cam Ward, Chig Okonkwo). **Conclusion:** if NFLMeta is ever used, match within the
+team the response is about (an inactives list is per team), then by position. Don't use the app's first-match-wins
+index.
+
+#### Found during 7B: the app's name → Sleeper ID index picks the wrong player for some stars (card 9C)
+
+`getCleanNameToIdIndex` (`js/mls/players.js`) keeps the first Sleeper entry for each clean name. Sleeper's IDs are
+numeric strings, so JS walks them in ascending order and the *oldest* ID wins, often a retired or inactive
+namesake. Wrong today: **Josh Allen** (QB BUF → 2212, an inactive guard), **DJ Moore** (WR → a CB), **Kenneth Walker
+III** (RB → a WR with no team), **Kaleb Johnson** (RB → a G), **Kyle Williams** (WR → a DT), **Antonio Williams**
+(WR → an RB). It's used by the simulator's standalone player lookup (`lookupSimPlayer`, `js/mls/sim/matchup.js`:
+"Josh Allen" is looked up as the guard) and by Waiver Insights' candidate IDs (`js/mls/scout/waiverInsights.js`).
+`getSleeperMetaByName` (`scout/waivers.js`) and the Injury Auditor's candidate index already prefer players with an
+NFL team. Found by reading the code and running the index over the live map; not reproduced in the browser.
+
+#### If nflmeta.org is revisited: the smallest server piece and its cost
+
+For the record, since the owner said no:
+
+- `functions/api/nflmeta/[[path]].js`, next to `functions/api/ffc/`. It would forward **only an allowlist** of GET
+  routes (for example `games` with `season` + `week`, and `games/{id}/inactives`) with validated parameters, add
+  `X-NFLMeta-Key` from the Pages secret `NFLMETA_API_KEY` (Settings → Variables and Secrets, type Secret), drop
+  every incoming header, and never echo the key or upstream errors. An open relay would let anyone spend the
+  quota.
+- Caching: `caches.default` is per Cloudflare data center, so every location would spend quota separately. Keep
+  confirmed results in KV (a `confirmed` inactives list never changes, so store it once and never re-fetch), and
+  cache `not_available` for about 10 minutes. Cost for inactives: about 17 games a week × up to 10 fetches × about
+  15 rows ≈ 11,000 rows a month, the same for any number of users.
+- Cloudflare cost: $0. It shares the Workers free plan (100,000 requests a day) and KV free plan (100,000 reads,
+  1,000 writes a day) with the FFC function. About 17 KV writes a week. Workers Paid is $5 a month if it ever
+  grows past that. NFLMeta cost: $0 on Free *if* the use isn't commercial; Builder's price wasn't readable.
+
+#### Runbook cards proposed
+
+**7C — One bye-week table for both apps, generated from nflverse** (behavior change: MLS's byes become correct;
+~10k tok; needs 7B; can run alongside Phase 8 and 9B). **Owner's decision: yes.**
+
+- Goal: MLS shows and plans around the right bye weeks, and next season's byes are one script run instead of two
+  hand-edited tables. Visible effect: MLS's BYE badges, "(bye)" suffixes, waiver verdicts and the optimizer's
+  bye avoidance use the 2026 schedule (today they use 2024's).
+- Scope: `js/shared/data/byes.js` exporting `BYE_WEEKS` keyed by season (`{ 2026: { ARI: 14, … } }`) and a
+  `getByeWeek(team, season)` helper. MLS passes the current Sleeper season (`State` already keeps it beside
+  `currentNflWeek`), and MDS passes its draft season or the current year. Generate the 2026 entry from nflverse
+  and check that it equals MDS's `BYE_WEEKS_2026` exactly. Switch MDS (`import.js`, `sleeperSync.js`) and MLS
+  (`helpers.js`, `lineup/gameInfo.js`, `render/lineup.js`, `render/roster.js`, `scout/waivers.js`, and any
+  other `TEAM_BYES` reader found by grep) to it, then delete `TEAM_BYES` and `BYE_WEEKS_2026`.
+- `scripts/update-byes.mjs`: downloads nflverse `games.csv`, computes each team's bye for a given season (regular
+  season, weeks with no game; map `LA` → `LAR`; fail if a team has zero or more than one bye unless the season
+  really has two), and rewrites that season's entry in `byes.js`. Run it each May when the schedule comes out.
+  README: how to run it, and credit nflverse.
+- Unknown season (for example 2027 before the script has been run): return no bye, never another season's.
+  Note it in LOG.
+- Tests: a unit test for the helper (known 2026 teams, an unknown season, unknown team). Playwright: MLS
+  BYE-badge and optimizer specs with the fixed clock. Accept and list any changed MLS screenshots or pinned
+  numbers. MDS output must not change. Add `byes.js` to PRECACHE_ASSETS and bump CACHE_NAME.
+- Avoid: nflmeta.org, ESPN or any runtime fetch of byes; storage keys; the bye-week shown from FFC rows if MDS
+  takes it from FFC (check, and leave it unless it disagrees).
+- Done: no hard-coded bye table left outside `js/shared/data/byes.js`; MLS's week-5-2026 BYE badges show CAR and
+  KC, not DET/LAC/PHI/TEN; checks pass.
+
+**9C — The name → Sleeper ID index prefers active fantasy players** (behavior change; ~8k tok; needs 9A, because
+9A's #7 decision on `normalizeName` applies here too; can run alongside 7C). **Owner's decision: pending.** Ask
+the owner before starting.
+
+- Goal: `getCleanNameToIdIndex` picks the player a user means. On a name shared by several Sleeper entries, prefer
+  one with an NFL team, then a fantasy position (`fantasy_positions`), then the best `search_rank`, the way
+  `getSleeperMetaByName` already prefers players with a team. Visible effect: the simulator's player lookup and
+  Waiver Insights find Josh Allen (QB BUF), DJ Moore, Kenneth Walker III and Kaleb Johnson.
+- Scope: `js/mls/players.js` only, plus a unit test using a small map fixture with each collision listed above.
+  Run the old and new index over the live player map and list every name whose ID changes in LOG.
+- Avoid: `normalizeName` itself (9A owns it); the Injury Auditor's and `getSleeperMetaByName`'s own indexes.
