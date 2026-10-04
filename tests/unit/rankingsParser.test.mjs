@@ -95,8 +95,9 @@ describe('vertical CSV, single-file upload', () => {
         const p = byName(res.parsedData);
         // RK is the rank and TIERS the tier (refactor 9A; before it, rank came from row order and
         // tier was null). SOS SEASON is a star rating, not a matchup rank, so it stays unread.
-        assert.deepEqual(pick(p.joshallen), { name: 'Josh Allen', rank: 1, tier: 1, posRank: 1, posTier: 1, flexRank: 1, flexTier: 1 });
-        assert.deepEqual(pick(p.lamarjackson), { name: 'Lamar Jackson', rank: 2, tier: 1, posRank: 2, posTier: 1, flexRank: 2, flexTier: 1 });
+        // POS "QB1"/"QB2" is the position rank (9A follow-up), with no tier of its own, like a Pos Rank column.
+        assert.deepEqual(pick(p.joshallen), { name: 'Josh Allen', rank: 1, tier: 1, posRank: 1, posTier: null, flexRank: 1, flexTier: 1 });
+        assert.deepEqual(pick(p.lamarjackson), { name: 'Lamar Jackson', rank: 2, tier: 1, posRank: 2, posTier: null, flexRank: 2, flexTier: 1 });
         assert.equal(res.hasNewSos, false);
     });
 
@@ -112,6 +113,45 @@ describe('vertical CSV, single-file upload', () => {
         assert.deepEqual(pick(p.jamarrchase, ['rank', 'tier']), { rank: 3, tier: 1 });
         // A blank RK cell falls back to row order, as a blank Rank cell does.
         assert.deepEqual(pick(p.drakelondon, ['rank', 'tier']), { rank: 3, tier: null });
+    });
+
+    test('a POS cell like WR12 is the position rank when there is no Pos Rank column', async () => {
+        const file = csvFile('FantasyPros_2026_Draft_PPR_Overall_Rankings.csv', dedent(`
+            RK,TIERS,PLAYER NAME,TEAM,POS
+            1,1,Ja'Marr Chase,CIN,WR1
+            2,1,Bijan Robinson,ATL,RB1
+            3,1,Puka Nacua,LAR,wr2
+            9,2,Josh Allen,BUF,QB 1
+            40,5,Brandon Aubrey,DAL,K1
+            41,5,Ravens,BAL,DST1
+            42,5,Broncos,DEN,D/ST2
+            50,6,Travis Hunter,JAX,WR/CB
+            51,6,Drake London,ATL,WR
+        `));
+        const p = byName((await parse(single(file))).parsedData);
+        const pr = k => pick(p[k], ['rank', 'posRank', 'posTier']);
+        assert.deepEqual(pr('jamarrchase'), { rank: 1, posRank: 1, posTier: null });
+        assert.deepEqual(pr('pukanacua'), { rank: 3, posRank: 2, posTier: null });
+        assert.deepEqual(pr('joshallen'), { rank: 9, posRank: 1, posTier: null });
+        assert.deepEqual(pr('brandonaubrey'), { rank: 40, posRank: 1, posTier: null });
+        assert.deepEqual(pr('ravens'), { rank: 41, posRank: 1, posTier: null });
+        assert.deepEqual(pr('broncos'), { rank: 42, posRank: 2, posTier: null });
+        // No number after the position: the overall-rank fallback, with the overall tier, as before.
+        assert.deepEqual(pr('travishunter'), { rank: 50, posRank: 50, posTier: 6 });
+        assert.deepEqual(pr('drakelondon'), { rank: 51, posRank: 51, posTier: 6 });
+    });
+    test('a Pos Rank column wins over the POS cell, even where its cell is blank', async () => {
+        const file = csvFile('both.csv', dedent(`
+            Rank,Player,Pos,Pos Rank
+            1,Ja'Marr Chase,WR1,4
+            2,Puka Nacua,WR2,
+        `));
+        const p = byName((await parse(single(file))).parsedData);
+        assert.equal(p.jamarrchase.posRank, 4);
+        assert.equal(p.pukanacua.posRank, 2); // blank Pos Rank cell: overall rank 2, not the POS cell
+        // Per-position and FLEX uploads ignore it: there the file's own order is the position rank.
+        const qb = await parse([{ file: csvFile('qb.csv', 'Rank,Player,Pos\n1,Josh Allen,QB7\n'), context: 'QB' }]);
+        assert.equal(qb.parsedData[0].posRank, 1);
     });
 
     test('rank column: "Overall" accepted; unparseable or blank cells fall back to row order', async () => {

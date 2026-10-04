@@ -63,6 +63,15 @@ function parsePosRank(cell) {
     return m ? parseInt(m[1], 10) : 999;
 }
 
+// A position cell that carries the position rank too, as FantasyPros writes it ("WR12", "QB1", "DST3",
+// "K 5") -> that rank; anything else (a bare "WR", "WR/RB") -> 999. Read only when the file has no Pos
+// Rank column (refactor 9A follow-up; before it the number was ignored and posRank fell back to the
+// overall rank, or to a re-derived one in the waiver scanner).
+function posRankFromPosCell(cell) {
+    const m = String(cell).match(/^\s*(?:QB|RB|WR|TE|K|PK|DEF|DST|D\/ST)\s*(\d+)\s*$/i);
+    return m ? parseInt(m[1], 10) : 999;
+}
+
 // SoS cell -> string to store. A cell holding exactly one number keeps it with its sign and decimal
 // point ("4.5", "-2"; "#4", "4th" and "12 (easy)" give "4" and "12" as before). Refactor 9A: it used to
 // keep only the digits, so 4.5 became "45" and -2 became "2". No number, or several ("3 out of 5
@@ -322,6 +331,10 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                         let extractedPosRank = 999;
                         if (explicitPosRankColIdx !== -1 && rows[i][explicitPosRankColIdx]) {
                             extractedPosRank = parsePosRank(rows[i][explicitPosRankColIdx]);
+                        } else if (explicitPosRankColIdx === -1 && posColIdx !== -1 && rows[i][posColIdx]) {
+                            // No Pos Rank column: a "WR12"-style position cell is the next best source.
+                            // Used in the single-file branch below, like a Pos Rank column.
+                            extractedPosRank = posRankFromPosCell(rows[i][posColIdx]);
                         }
 
                         if (!combinedPlayers[clean]) {
