@@ -64,7 +64,7 @@
 
 <header class="header">
     <div class="header-left">
-        <button class="hamburger-btn" onclick="toggleMenu()" aria-label="Toggle Menu" aria-expanded="false">
+        <button class="hamburger-btn" data-action="toggleMenu" aria-label="Toggle Menu" aria-expanded="false">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
         <a href="../" class="logo-container btn-bare" aria-label="Go to My Draft Strategist">
@@ -79,7 +79,7 @@
     </div>
 </header>
 
-<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+<div class="menu-overlay" id="menuOverlay" data-action="toggleMenu"></div>
 
 <nav class="hamburger-menu" id="hamburgerMenu" aria-label="Main Navigation">
     <div class="menu-header">
@@ -87,7 +87,7 @@
             <img src="../images/5775.svg" alt="Draft Strategist Logo" class="menu-logo-img" width="36" height="36">
             <span>Menu</span>
         </div>
-        <button class="close-menu-btn" onclick="toggleMenu()" aria-label="Close Menu">
+        <button class="close-menu-btn" data-action="toggleMenu" aria-label="Close Menu">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
     </div>
@@ -116,17 +116,17 @@
 </div>
 
 <div class="tscore-nav-wrapper">
-    <button class="tscore-nav-btn active" onclick="switchTab('researchTab', this)">The Research</button>
-    <button class="tscore-nav-btn" onclick="switchTab('top50Tab', this)">2026 Top-50</button>
-    <button class="tscore-nav-btn" onclick="switchTab('valuesTab', this)">Values at ADP</button>
-    <button class="tscore-nav-btn" onclick="switchTab('avoidsTab', this)">Avoids at ADP</button>
-    <button class="tscore-nav-btn" onclick="switchTab('sleepersTab', this)">Sleepers at ADP</button>
-    <button class="tscore-nav-btn" onclick="switchTab('tab-2024', this)">2024 WR Analysis</button>
+    <button class="tscore-nav-btn active" data-action="switchTab" data-tab="researchTab">The Research</button>
+    <button class="tscore-nav-btn" data-action="switchTab" data-tab="top50Tab">2026 Top-50</button>
+    <button class="tscore-nav-btn" data-action="switchTab" data-tab="valuesTab">Values at ADP</button>
+    <button class="tscore-nav-btn" data-action="switchTab" data-tab="avoidsTab">Avoids at ADP</button>
+    <button class="tscore-nav-btn" data-action="switchTab" data-tab="sleepersTab">Sleepers at ADP</button>
+    <button class="tscore-nav-btn" data-action="switchTab" data-tab="tab-2024">2024 WR Analysis</button>
 </div>
 
 <div style="max-width: 1100px; margin: 0.75rem auto 0; padding: 0 1rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
     <span id="tscoreFreshness" aria-live="polite" style="font-size: 0.8rem; color: var(--text-muted, #9ca3af);"></span>
-    <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="refreshTScoreData(this)" title="Pulls the latest data from the WR and RB Google Sheets and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
+    <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" data-action="refreshTScoreData" title="Pulls the latest data from the WR and RB Google Sheets and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
         Sync with most recent data
     </button>
@@ -356,8 +356,8 @@
         <p class="card-desc">T-Score is a combination of a player’s previous season metrics, each weighted based on their coefficient to the following season (N+1) using historical data. <em>Note: Rookies are not included since there is no previous NFL data to utilize.</em></p>
             
         <div class="pos-toggle-wrapper">
-            <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'top50Tab')">Wide Receivers</button>
-            <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'top50Tab')">Running Backs</button>
+            <button class="pos-toggle-btn active" data-pos="wr" data-action="switchPosition" data-tab="top50Tab">Wide Receivers</button>
+            <button class="pos-toggle-btn" data-pos="rb" data-action="switchPosition" data-tab="top50Tab">Running Backs</button>
         </div>
 
         <!-- WR CONTENT CONTAINER -->
@@ -580,8 +580,8 @@
         <p class="card-desc">Players presenting strong value based on their expected T-Score relative to their market ADP price.</p>
 
         <div class="pos-toggle-wrapper">
-            <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'valuesTab')">Wide Receivers</button>
-            <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'valuesTab')">Running Backs</button>
+            <button class="pos-toggle-btn active" data-pos="wr" data-action="switchPosition" data-tab="valuesTab">Wide Receivers</button>
+            <button class="pos-toggle-btn" data-pos="rb" data-action="switchPosition" data-tab="valuesTab">Running Backs</button>
         </div>
 
         <!-- WR CONTENT -->
@@ -705,8 +705,8 @@
         <p class="card-desc">Players drafted outside the top 100 overall (ADP > 100) that present upside compared to their cost.</p>
 
         <div class="pos-toggle-wrapper">
-            <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'sleepersTab')">Wide Receivers</button>
-            <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'sleepersTab')">Running Backs</button>
+            <button class="pos-toggle-btn active" data-pos="wr" data-action="switchPosition" data-tab="sleepersTab">Wide Receivers</button>
+            <button class="pos-toggle-btn" data-pos="rb" data-action="switchPosition" data-tab="sleepersTab">Running Backs</button>
         </div>
 
         <!-- WR CONTENT -->
@@ -826,8 +826,8 @@
         <p class="card-desc">Players the T-Score model suggests fading based on market price vs historical production metrics.</p>
 
         <div class="pos-toggle-wrapper">
-            <button class="pos-toggle-btn active" data-pos="wr" onclick="switchPosition('wr', 'avoidsTab')">Wide Receivers</button>
-            <button class="pos-toggle-btn" data-pos="rb" onclick="switchPosition('rb', 'avoidsTab')">Running Backs</button>
+            <button class="pos-toggle-btn active" data-pos="wr" data-action="switchPosition" data-tab="avoidsTab">Wide Receivers</button>
+            <button class="pos-toggle-btn" data-pos="rb" data-action="switchPosition" data-tab="avoidsTab">Running Backs</button>
         </div>
 
         <!-- WR CONTENT -->

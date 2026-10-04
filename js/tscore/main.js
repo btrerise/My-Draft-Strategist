@@ -1,16 +1,21 @@
 // T-Score page (/t-score/) script. Moved from the inline <script> at the end of
 // t-score/index.html in refactor chunk 4B, loaded as a module after js/shared/globals.js.
-// Only these lines changed: tscoreNormalize / tscoreEscapeHtml were dropped for the shared
-// normalizeName / escapeHtml (which also escapes '), window.KEYS became the KEYS import, and the
-// window.* block at the end replaces the globals the classic script created implicitly.
-// Comments below that say "this inline script" were written before the move.
+// 4B dropped tscoreNormalize / tscoreEscapeHtml for the shared normalizeName / escapeHtml (which
+// also escapes ') and made window.KEYS the KEYS import. 5E replaced the page's inline onclicks
+// with data-action delegation (end of file) and the window.mdsFetch / showToast / createFocusTrap
+// / getTabFromHash reads with imports, so this module sets no window.* names.
 import { normalizeName } from '../shared/names.js';
 import { escapeHtml } from '../shared/html.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { mdsFetch } from '../shared/net.js';
+import { showToast } from '../shared/ui/toast.js';
+import { createFocusTrap } from '../shared/ui/focusTrap.js';
+import { getTabFromHash } from '../shared/ui/tabHash.js';
+import { delegate } from '../shared/ui/delegate.js';
 
 // --- T-SCORE SHEET AUTO-REFRESH ---
 // Pulls the WR/RB Google Sheets (published to web as CSV, so no auth is needed -- the call
-// goes through window.mdsFetch purely for its timeout, see below) and refreshes every data
+// goes through mdsFetch purely for its timeout, see below) and refreshes every data
 // table on this page, plus caches a copy in localStorage that mds.js checks before falling
 // back to the bundled tscore_data.js -- see that file's buildPlayerCardHTML() for the read
 // side of this. This page and MDS share an origin (mydraftstrategist.com), so localStorage
@@ -46,13 +51,11 @@ const TSCORE_STAT_COLUMNS = {
 
 // Fetches and parses one position's sheet into structured player rows.
 async function fetchTScoreSheet(pos) {
-    // window.mdsFetch (js/shared/net.js) rather than a bare fetch, for the timeout: refreshTScoreData
+    // mdsFetch (js/shared/net.js) rather than a bare fetch, for the timeout: refreshTScoreData
     // disables the Refresh button and only restores it in its finally, so a stalled sheet
     // request left that button dead for the rest of the session with nothing on screen to say
-    // why. Safe to reach for here even though js/shared/globals.js (a deferred module) runs AFTER this
-    // inline script -- nothing calls this function until the button is pressed, long after
-    // DOMContentLoaded (same reasoning as the Papa/normalizeName note further down).
-    const res = await window.mdsFetch(TSCORE_SHEET_URLS[pos]);
+    // why.
+    const res = await mdsFetch(TSCORE_SHEET_URLS[pos]);
     if (!res.ok) throw new Error(`Could not fetch ${pos.toUpperCase()} sheet (HTTP ${res.status})`);
     const csvText = await res.text();
 
@@ -148,7 +151,7 @@ function updateTscoreFreshnessLabel(timestamp) {
     el.textContent = `Sheet data: ${label}`;
 }
 
-window.refreshTScoreData = async function(btn) {
+async function refreshTScoreData(btn) {
     const origText = btn ? btn.innerHTML : '';
     if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = 'Refreshing…'; }
 
@@ -175,23 +178,22 @@ window.refreshTScoreData = async function(btn) {
         localStorage.setItem(KEYS.tscore.pageCache, JSON.stringify({ wr: wrPlayers, rb: rbPlayers }));
         updateTscoreFreshnessLabel(timestamp);
 
-        if (window.showToast) window.showToast(`T-Score data refreshed: ${wrPlayers.length} WRs, ${rbPlayers.length} RBs.`);
+        showToast(`T-Score data refreshed: ${wrPlayers.length} WRs, ${rbPlayers.length} RBs.`);
 
     } catch (err) {
         console.error(err);
-        if (window.showToast) window.showToast(`Could not refresh T-Score data:\n${err.message}`, { isError: true });
-        else window.alert(`Could not refresh T-Score data: ${err.message}`);
+        showToast(`Could not refresh T-Score data:\n${err.message}`, { isError: true });
     } finally {
         if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = origText; }
     }
-};
+}
 
 // On page open: if a previous refresh left cached data, render from that instead of the
 // static (potentially stale) HTML that ships with the page. If there's no cache yet, the
-// static tables stay exactly as written until the first refresh. Waits for DOMContentLoaded
-// specifically because Papa (<script defer>) and normalizeName (the js/shared/globals.js module) load in <head>, which the spec
-// guarantees finishes before DOMContentLoaded fires -- this inline script itself runs earlier,
-// synchronously, so it can define these functions but can't safely CALL into Papa/js/shared yet.
+// static tables stay exactly as written until the first refresh. Waits for DOMContentLoaded, as
+// the inline script this module came from had to (it ran during parsing, before Papa's
+// <script defer> and js/shared/). This module runs after both, so the wait is no longer needed,
+// but it keeps the render at the same moment.
 document.addEventListener('DOMContentLoaded', () => {
     const cachedUpdatedAt = localStorage.getItem(KEYS.tscore.cacheUpdated);
     if (cachedUpdatedAt) updateTscoreFreshnessLabel(cachedUpdatedAt);
@@ -222,7 +224,7 @@ function switchTab(tabId, skipHistory) {
         targetTab.classList.add('active');
     }
     
-    const targetBtn = document.querySelector(`.tscore-nav-btn[onclick*="${tabId}"]`);
+    const targetBtn = document.querySelector(`.tscore-nav-btn[data-tab="${tabId}"]`);
     if (targetBtn) {
         targetBtn.classList.add('active');
         targetBtn.setAttribute('aria-pressed', 'true');
@@ -267,10 +269,10 @@ window.addEventListener('popstate', (e) => {
 });
 
 // Deep link: open the tab named in the URL hash on load (a reload, or a shared #top50Tab
-// link), else The Research. Waits for DOMContentLoaded because getTabFromHash lives in the
-// deferred js/shared/globals.js module. replaceState stamps this first entry with its tab so Back restores it.
+// link), else The Research. Waits for DOMContentLoaded, like the cached render above.
+// replaceState stamps this first entry with its tab so Back restores it.
 document.addEventListener('DOMContentLoaded', () => {
-    const initialTab = (typeof window.getTabFromHash === 'function' && window.getTabFromHash(id => id)) || 'researchTab';
+    const initialTab = getTabFromHash(id => id) || 'researchTab';
     switchTab(initialTab, true);
     history.replaceState({ tab: initialTab }, '');
 
@@ -301,19 +303,35 @@ function toggleMenu() {
     }
 
     if (isOpen) {
-        if (typeof window.createFocusTrap === 'function') {
-            menuFocusTrap = window.createFocusTrap(menu, { onEscape: toggleMenu });
-            menuFocusTrap.activate();
-        }
+        menuFocusTrap = createFocusTrap(menu, { onEscape: toggleMenu });
+        menuFocusTrap.activate();
     } else if (menuFocusTrap) {
         menuFocusTrap.deactivate();
         menuFocusTrap = null;
     }
 }
 
-// --- WINDOW EXPORTS ---
-// The names t-score/index.html's inline handlers call (onclick="switchTab(…)" and so on).
-// refreshTScoreData assigns itself to window above.
-window.switchTab = switchTab;
-window.switchPosition = switchPosition;
-window.toggleMenu = toggleMenu;
+// --- DATA-ACTION EVENT DELEGATION ---
+// Refactor chunk 5E: maps each data-action name in t-score/index.html to the code its inline
+// onclick ran. `this` is the button, as it was in the inline handler; data-tab and data-pos carry
+// the arguments that used to be literals. switchTab still gets the button as its second
+// argument, as onclick="switchTab('…', this)" passed it (it isn't `true`, so the tab is pushed
+// to history). See js/shared/ui/delegate.js for how the walk works.
+const clickActions = {
+    toggleMenu() { toggleMenu(); },
+    switchTab() { switchTab(this.dataset.tab, this); },
+    switchPosition() { switchPosition(this.dataset.pos, this.dataset.tab); },
+    refreshTScoreData() { refreshTScoreData(this); },
+};
+
+// The page's static regions that hold those buttons, one click listener each. None is ever
+// re-rendered (refreshTScoreData only rebuilds the table bodies and the button's own contents).
+// The Refresh button sits in an unnamed wrapper, so it is its own container.
+for (const container of [
+    document.querySelector('body > header.header'),
+    document.getElementById('menuOverlay'),
+    document.getElementById('hamburgerMenu'),
+    document.querySelector('.tscore-nav-wrapper'),
+    document.getElementById('tscoreRefreshBtn'),
+    document.getElementById('main'),
+]) delegate(container, 'click', clickActions);
