@@ -26,9 +26,10 @@ const pick = (p, keys = ['name', 'rank', 'tier', 'posRank', 'posTier', 'flexRank
     Object.fromEntries(keys.map(k => [k, p[k]]));
 
 describe('exports', () => {
-    // 2C added the four MDS title-line exports (moved from js/mds/import.js).
-    test('parseRankingsFiles plus the MDS title-line helpers', () => {
-        assert.deepEqual(Object.keys(parser).sort(), ['MDS_NAME_HEADERS', 'findHeaderRowIndex', 'normalizeHeader', 'parseRankingsFiles', 'stripTitleLines']);
+    // 2C added the four MDS title-line exports (moved from js/mds/import.js); 9A added parseSosValue
+    // for js/mls/sos.js.
+    test('parseRankingsFiles plus the MDS title-line helpers and parseSosValue', () => {
+        assert.deepEqual(Object.keys(parser).sort(), ['MDS_NAME_HEADERS', 'findHeaderRowIndex', 'normalizeHeader', 'parseRankingsFiles', 'parseSosValue', 'stripTitleLines']);
     });
 });
 
@@ -325,6 +326,11 @@ describe('strength of schedule extraction', () => {
         const none = await parse(single(csvFile('s.csv', 'Player,Team,Pos,SOS\nJosh Allen,BUF,QB,3 out of 5 stars\n')));
         assert.equal(none.hasNewSos, false);
         assert.deepEqual(none.sosUpdates, {});
+    });
+    test('parseSosValue on its own (the SoS grid upload in js/mls/sos.js calls it too)', () => {
+        const cases = [['4.5', '4.5'], ['-2', '-2'], ['+3', '3'], ['#4', '4'], ['3rd', '3'], ['12 (easy)', '12'], ['4.50', '4.5'],
+            ['007', '7'], [' 9 ', '9'], ['3 out of 5 stars', ''], ['1-3', ''], ['easy', ''], ['', ''], [7, '7']];
+        for (const [cell, want] of cases) assert.equal(parser.parseSosValue(cell), want, JSON.stringify(cell));
     });
     test('"ROS", "Schedule" and "Matchup" headers are all read as SoS', async () => {
         for (const header of ['ROS', 'Schedule', 'Matchup']) {

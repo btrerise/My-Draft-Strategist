@@ -8,6 +8,7 @@ import { KEYS } from '../shared/storage/keys.js';
 import { flashButton } from '../shared/ui/flashButton.js';
 import { normalizeName } from '../shared/names.js';
 import { showToast } from '../shared/ui/toast.js';
+import { parseSosValue } from '../shared/rankings/parse.js';
 
     // --- SOS ENGINE ---
     export function generateSoSGrid() {
@@ -59,6 +60,9 @@ import { showToast } from '../shared/ui/toast.js';
             // column "ROS" (rest-of-season) even though it's the same team+position
             // schedule-strength value.
             const SOS_KEY_NAMES = ['sos', 'schedule', 'matchup', 'ros'];
+            // Each cell goes through parseSosValue, the rankings parser's reading (refactor 9A): one
+            // number is kept as written, sign and decimal included; none or several gives "". Before
+            // 9A this kept only the digits, so 4.5 became "45" and -2 became "2".
 
             Papa.parse(file, {
                 header: true, skipEmptyLines: true,
@@ -82,7 +86,7 @@ import { showToast } from '../shared/ui/toast.js';
                                 for (let key in row) {
                                     let k = key.toLowerCase();
                                     if (['qb', 'rb', 'wr', 'te'].includes(k)) {
-                                        State.sosMap[team][k.toUpperCase()] = row[key].replace(/[^0-9]/g, '');
+                                        State.sosMap[team][k.toUpperCase()] = parseSosValue(row[key]);
                                     }
                                 }
                             } else {
@@ -91,7 +95,7 @@ import { showToast } from '../shared/ui/toast.js';
                                 
                                 if (posKey && sosKey) {
                                     let posStr = row[posKey].toUpperCase();
-                                    let sosVal = row[sosKey].replace(/[^0-9]/g, '');
+                                    let sosVal = parseSosValue(row[sosKey]);
                                     let posGroup = posStr.includes('QB') ? 'QB' : posStr.includes('RB') ? 'RB' : posStr.includes('WR') ? 'WR' : posStr.includes('TE') ? 'TE' : null;
 
                                     if (posGroup && sosVal) State.sosMap[team][posGroup] = sosVal;
@@ -105,7 +109,7 @@ import { showToast } from '../shared/ui/toast.js';
                         let nameKey = Object.keys(row).find(k => ['player', 'name', 'player name'].includes(k.toLowerCase().trim()));
                         let sosKey = Object.keys(row).find(k => SOS_KEY_NAMES.includes(k.toLowerCase()));
                         if (nameKey && sosKey && row[nameKey] && row[nameKey].trim()) {
-                            let sosVal = row[sosKey].replace(/[^0-9]/g, '');
+                            let sosVal = parseSosValue(row[sosKey]);
                             if (sosVal) rowsNeedingNameResolution.push({ name: row[nameKey].trim(), sosVal });
                         }
                     });

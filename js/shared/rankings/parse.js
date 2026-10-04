@@ -68,7 +68,8 @@ function parsePosRank(cell) {
 // keep only the digits, so 4.5 became "45" and -2 became "2". No number, or several ("3 out of 5
 // stars"), gives "", and the row adds no SoS. js/mls/sos.js shows the string in the SoS grid's number
 // box and badges it only as a whole rank from 1 to 32 (parseInt), so "4.5" badges as 4 and "-2" not at all.
-function parseSosValue(cell) {
+// Exported for the SoS grid's own file upload (js/mls/sos.js), which reads cells the same way since 9A.
+export function parseSosValue(cell) {
     const nums = String(cell).match(/[+-]?\d+(?:\.\d+)?/g);
     return nums && nums.length === 1 ? String(Number(nums[0])) : "";
 }
