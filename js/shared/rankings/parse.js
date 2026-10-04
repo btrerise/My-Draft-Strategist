@@ -53,16 +53,45 @@ function parseTier(cell) {
     return m ? parseInt(m[0], 10) : null;
 }
 
+// Explicit Pos Rank cell -> number. Bare numbers parse as before ("7", "7th"). Cells written with
+// the position in front ("WR2", "RB14", "D/ST3", "WR-2") read the number after it; before refactor
+// 9A those gave NaN and the row fell back to its overall rank. 999 when there's no number.
+function parsePosRank(cell) {
+    const n = parseInt(cell);
+    if (!isNaN(n)) return n;
+    const m = String(cell).match(/^\s*[a-z/]+\s*-?\s*(\d+)/i);
+    return m ? parseInt(m[1], 10) : 999;
+}
+
+// A position cell that carries the position rank too, as FantasyPros writes it ("WR12", "QB1", "DST3",
+// "K 5") -> that rank; anything else (a bare "WR", "WR/RB") -> 999. Read only when the file has no Pos
+// Rank column (refactor 9A follow-up; before it the number was ignored and posRank fell back to the
+// overall rank, or to a re-derived one in the waiver scanner).
+function posRankFromPosCell(cell) {
+    const m = String(cell).match(/^\s*(?:QB|RB|WR|TE|K|PK|DEF|DST|D\/ST)\s*(\d+)\s*$/i);
+    return m ? parseInt(m[1], 10) : 999;
+}
+
+// SoS cell -> string to store. A cell holding exactly one number keeps it with its sign and decimal
+// point ("4.5", "-2"; "#4", "4th" and "12 (easy)" give "4" and "12" as before). Refactor 9A: it used to
+// keep only the digits, so 4.5 became "45" and -2 became "2". No number, or several ("3 out of 5
+// stars"), gives "", and the row adds no SoS. js/mls/sos.js shows the string in the SoS grid's number
+// box and badges it only as a whole rank from 1 to 32 (parseInt), so "4.5" badges as 4 and "-2" not at all.
+// Exported for the SoS grid's own file upload (js/mls/sos.js), which reads cells the same way since 9A.
+export function parseSosValue(cell) {
+    const nums = String(cell).match(/[+-]?\d+(?:\.\d+)?/g);
+    return nums && nums.length === 1 ? String(Number(nums[0])) : "";
+}
+
 // Combined horizontal sheet (old format or the newer 'wk1' format): positions side by side,
-// each with its own rank/name columns. Only applies to single-file uploads.
+// each with its own rank/name columns. Only applies to single-file uploads. Recognized by the
+// name columns the horizontal parser reads ("QB Player" ... "FLEX Player", "DEF Team"), since a
+// sheet without one yields no players anyway. Refactor 9A: a "Quarterback", "Running Back" or
+// "Flex" header also switched this on, so a plain list headed that way failed in a single-file
+// upload ("no name column") while working in a per-position one. Those are vertical name headers.
 function isHorizontalLayout(headers, context) {
     return (context === 'SINGLE') && headers.some(h =>
-        h.includes('quarterback') ||
-        h.includes('running back') ||
-        h === 'flex' ||
-        h.includes('qb player') ||
-        h.includes('rb player') ||
-        h.includes('flex player')
+        /\b(qb|rb|wr|te|k|flex)\s+player\b/.test(h) || h === 'def team'
     );
 }
 
@@ -227,6 +256,14 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                                     // Same lockstep rule as the vertical parser below: a tier field is
                                     // overwritten whenever its rank counterpart is, even with null, so a
                                     // stale tier never sits beside a rank from a different section.
+                                    // FLEX overwriting rank and tier is deliberate (0B finding 6, kept in
+                                    // refactor 9A by the owner's decision). The position tier isn't lost: it
+                                    // stays in posTier, which the Lineup and Waiver views show. Only `tier`
+                                    // goes null, because it follows `rank` and the FLEX column has no tier.
+                                    // buildRankDisplayIndex (js/mls/scout/waiverScanner.js) relies on the
+                                    // overwrite: FLEX players' rank differing from their posRank is how it
+                                    // tells a real positional list from the single-file fallback. Without
+                                    // it, every rank would equal its posRank and positions would be renumbered.
                                     let p = combinedPlayers[clean];
                                     if (isFlexCol) {
                                         p.flexRank = rVal;
@@ -273,8 +310,11 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 // column came first won). Tier is now its own optional field (tierColIdx below);
                 // a file with only a Tier column falls back to row order for rank, same as a file
                 // with no rank column at all.
-                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
-                let tierColIdx = hasHeaders ? headers.findIndex(h => h === 'tier') : -1;
+                // FantasyPros heads these RK and TIERS (refactor 9A; before it, rank came from row
+                // order and tiers were dropped). Its SOS SEASON column is a 1-5 star rating, not a
+                // 1-32 matchup rank, so it's deliberately not read as SoS (the owner's decision).
+                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'rk') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
+                let tierColIdx = hasHeaders ? headers.findIndex(h => h === 'tier' || h === 'tiers') : -1;
                 let nameColIdx = hasHeaders ? headers.findIndex(h => VALID_NAME_HEADERS.includes(h)) : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
 
                 let startIndex = hasHeaders ? 1 : 0;
@@ -290,8 +330,11 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
 
                         let extractedPosRank = 999;
                         if (explicitPosRankColIdx !== -1 && rows[i][explicitPosRankColIdx]) {
-                            extractedPosRank = parseInt(rows[i][explicitPosRankColIdx]);
-                            if (isNaN(extractedPosRank)) extractedPosRank = 999;
+                            extractedPosRank = parsePosRank(rows[i][explicitPosRankColIdx]);
+                        } else if (explicitPosRankColIdx === -1 && posColIdx !== -1 && rows[i][posColIdx]) {
+                            // No Pos Rank column: a "WR12"-style position cell is the next best source.
+                            // Used in the single-file branch below, like a Pos Rank column.
+                            extractedPosRank = posRankFromPosCell(rows[i][posColIdx]);
                         }
 
                         if (!combinedPlayers[clean]) {
@@ -342,7 +385,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                             teamStr = TEAM_ALIASES[teamStr] || teamStr; 
                             
                             let posStr = rows[i][posColIdx] ? rows[i][posColIdx].toString().trim().toUpperCase() : "";
-                            let sosVal = rows[i][sosColIdx] ? rows[i][sosColIdx].toString().replace(/[^0-9]/g, '') : "";
+                            let sosVal = rows[i][sosColIdx] ? parseSosValue(rows[i][sosColIdx]) : "";
 
                             if (teamStr && posStr && sosVal && NFL_TEAMS.includes(teamStr)) {
                                 let posGroup = posStr.includes('QB') ? 'QB' : posStr.includes('RB') ? 'RB' : posStr.includes('WR') ? 'WR' : posStr.includes('TE') ? 'TE' : null;

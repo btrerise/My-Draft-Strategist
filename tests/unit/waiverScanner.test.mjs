@@ -211,6 +211,8 @@ describe('fillLineup', () => {
     test('an unfillable slot gets player null', () => {
         assert.deepEqual(ids(fillLineup(['QB', 'DEF'], [c('qb', 'QB', 1)])), [['QB', 'qb'], ['DEF', null]]);
     });
+    // Kept in refactor 9A (owner's decision): no slot type outside SLOT_ORDER can reach fillLineup today;
+    // see the comment above fillLineup for the trace.
     test('CURRENT BEHAVIOR: slot types outside SLOT_ORDER are silently never filled', () => {
         const res = fillLineup(['QB', 'DL', 'BN'], [c('qb', 'QB', 1), c('dl', 'DL', 1)]);
         assert.deepEqual(ids(res), [['QB', 'qb']]);
