@@ -92,8 +92,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   then the cached render on reload; an HTTP 500 and a blocked request for the error path) and 3
   storage-key rename tests (`key-migration.spec.mjs`, 6B: all three pages opened on a pre-6B
   localStorage snapshot, and both resets) and 1 saved-name-key test (`name-keys.spec.mjs`, 9A: all three
-  pages opened on a pre-9A localStorage + IndexedDB snapshot). `backup.spec.mjs` has 4 tests since 6B (round trip and a
-  pre-6B backup file, per app). Each runs at both widths: 90 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  pages opened on a pre-9A localStorage + IndexedDB snapshot) and 1 SoS-upload test (`mls-sos.spec.mjs`, 9A: the
+  SoS grid's file upload in all three file shapes). `backup.spec.mjs` has 4 tests since 6B (round trip and a
+  pre-6B backup file, per app). Each runs at both widths: 92 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -3869,7 +3870,7 @@ changing code.
 |---|---|---|---|---|
 | 1 | Boom/bust thresholds are strict (exactly 20 WR/RB, 24 QB, 15 TE is not a boom; exactly at the bust line is not a bust) | js/mls/sim/stats.js | Changes the simulator's Boom/Bust %; `tests/mls-sim.spec.mjs` pins exact numbers | fix (QB/RB/WR/TE lines only; done in 9A) |
 | 2 | Pos Rank cells like `WR2` / `RB14` are ignored | js/shared/rankings/parse.js | Likely a plain fix: read the number after the position | fix (done in 9A) |
-| 3 | SoS keeps only digits (`4.5` → "45", `-2` → "2") | parse.js | Check how js/mls/sos.js reads the stored strings first | fix, rankings parser only; the SoS grid upload unchanged (done in 9A) |
+| 3 | SoS keeps only digits (`4.5` → "45", `-2` → "2") | parse.js | Check how js/mls/sos.js reads the stored strings first | fix (done in 9A; at first the rankings parser only, then the SoS grid upload too, at the owner's request) |
 | 4 | FantasyPros `RK` not used as rank, `TIERS` not tier, `SOS SEASON` not SoS | parse.js | Rank then comes from row order; tiers dropped | fix RK and TIERS; SOS SEASON stays unread (done in 9A) |
 | 5 | Position-named name headers (`Quarterback`, `Running Back`, `Flex`) fail a single-file upload | parse.js | They work in per-position uploads | fix (done in 9A) |
 | 6 | Horizontal sheets: FLEX overwrites rank and tier | parse.js | waiverScanner's comments account for it; may be intended | keep, with a comment (9A) |
@@ -3892,7 +3893,7 @@ helpers from parse.js. 7 and 8 reach both apps.
 |---|---|---|---|
 | 1 | `a48b885` | `js/mls/sim/stats.js`: `thresholdTests()` makes the published QB/RB/WR/TE lines inclusive (`>=` boom, `<=` bust), in the empirical counts and the stdDev-0 case. **K/DEF lines stay strict**: they're 0.5×/1.5× the player's own mean, and a player with no data has mean 0, where both lines are 0 and inclusive would show Bust 100% *and* Boom 100%. | **Simulator Boom/Bust % rise slightly for players whose past scores land exactly on a line** (exactly 24 for a QB, 20 for WR/RB, 15 for TE, or exactly the bust line). Rare with real decimal scores. Projection-based and early-season (model) numbers can't change: a single exact value has probability 0 under the normal curve. Win probabilities are untouched. |
 | 2 | `4cf320b` | parse.js `parsePosRank()`: a bare number parses as before; otherwise the number after leading position letters (`WR2`, `rb14`, `D/ST3`, `WR-2`). No number → 999 (falls back, as a blank cell does). | **A Pos Rank column written `WR2` shows the player as WR #2** instead of their overall rank. As with any explicit Pos Rank, the tier beside it is blank. |
-| 3 | `d3c0ea8` | parse.js `parseSosValue()`: a cell holding exactly one number keeps it with sign and decimal (`4.5`, `-2`; `#4`, `4th`, `12 (easy)` → `4`, `4`, `12` as before; `4.50` → `4.5`, `+3` → `3`). No number or several → no SoS for that row. | **From a rankings upload, the SoS grid shows 4.5 / -2 as written; the badge (a whole rank 1–32, parseInt in `js/mls/sos.js`) shows "SoS: 4" for 4.5 and nothing for -2** (it used to show "SoS: 2"). A cell like FantasyPros' "3 out of 5 stars" used to become `35` (no badge, since it's over 32) and is now skipped (still no badge). The SoS grid's own file upload (`js/mls/sos.js`) still keeps only digits, as the owner chose. |
+| 3 | `d3c0ea8` | parse.js `parseSosValue()`: a cell holding exactly one number keeps it with sign and decimal (`4.5`, `-2`; `#4`, `4th`, `12 (easy)` → `4`, `4`, `12` as before; `4.50` → `4.5`, `+3` → `3`). No number or several → no SoS for that row. | **From a rankings upload, the SoS grid shows 4.5 / -2 as written; the badge (a whole rank 1–32, parseInt in `js/mls/sos.js`) shows "SoS: 4" for 4.5 and nothing for -2** (it used to show "SoS: 2"). A cell like FantasyPros' "3 out of 5 stars" used to become `35` (no badge, since it's over 32) and is now skipped (still no badge). The SoS grid's own file upload followed in `7400205` (see "Follow-up" below). |
 | 4 | `f91dfc1` | parse.js: `rk` is a rank column and `tiers` a tier column. `SOS SEASON` stays unread on purpose (a 1–5 star rating, not a 1–32 matchup rank). | **FantasyPros files show their tiers, and an unsorted file keeps FantasyPros' ranks** instead of row order. |
 | 5 | `45e622b` | parse.js `isHorizontalLayout()`: the side-by-side layout is recognized by the columns its parser reads (`/\b(qb\|rb\|wr\|te\|k\|flex)\s+player\b/` or exactly `def team`), no longer by `Quarterback` / `Running Back` / exactly `Flex`. | **A single-file upload headed `Quarterback`, `Running Back` or `Flex` imports** instead of failing with "no name column". Two side effects, both fixes: a side-by-side sheet with only WR/TE/K/DEF sections (no QB, RB or FLEX section) used to be read as a headerless list of its header cells, and now parses; a title line like "Quarterback Rankings" is no longer taken for the header row. |
 | 6 | `3af6d77` | Kept. Comment at the FLEX overwrite in parse.js; the test's comment notes the decision. | Nothing. |
@@ -3974,18 +3975,37 @@ T-Score badge returns at the next T-Score refresh, and his ranking at the next r
 - New: `name-keys.spec.mjs` (above). Playwright total 88 → 90.
 - Kept, unchanged: the `CURRENT BEHAVIOR:` test for 9 (comment added) and the FLEX assertions for 6.
 
+#### Follow-up (owner's request after 9A, same branch)
+
+After reading the leftovers, the owner asked for two of them now, since they finish fixes made above.
+The first reverses their earlier "rankings parser only" choice for #3.
+
+| Commit | Change | What a user sees |
+|---|---|---|
+| `7400205` | The SoS grid's file upload (`js/mls/sos.js`) calls the parser's `parseSosValue` (now exported from `js/shared/rankings/parse.js`) in all three file shapes it reads: Team + Pos + SoS, a team-by-position grid (Team, QB, RB, WR, TE), and Player + SoS resolved through Sleeper's player map. New `tests/mls-sos.spec.mjs`: that upload had no test. | **An SoS file uploaded on the SoS grid keeps 4.5 / -2 / 10.5 as written** (the badge shows "SoS: 4" for 4.5, none for -2). Measured on the code before, the same file saved `45`, `2`, `105`, and `35` for "3 out of 5 stars"; the last one is now skipped. Both SoS paths read a cell the same way. |
+| `3c671b5` | parse.js `posRankFromPosCell()`: in a single-file upload with **no** Pos Rank column, a Pos/Position cell that is exactly a position and a number (`WR12`, `qb 1`, `K1`, `DST3`, `D/ST2`) gives the position rank, with no tier (as a Pos Rank column does). A Pos Rank column still wins, even where its cell is blank. A bare `WR` or `WR/CB` falls back as before. Per-position and FLEX uploads ignore it, since there the file's own order is the position rank. | **A FantasyPros overall rankings file shows FantasyPros' own position ranks** (WR #12) instead of the overall rank, or one the waiver scanner re-derived by ordering players within each position. Its position tier is blank, as with any explicit position rank. |
+
+Tests: `rankingsParser.test.mjs` adds `parseSosValue` cases, POS-cell cases and "Pos Rank column wins".
+The FantasyPros RK/TIERS test's `posTier` is now `null` (its POS cells `QB1`/`QB2` are read as position ranks;
+the ranks themselves didn't change). The parse.js export list now includes `parseSosValue`.
+
 #### Checks run
 
 - `node scripts/check-precache.mjs` OK (108 precached; no file added or removed under js/ or css/).
-- `node --test` 184/184.
-- `cd tests && npx playwright test`: **90/90**. **No screenshot changed** (no baseline PNG in the diff).
-- CACHE_NAME `v2.8.65` → `v2.8.66` (main was at v2.8.65).
+- `node --test` 187/187 (184 before the follow-up).
+- `cd tests && npx playwright test`: **92/92** (90 before the follow-up). **No screenshot changed** (no baseline PNG in the diff).
+- CACHE_NAME `v2.8.65` → `v2.8.66` (main was at v2.8.65). One bump covers the follow-up, since none of this has deployed yet.
 
 #### Left for later
 
-- The SoS grid's own file upload (`js/mls/sos.js`) still keeps only digits (`4.5` → `45`, `-2` → `2`). The
-  owner chose to leave it. If it should match the rankings parser, `parseSosValue` could move to a shared
-  spot and both could use it.
-- FantasyPros' `POS` column holds the position rank too (`WR12`). The parser reads it only as the position
-  (for SoS), and `parsePosRank` would read it, but that wasn't on 0B's list.
+- **K/DEF Boom/Bust when the player averages zero or less** (found while fixing #1; not on 0B's list; no
+  runbook card yet). K/DEF lines are 0.5× and 1.5× the player's own mean (`js/mls/sim/stats.js`,
+  `DEFAULT_BUST_MULTIPLIER` / `DEFAULT_BOOM_MULTIPLIER`). With a negative mean the bust line sits above the boom
+  line, so one week can be a bust and a boom at once. A defense averaging −2 with weeks [−2, −2, −1, −4, 0]
+  shows **Bust 60% • Boom 80%** (lines at −1 and −3); with too few games, the model gives Bust 59.9% • Boom
+  59.9%. Near zero the lines squeeze together: a mean of 1 puts them at 0.5 and 1.5 (45% / 45% at stdDev 4).
+  Defenses can score negative in most formats, so this reaches real leagues; kickers rarely average ≤ 0. A fix
+  needs a decision on what Boom/Bust should mean there: hide it when the mean is ≤ 0, use fixed point lines
+  for K/DEF as for the other positions, or base the lines on spread (mean ± k·stdDev). It changes the
+  simulator's K/DEF numbers, and `mls-sim.spec.mjs` has no K/DEF player today.
 - Next: Phase 8 (8B and 8C build on how Draft Strategist imports rankings; 9A didn't touch MDS's import).
