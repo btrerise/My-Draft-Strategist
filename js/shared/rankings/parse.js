@@ -53,6 +53,16 @@ function parseTier(cell) {
     return m ? parseInt(m[0], 10) : null;
 }
 
+// Explicit Pos Rank cell -> number. Bare numbers parse as before ("7", "7th"). Cells written with
+// the position in front ("WR2", "RB14", "D/ST3", "WR-2") read the number after it; before refactor
+// 9A those gave NaN and the row fell back to its overall rank. 999 when there's no number.
+function parsePosRank(cell) {
+    const n = parseInt(cell);
+    if (!isNaN(n)) return n;
+    const m = String(cell).match(/^\s*[a-z/]+\s*-?\s*(\d+)/i);
+    return m ? parseInt(m[1], 10) : 999;
+}
+
 // Combined horizontal sheet (old format or the newer 'wk1' format): positions side by side,
 // each with its own rank/name columns. Only applies to single-file uploads.
 function isHorizontalLayout(headers, context) {
@@ -290,8 +300,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
 
                         let extractedPosRank = 999;
                         if (explicitPosRankColIdx !== -1 && rows[i][explicitPosRankColIdx]) {
-                            extractedPosRank = parseInt(rows[i][explicitPosRankColIdx]);
-                            if (isNaN(extractedPosRank)) extractedPosRank = 999;
+                            extractedPosRank = parsePosRank(rows[i][explicitPosRankColIdx]);
                         }
 
                         if (!combinedPlayers[clean]) {

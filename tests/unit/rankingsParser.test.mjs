@@ -57,9 +57,30 @@ describe('vertical CSV, single-file upload', () => {
         // Blank Pos Rank: falls back to the overall rank, with the overall tier. Alias applied
         // to cleanName, original spelling kept as name.
         assert.deepEqual(pick(p.kenwalker), { name: 'Kenneth Walker III', rank: 3, tier: 2, posRank: 3, posTier: 2, flexRank: 3, flexTier: 2 });
-        // CURRENT BEHAVIOR: "WR2" doesn't parseInt, so the Pos Rank column is ignored for that row.
-        assert.deepEqual(pick(p.marquisebrown), { name: 'Hollywood Brown', rank: 4, tier: 2, posRank: 4, posTier: 2, flexRank: 4, flexTier: 2 });
+        // "WR2": the number after the position is the Pos Rank (refactor 9A; before it, the cell
+        // was ignored and posRank fell back to the overall rank, 4).
+        assert.deepEqual(pick(p.marquisebrown), { name: 'Hollywood Brown', rank: 4, tier: 2, posRank: 2, posTier: null, flexRank: 4, flexTier: 2 });
         assert.deepEqual(pick(p.nathanieldell), { name: 'Tank Dell', rank: 5, tier: null, posRank: 5, posTier: null, flexRank: 5, flexTier: null });
+    });
+
+    test('Pos Rank cells with the position in front: WR2, RB14, D/ST3, WR-2, lower case', async () => {
+        const file = csvFile('posrank.csv', dedent(`
+            Rank,Player,Pos Rank
+            1,Bijan Robinson,RB1
+            2,Puka Nacua,wr2
+            3,Jahmyr Gibbs, RB14
+            4,Ravens,D/ST3
+            5,Drake London,WR-2
+            6,Chris Olave,7th
+            7,Garrett Wilson,WR
+            8,Tee Higgins,N/A
+        `));
+        const p = byName((await parse(single(file))).parsedData);
+        assert.deepEqual(['bijanrobinson', 'pukanacua', 'jahmyrgibbs', 'ravens', 'drakelondon', 'chrisolave'].map(k => [p[k].posRank, p[k].posTier]),
+            [[1, null], [2, null], [14, null], [3, null], [2, null], [7, null]]);
+        // No number in the cell: falls back to the overall rank, as a blank cell does.
+        assert.deepEqual(pick(p.garrettwilson, ['rank', 'posRank']), { rank: 7, posRank: 7 });
+        assert.deepEqual(pick(p.teehiggins, ['rank', 'posRank']), { rank: 8, posRank: 8 });
     });
 
     test('FantasyPros-style headers: RK / PLAYER NAME / TIERS', async () => {
