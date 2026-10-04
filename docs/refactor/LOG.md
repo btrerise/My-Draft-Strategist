@@ -4035,8 +4035,115 @@ defenses as they are. (b) instead if the owner already has lines in mind.
 
 **Owner's decision:** (d), the floor (recorded after 9A). Still open: the floor N itself. 9B proposes N from real
 numbers (typical K and DEF weekly averages, and what each candidate N shows for the same players) and confirms it
-with the owner before building. The other options aren't built.
+with the owner before building. The other options aren't built. **Floor, confirmed in 9B: N = 4 points, the
+same for K and DEF** (see the 9B entry).
 
 **Tests 9B flips:** the K/DEF cases in `tests/unit/statsEngine.test.mjs` ("K / DEF (and any unknown pos)…",
 "K / DEF lines stay strict…", the stdDev-0 K cases). `tests/mls-sim.spec.mjs` has no K/DEF player today, so 9B adds
 a kicker and a negative-average defense there, pinned on main first.
+
+### 9B — K/DEF Boom/Bust for averages of zero or less (behavior change)
+
+Built option (d), the floor the owner chose after 9A: a kicker's or defense's Boom/Bust lines are now **0.5× and
+1.5× of max(average, 4)**. Before, they were 0.5× and 1.5× of the average itself. Commits: `06eb2ed` pins main's
+K/DEF numbers in the simulator spec (before any code change), `1505988` is the fix.
+
+#### The floor: N = 4, the same for K and DEF (owner's decision)
+
+Proposed from Sleeper's real weekly scores (`/stats/nfl/regular/{season}/{week}`, `pts_ppr`, the same numbers the
+simulator reads; for K and DEF PPR, half and standard are identical), fetched 2026-10-04:
+
+- **Kickers, 2025** (33 with 8+ games): season averages 6.2 to 12.7, median 8.2. Weekly scores −2 to 15+; 1% of weeks
+  at or below 0. No 3-game stretch averaged 0 or less; 1.9% averaged under 4.
+- **Defenses, 2025** (32): season averages 3.2 (Jets) to 10.7, median 6.7. 8% of weeks negative. 6 three-game stretches
+  averaged 0 or less; 18% averaged under 4.
+- **2026, weeks 1–3** (what the simulator uses this week): Miami DEF [4, −4, 2] averages 0.67, Green Bay [1, 5, −2] 1.33,
+  the Colts [1, 1, 4] 2.0. Lowest kicker: Dicker [2, 1, 9], 4.0.
+
+Bust % / Boom % for the same players under each candidate (lines in brackets are 0.5× / 1.5× of the base):
+
+| Player (scores) | Avg | Today | N = 3 | **N = 4** | N = 5 |
+|---|---|---|---|---|---|
+| Juliet DEF, spec (−7, 0, −4, 3, −1) | −1.8 | 60 / 60 | 80 / 0 | **80 / 0** | 80 / 0 |
+| 9A's example (−2, −2, −1, −4, 0) | −1.8 | 80 / 80 | 100 / 0 | **100 / 0** | 100 / 0 |
+| Miami DEF 2026 wk 1–3 | 0.67 | 33 / 67 | 33 / 0 | **33 / 0** | 67 / 0 |
+| Green Bay DEF 2026 wk 1–3 | 1.33 | 33 / 33 | 67 / 33 | **67 / 0** | 67 / 0 |
+| Kilo DEF, spec (2 games, model) | 1.5 | 44 / 44 | 50 / 27 | **54 / 18** | 58 / 11 |
+| Jets DEF 2025 season | 3.18 | 53 / 41 | 53 / 41 | **53 / 18** | 53 / 18 |
+| Dallas DEF 2025 season | 4.19 | 50 / 31 | 50 / 31 | **50 / 31** | 50 / 25 |
+| Dicker K 2026 wk 1–3 | 4.0 | 33 / 33 | 33 / 33 | **33 / 33** | 67 / 33 |
+| Median DEF 2025 | 6.93 | 40 / 20 | same | **same** | same |
+
+With N = 4 no kicker's full 2025 season changes, and only one defense's (the Jets'). It changes 2% of kicker and 18% of
+defense 3-game stretches, which are mostly the squeezed cases. N = 3 left the Jets at 41% boom. N = 5 changed four
+defenses' seasons and 6% of kicker stretches. One constant covers both, since no kicker averaged near 4 over a season.
+
+#### What changed
+
+- `js/mls/sim/stats.js`: new `RELATIVE_LINE_FLOOR = 4` next to `DEFAULT_BUST_MULTIPLIER` / `DEFAULT_BOOM_MULTIPLIER`.
+  `getBoomBustRates` computes `lineBase = Math.max(mean, RELATIVE_LINE_FLOOR)`. For positions without fixed lines,
+  the bust line is `lineBase × bustMultiplier` and the boom line is `lineBase × boomMultiplier`. Comments on
+  `thresholdTests` and the JSDoc follow. Nothing else changed: no new export, so `exports` in statsEngine.test.mjs stays.
+- The floor applies in every tier: counted weeks (blended, current season), the projection model and the
+  too-few-games model. A mean of 4 or more gives exactly the lines it gave before.
+- **K/DEF lines stay strict** (9A): exactly 2 or 6 doesn't count. With the floor the lines are at least 4 points apart,
+  so they can no longer meet. Making them inclusive is a separate choice the owner hasn't been asked to make.
+- `js/mls/sim/ui.js` is unchanged: it shows whatever `getBoomBustRates` returns.
+
+#### What a user sees
+
+**In the Lineup Strategist simulator, a kicker or defense averaging under 4 points now shows a Boom/Bust split that
+makes sense:** a bad week is a bust and a good week is a boom, never both. A defense averaging −1.8 went from
+Bust 60% • Boom 60% to Bust 80% • Boom 0%. One averaging 1.5 over two games went from 44% • 44% to 54% • 18.2%.
+Every kicker and defense averaging 4 or more shows exactly what it showed before. Floor–ceiling ranges, averages and
+win probabilities don't change, because the floor only moves the Boom/Bust lines.
+
+Rarely reached in practice: most rostered K/DEF have a Sleeper projection (tier 1), and projections for them are
+rarely under 4 (2026 weeks 4 and 5: at most one kicker and one defense a week under 4; medians 7.8 and 6.6). It shows up mostly early in the season, when a defense's last 3 games are counted on their own.
+
+#### Tests
+
+- `tests/mls-sim.spec.mjs`: added four players to the fixed teams: India K (avg 7.67, 6 games) and Juliet DEF
+  (avg −1.8) to team 1, Kilo DEF (avg 1.5, 2 games, so the model answers) and Lima K (avg 9.1, 10 games) to team 2. **Pinned numbers,
+  before → after:**
+
+  | Pin | main (`06eb2ed`) | 9B (`1505988`) |
+  |---|---|---|
+  | India K | Bust 16.7% • Boom 16.7% | unchanged |
+  | Lima K | Bust 10% • Boom 10% | unchanged |
+  | Juliet DEF | **Bust 60% • Boom 60%** | **Bust 80% • Boom 0%** |
+  | Kilo DEF | **Bust 44% • Boom 44%** | **Bust 54% • Boom 18.2%** |
+  | Win probability | 93.71% / 6.29% before the players were added → 84.77% / 15.23% with them | unchanged |
+
+  The win-probability pin changed only in `06eb2ed`, because the teams got bigger. The 9B fix leaves it unchanged.
+  Every other player's line is unchanged.
+- `tests/unit/statsEngine.test.mjs` (33 test cases, was 28):
+  - Flipped: "K / DEF lines stay strict…" (mean 0 → lines 2 / 6, `[0, 0, 0]` is 100% bust, was 0 / 0 at lines 0 / 0;
+    added: on the floored lines exactly 2 / 6 don't count). "K / DEF (and any unknown pos)…" is renamed for the floor
+    and covers a low unknown position and multipliers applied to the floor. In the stdDev-0 cases, the no-data
+    kicker is now Bust 100% (was 0%), and a −2 DEF is 100 / 0 (was 0 / 100).
+  - New: a negative average (Juliet's weeks, 9A's example, the model at −2: 90.9 / 0.4, was 63.1 / 63.1); an average
+    of 0 (counted 75 / 25, was 25 / 50; model 69.1 / 6.7, was 50 / 50); a small positive average (model at 1: 59.9 / 10.6,
+    was 45 / 45; counted; 3.99 just under the floor). Also "averaging at least the floor keep their own lines": means from 4 to
+    12.67, counted and model, checked against 0.5× / 1.5× of the mean computed in the test. **It passes on main's
+    stats.js too**, which shows those players' numbers didn't change. A sweep (means −10 to 12, weekly scores −15 to 25) checks that no week is ever
+    both a bust and a boom.
+  - Mutation check: with main's stats.js, 7 of the 33 fail (all but the "at least the floor" test among the K/DEF ones).
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (108 precached; no file added or removed).
+- `node --test` 192/192 (187 before).
+- `cd tests && npx playwright test`: **92/92**. **No screenshot changed** (the visual tests have no K/DEF Boom/Bust on screen).
+- CACHE_NAME `v2.8.66` → `v2.8.67` (main was at v2.8.66).
+
+#### Left for later / for the owner
+
+- **Unknown positions** (IDP such as LB, DL, DB) go through the same branch, so they get the same floor of 4. They can't reach
+  the simulator today: league sync drops IDP slots (9A's trace for #9), so only QB/RB/WR/TE/FLEX/SFLEX/K/DEF start.
+  If IDP support comes, its lines need their own decision; 4 points means something different for a linebacker.
+- **K/DEF lines are still strict.** Inclusive lines are now safe (they can't meet), but changing them would move K/DEF
+  numbers for anyone with a week exactly on a line, so it's the owner's call.
+- **A user-adjustable floor** would need a new setting and storage key (outside this card). Not built.
+- The simulator reads Sleeper's default scoring (`pts_ppr` / `pts_half_ppr` / `pts_std`), not a league's custom scoring,
+  so the floor's scale matches every league. A league that scores defenses very differently still sees default-scoring numbers.
