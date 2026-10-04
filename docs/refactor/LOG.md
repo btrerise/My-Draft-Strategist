@@ -25,6 +25,9 @@ cd tests && npm install && npm run check     # precache + unit tests + Playwrigh
   `node --test tests/unit/rankingsParser.test.mjs`.
 - Chromium is preinstalled in Claude Code cloud sessions (`/opt/pw-browsers`). Don't run
   `playwright install` there.
+- `npm run compare-css` (in `tests/`, added in 4D) is opt-in and not part of `check`: it compares every
+  element's computed style between `origin/main` (or `COMPARE_REF=<ref>`) and the working tree, in about
+  7 minutes. Use it for any change that must not be visible, such as moving CSS. See the 4D entry.
 
 ### Accepting an intended visual change
 
@@ -3129,3 +3132,231 @@ spacing and rows, not something users see.
 
 - **Follow-up after 4D (owner's decision):** the pulsing-card corner fix described under feature 2. It's a visible
   change, so it isn't part of 4D.
+
+### 4D — CSS cleanup: delete unused rules, move app-only rules out of base.css
+
+No visible change. Afterwards `css/base.css` holds the rules more than one page uses, the features the owner
+chose to share in 4C, and 14 app rules that have to stay for the cascade (listed below). No CSS file holds a
+rule nothing uses, apart from the 8 spacing sizes the owner chose to keep. Rule counts (top-level rules):
+base 257 → 307, mds 126 → 130, mls 424 → 365. CACHE_NAME `v2.8.60` → `v2.8.61`. No file added or removed
+under `css/` or `js/`, so PRECACHE_ASSETS is unchanged.
+
+Commits, one per step: the comparison tool; step 1 (delete); step 2 (5 false positives); step 3 (split the
+mixed blocks); a tool fix (lazy images); step 4 (4C's shared features to base); one more unused rule.
+
+#### New tool: `tests/tools/css-compare.tool.mjs` (`cd tests && npm run compare-css`)
+
+4A's computed-style comparison, rebuilt and committed. It has its own config (`tests/tools/playwright.config.mjs`,
+`testMatch: *.tool.mjs`, 4 workers), so the default `npx playwright test` doesn't run it (still 78 tests).
+
+- Each scenario runs twice in Chromium: once with every local request answered from a git ref
+  (`COMPARE_REF`, default `origin/main`, via `git show`), once from the working tree via `serve.mjs`. No
+  worktree is needed, and you don't have to commit first.
+- After each step it records every element's full computed style, sorted by property name, plus `::before` /
+  `::after` (when they render), `::marker`, `::placeholder` and `::file-selector-button`, and fails on any difference,
+  naming the element, its id/classes and the changed properties.
+- 7 scenarios × 2 widths × `prefers-reduced-motion` off/on = 28 tests, 69 states per width and motion setting
+  (about 127,000 elements and pseudo-elements per width and motion setting, ~508,000 per run): MDS empty (every tab,
+  the drag-and-drop highlight, the menu, a normal and an error toast, the confirm dialog), MDS mid-draft (every tab,
+  then every `<details>` open, then the phone "mobile collapse" setting with one Tracker card expanded), MLS empty
+  (same set as MDS empty), MLS synced (every tab, every `<details>` open, the Add Player autocomplete open), MLS with
+  rankings (both upload previews, both "saved" states, every tab, every `<details>` open, a Scan Pasted List, Auto-Find,
+  a trade verdict, simulator results with the seeded worker), the MLS handoff banner, and T-Score (every tab, menu).
+- Settling, so timing doesn't show up as differences: network idle, mouse parked at (0,0), focus blurred, fonts and
+  images loaded (lazy images are switched to eager first: blocked headshots get swapped for initials whenever they
+  load, which made the element tree timing-dependent), transitions and finite animations finished, endless ones
+  paused at 0. Toasts are hidden before each snapshot except in the toast steps, and MLS's self-hiding "Uploaded
+  Successfully!" line is waited out. Elements are keyed by tag and position, not id: tooltips get `mds-tip-N` ids
+  in whatever order they're set up.
+- Checked that it catches a change: one padding value changed in `.sos-grid th` gave 443 differences.
+- `SIM_SEED` in `tests/helpers.mjs` is now exported (the tool seeds the simulator with it).
+- Known flake, seen once in the baseline runs before any CSS changed: one MDS mid-draft button's background
+  differed (`rgb(16, 185, 129)` vs `rgb(74, 222, 128)`) under load. It never came back once the report started naming
+  the element. If it reappears, the report says which button; rerun that test before suspecting the CSS.
+
+Static check (throwaway, in the session scratchpad, like 4A's): for each page, every (media, selector,
+declarations) unit in main vs the branch; it reports pairs whose relative order flipped and that could fight (a
+common property counting shorthands, equal specificity, same pseudo-element, subject classes that appear together
+in some `class="…"` in that page's own sources, with `classList`-toggled classes pinned to the elements they're
+toggled on), and newly loaded rules whose classes a page uses. Across the whole branch it reports only
+`.mls-name-badges .badge` vs `.roster-item .pos-badge` (the false positive 4A described: the name badges never
+carry `pos-badge`) and the intended `.setup-checklist .setup-step-go` (below). This covers hover, focus and other
+states the comparison doesn't reach.
+
+#### Step 1: deleted (9 rules, base.css)
+
+`.guide-banner-content` (GUIDE BANNER); `.player-card-main`, `.player-info h4`, `.toggle-container` (MDS SPECIFIC
+STYLES); `.live-indicator`, `.live-indicator:hover` (LIVE INDICATOR); `.draft-cell-content` (MODERNIZED FILE UPLOAD
+BUTTON); `.player-info`, `.player-info h4` (PLAYER CARD GRID LAYOUT). Rechecked first with a grep of `index.html`,
+`lineup/index.html`, `t-score/`, `js/` and `functions/` (the only hit, `sim-player-info`, is a different class).
+Kept, per the owner's 4C decision: `.gap-1`, `.gap-3`, `.stack-xs`, `.stack-md`, `.stack-lg`, `.cluster-wrap`,
+`.cluster-xs`, `.cluster-lg` (UTILITIES, LAYOUT PRIMITIVES; still unused). The card's "17 unused" = these 9 + those 8.
+
+Also deleted, in its own commit: `.mls-table-header-cell` (mls.css, MLS LINEUP & ROSTER TAB SPECIFIC STYLES).
+Nothing has used it since before 4A (`git grep` at the 4A commit and on main); 4A's dead-rule list missed it.
+
+#### Step 2: 5 false positives, base.css → mls.css, unchanged
+
+`.mls-name-badges .badge`, `.sim-team-column h4`, `.sim-bench-insights h4`, `.trade-verdict-source-label .tooltip-text`,
+`.sos-grid th`, each at its original relative position (next to `.mls-name-badges`, `.sim-team-column`,
+`.sim-bench-insights`, `.trade-verdict-source-label .tooltip-icon` and `.sos-grid`). The COLLAPSIBLE WAIVER UPGRADE
+SECTIONS marker comment stays in base.css on `.sos-table-wrapper`, which stays.
+
+#### Step 3: the four mixed blocks, split
+
+Each split-off block is new, holds the moved selectors' declarations verbatim, sits at the original block's relative
+position in the app file, and has a one-line comment saying it was split from base.css in 4D.
+
+| Shared block (base.css) | Now in base.css | Split off to |
+|---|---|---|
+| LIVE INDICATOR, `@media (prefers-reduced-motion: reduce)` | `.btn-pulse`, `.pulse-border`, `.nav-pulse` (shared, 4C) and `.tab-content.active` | `.pulse-dot { animation: none }` → mds.css |
+| Lineup Slots & Roster Rows, `@media (max-width: 480px)` | `.lineup-slot, .roster-item`, `.roster-item .pos-badge`, `.badge` | `.lineup-slot .slot-badge`, `.player-name-wrap`, `.swap-btn`, `.lock-btn` → mls.css |
+| end of MODERNIZED FILE UPLOAD BUTTON, `@media (max-width: 767px)` | `.container`, `.settings-card` | `.lineup-empty-state, .bench-empty-state, .roster-empty-state` → mls.css |
+| FULL-WIDTH DRAFT BOARD FOR DESKTOP, the 44px touch-target block | `.close-banner-btn, .close-menu-btn` | `.btn-expand` → mds.css, `.close-chip` → mls.css; `.edit-icon` dropped (no page uses it) |
+
+Then the app rules those blocks overrode moved to their app file, at their original relative position:
+`.pulse-dot`, `.btn-expand`, `@media (min-width: 768px) { .card-details, .hide-on-desktop }` → mds.css;
+`.lineup-empty-state, .bench-empty-state`, `.roster-empty-state`, `.lineup-slot .slot-badge`, `.player-name-wrap`,
+`.swap-btn` → mls.css. The reduced-motion block's comment now says the pulses (not "four pulses") and points to
+mds.css for `.pulse-dot`. The pulse cues are shared (4C), so that part of step 3 was skipped as the card says.
+
+#### Step 4: the features the owner chose to share (4C), mls.css → base.css
+
+- **The three pulse `@keyframes`** (`btn-pulse-anim`, `border-pulse-anim`, `nav-pulse-anim`) → base.css LIVE
+  INDICATOR, at their original place next to `.btn-pulse`, `.pulse-border`, `.nav-pulse`. Keyframes don't depend on
+  order, and each name is defined once. On a page that adds these classes the cues now animate (4C's "known gap").
+- **To the end of base.css**, in original order, with their own comments and the section marker each came from:
+  the rankings upload preview (15: `.mls-preview-count`, `-list`, `-list li`, `-list li:last-child`,
+  `.rankings-preview-rank`, `.mls-preview-note`, `-target`, `-target.is-replace`, `.mls-preview-unmatched`, `-title`,
+  `-list`, `-hint`, `.mls-preview-derived`, `-title`, `-body`); the layout and spacing helpers (26: `.mt-1`, `.mt-3`,
+  `.mb-0`, `.mb-2`, `.mb-3`, `.ml-3`, `.mr-2`, `.pt-3`, `.pl-2`, `.stack-sm`, `.cluster`, `.cluster-sm`, `.cluster-md`,
+  `.text-helper`, `.accordion-body`, `.card-header-flush`, `.or-divider` ×3, `.settings-subsection` ×3,
+  `.toggle-row-flush` ×2, `.input-group-end`, `.btn-link-inline`) plus `.mb-1` from mds.css; `.weekly-success-feedback`,
+  `.success-feedback`, `.mls-upload-processing`; `.info-banner`, `.info-banner-icon`; the keyboard hint
+  (`.mls-manual-key-hint`, `… kbd`, its `@media (hover: none)`); `.rankings-fresh`, `.rankings-stale`, `.sync-failed`;
+  the setup checklist (11); the autocomplete (`.autocomplete-wrap`, `-dropdown`, `-item`, `-item:hover, .highlighted`,
+  `-meta`: 5 rules, 6 selectors). 69 rules. At the end of base.css they still beat every shared rule, as they did from
+  mls.css; the static check found no mls.css rule that starts beating them.
+- **`.setup-step-go` → `.setup-checklist .setup-step-go`** (owner's choice (a) in 4C): the jump link also carries
+  `.mls-btn-sm`, which now loads after it; the extra class keeps the link's 0.8rem font size. No other rule with
+  that specificity sets a font property on that button (checked).
+- Stays in mls.css, as 4C said: the checklist's MLS-id `scroll-margin-top` rule, `.status-badge-meta`,
+  `.header-freshness` (both rules), `.mls-btn-sm`, `.mls-league-picker*`, the per-position upload rules, and the
+  three "later" features. `.mt-3 { … }.mb-0 { … }` had ended up on one line in mls.css (4A gave `.mb-1`'s newline to
+  mds.css); with `.mb-1` back between them in base.css they're on separate lines again, as in styles.css.
+- The header comment of base.css says what's at its end and why; the README's `/css` line mentions the shared features.
+
+#### What stays in base.css, and why (14 app-only rules)
+
+In each case a shared rule later in base.css sets the same property on the same element with equal specificity and
+wins today. In mls.css or mds.css the app rule would load later and win instead.
+
+| Rule | App | The later shared rule that wins today |
+|---|---|---|
+| `.early-badge`, `.bye-badge`, `.taxi-badge`, `.kickoff-badge`, `.mls-lock-badge`, `.mls-autolock-badge`, `.mls-pos-badge-sizing` | MLS | `.badge` in the phone `@media (max-width: 480px)` block (Lineup Slots & Roster Rows): `padding: 2px 4px; font-size: 0.65rem`. These badges are written `class="badge …"` (`.early-badge`'s 0.70rem, for example, is 0.65rem on phones today). |
+| `.tracker-controls-card` | MDS | `.settings-card` in the phone `@media (max-width: 767px)` block (`padding: 1rem 0.75rem`); the card is `class="settings-card tracker-controls-card"`. |
+| `.close-banner-btn-sm` | MLS (shared, 4C) | `.close-banner-btn` twice: MODERNIZED FILE UPLOAD BUTTON (`font-size: 1.1rem; padding: 0.25rem 0.5rem`) and FULL-WIDTH DRAFT BOARD (`padding: 0.5rem`). Every element with the class also has `.close-banner-btn`. |
+| `.status-icon` | MLS | `.tooltip, .tooltip-container` (TOOLTIPS, right after it): `display`, `align-items`. Same values today, but it's the later rule. |
+| `.danger-card` | MLS (shared, 4C) | `.sos-details-accordion` (`border`, `background`) on the Danger Zone accordion, `<details class="sos-details-accordion danger-card">` (Setup, Advanced Settings). The Injury Auditor card (`settings-card danger-card`) does show the style. |
+| `.text-danger` | MLS (shared, 4C) | `.sos-summary { color }` on `class="sos-summary text-danger"`. `.text-danger` is `!important`, so it wins either way; kept anyway (the card lists it, and moving it gains nothing). |
+| `.mt-0` | MLS | `.leaguelogs-attribution { margin-top: 1rem }`. |
+| `.pl-6` | MLS | `.guide-list { padding-left: 1.25rem }`. |
+
+#### For the owner (not changed: each would be visible)
+
+- `.mt-0` on `.leaguelogs-attribution` and `.pl-6` on `.guide-list` do nothing today (above). 5D's rename of
+  `.leaguelogs-attribution` is a natural moment to decide.
+- **New: `.close-banner-btn-sm` does nothing on MLS either.** All four ✕ buttons that carry it (`#guideBanner`,
+  `#draftBanner`, `#sleeperSyncBanner`, the handoff banner) measure 17.6px / 8px padding, the plain `.close-banner-btn`
+  size, not 0.85rem / 0.25rem (checked in Chromium). The later `.close-banner-btn` rules win. 4C shared it because MDS
+  sets the same small size inline; for MDS to get it from the class, the class has to win first, and that's visible on MLS.
+- **New: `.danger-card` does nothing on the Danger Zone accordion** (Factory Reset, `<details class="sos-details-accordion
+  danger-card">` in Setup's Advanced Settings: solid border, no red gradient, checked in Chromium). The accordion's own
+  border and background win, so only the Global Injury Auditor card (`settings-card danger-card`) shows the red dashed
+  style. Making it show on the Danger Zone is a visible change. (Corrected after 4D: an earlier version of this note
+  said "Injury Auditor accordion".)
+
+#### Checks run
+
+- Computed-style comparison vs `origin/main` before each commit: **0 differences in all 28 runs** after steps 1, 2,
+  3 and 4 (after the extra deletion, 0 in the 16 MLS runs, then all 28 again before pushing).
+- `node scripts/check-precache.mjs` OK (107 precached). `node --test` 162/162. `cd tests && npx playwright test`
+  **78/78 after every step. No screenshot changed.**
+
+#### Left for later chunks
+
+- **Follow-up after 4D (owner's decision in 4C):** the pulsing-card corner fix (drop `border-radius: 8px` from
+  `.pulse-border` in base.css, LIVE INDICATOR). A visible change; accept the screenshots that show a pulsing card.
+- New CSS: one app only → its app file; both apps, or a feature meant to be shared → base.css, and when it's an
+  app-feature rule that has to beat earlier shared rules, at the end of base.css, as step 4 did. Before moving rules,
+  run `npm run compare-css`.
+
+### Planned as runbook chunks 4E and 8A–8C (owner's request, recorded after 4D)
+
+Cleaning up the CSS turned up two kinds of follow-up work that sit outside a "no visible change" refactor. The owner
+wants both planned, so they don't become leftovers when the runbook is done:
+
+1. **Visible fixes (4E).** 4D found classes that do nothing because a later shared rule in `css/base.css` wins
+   over them. Fixing them changes how those elements look, so 4D had to leave them.
+2. **Draft Strategist versions of the shared features (Phase 8).** 4C's "share now in CSS" decisions only kept the
+   styles in `css/base.css`. Nothing in Draft Strategist (MDS) uses them yet.
+
+Both are runbook cards now. Order: 4E alongside 5E and 6B → 5D → 7B → Phase 8.
+
+#### 4E — Visible CSS fixes found in 4C and 4D (needs 4D; alongside 5E and 6B)
+
+Touches only CSS, a few class attributes in the two app pages, and the screenshot baselines. 5E (T-Score page) and
+6B (storage) don't touch those, so they can run at the same time. **5D now needs 4E**: 5D renames
+`.leaguelogs-attribution`, which one fix touches. 5D and 7B can then still promise no visible change.
+
+Owner's decisions (recorded after 4D; 4E does only the approved fixes):
+
+| Fix | What changes | Owner's decision |
+|---|---|---|
+| Pulsing-card corners | Drop `border-radius: 8px` from `.pulse-border`, so a pulsing card keeps its 12px corners (MLS Setup cards). | fix (decided after 4C) |
+| Smaller ✕ (`.close-banner-btn-sm`) | MLS's four ✕ buttons go from 1.1rem / 8px padding to 0.85rem / 0.25rem (touch target unchanged). MDS's two ✕ swap their inline style for the class, with no visible change. | **fix**: both apps then show the same small ✕ |
+| `.danger-card` on the Danger Zone accordion | Red dashed border and red tint on MLS's Danger Zone accordion (Factory Reset; Setup, Advanced Settings), like the Global Injury Auditor card already has. | **fix**: it's the Factory Reset, what the style is for |
+| `.mt-0` on `.leaguelogs-attribution` | (a) Make it work: the attribution line under MLS's market data loses its 1rem top margin; or (b) delete the dead `mt-0` from the markup: no visible change. | **(b) delete the dead class**: MDS's same line keeps the 1rem gap; dropping it would press the line against the button |
+| `.pl-6` on the two `.guide-list`s | (a) Make it work: those two lists on MLS's Guide tab get a wider indent (1.25rem → 2rem); or (b) delete the dead `pl-6`: no visible change. | **(b) delete the dead class**: MDS's Guide lists use the plain indent; these lists have no bullets |
+
+`npm run compare-css` proves the scope: every difference it reports must be on an element a fix targets. The
+screenshot changes get accepted with `npm run test:update` and listed.
+
+#### Phase 8 — Shared features for Draft Strategist (after 7B)
+
+Each card moves the MLS code it needs into `js/shared/` without changing MLS (compare-css: 0 differences on MLS
+and T-Score), then builds the MDS version, and proposes the MDS details to the owner before building. Why after 7B:
+
+- **After 5D (Phase 5 done):** new markup uses `data-action` from the start, and shared code lands in the final
+  `js/shared/` layout rather than one 5D is still shrinking.
+- **After 6B:** a dismissible MDS banner needs a storage key, and freshness labels need a timestamp saved in MDS's
+  data. After 6B both are created under the new names and never need migrating.
+- **After 7B:** freshness labels change how MDS saves its rankings and ADP metadata (`js/mds/import.js`,
+  `js/mds/market.js`), which 7B may also touch.
+
+If the owner wants something sooner, 8A doesn't touch the data code and could start once 5D and 6B are merged.
+
+| Card | Features (4C numbering) | Shared code it creates | Size |
+|---|---|---|---|
+| **8A** setup guidance (needs 7B; alongside 8B) | Pulse cues (2), setup checklist (3), Danger Zone style on MDS's Reset Controls (5), info banner where the owner picks a use (6) | `js/shared/ui/setupChecklist.js` (step `<li>` builder, scroll-and-focus) | ~25k |
+| **8B** freshness and processing lines (needs 7B; alongside 8A) | "Updated 3 days ago" labels (4), "Processing…" / "Uploaded successfully" lines | `js/shared/freshness.js` (also replaces T-Score's copy of the day math), `showStatusFeedback` / `setProcessingStatus` in `js/shared/ui/` | ~20k |
+| **8C** upload preview (needs 8B) | Rankings upload preview | preview shell and pure helpers | ~25k |
+
+Already done or nothing to build: the smaller ✕ (4E), the layout and spacing helpers (CSS only). The three "later"
+features (collapsible rankings cards, segmented toggle, hide-the-hero) and the "no" items stay out of Phase 8.
+Class renames that 4C listed (`mls-preview-*`, `rankings-fresh` / `rankings-stale`, `mls-upload-processing`…)
+happen in the card that first uses the class on MDS. The autocomplete, keyboard hint and info banner stay MLS-only
+for now (owner's decisions below), so their classes keep their names.
+
+Owner's decisions for Phase 8 (recorded after 4D; each card builds only what's marked "build"):
+
+| Feature | Card | Owner's decision |
+|---|---|---|
+| Pulsing "do this next" highlights | 8A | **build** |
+| Setup checklist | 8A | **build** |
+| Danger Zone style on Reset Controls | 8A | **build** |
+| Blue info banner (and where) | 8A | **not yet**: no MDS message needs it today; revisit when one does |
+| Freshness labels (and the stale threshold for rankings and ADP) | 8B | **build**: rankings stale after 14 days, ADP after 3 (MLS's ROS-rankings and market-data limits) |
+| "Processing…" / "Uploaded successfully" lines | 8B | **build** |
+| Rankings upload preview | 8C | **build** |
+| Player-name autocomplete + keyboard hint (and where) | 8C | **no**: no MDS field needs it (the Tracker search already filters as you type), so 8C was trimmed to the preview |

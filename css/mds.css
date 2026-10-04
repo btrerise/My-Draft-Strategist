@@ -163,9 +163,6 @@
     box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
 
-/* --- UTILITIES --- */
-.mb-1 { margin-bottom: var(--space-1); }
-
 /* --- LAYOUT PRIMITIVES --- */
 .text-green { color: var(--primary-green); }
 .text-blue { color: #60a5fa; }
@@ -636,6 +633,24 @@
     }
 }
 
+/* --- LIVE INDICATOR --- */
+/* The animated dot */
+.pulse-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+/* Reduced motion: stop the live-sync dot's pulse (split from the shared block in css/base.css in 4D). */
+@media (prefers-reduced-motion: reduce) {
+    .pulse-dot {
+        animation: none;
+    }
+}
+
 /* --- MODERNIZED FILE UPLOAD BUTTON --- */
 @media (max-width: 480px) {
     .limits-table th, 
@@ -789,6 +804,16 @@ button.edit-link {
 }
 
 /* --- MOBILE COLLAPSIBLE CARDS --- */
+.btn-expand {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.4rem;
+}
+
 .player-card.is-expanded .chevron-icon {
     transform: rotate(180deg);
 }
@@ -820,6 +845,24 @@ button.edit-link {
 
 .queue-header.is-expanded .chevron-icon {
     transform: rotate(180deg);
+}
+
+/* Mobile Default: Details hidden only if setting is enabled.
+   (Consolidated from what used to be two overlapping @media(max-width:600px) blocks here plus
+   a third small one further down -- see the single block near the PLAYER CARD GRID LAYOUT
+   section below for the live rules.) */
+
+/* Desktop Default: Details always visible, expand button hidden.
+   (Previously declared 3 times near-identically across this file -- consolidated to one.) */
+@media (min-width: 768px) {
+    .card-details {
+        display: block !important; /* Force visible */
+        margin-top: 0.25rem;
+    }
+    
+    .hide-on-desktop {
+        display: none !important;
+    }
 }
 /* --- PLAYER CARD GRID LAYOUT --- */
 .card-grid {
@@ -1029,4 +1072,14 @@ body.hide-headshots .draft-cell-img {
         text-overflow: ellipsis; 
         white-space: nowrap;
     }
+}
+
+/* Accessibility: minimum touch target for the Tracker card expand button (split from the shared block in css/base.css in 4D). */
+.btn-expand {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
 }

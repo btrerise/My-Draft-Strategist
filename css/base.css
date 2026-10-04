@@ -1,6 +1,12 @@
 /* Shared by every page (Draft Strategist, Lineup Strategist, T-Score): tokens, resets, chrome, forms,
    buttons, badges, tooltips, toasts, shared cards. Each app links its own css/mds.css or css/mls.css
-   after this file. Split from styles.css in refactor chunk 4A; rules keep their original order. */
+   after this file. Split from styles.css in refactor chunk 4A; rules keep their original order.
+   The rules after the drag-and-drop section style Lineup Strategist features the owner chose to
+   share with Draft Strategist (refactor 4C/4D): the rankings upload preview, layout and spacing
+   helpers, the info banner, the keyboard hint, freshness labels, the processing/success lines, the
+   setup checklist and player-name autocomplete. They sit at the end so they still beat every
+   earlier shared rule, as they did from mls.css. A few app-only rules stay earlier in this file
+   because a shared rule on the same element would otherwise change what wins (docs/refactor/LOG.md, 4D). */
 
 /* --- SHARED CSS VARIABLES & ROOT DESIGN TOKENS --- */
 :root {
@@ -646,14 +652,6 @@ html { scroll-padding-top: 5rem; }
     border-color: rgba(16, 185, 129, 0.6);
     transform: translateY(-2px);
 }
-.guide-banner-content {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--primary-green);
-    font-weight: 600;
-    font-size: 0.95rem;
-}
 .guide-arrow {
     color: var(--primary-green);
     transition: transform 0.2s;
@@ -1093,18 +1091,6 @@ label.toggle-title,
 
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
 .mls-pos-badge-sizing { min-width: 26px; padding: 2px 4px; text-align: center; }
-/* One size for every badge in the group: .badge-rookie/.bye-badge carry a 1px border and
-   .inj-badge doesn't, so side by side they sat at different heights and a rookie card came out
-   2px taller than an injured one. Same padding + a border on all (transparent on injury). */
-.mls-name-badges .badge { margin-left: 0; padding: 1px 4px; font-size: 0.65rem; line-height: 1.3; border-style: solid; border-width: 1px; }
-
-.lineup-empty-state,
-.bench-empty-state {
-    text-align: center;
-    color: var(--text-muted);
-    padding: 2rem 1rem;
-    font-size: 0.9rem;
-}
 
 /* --- Lineup Slots & Roster Rows --- */
 .lineup-slot, .roster-item { 
@@ -1132,33 +1118,12 @@ label.toggle-title,
     text-align: center;
     font-size: 0.8rem;
 }
-.lineup-slot .slot-badge { 
-    width: 46px;
-    min-width: 46px;
-    flex-shrink: 0;
-    text-align: center;
-    font-size: 0.68rem; /* small enough that "SFLEX" still fits at this fixed width */
-}
 /* 2. UNIVERSAL FIX: Force whatever player data is in the middle to left-align and fill space */
 .roster-item > *:not(:first-child):not(:last-child),
 .lineup-slot > *:not(:first-child):not(:last-child) {
     flex-grow: 1;
     text-align: left;
 }
-
-.player-name-wrap { 
-    font-weight: 600; 
-    color: var(--text-main); 
-    line-height: 1.3; 
-    font-size: 0.95rem; 
-    /* Matches .mls-plain-pos's left padding below, so the name text and the position text on
-       the meta line start at the same x -- both are plain text with no badge chrome to offset
-       them, but the kickoff badge above still has its own small inset, hence the 4px here. */
-    padding-left: 4px;
-}
-
-/* Action Buttons within slots */
-.swap-btn { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
 
 /* Responsive adjustments */
 /* Responsive adjustments for optimal mobile density */
@@ -1173,47 +1138,10 @@ label.toggle-title,
         min-width: 32px; 
         font-size: 0.7rem; 
     }
-    .lineup-slot .slot-badge { 
-        width: 42px; 
-        min-width: 42px; 
-        font-size: 0.62rem; 
-    }
-    
-    .player-name-wrap { 
-        font-size: 0.85rem; 
-    }
-    
     .badge { 
         padding: 2px 4px; 
         font-size: 0.65rem; 
     }
-    
-    .swap-btn { 
-        padding: 0.3rem 0.5rem; 
-        font-size: 0.75rem; 
-    }
-    
-    .lock-btn { 
-        /* Bumps the SVG size up slightly for better touch targets */
-        transform: scale(1.1); 
-    }
-}
-
-/* --- MLS SCOUT TAB SPECIFIC STYLES --- */
-.sim-team-column h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-
-.sim-bench-insights h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
 }
 
 /* --- COLLAPSIBLE WAIVER UPGRADE SECTIONS (Scout tab, Auto-Find Upgrades) ---
@@ -1221,24 +1149,12 @@ label.toggle-title,
    tabs' upload cards) purely for the expand/collapse mechanics -- those classes don't require
    .settings-card, so they work fine nested inside the Waiver Wire Assistant card without
    double-applying its box styling. .mls-waiver-section supplies its own lighter box instead. */
-.trade-verdict-source-label .tooltip-text {
-    text-transform: none;
-    letter-spacing: normal;
-}
 /* Strength of Schedule (SoS) Grid Styles */
 .sos-table-wrapper {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     margin-top: 0.5rem;
-}
-
-.sos-grid th { 
-    background: rgba(0, 0, 0, 0.3); 
-    color: var(--text-muted); 
-    padding: 0.6rem 0.4rem; 
-    border: 1px solid var(--border); 
-    font-weight: 600;
 }
 
 /* --- MLS SETUP TAB SPECIFIC STYLES --- */
@@ -1258,14 +1174,6 @@ label.toggle-title,
 
 .text-danger {
     color: #ef4444 !important;
-}
-
-/* --- MLS ROSTER TAB SPECIFIC STYLES --- */
-.roster-empty-state {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    text-align: center;
-    padding: 1.5rem 0;
 }
 
 /* --- COLLAPSIBLE RANKINGS CARDS (Roster/Lineup tabs) ---
@@ -1316,34 +1224,6 @@ label.toggle-title,
 .flex-grow {
     flex-grow: 1;
 }
-
-.player-card-main {
-    display: flex;
-    justify-content: space-between; 
-    align-items: center; 
-}
-
-.player-info h4 { 
-    margin: 0 0 0.4rem 0; 
-    color: var(--text-main); 
-    font-size: 1.05rem; 
-    display: flex; 
-    align-items: center; 
-    flex-wrap: wrap; 
-    gap: 0.4rem; 
-}
-
-/* Toggle Container (for Tracker/Team tabs) */
-.toggle-container { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    padding: 1rem; 
-    background: var(--card-bg);
-    border: 1px solid var(--border); 
-    border-radius: 8px; 
-    margin-bottom: 1rem; 
-}
 /* --- TEAM TAB UTILITIES --- */
 
 /* Horizontal scrolling for the table if on a very small mobile screen */
@@ -1383,45 +1263,26 @@ label.toggle-title,
     text-transform: none;
 }
 /* --- LIVE INDICATOR --- */
-.live-indicator {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444; /* Premium red instead of harsh neon green */
-    padding: 0.35rem 0.6rem;
-    border-radius: 999px; /* Pill shape */
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-    letter-spacing: 0.5px;
-}
-
-.live-indicator:hover {
-    background: rgba(239, 68, 68, 0.15);
-    border-color: rgba(239, 68, 68, 0.5);
-    transform: translateY(-1px);
-}
-/* The animated dot */
-.pulse-dot {
-    width: 6px;
-    height: 6px;
-    background-color: #ef4444;
-    border-radius: 50%;
-    display: inline-block;
-    animation: pulse 2s infinite;
-}
-
 @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
     70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
     100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
+@keyframes btn-pulse-anim {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
 .btn-pulse {
     animation: btn-pulse-anim 2s infinite;
+}
+
+@keyframes border-pulse-anim {
+    0% { border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+    50% { border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 0 2px rgba(16, 185, 129, 0.1); }
+    100% { border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
 }
 
 .pulse-border {
@@ -1429,15 +1290,20 @@ label.toggle-title,
     border-radius: 8px; /* ensures corner rounding matches the card */
 }
 
+@keyframes nav-pulse-anim {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0); }
+    50% { box-shadow: 0 0 12px 2px rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); background: rgba(16, 185, 129, 0); }
+}
+
 .nav-pulse {
     animation: nav-pulse-anim 2s infinite;
     border-radius: 8px;
 }
 
-/* Reduced motion: stop the four pulses but keep a static highlight, so the
-   "this is next" cue survives without the animation. */
+/* Reduced motion: stop the pulses but keep a static highlight, so the
+   "this is next" cue survives without the animation. (.pulse-dot's part is in css/mds.css.) */
 @media (prefers-reduced-motion: reduce) {
-    .pulse-dot,
     .btn-pulse,
     .pulse-border,
     .nav-pulse {
@@ -1612,13 +1478,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
 .close-banner-btn:hover {
     color: var(--text-main);
 }
-.draft-cell-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    width: 100%;
-    overflow: hidden; 
-}
 /* Reclaim horizontal space for player cards on mobile */
 @media (max-width: 767px) {
     .container {
@@ -1629,13 +1488,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
     .settings-card {
         /* Reduces the inner card gap from 1.5rem to 0.75rem */
         padding: 1rem 0.75rem; 
-    }
-
-    /* Optional: Ensure the empty state messages don't force awkward sizing */
-    .lineup-empty-state,
-    .bench-empty-state,
-    .roster-empty-state {
-        padding: 1.5rem 0.5rem;
     }
 }
 
@@ -1746,56 +1598,16 @@ input[type="file"]::-webkit-file-upload-button:hover {
 }
 
 /* --- MOBILE COLLAPSIBLE CARDS --- */
-.btn-expand {
-    background: transparent;
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 0.4rem;
-}
-
 .chevron-icon {
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Mobile Default: Details hidden only if setting is enabled.
-   (Consolidated from what used to be two overlapping @media(max-width:600px) blocks here plus
-   a third small one further down -- see the single block near the PLAYER CARD GRID LAYOUT
-   section below for the live rules.) */
-
-/* Desktop Default: Details always visible, expand button hidden.
-   (Previously declared 3 times near-identically across this file -- consolidated to one.) */
-@media (min-width: 768px) {
-    .card-details {
-        display: block !important; /* Force visible */
-        margin-top: 0.25rem;
-    }
-    
-    .hide-on-desktop {
-        display: none !important;
-    }
-}
-
 /* --- PLAYER CARD GRID LAYOUT --- */
-.player-info {
-    grid-area: name;
-    min-width: 0;
-}
-
 .actions {
     grid-area: actions;
     display: flex;
     align-items: center;
     gap: 0.4rem;
-}
-
-.player-info h4 {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.3;
-    word-break: break-word;
 }
 
 /* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
@@ -1810,10 +1622,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
 /* --- FULL-WIDTH DRAFT BOARD FOR DESKTOP --- */
 /* Accessibility: Ensure Minimum Mobile Touch Targets (44x44px) */
 .close-banner-btn,
-.close-menu-btn,
-.btn-expand,
-.edit-icon,
-.close-chip {
+.close-menu-btn {
     min-width: 44px;
     min-height: 44px;
     display: inline-flex;
@@ -1859,3 +1668,363 @@ a.nav-btn,
 @media (hover: none) {
     .mds-drop-hint { display: none; }
 }
+
+/* --- MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (MLS only) --- */
+.mls-preview-count {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 0 0 1rem 0;
+}
+
+.mls-preview-list {
+    list-style: none;
+    margin: 0 0 1rem 0;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.mls-preview-list li {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.mls-preview-list li:last-child {
+    border-bottom: none;
+}
+
+.rankings-preview-rank {
+    color: var(--primary-green);
+    font-weight: 700;
+    font-size: 0.8rem;
+    min-width: 2.2rem;
+}
+
+.mls-preview-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    margin: 0 0 1rem 0;
+}
+
+/* Destination line directly above the preview modal's buttons. Neutral by default (new set);
+   the .is-replace variant matches .btn-danger, since that case overwrites existing data. */
+.mls-preview-target {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    margin: 0 0 1rem 0;
+}
+
+.mls-preview-target.is-replace {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* --- UTILITIES --- */
+.mt-1 { margin-top: var(--space-1); }
+.mt-3 { margin-top: var(--space-3); }
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.ml-3 { margin-left: var(--space-3); }
+.mr-2 { margin-right: var(--space-2); }
+.pt-3 { padding-top: var(--space-3); }
+.pl-2 { padding-left: var(--space-2); }
+
+/* --- LAYOUT PRIMITIVES --- */
+.stack-sm { gap: var(--space-2); }
+
+/* .cluster: a horizontal run of items that wraps instead of overflowing, replacing ad-hoc
+   "display:flex; align-items:center; gap:...rem" inline styles used for icon+label rows,
+   button rows, and similar. */
+/* .cluster: a horizontal run of items, replacing ad-hoc "display:flex; align-items:center;
+   gap:...rem" inline styles used for icon+label rows, button rows, and similar. Every inline
+   style this replaced had no flex-wrap set (i.e. nowrap), including rows with a <select> or
+   a margin-left:auto push-to-edge element that only render correctly unwrapped -- so nowrap
+   is the default here too, matching what was actually there before. Opt into wrapping
+   explicitly with .cluster-wrap for a row of purely reflowable content (e.g. icon + long
+   text) where wrapping is actually desired on narrow screens. */
+.cluster { display: flex; align-items: center; }
+.cluster-sm { gap: var(--space-2); }
+.cluster-md { gap: var(--space-3); }
+
+/* Small text-level helper for the many "font-size: 0.75rem; color: var(--text-muted)"
+   inline captions/hints scattered through the markup. */
+.text-helper { font-size: 0.75rem; color: var(--text-muted); }
+
+/* Padding for a <details> body, replacing the repeated inline style="padding-top: 1rem;"
+   used on every accordion's content wrapper. */
+.accordion-body { padding-top: var(--space-4); }
+
+/* Modifier for a .card-header that sits directly above a list of accordions/sub-sections
+   rather than a card's main content -- no divider needed underneath it. */
+.card-header-flush { border-bottom: none; padding-bottom: 0; }
+
+/* The "or" separator row used between two alternative inputs (e.g. upload a file / auto-fetch
+   instead). Was three inline-styled divs repeated wherever this pattern appears. */
+.or-divider { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; }
+.or-divider .divider-line { flex: 1; height: 1px; background: var(--border); }
+.or-divider span { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+
+/* Groups related settings (e.g. Trade Analyzer's Waiver Adjustment) into their own visually
+   distinct sub-section, set off from the primary inputs above it with a border/background,
+   rather than letting a toggle+input run directly into a card's main content. */
+.settings-subsection {
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.settings-subsection .toggle-row { padding: 0; border: none; background: none; margin-bottom: var(--space-3); }
+.settings-subsection .input-group:last-child { margin-bottom: 0; }
+
+/* A .toggle-row that needs to sit flush inside another container (a settings-grid cell,
+   paired with a dropdown) instead of looking like its own bordered card -- was three
+   identical inline overrides (padding/border/background stripped, font-size shrunk). */
+.toggle-row-flush { padding: 0; border: none; background: none; }
+.toggle-row-flush .toggle-title { font-size: 0.85rem; }
+/* Bottom-aligns a grid cell's content with its sibling (e.g. a toggle lining up with an
+   adjacent dropdown's baseline). */
+.input-group-end { display: flex; flex-direction: column; justify-content: flex-end; }
+
+/* A .mls-btn-sm styled to read as a plain inline text link rather than a button. */
+.btn-link-inline { background: none; padding: 0; color: var(--primary-green); }
+
+/* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
+.weekly-success-feedback {
+    color: #60a5fa;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: none;
+    text-align: center;
+    margin-top: 0.75rem;
+}
+
+/* --- MATCHUP SIMULATOR (MONTE CARLO) RESULTS --- */
+.info-banner {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #93c5fd;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.info-banner-icon {
+    background: #3b82f6;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: serif;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* --- MLS SETUP TAB SPECIFIC STYLES --- */
+/* Keyboard hint -- only on devices with a real pointer (desktop), where Enter-to-add applies */
+.mls-manual-key-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0.5rem 0 0;
+}
+.mls-manual-key-hint kbd {
+    font-family: inherit;
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main);
+}
+@media (hover: none) {
+    .mls-manual-key-hint { display: none; }
+}
+
+/* --- MLS ROSTER TAB SPECIFIC STYLES --- */
+.rankings-fresh {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.rankings-stale {
+    color: #f59e0b;
+    font-weight: 700;
+}
+
+/* A sync that actually failed, as opposed to data that's merely aged (.rankings-stale, amber).
+   Red so it doesn't read as the same "getting old" signal -- this roster is known to be behind,
+   not just unrefreshed. Same red as .status-danger. */
+.sync-failed {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+/* --- COLLAPSIBLE RANKINGS CARDS (Roster/Lineup tabs) ---
+   The toggle is <h3><button class="rankings-card-toggle">Title + chevron</button></h3>, with
+   the freshness readout and tooltip as siblings OUTSIDE the button (a role="button" header
+   used to swallow the heading and nest the tooltip control inside it). Two CSS tricks keep
+   the old look and feel:
+   1. The button's ::after stretches over the whole header, so clicking anywhere on it still
+      toggles the card. The tooltip stays its own control without any z-index: it's positioned
+      and comes after the button in the markup, so it already paints above that layer (and no
+      z-index means its popup isn't trapped in a new stacking context).
+   2. In the ROS/Weekly cards the chevron lives inside the button but is pinned to the header's
+      right edge, where it used to sit after the tooltip. */
+.success-feedback {
+    color: var(--primary-green);
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: none;
+    text-align: center;
+    margin-top: 0.75rem;
+}
+
+/* Rankings upload in-progress indicator -- shown between file selection and the preview
+   modal appearing (or an error toast), so a slow .xlsx parse never looks like nothing
+   happened. Empty/hidden by default; setUploadStatus() in mls.js fills and toggles it. */
+.mls-upload-processing {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.75rem;
+}
+
+/* --- LIVE INDICATOR --- */
+/* Setup progress checklist (Dashboard) -- the text version of the pulse prompts */
+.setup-checklist {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: var(--space-4);
+}
+.setup-checklist-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 0 0 0.5rem;
+}
+.setup-checklist-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+.setup-checklist-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.setup-checklist-list li.is-done {
+    color: var(--text-main);
+}
+.setup-step-mark {
+    width: 1em;
+    flex-shrink: 0;
+    text-align: center;
+    font-weight: 700;
+}
+.setup-checklist-list li.is-done .setup-step-mark {
+    color: var(--primary-green);
+}
+.setup-step-body {
+    min-width: 0;
+}
+.setup-checklist-list li.is-actionable .setup-step-label {
+    color: var(--text-main);
+    font-weight: 600;
+}
+.setup-step-how {
+    margin: 0.15rem 0 0.25rem;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+.setup-checklist .setup-step-go {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* --- TABLE HEADER TOOLTIP FIXES --- */
+/* Player-name autocomplete dropdown */
+.autocomplete-wrap { position: relative; }
+.autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: #111827;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+.autocomplete-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+.autocomplete-item:hover, .autocomplete-item.highlighted {
+    background: rgba(16, 185, 129, 0.12);
+}
+.autocomplete-meta {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-left: 0.75rem;
+    white-space: nowrap;
+}
+
+/* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
+   One card per player, with a per-league ownership row beneath the header. Markup comes from
+   runAllLeaguesSearch in mls.js. The card is deliberately its own box rather than a
+   .scout-result-card: those are single-line summaries, while each of these carries a variable
+   number of league rows and needs a header/body split to stay readable at five-plus leagues. */
+/* Unmatched-name warning inside the rankings upload preview modal (see openRankingsPreview). */
+.mls-preview-unmatched { background: rgba(252, 165, 165, 0.08); border: 1px solid var(--avoid-border); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.mls-preview-unmatched-title { color: #fca5a5; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
+.mls-preview-unmatched-list { font-size: 0.82rem; color: var(--text-main); line-height: 1.45; }
+.mls-preview-unmatched-hint { font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; margin: 0.4rem 0 0; }
+.mls-preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.mls-preview-derived-title { color: #93c5fd; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
+.mls-preview-derived-body { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin: 0; }
