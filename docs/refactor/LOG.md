@@ -68,7 +68,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   load, so a broken import reports the missing file (for example `HTTP 404: /lineup/dbx.js`).
 - Seeded states: `seedMds()` pastes `fixtures/rankings.csv` (24 players) and makes 5 picks.
   `seedMls()` syncs the fixture league by league ID.
-- Tabs are opened with `window.showTab(id)` (MDS/MLS), the same function the nav buttons call. On
+- Tabs are opened with `showTab(id)` (MDS/MLS), the same function the nav buttons call, through
+  `callApp(page, name, ...args)` in `helpers.mjs`: it runs `import()` on the page's entry module (the page's
+  own instance) and calls that export, so tests don't need app functions on `window` (since 5D). The names
+  tests call are exported from each `main.js`. On
   T-Score (since 5E) `showTScoreTab` dispatches a click on the tab's nav button, which runs its
   `data-action`. One test also clicks a real bottom-nav button.
 - Coverage: 14 smoke tests and 10 screenshot tests (40 PNGs) across desktop (1280×900) and
@@ -3691,8 +3694,10 @@ None intended, and the screenshots are unchanged. What a user can notice:
 
 ### 5D — Final cleanup
 
-Removes scaffolding the migration no longer needs. No behavior change intended: the only code edits are
-import lines, two dropped `window.*` assignments, and the two renames below.
+Removes scaffolding the migration no longer needs, and (at the owner's request, after a first pass that
+stopped early) every `window.*` global that code only used to reach other code. No behavior change
+intended. The code edits are import lines, `window.X` → `X`, guards that were always true, the two
+HTML/CSS renames and one function rename, plus small test seams listed below.
 
 #### Stale-cache fallbacks: `js/mds/compat.js` and `js/mls/compat.js` deleted
 
@@ -3706,61 +3711,90 @@ running the pre-1A app scripts, which never imported compat.js.
 |---|---|
 | `import { escapeHtml } from './compat.js'` (23 modules in js/mds/ and js/mls/) | `import { escapeHtml } from '…/shared/html.js'`. Same function: compat.js returned `window.escapeHtml`, which globals.js set from html.js. MLS's compat forwarded to it at call time |
 | `import { findCsvQuoteProblem, formatRankingsDiagnostic } from './compat.js'` (`js/mds/import.js`) | from `../shared/rankings/diagnostics.js` |
-| `import { readJSON } from './compat.js'` (`js/mds/state.js`, `js/mls/state.js`) | a one-line comment; `readJSON` is now the bare global `window.readJSON` from `js/boot.js`, the value compat.js already returned (boot.js always runs first) |
+| `import { readJSON } from './compat.js'` (`js/mds/state.js`, `js/mls/state.js`) | a one-line comment; `readJSON` is the bare global from `js/boot.js`, the value compat.js already returned (boot.js always runs first, and can't be imported) |
 | `import './compat.js';` (`js/mds/init.js`, `js/mls/main.js`) | removed. compat.js had no load-time effects beyond reading `window` |
 
-`sw.js`: both compat.js entries removed. CACHE_NAME `v2.8.64` → `v2.8.65`.
+#### Globals → imports
 
-#### `js/shared/globals.js`: shrunk, not deleted
+**What's left on window, and why.** On every page: `window.showToast` (js/boot.js is a plain script, so it
+can't import; it toasts a corrupt storage key it skipped), boot.js's own `readJSON` / `markAppReady`, and
+`exportMdsSettings` / `exportMlsSettings` (boot.js's rescue backup). On /lineup/, `window.onload` (the page's
+startup handler). Nothing else: the browser check below shows exactly which names went.
 
-Removed `window.escapeHtml` (its only readers were the two compat.js files) and `window.isMdsOwnedKey` (no
-reader since 6B, per the 6B entry). I also dropped their now-unused `html.js` / `keys.js` imports from
-globals.js. Both modules are pure (no top-level side effects), so evaluating them later, from the first app
-module that imports them, changes nothing. The header now says who still reads what.
+**`js/shared/globals.js`** now holds only `window.showToast` and the imports of the five shared modules with
+load-time side effects (feedbackForm, scrollShadows, banners, fileDrop, tooltips), in the old utils.js
+order. Kept rather than folded into each main.js, so those side effects keep running before any app
+module, as before.
 
-**Why not further.** The card says to shrink globals.js to what boot.js and inline scripts need. No inline
-script needs anything now (the two left are service-worker registration), and boot.js needs only
-`window.showToast`. But app and shared modules still read every other name through `window` or as a bare
-global:
+**Every `window.X` call and bare-global use became an import** (about 300 calls in 43 files, plus about 20
+files that called `normalizeName`, `isNameMatch` or `flashButton` as bare globals). The edit was done by a
+script (espree + eslint-scope, not text search). It finds `window.X` reads in code, skipping comments, and
+free identifiers, replaces each with `X`, and adds the import. It refused to touch a file where an inner
+binding shadowed a name (none did). It covered:
 
-| Name | Read through `window.` by | Bare-name readers |
-|---|---|---|
-| `showToast` | js/boot.js, 25 js/mds + js/mls modules, shared/ui/fileDrop.js, shared/rankings/parse.js | |
-| `showConfirm` | mds/backup, mds/settings, mls/backup, mls/leagues/{addPlayer,sync}, mls/rankings/{rosFetch,sets}, mls/render/lineup | |
-| `createFocusTrap` | shared/ui/confirm, mds/ui, mls/nav, mls/rankings/{sets,uploadPreview} | |
-| `mdsFetch`, `MDS_LONG_FETCH_TIMEOUT_MS` | shared/api/{sleeper,sleeperStats,market,ffc}, mls/state | |
-| `loadScriptOnce`, `ensureHtml2Canvas`, `loadSheetJS` | shared/ui/scriptLoader (itself), mds/export, mds/import, mls/trade/export, mls/rankings/uploadPreview, mls/scout/marketDisconnect | |
-| `formatRankingsDiagnostic`, `findCsvQuoteProblem` | shared/rankings/parse, mls/rankings/uploadPreview | |
-| `enableFileDrop` | mds/import, mls/rankings/uploadPreview | |
-| `setToastsSuppressed` | mls/render/dashboard | |
-| `getTabFromHash` | mds/{ui,init}, mls/{nav,init} | |
-| `flashButton` | mls/trade/export | mds/{import,market,settings,sleeperSync}, mls/{leagues/sync,sos} |
-| `normalizeName`, `isNameMatch` | | about 15 js/mds + js/mls modules |
-| `dismissBanner`, `dismissBannerAndReveal` | the `dismissBanner` / `dismissBannerAndReveal` actions in mds/main.js and mls/main.js | |
+- the ~20 shared helpers (`showToast`, `showConfirm`, `mdsFetch`, `loadSheetJS`, …);
+- each app's own names that main.js put on window: MDS `toggleMenu`, `saveSettings`, `showTab`,
+  `setPosFilter`, `renderLiveSyncStatus`, `toggleAutoSync`; MLS `optimizeLineup`, `showTab`, `toggleDrawer`,
+  `cycleLeague`, `undoLineupChange`/`redoLineupChange`, `goToSetupStep`, `lookupSimPlayer`, `runScout`,
+  `addManualPlayer`, `switchActiveLeague`, `updateWaiverScanSetting`, `cancelRankingsPreview`,
+  `scrollToPowerRankings`;
+- `window.sleeperPosByName` (3G kept it on window as the store) → `export let sleeperPosByName` in
+  `js/mls/players.js`, a live binding that engine.js and trade/waiverValue.js import;
+- `tScoreData`: `js/shared/data/tscore.js` is a module now (`export const tScoreData`) imported by
+  `js/mds/tracker.js`, and its separate `<script defer>` in index.html is gone. One difference: if that
+  file failed to load, MDS used to fall back to no T-Score data; now, like any other file in its module
+  graph, it shows the boot banner. It's a precached same-origin file, the same as the other 100.
 
-Shrinking to the card's target means turning **about 300 `window.X` reads in 43 files** (plus the bare-name ones)
-into imports. That edits function bodies, it leaves about 110 `typeof window.showToast === 'function'` /
-`if (window.showToast)` guards dead (5E's rule: remove them only with a note), and it breaks the unit tests'
-way of stubbing (`tests/unit/helpers/parserEnv.mjs` gives parse.js `window.showToast` /
-`window.findCsvQuoteProblem`; `market.test.mjs`, `sleeperPlayerMap.test.mjs` and `ffc.test.mjs` stub
-`window.mdsFetch`). `tests/tools/css-compare.tool.mjs` also calls `window.showToast` / `window.showConfirm`.
-That's well past this card's size and its "moved, not edited" rule, so per rule 1 it's left as follow-up
-work (below).
+**Load order (rule 5, the 3E/3F rule).** Each import goes straight to the defining module when that module
+already evaluates before the importer. Otherwise it comes from the app's `main.js` (the entry, always
+mid-evaluation, so importing from it never triggers an evaluation). That applied to `toggleAutoSync` (MDS
+state.js) and to `optimizeLineup`, `showTab`, `lookupSimPlayer`, `runScout` and `switchActiveLeague` in
+several MLS modules; both main.js files export them. **Check:** a simulator of the browser's module
+evaluation order (DFS post-order over static imports, module scripts in document order, one module map per
+page) gives the same order on all three pages before and after, except for eight pure modules (names, net,
+focusTrap, confirm, diagnostics, scriptLoader, flashButton, tabHash; no top-level side effects, checked
+with espree). globals.js used to evaluate them up front; now they evaluate at their first importer.
 
-#### Comment sweep (commit 1)
+**Guards that are always true now** (5E's rule: remove only with a note). About 110 went:
+`if (window.showToast) window.showToast(…)`, `if (typeof window.X === 'function') { … }` (unwrapped and
+re-indented through the AST; an `else if` kept its braces), `p && typeof window.showToast === 'function'`,
+`… && showToast)`. Also four ternaries whose fallback could never run, because the shared helper always
+existed: `typeof isNameMatch === 'function' ? isNameMatch(a, b) : <lower-case compare>` (mds/import.js,
+mds/market.js), the same for `normalizeName` (mds/sleeperSync.js, mds/tracker.js), and
+`typeof tScoreData !== 'undefined' ? tScoreData : {}` (mds/tracker.js).
 
-Comments in js/shared/, js/boot.js, js/mds/, js/mls/, js/tscore/ and the HTML that named `js/utils.js`,
-`js/mds.js`, `lineup/mls.js`, `tscore_data.js` or the old lineup/ modules (`rankingsParser.js`,
-`sleeperApi.js`, `sleeperService.js`, `marketDataApi.js`, `monteCarloUi.js`, `statsEngine.js`,
-`waiverScanner.js`) as if they still existed now name the file that holds that code. That includes 1A's
-"Comments below that say 'this file' or 'utils.js'…" disclaimer in 15 shared modules (no body comment still
-needed it), boot.js's comments, which described itself as utils.js, and the two "FantasyCalc/LeagueLogs"
-comments 7A pointed at. Kept on purpose: provenance headers ("Moved from js/mds.js in refactor chunk 2A"),
-the history in both main.js headers, and the `console.error` text in `js/mds/tracker.js` that names
-`tscore_data.js` (a string, so code). Also fixed 5B's stray "One" in `js/shared/ui/delegate.js`'s header.
+**Test seams.**
+- `parseRankingsFiles` takes an optional `showToast` (defaulting to the shared one), as it already takes
+  `loadSheetJS`. The unit tests pass a recorder (`tests/unit/helpers/parserEnv.mjs` no longer builds a
+  fake `window`).
+- `market.test.mjs`, `sleeperPlayerMap.test.mjs` and `ffc.test.mjs` stub `fetch` under the real `mdsFetch`
+  instead of stubbing `window.mdsFetch`. Response stubs gained a `text()` method, since mdsFetch wraps
+  both readers.
+- Playwright: `callApp(page, name, ...args)` in `tests/helpers.mjs` runs `import()` on the page's entry
+  module and calls the export. It's the page's own instance, so it's the same function the buttons run.
+  `showTab` and the MLS specs use it; `mls-waiver-insights.spec.mjs` imports `js/mls/players.js` for
+  `sleeperPosByName`. css-compare imports `toast.js` / `confirm.js` / MLS main.js the same way.
+  The names the tests call are exported from main.js (comment there). `callApp` and css-compare fall back to
+  `window[name]` when the export is missing, because `npm run compare-css` runs the branch's test code
+  against origin/main's build, which (until this merges) still has them on window. Harmless afterwards.
 
-**Check:** I compared acorn token streams (comments excluded) of every changed JS file against the commit
-before. All 47 are identical. The HTML diffs are inside `<!-- -->`.
+Comments that described these as window globals were updated, including the 1A headers on the shared
+modules (each now says whether globals.js loads it for side effects).
+
+#### Comment sweep
+
+Comments in js/shared/, js/boot.js, js/mds/, js/mls/, js/tscore/, the HTML and (added at the owner's
+request) css/ that named `js/utils.js`, `js/mds.js`, `lineup/mls.js`, `tscore_data.js` or the old lineup/
+modules (`rankingsParser.js`, `sleeperApi.js`, `sleeperService.js`, `marketDataApi.js`, `monteCarloUi.js`,
+`statsEngine.js`, `waiverScanner.js`) as if they still existed now name the file that holds that code. That
+includes 1A's "Comments below that say 'this file' or 'utils.js'…" disclaimer in 15 shared modules,
+boot.js's comments, which described itself as utils.js, and the two "FantasyCalc/LeagueLogs" comments 7A
+pointed at. Kept on purpose: provenance headers ("Moved from js/mds.js in refactor chunk 2A"), the history
+in both main.js headers, and the `console.error` text in `js/mds/tracker.js` that names `tscore_data.js`
+(a string, so code). Also fixed 5B's stray "One" in `js/shared/ui/delegate.js`'s header.
+
+**Check:** the JS sweep commit compares acorn token streams (comments excluded) of all 47 changed files with
+the commit before: identical. css/ with comments stripped is byte-identical. The HTML diffs are in `<!-- -->`.
 
 #### Renames (Nothing users see changes)
 
@@ -3769,7 +3803,10 @@ before. All 47 are identical. The HTML diffs are inside `<!-- -->`.
 - `.leaguelogs-attribution` → `.market-attribution`: both HTML files and its four rules in `css/base.css`
   (LAYOUT PRIMITIVES; its comment now says what it is). Nothing in js/ used it. 4E had already removed the
   `mt-0` beside it.
-- `grep -rn "fetchAdpBtn\|leaguelogs-attribution"` finds them only in docs/.
+- MLS's `fetchLeagueLogsADP` → `fetchMarketValue` (5C's optional rename, owner said yes): the function in
+  `js/mls/scout/marketDisconnect.js`, main.js's import and action entry, and the button's `data-action`.
+- `grep -rn "fetchAdpBtn\|leaguelogs-attribution"` finds them only in docs/; `fetchLeagueLogsADP` appears only
+  in two history comments.
 
 #### README
 
@@ -3777,36 +3814,56 @@ before. All 47 are identical. The HTML diffs are inside `<!-- -->`.
 functions/, docs/). A script checked that every path it names exists and that every top-level entry and
 js/ folder in `git ls-files` appears in it.
 
-#### Checks run
+#### Other changes
 
-- `node scripts/check-precache.mjs` OK (108 precached; the two compat.js files are gone).
-- `node --test` 177/177. The first run reported 176 pass / 0 fail, with the 177th under a counter my
-  grep didn't print. Six runs after that were all 177/177. I couldn't reproduce it.
+- `sw.js`: both compat.js entries removed. CACHE_NAME `v2.8.64` → `v2.8.65`.
+- `tests/tools/css-compare.tool.mjs`: its "MLS handoff banner" state failed on main too. It seeded the pre-6B
+  key `mds_handoff_roster`, which the app no longer reads once 6B's one-time migration has run. It now
+  seeds `shared_handoff_roster`.
+
+#### Checks run (on the final state)
+
+- `node scripts/check-precache.mjs` OK (108 precached; compat.js files gone, `data/tscore.js` now reached
+  through the import graph).
+- `node --test` 177/177. Once, early in this chunk, a run reported 176 pass / 0 fail, with the 177th under a
+  counter my grep didn't print. Every run after that was 177/177, and I couldn't reproduce it.
 - `cd tests && npx playwright test`: **88/88**, no baseline PNG changed.
-- **window.* check:** I loaded `/`, `/lineup/` and `/t-score/` from main (a worktree) and from this branch in
-  Chromium and diffed `Object.getOwnPropertyNames(window)`. On every page only `escapeHtml` and `isMdsOwnedKey`
-  are gone and nothing is new. There were no console errors and no boot banner.
-- `npm run compare-css` (main vs this branch, both widths, reduced motion on and off): **28/28, every state
-  0 differences**, including the Fetch Market Value attribution on both apps after the rename. **Tool fix:** its "MLS handoff banner" state
-  failed on main too (4 cases). It seeded the pre-6B key `mds_handoff_roster`, which the app no longer reads
-  once 6B's one-time migration has run. It now seeds `shared_handoff_roster` (`tests/tools/css-compare.tool.mjs`,
-  dev-only), and those 4 cases pass with 0 differences.
+- **Static check:** eslint-scope over every module: no unresolved identifier other than browser APIs,
+  `readJSON` (boot.js), and nothing reads `window.X` except browser APIs and `markAppReady` (boot.js). A
+  missing import can't hide on an untested path.
+- **Module evaluation order:** see above (identical apart from the eight pure modules).
+- **window.* check:** `/`, `/lineup/` and `/t-score/` from main (a worktree) and from this branch in Chromium,
+  diffing `Object.getOwnPropertyNames(window)`. Gone: exactly the names above (25 on /, 41 on /lineup/, 19 on
+  /t-score/); nothing new; no console errors; no boot banner.
+- **Throwaway comparison (not committed), main vs branch, both widths:** MDS keyboard shortcuts 1–5 and
+  a/q/r/w/t, Back, Escape, and a swipe. Identical active tab, hash and filter state at every step, with the
+  same console output (3 blocked external requests on both).
+- `npm run compare-css` (main vs this branch, both widths, reduced motion on and off): result added below once the run finishes.
 
-#### Left for later chunks
+#### Left for later
 
-- **Retire the remaining globals (new work, not on a card):** turn the module-internal `window.X(...)` and bare
-  `normalizeName` / `isNameMatch` / `flashButton` calls above into imports. Then delete the dead
-  `typeof`/`if (window.X)` guards, with a note, as 5E did. Switch the unit-test stubs to whatever the modules
-  import (for example a test-only setter in net.js, or stubbing `fetch`), and change css-compare's two
-  `window.*` calls to imports via `page.evaluate(() => import(...))`. globals.js can then shrink to
-  `window.showToast` (boot.js) plus the side-effect imports (feedback form, scroll shadows, tooltips, drop
-  guard, banners' load pass), or be replaced by one side-effect import line in each page's main.js. Watch the
-  3E/3F load-order rule in js/mls/. This is the same work 5A–5C left as "module-internal `window.x(...)` calls
-  could become imports" for the app names in each main.js (`toggleMenu`, `showTab`, …), and fits one session
-  if done together, split by app. `exportMdsSettings`, `exportMlsSettings` (boot.js) and `onload` must stay.
-- **CSS comments** still name `utils.js` / `mls.js` / `mds.js` (13 in base.css, 18 in mls.css, 1 in mds.css).
-  css/ wasn't on this card's sweep list. Fix them whenever someone next touches those sections.
-- **Optional, from 5C:** MLS's `fetchLeagueLogsADP` (the data-action value and the function in
-  `scout/marketDisconnect.js`) could become `fetchMarketValue` like MDS's. It's not a window name any more.
-  Not on this card.
+- Nothing from 5D's card. The unused spacing helpers (`.gap-1`, `.gap-3`, `.stack-*`, `.cluster-*`, `.mt-0`,
+  `.pl-6`) stay until after Phase 8, as the owner decided after 4E. The 0B findings get their own card
+  (planned below).
 - Next: 7B (needs 5D and 6B), then Phase 8.
+
+### Planned as runbook chunk 9A — Fix the 0B findings (owner's request, recorded after 5D)
+
+The owner didn't know 0B's "Behavior that looked wrong" list (the 0B entry above, items 1–9) was never acted on.
+All nine are still pinned by `CURRENT BEHAVIOR:` tests (or an inline comment) in `tests/unit/`, as of 5D.
+Runbook card **9A** fixes the ones the owner approves. It needs only 5D. Run it before 8B and 8C if possible,
+since they build on how Draft Strategist imports rankings and the parser fixes touch that. If Phase 8 starts
+first, run 9A after 8C. 9A fills in each "Owner's decision" line below (fix / keep) with the owner before
+changing code.
+
+| # | Finding (0B entry) | Where | Notes for 9A | Owner's decision |
+|---|---|---|---|---|
+| 1 | Boom/bust thresholds are strict (exactly 20 WR/RB, 24 QB, 15 TE is not a boom; exactly at the bust line is not a bust) | js/mls/sim/stats.js | Changes the simulator's Boom/Bust %; `tests/mls-sim.spec.mjs` pins exact numbers | pending |
+| 2 | Pos Rank cells like `WR2` / `RB14` are ignored | js/shared/rankings/parse.js | Likely a plain fix: read the number after the position | pending |
+| 3 | SoS keeps only digits (`4.5` → "45", `-2` → "2") | parse.js | Check how js/mls/sos.js reads the stored strings first | pending |
+| 4 | FantasyPros `RK` not used as rank, `TIERS` not tier, `SOS SEASON` not SoS | parse.js | Rank then comes from row order; tiers dropped | pending |
+| 5 | Position-named name headers (`Quarterback`, `Running Back`, `Flex`) fail a single-file upload | parse.js | They work in per-position uploads | pending |
+| 6 | Horizontal sheets: FLEX overwrites rank and tier | parse.js | waiverScanner's comments account for it; may be intended | pending |
+| 7 | Name suffix strip has no word boundary (`Ivanov` → `ivano`) | js/shared/names.js | **Risky:** `normalizeName` makes the keys both apps save and the bundled T-Score keys. Needs a plan for saved data before changing (see the 9A card) | pending |
+| 8 | `isNameMatch` matches two names that both normalize to "" | names.js | Small | pending |
+| 9 | `fillLineup` drops slot types outside SLOT_ORDER | js/mls/scout/waiverScanner.js | Probably unreachable; 9A traces it, and recommends a comment if so | pending |

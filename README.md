@@ -27,7 +27,8 @@ js/
   boot.js                Plain script, first on every page: safe storage reads (readJSON), the fatal-boot
                          banner and the rescue backup
   shared/                Code more than one page uses (ES modules)
-    globals.js           Puts the shared helpers on window for code that still reads them there
+    globals.js           Page-wide setup: the shared modules with load-time side effects, and
+                         window.showToast for boot.js (everything else is imported)
     names.js, net.js, html.js    Name matching, fetch with a timeout (mdsFetch), HTML escaping
     api/                 Sleeper (sleeper.js, sleeperStats.js), FantasyCalc (market.js), Fantasy Football
                          Calculator (ffc.js)
@@ -36,13 +37,13 @@ js/
                          names to current ones), idb.js (IndexedDB)
     ui/                  Toasts, confirm dialog, focus trap, tooltips, banners, file drop, script loader,
                          data-action event delegation (delegate.js) and other small helpers
-    data/tscore.js       Bundled T-Score data (a plain script that defines the tScoreData global)
-  mds/                   Draft Strategist. main.js is the entry point (data-action delegation, the few
-                         window.* exports left); init.js sets the module load order and runs startup.
+    data/tscore.js       Bundled T-Score data (imported by mds/tracker.js)
+  mds/                   Draft Strategist. main.js is the entry point (data-action delegation, and
+                         exportMdsSettings on window for boot.js); init.js sets the module load order and runs startup.
                          One module per area: state, storage, import, market, sleeperSync, tracker,
                          board, team, recap, export, handoff, backup, settings, and so on
-  mls/                   Lineup Strategist. main.js is the entry point (data-action delegation, the few
-                         window.* exports left) and its import list sets the load order. Top-level
+  mls/                   Lineup Strategist. main.js is the entry point (data-action delegation, and
+                         exportMlsSettings on window for boot.js) and its import list sets the load order. Top-level
                          modules (state, helpers, nav, init, backup, settings, players, sos, shortcuts...)
                          plus one folder per area:
     leagues/             League sync, Import All Leagues, the Draft Strategist roster handoff, Add Player
