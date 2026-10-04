@@ -246,6 +246,14 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                                     // Same lockstep rule as the vertical parser below: a tier field is
                                     // overwritten whenever its rank counterpart is, even with null, so a
                                     // stale tier never sits beside a rank from a different section.
+                                    // FLEX overwriting rank and tier is deliberate (0B finding 6, kept in
+                                    // refactor 9A by the owner's decision). The position tier isn't lost: it
+                                    // stays in posTier, which the Lineup and Waiver views show. Only `tier`
+                                    // goes null, because it follows `rank` and the FLEX column has no tier.
+                                    // buildRankDisplayIndex (js/mls/scout/waiverScanner.js) relies on the
+                                    // overwrite: FLEX players' rank differing from their posRank is how it
+                                    // tells a real positional list from the single-file fallback. Without
+                                    // it, every rank would equal its posRank and positions would be renumbered.
                                     let p = combinedPlayers[clean];
                                     if (isFlexCol) {
                                         p.flexRank = rVal;

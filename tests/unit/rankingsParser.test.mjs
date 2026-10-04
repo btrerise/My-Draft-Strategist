@@ -235,7 +235,8 @@ describe('horizontal (side-by-side) weekly sheet', () => {
         assert.deepEqual(pick(p.joshallen), { name: 'Josh Allen', rank: 1, tier: 1, posRank: 1, posTier: 1, flexRank: 999, flexTier: undefined });
         assert.deepEqual(pick(p.lamarjackson), { name: 'Lamar Jackson', rank: 2, tier: 1, posRank: 2, posTier: 1, flexRank: 999, flexTier: undefined });
         // RB section first (rank + tier), then the FLEX column overwrites rank and tier.
-        // There's no "FLEX Tier" column, so the tier becomes null.
+        // There's no "FLEX Tier" column, so the tier becomes null. Kept on purpose (0B finding 6,
+        // owner's decision in 9A): posTier keeps the position tier, and waiverScanner relies on it.
         assert.deepEqual(pick(p.bijanrobinson), { name: 'Bijan Robinson', rank: 1, tier: null, posRank: 1, posTier: 1, flexRank: 1, flexTier: null });
         assert.deepEqual(pick(p.saquonbarkley), { name: 'Saquon Barkley', rank: 3, tier: null, posRank: 2, posTier: 2, flexRank: 3, flexTier: null });
         assert.deepEqual(pick(p.jahmyrgibbs), { name: 'Jahmyr Gibbs', rank: 3, tier: 2, posRank: 3, posTier: 2, flexRank: 999, flexTier: undefined });
