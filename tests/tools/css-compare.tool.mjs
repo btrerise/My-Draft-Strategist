@@ -322,7 +322,7 @@ const SCENARIOS = {
     },
     'MLS handoff banner': async (page, snap) => {
         await open(page, '/lineup/');
-        await page.evaluate(() => localStorage.setItem('mds_handoff_roster', JSON.stringify({
+        await page.evaluate(() => localStorage.setItem('shared_handoff_roster', JSON.stringify({
             sourceLeagueName: 'Handoff Test', players: [{ name: 'Josh Allen', pos: 'QB', team: 'BUF' }], reqs: null,
         })));
         await page.reload();

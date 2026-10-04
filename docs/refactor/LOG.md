@@ -3786,7 +3786,10 @@ js/ folder in `git ls-files` appears in it.
 - **window.* check:** I loaded `/`, `/lineup/` and `/t-score/` from main (a worktree) and from this branch in
   Chromium and diffed `Object.getOwnPropertyNames(window)`. On every page only `escapeHtml` and `isMdsOwnedKey`
   are gone and nothing is new. There were no console errors and no boot banner.
-- `npm run compare-css` (main vs this branch): see the result line below.
+- `npm run compare-css` (main vs this branch): result below. **Tool fix:** its "MLS handoff banner" state
+  failed on main too (4 cases). It seeded the pre-6B key `mds_handoff_roster`, which the app no longer reads
+  once 6B's one-time migration has run. It now seeds `shared_handoff_roster` (`tests/tools/css-compare.tool.mjs`,
+  dev-only), and those 4 cases pass with 0 differences.
 
 #### Left for later chunks
 
