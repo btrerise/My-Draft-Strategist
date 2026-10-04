@@ -128,9 +128,15 @@ describe('isNameMatch', () => {
         assert.equal(isNameMatch('Josh Allen', null), false);
         assert.equal(isNameMatch(undefined, 'Josh Allen'), false);
     });
-    test('CURRENT BEHAVIOR: two non-empty names that both normalize to "" match', () => {
-        // ('Jr.', 'Sr.') was the first example here; since 9A's suffix fix they normalize to 'jr' / 'sr'.
-        assert.equal(isNameMatch('#', '--'), true);
-        assert.equal(isNameMatch('123', '456'), true);
+    // Refactor 9A: these matched before (only the raw inputs were checked for emptiness).
+    test('names with no letters never match, each other or anything else', () => {
+        assert.equal(isNameMatch('#', '--'), false);
+        assert.equal(isNameMatch('123', '456'), false);
+        assert.equal(isNameMatch('123', '123'), false);
+        assert.equal(isNameMatch('Josh Allen', '...'), false);
+        assert.equal(isNameMatch('...', 'Josh Allen'), false);
+        // A lone suffix keeps its letters now (see normalizeName), so these compare as words.
+        assert.equal(isNameMatch('Jr.', 'Sr.'), false);
+        assert.equal(isNameMatch('Jr.', 'jr'), true);
     });
 });

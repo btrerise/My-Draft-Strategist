@@ -63,6 +63,9 @@ export function isNameMatch(name1, name2) {
     if (!name1 || !name2) return false;
     let n1 = normalizeName(name1);
     let n2 = normalizeName(name2);
+    // Two names with no letters ("123", "--") both normalize to "" and aren't the same player.
+    // Refactor 9A: they used to match, since only the raw inputs were checked above.
+    if (!n1 || !n2) return false;
 
     if (n1 === n2) return true;
 
