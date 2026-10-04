@@ -4033,7 +4033,9 @@ use fixed lines and aren't affected.
 **Recommendation:** (d), the smallest change that removes both problems and leaves typical kickers and
 defenses as they are. (b) instead if the owner already has lines in mind.
 
-**Owner's decision:** pending (9B asks first).
+**Owner's decision:** (d), the floor (recorded after 9A). Still open: the floor N itself. 9B proposes N from real
+numbers (typical K and DEF weekly averages, and what each candidate N shows for the same players) and confirms it
+with the owner before building. The other options aren't built.
 
 **Tests 9B flips:** the K/DEF cases in `tests/unit/statsEngine.test.mjs` ("K / DEF (and any unknown pos)…",
 "K / DEF lines stay strict…", the stdDev-0 K cases). `tests/mls-sim.spec.mjs` has no K/DEF player today, so 9B adds
