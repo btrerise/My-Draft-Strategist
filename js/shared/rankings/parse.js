@@ -293,8 +293,11 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 // column came first won). Tier is now its own optional field (tierColIdx below);
                 // a file with only a Tier column falls back to row order for rank, same as a file
                 // with no rank column at all.
-                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
-                let tierColIdx = hasHeaders ? headers.findIndex(h => h === 'tier') : -1;
+                // FantasyPros heads these RK and TIERS (refactor 9A; before it, rank came from row
+                // order and tiers were dropped). Its SOS SEASON column is a 1-5 star rating, not a
+                // 1-32 matchup rank, so it's deliberately not read as SoS (the owner's decision).
+                let rankColIdx = hasHeaders ? headers.findIndex(h => h === 'rank' || h === 'overall' || h === 'rk') : (!isNaN(parseInt(rows[0][0])) ? 0 : -1);
+                let tierColIdx = hasHeaders ? headers.findIndex(h => h === 'tier' || h === 'tiers') : -1;
                 let nameColIdx = hasHeaders ? headers.findIndex(h => VALID_NAME_HEADERS.includes(h)) : (!isNaN(parseInt(rows[0][0])) ? 1 : 0);
 
                 let startIndex = hasHeaders ? 1 : 0;

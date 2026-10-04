@@ -92,11 +92,25 @@ describe('vertical CSV, single-file upload', () => {
         const res = await parse(single(file));
         assert.deepEqual(res.diagnostics, []);
         const p = byName(res.parsedData);
-        // CURRENT BEHAVIOR: 'rk' is not a rank header and 'tiers' is not 'tier', so rank comes
-        // from row order and tier is null. 'sos season' isn't an SoS header either.
-        assert.deepEqual(pick(p.joshallen), { name: 'Josh Allen', rank: 1, tier: null, posRank: 1, posTier: null, flexRank: 1, flexTier: null });
-        assert.deepEqual(pick(p.lamarjackson), { name: 'Lamar Jackson', rank: 2, tier: null, posRank: 2, posTier: null, flexRank: 2, flexTier: null });
+        // RK is the rank and TIERS the tier (refactor 9A; before it, rank came from row order and
+        // tier was null). SOS SEASON is a star rating, not a matchup rank, so it stays unread.
+        assert.deepEqual(pick(p.joshallen), { name: 'Josh Allen', rank: 1, tier: 1, posRank: 1, posTier: 1, flexRank: 1, flexTier: 1 });
+        assert.deepEqual(pick(p.lamarjackson), { name: 'Lamar Jackson', rank: 2, tier: 1, posRank: 2, posTier: 1, flexRank: 2, flexTier: 1 });
         assert.equal(res.hasNewSos, false);
+    });
+
+    test('RK is used even when the file is not sorted by it; TIERS accepts "Tier 2"', async () => {
+        const file = csvFile('fp-unsorted.csv', dedent(`
+            PLAYER NAME,RK,TIERS
+            Puka Nacua,12,Tier 3
+            Ja'Marr Chase,3,1
+            Drake London,,
+        `));
+        const p = byName((await parse(single(file))).parsedData);
+        assert.deepEqual(pick(p.pukanacua, ['rank', 'tier']), { rank: 12, tier: 3 });
+        assert.deepEqual(pick(p.jamarrchase, ['rank', 'tier']), { rank: 3, tier: 1 });
+        // A blank RK cell falls back to row order, as a blank Rank cell does.
+        assert.deepEqual(pick(p.drakelondon, ['rank', 'tier']), { rank: 3, tier: null });
     });
 
     test('rank column: "Overall" accepted; unparseable or blank cells fall back to row order', async () => {
