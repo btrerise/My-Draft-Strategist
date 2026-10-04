@@ -91,8 +91,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   and 3 T-Score Refresh tests (`tscore-refresh.spec.mjs`, 4B: Google Sheets stubbed with small CSVs,
   then the cached render on reload; an HTTP 500 and a blocked request for the error path) and 3
   storage-key rename tests (`key-migration.spec.mjs`, 6B: all three pages opened on a pre-6B
-  localStorage snapshot, and both resets). `backup.spec.mjs` has 4 tests since 6B (round trip and a
-  pre-6B backup file, per app). Each runs at both widths: 88 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  localStorage snapshot, and both resets) and 1 saved-name-key test (`name-keys.spec.mjs`, 9A: all three
+  pages opened on a pre-9A localStorage + IndexedDB snapshot). `backup.spec.mjs` has 4 tests since 6B (round trip and a
+  pre-6B backup file, per app). Each runs at both widths: 90 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -182,6 +183,9 @@ I checked the suites by mutating a scratch copy of the modules. Changing a boom 
 - **3C**: update the `waiverScanner.js` import. **3F**: update the `statsEngine.js` import.
 
 #### Behavior that looked wrong (tested as-is, not fixed)
+
+*Since 9A: items 1–5, 7 and 8 are fixed and their tests flipped; 6 and 9 are kept by the owner's
+decision, with a comment each. See the 9A entry.*
 
 1. **Boom/bust thresholds are strict** (`statsEngine.js`). The comment describes boom as
    "20+ points from a WR", but the empirical count uses `> boomThreshold`. Exactly 20 (WR/RB),
@@ -3863,12 +3867,125 @@ changing code.
 
 | # | Finding (0B entry) | Where | Notes for 9A | Owner's decision |
 |---|---|---|---|---|
-| 1 | Boom/bust thresholds are strict (exactly 20 WR/RB, 24 QB, 15 TE is not a boom; exactly at the bust line is not a bust) | js/mls/sim/stats.js | Changes the simulator's Boom/Bust %; `tests/mls-sim.spec.mjs` pins exact numbers | pending |
-| 2 | Pos Rank cells like `WR2` / `RB14` are ignored | js/shared/rankings/parse.js | Likely a plain fix: read the number after the position | pending |
-| 3 | SoS keeps only digits (`4.5` → "45", `-2` → "2") | parse.js | Check how js/mls/sos.js reads the stored strings first | pending |
-| 4 | FantasyPros `RK` not used as rank, `TIERS` not tier, `SOS SEASON` not SoS | parse.js | Rank then comes from row order; tiers dropped | pending |
-| 5 | Position-named name headers (`Quarterback`, `Running Back`, `Flex`) fail a single-file upload | parse.js | They work in per-position uploads | pending |
-| 6 | Horizontal sheets: FLEX overwrites rank and tier | parse.js | waiverScanner's comments account for it; may be intended | pending |
-| 7 | Name suffix strip has no word boundary (`Ivanov` → `ivano`) | js/shared/names.js | **Risky:** `normalizeName` makes the keys both apps save and the bundled T-Score keys. Needs a plan for saved data before changing (see the 9A card) | pending |
-| 8 | `isNameMatch` matches two names that both normalize to "" | names.js | Small | pending |
-| 9 | `fillLineup` drops slot types outside SLOT_ORDER | js/mls/scout/waiverScanner.js | Probably unreachable; 9A traces it, and recommends a comment if so | pending |
+| 1 | Boom/bust thresholds are strict (exactly 20 WR/RB, 24 QB, 15 TE is not a boom; exactly at the bust line is not a bust) | js/mls/sim/stats.js | Changes the simulator's Boom/Bust %; `tests/mls-sim.spec.mjs` pins exact numbers | fix (QB/RB/WR/TE lines only; done in 9A) |
+| 2 | Pos Rank cells like `WR2` / `RB14` are ignored | js/shared/rankings/parse.js | Likely a plain fix: read the number after the position | fix (done in 9A) |
+| 3 | SoS keeps only digits (`4.5` → "45", `-2` → "2") | parse.js | Check how js/mls/sos.js reads the stored strings first | fix, rankings parser only; the SoS grid upload unchanged (done in 9A) |
+| 4 | FantasyPros `RK` not used as rank, `TIERS` not tier, `SOS SEASON` not SoS | parse.js | Rank then comes from row order; tiers dropped | fix RK and TIERS; SOS SEASON stays unread (done in 9A) |
+| 5 | Position-named name headers (`Quarterback`, `Running Back`, `Flex`) fail a single-file upload | parse.js | They work in per-position uploads | fix (done in 9A) |
+| 6 | Horizontal sheets: FLEX overwrites rank and tier | parse.js | waiverScanner's comments account for it; may be intended | keep, with a comment (9A) |
+| 7 | Name suffix strip has no word boundary (`Ivanov` → `ivano`) | js/shared/names.js | **Risky:** `normalizeName` makes the keys both apps save and the bundled T-Score keys. Needs a plan for saved data before changing (see the 9A card) | fix, accept the 3 changed keys: no migration, no new key (done in 9A) |
+| 8 | `isNameMatch` matches two names that both normalize to "" | names.js | Small | fix (done in 9A) |
+| 9 | `fillLineup` drops slot types outside SLOT_ORDER | js/mls/scout/waiverScanner.js | Probably unreachable; 9A traces it, and recommends a comment if so | keep, with a comment (9A) |
+
+### 9A — Fix the 0B findings the owner approved (behavior change)
+
+Every "Owner's decision" line in the table above was pending when this chunk started. I explained each
+finding to the owner (what a user sees, what the fix changes, the risk) and got a decision for each:
+**fixed** 1, 2, 3, 4, 5, 7, 8; **kept** 6 and 9 (a comment each, no behavior change). The table above
+now carries those decisions. One commit per finding, in order. The parser fixes (2–5) only reach
+**Lineup Strategist**: Draft Strategist's import has its own reader and takes only the title-line
+helpers from parse.js. 7 and 8 reach both apps.
+
+#### What changed, finding by finding (user-visible difference in bold)
+
+| # | Commit | Change | What a user sees |
+|---|---|---|---|
+| 1 | `a48b885` | `js/mls/sim/stats.js`: `thresholdTests()` makes the published QB/RB/WR/TE lines inclusive (`>=` boom, `<=` bust), in the empirical counts and the stdDev-0 case. **K/DEF lines stay strict**: they're 0.5×/1.5× the player's own mean, and a player with no data has mean 0, where both lines are 0 and inclusive would show Bust 100% *and* Boom 100%. | **Simulator Boom/Bust % rise slightly for players whose past scores land exactly on a line** (exactly 24 for a QB, 20 for WR/RB, 15 for TE, or exactly the bust line). Rare with real decimal scores. Projection-based and early-season (model) numbers can't change: a single exact value has probability 0 under the normal curve. Win probabilities are untouched. |
+| 2 | `4cf320b` | parse.js `parsePosRank()`: a bare number parses as before; otherwise the number after leading position letters (`WR2`, `rb14`, `D/ST3`, `WR-2`). No number → 999 (falls back, as a blank cell does). | **A Pos Rank column written `WR2` shows the player as WR #2** instead of their overall rank. As with any explicit Pos Rank, the tier beside it is blank. |
+| 3 | `d3c0ea8` | parse.js `parseSosValue()`: a cell holding exactly one number keeps it with sign and decimal (`4.5`, `-2`; `#4`, `4th`, `12 (easy)` → `4`, `4`, `12` as before; `4.50` → `4.5`, `+3` → `3`). No number or several → no SoS for that row. | **From a rankings upload, the SoS grid shows 4.5 / -2 as written; the badge (a whole rank 1–32, parseInt in `js/mls/sos.js`) shows "SoS: 4" for 4.5 and nothing for -2** (it used to show "SoS: 2"). A cell like FantasyPros' "3 out of 5 stars" used to become `35` (no badge, since it's over 32) and is now skipped (still no badge). The SoS grid's own file upload (`js/mls/sos.js`) still keeps only digits, as the owner chose. |
+| 4 | `f91dfc1` | parse.js: `rk` is a rank column and `tiers` a tier column. `SOS SEASON` stays unread on purpose (a 1–5 star rating, not a 1–32 matchup rank). | **FantasyPros files show their tiers, and an unsorted file keeps FantasyPros' ranks** instead of row order. |
+| 5 | `45e622b` | parse.js `isHorizontalLayout()`: the side-by-side layout is recognized by the columns its parser reads (`/\b(qb\|rb\|wr\|te\|k\|flex)\s+player\b/` or exactly `def team`), no longer by `Quarterback` / `Running Back` / exactly `Flex`. | **A single-file upload headed `Quarterback`, `Running Back` or `Flex` imports** instead of failing with "no name column". Two side effects, both fixes: a side-by-side sheet with only WR/TE/K/DEF sections (no QB, RB or FLEX section) used to be read as a headerless list of its header cells, and now parses; a title line like "Quarterback Rankings" is no longer taken for the header row. |
+| 6 | `3af6d77` | Kept. Comment at the FLEX overwrite in parse.js; the test's comment notes the decision. | Nothing. |
+| 7 | `2529554` | `js/shared/names.js` `normalizeName`: non-letters become spaces, one suffix word at the end is dropped, then the words are joined. | **Nothing today.** Real suffixes give the same keys as before. Only names that merely *end* in those letters change. |
+| 8 | `29d5848` | `isNameMatch` returns false when either name normalizes to `""`. | Practically nothing. The callers (Draft Strategist's Sleeper ID matching on import, its ADP paste) could only have paired a letterless row with a letterless player name. |
+| 9 | `dc29ac8` | Kept. Comment above `fillLineup` with the trace; its `CURRENT BEHAVIOR:` test stays and says so. | Nothing. |
+
+**Why 6 was kept.** The position tier isn't lost: it stays in `posTier`, which the Lineup and Waiver
+views show. Only `tier` goes null, because it follows `rank` and the FLEX column has no tier.
+`buildRankDisplayIndex` (waiverScanner.js) needs the overwrite: FLEX players' rank differing from their
+posRank is how it tells a real positional list from the single-file fallback. Without it every rank
+would equal its posRank and positions would be renumbered (QB10/QB14 → QB1/QB2).
+
+**Why 9 was kept (the trace).** Slot types reach `fillLineup` from `State.manualStartersMap` via
+`js/mls/scout/waivers.js` (`st.slot.replace(/[0-9]/g, '')`). Its labels are created only by
+`optimizeLineup` (`js/mls/render/lineup.js`), one per `league.reqs` count, and reqs only has
+QB/RB/WR/TE/FLEX/SFLEX/K/DEF. League sync (`js/mls/leagues/sync.js`) maps FLEX/REC_FLEX/WRRB_FLEX → FLEX,
+SUPER_FLEX → SFLEX and drops every other Sleeper slot (IDP, BN). The Draft Strategist hand-off
+(`js/mls/leagues/handoff.js`) sets the same eight counts. Swaps and undo snapshots keep existing labels.
+
+#### #7 in detail: which keys change, and saved data
+
+Old vs new `normalizeName`, run in node over the inputs the card named:
+
+- **Sleeper's live player map** (`api.sleeper.app/v1/players/nfl`, 11,879 distinct `first last` and
+  `full_name` strings, fetched 2026-10-04): **3 keys change**, all retired non-fantasy players:
+  Shayne Skov (LB) `shaynesko` → `shayneskov`, Patrick Skov (FB) `patricksko` → `patrickskov`,
+  AJ Pataiali'i (DT) `ajpataial` → `ajpataialii`. No active QB/RB/WR/TE/K/DEF. Active-player collisions:
+  the same 10 pairs before and after (same-name players; none caused by the suffix strip).
+- **Bundled T-Score data** (`js/shared/data/tscore.js`, 170 keys): none change. Each key normalizes
+  to itself under both versions, and the 169 that match a Sleeper name match it under both.
+- **Test fixtures** (every string in `tests/fixtures/` and `tests/unit/`): no player name changes.
+  The only differences are code fragments and the deliberate test inputs (`Ivanov`, a lone `Jr.`).
+- Team abbreviations: `LV` used to normalize to `l` (the `v` was stripped). Nothing matches defenses by
+  abbreviation through normalizeName (they're matched by `def_TEAM` keys or Sleeper's team names), so no effect.
+
+**Saved data, the owner's choice: accept.** No recompute on load, no migration, no new storage key.
+A saved key can only differ for a name like those three. **Proof with a pre-change snapshot:**
+`tests/fixtures/pre-9a/` is localStorage + IndexedDB as the code before #7 left them, made by
+`tests/tools/pre9a-snapshot.tool.mjs` (opt-in, `MAKE_PRE9A_SNAPSHOT=1`; its header has the worktree
+steps) from commit `3af6d77`. It has a T-Score refresh from stubbed sheets, Draft Strategist with the
+24 fixture players plus Marvin Harrison Jr., Brian Thomas Jr., Kenneth Walker III, Travis Etienne Jr.,
+Patrick Mahomes II, D.J. Chark Jr. and Shayne Skov (five picks, T-Score badges on), and Lineup Strategist
+synced with the same 31 players as ROS and Weekly rankings. I checked the snapshot came from the old code
+(Skov saved as `shaynesko`). IndexedDB holds only raw Sleeper data (the player map by ID), with no name keys.
+`tests/name-keys.spec.mjs` restores both, opens all three pages with the new code, and checks:
+
+- every saved `{name, cleanName}` record (Draft Strategist's pool, Lineup Strategist's ranking sets, the
+  T-Score page cache; over 150) still equals `normalizeName(name)`, except Skov's;
+- Draft Strategist's T-Score badges for the six suffix names still come from the saved `tscore_cache`;
+- Lineup Strategist's saved ranking sets answer lookups made by the new code under either spelling
+  ("Marvin Harrison Jr." or Sleeper's "Marvin Harrison"; "Kenneth Walker III" or "Ken Walker"), and every
+  ranked player on the synced roster still finds their rank;
+- the T-Score page renders from its saved page cache.
+
+Mutation check: with the suffix strip removed, the spec fails (25 mismatches).
+
+**What the accepted case looks like** (pinned in the spec): a player saved under an old key, like Skov,
+stays in the saved pool and ranking sets. A lookup by his name misses until that data is saved again: his
+T-Score badge returns at the next T-Score refresh, and his ranking at the next rankings upload.
+
+#### Tests flipped and added
+
+- `statsEngine.test.mjs`: "tier 3 thresholds are strict" → "…inclusive for QB/RB/WR/TE" (WR [5, 7.5, 20,
+  21, 8] now 40%/40%, was 20%/20%; the tier-2-gate fixture follows). New: each position's line ± 0.01, tier
+  2 uses the same test, K/DEF stay strict (incl. mean 0), stdDev-0 cases on the line.
+- `rankingsParser.test.mjs`: the `WR2` row (posRank 2, was 4); FantasyPros RK/TIERS (tier 1, was null);
+  SoS `4.5` / `-2` (were `45` / `2`); "Quarterback works in QB but not SINGLE" → works in both. New: Pos
+  Rank cell formats, unsorted RK + "Tier 3", SoS cell formats (one number / none / several), Running
+  Back / FLEX / Wide Receiver headers in SINGLE, a "Quarterback Rankings" title line, a WR+DEF-only
+  side-by-side sheet, "Player Name" staying vertical. The old "horizontal header with no name columns"
+  input (`QB Rank,Running Back`) is a vertical list now, so that case uses `QB Player,RB Rank`.
+- `names.test.mjs`: Ivanov keeps its `v`; new cases for names ending in suffix letters, separators and
+  punctuation around a suffix, one suffix only at the end; `normalizeName('Jr.')` is `'jr'` (was `''`).
+  `isNameMatch` with letterless names is false (was true).
+- `mls-sim.spec.mjs` (**pinned numbers changed**): Alpha QB Boom **22.2% → 33.3%** (its history has one
+  24-point week, at the QB line). Newly pinned: Echo QB Boom **25%** (was 12.5%), Fox RB Boom **10%** (was
+  0%). Checked against main's stats.js in node. Everything else in that spec is unchanged.
+- New: `name-keys.spec.mjs` (above). Playwright total 88 → 90.
+- Kept, unchanged: the `CURRENT BEHAVIOR:` test for 9 (comment added) and the FLEX assertions for 6.
+
+#### Checks run
+
+- `node scripts/check-precache.mjs` OK (108 precached; no file added or removed under js/ or css/).
+- `node --test` 184/184.
+- `cd tests && npx playwright test`: **90/90**. **No screenshot changed** (no baseline PNG in the diff).
+- CACHE_NAME `v2.8.65` → `v2.8.66` (main was at v2.8.65).
+
+#### Left for later
+
+- The SoS grid's own file upload (`js/mls/sos.js`) still keeps only digits (`4.5` → `45`, `-2` → `2`). The
+  owner chose to leave it. If it should match the rankings parser, `parseSosValue` could move to a shared
+  spot and both could use it.
+- FantasyPros' `POS` column holds the position rank too (`WR12`). The parser reads it only as the position
+  (for SoS), and `parsePosRank` would read it, but that wasn't on 0B's list.
+- Next: Phase 8 (8B and 8C build on how Draft Strategist imports rankings; 9A didn't touch MDS's import).
