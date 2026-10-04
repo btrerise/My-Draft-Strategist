@@ -157,6 +157,16 @@ export function findFreeAgents(rankings, { posFilter, getPos, isRostered, isExcl
 //
 // pool entries: { id, pos, posRank, flexRank, isLocked, unavailable }
 // Returns { starters: [{ slotType, player }], leftover: [...] }.
+//
+// A slot type outside SLOT_ORDER (an IDP "DL", say) is skipped: it gets no starters entry, and a
+// player who only fits it stays in leftover, where checkAgainstLineup would name him "displaced".
+// That can't happen today (0B finding 9, traced and kept in refactor 9A by the owner's decision):
+// slot types come from State.manualStartersMap, whose slot labels only optimizeLineup
+// (js/mls/render/lineup.js) creates, one per league.reqs count, and reqs only has these eight keys.
+// League sync (js/mls/leagues/sync.js) maps Sleeper's FLEX / REC_FLEX / WRRB_FLEX to FLEX and
+// SUPER_FLEX to SFLEX and drops everything else (IDP slots, BN); the Draft Strategist hand-off
+// (js/mls/leagues/handoff.js) sets the same counts; swaps and undo keep existing labels. A new slot
+// type there needs handling here first.
 export function fillLineup(slotTypes, candidates) {
     const pool = candidates.slice();
     const starters = [];
