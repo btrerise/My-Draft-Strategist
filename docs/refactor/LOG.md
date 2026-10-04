@@ -35,6 +35,12 @@ Chunks that only move code must leave every screenshot identical. If a chunk is 
 change how something looks: `cd tests && npm run test:update`, then check the changed PNGs
 in `git diff --stat tests/baselines` and mention them in your entry below.
 
+`test:update` only rewrites a PNG whose comparison fails, and the screenshot check tolerates 0.2% of
+pixels plus faint colour changes (`maxDiffPixelRatio: 0.002`, Playwright's default per-pixel `threshold`).
+A small intended change (a smaller ✕, a red tint) can pass and be left out. In that case run
+`npx playwright test visual.spec.mjs --update-snapshots=all`, compare against a run on main's code, and
+keep only the PNGs your change explains (see the 4E entry: some MDS and T-Score baselines drift slightly).
+
 Baselines are per platform (`tests/baselines/linux/...`). Google Fonts is blocked in tests, so
 text uses fallback fonts, which differ between OSes. A macOS run won't find baselines and will
 write its own under `baselines/darwin/`. Don't commit those unless you mean to keep both.
@@ -3360,3 +3366,83 @@ Owner's decisions for Phase 8 (recorded after 4D; each card builds only what's m
 | "Processing…" / "Uploaded successfully" lines | 8B | **build** |
 | Rankings upload preview | 8C | **build** |
 | Player-name autocomplete + keyboard hint (and where) | 8C | **no**: no MDS field needs it (the Tracker search already filters as you type), so 8C was trimmed to the preview |
+
+### 4E — Visible CSS fixes found in 4C and 4D (behavior change: visible on Lineup Strategist only)
+
+Does the fixes the owner approved in "Planned as runbook chunks 4E and 8A–8C" and nothing else. One commit
+for the fixes, one for the screenshots and this entry. CACHE_NAME `v2.8.61` → `v2.8.62`. No file added or
+removed, so PRECACHE_ASSETS is unchanged. Visible version labels: the owner chose to leave both as they are
+(Draft Strategist v2.6, My Lineup Strategist v2.13.0); these are style fixes, not features.
+
+#### What changed
+
+| Fix | Change | What users see |
+|---|---|---|
+| Pulsing-card corners | `.pulse-border` (base.css, LIVE INDICATOR) no longer sets `border-radius: 8px`; its comment now says the element keeps its own corners. `.nav-pulse`'s 8px stays (the logo button has no radius of its own). | A pulsing card (`#setupSyncCard` on Setup with no leagues; `#rosRankingsCard` on Roster and `#weeklyRankingsCard` on Lineup until rankings are loaded) keeps the 12px corners of every other `.settings-card` instead of switching to 8px. |
+| Smaller ✕ | `.close-banner-btn-sm` → `.close-banner-btn.close-banner-btn-sm`, in place (base.css, next to `.settings-grid .input-group`), with a comment saying why. That was the smaller change: one selector instead of moving the rule past FULL-WIDTH DRAFT BOARD. Specificity 0,2,0 beats both later `.close-banner-btn` rules; no rule in mds.css or mls.css targets the ✕. | MLS's four ✕ buttons (`#guideBanner`, `#draftBanner`, `#sleeperSyncBanner`, the handoff banner) go from 17.6px text with 8px padding to 13.6px (0.85rem) with 4px (0.25rem). Still at least 44×44px, and the `::after` hit area (8px beyond the box) is unchanged. |
+| MDS ✕ uses the class | `#mlsBanner` and `#guideBanner` ✕ in index.html: inline `style="font-size: 0.85rem; padding: 0.25rem;"` → `class="close-banner-btn close-banner-btn-sm"` (`--space-1` is 0.25rem). The install card's ✕ keeps its own inline style (different size and position). | Nothing: compare-css 0 differences on MDS. |
+| Danger Zone | New `.sos-details-accordion.danger-card` (base.css, right after `.sos-details-accordion[open]`) with `.danger-card`'s border and background. It sits after `[open]` (same specificity), so the red style also wins when the accordion is open. | MLS Setup → Advanced Settings → Danger Zone: red dashed border and the faint red-to-card gradient, like the Global Injury Auditor card, instead of the plain grey border and dark fill. Open, it keeps the red dashed border instead of the green "open" border every other accordion gets. No hover rule applies to the accordion; the summary text stays red (`.text-danger` is `!important`). |
+| `.mt-0` | Dead `mt-0` removed from `<div class="leaguelogs-attribution">` (lineup/index.html; the only element carrying it, checked in both HTML files and js/). | Nothing (owner's choice (b)). |
+| `.pl-6` | Dead `pl-6` removed from the two `<ul class="guide-list">` on MLS's Guide tab (the only elements carrying it). | Nothing (owner's choice (b)). |
+
+The `.mt-0` and `.pl-6` rules stay in base.css (UTILITIES). Nothing uses them now, like the 8 spacing sizes
+the owner kept in 4D; delete them with those if the owner later drops the unused scale. The standalone
+`.danger-card` rule stays where it is: the Injury Auditor card uses it, and the new accordion rule doesn't
+depend on its position.
+
+#### compare-css (vs `origin/main`, all 28 runs)
+
+- **MDS (empty, mid-draft) and T-Score: 0 differences**, both widths, reduced motion on and off.
+- **MLS: 397 differences per width and motion setting** (MLS empty 100, synced league 121, with rankings 166,
+  handoff banner 10), 1,588 in all, and every one is on an element a fix targets. To see them all, the caps in
+  the tool's report (60 differences, 6 properties each) were lifted for one run and put back; the tool is
+  unchanged in this branch.
+  - `button.close-banner-btn.close-banner-btn-sm` (incl. `.ml-3` on `#sleeperSyncBanner`) and its `::after`:
+    1,280. Button: `font-size` and `line-height` 17.6px → 13.6px, every padding side 8px → 4px. `::after`: only
+    the inherited `font-size` / `line-height`; its box (`inset: -8px`) is unchanged. Present in every MLS state
+    (the banners are outside the tabs).
+  - `details.sos-details-accordion.danger-card`: 160. Closed (100): `background-color` rgba(0,0,0,0.2) →
+    transparent, `background-image` none → the red gradient, border colour #1f2937 → rgba(239,68,68,0.4), style
+    solid → dashed on all four sides. Open, in the "every `<details>` open" states (60): the same, with the border
+    colour going from the green rgba(16,185,129,0.3) to the red.
+  - `section#setupSyncCard`, `#rosRankingsCard`, `#weeklyRankingsCard` with `.pulse-border`: 148. All four corner
+    radii 8px → 12px, only in the states where the card pulses.
+- Nothing on `.leaguelogs-attribution` or `.guide-list` (as intended).
+
+#### Screenshots
+
+`npm run test:update` rewrote nothing: every change is under the screenshot tolerance (above). Forcing a
+rewrite (`--update-snapshots=all`) changed 14 PNGs. Rendering main's own code the same way changes the same
+MDS and T-Score PNGs by the same pixel counts (desktop `mds-draft-board` 8,308 px, `mds-draft-tracker` 56,674
+px, and more on phone): those baselines have drifted slightly since they were taken and pass within the
+tolerance; not this chunk's, so not updated. On main the MLS PNGs re-render byte for byte, so every MLS change
+is 4E's. Updated (10), pixels changed:
+
+| PNG (desktop / phone) | What changed |
+|---|---|
+| `mls-empty-setup` (55,355 / 17,623 px) | the Guide banner's ✕; the pulsing Add/Sync League card's corners; the Danger Zone accordion |
+| `mls-league-setup` (54,959 / 17,258 px) | a banner ✕; the Danger Zone accordion |
+| `mls-league-roster`, `mls-league-lineup` (≈400 px each) | the corners of the pulsing ROS card (Roster tab) and Weekly card (Lineup tab), which pulse because the fixture has no rankings loaded |
+| `mls-league-scout` (84 / 102 px) | a banner ✕ |
+
+Checked by eye in side-by-side crops: the smaller ✕, the red dashed Danger Zone, the rounder pulsing-card corner.
+The screenshots disable animations, so the pulse itself isn't in them.
+
+#### Checks run
+
+- `npm run compare-css`: as above (MDS and T-Score 0; MLS only on the targeted elements).
+- `node scripts/check-precache.mjs` OK (107 precached). `node --test` 162/162. `cd tests && npx playwright test`
+  78/78 with the updated baselines.
+
+#### Left for later chunks
+
+- 5D renames `.leaguelogs-attribution` (its `mt-0` is gone now).
+- The slightly drifted MDS / T-Score baselines (above) pass, but whoever next has to accept an MDS or T-Score
+  screenshot change should regenerate on main first, so their diff shows only their own change.
+- Phase 8A uses `danger-card` on MDS's Reset Controls: if that's a `<details class="sos-details-accordion">`, the
+  new `.sos-details-accordion.danger-card` rule already covers it.
+- **After Phase 8 (owner's decision, recorded after 4E): revisit the unused spacing helpers in one go.** That's
+  the 8 sizes kept in 4D (`.gap-1`, `.gap-3`, `.stack-xs`, `.stack-md`, `.stack-lg`, `.cluster-wrap`, `.cluster-xs`,
+  `.cluster-lg`) plus `.mt-0` and `.pl-6`, unused since 4E. Phase 8's new Draft Strategist markup may use some of
+  them, so don't delete any before then. Afterwards, grep `index.html`, `lineup/index.html`, `t-score/`, `js/` and
+  `functions/` for each one, list the ones still unused for the owner, and delete only the ones the owner drops.

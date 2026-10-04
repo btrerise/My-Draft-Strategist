@@ -940,8 +940,10 @@ label.toggle-title,
    bottom margin on top of it. */
 .settings-grid .input-group { margin-bottom: 0; }
 
-/* Smaller variant of .close-banner-btn for banners with less vertical room. */
-.close-banner-btn-sm { font-size: 0.85rem; padding: var(--space-1); }
+/* Smaller variant of .close-banner-btn for banners with less vertical room. Written with both
+   classes so it beats the two later .close-banner-btn rules (MODERNIZED FILE UPLOAD BUTTON and
+   FULL-WIDTH DRAFT BOARD); the 44px touch target and the ::after hit area still apply. */
+.close-banner-btn.close-banner-btn-sm { font-size: 0.85rem; padding: var(--space-1); }
 .app-version { text-align: center; color: var(--text-muted); font-size: 0.8rem; margin: 2rem 0; }
 
 /* Call Out Dots */
@@ -1201,6 +1203,13 @@ label.toggle-title,
     border-color: rgba(16, 185, 129, 0.3);
 }
 
+/* The Danger Zone accordion (MLS Setup, Advanced Settings) gets .danger-card's red style; it has
+   to come after both rules above, or their border and background win, open or closed. */
+.sos-details-accordion.danger-card {
+    border: 1px dashed rgba(239, 68, 68, 0.4);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.03), var(--card-bg));
+}
+
 .sos-summary {
     cursor: pointer;
     font-weight: 600;
@@ -1287,7 +1296,7 @@ label.toggle-title,
 
 .pulse-border {
     animation: border-pulse-anim 2.5s infinite;
-    border-radius: 8px; /* ensures corner rounding matches the card */
+    /* No border-radius: the pulsing element keeps its own corners (a .settings-card's 12px). */
 }
 
 @keyframes nav-pulse-anim {
