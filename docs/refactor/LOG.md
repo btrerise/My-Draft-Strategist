@@ -3257,7 +3257,7 @@ wins today. In mls.css or mds.css the app rule would load later and win instead.
 | `.tracker-controls-card` | MDS | `.settings-card` in the phone `@media (max-width: 767px)` block (`padding: 1rem 0.75rem`); the card is `class="settings-card tracker-controls-card"`. |
 | `.close-banner-btn-sm` | MLS (shared, 4C) | `.close-banner-btn` twice: MODERNIZED FILE UPLOAD BUTTON (`font-size: 1.1rem; padding: 0.25rem 0.5rem`) and FULL-WIDTH DRAFT BOARD (`padding: 0.5rem`). Every element with the class also has `.close-banner-btn`. |
 | `.status-icon` | MLS | `.tooltip, .tooltip-container` (TOOLTIPS, right after it): `display`, `align-items`. Same values today, but it's the later rule. |
-| `.danger-card` | MLS (shared, 4C) | `.sos-details-accordion` (`border`, `background`) on the Injury Auditor's `<details class="sos-details-accordion danger-card">`. |
+| `.danger-card` | MLS (shared, 4C) | `.sos-details-accordion` (`border`, `background`) on the Danger Zone accordion, `<details class="sos-details-accordion danger-card">` (Setup, Advanced Settings). The Injury Auditor card (`settings-card danger-card`) does show the style. |
 | `.text-danger` | MLS (shared, 4C) | `.sos-summary { color }` on `class="sos-summary text-danger"`. `.text-danger` is `!important`, so it wins either way; kept anyway (the card lists it, and moving it gains nothing). |
 | `.mt-0` | MLS | `.leaguelogs-attribution { margin-top: 1rem }`. |
 | `.pl-6` | MLS | `.guide-list { padding-left: 1.25rem }`. |
@@ -3270,9 +3270,11 @@ wins today. In mls.css or mds.css the app rule would load later and win instead.
   `#draftBanner`, `#sleeperSyncBanner`, the handoff banner) measure 17.6px / 8px padding, the plain `.close-banner-btn`
   size, not 0.85rem / 0.25rem (checked in Chromium). The later `.close-banner-btn` rules win. 4C shared it because MDS
   sets the same small size inline; for MDS to get it from the class, the class has to win first, and that's visible on MLS.
-- **New: `.danger-card` does nothing on the Injury Auditor accordion either** (`<details class="sos-details-accordion
-  danger-card">`: solid border, no red gradient, checked in Chromium). The accordion's own border and background win, so
-  only the Danger Zone card shows the red dashed style. Making it show there is a visible change.
+- **New: `.danger-card` does nothing on the Danger Zone accordion** (Factory Reset, `<details class="sos-details-accordion
+  danger-card">` in Setup's Advanced Settings: solid border, no red gradient, checked in Chromium). The accordion's own
+  border and background win, so only the Global Injury Auditor card (`settings-card danger-card`) shows the red dashed
+  style. Making it show on the Danger Zone is a visible change. (Corrected after 4D: an earlier version of this note
+  said "Injury Auditor accordion".)
 
 #### Checks run
 
@@ -3313,7 +3315,7 @@ Owner's decisions (4E does only the approved fixes; for anything still pending, 
 |---|---|---|
 | Pulsing-card corners | Drop `border-radius: 8px` from `.pulse-border`, so a pulsing card keeps its 12px corners (MLS Setup cards). | fix (decided after 4C) |
 | Smaller ✕ (`.close-banner-btn-sm`) | MLS's four ✕ buttons go from 1.1rem / 8px padding to 0.85rem / 0.25rem (touch target unchanged). MDS's two ✕ swap their inline style for the class, with no visible change. | pending |
-| `.danger-card` on the Injury Auditor | Red dashed border and red tint on the Injury Auditor accordion (MLS Setup, Advanced Settings), like the Danger Zone card. | pending |
+| `.danger-card` on the Danger Zone accordion | Red dashed border and red tint on MLS's Danger Zone accordion (Factory Reset; Setup, Advanced Settings), like the Global Injury Auditor card already has. | pending |
 | `.mt-0` on `.leaguelogs-attribution` | (a) Make it work: the attribution line under MLS's market data loses its 1rem top margin; or (b) delete the dead `mt-0` from the markup: no visible change. | pending |
 | `.pl-6` on the two `.guide-list`s | (a) Make it work: those two lists on MLS's Guide tab get a wider indent (1.25rem → 2rem); or (b) delete the dead `pl-6`: no visible change. | pending |
 
