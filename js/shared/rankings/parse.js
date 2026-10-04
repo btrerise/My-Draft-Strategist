@@ -63,6 +63,16 @@ function parsePosRank(cell) {
     return m ? parseInt(m[1], 10) : 999;
 }
 
+// SoS cell -> string to store. A cell holding exactly one number keeps it with its sign and decimal
+// point ("4.5", "-2"; "#4", "4th" and "12 (easy)" give "4" and "12" as before). Refactor 9A: it used to
+// keep only the digits, so 4.5 became "45" and -2 became "2". No number, or several ("3 out of 5
+// stars"), gives "", and the row adds no SoS. js/mls/sos.js shows the string in the SoS grid's number
+// box and badges it only as a whole rank from 1 to 32 (parseInt), so "4.5" badges as 4 and "-2" not at all.
+function parseSosValue(cell) {
+    const nums = String(cell).match(/[+-]?\d+(?:\.\d+)?/g);
+    return nums && nums.length === 1 ? String(Number(nums[0])) : "";
+}
+
 // Combined horizontal sheet (old format or the newer 'wk1' format): positions side by side,
 // each with its own rank/name columns. Only applies to single-file uploads.
 function isHorizontalLayout(headers, context) {
@@ -351,7 +361,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                             teamStr = TEAM_ALIASES[teamStr] || teamStr; 
                             
                             let posStr = rows[i][posColIdx] ? rows[i][posColIdx].toString().trim().toUpperCase() : "";
-                            let sosVal = rows[i][sosColIdx] ? rows[i][sosColIdx].toString().replace(/[^0-9]/g, '') : "";
+                            let sosVal = rows[i][sosColIdx] ? parseSosValue(rows[i][sosColIdx]) : "";
 
                             if (teamStr && posStr && sosVal && NFL_TEAMS.includes(teamStr)) {
                                 let posGroup = posStr.includes('QB') ? 'QB' : posStr.includes('RB') ? 'RB' : posStr.includes('WR') ? 'WR' : posStr.includes('TE') ? 'TE' : null;

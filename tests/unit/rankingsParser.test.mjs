@@ -249,7 +249,7 @@ describe('horizontal (side-by-side) weekly sheet', () => {
 });
 
 describe('strength of schedule extraction', () => {
-    test('Team + Pos + SOS columns fill sosUpdates as digit-only strings', async () => {
+    test('Team + Pos + SOS columns fill sosUpdates as number strings', async () => {
         const file = csvFile('ros-sos.csv', dedent(`
             Rank,Player,Team,Pos,SOS
             1,Christian McCaffrey,SF,RB,3
@@ -265,12 +265,37 @@ describe('strength of schedule extraction', () => {
         assert.deepEqual(res.sosUpdates, {
             SF: { RB: '3' },
             DAL: { WR: '12' },
-            // CURRENT BEHAVIOR: non-digits are stripped, so 4.5 becomes "45" and -2 becomes "2".
-            KC: { TE: '45' },
-            WAS: { QB: '2' }
+            // Sign and decimal point kept (refactor 9A; before it, "45" and "2").
+            KC: { TE: '4.5' },
+            WAS: { QB: '-2' }
             // K has no SoS group; "LA" isn't a team abbreviation; a blank SoS cell is skipped.
         });
         assert.equal(res.parsedData.length, 7);
+    });
+    test('SoS cells: one number is kept as written; none or several add no SoS', async () => {
+        const file = csvFile('sos-cells.csv', dedent(`
+            Player,Team,Pos,SOS
+            A,ARI,QB,+3
+            B,ATL,QB,#4
+            C,BAL,QB,4th
+            D,BUF,QB,12 (easy)
+            E,CAR,QB,4.50
+            F,CHI,QB,007
+            G,CIN,QB,-0.5
+            H,CLE,QB,3 out of 5 stars
+            I,DAL,QB,easy
+            J,DEN,QB,1-3
+        `));
+        const res = await parse(single(file));
+        assert.deepEqual(res.sosUpdates, {
+            ARI: { QB: '3' }, ATL: { QB: '4' }, BAL: { QB: '4' }, BUF: { QB: '12' },
+            CAR: { QB: '4.5' }, CHI: { QB: '7' }, CIN: { QB: '-0.5' }
+            // "3 out of 5 stars" (two numbers; was "35"), "easy" (none) and "1-3" (two; was "13") are skipped.
+        });
+        // A file whose only SoS cells are skipped reports no new SoS.
+        const none = await parse(single(csvFile('s.csv', 'Player,Team,Pos,SOS\nJosh Allen,BUF,QB,3 out of 5 stars\n')));
+        assert.equal(none.hasNewSos, false);
+        assert.deepEqual(none.sosUpdates, {});
     });
     test('"ROS", "Schedule" and "Matchup" headers are all read as SoS', async () => {
         for (const header of ['ROS', 'Schedule', 'Matchup']) {
