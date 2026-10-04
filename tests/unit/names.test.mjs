@@ -72,9 +72,30 @@ describe('normalizeName', () => {
         assert.equal(normalizeName('Henry Ruggs IV'), 'henryruggs');
         assert.equal(normalizeName('Some Player V'), 'someplayer');
     });
-    test('CURRENT BEHAVIOR: suffix strip has no word boundary, so a surname ending in "v" loses it', () => {
-        assert.equal(normalizeName('Ivanov'), 'ivano');
-        assert.equal(normalizeName('Pete Ivanov'), 'peteivano');
+    // Refactor 9A: the strip used to run after spaces were removed, so these lost their last letters
+    // ('ivano', 'peteivano', 'shaynesko', 'ajpataial').
+    test('a suffix is only stripped when it is its own word', () => {
+        assert.equal(normalizeName('Ivanov'), 'ivanov');
+        assert.equal(normalizeName('Pete Ivanov'), 'peteivanov');
+        assert.equal(normalizeName('Shayne Skov'), 'shayneskov');
+        assert.equal(normalizeName("AJ Pataiali'i"), 'ajpataialii');
+        assert.equal(normalizeName('Tim Patrick Jr'), 'timpatrick');
+        assert.equal(normalizeName('Odell Beckham'), 'odellbeckham');
+        // Names that merely end in those letters keep them: -v, -ii, -jr, -sr.
+        assert.equal(normalizeName('Igor Lebedev'), 'igorlebedev');
+        assert.equal(normalizeName('Kalani Kahananuii'), 'kalanikahananuii');
+        assert.equal(normalizeName('Mike Dojr'), 'mikedojr');
+        assert.equal(normalizeName('Sam Gonsr'), 'samgonsr');
+    });
+    test('the suffix word can follow any separator and carry punctuation', () => {
+        assert.equal(normalizeName('Harrison, Jr.'), 'harrison');
+        assert.equal(normalizeName('Harrison,Jr'), 'harrison');
+        assert.equal(normalizeName('Kenneth Walker-III'), 'kenwalker');
+        assert.equal(normalizeName('Marvin Harrison Jr. '), 'marvinharrison');
+        assert.equal(normalizeName('Marvin Harrison Jr.*'), 'marvinharrison');
+        // Only one suffix, and only at the end.
+        assert.equal(normalizeName('John Smith Jr. III'), 'johnsmithjr');
+        assert.equal(normalizeName('Jr. Smith'), 'jrsmith');
     });
     test('empty-ish input', () => {
         assert.equal(normalizeName(''), '');
@@ -83,7 +104,8 @@ describe('normalizeName', () => {
         assert.equal(normalizeName(0), '');
         assert.equal(normalizeName(12345), '');
         assert.equal(normalizeName('   '), '');
-        assert.equal(normalizeName('Jr.'), '');
+        // A suffix with no name in front of it isn't stripped (refactor 9A; it gave '' before).
+        assert.equal(normalizeName('Jr.'), 'jr');
     });
     test('repeat calls return the cached value', () => {
         assert.equal(normalizeName('Brian Thomas Jr.'), 'brianthomas');
@@ -107,7 +129,8 @@ describe('isNameMatch', () => {
         assert.equal(isNameMatch(undefined, 'Josh Allen'), false);
     });
     test('CURRENT BEHAVIOR: two non-empty names that both normalize to "" match', () => {
-        assert.equal(isNameMatch('Jr.', 'Sr.'), true);
+        // ('Jr.', 'Sr.') was the first example here; since 9A's suffix fix they normalize to 'jr' / 'sr'.
+        assert.equal(isNameMatch('#', '--'), true);
         assert.equal(isNameMatch('123', '456'), true);
     });
 });

@@ -33,12 +33,20 @@ export function normalizeName(name) {
     const cached = _normalizeNameCache.get(name);
     if (cached !== undefined) return cached;
 
+    // A suffix (jr, sr, ii, iii, iv, v) is dropped only when it's a word of its own at the end.
+    // Refactor 9A: it used to be cut after the spaces were already gone, so any name ending in
+    // those letters lost them ("Skov" -> "sko", "Ivanov" -> "ivano"). Anything that isn't a letter
+    // separates words here, so "Jr." and ",Jr" still count; the words are then joined as before.
+    // Run over Sleeper's player map (11,879 names) this changed 3 keys, all retired non-fantasy
+    // players, and none of the bundled T-Score keys (see the 9A entry in docs/refactor/LOG.md).
     let n = String(name)
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
-        .replace(/[^a-z]/g, '')
-        .replace(/(jr|sr|iii|ii|iv|v)$/, '');
+        .replace(/[^a-z]+/g, ' ')
+        .trim()
+        .replace(/ (jr|sr|iii|ii|iv|v)$/, '')
+        .replace(/ /g, '');
 
     const result = NAME_ALIASES[n] || n;
     _normalizeNameCache.set(name, result);
