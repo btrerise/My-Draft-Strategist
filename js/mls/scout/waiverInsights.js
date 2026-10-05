@@ -7,6 +7,7 @@ import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile } from '../sim/stats.js';
 import { State } from '../state.js';
 import { isExcludedFromSimulation } from '../helpers.js';
 import { ensureSleeperPosByName, getCleanNameToIdIndex } from '../players.js';
+import { fantasyPosition } from '../constants.js';
 import { hasKickedOff } from '../lineup/gameInfo.js';
 import { getTopWaiverCandidatesByPosition } from '../trade/waiverValue.js';
 
@@ -77,7 +78,7 @@ import { getTopWaiverCandidatesByPosition } from '../trade/waiverValue.js';
                         if (weeklyScores.length === 0) return; // same "not enough history" bar as everyone else
 
                         const rawPlayer = playerMap[c.id] || {};
-                        const faPos = rawPlayer.position || c.pos;
+                        const faPos = fantasyPosition(rawPlayer) || c.pos;
                         const profile = getPlayerVarianceProfile(weeklyScores, { projectedMean: getProjectedMean(c.id) });
                         const result = compareAgainstWeakestStarter(profile, faPos);
                         if (!result) return;

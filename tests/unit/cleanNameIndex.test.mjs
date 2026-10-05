@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPlayers } from './helpers/playersEnv.mjs';
 import { normalizeName } from '../../js/shared/names.js';
+import { fantasyPosition } from '../../js/mls/constants.js';
 
 const entry = (first, last, position, fantasy_positions, team, search_rank, extra = {}) =>
     ({ first_name: first, last_name: last, position, fantasy_positions, team, search_rank, ...extra });
@@ -62,6 +63,16 @@ const RULES = {
     601: entry('Only', 'One', 'G', ['OL'], null, 9999999),
 };
 
+// Listed outside the fantasy positions but scored at one (fantasyPosition, constants.js), from Sleeper's
+// live map (2026-10-05).
+const TWO_WAY = {
+    11060: entry('Robert', 'Burns', 'RB', ['RB'], null, 9999999),
+    11260: entry('Robert', 'Burns', 'FB', ['RB'], 'CHI', 9999999),
+    12530: entry('Travis', 'Hunter', 'DB', ['DB', 'WR'], 'JAX', 103),
+    // A namesake listed at a fantasy position but with no team loses to the two-way player on one.
+    90001: entry('Travis', 'Hunter', 'WR', ['WR'], null, 9999999),
+};
+
 const lookup = (index, name) => index[normalizeName(name)];
 
 test('the six names 7B found resolve to the active fantasy player', async () => {
@@ -95,19 +106,30 @@ test('each preference rule, and a full tie keeps the first entry', async () => {
 });
 
 test('sleeperPosByName gives the position of the player the index picks, for every name', async () => {
-    for (const map of [LIVE_COLLISIONS, RULES]) {
+    for (const map of [LIVE_COLLISIONS, RULES, TWO_WAY]) {
         const { mod } = await loadPlayers(map);
         const index = await mod.getCleanNameToIdIndex();
         await mod.ensureSleeperPosByName();
         assert.deepEqual(Object.keys(mod.sleeperPosByName).sort(), Object.keys(index).sort());
         for (const [clean, id] of Object.entries(index)) {
-            assert.equal(mod.sleeperPosByName[clean], map[id].position || 'UNK', clean);
+            assert.equal(mod.sleeperPosByName[clean], fantasyPosition(map[id]) || 'UNK', clean);
         }
     }
     // Before 9C the last entry in the map won here: with the CB after the WR, DJ Moore was a 'CB'.
     const { mod } = await loadPlayers({ 4983: LIVE_COLLISIONS[4983], 9000: LIVE_COLLISIONS[4961] });
     await mod.ensureSleeperPosByName();
     assert.equal(mod.sleeperPosByName[normalizeName('DJ Moore')], 'WR');
+});
+
+test('a two-way player or fullback counts as his fantasy position, in the index and the position lookup', async () => {
+    const { mod } = await loadPlayers(TWO_WAY);
+    const index = await mod.getCleanNameToIdIndex();
+    await mod.ensureSleeperPosByName();
+    assert.equal(lookup(index, 'Travis Hunter'), '12530');
+    assert.equal(mod.sleeperPosByName.travishunter, 'WR');
+    // The CHI fullback, scored at RB, beats the teamless RB (both fantasy, so the team decides).
+    assert.equal(lookup(index, 'Robert Burns'), '11260');
+    assert.equal(mod.sleeperPosByName.robertburns, 'RB');
 });
 
 test('isPreferredSleeperEntry is strict: an entry never beats itself or its equal', async () => {

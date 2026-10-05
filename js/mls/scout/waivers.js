@@ -4,7 +4,7 @@
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { buildRankDisplayIndex, checkAgainstLineup, compareForScan, findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
 import { escapeHtml } from '../../shared/html.js';
-import { RANKING_TYPE_CONFIG, tierTag } from '../constants.js';
+import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';
 import { getByeBadgeHTML, getGameInfoHTML, hasKickedOff } from '../lineup/gameInfo.js';
@@ -31,24 +31,26 @@ import { isPreferredSleeperEntry } from '../players.js';
     // same context also powers the Scan Pasted List path (see runScout's waiver branch).
 
     // Clean name -> { id, pos, team, inj } off the full Sleeper player map, cached for the
-    // session. Fantasy positions only. On a name collision the winner is the entry
+    // session. Fantasy positions only, by fantasyPosition (constants.js), so Travis Hunter (listed DB,
+    // scored at WR) is in as a WR. On a name collision the winner is the entry
     // getCleanNameToIdIndex picks too (isPreferredSleeperEntry in players.js: an NFL team, then the
     // lower search_rank, since every entry here has a fantasy position), so a retired or
     // practice-squad namesake can't decide whether a free agent is reported as playing at all.
-    // Before refactor 9C this preferred a team only and otherwise kept the first entry.
+    // Before refactor 9C this preferred a team only and otherwise kept the first entry, and read
+    // only the listed position, which left two-way players out.
     let _sleeperMetaByNamePromise = null;
     export function getSleeperMetaByName() {
         if (_sleeperMetaByNamePromise) return _sleeperMetaByNamePromise;
-        const FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
         _sleeperMetaByNamePromise = getSleeperPlayerMap().then(map => {
             const index = {};
             Object.entries(map).forEach(([id, p]) => {
-                if (!p.first_name || !FANTASY_POS.includes(p.position)) return;
+                const pos = fantasyPosition(p);
+                if (!p.first_name || !FANTASY_POSITIONS.includes(pos)) return;
                 const clean = normalizeName(`${p.first_name} ${p.last_name}`);
                 // age feeds the Power Rankings' future-value score (see getPowerAgeIndex);
                 // birth_date is preferred there when present, since Sleeper's age field can
                 // lag a birthday.
-                const entry = { id, pos: p.position, team: p.team || null, inj: getShortInjuryStatus(p), age: p.age ?? null, birthDate: p.birth_date || null };
+                const entry = { id, pos, team: p.team || null, inj: getShortInjuryStatus(p), age: p.age ?? null, birthDate: p.birth_date || null };
                 if (!index[clean] || isPreferredSleeperEntry(p, map[index[clean].id])) index[clean] = entry;
             });
             return index;

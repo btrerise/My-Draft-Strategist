@@ -8,12 +8,17 @@
 // the id index, the position lookup (sleeperPosByName), Scout's getSleeperMetaByName and the rookie
 // badge's name fallback (render/rookies.js). Before 9C each had its own rule.
 //
+// The third covers two-way players (9C, at the owner's request): Sleeper lists Travis Hunter as a DB
+// but scores him at WR too (`fantasy_positions` DB, WR). Lineup Strategist read only the listed
+// position, so on a roster he was a "DB", fit no slot and never started. fantasyPosition
+// (js/mls/constants.js) makes him a WR everywhere the app reads a Sleeper position.
+//
 // The fixture map gets namesakes added for this spec only (the guard with the fields of Sleeper's live
 // entry, 2026-10-04; the others invented); every other spec keeps fixtures/sleeper/players-nfl.json.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
-import { preparePage, expectClean, showTab } from './helpers.mjs';
+import { preparePage, expectClean, showTab, seedMls, loadMlsRankings, RANKINGS_CSV } from './helpers.mjs';
 
 const PLAYERS = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/sleeper/players-nfl.json', import.meta.url)), 'utf8'));
 const sleeper = (id, first, last, position, team, extra = {}) => ({
@@ -90,5 +95,46 @@ test('every name lookup picks the same player for a shared name', async ({ page 
         deeturner: { id: '7000', pos: 'WR', metaId: '7000', rookie: { rookie: false, team: null } },
         samtwin: { id: '7100', pos: 'WR', metaId: '7100', rookie: { rookie: true, team: 'DAL' } },
     });
+    await expectClean(page, state);
+});
+
+// Sleeper's live entry for Travis Hunter (2026-10-05), trimmed to the fields the app reads.
+const HUNTER = {
+    player_id: '12530', first_name: 'Travis', last_name: 'Hunter', full_name: 'Travis Hunter', search_full_name: 'travishunter',
+    position: 'DB', fantasy_positions: ['DB', 'WR'], team: 'JAX', years_exp: 1, status: 'Active', active: true,
+    injury_status: null, search_rank: 103, age: 23, number: 12,
+};
+
+test('a two-way player (listed DB, scored at WR) is a WR on the roster and starts at WR', async ({ page }) => {
+    const state = await preparePage(page);
+    const rosters = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/sleeper/league-rosters.json', import.meta.url)), 'utf8'));
+    rosters[0].players.push(HUNTER.player_id); // roster 1 is mds_test's
+    await page.route(/^https:\/\/api\.sleeper\.app\/v1\/players\/nfl$/, (route) =>
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...PLAYERS, [HUNTER.player_id]: HUNTER }) }));
+    await page.route(/^https:\/\/api\.sleeper\.app\/v1\/league\/\d+\/rosters$/, (route) =>
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rosters) }));
+    await page.goto('/lineup/');
+    await page.waitForLoadState('networkidle');
+    await seedMls(page);
+    // Ranked first, as a WR (the fixture list moves down one).
+    const [header, ...rows] = RANKINGS_CSV.trim().split('\n');
+    const csv = [header, '1,Travis Hunter,WR,JAX,1,8', ...rows.map(r => r.replace(/^(\d+)/, (n) => String(Number(n) + 1)))].join('\n') + '\n';
+    await loadMlsRankings(page, csv, 25);
+
+    const saved = await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        const league = State.leagues[0];
+        return { pos: league.roster.find(p => p.id === '12530').pos, globalPos: league.globalPosMap.travishunter };
+    });
+    expect(saved).toEqual({ pos: 'WR', globalPos: 'WR' });
+
+    await showTab(page, 'lineup');
+    const starters = await page.locator('#optimalLineupContainer .lineup-slot').allInnerTexts();
+    expect(starters.some(t => t.includes('Travis Hunter')), 'Hunter starts').toBe(true);
+
+    // The simulator's search lists him as a WR (it used to leave him out: DB isn't a fantasy position).
+    await page.locator('#simPlayerSearch').pressSequentially('Travis Hu');
+    await expect(page.locator('.autocomplete-item')).toHaveCount(1);
+    await expect(page.locator('.autocomplete-item')).toContainText('WR ·JAX');
     await expectClean(page, state);
 });

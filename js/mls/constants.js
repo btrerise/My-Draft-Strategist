@@ -10,6 +10,22 @@ import { KEYS } from '../shared/storage/keys.js';
     // line up with the same team codes used by the bye table (js/shared/data/byes.js), league.roster, etc.
     export const ESPN_TEAM_ALIASES = { "WSH": "WAS" };
 
+    // The positions Lineup Strategist plays and ranks, and the one it gives a Sleeper player.
+    // Sleeper's `position` is the player's listed NFL position; `fantasy_positions` is every
+    // position Sleeper scores him at. They differ for two-way players (Travis Hunter: DB, scored
+    // at DB and WR) and for fullbacks (FB, scored at RB). Lineup Strategist used to read
+    // `position` alone, so a rostered Travis Hunter was a "DB", fit no lineup slot and never
+    // started (refactor 9C). The listed position wins when it's a fantasy one; otherwise the first
+    // fantasy position Sleeper scores him at; otherwise the listed one, unchanged. Draft
+    // Strategist matches by fantasy_positions the same way (js/mds/import.js, refactor 7A).
+    export const FANTASY_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+    export function fantasyPosition(p) {
+        if (!p) return null;
+        if (FANTASY_POSITIONS.includes(p.position)) return p.position;
+        const scored = Array.isArray(p.fantasy_positions) ? p.fantasy_positions.find(pos => FANTASY_POSITIONS.includes(pos)) : null;
+        return scored || p.position || null;
+    }
+
     // Small muted "(T2)" suffix for a rank shown on a player card, when the rankings file that
     // rank came from also had a Tier column (see js/shared/rankings/parse.js). Returns "" for a missing tier
     // -- the common case, since Tier is an optional column -- so callers can append it

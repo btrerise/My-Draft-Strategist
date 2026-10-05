@@ -6,6 +6,7 @@ import { State, refreshGameTimes } from '../state.js';
 import { isBestBallLeague, isConnectionError } from '../helpers.js';
 import { hasKickedOff } from './gameInfo.js';
 import { normalizeName } from '../../shared/names.js';
+import { fantasyPosition } from '../constants.js';
 
 // A player this audit considers a genuine problem to leave in an active slot. Deliberately
 // narrower than HARD_OUT_STATUSES / getShortInjuryStatus's full vocabulary: Questionable and
@@ -32,7 +33,8 @@ function buildCleanNameCandidateIndex(playerMap) {
     const FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
     const index = {};
     Object.entries(playerMap).forEach(([id, p]) => {
-        if (!p || !p.first_name || !FANTASY_POS.includes(p.position)) return;
+        // fantasyPosition (constants.js): a two-way player (Travis Hunter, listed DB) is a WR (9C).
+        if (!p || !p.first_name || !FANTASY_POS.includes(fantasyPosition(p))) return;
         const clean = normalizeName(`${p.first_name} ${p.last_name}`);
         (index[clean] = index[clean] || []).push({ ...p, id });
     });
@@ -54,8 +56,8 @@ function resolveManualPlayer(p, candidateIndex) {
     const team = p.team && p.team !== "FA" ? p.team : null;
     const pos = p.pos && p.pos !== "FLEX" ? p.pos : null;
     return (team && candidates.find(c => c.team === team))
-        || (pos && candidates.find(c => c.position === pos && c.team))
-        || (pos && candidates.find(c => c.position === pos))
+        || (pos && candidates.find(c => fantasyPosition(c) === pos && c.team))
+        || (pos && candidates.find(c => fantasyPosition(c) === pos))
         || candidates.find(c => c.team)
         || candidates[0];
 }

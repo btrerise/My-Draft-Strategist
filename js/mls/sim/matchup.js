@@ -9,6 +9,7 @@ import { escapeHtml } from '../../shared/html.js';
 import { State, refreshGameTimes } from '../state.js';
 import { getShortInjuryStatus, isExcludedFromSimulation, SIM_EXCLUDE_STATUSES, getActiveLeague, isConnectionError } from '../helpers.js';
 import { getCleanNameToIdIndex } from '../players.js';
+import { fantasyPosition } from '../constants.js';
 import { getLeagueScoringKey, hasKickedOff } from '../lineup/gameInfo.js';
 import { getWaiverInsights } from '../scout/waiverInsights.js';
 import { slotAcceptsPos } from '../render/lineup.js';
@@ -189,7 +190,7 @@ export const runMatchupSim = async function() {
             const playerTeam = p.team || '';
             const actualScore = (typeof actualPts === 'number' && hasKickedOff({ team: playerTeam })) ? actualPts : null;
             return {
-                id, name, pos: p.position || '', team: playerTeam, weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
+                id, name, pos: fantasyPosition(p) || '', team: playerTeam, weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
                 isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id),
                 actualScore
             };
@@ -398,7 +399,7 @@ export const lookupSimPlayer = async function(p) {
         resultEl.innerHTML = `
             <div class="sim-lookup-card">
                 <div class="sim-lookup-header">
-                    ${rawPlayer.position ? `<span class="pos-badge ${escapeHtml(rawPlayer.position)}">${escapeHtml(rawPlayer.position)}</span>` : ''}
+                    ${fantasyPosition(rawPlayer) ? `<span class="pos-badge ${escapeHtml(fantasyPosition(rawPlayer))}">${escapeHtml(fantasyPosition(rawPlayer))}</span>` : ''}
                     <strong>${escapeHtml(p.name)}</strong>
                     <span class="text-helper">${escapeHtml(rawPlayer.team || 'FA')}</span>
                 </div>

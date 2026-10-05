@@ -3,6 +3,7 @@ import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { escapeHtml } from '../../shared/html.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
+import { fantasyPosition } from '../constants.js';
 
 // --- PLAYER HEADSHOTS (Roster tab list + Lineup tab starters/bench) ---
 // Same Sleeper CDN thumbnails MDS uses on its Draft Board and roster cards. Hotlinked, never
@@ -38,7 +39,8 @@ export function ensureHeadshotNameIndex(roster, rerender) {
         const FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K'];
         const index = new Map();
         Object.entries(map).forEach(([id, p]) => {
-            if (!p || !p.first_name || !FANTASY_POS.includes(p.position)) return;
+            // fantasyPosition (constants.js): Travis Hunter is listed DB but plays WR here (9C).
+            if (!p || !p.first_name || !FANTASY_POS.includes(fantasyPosition(p))) return;
             const clean = normalizeName(`${p.first_name} ${p.last_name}`);
             const list = index.get(clean);
             const entry = { id, team: p.team || null };
