@@ -40,11 +40,12 @@ Chunks that only move code must leave every screenshot identical. If a chunk is 
 change how something looks: `cd tests && npm run test:update`, then check the changed PNGs
 in `git diff --stat tests/baselines` and mention them in your entry below.
 
-`test:update` only rewrites a PNG whose comparison fails, and the screenshot check tolerates 0.2% of
-pixels plus faint colour changes (`maxDiffPixelRatio: 0.002`, Playwright's default per-pixel `threshold`).
-A small intended change (a smaller ✕, a red tint) can pass and be left out. In that case run
-`npx playwright test visual.spec.mjs --update-snapshots=all`, compare against a run on main's code, and
-keep only the PNGs your change explains. Since 0C every screenshot renders the same pixels on every run, so
+`test:update` only rewrites a PNG whose comparison fails. Since 0C the screenshot check counts any colour
+change (`threshold: 0`) and tolerates at most 10 differing pixels per PNG (`maxDiffPixels: 10`; pixelmatch
+also skips pixels it detects as anti-aliasing). Before 0C it tolerated 0.2% of pixels plus faint colour
+changes, so a small intended change could pass and be left out. A change of 10 pixels or fewer still can: if
+yours is that small, run `npx playwright test visual.spec.mjs --update-snapshots=all` and keep only the PNGs
+your change explains. Every screenshot renders the same pixels on every run (0C), so
 `npm run pxdiff -- --runs 1 --crops <dir>` lists exactly the PNGs your change touches (anything else it
 lists means rendering has become unrepeatable again, which is a bug, not drift).
 
@@ -4600,7 +4601,7 @@ Why: rendering is now repeatable, and these were the partial-raster variants. By
 28: only anti-aliased edges moved (logo tile corners, pill/badge/select borders, dashed borders, the translucent
 bottom nav's icons), by at most 19/255 and mostly 1–5. No text, colour or layout change.
 
-**Tolerance (for the owner; not changed).** Today `maxDiffPixelRatio: 0.002` lets a change through if it touches
+**Tolerance (as reported to the owner; the decision follows).** Today `maxDiffPixelRatio: 0.002` lets a change through if it touches
 under 0.2% of a PNG's pixels: 658 px on the smallest (phone `mds-empty-board`/`-tracker`, 390×844), 2,304 px on a
 desktop viewport, up to 10,560 px on the tallest (desktop `mls-league-guide`). On top of that Playwright's default
 per-pixel `threshold: 0.2` ignores any pixel whose colour change is under about 20% of the maximum (YIQ), so a
@@ -4612,6 +4613,15 @@ re-taken at once rather than "most pass anyway". That's already true in practice
 than the tolerance. A middle ground is `threshold: 0` with a small `maxDiffPixels` (say 10): faint colour changes
 are caught, and a stray edge pixel is forgiven.
 
+**Owner's decision (after review, same branch): the middle ground, `threshold: 0` with `maxDiffPixels: 10`.**
+`playwright.config.mjs` now has that in place of `maxDiffPixelRatio: 0.002` (and the default threshold 0.2).
+Checked: `visual.spec.mjs` three times and the full suite once at 4 workers, all pass. Sensitivity, on a copy of
+desktop `tscore-researchTab` (1280×1061): 11 pixels in a flat area nudged by 1/255 in red fail ("11 pixels …
+are different"), 10 pass. Before, about 2,700 such pixels would have passed on that page, and the threshold
+ignored a change that faint entirely. One caveat: Playwright's pixelmatch skips pixels it detects as
+anti-aliasing (`includeAA` is off, and Playwright doesn't expose it), so a change confined to shape edges can
+still go uncounted, as it could before; `npm run pxdiff` counts those.
+
 **Docs.** "How to run the checks" lists `npm run pxdiff`; "Accepting an intended visual change" no longer says
 some baselines drift, and says `npm run pxdiff -- --runs 1` lists exactly the PNGs a change touches; "How the
 tests work" mentions the launch flag.
@@ -4620,7 +4630,6 @@ tests work" mentions the launch flag.
 100/100 with the re-taken baselines (and at 4 workers during the proof runs).
 
 **Left for later.**
-- The owner's call on the tolerance (above).
 - If a spec other than `visual.spec.mjs` ever takes screenshots, give it the same launch flag (or move the
   flag into `playwright.config.mjs` `use.launchOptions`; it doesn't affect the other specs' assertions).
 - Not reproduced: 7C's 56,654 px desktop `mds-draft-tracker`. If a run ever shows a difference again,

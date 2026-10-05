@@ -11,8 +11,11 @@ export default defineConfig({
     // Baselines are per platform: fallback fonts (Google Fonts is blocked in tests) render
     // differently on Linux and macOS. Claude Code cloud sessions run Linux.
     snapshotPathTemplate: '{testDir}/baselines/{platform}/{projectName}/{arg}{ext}',
+    // Screenshot tolerance (owner's decision after refactor 0C, which made rendering repeatable): any colour
+    // change counts (threshold 0), and at most 10 pixels may differ. pixelmatch still skips pixels it detects
+    // as anti-aliasing. Was maxDiffPixelRatio 0.002 with the default threshold 0.2.
     expect: {
-        toHaveScreenshot: { maxDiffPixelRatio: 0.002, animations: 'disabled', caret: 'hide', stylePath: './hide-transient.css' },
+        toHaveScreenshot: { maxDiffPixels: 10, threshold: 0, animations: 'disabled', caret: 'hide', stylePath: './hide-transient.css' },
     },
     use: {
         baseURL: `http://localhost:${PORT}`,
