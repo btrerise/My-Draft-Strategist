@@ -23,10 +23,11 @@ function isAuditOut(p) {
 // top of this file -- an injury audit specifically wants today's statuses, not whatever was
 // cached when some earlier feature first needed a name lookup.
 //
-// Values are ARRAYS of candidates, unlike getCleanNameToIdIndex's first-match-wins: manual
-// players carry a position and team the caller can disambiguate with (see resolveManualPlayer),
-// and picking a retired namesake here wouldn't just mislabel a row, it would report the wrong
-// injury status for somebody's actual starter.
+// Values are ARRAYS of candidates, unlike getCleanNameToIdIndex's one id per name (its general
+// preference, isPreferredSleeperEntry in players.js, can't know which player a manual entry
+// means): manual players carry a position and team the caller can disambiguate with (see
+// resolveManualPlayer), and picking a retired namesake here wouldn't just mislabel a row, it
+// would report the wrong injury status for somebody's actual starter.
 function buildCleanNameCandidateIndex(playerMap) {
     const FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
     const index = {};

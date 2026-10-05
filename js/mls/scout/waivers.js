@@ -14,6 +14,7 @@ import { isAutoLockOverridden, optimizeLineup } from '../main.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
+import { isPreferredSleeperEntry } from '../players.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
     // One scanner, two lenses, picked with the "Compare Against" toggle:
@@ -30,9 +31,11 @@ import { normalizeName } from '../../shared/names.js';
     // same context also powers the Scan Pasted List path (see runScout's waiver branch).
 
     // Clean name -> { id, pos, team, inj } off the full Sleeper player map, cached for the
-    // session. On a name collision prefers the entry with an NFL team (an active player) over a
-    // retired/practice-squad namesake -- getCleanNameToIdIndex's first-match-wins is fine for an
-    // id lookup, but here the winner decides whether a free agent is reported as playing at all.
+    // session. Fantasy positions only. On a name collision the winner is the entry
+    // getCleanNameToIdIndex picks too (isPreferredSleeperEntry in players.js: an NFL team, then the
+    // lower search_rank, since every entry here has a fantasy position), so a retired or
+    // practice-squad namesake can't decide whether a free agent is reported as playing at all.
+    // Before refactor 9C this preferred a team only and otherwise kept the first entry.
     let _sleeperMetaByNamePromise = null;
     export function getSleeperMetaByName() {
         if (_sleeperMetaByNamePromise) return _sleeperMetaByNamePromise;
@@ -46,7 +49,7 @@ import { normalizeName } from '../../shared/names.js';
                 // birth_date is preferred there when present, since Sleeper's age field can
                 // lag a birthday.
                 const entry = { id, pos: p.position, team: p.team || null, inj: getShortInjuryStatus(p), age: p.age ?? null, birthDate: p.birth_date || null };
-                if (!index[clean] || (!index[clean].team && entry.team)) index[clean] = entry;
+                if (!index[clean] || isPreferredSleeperEntry(p, map[index[clean].id])) index[clean] = entry;
             });
             return index;
         }).catch(err => {

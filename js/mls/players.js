@@ -50,19 +50,24 @@ function getPlayerSearchIndex() {
 // above) needs their Sleeper id to pull real weekly score history from. Waiver Insights'
 // free-agent candidates and the standalone player-lookup search both go through this.
 //
-// On a name several entries share, the one a user means wins (refactor 9C): an entry with an NFL
-// team, then one with a fantasy position, then the better (lower) search_rank. On a full tie the
-// first entry in the map's order stays, as before 9C. Sleeper's ids are numeric strings, so that
-// order is oldest first, which is how "Josh Allen" used to find a retired guard instead of the
-// Bills QB. getSleeperMetaByName (scout/waivers.js) prefers a team the same way.
-const CLEAN_NAME_FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
-function cleanNameMatchRank(p) {
-    const fantasy = (Array.isArray(p.fantasy_positions) && p.fantasy_positions.some(pos => CLEAN_NAME_FANTASY_POS.includes(pos)))
-        || CLEAN_NAME_FANTASY_POS.includes(p.position);
+// Which entry wins when several share a clean name (refactor 9C). Sleeper's ids are numeric
+// strings, so the map's order is oldest first, and keeping the first entry is how "Josh Allen" used
+// to find a retired guard instead of the Bills QB. Every name this app looks up comes from a fantasy
+// context (rankings files, the fantasy-only autocomplete), so an entry beats the kept one if it's
+// strictly better on, in order: a fantasy position (`fantasy_positions` holds QB/RB/WR/TE/K/DEF, or
+// `position` is one); an NFL team; a lower search_rank. A full tie keeps the first entry.
+// getCleanNameToIdIndex, sleeperPosByName below and getSleeperMetaByName (scout/waivers.js) all use
+// this, so for any name they agree on one player.
+const PREFERRED_FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+function sleeperEntryRank(p) {
+    const fantasy = (Array.isArray(p.fantasy_positions) && p.fantasy_positions.some(pos => PREFERRED_FANTASY_POS.includes(pos)))
+        || PREFERRED_FANTASY_POS.includes(p.position);
     const searchRank = Number.isFinite(p.search_rank) ? p.search_rank : Infinity;
-    return [p.team ? 0 : 1, fantasy ? 0 : 1, searchRank];
+    return [fantasy ? 0 : 1, p.team ? 0 : 1, searchRank];
 }
-function isBetterCleanNameMatch(a, b) {
+export function isPreferredSleeperEntry(candidate, kept) {
+    const a = sleeperEntryRank(candidate);
+    const b = sleeperEntryRank(kept);
     for (let i = 0; i < a.length; i++) {
         if (a[i] !== b[i]) return a[i] < b[i];
     }
@@ -74,15 +79,10 @@ export function getCleanNameToIdIndex() {
     if (_cleanNameToIdPromise) return _cleanNameToIdPromise;
     _cleanNameToIdPromise = getSleeperPlayerMap().then(map => {
         const index = {};
-        const indexRank = {};
         Object.entries(map).forEach(([id, p]) => {
             if (!p.first_name) return;
             const clean = normalizeName(`${p.first_name} ${p.last_name}`);
-            const rank = cleanNameMatchRank(p);
-            if (!index[clean] || isBetterCleanNameMatch(rank, indexRank[clean])) {
-                index[clean] = id;
-                indexRank[clean] = rank;
-            }
+            if (!index[clean] || isPreferredSleeperEntry(p, map[index[clean]])) index[clean] = id;
         });
         return index;
     }).catch(err => {
@@ -104,12 +104,16 @@ export async function ensureSleeperPosByName() {
     if (sleeperPosByName) return;
     try {
         let map = await getSleeperPlayerMap();
-        sleeperPosByName = {};
+        // The same entry getCleanNameToIdIndex picks for each name (since 9C; before, the last
+        // entry in the map won, so the two could name different players).
+        const kept = {};
         Object.values(map).forEach(p => {
-            if (p.first_name) {
-                sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
-            }
+            if (!p.first_name) return;
+            const clean = normalizeName(`${p.first_name} ${p.last_name}`);
+            if (!kept[clean] || isPreferredSleeperEntry(p, kept[clean])) kept[clean] = p;
         });
+        sleeperPosByName = {};
+        Object.entries(kept).forEach(([clean, p]) => { sleeperPosByName[clean] = p.position || "UNK"; });
     } catch (e) {
         console.warn("Could not fetch Sleeper player map for player positions.");
     }
