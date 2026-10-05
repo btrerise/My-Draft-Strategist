@@ -1,7 +1,8 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Lineup tab part of RENDERERS. Locks, swaps, the
 // optimizer (optimizeLineup) and the lineup renderer (renderLineupUI).
 import { escapeHtml } from '../../shared/html.js';
-import { TEAM_BYES, tierTag } from '../constants.js';
+import { tierTag } from '../constants.js';
+import { getByeWeek } from '../../shared/data/byes.js';
 import { pushLineupUndoSnapshot, State } from '../state.js';
 import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } from '../helpers.js';
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
@@ -652,7 +653,8 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 let rankBadge = lineupRankBadge(p, rankedByRos);
 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
-                let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
+                const byeWeek = getByeWeek(p.team, State.currentNflSeason);
+                let byeStr = byeWeek ? ` (${byeWeek})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
                 let kickoffBadge = getGameInfoHTML(p.team);
@@ -729,7 +731,8 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 let rankBadge = lineupRankBadge(p, rankedByRos);
 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
-                let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
+                const byeWeek = getByeWeek(p.team, State.currentNflSeason);
+                let byeStr = byeWeek ? ` (${byeWeek})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
                 let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
                 let kickoffBadge = getGameInfoHTML(p.team);

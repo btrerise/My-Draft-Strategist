@@ -3,18 +3,11 @@ import { KEYS } from '../shared/storage/keys.js';
 
     // --- CONSTANTS & CONFIGURATION ---
     export const NFL_TEAMS = ["ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"];
-    
-    export const TEAM_BYES = {
-        "ARI": 11, "ATL": 12, "BAL": 14, "BUF": 12, "CAR": 11, "CHI": 7, "CIN": 12, "CLE": 10,
-        "DAL": 7, "DEN": 14, "DET": 5, "GB": 10, "HOU": 14, "IND": 14, "JAX": 12, "KC": 6,
-        "LAC": 5, "LAR": 6, "LV": 10, "MIA": 6, "MIN": 6, "NE": 14, "NO": 12, "NYG": 11,
-        "NYJ": 12, "PHI": 5, "PIT": 9, "SEA": 10, "SF": 9, "TB": 11, "TEN": 5, "WAS": 14
-    };
 
     // ESPN's scoreboard endpoint (see refreshGameTimes below) abbreviates a handful of teams
     // differently than Sleeper/this app do. Washington is the current known mismatch (ESPN:
     // "WSH", everywhere else in this app: "WAS") -- mapped here so State.gameTimesByTeam keys
-    // line up with the same team codes used by TEAM_BYES, league.roster, etc.
+    // line up with the same team codes used by the bye table (js/shared/data/byes.js), league.roster, etc.
     export const ESPN_TEAM_ALIASES = { "WSH": "WAS" };
 
     // Small muted "(T2)" suffix for a rank shown on a player card, when the rankings file that

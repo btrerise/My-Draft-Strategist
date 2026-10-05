@@ -2,7 +2,8 @@
 // SLEEPER & MANUAL DRAFT CREATION LOGIC, the session cache for
 // Sleeper's draft metadata, and the live-sync status pill and toggle.
 import { savePlayerPool } from './storage.js';
-import { BYE_WEEKS_2026, State, getActiveDraft, refreshDraftDropdown, saveActiveDraftState, saveAndRenderDraftState } from './state.js';
+import { State, getActiveDraft, refreshDraftDropdown, saveActiveDraftState, saveAndRenderDraftState } from './state.js';
+import { getByeWeek } from '../shared/data/byes.js';
 import { initSettingsUI, saveSettings } from './settings.js';
 import { renderBoard } from './tracker.js';
 import { getSleeperDraft, getSleeperDraftPicks, getSleeperLeague, getSleeperLeagueUsers, getSleeperUser } from '../shared/api/sleeper.js';
@@ -259,7 +260,7 @@ import { showToast } from '../shared/ui/toast.js';
                         if (['PK'].includes(posGroup)) posGroup = 'K';
                         
                         let pTeam = pick.metadata.team || "FA";
-                        let pBye = BYE_WEEKS_2026[pTeam] || "-";
+                        let pBye = getByeWeek(pTeam, new Date().getFullYear()) || "-";
 
                         let pName = `${pick.metadata.first_name} ${pick.metadata.last_name}`.trim() || "Unknown Player";
                         

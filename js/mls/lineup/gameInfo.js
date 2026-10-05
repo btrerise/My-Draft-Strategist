@@ -6,7 +6,8 @@
 import { getSleeperMatchups } from '../../shared/api/sleeper.js';
 import { getWeeklyProjections } from '../../shared/api/sleeperStats.js';
 import { escapeHtml } from '../../shared/html.js';
-import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS, TEAM_BYES } from '../constants.js';
+import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS } from '../constants.js';
+import { getByeWeek } from '../../shared/data/byes.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
 import { renderLineupUI, optimizeLineup } from '../main.js';
@@ -14,10 +15,11 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
     // this season. Returns "" (no badge) if the current week isn't known yet, rather than
-    // guessing. Used alongside the always-present "(##)" bye-week text so a roster/lineup card
-    // still shows the raw week number for season-long planning either way.
+    // guessing. Used alongside the "(##)" bye-week text so a roster/lineup card still shows the
+    // raw week number for season-long planning either way. Both come from the shared bye table
+    // (js/shared/data/byes.js) for Sleeper's current season, so neither shows until it's known.
     export function getByeBadgeHTML(team) {
-        if (State.currentNflWeek == null || TEAM_BYES[team] !== State.currentNflWeek) return "";
+        if (State.currentNflWeek == null || getByeWeek(team, State.currentNflSeason) !== State.currentNflWeek) return "";
         return `<span class="badge bye-badge">BYE</span>`;
     }
 
@@ -127,7 +129,7 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
     // dash when projections did load but Sleeper doesn't project this player.
     export function getPlayerPointsHTML(p) {
         const week = State.currentNflWeek;
-        if (week == null || !p.team || p.team === "FA" || TEAM_BYES[p.team] === week) return "";
+        if (week == null || !p.team || p.team === "FA" || getByeWeek(p.team, State.currentNflSeason) === week) return "";
 
         const fmt = (n) => n.toFixed(1);
         const proj = State.lineupProjections;

@@ -27,7 +27,7 @@
 // is now load-bearing rather than optional. The activate handler deletes every cache whose key
 // doesn't match, so a bump forces all clients onto the new files on their next load instead of
 // letting stale-while-revalidate take an extra visit to catch up.
-const CACHE_NAME = 'draft-strategist-v2.8.67';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.68';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -97,6 +97,7 @@ const PRECACHE_ASSETS = [
     '/js/shared/storage/keys.js',
     '/js/shared/storage/keyMigration.js', // 6B: old -> new key names, on load and in Restore
     '/js/shared/data/tscore.js',      // classic <script> on the root page; js/mds/ falls back to {} without it
+    '/js/shared/data/byes.js',        // 7C: bye weeks by season, both apps (scripts/update-byes.mjs writes it)
     '/t-score/',
     '/t-score/index.html',
     '/js/tscore/main.js',             // the T-Score page's script (refactor 4B; was inline) -> shared names, html, keys
