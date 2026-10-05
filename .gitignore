@@ -19,3 +19,6 @@ desktop.ini
 tests/node_modules/
 tests/test-results/
 tests/playwright-report/
+# Screenshot baselines are committed for Linux only (docs/TESTING.md); a Windows or macOS run writes its own.
+tests/baselines/win32/
+tests/baselines/darwin/

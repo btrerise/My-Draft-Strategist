@@ -1,0 +1,58 @@
+# Runs the repo's checks (docs/TESTING.md) on every pull request and every push to main:
+# check-precache, the unit tests, and Playwright (smoke, feature specs, screenshots).
+# compare-css and pxdiff stay opt-in and don't run here. The tests stub every outside
+# request, so no secrets are needed.
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Pinned rather than ubuntu-latest: screenshot baselines depend on the OS's fonts.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - run: npm ci
+
+      # Cloud sessions have Chromium preinstalled in /opt/pw-browsers; CI doesn't.
+      - id: browsers
+        run: npx playwright install --with-deps chromium
+
+      # Fails if Playwright's Chromium or the OS differs from what the screenshot baselines were made with
+      # (tests/render-env.mjs), and prints both either way. The checks below still run.
+      - name: Rendering environment matches the baselines
+        run: node render-env.mjs
+
+      - run: npm run check
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+
+      # Screenshot diffs (expected, actual, diff PNGs) land in test-results/.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: |
+            tests/playwright-report/
+            tests/test-results/
+          retention-days: 14

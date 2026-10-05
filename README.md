@@ -67,7 +67,9 @@ js/
 functions/api/ffc/       Cloudflare Pages Function: proxies Fantasy Football Calculator's ADP API (no CORS)
 images/                  Logos, favicons and app icons
 scripts/, tests/         Development checks (see below). Not used by the site
-docs/refactor/LOG.md     Notes from the module-structure refactor, and how to run the checks
+docs/TESTING.md          How to run the checks, how the tests work, and the repo's conventions
+docs/refactor/LOG.md     Notes from the module-structure refactor
+CLAUDE.md                Short map of the repo for Claude Code sessions
 CHANGELOG.md             What changed for users in each app version
 ```
 
@@ -80,10 +82,10 @@ Run before pushing changes to scripts, styles or `sw.js`:
 ```sh
 node scripts/check-precache.mjs        # sw.js precache list matches what the pages load
 node --test                            # unit tests for the pure modules (Node 22+)
-cd tests && npm install && npm test    # Playwright smoke tests + screenshot comparisons
+cd tests && npm ci && npm run check    # all of the above, plus Playwright smoke, feature and screenshot tests
 ```
 
-See [`docs/refactor/LOG.md`](docs/refactor/LOG.md) for details, including how to update screenshot baselines.
+GitHub Actions runs `npm run check` on every pull request. See [`docs/TESTING.md`](docs/TESTING.md) for details, including how to accept an intended screenshot change.
 
 ## Yearly: bye weeks
 Each May, once the NFL publishes the schedule, run `node scripts/update-byes.mjs <season>` (for example `2027`), bump `CACHE_NAME` in `sw.js` (the service worker serves cached files first, so without a bump users keep the old table), and commit both. Until then neither app knows that season's byes (Draft Strategist still shows any bye column a rankings file has). Schedule data comes from [nflverse](https://github.com/nflverse/nfldata) (`data/games.csv`), with thanks.
