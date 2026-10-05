@@ -6,7 +6,8 @@ export default defineConfig({
     testDir: '.',
     testMatch: /.*\.spec\.mjs$/,
     fullyParallel: true,
-    reporter: [['list']],
+    // CI also writes an HTML report, which .github/workflows/check.yml uploads when a test fails.
+    reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
     timeout: 30_000,
     // Baselines are per platform: fallback fonts (Google Fonts is blocked in tests) render
     // differently on Linux and macOS. Claude Code cloud sessions run Linux.
