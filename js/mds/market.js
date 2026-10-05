@@ -15,6 +15,7 @@ import { normalizeName, isNameMatch } from '../shared/names.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { flashButton } from '../shared/ui/flashButton.js';
 import { showToast } from '../shared/ui/toast.js';
+import { setProcessingStatus, showStatusFeedback } from '../shared/ui/statusFeedback.js';
 
     // --- FANTASY FOOTBALL CALCULATOR (FFC) INTEGRATION ---
 
@@ -107,7 +108,7 @@ import { showToast } from '../shared/ui/toast.js';
             let now = new Date();
             let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const listDate = res.source === 'saved' ? ` (list from ${formatFfcDate(res.savedAt)})` : '';
-            State.adpMeta = { format: "FFC: " + formatText + listDate, date: dateString };
+            State.adpMeta = { format: "FFC: " + formatText + listDate, date: dateString, updatedAt: now.getTime() };
             localStorage.setItem(KEYS.mds.adpMeta, JSON.stringify(State.adpMeta));
             updateMetaDisplay();
         } catch(err) {
@@ -133,6 +134,10 @@ import { showToast } from '../shared/ui/toast.js';
 
     const originalText = btn.innerHTML;
     btn.innerHTML = "Fetching…";
+    // Refactor 8B: a spinner line under the ADP status box while the fetch runs, then
+    // "Market value updated!" (#adpSuccessMsg) for 3s. The toasts below are unchanged.
+    const processingEl = document.getElementById('adpProcessingStatus');
+    setProcessingStatus(processingEl, true, "Fetching market value…");
 
     try {
         let adpMap = {}; // Key: SleeperID, 'name_' + normalized name, or 'def_' + team; Value: ADP
@@ -186,9 +191,11 @@ import { showToast } from '../shared/ui/toast.js';
 
         let now = new Date();
         let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        State.adpMeta = { format: `${source.toUpperCase()}: ${formatText}${listDate}`, date: dateString };
+        State.adpMeta = { format: `${source.toUpperCase()}: ${formatText}${listDate}`, date: dateString, updatedAt: now.getTime() };
         localStorage.setItem(KEYS.mds.adpMeta, JSON.stringify(State.adpMeta));
+        setProcessingStatus(processingEl, false);
         updateMetaDisplay();
+        showStatusFeedback(document.getElementById('adpSuccessMsg'), null, 3000);
 
         flashButton(btn, "Complete!", false, originalText);
         if (ffcNote) showToast(`Market Value (ADP) updated.\n\n${ffcNote}`, { duration: 9000 });
@@ -196,6 +203,7 @@ import { showToast } from '../shared/ui/toast.js';
         
     } catch(err) {
             console.error(err);
+            setProcessingStatus(processingEl, false);
             flashButton(btn, "Fetch Error", true, originalText);
             showToast(`Failed to fetch live Market Value.\n\n${err.message}`, { isError: true });
         }

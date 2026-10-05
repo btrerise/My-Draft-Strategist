@@ -16,6 +16,7 @@ import { showToast } from '../../shared/ui/toast.js';
 import { formatRankingsDiagnostic } from '../../shared/rankings/diagnostics.js';
 import { createFocusTrap } from '../../shared/ui/focusTrap.js';
 import { enableFileDrop } from '../../shared/ui/fileDrop.js';
+import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback.js';
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
         const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: loadSheetJS, onProgress });
 
@@ -286,12 +287,6 @@ import { enableFileDrop } from '../../shared/ui/fileDrop.js';
         if (previewFocusTrap) { previewFocusTrap.deactivate(); previewFocusTrap = null; }
     };
 
-    // --- UPLOAD PROCESSING INDICATOR ---
-    // Same spinner icon already used for the Sleeper sync buttons elsewhere in the app,
-    // reused here so a rankings upload gives the same kind of "something is happening"
-    // signal instead of going silent between file-select and the preview modal appearing.
-    const UPLOAD_SPINNER_SVG = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner" style="flex-shrink:0;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>`;
-
     // Disables a rankings section's file input(s) for the duration of a parse (type is
     // 'ros' or 'weekly'), so a second file selection can't fire a second overlapping parse
     // while the first is still running -- shared by both the single- and multi-file paths.
@@ -304,24 +299,13 @@ import { enableFileDrop } from '../../shared/ui/fileDrop.js';
         });
     }
 
-    // Shows/hides the inline "Processing..." status line used by the single-file path
-    // (which has no button of its own to carry a spinner -- selecting a file kicks off
-    // the parse directly). The multi-file path shows its own progress on the submit
-    // button instead (see processMultiRankings), so it doesn't use this.
+    // --- UPLOAD PROCESSING INDICATOR ---
+    // The spinner line itself is shared (js/shared/ui/statusFeedback.js, refactor 8B). This finds a
+    // rankings section's line by id (type is 'ros' or 'weekly'). Used by the single-file path, which
+    // has no button of its own to carry a spinner; the multi-file path shows its progress on the
+    // submit button instead (see processMultiRankings).
     function setUploadStatus(type, isProcessing, label) {
-        const statusEl = document.getElementById(`${type}ProcessingStatus`);
-        if (!statusEl) return;
-        // role="status" region (index.html): shown empty first, filled a beat later, so screen
-        // readers that ignore a live region revealed with its content already in place still
-        // announce it. The timer is cleared on hide so a fast parse can't refill it afterward.
-        clearTimeout(statusEl._fillT);
-        statusEl.innerHTML = '';
-        statusEl.style.display = isProcessing ? 'flex' : 'none';
-        if (isProcessing) {
-            statusEl._fillT = setTimeout(() => {
-                statusEl.innerHTML = `${UPLOAD_SPINNER_SVG}<span>${escapeHtml(label || 'Processing…')}</span>`;
-            }, 100);
-        }
+        setProcessingStatus(document.getElementById(`${type}ProcessingStatus`), isProcessing, label);
     }
 
     export const processSingleRankingUpload = function(type, successMsgId) {
@@ -361,7 +345,7 @@ import { enableFileDrop } from '../../shared/ui/fileDrop.js';
         setUploadInputsDisabled(type, true);
 
         const updateProgress = (done, total) => {
-            if (btn) btn.innerHTML = `${UPLOAD_SPINNER_SVG} Processing ${done}/${total}…`;
+            if (btn) btn.innerHTML = `${SPINNER_SVG} Processing ${done}/${total}…`;
         };
         updateProgress(0, filesWithContext.length);
 

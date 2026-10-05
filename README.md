@@ -30,6 +30,7 @@ js/
     globals.js           Page-wide setup: the shared modules with load-time side effects, and
                          window.showToast for boot.js (everything else is imported)
     names.js, net.js, html.js    Name matching, fetch with a timeout (mdsFetch), HTML escaping
+    freshness.js         "Updated 3 days ago" labels (getFreshness), all three pages
     api/                 Sleeper (sleeper.js, sleeperStats.js), FantasyCalc (market.js), Fantasy Football
                          Calculator (ffc.js)
     rankings/            Rankings file parser (parse.js) and its error messages (diagnostics.js)
@@ -37,7 +38,8 @@ js/
                          names to current ones), idb.js (IndexedDB)
     ui/                  Toasts, confirm dialog, focus trap, tooltips, banners, file drop, script loader,
                          data-action event delegation (delegate.js), the setup checklist's step builder
-                         (setupChecklist.js) and other small helpers
+                         (setupChecklist.js), the "Processing…" / success status lines (statusFeedback.js)
+                         and other small helpers
     data/tscore.js       Bundled T-Score data (imported by mds/tracker.js)
     data/byes.js         NFL bye weeks by season, both apps (written by scripts/update-byes.mjs)
   mds/                   Draft Strategist. main.js is the entry point (data-action delegation, and

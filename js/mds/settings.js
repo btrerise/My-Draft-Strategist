@@ -6,6 +6,8 @@ import { KEYS } from '../shared/storage/keys.js';
 import { flashButton } from '../shared/ui/flashButton.js';
 import { showConfirm } from '../shared/ui/confirm.js';
 import { showToast } from '../shared/ui/toast.js';
+import { escapeHtml } from '../shared/html.js';
+import { getFreshness } from '../shared/freshness.js';
 
     // --- INITIALIZE SETTINGS INPUTS ---
     export function initSettingsUI() {
@@ -48,12 +50,23 @@ import { showToast } from '../shared/ui/toast.js';
         if (roundsEl) roundsEl.value = total;
     }
 
+    // Refactor 8B: meta saved with an updatedAt timestamp shows its age ("Updated 3 days ago",
+    // the shared getFreshness), amber past 14 days for rankings and 3 for ADP (the owner's
+    // thresholds, as Lineup Strategist's ROS rankings and market data). Meta saved before 8B has
+    // only the formatted date and keeps the old text.
     export function updateMetaDisplay() {
+        const RANKINGS_STALE_AFTER_DAYS = 14;
+        const ADP_STALE_AFTER_DAYS = 3;
         const metaEl = document.getElementById('metaDisplay');
         if (metaEl) {
             if (State.rankingsMeta) {
                 metaEl.style.display = 'block';
-                metaEl.innerText = `Loaded: ${State.rankingsMeta.count} players on ${State.rankingsMeta.date}`;
+                const fresh = getFreshness(State.rankingsMeta.updatedAt, RANKINGS_STALE_AFTER_DAYS);
+                if (fresh) {
+                    metaEl.innerHTML = `Loaded: ${escapeHtml(State.rankingsMeta.count)} players <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.label}${fresh.isStale ? ' — consider refreshing' : ''}</span>`;
+                } else {
+                    metaEl.innerText = `Loaded: ${State.rankingsMeta.count} players on ${State.rankingsMeta.date}`;
+                }
             } else {
                 metaEl.style.display = 'none';
             }
@@ -63,7 +76,12 @@ import { showToast } from '../shared/ui/toast.js';
         if (adpEl) {
             if (State.adpMeta) {
                 adpEl.style.display = 'block';
-                adpEl.innerText = `Fetched: ${State.adpMeta.format} on ${State.adpMeta.date}`;
+                const fresh = getFreshness(State.adpMeta.updatedAt, ADP_STALE_AFTER_DAYS, 'Fetched');
+                if (fresh) {
+                    adpEl.innerHTML = `${escapeHtml(State.adpMeta.format)} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.label}${fresh.isStale ? ' — fetch again before you draft' : ''}</span>`;
+                } else {
+                    adpEl.innerText = `Fetched: ${State.adpMeta.format} on ${State.adpMeta.date}`;
+                }
             } else {
                 adpEl.style.display = 'none';
             }

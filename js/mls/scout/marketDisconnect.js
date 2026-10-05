@@ -7,9 +7,10 @@ import { fetchMarketConsensusData } from '../../shared/api/market.js';
 import { escapeHtml } from '../../shared/html.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
-import { rankingIndex, showStatusFeedback, getActiveLeague } from '../helpers.js';
+import { rankingIndex, getActiveLeague } from '../helpers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
-import { getRankingsFreshness } from '../rankings/engine.js';
+import { getFreshness } from '../../shared/freshness.js';
+import { showStatusFeedback } from '../../shared/ui/statusFeedback.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { showToast } from '../../shared/ui/toast.js';
@@ -213,9 +214,9 @@ import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
                 const countText = `Market Consensus Loaded: ${State.marketRankings.length} players`;
                 // In-season market values shift within days (injuries, depth-chart news), so the
                 // stale line sits much tighter than ROS (14) or Weekly (6).
-                const fresh = getRankingsFreshness(State.marketUpdatedAt, 3);
+                const fresh = getFreshness(State.marketUpdatedAt, 3);
                 if (fresh) {
-                    metaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'rankings-stale' : 'rankings-fresh'}">• ${fresh.label}${fresh.isStale ? ' — pull fresh values before trading' : ''}</span>`;
+                    metaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.label}${fresh.isStale ? ' — pull fresh values before trading' : ''}</span>`;
                 } else {
                     metaEl.innerText = countText;
                 }

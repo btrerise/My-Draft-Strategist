@@ -1876,17 +1876,17 @@ a.nav-btn,
 }
 
 /* --- MLS ROSTER TAB SPECIFIC STYLES --- */
-.rankings-fresh {
+.freshness-ok {
     color: var(--text-muted);
     font-weight: 500;
 }
 
-.rankings-stale {
+.freshness-stale {
     color: #f59e0b;
     font-weight: 700;
 }
 
-/* A sync that actually failed, as opposed to data that's merely aged (.rankings-stale, amber).
+/* A sync that actually failed, as opposed to data that's merely aged (.freshness-stale, amber).
    Red so it doesn't read as the same "getting old" signal -- this roster is known to be behind,
    not just unrefreshed. Same red as .status-danger. */
 .sync-failed {
@@ -1916,8 +1916,9 @@ a.nav-btn,
 
 /* Rankings upload in-progress indicator -- shown between file selection and the preview
    modal appearing (or an error toast), so a slow .xlsx parse never looks like nothing
-   happened. Empty/hidden by default; setUploadStatus() in js/mls/rankings/uploadPreview.js fills and toggles it. */
-.mls-upload-processing {
+   happened. Empty/hidden by default; setProcessingStatus() in js/shared/ui/statusFeedback.js fills and toggles it
+   (refactor 8B renamed it from .mls-upload-processing; Draft Strategist uses it too). */
+.upload-processing {
     display: none;
     align-items: center;
     justify-content: center;

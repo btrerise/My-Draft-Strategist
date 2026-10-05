@@ -1242,7 +1242,7 @@ button.close-chip {
     white-space: nowrap;
 }
 
-.header-freshness.rankings-stale {
+.header-freshness.freshness-stale {
     color: #f59e0b;
 }
 

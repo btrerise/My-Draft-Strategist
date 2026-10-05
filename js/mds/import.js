@@ -13,6 +13,7 @@ import { isNameMatch } from '../shared/names.js';
 import { showToast } from '../shared/ui/toast.js';
 import { loadSheetJS } from '../shared/ui/scriptLoader.js';
 import { enableFileDrop } from '../shared/ui/fileDrop.js';
+import { setProcessingStatus, showStatusFeedback } from '../shared/ui/statusFeedback.js';
 
     // --- FILE PARSING & DATA IMPORT ---
 const fileInput = document.getElementById('fileInput');
@@ -141,8 +142,12 @@ function parseExcel(file) {
     // aggregate toggle; Quick-Start always replaces the pool, as it did before), successLabel
     // (button text) and successToast ({ text, opts } in place of "Loaded N players"; N fills
     // in for {count}). Returns true once the pool is loaded, false otherwise.
+    //
+    // Refactor 8B: while it works, a spinner line (#rankingsProcessingStatus, the shared
+    // setProcessingStatus) shows under the rankings status box, which keeps its previous text;
+    // a loaded pool then shows "Rankings loaded successfully!" (#rankingsSuccessMsg) for 3s.
     export async function processData(data, btn = null, source = {}) {
-        const metaEl = document.getElementById('metaDisplay');
+        const processingEl = document.getElementById('rankingsProcessingStatus');
         const originalBtnText = btn ? btn.innerHTML : "Upload";
 
         // Blank header cells show up as SheetJS's "__EMPTY" placeholders or Papa's
@@ -154,6 +159,7 @@ function parseExcel(file) {
             const diag = { fileName: source.fileName || null, reason, headersFound, missing: reason === 'no-name-column' ? MDS_NAME_HEADERS : [] };
             if (source.sheetName) diag.sheetName = source.sheetName;
             // Nothing was replaced, so put back whatever the rankings status line said before.
+            setProcessingStatus(processingEl, false);
             updateMetaDisplay();
             if (btn) flashButton(btn, "Error Parsing Data", true, originalBtnText);
             // Clear the picker so choosing the same file again (after fixing it) fires 'change'.
@@ -169,10 +175,7 @@ function parseExcel(file) {
         if (!headersFound.some(h => MDS_NAME_HEADERS.includes(normalizeHeader(h)))) return fail('no-name-column');
         if (data.length === 0) return fail('no-rows');
 
-        if (metaEl) {
-            metaEl.style.display = 'block';
-            metaEl.innerText = "Processing players and building database…";
-        }
+        setProcessingStatus(processingEl, true, "Processing players and building database…");
         if (btn) btn.innerHTML = "Processing…";
 
         // Yield to the browser to ensure the UI updates before the heavy lifting starts
@@ -349,11 +352,15 @@ function parseExcel(file) {
 
             let now = new Date();
             let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            State.rankingsMeta = { count: State.players.length, date: dateString };
+            // updatedAt (refactor 8B) drives the "Updated 3 days ago" label; meta saved before 8B
+            // has only the formatted date, and updateMetaDisplay keeps showing that.
+            State.rankingsMeta = { count: State.players.length, date: dateString, updatedAt: now.getTime() };
 
             localStorage.setItem(KEYS.mds.meta, JSON.stringify(State.rankingsMeta));
             savePlayerPool();
+            setProcessingStatus(processingEl, false);
             updateMetaDisplay();
+            showStatusFeedback(document.getElementById('rankingsSuccessMsg'), null, 3000);
             saveAndRenderDraftState();
 
             if (btn) flashButton(btn, source.successLabel || "Loaded Successfully", false, originalBtnText);
