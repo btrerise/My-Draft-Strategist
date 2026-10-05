@@ -5340,3 +5340,52 @@ committed): the preview at both widths with the no-positions note, two unmatched
   the unmatched names as MLS does; MDS's draft board has no picks, so a file with them gets them listed.
 - `analyzeRankingsFile` and `derivedRanksWording` stay in `js/mls/scout/waivers.js` (owner's decision above). If
   MDS ever needs them, inject MLS's four inputs rather than importing `js/mls/` from `js/shared/`.
+
+### 8D — Delete the spacing helpers Phase 8 didn't use (no visible change)
+
+8A, 8B and 8C were confirmed merged to main first (8C: PR #174). Started from the 4D entry (the 8 sizes kept per
+the owner's 4C decision), the 4E entry ("After Phase 8 … revisit the unused spacing helpers") and 8A's and 8C's
+"Left for later" notes. `CACHE_NAME` v2.8.72 → v2.8.73. No file added or removed, so PRECACHE_ASSETS is unchanged.
+No user-visible change, so no CHANGELOG line and no footer version bump.
+
+#### What the grep found
+
+Each candidate grepped as a whole class name (not part of a longer one such as `mls-cluster-wrap`) in `index.html`,
+`lineup/index.html`, `t-score/`, `js/` and `functions/`, plus a search for class names built from pieces in JS
+(`'stack-' + …`, `` `cluster-${…}` ``, `classList` calls): **0 hits for all 10**. Phase 8's new Draft Strategist
+markup started using none of them (as 8A's and 8C's entries said). No rule in mds.css, mls.css or tscore.css names
+them either; tests/ doesn't reference them.
+
+#### Owner's decisions (asked before deleting)
+
+| Question | Owner's decision |
+|---|---|
+| Which unused helpers go | **All 10** |
+| The two comments that name deleted sizes | **Update them** (comment-only) |
+| `--space-6` (2rem), unused once `.pl-6` goes | **Keep it**: it's part of the `--space-1`…`--space-6` scale in `:root` |
+
+#### What changed (css/base.css only)
+
+- **Deleted (10 rules):** UTILITIES: `.gap-1`, `.gap-3`, `.mt-0`, `.pl-6`. LAYOUT PRIMITIVES (the first block, after
+  `.stack`): `.stack-xs`, `.stack-md`, `.stack-lg`, `.cluster-wrap`, `.cluster-xs`, `.cluster-lg`.
+- **Comments:** the `.stack` comment said the gap modifiers use "the same xs/sm/md/lg scale as .cluster below"; it now
+  points to `.stack-sm` and names `.cluster`'s sm/md. The `.cluster` comment said "Opt into wrapping explicitly with
+  .cluster-wrap"; it now says to add `flex-wrap: wrap` to such a row.
+- **Stay (used):** `.gap-2`, `.stack` + `.stack-sm` (`#syncLogContent`), `.cluster` + `.cluster-sm` + `.cluster-md`.
+  Neither base class could go: each still has a used size.
+- **Stays (unused):** the `--space-6` token (owner's decision above). Every other `--space-N` is still used.
+
+#### Checks run
+
+- `npm run compare-css` vs `origin/main`: **0 differences in all 28 runs** (MDS empty, MDS mid-draft,
+  MLS empty, synced league, with rankings, handoff banner, T-Score; both widths, reduced motion off and on). The 2
+  skipped tests are `pre9a-snapshot.tool.mjs`, which writes a fixture and doesn't compare.
+- `node scripts/check-precache.mjs` OK (115 precached). `node --test` 219/219. `cd tests && npx playwright test`
+  130/130; no screenshot changed.
+
+#### Left for later
+
+- Nothing for 8D. Phase 8 is done.
+- Not changed (outside this card): the LAYOUT PRIMITIVES block near the end of base.css has two comments on `.cluster`
+  back to back. The first ("a horizontal run of items that wraps instead of overflowing") contradicts `.cluster`'s
+  `nowrap` default, which the second explains. Dropping the first is a comment-only change, if the owner wants it.
