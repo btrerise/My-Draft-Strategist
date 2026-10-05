@@ -65,6 +65,7 @@ functions/api/ffc/       Cloudflare Pages Function: proxies Fantasy Football Cal
 images/                  Logos, favicons and app icons
 scripts/, tests/         Development checks (see below). Not used by the site
 docs/refactor/LOG.md     Notes from the module-structure refactor, and how to run the checks
+CHANGELOG.md             What changed for users in each app version
 ```
 
 ## Hosting

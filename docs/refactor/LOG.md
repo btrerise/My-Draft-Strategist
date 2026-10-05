@@ -6,6 +6,10 @@ https://claude.ai/artifact/4ZapAQXgsVu96YRkToSJFS (read it with the Artifact too
 This file is the hand-off between sessions. Read it before starting a chunk; add an entry
 (newest at the bottom) when you finish one.
 
+**User-visible changes also go in `CHANGELOG.md`** (since 8A): a plain-language line under the app's "Unreleased"
+section, for users rather than the next session. Bumping an app's footer version turns its Unreleased lines into
+that version's entry. `CACHE_NAME` in `sw.js` isn't an app version; its header says when each number goes up.
+
 ## How to run the checks
 
 From the repo root:
@@ -5010,7 +5014,15 @@ is unknown. If it shows up again, keep the `test-results/` folder.
   y 4250–4258), on top of the checklist change above.
 - **`CACHE_NAME` stays a deploy counter** (v2.8.70 in this branch). It's one name for the whole site (sw.js caches
   all three pages), so it can't follow Draft Strategist's label, and any new name invalidates the cache equally.
-  Jumping to v2.9.0 is left until Phase 8 is done (after 8D), and only if the owner wants a milestone marker.
+- **Changelog and the cache-name rule (owner's decision, same branch).** New `CHANGELOG.md` at the repo root:
+  plain-language entries per app version, with an "Unreleased" section per app. Backfilled from this log's
+  user-visible sections and the commit subjects since 2026-09-27 (the clone's history starts there): Draft
+  Strategist v2.7 (this chunk, plus the earlier user-visible MDS changes since v2.6: 7A, 2C, the a11y and Tracker
+  speed commits), Lineup Strategist v2.12.0 and v2.13.0, and MLS's Unreleased (7A, 3G, 4E, 9A, 9B, 7C, 9C, the 2C
+  follow-up, a11y). `sw.js`'s header now says when `CACHE_NAME` moves: the last number every deploy; the middle
+  number only when the service worker's own behavior changes (as v2.8.0 marked the caching-strategy change). App
+  features don't move it, so Phase 8 doesn't call for v2.9.0. The intro of this file and the README tree point at
+  the changelog.
 
 #### Left for later
 
