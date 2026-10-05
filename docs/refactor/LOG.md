@@ -5371,6 +5371,10 @@ them either; tests/ doesn't reference them.
 - **Comments:** the `.stack` comment said the gap modifiers use "the same xs/sm/md/lg scale as .cluster below"; it now
   points to `.stack-sm` and names `.cluster`'s sm/md. The `.cluster` comment said "Opt into wrapping explicitly with
   .cluster-wrap"; it now says to add `flex-wrap: wrap` to such a row.
+- **Comment deleted (owner's request after the first push):** the LAYOUT PRIMITIVES block near the end of base.css
+  had two comments on `.cluster` back to back. The first ("a horizontal run of items that wraps instead of
+  overflowing") contradicted `.cluster`'s `nowrap` default, which the second explains; it's gone. With comments
+  stripped, base.css is identical to the commit before (checked with a script), so compare-css wasn't re-run.
 - **Stay (used):** `.gap-2`, `.stack` + `.stack-sm` (`#syncLogContent`), `.cluster` + `.cluster-sm` + `.cluster-md`.
   Neither base class could go: each still has a used size.
 - **Stays (unused):** the `--space-6` token (owner's decision above). Every other `--space-N` is still used.
@@ -5386,6 +5390,13 @@ them either; tests/ doesn't reference them.
 #### Left for later
 
 - Nothing for 8D. Phase 8 is done.
-- Not changed (outside this card): the LAYOUT PRIMITIVES block near the end of base.css has two comments on `.cluster`
-  back to back. The first ("a horizontal run of items that wraps instead of overflowing") contradicts `.cluster`'s
-  `nowrap` default, which the second explains. Dropping the first is a comment-only change, if the owner wants it.
+- **Found, not fixed (pre-existing on main, test-side): desktop `mds-draft-tracker` is flaky again.** While re-running
+  Playwright after the comment deletion, `visual.spec.mjs` › "MDS mid-draft tabs" [desktop] failed about 1 run in 4
+  with 49,500 px (pxdiff: 56,598 px, box x 47–1232, y 115–2933). **Main's own code fails the same way** (1 in 4,
+  same count, with main's base.css and sw.js checked out), so it isn't 8D's. What differs: in the baseline the first
+  available card (Saquon Barkley, Tier 1) shows its focused/hover style (lighter "Taken" button and card border); in
+  the failing runs it doesn't, and everything below shifts by 1px. 0C made every screenshot repeatable, so this
+  probably came in with 8A–8C's MDS changes: likely where focus lands after the seeded picks or after `seedMds`
+  closes 8C's upload preview, racing the screenshot. A follow-up should find what sets that focus and make
+  `seedMds` (or the visual spec) wait for it, then confirm with `npm run pxdiff -- --runs 5`. There's no CI in this
+  repo, so it only shows in local runs.

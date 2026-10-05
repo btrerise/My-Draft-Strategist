@@ -1746,9 +1746,6 @@ a.nav-btn,
 /* --- LAYOUT PRIMITIVES --- */
 .stack-sm { gap: var(--space-2); }
 
-/* .cluster: a horizontal run of items that wraps instead of overflowing, replacing ad-hoc
-   "display:flex; align-items:center; gap:...rem" inline styles used for icon+label rows,
-   button rows, and similar. */
 /* .cluster: a horizontal run of items, replacing ad-hoc "display:flex; align-items:center;
    gap:...rem" inline styles used for icon+label rows, button rows, and similar. Every inline
    style this replaced had no flex-wrap set (i.e. nowrap), including rows with a <select> or
