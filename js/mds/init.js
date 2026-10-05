@@ -30,6 +30,7 @@ import './recap.js';
 import './export.js';
 import './affinity.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
+import { updateSetupGuidance } from './setupGuide.js';
 
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -122,6 +123,7 @@ import { getTabFromHash } from '../shared/ui/tabHash.js';
         });
 
         if (State.players.length > 0) renderBoard();
+        else updateSetupGuidance(); // renderBoard runs it otherwise (8A)
     // --- MOBILE COLLAPSE TOGGLE ---
         const collapseCheckbox = document.getElementById('ds_mobile_collapse');
         if (collapseCheckbox) {

@@ -30,12 +30,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Check all your app banners
-    // NOTE: 'guideBanner' was previously checked against KEYS.mds.hideGuideBanner -- a leftover
-    // from before app-scoped storage keys (see the localStorage key scoping principle) -- while
-    // its own dismiss button has always written KEYS.mls.hideGuideBanner. That mismatch meant
-    // dismissing the guide banner never actually stuck across reloads; fixed to check the same
-    // key the button writes.
-    checkAndHideBanner('guideBanner', KEYS.mls.hideGuideBanner);
+    // NOTE: both apps have a '#guideBanner', and each one's dismiss button writes its own app's key:
+    // KEYS.mls.hideGuideBanner on Lineup Strategist (/lineup/), KEYS.mds.hideGuideBanner on Draft
+    // Strategist. This used to check only the MLS key on every page, so Draft Strategist's guide
+    // banner came back on every reload (unless Lineup Strategist's had been dismissed). Each page
+    // now checks the key its own button writes (refactor chunk 8A).
+    const isLineupPage = location.pathname.includes('/lineup/');
+    checkAndHideBanner('guideBanner', isLineupPage ? KEYS.mls.hideGuideBanner : KEYS.mds.hideGuideBanner);
     checkAndHideBanner('mlsBanner', KEYS.mds.hideMlsBanner);
     checkAndHideBanner('draftBanner', KEYS.mls.hideDraftBanner);
     checkAndHideBanner('sleeperSyncBanner', KEYS.mls.hideSleeperSyncBanner);

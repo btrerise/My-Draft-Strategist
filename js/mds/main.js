@@ -22,6 +22,7 @@ import { exportTeam } from './export.js';
 import { cycleAffinity } from './affinity.js';
 import { delegate } from '../shared/ui/delegate.js';
 import { dismissBanner } from '../shared/ui/banners.js';
+import { goToSetupStep } from './setupGuide.js';
 
 // toggleAutoSync: state.js imports it from here. sleeperSync.js evaluates after state.js, so a direct
 // import would evaluate it (and its imports) early; main.js is the entry module, always mid-evaluation
@@ -46,6 +47,8 @@ const clickActions = {
     showTab() { showTab(this.dataset.tab); },
     handleSmartSync() { handleSmartSync(); },
     dismissBanner() { dismissBanner(this.dataset.banner, this.dataset.storageKey); },
+    // The Setup Progress checklist's "Show me ↓" links (setupGuide.js, 8A)
+    goToSetupStep() { goToSetupStep(this.dataset.step); },
     quickStartFfc() { quickStartFfc(this); },
     processPaste() { processPaste(this); },
     addAndSyncSleeperDraft() { addAndSyncSleeperDraft(this); },

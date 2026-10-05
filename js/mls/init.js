@@ -15,6 +15,7 @@ import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI }
 import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs, showTab, lookupSimPlayer } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
+import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/ui/setupChecklist.js';
 
     // --- INITIALIZATION ---
     // Where each setup step gets done: the tab it lives on, the card to reveal, and the control
@@ -36,50 +37,21 @@ import { getTabFromHash } from '../shared/ui/tabHash.js';
             updateDrawerActiveState(cfg.tab);
         }
         if (step !== 'leagues') setRankingsCardExpanded(cfg.cardId, true);
-        const card = document.getElementById(cfg.cardId);
-        if (!card) return;
-        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        card.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-        const focusEl = document.getElementById(cfg.focusId);
-        if (focusEl && focusEl.offsetParent !== null) focusEl.focus({ preventScroll: true });
+        scrollToCard(document.getElementById(cfg.cardId), document.getElementById(cfg.focusId));
     };
 
-    // Fills one setup-checklist <li>. The ✓ / — mark is decorative; the sr-only prefix
-    // carries the done/not-done state for screen readers. `how` (a sentence of instructions)
-    // and the jump button only appear on unfinished steps the user can act on right now.
+    // Fills one setup-checklist <li> (js/shared/ui/setupChecklist.js builds it, since 8A). The jump
+    // button reads "Show me ↓" on the step's own tab and "Go to <tab> tab →" elsewhere.
     function renderSetupStep(id, step, done, text, how, activeTabId) {
         const li = document.getElementById(id);
         if (!li) return;
-        li.classList.toggle('is-done', done);
-        li.classList.toggle('is-actionable', !done && !!how);
-        const mark = document.createElement('span');
-        mark.className = 'setup-step-mark';
-        mark.setAttribute('aria-hidden', 'true');
-        mark.textContent = done ? '✓' : '—';
-        const body = document.createElement('div');
-        body.className = 'setup-step-body';
-        const label = document.createElement('div');
-        label.className = 'setup-step-label';
-        const status = document.createElement('span');
-        status.className = 'sr-only';
-        status.textContent = done ? 'Done: ' : 'Not done: ';
-        label.append(status, text);
-        body.append(label);
-
-        if (!done && how) {
-            const cfg = SETUP_STEPS[step];
-            const howEl = document.createElement('p');
-            howEl.className = 'setup-step-how';
-            howEl.textContent = how;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'mls-btn-sm btn-link-inline setup-step-go';
-            btn.textContent = activeTabId === cfg.tab + 'Tab' ? 'Show me ↓' : `Go to ${cfg.tabLabel} tab →`;
-            btn.setAttribute('aria-label', `${btn.textContent.slice(0, -2)} for ${text}`);
-            btn.addEventListener('click', () => goToSetupStep(step));
-            body.append(howEl, btn);
-        }
-        li.replaceChildren(mark, body);
+        const cfg = SETUP_STEPS[step];
+        renderChecklistStep(li, {
+            done, label: text, how,
+            goLabel: activeTabId === cfg.tab + 'Tab' ? 'Show me ↓' : `Go to ${cfg.tabLabel} tab →`,
+            goClass: 'mls-btn-sm',
+            onGo: () => goToSetupStep(step),
+        });
     }
 
     export function updatePulsePrompts() {

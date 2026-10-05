@@ -10,6 +10,7 @@ import { renderDraftRecap } from './recap.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { normalizeName } from '../shared/names.js';
 import { tScoreData } from '../shared/data/tscore.js';
+import { updateSetupGuidance } from './setupGuide.js';
 
     // Reads and parses the three call-out lists ONCE, for a caller that is about to style many
     // player cards. getCallOutStyle below used to do this itself on every single call -- and
@@ -298,6 +299,10 @@ import { tScoreData } from '../shared/data/tscore.js';
     };
 
     export function renderBoard() {
+        // Setup tab's checklist and pulses (8A): every change to the rankings, the active draft or
+        // the ADP ends in a renderBoard, so this keeps them current. Before the early return below.
+        updateSetupGuidance();
+
         const poolEl = document.getElementById('playerPool');
         const myTeamEl = document.getElementById('myTeamList');
         const otherEl = document.getElementById('otherDraftedList');

@@ -5,6 +5,7 @@
 import { savePlayerPool } from './storage.js';
 import { State, refreshDraftDropdown } from './state.js';
 import { renderBoard } from './tracker.js';
+import { updateSetupGuidance } from './setupGuide.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 
@@ -66,6 +67,7 @@ import { getTabFromHash } from '../shared/ui/tabHash.js';
     if (menu && menu.classList.contains('open')) toggleMenu();
 
     if (['tracker', 'team', 'board'].includes(tabId)) renderBoard();
+    else updateSetupGuidance(); // the logo pulse depends on the tab (8A); renderBoard runs it on the others
     if (tabId === 'setup') refreshDraftDropdown();
     window.scrollTo(0, 0);
 

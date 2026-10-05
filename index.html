@@ -206,6 +206,18 @@
         <button class="close-banner-btn close-banner-btn-sm" data-action="dismissBanner" data-banner="guideBanner" data-storage-key="mds_hide_guide_banner" aria-label="Dismiss Banner">✕</button>
     </div>
     
+    <!-- SETUP PROGRESS: text version of the pulse prompts, with how-to and a "Show me" link per
+         unfinished step. Filled and shown/hidden by updateSetupGuidance() in js/mds/setupGuide.js;
+         hidden once all three steps are done. -->
+    <section id="setupChecklist" class="setup-checklist" aria-labelledby="setupChecklistTitle" style="display: none;">
+        <h2 id="setupChecklistTitle" class="setup-checklist-title">Setup Progress</h2>
+        <ul class="setup-checklist-list">
+            <li id="setupStepRankings"></li>
+            <li id="setupStepDraft"></li>
+            <li id="setupStepAdp"></li>
+        </ul>
+    </section>
+
     <!-- DYNAMIC INSTALL APP PROMPT -->
     <section id="installCard" class="settings-card highlight-card" style="display: none; position: relative;">
         <button class="close-banner-btn" data-action="dismissBanner" data-banner="installCard" data-storage-key="mds_hide_install_banner" aria-label="Dismiss Banner" style="position: absolute; top: 12px; right: 12px; font-size: 1rem;">✕</button>
@@ -218,7 +230,7 @@
     </section>
 
    <!-- 1. LOAD RANKINGS -->
-    <section class="settings-card">
+    <section id="setupRankingsCard" class="settings-card">
         <header class="card-header">
             <h3><span class="step-num">1</span> Load Rankings</h3>
                 <div class="tooltip-container">
@@ -230,7 +242,7 @@
         <div id="metaDisplay" class="status-badge"></div>
         
         <p class="card-desc">Want to skip the spreadsheet? Quick-start using Fantasy Football Calculator's mock-draft ADP (Select your league format below in Step 3).</p>
-        <button class="btn btn-purple" data-action="quickStartFfc">
+        <button id="quickStartBtn" class="btn btn-purple" data-action="quickStartFfc">
             Quick-Start: Fantasy Football Calculator ADP
         </button>
         
@@ -267,7 +279,7 @@
     </section>
 
     <!-- 2. ADD / SYNC DRAFT -->
-    <section class="settings-card">
+    <section id="setupDraftCard" class="settings-card">
         <header class="card-header">
             <h3><span class="step-num">2</span> Add / Sync Draft</h3>
             <div class="tooltip-container">
@@ -318,7 +330,7 @@
     </section>
 
     <!-- 3. LIVE MARKET VALUE -->
-    <section class="settings-card">
+    <section id="setupAdpCard" class="settings-card">
         <header class="card-header">
             <h3><span class="step-num">3</span> Live Market Value (ADP)</h3>
                 <div class="tooltip-container">
@@ -514,9 +526,9 @@
     </section>
 
     <!-- RESET CONTROLS -->
-    <section class="settings-card">
+    <section class="settings-card danger-card">
         <header class="card-header">
-            <h3>Reset Controls</h3>
+            <h3><span class="text-danger">Reset Controls</span></h3>
         </header>
         <div class="flex-column gap-2">
             <button class="btn btn-warning" data-action="resetPicksOnly">Reset Draft Picks Only</button>
@@ -537,7 +549,7 @@
          Bug-fix-only or behind-the-scenes deploys leave it alone.
          Also bump CACHE_NAME in /sw.js on EVERY deploy - that's a separate number (cache
          busting, not a user-facing version), and it's required even when this one stays put. -->
-    <div class="app-version">My Draft Strategist v2.6</div>
+    <div class="app-version">My Draft Strategist v2.7</div>
 </div>
    <!-- TRACKER TAB -->
 <div id="trackerTab" class="tab-content">
