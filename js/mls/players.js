@@ -49,17 +49,40 @@ function getPlayerSearchIndex() {
 // this app only has a player by NAME (a rankings file, market data, the autocomplete result
 // above) needs their Sleeper id to pull real weekly score history from. Waiver Insights'
 // free-agent candidates and the standalone player-lookup search both go through this.
+//
+// On a name several entries share, the one a user means wins (refactor 9C): an entry with an NFL
+// team, then one with a fantasy position, then the better (lower) search_rank. On a full tie the
+// first entry in the map's order stays, as before 9C. Sleeper's ids are numeric strings, so that
+// order is oldest first, which is how "Josh Allen" used to find a retired guard instead of the
+// Bills QB. getSleeperMetaByName (scout/waivers.js) prefers a team the same way.
+const CLEAN_NAME_FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+function cleanNameMatchRank(p) {
+    const fantasy = (Array.isArray(p.fantasy_positions) && p.fantasy_positions.some(pos => CLEAN_NAME_FANTASY_POS.includes(pos)))
+        || CLEAN_NAME_FANTASY_POS.includes(p.position);
+    const searchRank = Number.isFinite(p.search_rank) ? p.search_rank : Infinity;
+    return [p.team ? 0 : 1, fantasy ? 0 : 1, searchRank];
+}
+function isBetterCleanNameMatch(a, b) {
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return a[i] < b[i];
+    }
+    return false;
+}
+
 let _cleanNameToIdPromise = null;
 export function getCleanNameToIdIndex() {
     if (_cleanNameToIdPromise) return _cleanNameToIdPromise;
     _cleanNameToIdPromise = getSleeperPlayerMap().then(map => {
         const index = {};
+        const indexRank = {};
         Object.entries(map).forEach(([id, p]) => {
             if (!p.first_name) return;
             const clean = normalizeName(`${p.first_name} ${p.last_name}`);
-            // First match wins on a rare exact-name collision -- not worth a disambiguation
-            // UI for how infrequently two active, fantasy-relevant players share one name.
-            if (!index[clean]) index[clean] = id;
+            const rank = cleanNameMatchRank(p);
+            if (!index[clean] || isBetterCleanNameMatch(rank, indexRank[clean])) {
+                index[clean] = id;
+                indexRank[clean] = rank;
+            }
         });
         return index;
     }).catch(err => {
