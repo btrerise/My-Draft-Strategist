@@ -77,6 +77,12 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         set('waiverScanPos', 'value', s.pos);
         set('waiverScanLimit', 'value', String(s.limit));
         set('waiverScanStartersOnly', 'checked', !!s.startersOnly);
+        // Top Available's Rank By toggle (scout/topAvailable.js) shows this same setting.
+        document.querySelectorAll('#topAvailableBasisToggle [data-basis]').forEach(b => {
+            const on = (b.dataset.basis === 'ros') === (s.basis === 'ros');
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
         document.querySelectorAll('#waiverCompareToggle [data-compare]').forEach(b => {
             const on = b.dataset.compare === s.compare;
             b.classList.toggle('active', on);

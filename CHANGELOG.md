@@ -52,7 +52,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-Nothing yet.
+- **Top Available on the Scout tab:** the best-ranked players nobody in your league has rostered, by your Weekly or
+  ROS rankings, with position chips (All shows the top 5 at each position; one position or FLEX shows 15 at a time,
+  with Show 15 more) and a Would Start pill when he'd make your lineup this week. In a manual league it lists players
+  not on your roster and says so.
 
 ### v2.14.0 — 2026-10-05
 

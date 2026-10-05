@@ -1419,6 +1419,21 @@ button.close-chip {
 .mls-segmented-btn:focus-visible { outline: 2px solid var(--primary-green); outline-offset: -2px; }
 .mls-nowrap { white-space: nowrap; }
 
+/* --- TOP AVAILABLE (Scout tab, js/mls/scout/topAvailable.js) --- Position chips wrap onto a second
+   line at phone width; rows reuse .mls-scan-card. */
+.mls-chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.mls-chip { min-width: 2.75rem; min-height: 2.25rem; padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: 999px; background: rgba(0, 0, 0, 0.15); color: var(--text-muted); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.mls-chip.active { background: var(--target-bg); color: var(--primary-green); border-color: var(--target-border); }
+.mls-chip:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+.mls-topavail-name { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.mls-topavail-group { margin-bottom: 1rem; }
+.mls-topavail-group-title { display: flex; align-items: baseline; gap: 0.4rem; margin: 0 0 0.5rem; font-size: 0.95rem; color: var(--text-main); }
+.mls-topavail-count, .mls-topavail-count-line { font-size: 0.8rem; font-weight: 400; color: var(--text-muted); }
+.mls-topavail-count-line { margin-bottom: 0.5rem; }
+.mls-topavail-more-link { margin-left: auto; font-size: 0.8rem; font-weight: 600; color: var(--primary-green); cursor: pointer; }
+.mls-topavail-more { width: 100%; margin-top: 0.5rem; }
+.mls-topavail-notmine { font-size: 0.75rem; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 4px; padding: 0 0.35rem; }
+
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
    One card per player, with a per-league ownership row beneath the header. Markup comes from
    runAllLeaguesSearch in js/mls/scout/allLeaguesSearch.js. The card is deliberately its own box rather than a

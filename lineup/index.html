@@ -901,6 +901,45 @@
     <button class="close-banner-btn close-banner-btn-sm ml-3" data-action="dismissBanner" data-banner="sleeperSyncBanner" data-storage-key="mls_hide_sleeper_sync_banner" aria-label="Dismiss Banner" style="flex-shrink: 0;">✕</button>
 </div>
 
+    <!-- TOP AVAILABLE (improvements S1, js/mls/scout/topAvailable.js) -->
+    <section class="settings-card" id="topAvailableCard">
+        <header class="card-header">
+            <h3>
+                <span>Top Available</span>
+            </h3>
+            <div class="tooltip-container">
+                <div class="tooltip-icon">i</div>
+                <span class="tooltip-text">The best-ranked players nobody in this league has rostered, by your Weekly or ROS rankings (the same Rank By choice as the Waiver Wire Assistant below). All shows the top 5 at each position; tap a position, or FLEX for RB/WR/TE together, to see more. "Would Start" means he'd make your lineup this week. Ownership comes from your last sync of the league; in a manual league the app only knows your own roster, so the list is everyone not on your roster.</span>
+            </div>
+        </header>
+
+        <div class="input-group mb-2">
+            <label id="topAvailableBasisLabel">Rank By</label>
+            <div class="mls-segmented" id="topAvailableBasisToggle" role="group" aria-labelledby="topAvailableBasisLabel">
+                <button type="button" class="mls-segmented-btn active" data-basis="weekly" aria-pressed="true" data-action="setTopAvailableBasis">Weekly</button>
+                <button type="button" class="mls-segmented-btn" data-basis="ros" aria-pressed="false" data-action="setTopAvailableBasis">ROS</button>
+            </div>
+        </div>
+
+        <div class="input-group mb-3">
+            <label id="topAvailablePosLabel">Position</label>
+            <div class="mls-chip-row" id="topAvailablePosChips" role="group" aria-labelledby="topAvailablePosLabel">
+                <button type="button" class="mls-chip active" data-pos="ALL" aria-pressed="true" data-action="setTopAvailablePos">All</button>
+                <button type="button" class="mls-chip" data-pos="QB" aria-pressed="false" data-action="setTopAvailablePos">QB</button>
+                <button type="button" class="mls-chip" data-pos="RB" aria-pressed="false" data-action="setTopAvailablePos">RB</button>
+                <button type="button" class="mls-chip" data-pos="WR" aria-pressed="false" data-action="setTopAvailablePos">WR</button>
+                <button type="button" class="mls-chip" data-pos="TE" aria-pressed="false" data-action="setTopAvailablePos">TE</button>
+                <button type="button" class="mls-chip" data-pos="FLEX" aria-pressed="false" data-action="setTopAvailablePos">FLEX</button>
+                <button type="button" class="mls-chip" data-pos="K" aria-pressed="false" data-action="setTopAvailablePos">K</button>
+                <button type="button" class="mls-chip" data-pos="DEF" aria-pressed="false" data-action="setTopAvailablePos">DEF</button>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%;" data-action="showTopAvailable">Show Top Available</button>
+
+        <div id="topAvailableOutput" class="scout-output-container" aria-live="polite"></div>
+    </section>
+
     <!-- WAIVER WIRE ASSISTANT -->
     <section class="settings-card">
         <header class="card-header">

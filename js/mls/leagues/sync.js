@@ -14,7 +14,7 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab, optimizeLineup } from '../main.js';
+import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { applyMarketSettingsToUI } from '../settings.js';
@@ -290,6 +290,8 @@ import { showToast } from '../../shared/ui/toast.js';
         const waiverOutput = document.getElementById('waiverOutput');
         if (waiverInput && waiverInput.value.trim() !== '') runScout('waiver');
         else if (waiverOutput) waiverOutput.innerHTML = '';
+        // Top Available is one league's list: redraw it for the new league if it's showing.
+        refreshTopAvailable();
         
         // Trade Analyzer and Positional Power Rankings were already cleared by
         // loadActiveLeagueData above (see clearLeagueScopedResults). The trade used to be
