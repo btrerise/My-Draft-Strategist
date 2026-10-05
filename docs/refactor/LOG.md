@@ -5002,12 +5002,21 @@ is unknown. If it shows up again, keep the `test-results/` folder.
 - `npm run pxdiff -- --runs 3 -- --workers=4`: all 40 PNGs pixel-identical across runs and with the baselines.
 - `npm run compare-css`: as above.
 
+#### Follow-up (owner's decisions after review, same branch)
+
+- **Footer version:** "My Draft Strategist v2.6" → **v2.7** (`index.html`, `.app-version`), since 8A adds a feature.
+  It's the only place the label appears. Lineup Strategist stays v2.13.0. `mds-empty-setup` re-taken again at both
+  widths: 54 px each, all inside the version digit's box (desktop x 700–706, y 3995–4003; phone x 255–261,
+  y 4250–4258), on top of the checklist change above.
+- **`CACHE_NAME` stays a deploy counter** (v2.8.70 in this branch). It's one name for the whole site (sw.js caches
+  all three pages), so it can't follow Draft Strategist's label, and any new name invalidates the cache equally.
+  Jumping to v2.9.0 is left until Phase 8 is done (after 8D), and only if the owner wants a milestone marker.
+
 #### Left for later
 
 - **8D:** Phase 8's new markup used none of the unused spacing helpers (`.gap-1`, `.gap-3`, `.stack-*`, `.cluster-*`,
   `.mt-0`, `.pl-6`).
-- **Info banner:** still "not yet" (owner's decision after 4D). A dismissible one would need a key in `keys.js`.
-- **For the owner:** the visible version label (Draft Strategist v2.6 in the footer) wasn't bumped. 4E left both labels
-  alone for style fixes; this chunk adds a feature, so say if you want it bumped.
+- **Info banner (4C feature 6): no card builds it.** 8B–8D don't mention it. If an MDS message ever needs it, it
+  needs a new card (or a line in whichever card adds that message), plus a key in `keys.js` if it's dismissible.
 - 8B adds freshness labels next to the rankings and ADP lines. `getSetupState()` in `js/mds/setupGuide.js` is the
   place to read done states from, if 8B wants the checklist to mention stale data.
