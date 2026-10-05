@@ -80,7 +80,8 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
 - A test fails on any uncaught exception, any `console.error`, any local HTTP status 400 or
   higher, or the fatal boot banner (`#mds-boot-error`). `openApp()` checks this right after
   load, so a broken import reports the missing file (for example `HTTP 404: /lineup/dbx.js`).
-- Seeded states: `seedMds()` pastes `fixtures/rankings.csv` (24 players) and makes 5 picks.
+- Seeded states: `seedMds()` pastes `fixtures/rankings.csv` (24 players), saves it from the upload preview
+  (`confirmMdsPreview`, since 8C) and makes 5 picks.
   `seedMls()` syncs the fixture league by league ID.
 - Tabs are opened with `showTab(id)` (MDS/MLS), the same function the nav buttons call, through
   `callApp(page, name, ...args)` in `helpers.mjs`: it runs `import()` on the page's entry module (the page's
@@ -114,8 +115,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   (`mds-setup.spec.mjs`, 8A: the Setup Progress checklist and pulse cues as setup fills in, and the "Show me" links, each with
   reduced motion off and on; the guide banner staying dismissed per app) and 3 MDS freshness tests (`mds-freshness.spec.mjs`, 8B:
   the rankings and ADP age labels at each threshold and for meta saved without a timestamp, and the processing / success lines
-  of a paste import and Fetch Market Value). `backup.spec.mjs` has 4 tests since 6B (round trip and a
-  pre-6B backup file, per app). Each runs at both widths: 122 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  of a paste import and Fetch Market Value) and 4 MDS upload-preview tests (`mds-upload-preview.spec.mjs`, 8C: a picked file
+  saved from the preview, Cancel and Escape keeping the pool, the paste path with blending, and the unmatched-name, no-position
+  and lost-rows notes). `backup.spec.mjs` has 4 tests since 6B (round trip and a
+  pre-6B backup file, per app). Each runs at both widths: 130 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -5176,3 +5179,164 @@ chunk. Unverified guess for whoever takes it on: a hover state left by `seedMds`
 - **Footer version:** not bumped (8A's bump to v2.7 was an owner's follow-up). The changelog has this chunk's two
   lines under Draft Strategist's Unreleased.
 - `weekly-success-feedback` keeps its MLS name (owner's decision); rename it if MDS ever uses the blue variant.
+
+### 8C — Draft Strategist rankings upload preview (behavior change: visible on Draft Strategist only)
+
+8B was confirmed merged to main first (PR #173). Started from the 4C findings (the upload preview), "Planned as runbook
+chunks 4E and 8A–8C" (the owner's "build" for the preview, "no" for autocomplete) and the 8B entry. **No storage key
+was added.** `CACHE_NAME` v2.8.71 → v2.8.72.
+
+#### Owner's decisions (asked before building)
+
+| Question | Owner's decision |
+|---|---|
+| Does the paste box go through the preview? | **Yes.** A paste replaces the pool as a file does. Cancel keeps the pasted text in the box. |
+| Where MDS's unmatched names come from (and what happens to `analyzeRankingsFile` / `derivedRanksWording`) | **MDS's own match.** 4C assumed `analyzeRankingsFile` "needs only the shared Sleeper player map"; it actually reads MLS's Sleeper name index (`getSleeperMetaByName`), the active league's position map, MLS's draft-pick filter (`isDraftPickName`) and `buildRankDisplayIndex` (`js/mls/scout/waiverScanner.js`). MDS's import already matches every row against Sleeper by name, position and team, and that match decides headshots, tags and live sync, so the preview lists the rows it saved with a `custom_` id. **`analyzeRankingsFile` and `derivedRanksWording` stay in `js/mls/scout/waivers.js`**: only MLS calls them, and the wording is about ROS/Weekly exports and per-position files MDS doesn't have. |
+| A note when the file has no positions | **Yes, a blue note** (the derived-ranks box's style): with no position in any row, MDS files every player under FLEX. |
+| The confirm button when the upload would overwrite a loaded pool | **Red "Replace Rankings"**, with a red line above it, like MLS's "Replace Set". |
+
+Quick-Start skips the preview (not asked; said in the proposal): it's an explicit "use FFC's consensus" button, not a
+file someone picked.
+
+#### What moved where (MLS: no visible change)
+
+- **`js/shared/rankings/uploadPreview.js` (new):**
+  - `formatUnmatchedNames`: cut from `js/mls/scout/waivers.js` by script (the function and its comment, dedented
+    4 spaces), under a `// --- UPLOAD PREVIEW HELPERS ---` marker. `waivers.js` imports it back for its Scan Pasted
+    List note.
+  - `createPreviewShell(getOverlay, { onEscape })` → `{ open(), close() }`, under `// --- UPLOAD PREVIEW SHELL ---`.
+    It holds the lines MLS repeated in `openRankingsPreview`, `cancelRankingsPreview` and `confirmRankingsPreview`:
+    display flex plus a new `createFocusTrap` on open, and display none plus deactivating the trap on close. They
+    became a function, so this part was rewritten rather than cut, with the same statements in the same order.
+- **`js/mls/rankings/uploadPreview.js`:** `previewFocusTrap` became a module-level
+  `previewShell = createPreviewShell(() => document.getElementById('rankingsPreviewOverlay'), { onEscape: () => cancelRankingsPreview() })`;
+  the open and the two closes call it. Everything else in MLS's preview (ranking sets, league targets, the league
+  picker, SoS, wording) is unchanged. The `createFocusTrap` import moved to the shared module.
+- **Load order:** the shared module imports only `shared/html.js` and `shared/ui/focusTrap.js`, which import nothing
+  from either app, so it has evaluated before any importer's body runs. That's why `previewShell` can be created at
+  MLS's (and MDS's) module top level. Any later change that has it import app code breaks this.
+
+#### Class renames (both apps)
+
+| Before (until 8C) | After |
+|---|---|
+| `mls-preview-overlay`, `mls-preview-modal`, `mls-preview-actions` | `preview-overlay`, `preview-modal`, `preview-actions` |
+| `mls-preview-count`, `mls-preview-list`, `mls-preview-note`, `mls-preview-target` (+ `.is-replace`) | `preview-count`, `preview-list`, `preview-note`, `preview-target` |
+| `mls-preview-unmatched`, `-title`, `-list`, `-hint` | `preview-unmatched`, `-title`, `-list`, `-hint` |
+| `mls-preview-derived`, `-title`, `-body` | `preview-derived`, `-title`, `-body` |
+| `rankings-preview-rank` | `preview-rank` |
+
+Changed in `css/base.css` (the rules and the two section comments, now "both apps since 8C"), `lineup/index.html` and
+`js/mls/rankings/uploadPreview.js`. No `preview-*` class existed before (checked on main), and no test used the old
+names (they select by id). New, MDS only: `.preview-list .preview-meta` (`css/mds.css`, new section
+`/* --- RANKINGS UPLOAD PREVIEW (MDS) --- */`), the muted "WR1 · CIN" after each top player.
+
+#### Draft Strategist (the behavior change)
+
+- **`js/mds/import.js`:** `processData` still validates, fetches Sleeper's map and builds `newPlayers`, as before.
+  The rest of it (blend or replace, `rankingsMeta`, save, status lines, button flash, toasts) was cut, dedented
+  4 spaces and is now `applyRankings(newPlayers, btn, source, originalBtnText)`. Its only new line looks up
+  `processingEl`. `processData` then:
+  - with `source.skipPreview` (set by Quick-Start in `js/mds/market.js`) returns `applyRankings(…)` at once, as
+    before;
+  - otherwise turns the spinner off, puts the paste button's text back, calls `openRankingsPreview(…)` with
+    `onConfirm` (clear the file picker, `applyRankings`) and `onCancel` (clear the file picker), and returns `false`.
+    The file picker is now also cleared after a save (MLS does the same), so re-picking the same file fires `change`.
+- **`js/mds/uploadPreview.js` (new):** `openRankingsPreview({ players, fileName, quoteProblem, sleeperChecked, onConfirm, onCancel })`,
+  `confirmRankingsPreview`, `cancelRankingsPreview` (also on Escape). It fills:
+  - the count (`24 players parsed`) and the top 5 (`#1 Ja'Marr Chase  WR1 · CIN`);
+  - **rows lost** (`#rankingsPreviewSkipped`): the CSV unclosed-quote diagnostic (`formatRankingsDiagnostic`) with
+    the title "N rows lost" / "1 row may be garbled". The error toast after saving is unchanged, so it still shows
+    too;
+  - **no positions** (`#rankingsPreviewDerived`): when every row's `posGroup` is `FLEX`;
+  - **unmatched names** (`#rankingsPreviewUnmatched`): rows with a `custom_` id, through `formatUnmatchedNames(names, 12)`.
+    This is skipped when Sleeper's map didn't load (`sleeperChecked`: every row would be `custom_`), as MLS does;
+  - **what saving does** (`#rankingsPreviewTarget`): empty pool: "Loads as your player pool."; Aggregate on with a
+    pool: "Blends with your current rankings (N players): X% this file, Y% current."; otherwise red "Replaces your
+    current rankings (N players). This can't be undone." with a red **Replace Rankings** button. This uses the same
+    test as `applyRankings`'s blend branch.
+- **`index.html`:** the `#rankingsPreviewOverlay` markup (same ids and classes as MLS's, minus the SoS note and the
+  league picker) after `</main>`. Its two buttons are `data-action="cancelRankingsPreview"` /
+  `"confirmRankingsPreview"`. `js/mds/main.js` adds them to `clickActions` and the overlay to the delegated
+  containers, since it sits outside `#main`.
+- **`js/mds/init.js`:** the hotkey listener returns early while the preview is open, so `1`–`5`, `/` and the position
+  filter keys can't act on the page behind it. The focus trap handles Tab and Escape.
+- **Load order:** `uploadPreview.js` is first imported by `import.js`. It imports `state.js` (used only inside
+  functions) and the shared module, and creates its shell at top level (see above).
+
+#### User-visible difference (Draft Strategist only)
+
+- **Picking or dropping a rankings file, or Process Pasted Data,** no longer loads it straight away. A "Preview:
+  Rankings" window shows the player count, the top 5 with position and team, and, when they apply, rows lost to a
+  broken quote, a blue note that the file has no positions, and the names that didn't match a Sleeper player. A
+  last line says what saving does to the rankings already loaded: it loads, blends, or replaces them (in red).
+  **Looks Good, Save It** (or the red **Replace Rankings**) loads them as before (toast, green success line, "Updated
+  today"). **Cancel**, or Escape, leaves the pool, the status box and the drafts untouched, clears the file picker
+  and keeps the pasted text.
+- The processing spinner line now ends when the preview opens, and the success line shows after saving.
+- While the preview is open, the keyboard shortcuts don't act on the page behind it.
+- **Quick-Start** loads at once, as before.
+
+#### Tests
+
+- **`tests/mds-upload-preview.spec.mjs`** (4 tests × 2 widths):
+  - A picked file: the dialog, title, count, top 5 rows' text, no notes, "Loads as your player pool.", a green button,
+    Cancel focused, and nothing saved until Save. After Save: the toast, the success line, 24 players saved and the
+    picker cleared.
+  - Cancel and Escape: with 24 players loaded, a 3-player file shows the red line and "Replace Rankings"
+    (`btn btn-danger`). The `2` hotkey does nothing. Cancel leaves the saved pool, the meta and `#metaDisplay`
+    identical and clears the picker; Escape does the same for the same file picked again.
+  - Paste: the button isn't left on "Processing…"; Cancel returns focus to it and keeps the text; with Aggregate on at
+    70%, the blend line and the blended order after Save.
+  - Notes: a paste with no Pos column and two made-up names ("2 of 3 names didn't match…", the list, the blue note,
+    `FLEX1`); a paste with an unclosed quote ("N rows lost" and the diagnostic). Nothing is saved after both Cancels.
+- **Updated for the preview:** `seedMds()` and the new `confirmMdsPreview()` in `helpers.mjs`, and the paste steps in
+  `mds-setup`, `mds-sync` and `mds-freshness`. mds-freshness also checks that the spinner ends when the preview
+  opens and that the success line waits for Save.
+- **`tests/unit/uploadPreview.test.mjs`** (4 tests): `formatUnmatchedNames` (empty, one, two, the cap and "and N
+  more", escaping) at its new path.
+- `mls-rankings.spec.mjs` and `mls-scout.spec.mjs` were not edited, and they pass.
+- I checked that the hotkey test bites: with the `init.js` guard removed, the Cancel/Escape test fails on the `2`
+  press (the Tracker opens).
+
+#### Screenshots
+
+**No PNG changed.** The preview is hidden in every screenshot state, and `seedMds` saves through it.
+`npm run pxdiff -- --runs 1`: all 40 PNGs pixel-identical to the baselines. Checked by eye (a throwaway spec, not
+committed): the preview at both widths with the no-positions note, two unmatched names and the red replace line.
+
+#### compare-css (vs `origin/main` at `88ed445`)
+
+- **MLS (empty, handoff banner, synced league, with rankings) and T-Score: 0 differences in all 20 runs**, both
+  widths, reduced motion on and off. So the shared shell, the moved `formatUnmatchedNames` and the class renames
+  change nothing MLS or T-Score computes.
+- **MDS empty: 230 differences per run (all 4 runs), as intended.** All are "only in working tree:
+  `html>body:1>div:3…`", which is the new (hidden) `#rankingsPreviewOverlay` and its 22 descendants, in each of the
+  10 states.
+- **MDS mid-draft: 540 per run.** These runs fail as they stand, because `seedMds` on the `origin/main` side waits for
+  a preview main doesn't have. I re-ran them with two temporary, uncommitted patches: `confirmMdsPreview` returning
+  when no overlay exists, and the tool writing every difference to a file. Every difference is the new overlay, or
+  an element added to `<body>` later by script moving down one position, which shifts its key: the toast
+  (`#mds-toast`, `div:3` → `div:4`) and the shared confirm dialog (`div:4` → `div:5`). The tool keys elements by
+  position, so the moved toast compares against the overlay's styles. Nothing inside `#main`, the header or the
+  nav differs.
+- **For later sessions:** `npm run compare-css` with `COMPARE_REF` set to a commit before 8C fails the MDS mid-draft
+  runs for the same reason. Against main from 8C on, it works as before.
+
+#### Checks run
+
+- `cd tests && npm run check`: check-precache OK (115 precached), `node --test` 219/219 (4 new; the PapaParse case
+  runs once `tests/node_modules` is installed), Playwright **130/130** (122 + 8 new), no screenshot failures.
+- `npm run pxdiff -- --runs 1`: all 40 PNGs pixel-identical to the baselines.
+- `npm run compare-css`: as above.
+
+#### Left for later
+
+- **8D** can start once 8A–8C are merged: the preview's MDS markup uses no spacing helper (it has the same inline
+  margins as MLS's skipped box).
+- **Not built (not asked for):** the unclosed-quote error toast after saving still shows, though the preview has
+  already listed the lost rows. Dropping it (a plain "Loaded N players" when saved from the preview) is a one-line
+  change in `applyRankings`, if the owner wants it. MDS's preview doesn't exclude draft-pick rows ("2026 1st") from
+  the unmatched names as MLS does; MDS's draft board has no picks, so a file with them gets them listed.
+- `analyzeRankingsFile` and `derivedRanksWording` stay in `js/mls/scout/waivers.js` (owner's decision above). If
+  MDS ever needs them, inject MLS's four inputs rather than importing `js/mls/` from `js/shared/`.

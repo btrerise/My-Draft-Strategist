@@ -14,6 +14,7 @@ import { showToast } from '../shared/ui/toast.js';
 import { loadSheetJS } from '../shared/ui/scriptLoader.js';
 import { enableFileDrop } from '../shared/ui/fileDrop.js';
 import { setProcessingStatus, showStatusFeedback } from '../shared/ui/statusFeedback.js';
+import { openRankingsPreview } from './uploadPreview.js';
 
     // --- FILE PARSING & DATA IMPORT ---
 const fileInput = document.getElementById('fileInput');
@@ -129,8 +130,8 @@ function parseExcel(file) {
         });
     }
 
-    // source: { fileName, headers, sheetName?, quoteProblem?, replace?, successLabel?,
-    // successToast? }. fileName is null for pasted text; sheetName is set when the rankings
+    // source: { fileName, headers, sheetName?, quoteProblem?, replace?, skipPreview?,
+    // successLabel?, successToast? }. fileName is null for pasted text; sheetName is set when the rankings
     // came from one tab of a multi-tab workbook; quoteProblem is findCsvQuoteProblem's result
     // for CSV text. headers is the file's header row as written, used both to catch a missing
     // name column before any work starts and to show the user what columns were found. The
@@ -138,14 +139,17 @@ function parseExcel(file) {
     // formatRankingsDiagnostic's wording (js/shared/rankings/diagnostics.js).
     //
     // Quick-Start (market.js, refactor 7A) sends Fantasy Football Calculator's rows through here
-    // too, as the rows an upload would give, and sets the last three: replace (ignore the
-    // aggregate toggle; Quick-Start always replaces the pool, as it did before), successLabel
-    // (button text) and successToast ({ text, opts } in place of "Loaded N players"; N fills
-    // in for {count}). Returns true once the pool is loaded, false otherwise.
+    // too, as the rows an upload would give, and sets the last four: replace (ignore the
+    // aggregate toggle; Quick-Start always replaces the pool, as it did before), skipPreview
+    // (refactor 8C: load at once instead of opening the upload preview), successLabel (button
+    // text) and successToast ({ text, opts } in place of "Loaded N players"; N fills in for
+    // {count}). Returns true once the pool is loaded, false otherwise; since 8C a file or a
+    // paste returns false when its preview opens, and the pool loads on confirm (applyRankings).
     //
     // Refactor 8B: while it works, a spinner line (#rankingsProcessingStatus, the shared
     // setProcessingStatus) shows under the rankings status box, which keeps its previous text;
     // a loaded pool then shows "Rankings loaded successfully!" (#rankingsSuccessMsg) for 3s.
+    // Since 8C the spinner goes off when the preview opens, and the success line shows on confirm.
     export async function processData(data, btn = null, source = {}) {
         const processingEl = document.getElementById('rankingsProcessingStatus');
         const originalBtnText = btn ? btn.innerHTML : "Upload";
@@ -297,88 +301,115 @@ function parseExcel(file) {
             });
         });
 
-        if (newPlayers.length > 0) {
-            const isAggregate = !source.replace && document.getElementById('aggregateToggle')?.checked;
-            
-            if (isAggregate && State.players.length > 0) {
-                let combinedMap = new Map();
-                let maxRankA = State.players.length;
-                let maxRankB = newPlayers.length;
-                let penaltyRank = maxRankA + maxRankB; // Safe fallback for a player missing from one of the lists
-
-                // 1. Add existing players to the map
-                State.players.forEach(p => {
-                    let key = p.sleeperId && !p.sleeperId.toString().startsWith('custom_') ? p.sleeperId : p.name.toLowerCase();
-                    combinedMap.set(key, { player: p, rankA: p.rank, rankB: penaltyRank });
-                });
-
-                // 2. Merge incoming players
-                newPlayers.forEach(p => {
-                    let key = p.sleeperId && !p.sleeperId.toString().startsWith('custom_') ? p.sleeperId : p.name.toLowerCase();
-                    if (combinedMap.has(key)) {
-                        let existing = combinedMap.get(key);
-                        existing.rankB = p.rank; // Player exists in both, update rank B
-                    } else {
-                        combinedMap.set(key, { player: p, rankA: penaltyRank, rankB: p.rank }); // New player entirely
-                    }
-                });
-
-                // 3. Calculate Weighted Average and sort
-                let mergedPlayers = Array.from(combinedMap.values());
-                let sliderValue = document.getElementById('weightSlider') ? parseInt(document.getElementById('weightSlider').value) : 50;
-                
-                // Convert to decimals (e.g., 70 on slider = 0.7 weight for New, 0.3 for Old)
-                let weightNew = sliderValue / 100;
-                let weightOld = 1 - weightNew;
-
-                mergedPlayers.forEach(entry => {
-                    entry.avgRank = (entry.rankA * weightOld) + (entry.rankB * weightNew);
-                });
-                
-                // Sort by the new averaged rank
-                mergedPlayers.sort((a, b) => a.avgRank - b.avgRank);
-
-                // 4. Assign clean, sequential integer ranks to the newly sorted master list
-                State.players = mergedPlayers.map((entry, index) => {
-                    let p = entry.player;
-                    p.rank = index + 1;
-                    p.id = index + 1;
-                    return p;
-                });
-            } else {
-                // Normal overwrite behavior if toggle is off
-                State.players = newPlayers;
-            }
-
-            let now = new Date();
-            let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            // updatedAt (refactor 8B) drives the "Updated 3 days ago" label; meta saved before 8B
-            // has only the formatted date, and updateMetaDisplay keeps showing that.
-            State.rankingsMeta = { count: State.players.length, date: dateString, updatedAt: now.getTime() };
-
-            localStorage.setItem(KEYS.mds.meta, JSON.stringify(State.rankingsMeta));
-            savePlayerPool();
-            setProcessingStatus(processingEl, false);
-            updateMetaDisplay();
-            showStatusFeedback(document.getElementById('rankingsSuccessMsg'), null, 3000);
-            saveAndRenderDraftState();
-
-            if (btn) flashButton(btn, source.successLabel || "Loaded Successfully", false, originalBtnText);
-            if (source.successToast) {
-                showToast(source.successToast.text.replace('{count}', State.players.length), source.successToast.opts);
-            } else {
-                // Loaded, but an unclosed quote swallowed rows (see findCsvQuoteProblem in
-                // js/shared/rankings/diagnostics.js). Shown as an error: the list is missing players the user expects.
-                if (source.quoteProblem) {
-                    const q = { fileName: source.fileName || null, reason: 'unclosed-quote', row: source.quoteProblem.row, rowsLost: source.quoteProblem.rowsLost, headersFound: [], missing: [] };
-                    showToast(`Loaded ${State.players.length} players, but some are missing.\n${formatRankingsDiagnostic(q)}`, { isError: true, duration: 12000 });
-                } else {
-                    showToast(`Loaded ${State.players.length} players`);
-                }
-            }
-            return true;
-        } else {
+        if (newPlayers.length === 0) {
             // The name column exists (checked above), so every row's name cell was blank.
             return fail('no-names-in-column');
         }
+
+        // Refactor 8C: a file or a paste opens the preview (js/mds/uploadPreview.js) and loads
+        // only on confirm; Cancel leaves the pool, the status box and the drafts as they were.
+        // Quick-Start sets skipPreview and loads at once, as before.
+        if (source.skipPreview) return applyRankings(newPlayers, btn, source, originalBtnText);
+
+        setProcessingStatus(processingEl, false);
+        if (btn) btn.innerHTML = originalBtnText;
+        // Clear the picker after either answer, so choosing the same file again fires 'change'
+        // (MLS does the same on save and on cancel).
+        const clearPicker = () => { if (source.fileName && fileInput) fileInput.value = ''; };
+        openRankingsPreview({
+            players: newPlayers,
+            fileName: source.fileName || null,
+            quoteProblem: source.quoteProblem || null,
+            sleeperChecked: sleeperArray.length > 0,
+            onConfirm: () => { clearPicker(); applyRankings(newPlayers, btn, source, originalBtnText); },
+            onCancel: clearPicker
+        });
+        return false;
+    }
+
+    // The second half of processData until refactor 8C, unchanged apart from the indent and the
+    // processingEl lookup: loads the parsed players into the pool (replacing it, or blending with
+    // it when the Aggregate toggle is on), saves, and reports. Runs on the preview's confirm, or
+    // straight from processData for Quick-Start. Returns true.
+    function applyRankings(newPlayers, btn, source, originalBtnText) {
+        const processingEl = document.getElementById('rankingsProcessingStatus');
+        const isAggregate = !source.replace && document.getElementById('aggregateToggle')?.checked;
+        
+        if (isAggregate && State.players.length > 0) {
+            let combinedMap = new Map();
+            let maxRankA = State.players.length;
+            let maxRankB = newPlayers.length;
+            let penaltyRank = maxRankA + maxRankB; // Safe fallback for a player missing from one of the lists
+
+            // 1. Add existing players to the map
+            State.players.forEach(p => {
+                let key = p.sleeperId && !p.sleeperId.toString().startsWith('custom_') ? p.sleeperId : p.name.toLowerCase();
+                combinedMap.set(key, { player: p, rankA: p.rank, rankB: penaltyRank });
+            });
+
+            // 2. Merge incoming players
+            newPlayers.forEach(p => {
+                let key = p.sleeperId && !p.sleeperId.toString().startsWith('custom_') ? p.sleeperId : p.name.toLowerCase();
+                if (combinedMap.has(key)) {
+                    let existing = combinedMap.get(key);
+                    existing.rankB = p.rank; // Player exists in both, update rank B
+                } else {
+                    combinedMap.set(key, { player: p, rankA: penaltyRank, rankB: p.rank }); // New player entirely
+                }
+            });
+
+            // 3. Calculate Weighted Average and sort
+            let mergedPlayers = Array.from(combinedMap.values());
+            let sliderValue = document.getElementById('weightSlider') ? parseInt(document.getElementById('weightSlider').value) : 50;
+            
+            // Convert to decimals (e.g., 70 on slider = 0.7 weight for New, 0.3 for Old)
+            let weightNew = sliderValue / 100;
+            let weightOld = 1 - weightNew;
+
+            mergedPlayers.forEach(entry => {
+                entry.avgRank = (entry.rankA * weightOld) + (entry.rankB * weightNew);
+            });
+            
+            // Sort by the new averaged rank
+            mergedPlayers.sort((a, b) => a.avgRank - b.avgRank);
+
+            // 4. Assign clean, sequential integer ranks to the newly sorted master list
+            State.players = mergedPlayers.map((entry, index) => {
+                let p = entry.player;
+                p.rank = index + 1;
+                p.id = index + 1;
+                return p;
+            });
+        } else {
+            // Normal overwrite behavior if toggle is off
+            State.players = newPlayers;
+        }
+
+        let now = new Date();
+        let dateString = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        // updatedAt (refactor 8B) drives the "Updated 3 days ago" label; meta saved before 8B
+        // has only the formatted date, and updateMetaDisplay keeps showing that.
+        State.rankingsMeta = { count: State.players.length, date: dateString, updatedAt: now.getTime() };
+
+        localStorage.setItem(KEYS.mds.meta, JSON.stringify(State.rankingsMeta));
+        savePlayerPool();
+        setProcessingStatus(processingEl, false);
+        updateMetaDisplay();
+        showStatusFeedback(document.getElementById('rankingsSuccessMsg'), null, 3000);
+        saveAndRenderDraftState();
+
+        if (btn) flashButton(btn, source.successLabel || "Loaded Successfully", false, originalBtnText);
+        if (source.successToast) {
+            showToast(source.successToast.text.replace('{count}', State.players.length), source.successToast.opts);
+        } else {
+            // Loaded, but an unclosed quote swallowed rows (see findCsvQuoteProblem in
+            // js/shared/rankings/diagnostics.js). Shown as an error: the list is missing players the user expects.
+            if (source.quoteProblem) {
+                const q = { fileName: source.fileName || null, reason: 'unclosed-quote', row: source.quoteProblem.row, rowsLost: source.quoteProblem.rowsLost, headersFound: [], missing: [] };
+                showToast(`Loaded ${State.players.length} players, but some are missing.\n${formatRankingsDiagnostic(q)}`, { isError: true, duration: 12000 });
+            } else {
+                showToast(`Loaded ${State.players.length} players`);
+            }
+        }
+        return true;
     }

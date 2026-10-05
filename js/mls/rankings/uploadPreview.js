@@ -6,7 +6,8 @@ import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { generateSoSGrid } from '../sos.js';
-import { analyzeRankingsFile, derivedRanksWording, formatUnmatchedNames } from '../scout/waivers.js';
+import { analyzeRankingsFile, derivedRanksWording } from '../scout/waivers.js';
+import { createPreviewShell, formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { setRankingsCardExpanded } from './engine.js';
 import { resolveRankingsTarget, saveRankingsAsSet, renderLeaguePicker, readLeaguePicker, assignSetToLeagues, leagueCountText } from './sets.js';
 import { loadRosterTab, optimizeLineup } from '../main.js';
@@ -14,7 +15,6 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { formatRankingsDiagnostic } from '../../shared/rankings/diagnostics.js';
-import { createFocusTrap } from '../../shared/ui/focusTrap.js';
 import { enableFileDrop } from '../../shared/ui/fileDrop.js';
 import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback.js';
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
@@ -71,7 +71,9 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
     // Focus trap for the modal -- unlike the drawer, this overlay had no Escape handling at
     // all before, so onEscape is wired to cancelRankingsPreview (same behavior as clicking
     // Cancel: discards the pending upload and clears the file input for reselection).
-    let previewFocusTrap = null;
+    // The open / close itself is shared with Draft Strategist since refactor 8C
+    // (createPreviewShell, js/shared/rankings/uploadPreview.js).
+    const previewShell = createPreviewShell(() => document.getElementById('rankingsPreviewOverlay'), { onEscape: () => cancelRankingsPreview() });
 
     function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target, skipped = [] }) {
         pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target };
@@ -106,10 +108,10 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
                 if (rowsLost) titleBits.push(`${rowsLost} row${rowsLost === 1 ? '' : 's'} lost`);
                 else if (quoteDiags.length) titleBits.push(`${quoteDiags.length} row${quoteDiags.length === 1 ? '' : 's'} may be garbled`);
                 const title = titleBits.join(', ');
-                skippedEl.querySelector('.mls-preview-unmatched-title').textContent = title.charAt(0).toUpperCase() + title.slice(1);
+                skippedEl.querySelector('.preview-unmatched-title').textContent = title.charAt(0).toUpperCase() + title.slice(1);
                 // Built as text nodes: the messages carry file names and headers from the
                 // user's file, and formatRankingsDiagnostic returns plain text.
-                const listEl = skippedEl.querySelector('.mls-preview-unmatched-list');
+                const listEl = skippedEl.querySelector('.preview-unmatched-list');
                 listEl.textContent = '';
                 skipped.forEach(d => {
                     const row = document.createElement('div');
@@ -126,7 +128,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         const listEl = document.getElementById('rankingsPreviewList');
         if (listEl) {
             listEl.innerHTML = preview.map(p =>
-                `<li><span class="rankings-preview-rank">#${p.rank}</span> ${escapeHtml(p.name)}${tierTag(p.tier)}</li>`
+                `<li><span class="preview-rank">#${p.rank}</span> ${escapeHtml(p.name)}${tierTag(p.tier)}</li>`
             ).join('');
         }
 
@@ -146,8 +148,8 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             analyzeRankingsFile(parsedData).then(({ names, total, derivedPos, derivedFlex }) => {
                 if (!pendingRankingsUpload || pendingRankingsUpload.parsedData !== parsedData) return;
                 if (total > 0) {
-                    const titleEl = unmatchedEl.querySelector('.mls-preview-unmatched-title');
-                    const listEl = unmatchedEl.querySelector('.mls-preview-unmatched-list');
+                    const titleEl = unmatchedEl.querySelector('.preview-unmatched-title');
+                    const listEl = unmatchedEl.querySelector('.preview-unmatched-list');
                     if (titleEl) titleEl.textContent = `${total} of ${parsedData.length} name${total === 1 ? "" : "s"} didn't match a Sleeper player`;
                     if (listEl) listEl.innerHTML = formatUnmatchedNames(names, 12);
                     unmatchedEl.style.display = 'block';
@@ -157,8 +159,8 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
                 // from that order rather than read from the file.
                 const wording = derivedRanksWording(derivedPos, derivedFlex, isWeekly);
                 if (derivedEl && wording) {
-                    derivedEl.querySelector('.mls-preview-derived-title').textContent = wording.title;
-                    derivedEl.querySelector('.mls-preview-derived-body').textContent =
+                    derivedEl.querySelector('.preview-derived-title').textContent = wording.title;
+                    derivedEl.querySelector('.preview-derived-body').textContent =
                         `${wording.detail} Either way the ordering is sound; it just means those numbers are this app's reading of your list, and tiers stay on the ranks your file published.`;
                     derivedEl.style.display = 'block';
                 }
@@ -178,12 +180,12 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
                 targetEl.innerHTML = `Replaces the saved set <strong>${escapeHtml(target.name)}</strong>` +
                     `${target.playerCount ? ` (${target.playerCount} player${target.playerCount === 1 ? '' : 's'})` : ''}. ` +
                     `${leagueNote} This can't be undone.`;
-                targetEl.className = 'mls-preview-target is-replace';
+                targetEl.className = 'preview-target is-replace';
             } else {
                 targetEl.innerHTML = target
                     ? `Saves as a new set: <strong>${escapeHtml(target.name)}</strong>. Nothing existing is changed.`
                     : 'Saves as a new set. Nothing existing is changed.';
-                targetEl.className = 'mls-preview-target';
+                targetEl.className = 'preview-target';
             }
             targetEl.style.display = 'block';
         }
@@ -208,13 +210,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             confirmBtn.textContent = isReplace ? 'Replace Set' : 'Looks Good, Save It';
         }
 
-        const overlay = document.getElementById('rankingsPreviewOverlay');
-        if (overlay) overlay.style.display = 'flex';
-
-        if (overlay) {
-            previewFocusTrap = createFocusTrap(overlay, { onEscape: () => cancelRankingsPreview() });
-            previewFocusTrap.activate();
-        }
+        previewShell.open();
     }
 
     export const cancelRankingsPreview = function() {
@@ -227,9 +223,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             });
         }
         pendingRankingsUpload = null;
-        const overlay = document.getElementById('rankingsPreviewOverlay');
-        if (overlay) overlay.style.display = 'none';
-        if (previewFocusTrap) { previewFocusTrap.deactivate(); previewFocusTrap = null; }
+        previewShell.close();
     };
 
     export const confirmRankingsPreview = function() {
@@ -282,9 +276,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         }
 
         pendingRankingsUpload = null;
-        const overlay = document.getElementById('rankingsPreviewOverlay');
-        if (overlay) overlay.style.display = 'none';
-        if (previewFocusTrap) { previewFocusTrap.deactivate(); previewFocusTrap = null; }
+        previewShell.close();
     };
 
     // Disables a rankings section's file input(s) for the duration of a parse (type is

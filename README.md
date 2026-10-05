@@ -33,7 +33,8 @@ js/
     freshness.js         "Updated 3 days ago" labels (getFreshness), all three pages
     api/                 Sleeper (sleeper.js, sleeperStats.js), FantasyCalc (market.js), Fantasy Football
                          Calculator (ffc.js)
-    rankings/            Rankings file parser (parse.js) and its error messages (diagnostics.js)
+    rankings/            Rankings file parser (parse.js), its error messages (diagnostics.js), and the
+                         upload preview's window and unmatched-name wording (uploadPreview.js), both apps
     storage/             keys.js (the only place a storage key is spelled), keyMigration.js (pre-6B key
                          names to current ones), idb.js (IndexedDB)
     ui/                  Toasts, confirm dialog, focus trap, tooltips, banners, file drop, script loader,
@@ -46,7 +47,7 @@ js/
                          exportMdsSettings on window for boot.js); init.js sets the module load order and runs startup.
                          One module per area: state, storage, import, market, sleeperSync, tracker,
                          board, team, recap, export, handoff, backup, settings, setupGuide (the Setup
-                         tab's checklist and pulse cues), and so on
+                         tab's checklist and pulse cues), uploadPreview (the rankings upload preview), and so on
   mls/                   Lineup Strategist. main.js is the entry point (data-action delegation, and
                          exportMlsSettings on window for boot.js) and its import list sets the load order. Top-level
                          modules (state, helpers, nav, init, backup, settings, players, sos, shortcuts...)

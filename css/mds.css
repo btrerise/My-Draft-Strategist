@@ -1094,3 +1094,13 @@ body.hide-headshots .draft-cell-img {
     justify-content: center;
     touch-action: manipulation;
 }
+
+/* --- RANKINGS UPLOAD PREVIEW (MDS) --- */
+/* Refactor 8C. The window itself is the shared .preview-* (css/base.css); this is the position and
+   team after each top player's name (js/mds/uploadPreview.js), which MLS's list doesn't show. */
+.preview-list .preview-meta {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}

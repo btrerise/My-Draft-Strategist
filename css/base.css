@@ -252,12 +252,12 @@ body {
    scroll-margin-top on #rosRankingsCard). */
 html { scroll-padding-top: 5rem; }
 
-/* --- MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (MLS only) --- */
+/* --- MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (both apps since 8C) --- */
 /* The .mds-modal-overlay / .mds-modal pair is the generic backdrop-and-card treatment, also
-   used by the shared confirm dialog (showConfirm in js/shared/ui/confirm.js). The .mls-preview-* selectors
-   alongside them are the original names this markup shipped with, kept so the preview modal
-   in lineup/index.html needs no change. */
-.mls-preview-overlay,
+   used by the shared confirm dialog (showConfirm in js/shared/ui/confirm.js). The .preview-*
+   selectors alongside them are the rankings upload preview's (lineup/index.html and, since
+   refactor 8C, index.html). They were .mls-preview-* until 8C. */
+.preview-overlay,
 .mds-modal-overlay {
     position: fixed;
     top: 0;
@@ -275,7 +275,7 @@ html { scroll-padding-top: 5rem; }
     overscroll-behavior: contain;
 }
 
-.mls-preview-modal,
+.preview-modal,
 .mds-modal {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -289,19 +289,19 @@ html { scroll-padding-top: 5rem; }
     overscroll-behavior: contain;
 }
 
-.mls-preview-modal h3,
+.preview-modal h3,
 .mds-modal h3 {
     margin: 0 0 0.5rem 0;
     font-size: 1.1rem;
 }
 
-.mls-preview-actions,
+.preview-actions,
 .mds-modal-actions {
     display: flex;
     gap: 0.75rem;
 }
 
-.mls-preview-actions .btn,
+.preview-actions .btn,
 .mds-modal-actions .btn {
     width: auto;
     flex: 1;
@@ -322,7 +322,7 @@ html { scroll-padding-top: 5rem; }
     margin-bottom: 0;
 }
 
-/* The preview modal's own content blocks each carry a bottom margin, so .mls-preview-actions
+/* The preview modal's own content blocks each carry a bottom margin, so .preview-actions
    needs no top spacing of its own; the confirm dialog's body doesn't, so it adds one here. */
 .mds-modal-actions {
     margin-top: 1.25rem;
@@ -1678,14 +1678,14 @@ a.nav-btn,
     .mds-drop-hint { display: none; }
 }
 
-/* --- MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (MLS only) --- */
-.mls-preview-count {
+/* --- MODAL OVERLAY CHROME (shared) + RANKINGS UPLOAD PREVIEW MODAL (both apps since 8C) --- */
+.preview-count {
     color: var(--text-muted);
     font-size: 0.9rem;
     margin: 0 0 1rem 0;
 }
 
-.mls-preview-list {
+.preview-list {
     list-style: none;
     margin: 0 0 1rem 0;
     padding: 0;
@@ -1694,7 +1694,7 @@ a.nav-btn,
     overflow: hidden;
 }
 
-.mls-preview-list li {
+.preview-list li {
     padding: 0.6rem 0.85rem;
     font-size: 0.9rem;
     border-bottom: 1px solid var(--border);
@@ -1703,18 +1703,18 @@ a.nav-btn,
     gap: 0.6rem;
 }
 
-.mls-preview-list li:last-child {
+.preview-list li:last-child {
     border-bottom: none;
 }
 
-.rankings-preview-rank {
+.preview-rank {
     color: var(--primary-green);
     font-weight: 700;
     font-size: 0.8rem;
     min-width: 2.2rem;
 }
 
-.mls-preview-note {
+.preview-note {
     font-size: 0.8rem;
     color: var(--text-muted);
     background: rgba(59, 130, 246, 0.1);
@@ -1726,7 +1726,7 @@ a.nav-btn,
 
 /* Destination line directly above the preview modal's buttons. Neutral by default (new set);
    the .is-replace variant matches .btn-danger, since that case overwrites existing data. */
-.mls-preview-target {
+.preview-target {
     font-size: 0.8rem;
     color: var(--text-muted);
     border: 1px solid var(--border);
@@ -1735,7 +1735,7 @@ a.nav-btn,
     margin: 0 0 1rem 0;
 }
 
-.mls-preview-target.is-replace {
+.preview-target.is-replace {
     color: #fca5a5;
     background: rgba(239, 68, 68, 0.1);
     border-color: rgba(239, 68, 68, 0.4);
@@ -2035,10 +2035,10 @@ a.nav-btn,
    .scout-result-card: those are single-line summaries, while each of these carries a variable
    number of league rows and needs a header/body split to stay readable at five-plus leagues. */
 /* Unmatched-name warning inside the rankings upload preview modal (see openRankingsPreview). */
-.mls-preview-unmatched { background: rgba(252, 165, 165, 0.08); border: 1px solid var(--avoid-border); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
-.mls-preview-unmatched-title { color: #fca5a5; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
-.mls-preview-unmatched-list { font-size: 0.82rem; color: var(--text-main); line-height: 1.45; }
-.mls-preview-unmatched-hint { font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; margin: 0.4rem 0 0; }
-.mls-preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
-.mls-preview-derived-title { color: #93c5fd; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
-.mls-preview-derived-body { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin: 0; }
+.preview-unmatched { background: rgba(252, 165, 165, 0.08); border: 1px solid var(--avoid-border); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.preview-unmatched-title { color: #fca5a5; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
+.preview-unmatched-list { font-size: 0.82rem; color: var(--text-main); line-height: 1.45; }
+.preview-unmatched-hint { font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; margin: 0.4rem 0 0; }
+.preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.preview-derived-title { color: #93c5fd; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
+.preview-derived-body { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin: 0; }

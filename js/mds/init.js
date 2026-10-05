@@ -55,6 +55,11 @@ import { updateSetupGuidance } from './setupGuide.js';
         // plain labeled group and each of its buttons is reached with Tab directly.)
         // --- POWER-USER KEYBOARD SHORTCUTS ---
         document.addEventListener('keydown', (e) => {
+            // The rankings upload preview (8C) is modal: its focus trap handles Tab and Escape,
+            // and the hotkeys below would act on the page behind it.
+            const rankingsPreview = document.getElementById('rankingsPreviewOverlay');
+            if (rankingsPreview && rankingsPreview.style.display !== 'none') return;
+
             // Escape closes the hamburger drawer from anywhere, so keyboard users have a way to
             // dismiss it without a mouse. The menuOverlay backdrop is intentionally NOT a tab
             // stop (standard pattern for backdrops); this plus the existing visible close button

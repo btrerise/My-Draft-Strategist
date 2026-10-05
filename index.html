@@ -886,6 +886,39 @@
     </section>
 </div>
 </main>
+
+<!-- Rankings Upload Preview (refactor 8C). Opened by processData (js/mds/import.js) for a file or a
+     paste and filled by openRankingsPreview (js/mds/uploadPreview.js); nothing is loaded until
+     the confirm button. Same classes as Lineup Strategist's preview. -->
+<div id="rankingsPreviewOverlay" class="preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingsPreviewTitle">
+    <div class="preview-modal">
+        <h3 id="rankingsPreviewTitle">Preview: Rankings</h3>
+        <p id="rankingsPreviewCount" class="preview-count"></p>
+        <!-- Rows lost to an unclosed quote (CSV only). Reuses the unmatched-names styling. -->
+        <div id="rankingsPreviewSkipped" class="preview-unmatched" style="display: none; margin-top: 0; margin-bottom: 0.75rem;">
+            <div class="preview-unmatched-title"></div>
+            <div class="preview-unmatched-list"></div>
+            <p class="preview-unmatched-hint">The players below don't include those rows. Cancel, fix the file and upload it again, or save what was read.</p>
+        </div>
+        <ul id="rankingsPreviewList" class="preview-list"></ul>
+        <div id="rankingsPreviewDerived" class="preview-derived" style="display: none;">
+            <div class="preview-derived-title">No positions in this file</div>
+            <p class="preview-derived-body">Every player will be listed as FLEX, so the position filters, position badges and roster counts won't tell them apart. Add a Position column (QB, RB, WR, TE, K, DEF) and upload again to fix it. You can still save this file.</p>
+        </div>
+        <div id="rankingsPreviewUnmatched" class="preview-unmatched" style="display: none;">
+            <div class="preview-unmatched-title"></div>
+            <div class="preview-unmatched-list"></div>
+            <p class="preview-unmatched-hint">These players still load, but without a headshot or Sleeper's injury and rookie tags, and a live Sleeper draft may not recognize them when they're picked. Team defenses are often named differently than Sleeper names them. You can still save this file; renaming them to match Sleeper fixes it.</p>
+        </div>
+        <!-- What saving does to the pool already loaded: load, blend, or replace (red). -->
+        <p id="rankingsPreviewTarget" class="preview-target" style="display: none;"></p>
+        <div class="preview-actions">
+            <button class="btn btn-secondary" data-action="cancelRankingsPreview">Cancel</button>
+            <button id="rankingsPreviewConfirmBtn" class="btn btn-primary" data-action="confirmRankingsPreview">Looks Good, Save It</button>
+        </div>
+    </div>
+</div>
+
 <!-- BOTTOM HYBRID NAVIGATION -->
 <nav class="nav-bar" aria-label="Bottom Navigation">
     <button class="nav-btn" data-target="tracker" data-action="showTab" data-tab="tracker">
