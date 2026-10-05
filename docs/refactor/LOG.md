@@ -28,6 +28,11 @@ cd tests && npm install && npm run check     # precache + unit tests + Playwrigh
 - `npm run compare-css` (in `tests/`, added in 4D) is opt-in and not part of `check`: it compares every
   element's computed style between `origin/main` (or `COMPARE_REF=<ref>`) and the working tree, in about
   7 minutes. Use it for any change that must not be visible, such as moving CSS. See the 4D entry.
+- `npm run pxdiff` (in `tests/`, added in 0C) is opt-in too: it counts the pixels whose RGB differs between two
+  folders of PNGs, with the bounding box and optional side-by-side crops (`npm run pxdiff -- <dirA> <dirB>
+  [--crops <out>]`). `npm run pxdiff -- --runs 5` renders `visual.spec.mjs` five times with
+  `--update-snapshots=all`, keeps each run's PNGs, puts the baselines back, and reports any run that differs
+  from the first and what re-taking would change. See the 0C entry.
 
 ### Accepting an intended visual change
 
@@ -35,11 +40,14 @@ Chunks that only move code must leave every screenshot identical. If a chunk is 
 change how something looks: `cd tests && npm run test:update`, then check the changed PNGs
 in `git diff --stat tests/baselines` and mention them in your entry below.
 
-`test:update` only rewrites a PNG whose comparison fails, and the screenshot check tolerates 0.2% of
-pixels plus faint colour changes (`maxDiffPixelRatio: 0.002`, Playwright's default per-pixel `threshold`).
-A small intended change (a smaller ✕, a red tint) can pass and be left out. In that case run
-`npx playwright test visual.spec.mjs --update-snapshots=all`, compare against a run on main's code, and
-keep only the PNGs your change explains (see the 4E entry: some MDS and T-Score baselines drift slightly).
+`test:update` only rewrites a PNG whose comparison fails. Since 0C the screenshot check counts any colour
+change (`threshold: 0`) and tolerates at most 10 differing pixels per PNG (`maxDiffPixels: 10`; pixelmatch
+also skips pixels it detects as anti-aliasing). Before 0C it tolerated 0.2% of pixels plus faint colour
+changes, so a small intended change could pass and be left out. A change of 10 pixels or fewer still can: if
+yours is that small, run `npx playwright test visual.spec.mjs --update-snapshots=all` and keep only the PNGs
+your change explains. Every screenshot renders the same pixels on every run (0C), so
+`npm run pxdiff -- --runs 1 --crops <dir>` lists exactly the PNGs your change touches (anything else it
+lists means rendering has become unrepeatable again, which is a bug, not drift).
 
 Baselines are per platform (`tests/baselines/linux/...`). Google Fonts is blocked in tests, so
 text uses fallback fonts, which differ between OSes. A macOS run won't find baselines and will
@@ -63,6 +71,8 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
     images) is aborted. `/api/ffc/*` (the Cloudflare Pages Function added in 7A) isn't run by
     `serve.mjs`, so it 404s unless a spec stubs it (`stubFfc` in `mds-sync.spec.mjs`).
   - The clock is fixed at 2026-09-15T16:00Z.
+- `visual.spec.mjs` launches Chromium with `--disable-partial-raster` (0C), which makes every screenshot
+  pixel-identical from run to run. Keep it if you add screenshots elsewhere.
 - A test fails on any uncaught exception, any `console.error`, any local HTTP status 400 or
   higher, or the fatal boot banner (`#mds-boot-error`). `openApp()` checks this right after
   load, so a broken import reports the missing file (for example `HTTP 404: /lineup/dbx.js`).
@@ -4508,3 +4518,119 @@ cards to accept MDS screenshots): measure the noise over several runs, commit th
 tool, find and remove the cause in the test setup, prove five identical runs in a row, re-take only the
 drifted baselines, and recommend (not make) a tighter tolerance. **Owner's decision:** build it (recorded
 2026-10-05).
+
+### 0C — Make the screenshot tests repeatable (test-only; nothing users see changes)
+
+Started from the 7C and 4E "Screenshots" notes and "Accepting an intended visual change". 7C was confirmed merged
+to main first. Only `tests/` and this log changed: no app file, no `sw.js` (so no `CACHE_NAME` bump), and the
+tolerance in `playwright.config.mjs` is unchanged.
+
+**New tool: `tests/tools/pxdiff.mjs` (`cd tests && npm run pxdiff`).** 7C's comparison as an opt-in script:
+it reads the PNGs with the `PNG` decoder in `playwright-core/lib/utilsBundle.js` (loaded by file path, since
+playwright-core's `exports` doesn't list it) and counts pixels whose RGB differs, with the bounding box.
+`--crops <dir>` writes A | B | changed-pixels-in-red per PNG. `--runs N` does the whole measurement: N runs of
+`visual.spec.mjs --update-snapshots=all`, each run's `baselines/linux/` copied aside, the baselines restored from
+a copy taken before the first run (not `git checkout`, so uncommitted baselines survive), then each run vs
+run 1 and run 1 vs the baselines as they were. Arguments after `--` go to Playwright (`-- spec.mjs --workers=4`
+runs the whole suite as load while still writing only the screenshots). It's a plain `.mjs`, matched by neither
+config (`*.spec.mjs`, compare-css's `*.tool.mjs`), so `npx playwright test` and `npm run check` don't run it.
+
+**Measured on main before changing anything** (`--runs 4`, 2 workers, then `--runs 3` of the full suite at 4
+workers). PNGs that differed between runs of the same code:
+- Light load: phone T-Score tabs 44–120 px every pair of runs (y 340–372, the tab pills; up to y 606, the WR/RB
+  pills), desktop `tscore-top50Tab` 7 px, phone `mds-draft-board` 1 px. MDS desktop and all MLS PNGs were stable.
+- Full-suite load: also phone `mds-draft-board` 86 px (y 8–236), `mds-empty-setup` 56 px, and **MLS** phone
+  `mls-league-scout` 25 px and `mls-league-setup` 46 px. So MLS wasn't immune, just luckier.
+- 7C's 56,654 px on desktop `mds-draft-tracker` did not recur in 7 runs. It is most likely the same mechanism
+  over a bigger area (a whole re-rastered region instead of a few edges), but I couldn't reproduce it to prove it.
+
+**Cause: Chromium's partial raster.** Every differing pixel was on an anti-aliased edge: the round pills' borders,
+the MDS/MLS logo tile's corners, select borders, position badges, dashed borders, never text or layout (crops).
+An experiment in one page showed the mechanism: consecutive full-page screenshots of the same unchanged T-Score tab
+differed (49 px, then 6 px, then stable from the third), while viewport-only shots were identical from the first.
+After a change, Chromium re-rasters only the invalidated rectangle of a tile and keeps the rest; the full-page
+capture's resize and every tab switch invalidate different rectangles, so edges straddling them come out
+slightly different depending on what the page did before. Even the "settled" image depended on history (which
+tabs had been shown, whether earlier shots were taken: 67–165 px apart on phone). `toHaveScreenshot` keeps
+shooting until two shots match *within the tolerance*, so how many shots it took (timing, load) decided which
+variant was saved. Not fonts (Google Fonts is aborted; fallback fonts are local), not animations, not the clock.
+Waiting for `document.fonts.ready` or for two byte-identical shots in a row doesn't fix it (tried the second:
+still history-dependent).
+
+**Fix:** `visual.spec.mjs` launches its browser with `--disable-partial-raster` (`test.use({ launchOptions })`,
+the only spec that takes screenshots, so no other spec's browser changes). Every tile is then re-rastered whole:
+the first shot is already stable and the same whatever the page did before. `--run-all-compositor-stages-before-draw`
+and `--disable-gpu-compositing` were tried and don't help on their own. The page renders the same for users;
+this only changes how the test browser rasterizes.
+
+**Proof:** after the fix, `--runs 5` (2 workers) and then `--runs 3` of the full suite at 4 workers: all 40 PNGs
+pixel-identical in every run, and the two sets identical to each other: 8 runs in a row under two loads.
+
+**Re-taken baselines (28), all from those runs.** Full raster draws a few edge pixels differently from what partial
+raster happened to leave, so every PNG whose pixels differ from the committed one was re-taken, including 11 MLS
+PNGs, which a run showed differ (card: "MLS baselines, unless a run shows they differ"). 12 PNGs were already
+identical and weren't touched (desktop `mds-empty-setup/team/board/guide`, `mds-draft-board/team`,
+`mls-league-*` ×5, `tscore-researchTab`). Pixels changed (RGB), and the largest per-channel change out of 255:
+
+| PNG | desktop | phone |
+|---|---|---|
+| `mds-draft-tracker` | 91 px (2) | 239 px (17) |
+| `mds-draft-board` | — | 86 px (4) |
+| `mds-draft-team` | — | 90 px (4) |
+| `mds-empty-tracker` | 1 px (1) | 78 px (4) |
+| `mds-empty-board` | — | 85 px (4) |
+| `mds-empty-guide` | — | 77 px (4) |
+| `mds-empty-setup` | — | 97 px (4) |
+| `mds-empty-team` | — | 162 px (19) |
+| `mls-empty-setup` | 11 px (5) | 52 px (5) |
+| `mls-league-guide` | — | 56 px (7) |
+| `mls-league-lineup` | — | 42 px (4) |
+| `mls-league-roster` | — | 42 px (4) |
+| `mls-league-scout` | — | 81 px (4) |
+| `mls-league-setup` | — | 46 px (4) |
+| `tscore-avoidsTab` | 18 px (1) | 179 px (1) |
+| `tscore-researchTab` | — | 49 px (4) |
+| `tscore-sleepersTab` | 19 px (1) | 234 px (4) |
+| `tscore-tab-2024` | 25 px (1) | 228 px (4) |
+| `tscore-top50Tab` | 10 px (1) | 176 px (4) |
+| `tscore-valuesTab` | 19 px (1) | 222 px (4) |
+
+Why: rendering is now repeatable, and these were the partial-raster variants. By eye, in side-by-side crops
+(desktop `mds-draft-tracker`, `mds-empty-tracker`, `mls-empty-setup`, `tscore-tab-2024`; phone `mds-draft-tracker`,
+`mds-empty-team`, `mls-league-scout`, `tscore-sleepersTab`, `tscore-valuesTab`), plus the per-channel maximum for all
+28: only anti-aliased edges moved (logo tile corners, pill/badge/select borders, dashed borders, the translucent
+bottom nav's icons), by at most 19/255 and mostly 1–5. No text, colour or layout change.
+
+**Tolerance (as reported to the owner; the decision follows).** Today `maxDiffPixelRatio: 0.002` lets a change through if it touches
+under 0.2% of a PNG's pixels: 658 px on the smallest (phone `mds-empty-board`/`-tracker`, 390×844), 2,304 px on a
+desktop viewport, up to 10,560 px on the tallest (desktop `mls-league-guide`). On top of that Playwright's default
+per-pixel `threshold: 0.2` ignores any pixel whose colour change is under about 20% of the maximum (YIQ), so a
+faint tint or a 1-px border colour change can pass entirely. With the noise gone, **both could go to zero**
+(`maxDiffPixels: 0` with `threshold: 0`): I ran `visual.spec.mjs` three times and the full suite once at 4 workers
+with exactly that (a temporary config, not committed) and all passed. A real change would then fail at a single
+pixel. The cost: anything that changes Chromium's output (a Playwright upgrade, another OS) needs every PNG
+re-taken at once rather than "most pass anyway". That's already true in practice for text, which moves by more
+than the tolerance. A middle ground is `threshold: 0` with a small `maxDiffPixels` (say 10): faint colour changes
+are caught, and a stray edge pixel is forgiven.
+
+**Owner's decision (after review, same branch): the middle ground, `threshold: 0` with `maxDiffPixels: 10`.**
+`playwright.config.mjs` now has that in place of `maxDiffPixelRatio: 0.002` (and the default threshold 0.2).
+Checked: `visual.spec.mjs` three times and the full suite once at 4 workers, all pass. Sensitivity, on a copy of
+desktop `tscore-researchTab` (1280×1061): 11 pixels in a flat area nudged by 1/255 in red fail ("11 pixels …
+are different"), 10 pass. Before, about 2,700 such pixels would have passed on that page, and the threshold
+ignored a change that faint entirely. One caveat: Playwright's pixelmatch skips pixels it detects as
+anti-aliasing (`includeAA` is off, and Playwright doesn't expose it), so a change confined to shape edges can
+still go uncounted, as it could before; `npm run pxdiff` counts those.
+
+**Docs.** "How to run the checks" lists `npm run pxdiff`; "Accepting an intended visual change" no longer says
+some baselines drift, and says `npm run pxdiff -- --runs 1` lists exactly the PNGs a change touches; "How the
+tests work" mentions the launch flag.
+
+**Checks run.** `node scripts/check-precache.mjs` OK (109 precached). `node --test` 197/197. `cd tests && npx playwright test`
+100/100 with the re-taken baselines (and at 4 workers during the proof runs).
+
+**Left for later.**
+- If a spec other than `visual.spec.mjs` ever takes screenshots, give it the same launch flag (or move the
+  flag into `playwright.config.mjs` `use.launchOptions`; it doesn't affect the other specs' assertions).
+- Not reproduced: 7C's 56,654 px desktop `mds-draft-tracker`. If a run ever shows a difference again,
+  `npm run pxdiff -- --runs 3 --crops <dir>` gives the crops to start from.
