@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The bye-week warning on the Team tab uses a warning icon** instead of the ⚠️ emoji, so it looks the same on
+  every device and matches the rest of the site.
 - **Rankings and ADP say how old they are.** The status line in Load Rankings reads "Loaded: 220 players • Updated
   3 days ago" instead of a fixed date, and turns amber with "consider refreshing" after 14 days. The ADP line reads
   "FFC: Redraft - 1QB (PPR) • Fetched today" and turns amber with "fetch again before you draft" after 3 days.
@@ -58,6 +60,7 @@ What changed for users in each version of the two apps, in plain language. Newes
   each position side by side, one position or FLEX shows 15 at a time with Show 15 more, and "Starts" marks anyone
   who'd make your lineup this week. It redraws when you come back to the Scout tab after uploading rankings or
   syncing, and when you switch leagues. In a manual league it lists players not on your roster and says so.
+- **No emoji in the "Lineup Optimized!" message** at the end of setup.
 
 ### v2.14.0 — 2026-10-05
 

@@ -533,7 +533,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         if (isManualAction) {
             let hasOptimizedBefore = localStorage.getItem(KEYS.mls.hasOptimized);
             if (!hasOptimizedBefore) {
-                showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
+                showToast("Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
                 localStorage.setItem(KEYS.mls.hasOptimized, 'true');
             } else {
                 showToast("Optimal lineup set");

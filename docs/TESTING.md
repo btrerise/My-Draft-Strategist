@@ -166,7 +166,8 @@ something looks:
 - **Icons are SVG, never emoji** (owner's rule, improvements S1): any icon users see is an inline `<svg
   aria-hidden="true">` drawn with `stroke="currentColor"` (the existing icons are Feather-style, 24×24 viewBox), so it
   follows the theme and renders the same on every OS. Plain text symbols already used as glyphs (✕ on close buttons, ★)
-  are fine; emoji (🔥, 🎉, 🔴) are not. A few older emoji remain; `docs/improvements/LOG.md` lists them.
+  are fine; emoji (🔥, 🎉, 🔴) are not. `tests/unit/noEmoji.test.mjs` scans every served file (pages, `js/`, `css/`,
+  `functions/`, comments included) for characters that render as emoji and fails naming the file and line.
 - **User-visible changes** (8A): add a plain-language line under the app's **Unreleased** section in
   `CHANGELOG.md`. Bumping an app's footer version (the `APP VERSION` comment in `index.html` or
   `lineup/index.html`) turns those lines into that version's entry.

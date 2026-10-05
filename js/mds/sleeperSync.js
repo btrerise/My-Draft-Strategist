@@ -397,7 +397,7 @@ import { showToast } from '../shared/ui/toast.js';
             console.error(err);
 
             // Every branch below is gated on !isSilent, so a failed tick of the 3s live-draft
-            // poll used to be a console.error and nothing else: the 🔴 LIVE pill kept pulsing
+            // poll used to be a console.error and nothing else: the red LIVE pill kept pulsing
             // while the board silently stopped updating -- a false "I'm live" signal at the
             // worst possible moment. Count the misses instead, and let the pill flip to amber
             // "LIVE · stalled" with the last good sync time once there have been enough of

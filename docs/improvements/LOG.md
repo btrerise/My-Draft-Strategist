@@ -8,7 +8,8 @@ history of the module-structure refactor.
 
 - **Icons are SVG, never emoji** (set during S1). Anything users see uses an inline `<svg aria-hidden="true">` with
   `stroke="currentColor"`, Feather-style like the rest of the site. Recorded in `CLAUDE.md` ("Rules that bite") and
-  `docs/TESTING.md` (Conventions). Plain text glyphs already in use (✕, ★) are fine.
+  `docs/TESTING.md` (Conventions). Plain text glyphs already in use (✕, ★) are fine. Enforced by
+  `tests/unit/noEmoji.test.mjs`, which scans every served file and fails naming the file and line.
 
 ## S1 — Top available players in your league
 
@@ -115,15 +116,25 @@ state, since the seeded screenshot league has no rankings.
 **Left over.**
 - Check a List hides the position chips, but its Whole Roster verdict still reads the Position setting (FLEX groups
   RB/WR/TE together; anything else compares within the player's own position), as it did when the dropdown was visible.
-- **Older emoji to replace with SVG** (found while recording the icons rule; a small polish card):
-  - `js/mls/render/lineup.js:536`: the "🎉 Lineup Optimized!" toast at the end of the setup flow.
-  - `js/mds/team.js:118`: the "⚠️ WARNING" bye-week banner in Draft Strategist.
-  - `js/mds/sleeperSync.js:400`: 🔴 appears only in a code comment; the LIVE pill itself is CSS.
-- Proposed follow-up cards S5 and S6 below. They aren't on the runbook page yet.
+- Follow-up cards S5 and S6 below; both are on the runbook page too (added in this session, Needs: S1).
 
-### Proposed card S5 — Best available in every league (Dashboard)
+### S1 extra: the last emoji replaced (owner's request after the icons rule)
 
-The owner liked this in S1's discussion. Not built.
+Found while recording the icons rule; fixed in this session at the owner's request.
+- **Lineup Strategist** (`js/mls/render/lineup.js`): the first Optimize Lineup toast read "🎉 Lineup Optimized! …".
+  Toasts are set with `textContent` (`js/shared/ui/toast.js`), so they can't hold an SVG; the emoji is dropped and the
+  words are unchanged.
+- **Draft Strategist** (`js/mds/team.js`): the Team tab's bye-week banner ("⚠️ WARNING: You have 3 starting players on
+  Bye in Week 8!") now starts with a Feather `alert-triangle` SVG in the banner's own color. It only shows with Bye
+  Week Warnings on (off by default), so no screenshot changed.
+- `js/mds/sleeperSync.js`: a code comment said "🔴 LIVE pill"; now "red LIVE pill".
+- **Tests, failing first:** `tests/unit/noEmoji.test.mjs` (the scan; it listed exactly these three lines before the
+  fix) and `tests/svg-icons.spec.mjs` (the toast's text, and the banner's SVG and text, both widths).
+- CHANGELOG lines under both apps' Unreleased.
+
+### Card S5 — Best available in every league (Dashboard)
+
+The owner liked this in S1's discussion. Not built; on the runbook as S5 (Needs: S1).
 - A "Best available in your leagues" card under the League Command Center, rather than a column in its table (already
   four columns, scrolling inside 400px, cramped on phones).
 - One line per league: its top 3 available by **that league's own assigned rankings** (Weekly, else ROS), for example
@@ -139,9 +150,9 @@ The owner liked this in S1's discussion. Not built.
   different rankings has no single order.
 - Tests: two fixture leagues (one manual), each with its own set; the per-league lines and View.
 
-### Proposed card S6 — Sleeper trending adds
+### Card S6 — Sleeper trending adds
 
-The owner liked this in S1's discussion. Not built. **Icons must be SVG** (owner's rule above).
+The owner liked this in S1's discussion. Not built; on the runbook as S6 (Needs: S1). **Icons must be SVG** (owner's rule above).
 - **Source:** Sleeper's public `GET https://api.sleeper.app/v1/players/nfl/trending/add?lookback_hours=24&limit=50`
   (`[{ player_id, count }]`, no auth). Add it to `js/shared/api/sleeper.js` and cache it for about an hour.
 - **Tests:** add the route to `SLEEPER_FIXTURES` and a file in `make-fixtures.mjs`. The MLS sync test fails on any
