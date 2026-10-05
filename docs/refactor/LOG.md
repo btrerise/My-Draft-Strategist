@@ -5421,22 +5421,32 @@ The owner asked for the root cause, since several chunks had reported MDS screen
   130/130.
 - **For later specs:** if a spec takes screenshots outside `shot()`, park the mouse first.
 
-### Planned as runbook chunk 10A — Wrap-up (owner's request, recorded after 8D)
+### Planned as runbook chunks 10A and 10B — Wrap-up (owner's request, recorded after 8D)
 
-After 8D only 6C is left (not before 2026-10-17). The owner asked whether anything cleans up after the refactor. The
-answer: keep the tests, and add one last card, **10A (needs 6C; runs last and alone)**:
+After 8D only 6C is left (not before 2026-10-17). The owner asked whether anything cleans up after the refactor.
+The answer: keep the tests, and wrap up in two cards. The owner wants to keep updating the apps before 6C, so the
+parts that don't depend on 6C come first and give those updates a safety net.
+
+**10A, now (needs 8D; can run alongside 6C; best before the next app update):**
 
 1. **CI:** `.github/workflows/check.yml` runs `npm run check` on pull requests and pushes to main. The repo has no CI
    today, so the checks only run when a session runs them. The risk is screenshots: CI's Chromium may render the
    baselines differently from the cloud sessions' Chromium, and the check counts every changed pixel. If it does,
    the owner picks how to handle it (pin Playwright, a Docker image with re-taken baselines, or no screenshots in CI).
    The tolerance stays as it is.
-2. **Docs:** `docs/TESTING.md` from this log's lasting sections, plus a short root `CLAUDE.md` pointing to it. This
-   log stays as the history, with a note at its top.
-3. **Refactor-only leftovers:** `tests/tools/pre9a-snapshot.tool.mjs`, `callApp`'s pre-5D `window[fn]` fallback, and
-   anything 6C says can go. App code that only bridged old installs (for example the `KEYS.shared.sleeperLeagueId`
-   cleanup in js/mls/init.js) is listed for the owner, not deleted.
+2. **Docs:** `docs/TESTING.md` from this log's lasting sections, plus a short root `CLAUDE.md` pointing to it (with a
+   "6C is pending" line until 10B).
+3. **Test-only leftovers:** `tests/tools/pre9a-snapshot.tool.mjs` and `callApp`'s pre-5D `window[fn]` fallback.
 4. **What the public site serves:** Cloudflare Pages publishes tests/, docs/ and scripts/ (Known gaps, above). The
    owner chooses between leaving it and a small build step plus a Cloudflare setting they change themselves.
+
+**10B, after 6C and 10A (~5k tokens):** delete what 6C says can go; list, for the owner, the app code that only
+bridged old installs (for example the `KEYS.shared.sleeperLeagueId` cleanup in js/mls/init.js, plus anything 6C
+adds), without deleting it; update TESTING.md and CLAUDE.md for 6C; add the "refactor finished" note at the top of
+this log.
+
+**App updates before 6C** are fine as long as they don't rename or remove storage keys or touch the key-migration
+code (js/shared/storage/keyMigration.js and its tests), and any new key goes through `keys.js` with its app's prefix.
+Merge PR #175 first: it has the screenshot fix (8D, "Screenshot flake").
 
 The runbook also has a link after every phase back to "Order and parallel tracks" (owner's request).
