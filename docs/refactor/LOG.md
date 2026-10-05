@@ -106,8 +106,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   SoS grid's file upload in all three file shapes) and 4 MLS bye-week tests (`mls-byes.spec.mjs`, 7C: Sleeper's
   week stubbed to 5, BYE badges and the optimizer, and the open Roster/Lineup tab when Sleeper's week answers late) and 3
   name-lookup tests (`mls-player-lookup.spec.mjs`, 9C: the simulator's "Josh Allen" with a namesake guard in the player map,
-  every name lookup agreeing on shared names, and a rostered two-way player starting at WR). `backup.spec.mjs` has 4 tests since 6B (round trip and a
-  pre-6B backup file, per app). Each runs at both widths: 106 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  every name lookup agreeing on shared names, and a rostered two-way player starting at WR) and 5 MDS setup-guidance tests
+  (`mds-setup.spec.mjs`, 8A: the Setup Progress checklist and pulse cues as setup fills in, and the "Show me" links, each with
+  reduced motion off and on; the guide banner staying dismissed per app). `backup.spec.mjs` has 4 tests since 6B (round trip and a
+  pre-6B backup file, per app). Each runs at both widths: 116 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -4878,3 +4880,134 @@ With no team (every entry for the name is teamless):
 **Checks run.** `node scripts/check-precache.mjs` OK (109 precached). `node --test` 208/208 (11 new).
 `cd tests && npx playwright test` 106/106 (6 new: 3 tests × 2 widths), screenshots unchanged. `CACHE_NAME` v2.8.68 →
 v2.8.69 (one bump for the whole branch, which isn't on main yet; no file added to or removed from the pages).
+
+### 8A — Draft Strategist setup guidance: pulse cues, setup checklist, danger card (behavior change: visible on Draft Strategist only)
+
+7B was confirmed merged to main first. Started from the 4C findings (features 2, 3, 5 and 6), the 4D entry and
+"Planned as runbook chunks 4E and 8A–8C". This chunk builds only what the owner marked "build" there: the pulse cues,
+the setup checklist, the Danger Zone style on Reset Controls, and the guide-banner fix folded in after 6B. The blue
+info banner is "not yet", so no MDS message uses it and **no storage key was added**. `CACHE_NAME` v2.8.69 → v2.8.70.
+
+#### Owner's decisions (asked before building)
+
+| Question | Owner's decision |
+|---|---|
+| Which steps, and when each is done | **3 steps.** *Load rankings*: the active draft has players loaded (Quick-Start, upload or paste). *Add or sync your draft*: the active draft is one you added (synced from Sleeper or Create Manual Draft), not the built-in "Main Draft" (`draft_default`) every new user starts on. *Load ADP (market value)*: any player in the pool has an ADP (Quick-Start, Fetch Market Value, the manual paste, or an ADP column in the file; the import writes `-` for none). Roster Limits and Call Outs aren't listed: they have working defaults or are optional. |
+| What pulses, and when | **The next card and the logo.** The card of the first unfinished step gets `.pulse-border`; it moves on as each step is done and stops when all three are. The logo gets `.nav-pulse` while no rankings are loaded and another tab is open (MLS does the same for leagues). No `.btn-pulse`. |
+| When all steps are done | **Hide the checklist**, as MLS does. It comes back if a step becomes undone (for example, switching to a draft with nothing set up). |
+
+#### What changed
+
+- **`js/shared/ui/setupChecklist.js` (new, pure):** the generic parts of MLS's `renderSetupStep` and `goToSetupStep`
+  (`js/mls/init.js`). `renderSetupStep(li, { done, label, how, goLabel, goClass, goData, onGo })` builds a step's
+  `<li>` (mark, sr-only status, label, how-to, jump button); `goData` sets `data-*` attributes (MDS's `data-action`),
+  `onGo` adds a click listener (MLS, unchanged). `scrollToCard(card, focusEl)` is the reduced-motion-aware scroll and
+  the focus. The lines were taken from MLS's functions, with `cfg`/`text` turned into parameters.
+- **MLS switched to it, no visible change:** `renderSetupStep(id, step, …)` in `js/mls/init.js` is now a wrapper that
+  works out the jump label (`Show me ↓` / `Go to <tab> tab →`) and passes `goClass: 'mls-btn-sm'` and `onGo`;
+  `goToSetupStep` ends in `scrollToCard(…)`. MLS's steps, pulse rules and markup are unchanged.
+- **`js/mds/setupGuide.js` (new):** `getSetupState()` (the three done states from `State`), `updateSetupGuidance()`
+  (fills the checklist, toggles the pulses) and `goToSetupStep(step)` (switches to Setup if needed, then
+  `scrollToCard`). Focus goes to Quick-Start (`#quickStartBtn`, new id), `#sleeperUsername` (where the how-to starts;
+  the card's first field is the optional nickname) and `#adpFormatSelect`. The ADP step has no how-to or link until
+  rankings are loaded, because Fetch Market Value needs a pool (as MLS does for steps that can't be acted on yet).
+- **Where it's called:** first line of `renderBoard()` (`js/mds/tracker.js`, before its empty-pool early return): every
+  change to the rankings, the active draft or the ADP already ends in a `renderBoard`. `showTab()` (`js/mds/ui.js`)
+  calls it on the tabs that don't render the board (Setup, Guide), for the logo pulse. Startup (`js/mds/init.js`)
+  calls it when the pool is empty, since `renderBoard` only runs at startup with players.
+- **Handlers:** the "Show me ↓" links carry `data-action="goToSetupStep" data-step="…"`, handled in
+  `js/mds/main.js`'s `clickActions` (the checklist is inside `#main`).
+- **`index.html`:** the `#setupChecklist` section (same markup and classes as MLS's; ids `setupStepRankings`,
+  `setupStepDraft`, `setupStepAdp`) right under the guide banner, above the install card and step 1; ids
+  `setupRankingsCard`, `setupDraftCard`, `setupAdpCard` on cards 1–3. **Reset Controls** is now
+  `settings-card danger-card`, its title wrapped in `.text-danger`, like MLS's Global Injury Auditor card (4C: "red
+  dashed border and red title"). `.settings-card` comes earlier in base.css, so `.danger-card` wins without a new rule.
+- **CSS:** `css/mds.css` LIVE INDICATOR: `scroll-margin-top: 5.5rem` on the three card ids (MLS's own rule names its
+  ids). `css/base.css`: `.setup-checklist .setup-step-go` gains `padding: 0.25rem 0.6rem` (below).
+- **Guide banner (fix approved after 6B):** `js/shared/ui/banners.js` hides `#guideBanner` on load by the key its own
+  ✕ writes: `KEYS.mls.hideGuideBanner` on `/lineup/`, `KEYS.mds.hideGuideBanner` elsewhere. MLS's staggered reveal
+  of `#draftBanner` is unchanged.
+- **Load order (3E/3F rule):** `setupGuide.js` is first imported by `tracker.js`, inside `state.js`'s import subtree.
+  It imports `state.js` and `main.js` (both already mid-evaluation) and `setupChecklist.js`, so only the two new
+  modules join the evaluation order; neither has load-time side effects. `showTab` comes from `main.js` (already
+  exported there), since `ui.js` evaluates later. `ui.js` and `init.js` import `setupGuide.js` directly (it has
+  evaluated by then).
+- `sw.js`: both new files in PRECACHE_ASSETS. README's tree names them.
+
+#### The jump link's class (no renames)
+
+MLS's link is `mls-btn-sm btn-link-inline setup-step-go`. MDS's is `btn-sm btn-link-inline setup-step-go`: `.btn-sm`
+(base.css) is the neutral small-button class both apps already use (T-Score's back link, the feedback form, MLS's
+league reorder buttons). On MLS, `.mls-btn-sm`'s padding (0.25rem 0.6rem) wins over `.btn-link-inline`'s 0 by order;
+on MDS, `.btn-link-inline` (later in base.css) would win over `.btn-sm`'s, leaving no padding. So the shared
+`.setup-checklist .setup-step-go` now states MLS's padding itself: the same value MLS already computes (compare-css
+below), and MDS's link gets it too. Every other property already matched. No class was renamed.
+
+#### User-visible difference (Draft Strategist only)
+
+- **Setup tab:** a "Setup Progress · N of 3 done" box under the guide banner lists Load rankings / Add or sync your
+  draft / Load ADP with ✓ or —, one sentence of instructions and a "Show me ↓" link on each step you can do now. The
+  link scrolls to the card (a jump with reduced motion on) and focuses its first control. Done steps say what's in
+  place ("Rankings loaded (24 players)", "Draft added: <name>", "ADP loaded"). The box disappears once all three are done.
+- **Pulses:** the next step's card has a pulsing green border (a steady green border and glow with reduced motion
+  on). The logo pulses while no rankings are loaded and you're on Tracker, Team, Board or Guide.
+- **Reset Controls** has the red dashed Danger Zone border and a red title.
+- **Guide banner:** dismissing it on Draft Strategist now sticks after a reload. Side effect: someone who dismissed
+  only Lineup Strategist's guide banner sees Draft Strategist's again until they dismiss it there.
+- A returning user mid-draft on the built-in "Main Draft" sees the checklist at "2 of 3" (or less) with the Add / Sync
+  Draft card pulsing, since that step is about adding a draft of their own (the owner's done rule).
+
+#### Tests: `tests/mds-setup.spec.mjs` (5 tests × 2 widths)
+
+- With reduced motion off and on (through `contextOptions: { reducedMotion }`: this Playwright version ignores a
+  top-level `reducedMotion` in `test.use`, and each test asserts the media query really matches):
+  - **The checklist and pulses as setup fills in:** fresh page (0 of 3, rankings card pulsing, ADP without a link, logo
+    pulsing on Tracker and Guide but not on Setup); paste rankings (1 of 3, draft card pulsing, no logo pulse); Create
+    Manual Draft named `Mock <b>One</b>` (2 of 3, shown as text; ADP card pulsing); manual ADP paste (checklist hidden,
+    nothing pulsing); reload (still hidden); switch back to "Main Draft" (1 of 3, draft card pulsing). Each pulse check
+    reads the computed style: `border-pulse-anim` / `nav-pulse-anim`, or `none` plus the static glow when reduced.
+  - **"Show me" links:** rankings → `#quickStartBtn` focused; draft (after scrolling to the top) → `#sleeperUsername`;
+    ADP (after loading rankings) → `#adpFormatSelect`; each card's top ends up on screen.
+- **Guide banner:** dismissed on `/`, stays hidden after a reload; `/lineup/`'s still shows and stays dismissed by its
+  own key; with only MLS's dismissed, MDS's shows.
+
+#### Screenshots
+
+Accepted (`--update-snapshots=changed`, visual spec only): **`mds-empty-setup` at both widths**, and nothing else.
+`npm run pxdiff -- --runs 1` listed only those two (sizes 1280×3913 → 1280×4141 and 390×4082 → 390×4384: the
+checklist box adds height, so every pixel below it moves). Checked by eye: the checklist (0 of 3, two "Show me ↓"
+links, ADP greyed out) matches MLS's box; Reset Controls is red-dashed with a red title. The pulse itself isn't
+visible: screenshots disable animations. `mds-draft-*` don't show the Setup tab, so they're unchanged. MLS and T-Score
+PNGs unchanged.
+
+One full-suite run (before the two PNGs were accepted) also failed phone `mds-draft-tracker` once. It didn't repeat:
+two more full runs passed, and `npm run pxdiff -- --runs 3` (4 workers) gave pixel-identical PNGs in every run,
+identical to the committed baselines. That run's diff image was overwritten before I could look at it, so the cause
+is unknown. If it shows up again, keep the `test-results/` folder.
+
+#### compare-css (vs `origin/main` at `c0ee7fe`, all 28 runs)
+
+- **MLS (empty, synced league, with rankings, handoff banner) and T-Score: 0 differences** in all 20 runs, both widths,
+  reduced motion on and off. So the switch to the shared builder and the extra padding line change nothing MLS
+  computes.
+- **MDS: differences in all 8 runs**, as intended (about 4,670 per empty-state run and 5,500 per mid-draft run). The tool
+  keys elements by tag and position, so the checklist section inserted near the top of `#setupTab` shifts every later
+  element's key; the counts mostly come from that shift, not from restyling. The real changes are the ones listed
+  under "User-visible difference".
+
+#### Checks run
+
+- `cd tests && npm run check`: check-precache OK (111 precached), `node --test` 208 pass / 0 fail, Playwright
+  **116/116** (106 + 10 new), with the two accepted `mds-empty-setup` PNGs.
+- `npm run pxdiff -- --runs 3 -- --workers=4`: all 40 PNGs pixel-identical across runs and with the baselines.
+- `npm run compare-css`: as above.
+
+#### Left for later
+
+- **8D:** Phase 8's new markup used none of the unused spacing helpers (`.gap-1`, `.gap-3`, `.stack-*`, `.cluster-*`,
+  `.mt-0`, `.pl-6`).
+- **Info banner:** still "not yet" (owner's decision after 4D). A dismissible one would need a key in `keys.js`.
+- **For the owner:** the visible version label (Draft Strategist v2.6 in the footer) wasn't bumped. 4E left both labels
+  alone for style fixes; this chunk adds a feature, so say if you want it bumped.
+- 8B adds freshness labels next to the rankings and ADP lines. `getSetupState()` in `js/mds/setupGuide.js` is the
+  place to read done states from, if 8B wants the checklist to mention stale data.

@@ -651,6 +651,14 @@
     }
 }
 
+/* goToSetupStep (js/mds/setupGuide.js, 8A) scrolls these into view; clear the sticky .header so the
+   card title shows. Lineup Strategist's own cards have the same rule in css/mls.css. */
+#setupRankingsCard,
+#setupDraftCard,
+#setupAdpCard {
+    scroll-margin-top: 5.5rem;
+}
+
 /* --- MODERNIZED FILE UPLOAD BUTTON --- */
 @media (max-width: 480px) {
     .limits-table th, 

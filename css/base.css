@@ -1985,9 +1985,13 @@ a.nav-btn,
     line-height: 1.45;
     color: var(--text-muted);
 }
+/* The jump link is `mls-btn-sm btn-link-inline setup-step-go` on Lineup Strategist and
+   `btn-sm btn-link-inline setup-step-go` on Draft Strategist (8A). The padding is .mls-btn-sm's,
+   which already wins over .btn-link-inline's 0 on MLS; stating it here gives MDS the same link. */
 .setup-checklist .setup-step-go {
     font-size: 0.8rem;
     font-weight: 600;
+    padding: 0.25rem 0.6rem;
 }
 
 /* --- TABLE HEADER TOOLTIP FIXES --- */

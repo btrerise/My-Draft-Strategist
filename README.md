@@ -36,13 +36,15 @@ js/
     storage/             keys.js (the only place a storage key is spelled), keyMigration.js (pre-6B key
                          names to current ones), idb.js (IndexedDB)
     ui/                  Toasts, confirm dialog, focus trap, tooltips, banners, file drop, script loader,
-                         data-action event delegation (delegate.js) and other small helpers
+                         data-action event delegation (delegate.js), the setup checklist's step builder
+                         (setupChecklist.js) and other small helpers
     data/tscore.js       Bundled T-Score data (imported by mds/tracker.js)
     data/byes.js         NFL bye weeks by season, both apps (written by scripts/update-byes.mjs)
   mds/                   Draft Strategist. main.js is the entry point (data-action delegation, and
                          exportMdsSettings on window for boot.js); init.js sets the module load order and runs startup.
                          One module per area: state, storage, import, market, sleeperSync, tracker,
-                         board, team, recap, export, handoff, backup, settings, and so on
+                         board, team, recap, export, handoff, backup, settings, setupGuide (the Setup
+                         tab's checklist and pulse cues), and so on
   mls/                   Lineup Strategist. main.js is the entry point (data-action delegation, and
                          exportMlsSettings on window for boot.js) and its import list sets the load order. Top-level
                          modules (state, helpers, nav, init, backup, settings, players, sos, shortcuts...)
