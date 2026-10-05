@@ -5,6 +5,7 @@ import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
 import { escapeHtml } from '../shared/html.js';
 import { State } from './state.js';
 import { normalizeName } from '../shared/names.js';
+import { FANTASY_POSITIONS, fantasyPosition } from './constants.js';
 import { showToast } from '../shared/ui/toast.js';
 import { runScout } from './main.js';
 
@@ -22,12 +23,13 @@ function getPlayerSearchIndex() {
     if (_playerSearchIndexPromise) return _playerSearchIndexPromise;
     _playerSearchIndexPromise = getSleeperPlayerMap().then(map => {
         _playerSearchIndexErrorShown = false;
-        const FANTASY_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
         const index = [];
         Object.values(map).forEach(p => {
-            if (!p.first_name || !FANTASY_POS.includes(p.position)) return;
+            // fantasyPosition (constants.js): Travis Hunter is listed DB but scored at WR (9C).
+            const pos = fantasyPosition(p);
+            if (!p.first_name || !FANTASY_POSITIONS.includes(pos)) return;
             const name = `${p.first_name} ${p.last_name}`.trim();
-            index.push({ name, pos: p.position, team: p.team || 'FA', searchKey: name.toLowerCase() });
+            index.push({ name, pos, team: p.team || 'FA', searchKey: name.toLowerCase() });
         });
         return index;
     }).catch(err => {
@@ -49,6 +51,30 @@ function getPlayerSearchIndex() {
 // this app only has a player by NAME (a rankings file, market data, the autocomplete result
 // above) needs their Sleeper id to pull real weekly score history from. Waiver Insights'
 // free-agent candidates and the standalone player-lookup search both go through this.
+//
+// Which entry wins when several share a clean name (refactor 9C). Sleeper's ids are numeric
+// strings, so the map's order is oldest first, and keeping the first entry is how "Josh Allen" used
+// to find a retired guard instead of the Bills QB. Every name this app looks up comes from a fantasy
+// context (rankings files, the fantasy-only autocomplete), so an entry beats the kept one if it's
+// strictly better on, in order: a fantasy position (fantasyPosition in constants.js is
+// QB/RB/WR/TE/K/DEF: `position` is one, or `fantasy_positions` holds one); an NFL team; a lower
+// search_rank. A full tie keeps the first entry.
+// getCleanNameToIdIndex, sleeperPosByName below and getSleeperMetaByName (scout/waivers.js) all use
+// this, so for any name they agree on one player.
+function sleeperEntryRank(p) {
+    const fantasy = FANTASY_POSITIONS.includes(fantasyPosition(p));
+    const searchRank = Number.isFinite(p.search_rank) ? p.search_rank : Infinity;
+    return [fantasy ? 0 : 1, p.team ? 0 : 1, searchRank];
+}
+export function isPreferredSleeperEntry(candidate, kept) {
+    const a = sleeperEntryRank(candidate);
+    const b = sleeperEntryRank(kept);
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return a[i] < b[i];
+    }
+    return false;
+}
+
 let _cleanNameToIdPromise = null;
 export function getCleanNameToIdIndex() {
     if (_cleanNameToIdPromise) return _cleanNameToIdPromise;
@@ -57,9 +83,7 @@ export function getCleanNameToIdIndex() {
         Object.entries(map).forEach(([id, p]) => {
             if (!p.first_name) return;
             const clean = normalizeName(`${p.first_name} ${p.last_name}`);
-            // First match wins on a rare exact-name collision -- not worth a disambiguation
-            // UI for how infrequently two active, fantasy-relevant players share one name.
-            if (!index[clean]) index[clean] = id;
+            if (!index[clean] || isPreferredSleeperEntry(p, map[index[clean]])) index[clean] = id;
         });
         return index;
     }).catch(err => {
@@ -81,12 +105,17 @@ export async function ensureSleeperPosByName() {
     if (sleeperPosByName) return;
     try {
         let map = await getSleeperPlayerMap();
-        sleeperPosByName = {};
+        // The same entry getCleanNameToIdIndex picks for each name (since 9C; before, the last
+        // entry in the map won, so the two could name different players).
+        const kept = {};
         Object.values(map).forEach(p => {
-            if (p.first_name) {
-                sleeperPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = p.position || "UNK";
-            }
+            if (!p.first_name) return;
+            const clean = normalizeName(`${p.first_name} ${p.last_name}`);
+            if (!kept[clean] || isPreferredSleeperEntry(p, kept[clean])) kept[clean] = p;
         });
+        sleeperPosByName = {};
+        // The fantasy position (constants.js), so Travis Hunter reads as WR, not DB (9C).
+        Object.entries(kept).forEach(([clean, p]) => { sleeperPosByName[clean] = fantasyPosition(p) || "UNK"; });
     } catch (e) {
         console.warn("Could not fetch Sleeper player map for player positions.");
     }

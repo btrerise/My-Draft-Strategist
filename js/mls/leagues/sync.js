@@ -6,7 +6,7 @@
 import { getSleeperLeague, getSleeperLeagueRosters, getSleeperLeagueUsers, getSleeperPlayerMap, getSleeperUser } from '../../shared/api/sleeper.js';
 import { clearSimResults } from '../sim/ui.js';
 import { escapeHtml } from '../../shared/html.js';
-import { RANKING_TYPE_CONFIG } from '../constants.js';
+import { RANKING_TYPE_CONFIG, fantasyPosition } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, HARD_OUT_STATUSES, isBestBallLeague } from '../helpers.js';
 import { updatePulsePrompts } from '../init.js';
@@ -545,7 +545,9 @@ import { showToast } from '../../shared/ui/toast.js';
                         if (p) {
                             let clean = normalizeName(`${p.first_name} ${p.last_name}`);
                             globalRosterMap[clean] = ownerName;
-                            globalPosMap[clean] = p.position || "FLEX";
+                            // Fantasy position: a two-way player such as Travis Hunter (listed DB,
+                            // scored at WR) is a WR here, so he can fill a WR/FLEX slot (9C).
+                            globalPosMap[clean] = fantasyPosition(p) || "FLEX";
                         }
                     });
                 }
@@ -566,7 +568,7 @@ import { showToast } from '../../shared/ui/toast.js';
                             id: id,
                             name: `${p.first_name} ${p.last_name}`,
                             cleanName: normalizeName(`${p.first_name} ${p.last_name}`),
-                            pos: p.position || "FLEX",
+                            pos: fantasyPosition(p) || "FLEX",
                             team: p.team || "FA",
                             inj: getShortInjuryStatus(p),
                             isTaxi: taxiIds.has(id)

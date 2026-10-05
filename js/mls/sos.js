@@ -1,6 +1,6 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3B: SOS ENGINE.
 import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
-import { NFL_TEAMS } from './constants.js';
+import { NFL_TEAMS, fantasyPosition } from './constants.js';
 import { State } from './state.js';
 import { showStatusFeedback } from './helpers.js';
 import { loadRosterTab, optimizeLineup } from './main.js';
@@ -119,8 +119,9 @@ import { parseSosValue } from '../shared/rankings/parse.js';
                             const map = await getSleeperPlayerMap();
                             const teamPosByName = {};
                             Object.values(map).forEach(p => {
-                                if (p.first_name && p.team && ['QB', 'RB', 'WR', 'TE'].includes(p.position)) {
-                                    teamPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = { team: p.team, pos: p.position };
+                                // fantasyPosition (constants.js): two-way players by the position they're scored at (9C).
+                                if (p.first_name && p.team && ['QB', 'RB', 'WR', 'TE'].includes(fantasyPosition(p))) {
+                                    teamPosByName[normalizeName(`${p.first_name} ${p.last_name}`)] = { team: p.team, pos: fantasyPosition(p) };
                                 }
                             });
 

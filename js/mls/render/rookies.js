@@ -1,6 +1,7 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: ROOKIE LOOKUP (the Roster tab "R" badge).
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { normalizeName } from '../../shared/names.js';
+import { isPreferredSleeperEntry } from '../players.js';
 
     // --- ROOKIE LOOKUP (Roster tab "R" badge) ---
     // Rookie status isn't stored on league.roster -- it comes from Sleeper's years_exp (0 in a
@@ -9,7 +10,8 @@ import { normalizeName } from '../../shared/names.js';
     // rolls over, and so leagues synced before this existed get badges without a re-sync.
     // Matched by Sleeper id first (synced leagues); manual and Draft Strategist handoff rosters
     // carry made-up ids ('p_...'), so those fall back to the normalized name -- on a name
-    // collision preferring the player with an NFL team, like getSleeperMetaByName.
+    // collision the entry the other name lookups pick too (isPreferredSleeperEntry in players.js;
+    // before refactor 9C, the first entry with an NFL team).
     export let _rookieIndex = null;
     let _rookieIndexPromise = null;
     export function getRookieIndex() {
@@ -18,14 +20,18 @@ import { normalizeName } from '../../shared/names.js';
             const rookieIds = new Set();
             const knownIds = new Set();
             const byName = new Map();
+            const byNameEntry = new Map();
             Object.entries(map).forEach(([id, p]) => {
                 knownIds.add(id);
                 const rookie = p.years_exp === 0;
                 if (rookie) rookieIds.add(id);
                 if (!p.first_name) return;
                 const clean = normalizeName(`${p.first_name} ${p.last_name}`);
-                const prev = byName.get(clean);
-                if (!prev || (!prev.team && p.team)) byName.set(clean, { rookie, team: p.team || null });
+                const prev = byNameEntry.get(clean);
+                if (!prev || isPreferredSleeperEntry(p, prev)) {
+                    byNameEntry.set(clean, p);
+                    byName.set(clean, { rookie, team: p.team || null });
+                }
             });
             _rookieIndex = { rookieIds, knownIds, byName };
             return _rookieIndex;
