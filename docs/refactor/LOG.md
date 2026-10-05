@@ -4181,7 +4181,7 @@ the runbook — nflmeta.org" above. 5D and 6B were confirmed merged to main firs
 
 **Outcome: don't use nflmeta.org for anything now.** The owner said no to every nflmeta.org use. The one follow-up
 is a bye-week fix that needs no API key (card 7C below). This research also turned up a name-lookup bug (card 9C
-below, owner's decision pending).
+below, approved by the owner after 7B).
 
 #### How the research was done
 
@@ -4326,8 +4326,8 @@ The runbook's card text is the fuller version; the summaries below give the reas
   KC, not DET/LAC/PHI/TEN; checks pass.
 
 **9C — The name → Sleeper ID index prefers active fantasy players** (behavior change; ~8k tok; needs 9A, because
-9A's #7 decision on `normalizeName` applies here too; can run alongside 7C). **Owner's decision: pending.** Ask
-the owner before starting.
+9A's #7 decision on `normalizeName` applies here too; can run alongside 7C). **Owner's decision: yes** (recorded
+after 7B, 2026-10-05).
 
 - Goal: `getCleanNameToIdIndex` picks the player a user means. On a name shared by several Sleeper entries, prefer
   one with an NFL team, then a fantasy position (`fantasy_positions`), then the best `search_rank`, the way
@@ -4336,3 +4336,29 @@ the owner before starting.
 - Scope: `js/mls/players.js` only, plus a unit test using a small map fixture with each collision listed above.
   Run the old and new index over the live player map and list every name whose ID changes in LOG.
 - Avoid: `normalizeName` itself (9A owns it); the Injury Auditor's and `getSleeperMetaByName`'s own indexes.
+
+### Planned as runbook chunk 6C — Delete the old storage keys (owner's request, recorded after 7B)
+
+6B's "Left for later chunks" planned this release but no card held it. The owner asked for one. Runbook card
+**6C** in Phase 6 does it. It needs 6B and a date: the owner's timing is about two weeks after 6B went live,
+and 6B (`v2.8.64`) merged and deployed on 2026-10-03, so **6C starts no earlier than 2026-10-17.**
+
+**What it does.** Each page deletes the old-name copies of the keys its own `migrateKeyNames` copies, once,
+after the rename has finished (that page's `*_key_names_version` marker is set):
+
+| Page | Old names it deletes | Never deletes |
+|---|---|---|
+| Draft Strategist (`/`) | `ds_*`, `mds_tscore_cache`, `mds_tscore_cache_updated` | `mds_season_*`, `mds_handoff_roster` (MLS copies those) |
+| Lineup Strategist (`/lineup/`) | `mds_season_*`, `mds_handoff_roster` | `ds_*` |
+| T-Score (`/t-score/`) | `mds_tscore_cache`, `mds_tscore_cache_updated` | everything else |
+
+A page never deletes the other app's old keys: someone who hasn't opened Lineup Strategist since before 6B
+still has MLS's data only under the old names, and Lineup Strategist copies it when they next open it. If a
+page's rename was deferred (storage full, marker unset), it deletes nothing and tries again next load.
+
+**Kept permanently:** `LEGACY_KEY_RENAMES`, `renamedKey` and `renameLegacyKeys` (old backup files must
+still restore), and the `isLegacyKey` exclusion in `isMdsOwnedKey`. **Also kept:** the `*OrLegacy` filters
+and boot.js's old-name clauses. 6B said they can go once no browser can hold an old key, which can't be
+known (see above), so 6C keeps them and says so.
+
+**Owner's decision:** build it (recorded after 7B, 2026-10-05). Timing as above.
