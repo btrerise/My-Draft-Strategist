@@ -5023,6 +5023,11 @@ is unknown. If it shows up again, keep the `test-results/` folder.
   number only when the service worker's own behavior changes (as v2.8.0 marked the caching-strategy change). App
   features don't move it, so Phase 8 doesn't call for v2.9.0. The intro of this file and the README tree point at
   the changelog.
+- **Lineup Strategist v2.13.0 → v2.14.0** (owner's decision, same branch): its changelog Unreleased list (the refactor's
+  user-visible MLS changes, which had shipped under the v2.13.0 label) became the v2.14.0 entry. `lineup/index.html`
+  `.app-version` is the only place the label appears. Re-taken: `mls-empty-setup` and `mls-league-setup` at both
+  widths, 55 px each, all inside the changed digit's box (desktop x 703–709, phone x 258–264). This is the one MLS
+  change on this branch users can see; it changes text, not styles.
 
 #### Left for later
 

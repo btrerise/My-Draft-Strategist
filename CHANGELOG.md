@@ -41,6 +41,10 @@ Nothing yet.
 
 ### Unreleased
 
+Nothing yet.
+
+### v2.14.0 — 2026-10-05
+
 - **Bye weeks follow the 2026 schedule.** They were 2024's, wrong for 29 of 32 teams, so BYE badges, the "(##)"
   bye after names, the optimizer and the "on bye this week" waiver verdicts were wrong. Opening the app straight
   onto the Roster or Lineup tab now shows byes as soon as Sleeper answers, without switching tabs.
