@@ -911,29 +911,19 @@ label.toggle-title,
 
 /* --- UTILITIES --- */
 .flex-column { display: flex; flex-direction: column; }
-.gap-1 { gap: var(--space-1); }
 .gap-2 { gap: var(--space-3); }
-.gap-3 { gap: var(--space-4); }
-.mt-0 { margin-top: 0; }
 .mt-2 { margin-top: var(--space-2); }
  /* was referenced (trade-group-header, Save Manual SoS button) but never defined -- those margins were silently no-ops until now */
 .mt-4 { margin-top: var(--space-4); }
 .mb-4 { margin-bottom: var(--space-4); }
-.pl-6 { padding-left: var(--space-6); }
 
 /* --- LAYOUT PRIMITIVES --- */
 /* .stack: vertical rhythm for a run of same-kind items, replacing ad-hoc
    "display:flex; flex-direction:column; gap:0.5rem" inline styles. Pair with a size
-   modifier for the gap -- same xs/sm/md/lg scale as .cluster below, both keyed to the
-   --space-* tokens, so a "sm" gap means the same thing whether the items stack or run
-   horizontally. */
+   modifier for the gap (.stack-sm, further down) -- same size names as .cluster's sm/md,
+   both keyed to the --space-* tokens, so a "sm" gap means the same thing whether the items
+   stack or run horizontally. */
 .stack { display: flex; flex-direction: column; }
-.stack-xs { gap: var(--space-1); }
-.stack-md { gap: var(--space-3); }
-.stack-lg { gap: var(--space-4); }
-.cluster-wrap { flex-wrap: wrap; }
-.cluster-xs { gap: var(--space-1); }
-.cluster-lg { gap: var(--space-4); }
 
 /* Same rationale as .roster-grid .input-group above: a grid's own gap already handles
    spacing between cells, so an input-group inside a settings-grid shouldn't add its own
@@ -1763,9 +1753,9 @@ a.nav-btn,
    gap:...rem" inline styles used for icon+label rows, button rows, and similar. Every inline
    style this replaced had no flex-wrap set (i.e. nowrap), including rows with a <select> or
    a margin-left:auto push-to-edge element that only render correctly unwrapped -- so nowrap
-   is the default here too, matching what was actually there before. Opt into wrapping
-   explicitly with .cluster-wrap for a row of purely reflowable content (e.g. icon + long
-   text) where wrapping is actually desired on narrow screens. */
+   is the default here too, matching what was actually there before. For a row of purely
+   reflowable content (e.g. icon + long text) where wrapping is actually desired on narrow
+   screens, add flex-wrap: wrap to that row. */
 .cluster { display: flex; align-items: center; }
 .cluster-sm { gap: var(--space-2); }
 .cluster-md { gap: var(--space-3); }
