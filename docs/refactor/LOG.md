@@ -76,7 +76,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
     `serve.mjs`, so it 404s unless a spec stubs it (`stubFfc` in `mds-sync.spec.mjs`).
   - The clock is fixed at 2026-09-15T16:00Z.
 - `visual.spec.mjs` launches Chromium with `--disable-partial-raster` (0C), which makes every screenshot
-  pixel-identical from run to run. Keep it if you add screenshots elsewhere.
+  pixel-identical from run to run. Keep it if you add screenshots elsewhere Its `shot()` also moves the mouse to (0, 0)
+  before each capture (8D): a click leaves the pointer over whatever re-renders under it, and whether that
+  element's `:hover` style makes it into the PNG depends on timing.
 - A test fails on any uncaught exception, any `console.error`, any local HTTP status 400 or
   higher, or the fatal boot banner (`#mds-boot-error`). `openApp()` checks this right after
   load, so a broken import reports the missing file (for example `HTTP 404: /lineup/dbx.js`).
@@ -5340,3 +5342,101 @@ committed): the preview at both widths with the no-positions note, two unmatched
   the unmatched names as MLS does; MDS's draft board has no picks, so a file with them gets them listed.
 - `analyzeRankingsFile` and `derivedRanksWording` stay in `js/mls/scout/waivers.js` (owner's decision above). If
   MDS ever needs them, inject MLS's four inputs rather than importing `js/mls/` from `js/shared/`.
+
+### 8D — Delete the spacing helpers Phase 8 didn't use (no visible change)
+
+8A, 8B and 8C were confirmed merged to main first (8C: PR #174). Started from the 4D entry (the 8 sizes kept per
+the owner's 4C decision), the 4E entry ("After Phase 8 … revisit the unused spacing helpers") and 8A's and 8C's
+"Left for later" notes. `CACHE_NAME` v2.8.72 → v2.8.73. No file added or removed, so PRECACHE_ASSETS is unchanged.
+No user-visible change, so no CHANGELOG line and no footer version bump.
+
+#### What the grep found
+
+Each candidate grepped as a whole class name (not part of a longer one such as `mls-cluster-wrap`) in `index.html`,
+`lineup/index.html`, `t-score/`, `js/` and `functions/`, plus a search for class names built from pieces in JS
+(`'stack-' + …`, `` `cluster-${…}` ``, `classList` calls): **0 hits for all 10**. Phase 8's new Draft Strategist
+markup started using none of them (as 8A's and 8C's entries said). No rule in mds.css, mls.css or tscore.css names
+them either; tests/ doesn't reference them.
+
+#### Owner's decisions (asked before deleting)
+
+| Question | Owner's decision |
+|---|---|
+| Which unused helpers go | **All 10** |
+| The two comments that name deleted sizes | **Update them** (comment-only) |
+| `--space-6` (2rem), unused once `.pl-6` goes | **Keep it**: it's part of the `--space-1`…`--space-6` scale in `:root` |
+
+#### What changed (css/base.css only)
+
+- **Deleted (10 rules):** UTILITIES: `.gap-1`, `.gap-3`, `.mt-0`, `.pl-6`. LAYOUT PRIMITIVES (the first block, after
+  `.stack`): `.stack-xs`, `.stack-md`, `.stack-lg`, `.cluster-wrap`, `.cluster-xs`, `.cluster-lg`.
+- **Comments:** the `.stack` comment said the gap modifiers use "the same xs/sm/md/lg scale as .cluster below"; it now
+  points to `.stack-sm` and names `.cluster`'s sm/md. The `.cluster` comment said "Opt into wrapping explicitly with
+  .cluster-wrap"; it now says to add `flex-wrap: wrap` to such a row.
+- **Comment deleted (owner's request after the first push):** the LAYOUT PRIMITIVES block near the end of base.css
+  had two comments on `.cluster` back to back. The first ("a horizontal run of items that wraps instead of
+  overflowing") contradicted `.cluster`'s `nowrap` default, which the second explains; it's gone. With comments
+  stripped, base.css is identical to the commit before (checked with a script), so compare-css wasn't re-run.
+- **Stay (used):** `.gap-2`, `.stack` + `.stack-sm` (`#syncLogContent`), `.cluster` + `.cluster-sm` + `.cluster-md`.
+  Neither base class could go: each still has a used size.
+- **Stays (unused):** the `--space-6` token (owner's decision above). Every other `--space-N` is still used.
+
+#### Checks run
+
+- `npm run compare-css` vs `origin/main`: **0 differences in all 28 runs** (MDS empty, MDS mid-draft,
+  MLS empty, synced league, with rankings, handoff banner, T-Score; both widths, reduced motion off and on). The 2
+  skipped tests are `pre9a-snapshot.tool.mjs`, which writes a fixture and doesn't compare.
+- `node scripts/check-precache.mjs` OK (115 precached). `node --test` 219/219. `cd tests && npx playwright test`
+  130/130; no screenshot changed.
+
+#### Left for later
+
+- Nothing for 8D. Phase 8 is done.
+
+#### Screenshot flake: found and fixed (owner's request after the PR opened; test-only)
+
+The owner asked for the root cause, since several chunks had reported MDS screenshots that "drift".
+
+- **Symptom:** desktop `mds-draft-tracker` failed about 1 run in 4 with 49,500 px (pxdiff: 56,598 px), on this branch
+  and with main's own CSS. In the failing PNG the first card in the list (Saquon Barkley) lacked the hover style the
+  baseline had: `.player-card:hover` (2px lift, lighter border, shadow) and `.btn-draft:hover` on its "Taken" button.
+- **Cause:** `seedMds` ends by clicking the first card's "Taken" button. The pool then re-renders and the next card's
+  "Taken" button lands under the mouse, which hasn't moved. Chromium applies `:hover` to the new element only when it
+  next updates hover state after the layout change, so the screenshot caught it on some runs and not others. The
+  same leftover pointer hovered draft-board cell 3.11 (`mds-draft-board`) and lifted MLS's "New here?" banner by 2px
+  (phone `mls-league-setup`, after `seedMls`'s clicks).
+- **Why it kept coming back:** before 0C the 0.2% tolerance hid it, so 4E and 7C logged it as baseline drift (4E's
+  "desktop `mds-draft-board` 8,308 px" is exactly this hover). 0C found and fixed a different cause (partial
+  raster), then re-took baselines on runs where hover happened to apply. Either its five runs happened to agree, or
+  8A–8C's MDS changes shifted the timing; I didn't test which.
+- **Fix (`tests/visual.spec.mjs`):** `shot()` moves the mouse to (0, 0) before every capture, as compare-css already
+  does. With the mouse there, every PNG comes out the same on every run (below).
+- **Baselines re-taken (5), each checked by eye in a side-by-side crop; every difference is a hover style going
+  away:** desktop `mds-draft-tracker` 56,598 px and phone `mds-draft-tracker` 22,406 px (Saquon Barkley's card and
+  "Taken" button; the tier dividers below re-raster); desktop `mds-draft-board` 8,308 px and phone `mds-draft-board`
+  4,555 px (cell 3.11's hover highlight; the column's labels re-raster); phone `mls-league-setup` 26,735 px (the
+  "New here?" banner's 2px hover lift). No app file changed, and nothing users see changes.
+- **Proof:** `npm run pxdiff -- --runs 5`: all 40 PNGs pixel-identical across the five runs. After re-taking,
+  `--runs 1` matches all 40 baselines. `visual.spec.mjs -g "MDS mid-draft" --repeat-each=12`: 24/24. Full Playwright
+  130/130.
+- **For later specs:** if a spec takes screenshots outside `shot()`, park the mouse first.
+
+### Planned as runbook chunk 10A — Wrap-up (owner's request, recorded after 8D)
+
+After 8D only 6C is left (not before 2026-10-17). The owner asked whether anything cleans up after the refactor. The
+answer: keep the tests, and add one last card, **10A (needs 6C; runs last and alone)**:
+
+1. **CI:** `.github/workflows/check.yml` runs `npm run check` on pull requests and pushes to main. The repo has no CI
+   today, so the checks only run when a session runs them. The risk is screenshots: CI's Chromium may render the
+   baselines differently from the cloud sessions' Chromium, and the check counts every changed pixel. If it does,
+   the owner picks how to handle it (pin Playwright, a Docker image with re-taken baselines, or no screenshots in CI).
+   The tolerance stays as it is.
+2. **Docs:** `docs/TESTING.md` from this log's lasting sections, plus a short root `CLAUDE.md` pointing to it. This
+   log stays as the history, with a note at its top.
+3. **Refactor-only leftovers:** `tests/tools/pre9a-snapshot.tool.mjs`, `callApp`'s pre-5D `window[fn]` fallback, and
+   anything 6C says can go. App code that only bridged old installs (for example the `KEYS.shared.sleeperLeagueId`
+   cleanup in js/mls/init.js) is listed for the owner, not deleted.
+4. **What the public site serves:** Cloudflare Pages publishes tests/, docs/ and scripts/ (Known gaps, above). The
+   owner chooses between leaving it and a small build step plus a Cloudflare setting they change themselves.
+
+The runbook also has a link after every phase back to "Order and parallel tracks" (owner's request).

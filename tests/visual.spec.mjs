@@ -14,7 +14,15 @@ import {
 // Full raster gives the same pixels every time. Only this spec takes screenshots, so it's set here.
 test.use({ launchOptions: { args: ['--disable-partial-raster'] } });
 
-const shot = (page, name) => expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true });
+// Park the mouse before each shot. A click leaves the pointer over whatever the page re-renders under it
+// (seedMds's last "Taken" click lands on the next card's "Taken" button once the pool redraws), and
+// whether Chromium applies :hover to the new element before the capture depends on timing: desktop
+// mds-draft-tracker came out with or without the card's hover lift about 1 run in 4 (49,500 px).
+// (0, 0) is where compare-css parks it too.
+const shot = async (page, name) => {
+    await page.mouse.move(0, 0);
+    await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true });
+};
 
 test('MDS empty tabs', async ({ page }) => {
     await openApp(page, '/');
