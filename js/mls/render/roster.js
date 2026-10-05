@@ -1,7 +1,8 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Roster tab renderer (loadRosterTab), the first
 // function under RENDERERS.
 import { escapeHtml } from '../../shared/html.js';
-import { TEAM_BYES, tierTag } from '../constants.js';
+import { tierTag } from '../constants.js';
+import { getByeWeek } from '../../shared/data/byes.js';
 import { State } from '../state.js';
 import { rankingIndex, getActiveLeague } from '../helpers.js';
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
@@ -91,7 +92,8 @@ import { refreshPowerRankings } from '../main.js';
             let ovrStr = p.rosRank !== 999 ? `#${p.rosRank}${tierTag(p.rosTier)}` : "-";
             let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
             let rankBadge = (p.rosRank !== 999 || p.posRank !== 999) ? `Ovr: ${ovrStr} | Pos: ${posStr}` : "Unranked";
-            let byeStr = TEAM_BYES[p.team] ? ` (${TEAM_BYES[p.team]})` : "";
+            const byeWeek = getByeWeek(p.team, State.currentNflSeason);
+            let byeStr = byeWeek ? ` (${byeWeek})` : "";
             let byeBadge = getByeBadgeHTML(p.team);
             let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);

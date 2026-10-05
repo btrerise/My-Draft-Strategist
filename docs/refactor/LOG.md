@@ -93,8 +93,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   storage-key rename tests (`key-migration.spec.mjs`, 6B: all three pages opened on a pre-6B
   localStorage snapshot, and both resets) and 1 saved-name-key test (`name-keys.spec.mjs`, 9A: all three
   pages opened on a pre-9A localStorage + IndexedDB snapshot) and 1 SoS-upload test (`mls-sos.spec.mjs`, 9A: the
-  SoS grid's file upload in all three file shapes). `backup.spec.mjs` has 4 tests since 6B (round trip and a
-  pre-6B backup file, per app). Each runs at both widths: 92 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  SoS grid's file upload in all three file shapes) and 4 MLS bye-week tests (`mls-byes.spec.mjs`, 7C: Sleeper's
+  week stubbed to 5, BYE badges and the optimizer, and the open Roster/Lineup tab when Sleeper's week answers late). `backup.spec.mjs` has 4 tests since 6B (round trip and a
+  pre-6B backup file, per app). Each runs at both widths: 100 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -4362,3 +4363,148 @@ and boot.js's old-name clauses. 6B said they can go once no browser can hold an 
 known (see above), so 6C keeps them and says so.
 
 **Owner's decision:** build it (recorded after 7B, 2026-10-05). Timing as above.
+
+### 7C — One bye-week table for both apps, generated from nflverse (behavior change: Lineup Strategist only)
+
+Started from the 7B entry ("Bye weeks: what's wrong today", the 7C card under "Runbook cards proposed"). 7B was
+confirmed merged to main first. No runtime fetch of byes and nothing from nflmeta.org.
+
+**What users see.** Lineup Strategist's bye weeks now follow the real 2026 schedule instead of 2024's (wrong for
+29 of 32 teams; only MIA, MIN and PIT were right). Specifically:
+- **BYE badge, blank points figure, optimizer.** In week 5 of 2026, CAR and KC players get the BYE badge, no
+  points figure, and the optimizer avoids starting them. DET, LAC, PHI and TEN players no longer do; they play
+  that week. The same applies every week (week 6: CIN, DET, MIA, MIN; and so on).
+- **The "(##)" suffix** after a name on the Roster and Lineup tabs shows the 2026 bye (Josh Allen 12 → 7,
+  Ja'Marr Chase 12 → 6, CeeDee Lamb 7 → 14…). It now appears once Sleeper's NFL state has loaded (the season
+  comes from it), the same moment the BYE badge already appeared. On the first render of a fresh page load,
+  before that request answers, it's blank until the next render. If Sleeper's state request fails, no
+  "(##)" shows, where before the wrong 2024 number did.
+- **Waiver verdicts** ("On bye this week - a stash, not a start.", `scout/waivers.js`) follow the badge, so they
+  change the same way.
+- **Draft Strategist: no change.** The 2026 entry equals the old `BYE_WEEKS_2026` for all 32 teams (checked by
+  script before switching anything), and MDS still prefers a bye from the rankings file and keeps its "-"
+  fallback.
+
+**What moved where.**
+- New `js/shared/data/byes.js`: `BYE_WEEKS` keyed by season (`{ 2026: { ARI: 14, … } }`, one line per season
+  between `// --- BYE_WEEKS … ---` and `// --- END BYE_WEEKS ---` markers) and `getByeWeek(team, season)`, which
+  returns the week or `null`. A season or team not in the table (2027 today, `FA`, `LA`) gives `null`, never
+  another season's week. `season` may be a number or Sleeper's string (`"2026"`).
+- New `scripts/update-byes.mjs <season> [--csv <file>]`: downloads nflverse's
+  `https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv` (no key; reachable from this
+  session), takes `game_type` REG games for the season, and gives each team the week 1–18 it has no game,
+  mapping nflverse's `LA` to `LAR`. It fails and writes nothing unless all 32 `NFL_TEAMS` (read from
+  `js/mls/constants.js`) get exactly one bye, and on a team code the apps don't know or a season with no
+  games yet. It replaces only that season's line (or inserts it in season order). Tried: 2026 (generated the
+  committed line; a second run reports "already up to date"), 2024 (equals the old MLS `TEAM_BYES` exactly,
+  confirming 7B), 2025 (inserted in order; reverted), 2019 (fails on `OAK`), 2028 (fails: no games).
+- MLS: `isUnavailableThisWeek` (`helpers.js`), `getByeBadgeHTML` and `getPlayerPointsHTML`
+  (`lineup/gameInfo.js`), and the "(##)" suffix in `render/lineup.js` (starters and bench) and
+  `render/roster.js` now call `getByeWeek(team, State.currentNflSeason)`. `scout/waivers.js` reads it through
+  `getByeBadgeHTML`, unchanged. `TEAM_BYES` deleted from `js/mls/constants.js`.
+- MDS: `js/mds/import.js` and `js/mds/sleeperSync.js` call `getByeWeek(team, new Date().getFullYear())`, same
+  `|| "-"` fallback and same preference for a bye already in the file. `BYE_WEEKS_2026` deleted from
+  `js/mds/state.js`.
+- `sw.js`: `/js/shared/data/byes.js` precached; `CACHE_NAME` → `draft-strategist-v2.8.68`.
+- README: a "Yearly: bye weeks" section (run `node scripts/update-byes.mjs <season>` each May and commit
+  `byes.js`), crediting nflverse, and `data/byes.js` in the project structure.
+
+**Convention.** Bye weeks come only from `getByeWeek` in `js/shared/data/byes.js`; nothing else may hold a bye
+table. Next season is one script run each May, and before it the new season simply has no byes (both apps
+already treat "no bye known" as normal).
+
+**Screenshots and pins.** Accepted 4 MLS PNGs, all for the "(##)" suffix now showing 2026 byes (pixels changed
+vs main's code, same renderer):
+
+| PNG | desktop | phone |
+|---|---|---|
+| `mls-league-roster` | 1,526 px | 1,288 px |
+| `mls-league-lineup` | 3,428 px | 2,439 px |
+
+Checked by eye in a side-by-side crop: only the numbers in parentheses differ. No pinned number changed: the
+fixture's week 2 has no byes in either table, so `mls-sim`, `mls-waiver-insights` and the other specs pass
+unchanged. **MDS and T-Score: none.** Rendering MDS and T-Score with `--update-snapshots=all` gives small
+differences against the committed baselines, but those vary between two runs of the same code (the drift 4E
+described), and one run of this branch matched a run of main's code exactly for the desktop MDS PNGs. So they
+aren't this chunk's and weren't updated. The MDS specs ran unchanged and pass.
+
+**Tests added.**
+- `tests/unit/byes.test.mjs` (5 tests): known 2026 teams (number and string season), LAR vs `LA`, all 32 teams
+  once with week 5 = CAR and KC, unknown or missing team (`XYZ`, `FA`, `toString`), and unknown or missing
+  season (2027, 2024, `constructor`).
+- `tests/mls-byes.spec.mjs` (2 tests × 2 widths): Sleeper's state stubbed to week 5 of 2026 (week-5
+  projections served from the week-2 fixture), fixed clock. (1) `getByeBadgeHTML`/`isUnavailableThisWeek`
+  over all 32 `NFL_TEAMS` flag exactly CAR and KC, and the Roster tab shows one BYE badge and 2026 "(##)"
+  numbers. (2) With Ja'Marr Chase moved to CAR and Justin Jefferson to DET in the stubbed player map, the
+  optimizer benches Chase (BYE badge on the bench), starts Jefferson and Puka Nacua, and no starter has a
+  BYE badge. Both tests fail on main's code (CAR/KC vs DET/LAC/PHI/TEN; Chase started).
+
+**Checks run.** `node scripts/check-precache.mjs` OK (109 precached). `node --test` 197/197.
+`cd tests && npx playwright test` 96/96 (92 before + 4 new).
+
+**Left for later.**
+- Run `node scripts/update-byes.mjs 2027` in May 2027, when the schedule is out. Until then 2027 has no byes:
+  MLS shows none once Sleeper's season becomes 2027, and MDS (which uses the calendar year) falls back to the
+  rankings file's bye or "-" from January 2027.
+- If MDS drafts for a season other than the calendar year ever matters, pass the draft's season instead of
+  `new Date().getFullYear()`; the card asked for the calendar year to keep MDS unchanged.
+
+### 7C follow-up — The open Roster or Lineup tab picks up byes when Sleeper's week arrives (behavior change: Lineup Strategist only)
+
+Asked for by the owner right after 7C, on the same branch. Same `CACHE_NAME` (v2.8.68): 7C hadn't merged yet.
+
+**The problem (older than 7C; 7C added the "(##)" to it).** MLS learns the NFL week and season from Sleeper's
+state endpoint a moment after load (`refreshCurrentNflWeek`, `js/mls/state.js`). Nothing redrew the page when
+it answered: only ESPN's kickoff times, which arrive after it, re-optimized the Lineup tab, and nothing redrew
+the Roster tab. So when the page opened straight onto Roster or Lineup (the URL hash, `#roster` / `#lineup`)
+and the state request lost the race, that tab showed no BYE badges and no "(##)" byes, and the lineup was
+optimized without bye avoidance, until the next tab switch. On the Lineup tab ESPN usually repaired it; if
+ESPN's unofficial endpoint failed, nothing did.
+
+**The fix.** Once Sleeper's week and season are set, `refreshCurrentNflWeek` redraws the open tab the way
+`showTab` does: `optimizeLineup(false)` on Lineup, `loadRosterTab()` on Roster. Other tabs are drawn on the
+next switch anyway. The Scout tab's saved results are left as they are (a waiver verdict there was computed
+when the scan ran). `loadRosterTab` is imported from `main.js` beside `optimizeLineup`, as state.js already
+did, and only called inside the promise callback (rule 5).
+
+**What users see.** Opening Lineup Strategist on the Roster or Lineup tab, the BYE badges, the "(##)" byes and
+the bye-aware lineup appear as soon as Sleeper answers, instead of after a tab switch.
+
+**Tests.** `tests/mls-byes.spec.mjs` gained "the open roster/lineup tab picks up byes when Sleeper's week
+arrives late" (× 2 widths): the league is seeded, then the page reloads straight onto the tab with Sleeper's
+state response held back (ESPN is aborted in tests, so it can't repair the lineup). Before the response: no
+BYE badge and no "(5)". After: Ja'Marr Chase (moved to CAR) shows "(5)" and BYE, and on Lineup he's benched.
+Both fail without the fix. (The reload goes through `about:blank` first: a `goto` that only changes the hash
+doesn't reload the page.) No screenshot or pinned number changed.
+
+**Also in this follow-up.**
+- README "Yearly: bye weeks" and the header of `js/shared/data/byes.js` now say to bump `CACHE_NAME` with the
+  new table. The service worker serves cached files first, so without a bump users keep the old table.
+- `tests/unit/byes.test.mjs` used 2027 as its "unknown season", which would have failed the day 2027 is added.
+  It uses 2099 and 1999 now.
+- **May reminder (owner's request):** a one-time Routine, "2027 NFL bye weeks for Draft/Lineup Strategist"
+  (`trig_01UkBZaZUYkDEyrHAuA19o8f`), fires on 2027-05-20 at 15:00 UTC with push and email notifications. It
+  starts a fresh cloud session that checks whether nflverse has the 2027 schedule. If it does, it runs the
+  script on branch `refactor/byes-2027`, bumps `CACHE_NAME`, runs the checks, pushes the branch (no PR, no
+  merge) and reports. If not, it changes nothing and says so. It stores no connectors and starts with no repo
+  attached, so its first step attaches and clones the repo. If that fails, it tells the owner how to run the
+  update by hand.
+
+**Checks run.** `node scripts/check-precache.mjs` OK (109). `node --test` 197/197. `cd tests && npx playwright
+test` 100/100.
+
+### Planned as runbook chunk 0C — Make the screenshot tests repeatable (owner's request, recorded after 7C)
+
+7C found that some MDS and T-Score screenshots differ between two runs of the same code, not only from their
+committed baselines (4E called this "drift" and assumed stale baselines). Pixel counts of RGB differences
+between runs on the same commit: desktop `mds-draft-tracker` 56,654 px on one pair of runs and 20 px on another
+(bbox 64,920–65,1069), desktop `mds-draft-board` 8,308 px, phone `mds-draft-tracker` 77 px (a strip at the top,
+y 8–39), phone `mds-empty-setup` 57 px, phone T-Score tabs 4–185 px (around y 340–606), desktop
+`tscore-top50Tab` 10 px. MLS PNGs were byte-identical every run. They pass because Playwright's per-pixel
+`threshold` ignores faint differences, but a real change of that size could pass too.
+
+Runbook card **0C** (Phase 0, test-only, ~10k tok; needs 7C; alongside 6C, 9B, 9C; best before 8A–8C, the next
+cards to accept MDS screenshots): measure the noise over several runs, commit the pixel comparison as an opt-in
+tool, find and remove the cause in the test setup, prove five identical runs in a row, re-take only the
+drifted baselines, and recommend (not make) a tighter tolerance. **Owner's decision:** build it (recorded
+2026-10-05).

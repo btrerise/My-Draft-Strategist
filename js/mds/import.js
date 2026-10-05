@@ -2,7 +2,8 @@
 // FILE PARSING & DATA IMPORT.
 import { findCsvQuoteProblem, formatRankingsDiagnostic } from '../shared/rankings/diagnostics.js';
 import { savePlayerPool } from './storage.js';
-import { BYE_WEEKS_2026, State, saveAndRenderDraftState } from './state.js';
+import { State, saveAndRenderDraftState } from './state.js';
+import { getByeWeek } from '../shared/data/byes.js';
 import { updateMetaDisplay } from './settings.js';
 import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
 import { MDS_NAME_HEADERS, findHeaderRowIndex, normalizeHeader, stripTitleLines } from '../shared/rankings/parse.js';
@@ -281,7 +282,7 @@ function parseExcel(file) {
             }
 
             if (team && team !== "FA" && (!bye || bye === "-" || String(bye).trim() === "")) {
-                bye = BYE_WEEKS_2026[team.toUpperCase()] || "-";
+                bye = getByeWeek(team.toUpperCase(), new Date().getFullYear()) || "-";
             }
 
             newPlayers.push({ 

@@ -6,7 +6,7 @@ import { getNflState } from '../shared/api/sleeper.js';
 // readJSON is js/boot.js's window.readJSON (boot.js is a plain script, so it can't be imported).
 import { ESPN_TEAM_ALIASES } from './constants.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
-import { renderLineupUI, optimizeLineup } from './main.js';
+import { loadRosterTab, renderLineupUI, optimizeLineup } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { showToast } from '../shared/ui/toast.js';
 import { mdsFetch } from '../shared/net.js';
@@ -227,6 +227,13 @@ export function applyLineupSettingsToUI() {
                 if (data && typeof data.week === 'number') {
                     State.currentNflWeek = data.week;
                     State.currentNflSeason = data.league_season || data.season || null;
+                    // The Roster or Lineup tab may already be showing (opened from the URL hash, or
+                    // synced before this answered), drawn without bye weeks: redraw it the way
+                    // showTab does, so its BYE badges, "(##)" byes and the optimizer's bye
+                    // avoidance appear now rather than on the next tab switch (7C follow-up).
+                    const activeTab = document.querySelector('.tab-content.active');
+                    if (activeTab && activeTab.id === 'lineupTab') optimizeLineup(false);
+                    if (activeTab && activeTab.id === 'rosterTab') loadRosterTab();
                     // Kickoff times are keyed by week, so we can't fetch them until we know
                     // which week we're on -- chain it here rather than firing both requests
                     // independently at page load.

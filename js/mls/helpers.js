@@ -1,7 +1,7 @@
 // Moved from lineup/mls.js in refactor chunk 3A: the player/league status predicates that sat
 // at the end of STATE MANAGEMENT, UTILITY HELPERS, RANKINGS LOOKUP INDEX, and showStatusFeedback /
 // renderHTMLInto (unmarked, at the end of INITIALIZATION).
-import { TEAM_BYES } from './constants.js';
+import { getByeWeek } from '../shared/data/byes.js';
 import { State } from './state.js';
 
     // Statuses from Sleeper's player sync (see rosterDetails in processSleeperData) that mean
@@ -16,7 +16,7 @@ import { State } from './state.js';
     // empty. Locked players bypass this check entirely at the call sites below: a lock is an
     // explicit instruction to start someone regardless of bye/injury status.
     export function isUnavailableThisWeek(p) {
-        const onBye = State.currentNflWeek != null && TEAM_BYES[p.team] === State.currentNflWeek;
+        const onBye = State.currentNflWeek != null && getByeWeek(p.team, State.currentNflSeason) === State.currentNflWeek;
         const hardOut = p.inj && HARD_OUT_STATUSES.includes(p.inj);
         return onBye || hardOut;
     }
