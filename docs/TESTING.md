@@ -86,6 +86,28 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
 - **Baselines are per platform.** Google Fonts is blocked, so text uses the OS's fallback fonts. A macOS run finds
   no baselines and writes `baselines/darwin/`; don't commit those unless you mean to keep both. CI runs on
   ubuntu-24.04 with Playwright's `--with-deps` font set, the same fonts as the cloud sessions.
+- **The rendering environment is checked** (`tests/render-env.mjs`, 10A). `BASELINE_ENV` there records what the
+  Linux baselines were made with: Playwright 1.56.1 (Chromium revision 1194) on Ubuntu 24.04. On Linux,
+  `visual.spec.mjs` fails before taking any screenshot if this machine differs, naming what changed, and CI checks
+  it in its own step ("Rendering environment matches the baselines", which also prints both, plus the runner
+  image). `cd tests && node render-env.mjs` shows the same locally. The runner image's weekly version isn't
+  checked; if CI's screenshots ever fail with the check green, compare the fonts first.
+
+### Upgrading Playwright or the CI runner
+
+A new Playwright version brings a new Chromium, and a new Ubuntu brings other fonts, so either changes how text
+renders. Do it as its own PR, with no app changes in it:
+
+1. Change the version (`@playwright/test` in `tests/package.json`, then `npm install` to update the lockfile) or
+   the runner (`runs-on` in `.github/workflows/check.yml`).
+2. Update `BASELINE_ENV` in `tests/render-env.mjs` to match.
+3. Re-take every baseline in a cloud session: `npx playwright test visual.spec.mjs --update-snapshots=all`. First
+   check that `/opt/pw-browsers` has the new Playwright's Chromium revision (`ls /opt/pw-browsers`); if it doesn't,
+   the cloud sessions can't render the new baselines yet, and upgrading would leave them unable to run the
+   screenshot tests. For a runner change, the cloud sessions must run the same Ubuntu, or the two will disagree.
+4. Check the PNGs by eye (`npm run pxdiff -- <old> <new> --crops <dir>` against a copy of the old ones): only
+   text and anti-aliasing should move. Then `npm run pxdiff -- --runs 5` to confirm the new renders repeat.
+5. Push and make sure CI's screenshots pass too before merging.
 
 ### Accepting an intended visual change
 

@@ -34,6 +34,8 @@ cd tests && npm ci && npm run check   # check-precache + node --test + Playwrigh
 CI (`.github/workflows/check.yml`) runs the same on every pull request. Screenshots must stay pixel-identical
 unless the change is meant to be visible; see "Accepting an intended visual change" in `docs/TESTING.md`.
 In cloud sessions Chromium is preinstalled at `/opt/pw-browsers`: don't run `playwright install`.
+Baselines are tied to Playwright 1.56.1 on Ubuntu 24.04 (`tests/render-env.mjs`); upgrading either means re-taking
+all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.md`).
 
 ## Rules that bite
 

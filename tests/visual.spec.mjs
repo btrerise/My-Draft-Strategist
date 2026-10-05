@@ -6,6 +6,14 @@ import {
     openApp, showTab, showTScoreTab, seedMds, seedMls,
     MDS_TABS, MLS_TABS, TSCORE_TABS,
 } from './helpers.mjs';
+import { renderEnvProblems, renderEnvError } from './render-env.mjs';
+
+// The baselines only hold for the Playwright version and OS they were rendered with (render-env.mjs).
+// Elsewhere every screenshot would fail by a few pixels; fail once instead, naming what changed.
+test.beforeAll(() => {
+    const problems = renderEnvProblems();
+    if (problems.length) throw new Error(renderEnvError(problems));
+});
 
 // Repeatable rendering (refactor 0C). By default Chromium re-rasters only the changed rectangle of a
 // tile and keeps the rest, so anti-aliased edges near earlier changes (tab switches, the full-page

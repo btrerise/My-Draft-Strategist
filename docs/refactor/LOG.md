@@ -5526,3 +5526,25 @@ unchanged. No user-visible change, so no CHANGELOG line.
   migration tests, any new marker key); the rest of 10B's card as planned.
 - Nothing else for 10A. The owner can make the `Checks / check` job a required status check for `main` in GitHub's
   branch protection settings, so a red PR can't be merged by mistake (optional, the owner's call).
+
+#### Follow-up (owner's request after the PR opened): a check for the rendering environment
+
+The owner asked for a check on the Playwright and Ubuntu versions, so that an upgrade can't quietly invalidate the
+baselines.
+
+- **`tests/render-env.mjs`** (new, test-only): `BASELINE_ENV` records what the Linux baselines were rendered with
+  (Playwright 1.56.1, Chromium revision 1194, Ubuntu 24.04). `currentRenderEnv()` reads the installed
+  `@playwright/test` version, the Chromium revision from `playwright-core/browsers.json` and `/etc/os-release`.
+  Only Linux is compared; other platforms keep their own baselines. `node render-env.mjs` (in `tests/`) prints both
+  and exits 1 on a difference.
+- **`visual.spec.mjs`:** a `beforeAll` fails the screenshot tests with one message naming what changed, instead of
+  40 pixel diffs. Checked by setting `os` to 'Ubuntu 26.04' for one run: both T-Score screenshot tests failed with
+  that message (then restored).
+- **CI:** a step "Rendering environment matches the baselines" runs `node render-env.mjs` before `npm run check`
+  and prints both environments plus GitHub's runner image version (shown, not checked: it changes weekly).
+  `npm run check` still runs after it fails, as long as the browser install succeeded.
+- **Docs:** TESTING.md describes the check and has a new section, "Upgrading Playwright or the CI runner" (bump,
+  update `BASELINE_ENV`, re-take every baseline in a cloud session, check by eye, confirm in CI). CLAUDE.md has one
+  line pointing to it.
+- Not checked: the font packages themselves. The OS version stands in for them; if CI's screenshots ever fail with
+  this check green, compare the fonts first.

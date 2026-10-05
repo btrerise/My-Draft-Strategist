@@ -36,9 +36,16 @@ jobs:
       - run: npm ci
 
       # Cloud sessions have Chromium preinstalled in /opt/pw-browsers; CI doesn't.
-      - run: npx playwright install --with-deps chromium
+      - id: browsers
+        run: npx playwright install --with-deps chromium
+
+      # Fails if Playwright's Chromium or the OS differs from what the screenshot baselines were made with
+      # (tests/render-env.mjs), and prints both either way. The checks below still run.
+      - name: Rendering environment matches the baselines
+        run: node render-env.mjs
 
       - run: npm run check
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
 
       # Screenshot diffs (expected, actual, diff PNGs) land in test-results/.
       - uses: actions/upload-artifact@v4
