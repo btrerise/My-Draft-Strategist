@@ -12,6 +12,9 @@ that version's entry. `CACHE_NAME` in `sw.js` isn't an app version; its header s
 
 ## How to run the checks
 
+**Since 10A, [`docs/TESTING.md`](../TESTING.md) is the up-to-date guide** (checks, how the tests work, conventions).
+The sections below are kept as they were.
+
 From the repo root:
 
 ```sh
@@ -136,6 +139,7 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
 - `tests/`, `scripts/` and `docs/` are served publicly by Cloudflare Pages, because the site
   deploys the repo root with no build output directory. This is harmless (about 9 MB of
   baselines). To exclude them, point Pages at an output directory, which needs a build step.
+  **Owner's decision in 10A: leave it.**
 
 ## Entries
 
@@ -5450,3 +5454,46 @@ code (js/shared/storage/keyMigration.js and its tests), and any new key goes thr
 Merge PR #175 first: it has the screenshot fix (8D, "Screenshot flake").
 
 The runbook also has a link after every phase back to "Order and parallel tracks" (owner's request).
+
+### 10A — Wrap-up, part 1: CI, a testing guide, test-only leftovers, what the public site serves (no visible change)
+
+8D was confirmed merged to main first (PR #175, plus the 10A/10B planning in #176). Started from this log's "How to run
+the checks", "Accepting an intended visual change", "How the tests work" and "Known gaps" sections, the 8D entry and
+the planning entry above. No file the site loads changed, so `CACHE_NAME` stays v2.8.73 and PRECACHE_ASSETS is
+unchanged. No user-visible change, so no CHANGELOG line.
+
+#### Added
+
+- **`.github/workflows/check.yml`:** on every pull request and every push to main: ubuntu-24.04, Node 22,
+  `cd tests && npm ci`, `npx playwright install --with-deps chromium`, `npm run check`. On failure it uploads the
+  `playwright-results` artifact (`tests/playwright-report/` and `tests/test-results/`, which has each failed
+  screenshot's expected / actual / diff PNGs). compare-css and pxdiff stay opt-in. No secrets: the tests stub every
+  outside request. The runner is pinned to ubuntu-24.04 rather than ubuntu-latest because baselines depend on fonts.
+- **`tests/playwright.config.mjs`:** when `CI` is set, Playwright also writes an HTML report (for the artifact).
+  Locally the reporter is still `list` only.
+- **`docs/TESTING.md`:** the lasting parts of this log, updated to today: every check and npm script, CI, how the
+  tests work (server, stubs, fixed clock, seeded states, `callApp`, the full-raster flag, the parked mouse),
+  accepting an intended visual change, when to use compare-css and pxdiff, and the conventions that outlive the
+  runbook (PRECACHE_ASSETS and CACHE_NAME, script order, where CSS goes, `data-action`, keys.js, byes, CHANGELOG).
+  The top of this log's "How to run the checks" now points to it; the old sections are kept as they were.
+- **`CLAUDE.md`** at the repo root: a map for future sessions (the three pages, the layout, the check to run, the
+  rules that bite, a pointer to TESTING.md) and the line "Refactor chunk 6C is pending": don't rename or remove
+  storage keys or edit keyMigration.js or its tests. **10B removes that line.**
+- **README:** "Development Checks" now shows `npm ci && npm run check`, says CI runs it, and points to
+  `docs/TESTING.md`; the project-structure list names TESTING.md and CLAUDE.md.
+
+#### Removed (test-only leftovers)
+
+- **`tests/tools/pre9a-snapshot.tool.mjs`:** it wrote `tests/fixtures/pre-9a/` once. The fixture stays.
+  `name-keys.spec.mjs`'s header now says the snapshot was made against 3af6d77 and committed with the tool in
+  2529554 ("Refactor 9A #7"), and how to see the tool (`git show 2529554:tests/tools/pre9a-snapshot.tool.mjs`).
+- **`callApp`'s pre-5D `window[fn]` fallback** (`tests/helpers.mjs`). It existed so compare-css could run the
+  helpers against a pre-5D `origin/main`. Checked first: every name a spec or tool passes to `callApp` (7 names, all
+  string literals) is exported from the page's `main.js`, and main has had 5D for weeks. Consequence, noted in
+  TESTING.md: `COMPARE_REF` must now be a commit from after 5D. Comments like "until refactor 3F" were left alone.
+
+#### Owner's decisions
+
+| Question | Owner's decision |
+|---|---|
+| What the public site serves (tests/, docs/, scripts/, README, CHANGELOG are all reachable on the site) | **Leave it**: harmless, nothing secret, and "no build step" stays true. No Cloudflare change needed. |

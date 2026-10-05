@@ -3,11 +3,13 @@
 // ranking sets, rosters, the T-Score cache), so these tests open the apps on storage the code before
 // 9A wrote and check those keys still match what the new code computes.
 //
-// tests/fixtures/pre-9a/ was written by tests/tools/pre9a-snapshot.tool.mjs, run against the commit
-// before the change: T-Score refreshed from stubbed sheets, Draft Strategist with 31 players (the 24
-// fixture players plus Marvin Harrison Jr., Brian Thomas Jr., Kenneth Walker III, Travis Etienne Jr.,
-// Patrick Mahomes II, D.J. Chark Jr. and Shayne Skov) and five picks, Lineup Strategist synced with the
-// same 31 players as its ROS and Weekly rankings. localStorage and IndexedDB both.
+// tests/fixtures/pre-9a/ was written once by a snapshot tool, run against the commit before the change
+// (3af6d77). The fixture and the tool were committed in 2529554 ("Refactor 9A #7"); refactor 10A deleted
+// the tool (`git show 2529554:tests/tools/pre9a-snapshot.tool.mjs`). The snapshot: T-Score refreshed
+// from stubbed sheets, Draft Strategist with 31 players (the 24 fixture players plus Marvin Harrison Jr.,
+// Brian Thomas Jr., Kenneth Walker III, Travis Etienne Jr., Patrick Mahomes II, D.J. Chark Jr. and
+// Shayne Skov) and five picks, Lineup Strategist synced with the same 31 players as its ROS and Weekly
+// rankings. localStorage and IndexedDB both.
 //
 // Shayne Skov is the accepted case (owner's decision in 9A): one of three Sleeper names, all retired
 // non-fantasy players, whose key changes ('shaynesko' -> 'shayneskov').

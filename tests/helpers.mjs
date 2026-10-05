@@ -113,14 +113,13 @@ export const TSCORE_TABS = ['researchTab', 'top50Tab', 'valuesTab', 'avoidsTab',
 /**
  * Calls a function the page's app module exports (js/mds/main.js on /, js/mls/main.js on /lineup/)
  * and returns its result. import() of the same URL returns the page's own module instance, so this
- * runs exactly the function the app's buttons run. Until refactor 5D these were window globals; the
- * window fallback keeps `npm run compare-css`, which runs these helpers against origin/main's build,
- * working on a build from before 5D. Harmless once main has 5D.
+ * runs exactly the function the app's buttons run. Since refactor 5D tests don't need app functions on
+ * window, so `npm run compare-css` with a COMPARE_REF from before 5D no longer works.
  */
 export async function callApp(page, name, ...args) {
     return page.evaluate(async ([fn, fnArgs]) => {
         const entry = location.pathname.startsWith('/lineup') ? '/js/mls/main.js' : '/js/mds/main.js';
-        const f = (await import(entry))[fn] ?? window[fn];
+        const f = (await import(entry))[fn];
         return f(...fnArgs);
     }, [name, args]);
 }
