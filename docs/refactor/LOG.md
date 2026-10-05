@@ -76,7 +76,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
     `serve.mjs`, so it 404s unless a spec stubs it (`stubFfc` in `mds-sync.spec.mjs`).
   - The clock is fixed at 2026-09-15T16:00Z.
 - `visual.spec.mjs` launches Chromium with `--disable-partial-raster` (0C), which makes every screenshot
-  pixel-identical from run to run. Keep it if you add screenshots elsewhere.
+  pixel-identical from run to run. Keep it if you add screenshots elsewhere Its `shot()` also moves the mouse to (0, 0)
+  before each capture (8D): a click leaves the pointer over whatever re-renders under it, and whether that
+  element's `:hover` style makes it into the PNG depends on timing.
 - A test fails on any uncaught exception, any `console.error`, any local HTTP status 400 or
   higher, or the fatal boot banner (`#mds-boot-error`). `openApp()` checks this right after
   load, so a broken import reports the missing file (for example `HTTP 404: /lineup/dbx.js`).
@@ -5390,13 +5392,31 @@ them either; tests/ doesn't reference them.
 #### Left for later
 
 - Nothing for 8D. Phase 8 is done.
-- **Found, not fixed (pre-existing on main, test-side): desktop `mds-draft-tracker` is flaky again.** While re-running
-  Playwright after the comment deletion, `visual.spec.mjs` › "MDS mid-draft tabs" [desktop] failed about 1 run in 4
-  with 49,500 px (pxdiff: 56,598 px, box x 47–1232, y 115–2933). **Main's own code fails the same way** (1 in 4,
-  same count, with main's base.css and sw.js checked out), so it isn't 8D's. What differs: in the baseline the first
-  available card (Saquon Barkley, Tier 1) shows its focused/hover style (lighter "Taken" button and card border); in
-  the failing runs it doesn't, and everything below shifts by 1px. 0C made every screenshot repeatable, so this
-  probably came in with 8A–8C's MDS changes: likely where focus lands after the seeded picks or after `seedMds`
-  closes 8C's upload preview, racing the screenshot. A follow-up should find what sets that focus and make
-  `seedMds` (or the visual spec) wait for it, then confirm with `npm run pxdiff -- --runs 5`. There's no CI in this
-  repo, so it only shows in local runs.
+
+#### Screenshot flake: found and fixed (owner's request after the PR opened; test-only)
+
+The owner asked for the root cause, since several chunks had reported MDS screenshots that "drift".
+
+- **Symptom:** desktop `mds-draft-tracker` failed about 1 run in 4 with 49,500 px (pxdiff: 56,598 px), on this branch
+  and with main's own CSS. In the failing PNG the first card in the list (Saquon Barkley) lacked the hover style the
+  baseline had: `.player-card:hover` (2px lift, lighter border, shadow) and `.btn-draft:hover` on its "Taken" button.
+- **Cause:** `seedMds` ends by clicking the first card's "Taken" button. The pool then re-renders and the next card's
+  "Taken" button lands under the mouse, which hasn't moved. Chromium applies `:hover` to the new element only when it
+  next updates hover state after the layout change, so the screenshot caught it on some runs and not others. The
+  same leftover pointer hovered draft-board cell 3.11 (`mds-draft-board`) and lifted MLS's "New here?" banner by 2px
+  (phone `mls-league-setup`, after `seedMls`'s clicks).
+- **Why it kept coming back:** before 0C the 0.2% tolerance hid it, so 4E and 7C logged it as baseline drift (4E's
+  "desktop `mds-draft-board` 8,308 px" is exactly this hover). 0C found and fixed a different cause (partial
+  raster), then re-took baselines on runs where hover happened to apply. Either its five runs happened to agree, or
+  8A–8C's MDS changes shifted the timing; I didn't test which.
+- **Fix (`tests/visual.spec.mjs`):** `shot()` moves the mouse to (0, 0) before every capture, as compare-css already
+  does. With the mouse there, every PNG comes out the same on every run (below).
+- **Baselines re-taken (5), each checked by eye in a side-by-side crop; every difference is a hover style going
+  away:** desktop `mds-draft-tracker` 56,598 px and phone `mds-draft-tracker` 22,406 px (Saquon Barkley's card and
+  "Taken" button; the tier dividers below re-raster); desktop `mds-draft-board` 8,308 px and phone `mds-draft-board`
+  4,555 px (cell 3.11's hover highlight; the column's labels re-raster); phone `mls-league-setup` 26,735 px (the
+  "New here?" banner's 2px hover lift). No app file changed, and nothing users see changes.
+- **Proof:** `npm run pxdiff -- --runs 5`: all 40 PNGs pixel-identical across the five runs. After re-taking,
+  `--runs 1` matches all 40 baselines. `visual.spec.mjs -g "MDS mid-draft" --repeat-each=12`: 24/24. Full Playwright
+  130/130.
+- **For later specs:** if a spec takes screenshots outside `shot()`, park the mouse first.
