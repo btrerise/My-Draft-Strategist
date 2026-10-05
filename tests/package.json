@@ -9,7 +9,8 @@
     "precache": "node ../scripts/check-precache.mjs",
     "unit": "node --test",
     "check": "node ../scripts/check-precache.mjs && node --test && playwright test",
-    "compare-css": "playwright test -c tools/playwright.config.mjs"
+    "compare-css": "playwright test -c tools/playwright.config.mjs",
+    "pxdiff": "node tools/pxdiff.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

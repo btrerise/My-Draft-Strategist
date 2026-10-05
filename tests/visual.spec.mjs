@@ -7,6 +7,13 @@ import {
     MDS_TABS, MLS_TABS, TSCORE_TABS,
 } from './helpers.mjs';
 
+// Repeatable rendering (refactor 0C). By default Chromium re-rasters only the changed rectangle of a
+// tile and keeps the rest, so anti-aliased edges near earlier changes (tab switches, the full-page
+// capture's own resize) came out a few pixels different depending on what the page did before. Some
+// MDS, MLS and T-Score PNGs varied from run to run (7C saw up to 56,654 px), within the tolerance.
+// Full raster gives the same pixels every time. Only this spec takes screenshots, so it's set here.
+test.use({ launchOptions: { args: ['--disable-partial-raster'] } });
+
 const shot = (page, name) => expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true });
 
 test('MDS empty tabs', async ({ page }) => {
