@@ -5420,3 +5420,23 @@ The owner asked for the root cause, since several chunks had reported MDS screen
   `--runs 1` matches all 40 baselines. `visual.spec.mjs -g "MDS mid-draft" --repeat-each=12`: 24/24. Full Playwright
   130/130.
 - **For later specs:** if a spec takes screenshots outside `shot()`, park the mouse first.
+
+### Planned as runbook chunk 10A — Wrap-up (owner's request, recorded after 8D)
+
+After 8D only 6C is left (not before 2026-10-17). The owner asked whether anything cleans up after the refactor. The
+answer: keep the tests, and add one last card, **10A (needs 6C; runs last and alone)**:
+
+1. **CI:** `.github/workflows/check.yml` runs `npm run check` on pull requests and pushes to main. The repo has no CI
+   today, so the checks only run when a session runs them. The risk is screenshots: CI's Chromium may render the
+   baselines differently from the cloud sessions' Chromium, and the check counts every changed pixel. If it does,
+   the owner picks how to handle it (pin Playwright, a Docker image with re-taken baselines, or no screenshots in CI).
+   The tolerance stays as it is.
+2. **Docs:** `docs/TESTING.md` from this log's lasting sections, plus a short root `CLAUDE.md` pointing to it. This
+   log stays as the history, with a note at its top.
+3. **Refactor-only leftovers:** `tests/tools/pre9a-snapshot.tool.mjs`, `callApp`'s pre-5D `window[fn]` fallback, and
+   anything 6C says can go. App code that only bridged old installs (for example the `KEYS.shared.sleeperLeagueId`
+   cleanup in js/mls/init.js) is listed for the owner, not deleted.
+4. **What the public site serves:** Cloudflare Pages publishes tests/, docs/ and scripts/ (Known gaps, above). The
+   owner chooses between leaving it and a small build step plus a Cloudflare setting they change themselves.
+
+The runbook also has a link after every phase back to "Order and parallel tracks" (owner's request).
