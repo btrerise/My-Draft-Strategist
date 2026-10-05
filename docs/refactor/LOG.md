@@ -112,8 +112,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   name-lookup tests (`mls-player-lookup.spec.mjs`, 9C: the simulator's "Josh Allen" with a namesake guard in the player map,
   every name lookup agreeing on shared names, and a rostered two-way player starting at WR) and 5 MDS setup-guidance tests
   (`mds-setup.spec.mjs`, 8A: the Setup Progress checklist and pulse cues as setup fills in, and the "Show me" links, each with
-  reduced motion off and on; the guide banner staying dismissed per app). `backup.spec.mjs` has 4 tests since 6B (round trip and a
-  pre-6B backup file, per app). Each runs at both widths: 116 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  reduced motion off and on; the guide banner staying dismissed per app) and 3 MDS freshness tests (`mds-freshness.spec.mjs`, 8B:
+  the rankings and ADP age labels at each threshold and for meta saved without a timestamp, and the processing / success lines
+  of a paste import and Fetch Market Value). `backup.spec.mjs` has 4 tests since 6B (round trip and a
+  pre-6B backup file, per app). Each runs at both widths: 122 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -5037,3 +5039,140 @@ is unknown. If it shows up again, keep the `test-results/` folder.
   needs a new card (or a line in whichever card adds that message), plus a key in `keys.js` if it's dismissible.
 - 8B adds freshness labels next to the rankings and ADP lines. `getSetupState()` in `js/mds/setupGuide.js` is the
   place to read done states from, if 8B wants the checklist to mention stale data.
+
+### 8B — Draft Strategist freshness labels and processing / success lines (behavior change: visible on Draft Strategist only)
+
+7B was confirmed merged to main first. Started from the 4C findings (feature 4 and the second-round "Processing…"
+item), "Planned as runbook chunks 4E and 8A–8C" (the owner had already set the thresholds there: rankings stale after
+14 days, ADP after 3) and the 8A entry. **No storage key was added**: the timestamp is a new field inside the existing
+`mds_meta` / `mds_adp_meta` objects. `CACHE_NAME` v2.8.70 → v2.8.71.
+
+#### Owner's decisions (asked before building)
+
+| Question | Owner's decision |
+|---|---|
+| Rankings line (`#metaDisplay`) | **The age replaces the date**, as on MLS: `Loaded: 220 players • Updated 3 days ago` (age in muted grey); past 14 days (from day 15) `• Updated 15 days ago — consider refreshing` in amber. |
+| ADP line (`#adpStatusDisplay`) | **Source and format, then "Fetched" + age**: `FFC: Redraft - 1QB (PPR) • Fetched today`; past 3 days (from day 4) `• Fetched 4 days ago — fetch again before you draft` in amber. |
+| Meta saved before 8B (no timestamp) | Keeps today's text: `Loaded: 220 players on 9/15/2026 at 10:00 AM`, `Fetched: FFC: … on …` (the card's rule, as MLS does for data with no timestamp). |
+| Where the processing / success lines go | **Rankings and ADP.** Rankings: a spinner line `Processing players and building database…` under the green box during any import (Quick-Start, file, paste), the box keeping its previous text; then `Rankings loaded successfully!` for 3s. Fetch Market Value: `Fetching market value…`, then `Market value updated!` for 3s. Toasts and the buttons' text changes stay as they were. |
+| Class renames | **Rename the ones MDS uses**, in both apps: `rankings-fresh` → `freshness-ok`, `rankings-stale` → `freshness-stale`, `mls-upload-processing` → `upload-processing`. `weekly-success-feedback` keeps its name: MDS uses the green `.success-feedback`, already neutral (4D: rename in the card that first uses a class on MDS). |
+
+#### What moved where (mechanical, by marker; a script cut each block and pasted it, only the names below changed)
+
+- **`js/shared/freshness.js` (new, pure):** `getFreshness(timestamp, staleAfterDays, verb = 'Updated')` is
+  `getRankingsFreshness` from `js/mls/rankings/engine.js` (the `// --- RANKINGS ENGINE ---` marker and the function,
+  dedented 4 spaces; the marker is now `// --- FRESHNESS LABELS ---`). engine.js keeps the unmarked rankings-card
+  helpers. Callers switched: `updateRankingsMetaDisplay` (engine.js), `renderLeagueManager`
+  (`js/mls/leagues/sync.js`, two calls), `updateMarketMetaDisplay` (`js/mls/scout/marketDisconnect.js`), and the
+  T-Score page's `updateTscoreFreshnessLabel` (`js/tscore/main.js`), whose copy of the day math is gone: it calls
+  `getFreshness(timestamp, Infinity)` and prints `Sheet data: ${label}` as before.
+- **`js/shared/ui/statusFeedback.js` (new, pure):** `showStatusFeedback` (from `js/mls/helpers.js`), `SPINNER_SVG`
+  (`UPLOAD_SPINNER_SVG` from `js/mls/rankings/uploadPreview.js`, with its `// --- UPLOAD PROCESSING INDICATOR ---`
+  comment) and `setProcessingStatus(el, on, label)` (`setUploadStatus`'s body; its first line, which found the
+  element by `${type}ProcessingStatus`, became the `el` parameter). uploadPreview.js keeps `setUploadStatus(type, …)`
+  as a one-line wrapper that finds the element and calls `setProcessingStatus`, so its callers didn't change; the
+  multi-file button's spinner uses `SPINNER_SVG`. `js/mls/sos.js` and `marketDisconnect.js` import
+  `showStatusFeedback` from the shared module.
+- **Renames:** `css/base.css` (`.freshness-ok`, `.freshness-stale`, `.upload-processing` and their comments),
+  `css/mls.css` (`.header-freshness.freshness-stale`), `lineup/index.html` (the two `#…ProcessingStatus` divs) and
+  the class strings in engine.js, sync.js and marketDisconnect.js. Nothing else used the old names (grepped js/,
+  css/, the three pages and tests/).
+- **Load order:** both new modules import nothing from either app (`statusFeedback.js` imports only
+  `shared/html.js`) and run nothing at load, so they evaluate wherever they're first imported. The thresholds in
+  `js/mds/settings.js` are locals inside `updateMetaDisplay`, not module-level consts, so no early call can hit a
+  temporal dead zone.
+
+#### Draft Strategist (the behavior change)
+
+- **Timestamp:** `processData` (`js/mds/import.js`) saves `State.rankingsMeta = { count, date, updatedAt }`;
+  `quickStartFfc` and `fetchMarketValue` (`js/mds/market.js`) save `State.adpMeta = { format, date, updatedAt }`.
+  `updatedAt` is `Date.now()` at save time, the same name and meaning as MLS's ranking sets. `date` (the formatted
+  string) is still saved, so an older cached copy of the page reads the new objects as before.
+- **Labels:** `updateMetaDisplay` (`js/mds/settings.js`) shows the age when `updatedAt` is there, through
+  `getFreshness` with 14 (rankings) and 3 (ADP, verb `'Fetched'`), in a `.freshness-ok` / `.freshness-stale` span,
+  the markup MLS uses. The ADP format and the count go through `escapeHtml`, since they're saved text a restored
+  backup could change (the old text used `innerText`). Without `updatedAt`, both lines keep today's `innerText`.
+- **Processing / success:** `index.html` has `#rankingsProcessingStatus` + `#rankingsSuccessMsg` under
+  `#metaDisplay`, and `#adpProcessingStatus` + `#adpSuccessMsg` under `#adpStatusDisplay` (`role="status"`, classes
+  `upload-processing` / `success-feedback`, plus `status-line`). `processData` turns the spinner on where it used to
+  write "Processing players…" into `#metaDisplay`, and off in `fail()` and on success (then shows the success line
+  for 3s). `fetchMarketValue` turns it on after the button says "Fetching…", off on success (then the success line)
+  and in its catch. The manual ADP paste doesn't set `adpMeta` (it didn't before), so it shows no label or lines.
+- **CSS:** `css/mds.css`, BADGES & POSITIONAL STYLING: `.upload-processing.status-line, .success-feedback.status-line
+  { margin: 0 0 1rem; }`, so the lines sit under the green box with the box's spacing instead of base.css's 0.75rem
+  top margin. `.status-line` is a new MDS-only modifier; MLS's lines don't carry it.
+
+#### User-visible difference (Draft Strategist only)
+
+- **Load Rankings:** the green status box reads `Loaded: 24 players • Updated today` (then "yesterday", "N days
+  ago") instead of `Loaded: 24 players on 9/15/2026 at 10:00 AM`. From day 15 the age turns amber and adds
+  "— consider refreshing".
+- **Live Market Value (ADP):** `FFC: Redraft - 1QB (PPR) • Fetched today` instead of `Fetched: FFC: Redraft - 1QB
+  (PPR) on 9/15/2026 at 10:00 AM`. From day 4 it turns amber and adds "— fetch again before you draft".
+- Rankings and ADP loaded before this update keep the dated text until they're loaded again.
+- **During an import** a spinner line "Processing players and building database…" appears under the green box (it
+  used to replace the box's text); the box keeps showing what was loaded before. Afterwards "Rankings loaded
+  successfully!" shows in green for 3 seconds. **Fetch Market Value** shows "Fetching market value…", then "Market
+  value updated!". The spinner line appears 0.1s after the start (shared behavior, for screen readers), so a very
+  fast paste may finish before it shows.
+
+#### Tests
+
+- **`tests/unit/freshness.test.mjs`** (7 tests): null for a missing timestamp (`undefined`, `null`, `0`, `''`);
+  today / yesterday / N days with whole days rounded down; a future timestamp reads "today" and isn't stale; stale
+  only when days > threshold, at 2, 3, 6 and 14; `Infinity` never stale (T-Score); string timestamps from
+  localStorage; the verb in every form, and sync.js's `/^Synced /` → `from ` rewrite. Uses `mock.timers` on `Date`
+  at the Playwright clock (2026-09-15T16:00Z).
+- **`tests/mds-freshness.spec.mjs`** (3 tests × 2 widths), fixed clock:
+  - Saved meta: 3 days / today (muted `freshness-ok`), 14 / 3 days (still fresh), 15 / 4 days (amber
+    `freshness-stale` with the suffixes, colour checked); meta with no `updatedAt` (today's text, no span); an ADP
+    format with markup in it shown as text.
+  - A paste import with Sleeper's player map held: the spinner line (text, `svg.sync-spinner`, `role="status"`)
+    while `#metaDisplay` keeps its pre-8B text; then the success line, `Loaded: 24 players • Updated today`, the
+    saved `updatedAt` equal to the clock, and the success line gone after 3s.
+  - Fetch Market Value with FFC held: the spinner line, then "Market value updated!" and `… • Fetched today`; a 500
+    clears the spinner, shows no success line and leaves the label as it was.
+
+#### Screenshots
+
+**No PNG changed**, as expected: the new lines are hidden until an import runs, and no screenshot shows the Setup tab
+with rankings loaded. `npm run pxdiff -- --runs 3`: all 40 PNGs pixel-identical across runs and with the baselines.
+
+One earlier `npm run pxdiff -- --runs 1` listed **phone `mds-draft-board` (4,555 px, x 174–386, y 369–995) and phone
+`mds-draft-tracker` (22,406 px, x 0–389, y 206–2294)**, both against the committed baselines, while the full suite
+just before had passed them. The board crop shows one cell's background (pick 3.03) and the anti-aliasing of one
+column's pick numbers; nothing near the Setup tab, which these shots don't show. The three
+runs after it were identical to the baselines, so it's the same one-off 8A saw on phone `mds-draft-tracker`, not this
+chunk. Unverified guess for whoever takes it on: a hover state left by `seedMds`'s last tap. The crops weren't kept.
+
+#### compare-css (vs `origin/main` at `f15d317`)
+
+- **MLS (empty, handoff banner, synced league, with rankings) and T-Score: 0 differences in all 20 runs**, both
+  widths, reduced motion on and off. So the moves to `js/shared/`, the wrapper `setUploadStatus` and the class
+  renames change nothing MLS or T-Score computes.
+- **MDS: differences in all 8 runs, as intended** (830 per empty run, 1,013–1,017 per mid-draft run), all on the Setup
+  tab. They start at the inserted lines (`section:3>div:2`, Load Rankings; `section:5>div:2`, Live Market Value): the
+  tool keys elements by tag and position, so every later element in those two cards changes key (184 + 156 entries,
+  116 "only in working tree"). The rest, in the mid-draft runs only: `#setupTab`, `main`, `body`, `html` and the
+  sr-only labels below are 31px taller or lower. That's the green "Rankings loaded successfully!" line, still
+  showing when the tool captures the Setup tab right after its paste (it shows for 3s). Nothing outside the
+  Setup tab differs.
+
+#### Checks run
+
+- `cd tests && npm run check`: check-precache OK (113 precached), `node --test` 215/215 (7 new), Playwright **122/122** (116 + 6 new), no screenshot failures.
+- `npm run pxdiff -- --runs 3`: all 40 PNGs pixel-identical across runs and with the baselines (see Screenshots for
+  the one earlier run that wasn't).
+- `npm run compare-css`: as above.
+- By eye (phone, a throwaway spec, not committed): stale rankings label in amber inside the green box, the spinner
+  line under it during a held import, the success line after, and `FFC: Redraft - 1QB (PPR) • Fetched yesterday`.
+
+#### Left for later
+
+- **8C** (upload preview) can start: it builds on the shared `upload-processing` line and `setProcessingStatus`.
+- **Not built (not asked for):** the setup checklist (8A) doesn't mention stale data. `getSetupState()` in
+  `js/mds/setupGuide.js` is where it would read `State.rankingsMeta.updatedAt` / `State.adpMeta.updatedAt`, if the
+  owner wants "ADP loaded · fetched 5 days ago" there.
+- **Footer version:** not bumped (8A's bump to v2.7 was an owner's follow-up). The changelog has this chunk's two
+  lines under Draft Strategist's Unreleased.
+- `weekly-success-feedback` keeps its MLS name (owner's decision); rename it if MDS ever uses the blue variant.

@@ -15,7 +15,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-Nothing yet.
+- **Rankings and ADP say how old they are.** The status line in Load Rankings reads "Loaded: 220 players • Updated
+  3 days ago" instead of a fixed date, and turns amber with "consider refreshing" after 14 days. The ADP line reads
+  "FFC: Redraft - 1QB (PPR) • Fetched today" and turns amber with "fetch again before you draft" after 3 days.
+  Rankings and ADP loaded before this update keep their dated line until they're next loaded.
+- **Loading rankings or fetching ADP shows a spinner line** ("Processing players and building database…",
+  "Fetching market value…") while it works, then a green "Rankings loaded successfully!" or "Market value updated!"
+  for a few seconds.
 
 ### v2.7 — 2026-10-05
 

@@ -13,6 +13,7 @@ import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { delegate } from '../shared/ui/delegate.js';
 import { migrateKeyNames } from '../shared/storage/keyMigration.js';
+import { getFreshness } from '../shared/freshness.js';
 
 // Refactor chunk 6B: copy the T-Score cache keys from their pre-6B names (mds_tscore_cache*)
 // before the DOMContentLoaded handler below reads them. Runs at load, as on the other two pages.
@@ -147,13 +148,14 @@ function renderTScoreTables(wrPlayers, rbPlayers) {
     });
 }
 
+// The day math is the shared getFreshness (refactor 8B; it was a copy of Lineup Strategist's). This
+// label has no stale state, so the threshold is Infinity and isStale is never read.
 function updateTscoreFreshnessLabel(timestamp) {
     const el = document.getElementById('tscoreFreshness');
     if (!el) return;
-    if (!timestamp) { el.textContent = ''; return; }
-    const days = Math.floor((Date.now() - Number(timestamp)) / (1000 * 60 * 60 * 24));
-    let label = days <= 0 ? 'Updated today' : days === 1 ? 'Updated yesterday' : `Updated ${days} days ago`;
-    el.textContent = `Sheet data: ${label}`;
+    const fresh = getFreshness(timestamp, Infinity);
+    if (!fresh) { el.textContent = ''; return; }
+    el.textContent = `Sheet data: ${fresh.label}`;
 }
 
 async function refreshTScoreData(btn) {

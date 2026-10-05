@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.8.70';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.71';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -89,6 +89,7 @@ const PRECACHE_ASSETS = [
     '/js/shared/names.js',
     '/js/shared/net.js',
     '/js/shared/html.js',
+    '/js/shared/freshness.js',        // 8B: "Updated 3 days ago" labels, all three pages
     '/js/shared/rankings/diagnostics.js',
     '/js/shared/ui/banners.js',
     '/js/shared/ui/confirm.js',
@@ -100,6 +101,7 @@ const PRECACHE_ASSETS = [
     '/js/shared/ui/scriptLoader.js',
     '/js/shared/ui/scrollShadows.js',
     '/js/shared/ui/setupChecklist.js',
+    '/js/shared/ui/statusFeedback.js', // 8B: "Processing…" / success lines, both apps
     '/js/shared/ui/tabHash.js',
     '/js/shared/ui/toast.js',
     '/js/shared/ui/tooltips.js',

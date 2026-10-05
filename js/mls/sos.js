@@ -2,7 +2,7 @@
 import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
 import { NFL_TEAMS, fantasyPosition } from './constants.js';
 import { State } from './state.js';
-import { showStatusFeedback } from './helpers.js';
+import { showStatusFeedback } from '../shared/ui/statusFeedback.js';
 import { loadRosterTab, optimizeLineup } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { flashButton } from '../shared/ui/flashButton.js';

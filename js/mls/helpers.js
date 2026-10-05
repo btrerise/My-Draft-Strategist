@@ -1,6 +1,7 @@
 // Moved from lineup/mls.js in refactor chunk 3A: the player/league status predicates that sat
 // at the end of STATE MANAGEMENT, UTILITY HELPERS, RANKINGS LOOKUP INDEX, and showStatusFeedback /
-// renderHTMLInto (unmarked, at the end of INITIALIZATION).
+// renderHTMLInto (unmarked, at the end of INITIALIZATION). Refactor 8B moved showStatusFeedback to
+// js/shared/ui/statusFeedback.js.
 import { getByeWeek } from '../shared/data/byes.js';
 import { State } from './state.js';
 
@@ -119,22 +120,6 @@ import { State } from './state.js';
         }
         return idx;
     }
-
-// Shows a role="status" feedback line that sits at display:none until now. Some screen
-// readers skip a live region that is revealed with its text already in it, so the box is
-// shown empty and the text goes in a beat later -- a content change, which they do announce.
-// `text` overrides the message; omitted, the element's current message is reused.
-export function showStatusFeedback(el, text, hideAfterMs) {
-    if (!el) return;
-    const msg = text ?? el._feedbackText ?? el.textContent;
-    el._feedbackText = msg;
-    clearTimeout(el._feedbackShowT);
-    clearTimeout(el._feedbackHideT);
-    el.textContent = '';
-    el.style.display = 'block';
-    el._feedbackShowT = setTimeout(() => { el.textContent = msg; }, 100);
-    el._feedbackHideT = setTimeout(() => { el.style.display = 'none'; }, hideAfterMs);
-}
 
 // Parses an HTML string into a DocumentFragment using a detached <template>, then swaps
 // it into `container` in one operation. The parsing happens off-DOM (the template's

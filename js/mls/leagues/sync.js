@@ -15,7 +15,8 @@ import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
 import { getPowerLeagueKind, loadRosterTab, optimizeLineup } from '../main.js';
-import { getRankingsFreshness, updateRankingsMetaDisplay } from '../rankings/engine.js';
+import { updateRankingsMetaDisplay } from '../rankings/engine.js';
+import { getFreshness } from '../../shared/freshness.js';
 import { applyMarketSettingsToUI } from '../settings.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { flashButton } from '../../shared/ui/flashButton.js';
@@ -64,7 +65,7 @@ import { showToast } from '../../shared/ui/toast.js';
             if (wSet) wDate = wSet.updatedAt;
             else if (l.weeklyRankingsUpdatedAt) wDate = l.weeklyRankingsUpdatedAt;
             
-            let wFresh = getRankingsFreshness(wDate, 6);
+            let wFresh = getFreshness(wDate, 6);
             let wIsStale = !wFresh || wFresh.isStale;
 
             let rankIcon = wIsStale 
@@ -115,7 +116,7 @@ import { showToast } from '../../shared/ui/toast.js';
             // trade has likely landed, so it goes amber.
             let syncText = "";
             if (!/^(manual|handoff)_/.test(l.leagueId)) {
-                const syncFresh = getRankingsFreshness(l.lastSyncedAt, 2, 'Synced');
+                const syncFresh = getFreshness(l.lastSyncedAt, 2, 'Synced');
                 const syncStale = !syncFresh || syncFresh.isStale;
                 const syncLabel = syncFresh ? syncFresh.label : 'Last sync unknown';
                 if (l.lastSyncFailedAt) {
@@ -126,7 +127,7 @@ import { showToast } from '../../shared/ui/toast.js';
                     const staleFor = syncFresh ? syncFresh.label.replace(/^Synced /, 'from ') : 'never synced';
                     syncText = `<span class="sync-failed" style="display: block; font-size: 0.75rem; margin-top: 2px;">Last sync failed · roster ${staleFor}</span>`;
                 } else {
-                    syncText = `<span class="${syncStale ? 'rankings-stale' : 'rankings-fresh'}" style="display: block; font-size: 0.75rem; margin-top: 2px;">${syncLabel}</span>`;
+                    syncText = `<span class="${syncStale ? 'freshness-stale' : 'freshness-ok'}" style="display: block; font-size: 0.75rem; margin-top: 2px;">${syncLabel}</span>`;
                 }
             }
             let activeStyle = l.leagueId === State.activeLeagueId ? 'background: rgba(16, 185, 129, 0.08);' : '';

@@ -176,6 +176,9 @@
 .badge-value { background: #102a1e; color: #4ade80; border: 1px solid #34A853; }
 .badge-reach { background: #3a1515; color: #fca5a5; border: 1px solid #ea4335; }
 .status-badge { font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; background-color: #102a1e; color: #4ade80; border: 1px solid #34A853; }
+/* The shared "Processing…" / success lines (.upload-processing, .success-feedback in base.css) under a
+   .status-badge (refactor 8B): spaced like the badge, rather than with base.css's top margin. */
+.upload-processing.status-line, .success-feedback.status-line { margin: 0 0 1rem; }
 
 /* --- MDS SPECIFIC STYLES (Tracker, Board, Limits) --- */
 .tracker-header-actions {
