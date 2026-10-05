@@ -955,18 +955,21 @@
             </div>
         </div>
 
-        <div class="input-group mb-3" data-waiver-modes="top auto">
+        <!-- In Check a List the chips only matter for Whole Roster, so they show only then, relabelled
+             "Compare Within" (applyWaiverScanSettingsToUI). -->
+        <div class="input-group mb-3" id="waiverPosWrap" data-waiver-modes="top auto list">
             <label id="waiverPosLabel">Position</label>
             <div class="mls-chip-row" id="waiverPosChips" role="group" aria-labelledby="waiverPosLabel">
-                <button type="button" class="mls-chip" data-pos="ALL" aria-pressed="false" data-action="setWaiverPos">All</button>
+                <button type="button" class="mls-chip active" data-pos="ALL" aria-pressed="true" data-action="setWaiverPos">All</button>
                 <button type="button" class="mls-chip" data-pos="QB" aria-pressed="false" data-action="setWaiverPos">QB</button>
                 <button type="button" class="mls-chip" data-pos="RB" aria-pressed="false" data-action="setWaiverPos">RB</button>
                 <button type="button" class="mls-chip" data-pos="WR" aria-pressed="false" data-action="setWaiverPos">WR</button>
                 <button type="button" class="mls-chip" data-pos="TE" aria-pressed="false" data-action="setWaiverPos">TE</button>
-                <button type="button" class="mls-chip active" data-pos="FLEX" aria-pressed="true" data-action="setWaiverPos">FLEX</button>
+                <button type="button" class="mls-chip" data-pos="FLEX" aria-pressed="false" data-action="setWaiverPos">FLEX</button>
                 <button type="button" class="mls-chip" data-pos="K" aria-pressed="false" data-action="setWaiverPos">K</button>
                 <button type="button" class="mls-chip" data-pos="DEF" aria-pressed="false" data-action="setWaiverPos">DEF</button>
             </div>
+            <small id="waiverPosHint" class="text-helper mt-1" data-waiver-modes="list" hidden>FLEX compares a pasted RB, WR or TE against your weakest RB, WR or TE together. Any other choice compares each player within his own position.</small>
         </div>
 
         <div data-waiver-modes="auto" hidden>

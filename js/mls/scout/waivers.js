@@ -100,6 +100,12 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         });
         const modeHint = document.getElementById('waiverModeHint');
         if (modeHint) modeHint.innerText = WAIVER_MODE_HINTS[mode];
+        // Check a List reads Position only for its Whole Roster verdict (pastedRosterVerdict:
+        // FLEX groups RB/WR/TE, anything else compares within the player's position), so the chips
+        // show there only with Whole Roster, under a label that says what they do.
+        const posWrap = document.getElementById('waiverPosWrap');
+        if (posWrap && mode === 'list' && s.compare !== 'roster') posWrap.hidden = true;
+        set('waiverPosLabel', 'innerText', mode === 'list' ? 'Compare Within' : 'Position');
         document.querySelectorAll('#waiverCompareToggle [data-compare]').forEach(b => {
             const on = b.dataset.compare === s.compare;
             b.classList.toggle('active', on);

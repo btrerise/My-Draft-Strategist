@@ -17,8 +17,8 @@ history of the module-structure refactor.
 segmented control at the top: **Top Available** (the default), **Auto-Find** and **Check a List**. All three share
 one Rank By dropdown, one row of position chips (All, QB, RB, WR, TE, FLEX, K, DEF; it replaces the Position dropdown)
 and one results area. Each mode shows only its own controls: Compare Against for Auto-Find and Check a List; Show Top
-and Only Would-Starts for Auto-Find; Search In, Looking To and the textarea for Check a List. The position chips are
-hidden in Check a List.
+and Only Would-Starts for Auto-Find; Search In, Looking To and the textarea for Check a List. In Check a List the position
+chips show only with Whole Roster, as "Compare Within" (round 3 below).
 
 Top Available draws as soon as the Scout tab opens (no button). It's a compact list in the spirit of FantasyCalc's
 waiver card:
@@ -27,7 +27,7 @@ waiver card:
 - **One position or FLEX:** one box, 15 at a time, with a Show 15 more button.
 - **Each row:** number, name, team, a position-rank chip with tier ("RB8", "WR4 T2"), injury and bye badges, a green
   "Starts" flag with an SVG check when he'd make your lineup this week, and on the right the cross-position number for
-  the Rank By choice ("Wk Flex" #21 for RB/WR/TE, a dash for QB/K/DEF; "ROS Ovr" for ROS), labelled in each box's
+  the Rank By choice ("Wk Flex" #21 for RB/WR/TE, a dash for QB/K/DEF; "ROS Ovr" for ROS), labeled in each box's
   header.
 
 The Auto-Find and Check a List results themselves are unchanged.
@@ -36,6 +36,24 @@ The Auto-Find and Check a List results themselves are unchanged.
 with a Show button and full-size rows. The owner found the two cards clunky side by side and chose, from three options
 (cards side by side on desktop; one card with modes; a compact board above), **one card with modes, using the compact
 rows**. This entry describes the final version.
+
+**Round 3 (owner's answers after the second push):**
+- **Check a List shows the chips (option 3 of 3).** Before, the chips were hidden in Check a List, but its Whole Roster
+  verdict still read the hidden Position setting. Now `#waiverPosWrap` shows in Check a List only when Compare Against
+  is Whole Roster, the one case where Position changes the result. It's labeled "Compare Within", with a hint: FLEX
+  compares a pasted RB, WR or TE against your weakest RB, WR or TE together; any other choice compares within the
+  player's own position. Changing a chip re-runs a pasted This League list already on screen. The verdict logic
+  (`pastedRosterVerdict`) is unchanged.
+- **All is the default position**, for Top Available and Auto-Find alike, since they share the setting:
+  `pos: 'ALL'` in `js/mls/state.js`, with the All chip active in the markup. People who already have a saved Position
+  (any waiver setting change stores the whole settings object) keep it.
+- **Position colors:** each row's rank chip ("RB8") and each box's position heading use the site's position-badge
+  classes (`badge pos-badge RB`, the colors in `css/base.css`). FLEX headings stay plain text, since FLEX has no color
+  of its own.
+- Tests: `mls-top-available.spec.mjs` checks the All default, the badge classes, and Compare Within: hidden for
+  Starting Lineup; shown for Whole Roster; "Chase Brown" checked against "Derrick Henry (your weakest RB)" with RB,
+  then re-checked against "George Kittle (your weakest FLEX)" with FLEX.
+- Screenshots re-taken again (the All chip is now the active one): the same two `mls-league-scout.png` files.
 
 **Owner's decisions:**
 - Before building: All = top 5 per position; a position or FLEX = top 15 plus "Show 15 more". A flat top-25 list was
@@ -59,8 +77,8 @@ rows**. This entry describes the final version.
   player map through `getSleeperMetaByName`. No new network calls.
 - **Settings:** the mode is stored as a new `mode` field ('top' | 'auto' | 'list') inside the existing
   `mls_waiver_scan_settings` value. Default 'top'. No new storage key.
-- **Position chips:** they write the existing `pos` field, which Auto-Find already read (default FLEX). Paging lives in
-  memory only.
+- **Position chips:** they write the existing `pos` field, which Auto-Find already read (default FLEX until round 3,
+  now All). Paging lives in memory only.
 - **Would Start:** only `starts` gets a flag. Bench/Out/Played would turn the list back into Auto-Find. Players whose
   game already kicked off stay in the list, since it's about who's available, not about this week.
 - **Manual and Draft Strategist hand-off leagues:** the summary reads "Top … not on your roster in …", each box's count
@@ -114,8 +132,6 @@ state, since the seeded screenshot league has no rankings.
 - `tests/baselines/linux/phone/mls-league-scout.png`
 
 **Left over.**
-- Check a List hides the position chips, but its Whole Roster verdict still reads the Position setting (FLEX groups
-  RB/WR/TE together; anything else compares within the player's own position), as it did when the dropdown was visible.
 - Follow-up cards S5 and S6 below; both are on the runbook page too (added in this session, Needs: S1).
 
 ### S1 extra: the last emoji replaced (owner's request after the icons rule)

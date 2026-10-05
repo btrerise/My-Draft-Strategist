@@ -1444,7 +1444,8 @@ button.close-chip {
 .mls-ta-player { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; }
 .mls-ta-name { color: var(--text-main); font-weight: 600; }
 .mls-ta-team { font-size: 0.72rem; color: var(--text-muted); }
-.mls-ta-pos { font-size: 0.7rem; color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 0.3rem; white-space: nowrap; }
+.mls-ta-pos { padding: 1px 5px; }
+.mls-ta-title-badge { font-size: 0.8rem; padding: 1px 6px; }
 .mls-ta-tier { opacity: 0.8; }
 .mls-ta-starts { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.72rem; font-weight: 600; color: var(--primary-green); white-space: nowrap; }
 .mls-ta-num { min-width: 2.5rem; text-align: right; font-weight: 600; color: var(--text-main); font-variant-numeric: tabular-nums; }

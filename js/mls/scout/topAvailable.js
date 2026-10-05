@@ -26,6 +26,7 @@ import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { getFreshness } from '../../shared/freshness.js';
+import { runScout } from './engine.js';
 
     const POSITION_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
     const PER_GROUP = 5;   // All: top 5 at each position
@@ -50,11 +51,16 @@ import { getFreshness } from '../../shared/freshness.js';
         if (inTopMode()) renderTopAvailable();
     }
 
-    // Position chips: the same setting the old Position dropdown wrote (Auto-Find reads it too).
+    // Position chips: the same setting the old Position dropdown wrote (Auto-Find reads it too, and
+    // Check a List's Whole Roster verdict, where a pasted list already on screen is re-checked).
     export function setWaiverPos(pos) {
-        updateWaiverScanSetting('pos', POSITION_FILTERS.includes(pos) ? pos : 'FLEX');
+        updateWaiverScanSetting('pos', POSITION_FILTERS.includes(pos) ? pos : 'ALL');
         pageLimit = PAGE;
-        if (inTopMode()) renderTopAvailable();
+        if (inTopMode()) { renderTopAvailable(); return; }
+        const s = State.waiverScanSettings;
+        const input = document.getElementById('waiverInput');
+        const out = outputEl();
+        if (s.mode === 'list' && s.scope !== 'all' && input && input.value.trim() !== '' && out && out.innerHTML.trim() !== '') runScout('waiver');
     }
 
     export function showMoreTopAvailable() {
@@ -84,6 +90,7 @@ import { getFreshness } from '../../shared/freshness.js';
         const row = ctx.evaluate(fa);
         const { player, verdict } = row;
         const d = ctx.scanDisplay[fa.cleanName] || {};
+        // The rank chip is colored like the position badges everywhere else (.pos-badge.QB etc., css/base.css).
         const posRank = d.posRank ? `${escapeHtml(player.pos)}${d.posRank}` : escapeHtml(player.pos);
         const tier = Number.isFinite(d.posTier) && d.posTier > 0 ? ` <span class="mls-ta-tier">T${d.posTier}</span>` : '';
         const cross = ctx.scanCross === 'overall' ? d.rank : (FLEX_POSITIONS.includes(player.pos) ? d.flexRank : null);
@@ -97,18 +104,21 @@ import { getFreshness } from '../../shared/freshness.js';
             <span class="mls-ta-player">
                 <span class="mls-ta-name">${escapeHtml(fa.name)}</span>
                 ${player.team ? `<span class="mls-ta-team">${escapeHtml(player.team)}</span>` : ''}
-                <span class="mls-ta-pos">${posRank}${tier}</span>${injBadge}${getByeBadgeHTML(player.team)}
+                <span class="badge pos-badge ${escapeHtml(player.pos)} mls-ta-pos">${posRank}${tier}</span>${injBadge}${getByeBadgeHTML(player.team)}
             </span>
             ${starts}
             <span class="mls-ta-num">${cross ? `#${cross}` : '&ndash;'}</span>
         </li>`;
     }
 
+    // A box's position heading as a colored position badge; FLEX has no color of its own.
+    const posTitle = (pos) => FANTASY_POSITIONS.includes(pos) ? `<span class="badge pos-badge ${pos} mls-ta-title-badge">${pos}</span>` : pos;
+
     function listHTML(ctx, items, title, countText, extra = '') {
         const crossLabel = ctx.scanCross === 'overall' ? `${ctx.scan.label} Ovr` : 'Wk Flex';
         return `<div class="mls-ta-group">
             <div class="mls-ta-head">
-                <h4 class="mls-ta-title">${title} <span class="mls-ta-count">&middot; ${countText}</span></h4>
+                <h4 class="mls-ta-title">${posTitle(title)} <span class="mls-ta-count">&middot; ${countText}</span></h4>
                 ${extra}<span class="mls-ta-col">${crossLabel}</span>
             </div>
             <ol class="mls-ta-list">${items.map((fa, i) => rowHTML(ctx, fa, i)).join('')}</ol>
@@ -130,7 +140,7 @@ import { getFreshness } from '../../shared/freshness.js';
             return;
         }
 
-        const pos = POSITION_FILTERS.includes(State.waiverScanSettings.pos) ? State.waiverScanSettings.pos : 'FLEX';
+        const pos = POSITION_FILTERS.includes(State.waiverScanSettings.pos) ? State.waiverScanSettings.pos : 'ALL';
         const knowsWholeLeague = isFullyMappedLeague(league);
         const freeWord = knowsWholeLeague ? 'available' : 'not on your roster';
         const takenText = knowsWholeLeague ? 'rostered in this league' : 'on your roster';
@@ -184,7 +194,7 @@ import { getFreshness } from '../../shared/freshness.js';
                     body = `<div class="mls-ta-grid">${FANTASY_POSITIONS.filter(p => rankedIn(p) > 0).map(p => {
                         const items = freeAgents.filter(f => f.pos === p);
                         if (items.length === 0) {
-                            return `<div class="mls-ta-group"><div class="mls-ta-head"><h4 class="mls-ta-title">${p} <span class="mls-ta-count">&middot; none ${freeWord}</span></h4></div><div class="mls-scan-empty">${noneText(p)}</div></div>`;
+                            return `<div class="mls-ta-group"><div class="mls-ta-head"><h4 class="mls-ta-title">${posTitle(p)} <span class="mls-ta-count">&middot; none ${freeWord}</span></h4></div><div class="mls-scan-empty">${noneText(p)}</div></div>`;
                         }
                         const more = items.length > PER_GROUP
                             ? `<button type="button" class="btn-bare mls-ta-more-link" data-action="setWaiverPos" data-pos="${p}">See all ${items.length}</button>` : '';

@@ -30,7 +30,8 @@ test.describe('Lineup Strategist Top Available', () => {
         await showTab(page, 'roster');
         await loadMlsRankings(page);
         await showTab(page, 'scout');
-        await chip(page, 'ALL').click();
+        // All is the default position.
+        await expect(chip(page, 'ALL')).toHaveAttribute('aria-pressed', 'true');
         await expect(out(page)).toContainText('Every player in your Weekly rankings (24 ranked) is already rostered in this league.');
 
         // A new upload on another tab: coming back to the Scout tab redraws with it.
@@ -48,6 +49,9 @@ test.describe('Lineup Strategist Top Available', () => {
         const cook = group(page, 'RB').locator('.mls-ta-row').first();
         await expect(cook).toContainText('BUF');
         await expect(cook.locator('.mls-ta-pos')).toHaveText('RB8');
+        // Rank chips and box headings use the position badge colors.
+        await expect(cook.locator('.mls-ta-pos')).toHaveClass(/\bpos-badge\b.*\bRB\b/);
+        await expect(group(page, 'QB').locator('.mls-ta-title .pos-badge.QB')).toHaveText('QB');
         await expect(cook.locator('.mls-ta-num')).toHaveText('#21');
         await expect(cook.locator('.mls-ta-starts')).toHaveText('Starts');
         await expect(group(page, 'QB').locator('.mls-ta-num')).toHaveText('–');
@@ -81,9 +85,22 @@ test.describe('Lineup Strategist Top Available', () => {
         await expect(page.locator('[data-action="autoFindWaiverUpgrades"]')).toBeVisible();
         await mode(page, 'list').click();
         await expect(page.locator('#waiverInput')).toBeVisible();
+        // Check a List: the chips matter only for Whole Roster, so they show only then, as Compare Within.
+        await expect(page.locator('#waiverPosChips')).toBeHidden();
+        await callApp(page, 'setWaiverCompare', 'roster');
+        await expect(page.locator('#waiverPosLabel')).toHaveText('Compare Within');
+        await expect(page.locator('#waiverPosHint')).toBeVisible();
+        // Your roster's only RB is Derrick Henry; your weakest RB/WR/TE overall is George Kittle (TE).
+        await page.fill('#waiverInput', 'Chase Brown');
+        await chip(page, 'RB').click();
+        await page.click('#waiverScanBtn');
+        await expect(out(page)).toContainText('Derrick Henry (your weakest RB)');
+        await chip(page, 'FLEX').click();
+        await expect(out(page)).toContainText('George Kittle (your weakest FLEX)');
+        await callApp(page, 'setWaiverCompare', 'lineup');
         await expect(page.locator('#waiverPosChips')).toBeHidden();
         await mode(page, 'top').click();
-        await expect(out(page)).toContainText('Top available QBs in Fixture League');
+        await expect(out(page)).toContainText('Top available RB/WR/TE in Fixture League');
 
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
@@ -99,8 +116,8 @@ test.describe('Lineup Strategist Top Available', () => {
         await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
         await showTab(page, 'scout');
 
-        // FLEX is the default position.
         const o = out(page);
+        await chip(page, 'FLEX').click();
         await expect(chip(page, 'FLEX')).toHaveAttribute('aria-pressed', 'true');
         await expect(o).toContainText('Top RB/WR/TE not on your roster in Manual League by Weekly rank.');
         await expect(o).toContainText('This is a manual league, so the app only knows your own roster.');
