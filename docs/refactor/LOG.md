@@ -104,8 +104,9 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   localStorage snapshot, and both resets) and 1 saved-name-key test (`name-keys.spec.mjs`, 9A: all three
   pages opened on a pre-9A localStorage + IndexedDB snapshot) and 1 SoS-upload test (`mls-sos.spec.mjs`, 9A: the
   SoS grid's file upload in all three file shapes) and 4 MLS bye-week tests (`mls-byes.spec.mjs`, 7C: Sleeper's
-  week stubbed to 5, BYE badges and the optimizer, and the open Roster/Lineup tab when Sleeper's week answers late). `backup.spec.mjs` has 4 tests since 6B (round trip and a
-  pre-6B backup file, per app). Each runs at both widths: 100 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  week stubbed to 5, BYE badges and the optimizer, and the open Roster/Lineup tab when Sleeper's week answers late) and 1
+  simulator player-lookup test (`mls-player-lookup.spec.mjs`, 9C: "Josh Allen" with a namesake guard in the player map). `backup.spec.mjs` has 4 tests since 6B (round trip and a
+  pre-6B backup file, per app). Each runs at both widths: 102 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -4634,3 +4635,217 @@ tests work" mentions the launch flag.
   flag into `playwright.config.mjs` `use.launchOptions`; it doesn't affect the other specs' assertions).
 - Not reproduced: 7C's 56,654 px desktop `mds-draft-tracker`. If a run ever shows a difference again,
   `npm run pxdiff -- --runs 3 --crops <dir>` gives the crops to start from.
+
+### 9C — Name → Sleeper ID lookup prefers the active player (behavior change)
+
+Started from "7B — Revisit nflmeta.org" ("Found during 7B" and card 9C) and 9A's #7. 9A was confirmed merged to main
+first. Only `js/mls/players.js` changed in the app (plus `CACHE_NAME`); no file added to or removed from the pages,
+no storage key (the index is still built once per page session and never saved). `normalizeName`, `NAME_ALIASES`,
+`getSleeperMetaByName`, the Injury Auditor's index and MDS's matching are untouched.
+
+**What users see.** In Lineup Strategist, a name that several Sleeper entries share now finds the player a user
+means instead of the oldest entry:
+- **Simulator → "Look Up a Specific Player"**: picking Josh Allen (QB BUF) from the search used to show *"Josh Allen
+  doesn't have enough game history yet to estimate a range (rookie, recent signing, or long-term injury)."*, because
+  the lookup fetched the history of 2212, an inactive guard. It now shows the Bills QB's card (QB badge, BUF, his
+  range). Same for DJ Moore, Kenneth Walker III, Kaleb Johnson, Kyle Williams and Antonio Williams.
+- **Waiver Insights**: a ranked free agent with one of those names is now simulated with his own score history and
+  injury status. Before, he got the namesake's (usually none), so he was dropped as "no history" or judged on the
+  wrong player's status.
+Nothing else reads this index (grep: only `lookupSimPlayer` in `js/mls/sim/matchup.js` and
+`js/mls/scout/waiverInsights.js`).
+
+**Reproduced on main first** (`tests/mls-player-lookup.spec.mjs`, written before the fix): the fixture player map
+plus Sleeper's guard entry 2212 (fields as on the live map, 2026-10-04; added by a route in this spec only, so no
+other spec's fixture changes). Typing "Josh All" in the simulator's search lists one row, `QB ·BUF`; selecting it
+showed the "doesn't have enough game history" message above, at both widths. With the fix the spec expects the
+QB card (`QB Josh Allen BUF`, a points range) and passes.
+
+**The fix** (`getCleanNameToIdIndex`, js/mls/players.js). Name, return shape (clean name → one id string) and
+session cache (one promise per page; a failed load clears it so the next call retries) unchanged. On a clean name
+several entries share, an entry replaces the kept one only if it's strictly better on, in order:
+1. has an NFL `team`;
+2. a fantasy position: `fantasy_positions` holds QB/RB/WR/TE/K/DEF, or `position` is one;
+3. lower `search_rank` (missing or non-numeric counts as worst; Sleeper uses 9999999 for unranked).
+A full tie keeps the first entry in the map's order, as before. Two small helpers sit next to it
+(`cleanNameMatchRank`, `isBetterCleanNameMatch`, not exported).
+
+**New test convention: loading an MLS module in Node.** `js/mls/players.js` imports `main.js` and `state.js`, which
+pull in the whole page and, entered from players.js, hit the temporal dead zone. `tests/unit/helpers/playersEnv.mjs`
+registers a `node:module` resolve hook (no Node flag needed) that answers *only players.js's* imports of `main.js`,
+`state.js`, `ui/toast.js` and `api/sleeper.js` with small stubs; `getSleeperPlayerMap()` returns the map the test
+passes to `loadPlayers(map, url?)`. Each call imports a fresh instance (query string), so each test has its own
+session cache, and `url` can point at another checkout's players.js. The same pattern works for other MLS modules
+if a later chunk needs it: add the module's own app imports to the hook's stub table.
+
+**Tests.**
+- `tests/unit/cleanNameIndex.test.mjs` (4 tests): the six names 7B found, with their fields copied from the live map
+  (Josh Allen → 4984, DJ Moore / D.J. Moore → 4983, Kenneth Walker III → 8151, Kaleb Johnson → 12504, Kyle Williams
+  → 12547, Antonio Williams → 13301); one name per rule (team beats no team even against a fantasy position and a
+  better rank; fantasy position beats a lineman; `position` when `fantasy_positions` is missing; lower search_rank;
+  a missing rank loses to a number; a full tie keeps the first of three); a unique lineman, a team defense and a
+  nameless entry as before; a worse later entry doesn't replace a better earlier one; the session cache and retry.
+  **Mutation check:** with main's players.js in place, 3 of the 4 fail (`'2212' !== '4984'`, `'101' !== '102'`).
+- `tests/mls-player-lookup.spec.mjs` (above), at both widths.
+- Screenshots: none changed (the fixture map has no shared names).
+
+**Old vs new index over Sleeper's live player map** (`api.sleeper.app/v1/players/nfl`, fetched 2026-10-05: 12,229
+entries, 11,871 clean names, 228 of them shared by two or more entries). Both versions ran in Node through
+`playersEnv.mjs`, the old one from a worktree of `origin/main`. **101 clean names change id.** Checked:
+- **No active fantasy player with a team loses his name any more**: for every shared name, no entry that has a team
+  and a fantasy position is left out of the index. Before, at least these six were.
+- **58 changes are to an entry with a team.** 57 of them because the old pick had none; one (Byron Murphy) by
+  search_rank between two players with teams.
+- **43 changes are to an entry with no team either**: every entry for those names is teamless (retired players, free
+  agents), so rule 2 or 3 decided. They're harmless and mostly right (Mike Williams → the WR with search_rank 297,
+  Ronald Jones → the former Buccaneers RB, Elijah Mitchell → the RB, C.J. Mosley → the LB).
+
+**Flagged, looks questionable (by the rule order the card set, not bugs in it):**
+- **Byron Murphy**: 5864 (Byron Murphy Jr., CB MIN, search_rank 999) → 11668 (Byron Murphy II, DL SEA, 368). Both
+  active IDP players on teams, neither a fantasy position here, so search_rank picks. The name is genuinely ambiguous.
+- **DJ Turner**: 7989 (WR, active, no team, unranked) → 10894 (DJ Turner II, CB CIN). Team beats fantasy position, so
+  a free-agent WR loses to a CB. If Sleeper signs the WR, he wins again. Same shape, all unranked and teamless
+  fantasy-position entries displaced by a non-fantasy player on a team: 15 more (Fred Davis, Chris Johnson, Daniel
+  Thomas, Will Johnson, Mike Brown, Austin Johnson, Brandon Coleman, Brian Parker, Beau Gardner, Milton Williams,
+  Tyler Davis, James Williams, Jaylon Moore, Aaron Smith, Leonard Taylor). None has a search_rank, so none is a
+  realistic free-agent pickup.
+- **Duplicate Player**: Sleeper has placeholder entries with that name; 2136 → 5282 (WR CHI, inactive). Irrelevant.
+
+Every change (old → new: id, position, team, status if not Active, `#search_rank` if ranked; "rule" is the first
+rule that differs):
+
+With a team (58):
+
+| Clean name | Old | New | Rule |
+|---|---|---|---|
+| aaronbrewer | 1122 LS no team | 7440 OL MIA | team |
+| aaronsmith | 7512 RB no team, Inactive | 13148 LB SEA, Inactive #697 | team |
+| anthonyjohnson | 1823 DE no team, Inactive | 11036 DB CHI | team |
+| antoniowilliams | 7203 RB no team #615 | 13301 WR WAS #156 | team |
+| austinjohnson | 1551 FB no team, Inactive | 3560 DT BUF | team |
+| beaugardner | 2909 TE no team | 13715 LS CHI | team |
+| brandoncoleman | 2196 WR no team, Physically Unable to Perform | 11702 OL WAS | team |
+| brandonjohnson | 3901 RB no team, Inactive | 8756 WR PIT #629 | team |
+| brandonsmith | 5716 OT no team | 7865 WR PIT #645 | team |
+| brandonwilliams | 1383 DT no team | 3557 CB NYG, Inactive #1060 | team |
+| brianparker | 2653 TE no team, Inactive | 13546 OT CIN, Inactive | team |
+| byronmurphy | 5864 CB MIN #999 | 11668 DL SEA #368 | search_rank |
+| chrisjohnson | 272 RB no team, Inactive | 13370 DB MIA #521 | team |
+| chrisjones | 903 P no team | 3558 DT KC #513 | team |
+| chrissmith | 1994 DE no team | 11345 DL DET | team |
+| christianjones | 2110 LB no team | 11768 OL CHI | team |
+| connormcgovern | 3301 OL no team | 5913 G BUF | team |
+| damarhamlin | 6979 S no team, Inactive | 7787 DB BUF #683 | team |
+| danielthomas | 806 RB no team, Inactive | 7053 DB CLE #679 | team |
+| derrickkelly | 6635 OL no team | 6752 ? NO | team |
+| djmoore | 4961 CB no team, Inactive | 4983 WR BUF #49 | team |
+| djturner | 7989 WR no team | 10894 DB CIN #999 | team |
+| drakejackson | 7886 C no team | 8351 DL ATL #693 | team |
+| duplicateplayer | 2136 OLB no team, Inactive | 5282 WR CHI, Inactive | team |
+| elijahponder | 7963 LB no team | 12978 DE NE | team |
+| frankgore | 232 RB no team #187 | 11573 RB BUF #448 | team |
+| freddavis | 98 TE no team, Inactive | 13675 CB WAS | team |
+| isaiahwilliams | 3931 OL no team | 11608 WR NYJ #650 | team |
+| jameswilliams | 6169 RB no team | 11847 DB TEN #657 | team |
+| jaylonjones | 8702 CB no team, Inactive | 11052 DB TEN | team |
+| jaylonmoore | 7191 WR no team, Inactive | 7834 OL KC | team |
+| joeyporter | 693 LB no team, Inactive | 10913 DB DAL | team |
+| jonahwilliams | 6122 T no team | 7344 DE NO | team |
+| jordanmoore | 4303 FS no team, Inactive | 12761 WR CIN #634 | team |
+| jordanmorgan | 4193 G no team | 11660 OL GB | team |
+| jordanphillips | 2357 DE no team | 12679 DL MIA | team |
+| joshallen | 2212 G no team, Inactive | 4984 QB BUF #3 | team |
+| joshjones | 4109 DB no team, Inactive | 6808 OL SEA | team |
+| joshthompson | 8379 DB no team | 13792 G ATL | team |
+| jtjones | 4296 OLB no team | 8091 DE PIT | team |
+| kalebjohnson | 2967 G no team, Inactive | 12504 RB GB #173 | team |
+| kenwalker | 4634 WR no team | 8151 RB KC #18 | team |
+| kylewilliams | 94 DT no team, Injured Reserve | 12547 WR NE #195 | team |
+| lardariuswebb | 478 FS no team, Inactive | 13727 DB BAL | team |
+| leonardtaylor | 11140 TE no team, Inactive | 12031 DL NE | team |
+| mikebrown | 1321 WR no team, Inactive | 8532 DB NE | team |
+| miltonwilliams | 2941 WR no team | 7696 DT NE #510 | team |
+| myleswhite | 1765 WR no team, Inactive | 3050 WR NYJ #699 | team |
+| nickmartin | 3221 C no team | 12630 LB SF, Inactive #516 | team |
+| nickwilliams | 1414 DE no team | 1604 WR DEN | team |
+| robertburns | 11060 RB no team | 11260 FB CHI | team |
+| ryanlangford | 3829 ILB no team | 4836 ? ARI | team |
+| skylerthomas | 8584 DB no team | 14087 DB CHI | team |
+| stevenjones | 11100 CB no team | 12216 OL PIT | team |
+| tonyadams | 5472 C no team | 8860 DB TEN | team |
+| trewatson | 6571 ILB no team | 13116 TE MIA #652 | team |
+| tylerdavis | 5251 K no team | 11799 DT LAR | team |
+| willjohnson | 1250 TE no team, Inactive | 12565 DB ARI, Inactive #697 | team |
+
+With no team (43):
+
+| Clean name | Old | New | Rule |
+|---|---|---|---|
+| alexgray | 4473 FS no team | 4733 TE no team, Inactive | fantasy pos |
+| anthonybrown | 3345 CB no team, Inactive | 8241 QB no team #633 | fantasy pos |
+| averywilliams | 4620 OLB no team | 7809 RB no team #648 | fantasy pos |
+| camjohnson | 1328 DE no team, Inactive | 12086 WR no team | fantasy pos |
+| charlesjohnson | 37 DE no team, Inactive | 1530 WR no team, Injured Reserve | fantasy pos |
+| chaseallen | 4389 OLB no team, Inactive | 8182 TE no team | fantasy pos |
+| cjjohnson | 5543 ILB no team | 9759 WR no team #669 | fantasy pos |
+| cjmosley | 743 DT no team, Inactive | 1875 LB no team #216 | search_rank |
+| daltonkeene | 5173 DE no team | 7082 TE no team #556 | fantasy pos |
+| dariuswhite | 3591 CB no team | 3945 WR no team, Inactive | fantasy pos |
+| deangelohardy | 11979 DB no team | 12244 WR no team | fantasy pos |
+| dechavonhayes | 4525 CB no team, Inactive | 4777 RB no team | fantasy pos |
+| derrickjohnson | 329 LB no team, Injured Reserve | 1842 WR no team | fantasy pos |
+| devinsmith | 1783 CB no team, Inactive | 2342 WR no team #698 | fantasy pos |
+| djwilliams | 935 TE no team, Inactive | 11989 RB no team, Inactive #999 | search_rank |
+| dukewilliams | 1351 SS no team, Inactive | 3846 WR no team | fantasy pos |
+| elijahmitchell | 4844 CB no team | 7561 RB no team, Inactive #999 | fantasy pos |
+| jacobyjones | 203 WR no team, Inactive | 13120 WR no team, Inactive #320 | search_rank |
+| jaylenjohnson | 6397 DL no team | 11874 WR no team #404 | fantasy pos |
+| jjjones | 5267 WR no team, Inactive | 12913 WR no team #999 | search_rank |
+| joewalker | 3406 LB no team | 6727 WR no team | fantasy pos |
+| jordanmurray | 8106 T no team, Inactive | 11493 TE no team, Inactive #658 | fantasy pos |
+| joshrobinson | 1254 CB no team | 2506 RB no team, Inactive | fantasy pos |
+| justinjones | 5063 DT no team, Inactive | 14076 RB no team | fantasy pos |
+| leonjohnson | 5440 G no team | 11863 WR no team #302 | fantasy pos |
+| marcuscooper | 1583 CB no team, Inactive | 11222 RB no team | fantasy pos |
+| marcusmartin | 2260 C no team | 5558 RB no team | fantasy pos |
+| mariowilliams | 219 DE no team, Inactive | 13001 WR no team, Inactive | fantasy pos |
+| mauricealexander | 2224 LB no team | 8921 WR no team #657 | fantasy pos |
+| michaelbennett | 495 DE no team, Injured Reserve | 2969 WR no team, Inactive | fantasy pos |
+| michaeljohnson | 354 DE no team, Inactive | 2754 WR no team | fantasy pos |
+| mikewilliams | 748 WR no team, Inactive | 4068 WR no team #297 | search_rank |
+| reggiewalker | 694 LB no team, Inactive | 7398 LB no team #1998 | search_rank |
+| rodneysmith | 1631 WR no team, Inactive | 7101 RB no team #420 | search_rank |
+| ronaldjones | 4955 RB no team | 5052 RB no team #620 | search_rank |
+| ryandavis | 1282 DE no team, Injured Reserve | 6036 WR no team | fantasy pos |
+| ryangriffin | 1425 TE no team | 1550 QB no team #292 | search_rank |
+| ryansmith | 3559 CB no team | 5547 TE no team | fantasy pos |
+| sambrown | 3854 CB no team | 13225 WR no team #999 | fantasy pos |
+| seanryan | 5834 TE no team, Inactive | 11387 WR no team #328 | search_rank |
+| terrywilliams | 2706 NT no team, Inactive | 3929 RB no team, Inactive | fantasy pos |
+| tonybrown | 5424 DB no team | 7078 WR no team | fantasy pos |
+| tonyjones | 2639 WR no team | 6984 RB no team #630 | search_rank |
+
+**Left for later.**
+- Two comments outside this card's file now describe the old behavior: `js/mls/scout/waivers.js` (above
+  `getSleeperMetaByName`: "getCleanNameToIdIndex's first-match-wins is fine for an id lookup") and
+  `js/mls/lineup/injuryAudit.js` (above `buildCleanNameCandidateIndex`: "unlike getCleanNameToIdIndex's
+  first-match-wins"). Left alone because the card limits the change to players.js; a later chunk touching those
+  files should update them. Nothing else depends on them.
+- `getSleeperMetaByName` (scout/waivers.js, out of scope) keeps only fantasy-position entries, prefers one with a
+  team, and otherwise keeps the first. On the live map it now disagrees with this index on 31 names, every one a
+  name where no fantasy-position entry has a team: it keeps the oldest teamless fantasy entry, while this index takes
+  a non-fantasy player on a team (22, for example DJ Turner, Josh Harris → the LAC long snapper) or a better-ranked
+  teamless entry (9, for example Mike Williams). Scout's Auto-Find and All-Leagues search read that index; this one
+  doesn't feed them, so they're unaffected, but the two can name different players for those 31 names.
+- Waiver Insights takes a candidate's position from `sleeperPosByName` (js/mls/players.js, `ensureSleeperPosByName`:
+  every entry overwrites, so the *newest* id's position wins) and its id from this index. On the live map, names
+  where the index's player has a different position than `sleeperPosByName` says, and that position is a fantasy
+  one: **62 before 9C, 15 after** (Josh Allen, DJ Moore, Kaleb Johnson and Kyle Williams among the 47 fixed). The
+  15 left are names where the newest entry is a teamless fantasy player and an older one is on a team or better
+  ranked (Josh Harris RB vs the LAC long snapper, Josh Johnson WR vs the CIN QB, Spencer Brown, Dylan Parham,
+  Brandon Williams), plus Sleeper's placeholder "Player Invalid". Giving `sleeperPosByName` the same preference
+  would close it; it's outside this card (which named only `getCleanNameToIdIndex`) and changes Scout's position
+  badges, so it needs its own card.
+
+**Checks run.** `node scripts/check-precache.mjs` OK (109 precached). `node --test` 201/201 (4 new).
+`cd tests && npx playwright test` 102/102 (2 new), screenshots unchanged. `CACHE_NAME` v2.8.68 → v2.8.69.
