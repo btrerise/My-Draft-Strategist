@@ -83,8 +83,11 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
     put a new element under the pointer, and whether its `:hover` style makes it into the PNG depends on timing.
   - `tests/hide-transient.css` hides what depends on timing rather than on the code (the toast); animations are
     disabled and the caret hidden.
-- **Baselines are per platform.** Google Fonts is blocked, so text uses the OS's fallback fonts. A macOS run finds
-  no baselines and writes `baselines/darwin/`; don't commit those unless you mean to keep both. CI runs on
+- **Baselines are Linux only.** Google Fonts is blocked, so text uses the OS's fallback fonts, and only the Linux
+  ones are committed (`baselines/linux/`). On Windows (or macOS), Playwright finds no baselines for that OS: run
+  `npx playwright test --ignore-snapshots` there, which still runs every test and skips only the pixel comparisons,
+  and leave screenshots to CI and the cloud sessions. A plain run fails and writes `baselines/win32/` (or
+  `darwin/`); `.gitignore` keeps those out of commits. CI runs on
   ubuntu-24.04 with Playwright's `--with-deps` font set, the same fonts as the cloud sessions.
 - **The rendering environment is checked** (`tests/render-env.mjs`, 10A). `BASELINE_ENV` there records what the
   Linux baselines were made with: Playwright 1.56.1 (Chromium revision 1194) on Ubuntu 24.04. On Linux,

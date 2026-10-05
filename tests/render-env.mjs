@@ -53,7 +53,7 @@ export function currentRenderEnv() {
 
 /**
  * Differences between this machine and BASELINE_ENV, as sentences; empty when they match. Only Linux is
- * checked: other platforms keep their own baselines (tests/baselines/<platform>/).
+ * checked: Windows and macOS have no committed baselines (run them with --ignore-snapshots).
  */
 export function renderEnvProblems(env = currentRenderEnv()) {
     if (process.platform !== 'linux') return [];
@@ -79,7 +79,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const problems = renderEnvProblems(env);
     console.log(`baselines: Playwright ${BASELINE_ENV.playwright}, Chromium revision ${BASELINE_ENV.chromiumRevision}, ${BASELINE_ENV.os}`);
     console.log(`this run:  ${describeRenderEnv(env)}`);
-    if (process.platform !== 'linux') console.log(`not checked on ${process.platform} (its baselines are separate)`);
+    if (process.platform !== 'linux') console.log(`not checked on ${process.platform}: only Linux baselines are committed`);
     if (problems.length) {
         console.error(renderEnvError(problems));
         process.exit(1);

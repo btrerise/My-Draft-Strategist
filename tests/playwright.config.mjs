@@ -9,8 +9,9 @@ export default defineConfig({
     // CI also writes an HTML report, which .github/workflows/check.yml uploads when a test fails.
     reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
     timeout: 30_000,
-    // Baselines are per platform: fallback fonts (Google Fonts is blocked in tests) render
-    // differently on Linux and macOS. Claude Code cloud sessions run Linux.
+    // Baselines are per platform: fallback fonts (Google Fonts is blocked in tests) render differently on
+    // each OS. Only Linux's are committed (CI and the Claude Code cloud sessions run Linux); on Windows or
+    // macOS run `npx playwright test --ignore-snapshots` (docs/TESTING.md).
     snapshotPathTemplate: '{testDir}/baselines/{platform}/{projectName}/{arg}{ext}',
     // Screenshot tolerance (owner's decision after refactor 0C, which made rendering repeatable): any colour
     // change counts (threshold 0), and at most 10 pixels may differ. pixelmatch still skips pixels it detects
