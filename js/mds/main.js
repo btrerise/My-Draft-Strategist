@@ -14,6 +14,7 @@ import { exportMdsSettings, hardReset, importMdsSettings } from './backup.js';
 import { addAndSyncSleeperDraft, createManualDraft, handleSmartSync, renderLiveSyncStatus, toggleAutoSync } from './sleeperSync.js';
 import { handleQueueDragEnd, handleQueueDragOver, handleQueueDragStart, handleQueueDrop, moveQueueItem, toggleQueue } from './queue.js';
 import { processPaste } from './import.js';
+import { cancelRankingsPreview, confirmRankingsPreview } from './uploadPreview.js';
 import { fetchMarketValue, processManualADP, quickStartFfc } from './market.js';
 import { toggleHeadshots, toggleQueueCollapse } from './tracker.js';
 import { sendRosterToLineupStrategist } from './handoff.js';
@@ -51,6 +52,9 @@ const clickActions = {
     goToSetupStep() { goToSetupStep(this.dataset.step); },
     quickStartFfc() { quickStartFfc(this); },
     processPaste() { processPaste(this); },
+    // The rankings upload preview's two buttons (uploadPreview.js, 8C)
+    cancelRankingsPreview() { cancelRankingsPreview(); },
+    confirmRankingsPreview() { confirmRankingsPreview(); },
     addAndSyncSleeperDraft() { addAndSyncSleeperDraft(this); },
     createManualDraft() { createManualDraft(); },
     fetchMarketValue() { fetchMarketValue(this); },
@@ -110,15 +114,17 @@ const dragActions = {
     drop: { queueDrag(event) { handleQueueDrop(event, Number(this.dataset.index)); } },
 };
 
-// The page's five top-level regions, each with one listener per event type it needs. They're
-// in the static HTML and never re-rendered, so the listeners survive every renderBoard().
+// The page's five top-level regions, each with one listener per event type it needs, plus the
+// rankings upload preview (8C), which sits outside them. They're in the static HTML and never
+// re-rendered, so the listeners survive every renderBoard().
 const header = document.querySelector('body > header.header');
 const menuOverlay = document.getElementById('menuOverlay');
 const hamburgerMenu = document.getElementById('hamburgerMenu');
 const main = document.getElementById('main');
 const navBar = document.querySelector('body > nav.nav-bar');
+const rankingsPreview = document.getElementById('rankingsPreviewOverlay');
 
-for (const container of [header, menuOverlay, hamburgerMenu, main, navBar]) delegate(container, 'click', clickActions);
+for (const container of [header, menuOverlay, hamburgerMenu, main, navBar, rankingsPreview]) delegate(container, 'click', clickActions);
 delegate(header, 'change', changeActions);
 delegate(main, 'change', changeActions);
 delegate(main, 'input', inputActions);

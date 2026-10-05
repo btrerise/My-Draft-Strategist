@@ -8,7 +8,7 @@
 // another tab is open; the checklist hides once all three are done.
 // Each test runs with reduced motion off and on: the cues animate, or show a static highlight.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, RANKINGS_CSV } from './helpers.mjs';
+import { openApp, expectClean, showTab, RANKINGS_CSV, confirmMdsPreview } from './helpers.mjs';
 
 const CARDS = { rankings: '#setupRankingsCard', draft: '#setupDraftCard', adp: '#setupAdpCard' };
 const STEPS = { rankings: '#setupStepRankings', draft: '#setupStepDraft', adp: '#setupStepAdp' };
@@ -76,6 +76,7 @@ for (const reducedMotion of [false, true]) {
             // Step 1: rankings.
             await page.fill('#csvPasteArea', RANKINGS_CSV);
             await page.getByRole('button', { name: 'Process Pasted Data' }).click();
+            await confirmMdsPreview(page);
             await expect(toast(page, 'Loaded 24 players').last()).toBeVisible();
             await expect(title).toHaveText('Setup Progress · 1 of 3 done');
             await expectStep(page, 'rankings', { done: true, text: 'Rankings loaded (24 players)', actionable: false });
@@ -139,6 +140,7 @@ for (const reducedMotion of [false, true]) {
             // ADP, once rankings are loaded: the format dropdown.
             await page.fill('#csvPasteArea', RANKINGS_CSV);
             await page.getByRole('button', { name: 'Process Pasted Data' }).click();
+            await confirmMdsPreview(page);
             await expect(toast(page, 'Loaded 24 players').last()).toBeVisible();
             await page.evaluate(() => window.scrollTo(0, 0));
             await page.locator(STEPS.adp).getByRole('button', { name: /^Show me/ }).click();

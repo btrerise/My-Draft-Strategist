@@ -22,6 +22,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Loading rankings or fetching ADP shows a spinner line** ("Processing players and building database…",
   "Fetching market value…") while it works, then a green "Rankings loaded successfully!" or "Market value updated!"
   for a few seconds.
+- **Rankings uploads ask before they replace anything.** Picking or dropping a file, or pasting rankings, opens a
+  preview first: how many players were read, the top five, rows lost to a broken quote, names that didn't match a
+  Sleeper player, a note when the file has no positions, and what saving will do to the rankings you already have
+  (load, blend, or replace in red). "Looks Good, Save It" (or "Replace Rankings") loads them; Cancel or Escape
+  leaves everything as it was. Quick-Start still loads at once.
 
 ### v2.7 — 2026-10-05
 

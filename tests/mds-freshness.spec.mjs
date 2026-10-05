@@ -9,7 +9,7 @@
 //   "Fetched: <format> on <date>").
 // Imports show a spinner line under the status box while they run, then a green success line.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, FIXED_NOW, RANKINGS_CSV } from './helpers.mjs';
+import { openApp, expectClean, FIXED_NOW, RANKINGS_CSV, confirmMdsPreview } from './helpers.mjs';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = FIXED_NOW.getTime();
@@ -123,8 +123,12 @@ test('a rankings import shows the processing line, then the success line and a f
     await expect(page.locator('#metaDisplay')).toHaveText(`Loaded: 220 players on ${OLD_DATE}`);
 
     players.release();
-    await expect(toast(page, 'Loaded 24 players')).toBeVisible();
+    // The spinner goes off when the upload preview opens (8C); the success line waits for Save.
+    await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
     await expect(processing).toBeHidden();
+    await expect(page.locator('#rankingsSuccessMsg')).toBeHidden();
+    await confirmMdsPreview(page);
+    await expect(toast(page, 'Loaded 24 players')).toBeVisible();
     const success = page.locator('#rankingsSuccessMsg');
     await expect(success).toBeVisible();
     await expect(success).toHaveText('Rankings loaded successfully!');
@@ -143,6 +147,7 @@ test('Fetch Market Value shows the processing line, then the success line; a fai
     const state = await openApp(page, '/');
     await page.fill('#csvPasteArea', RANKINGS_CSV);
     await page.getByRole('button', { name: 'Process Pasted Data' }).click();
+    await confirmMdsPreview(page);
     await expect(toast(page, 'Loaded 24 players')).toBeVisible();
     await expect(page.locator('#adpStatusDisplay')).toBeHidden();
 

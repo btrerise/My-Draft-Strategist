@@ -98,6 +98,7 @@ import { setProcessingStatus, showStatusFeedback } from '../shared/ui/statusFeed
                 fileName: null,
                 headers: ['Name', 'Pos', 'Team', 'Bye', 'ADP'],
                 replace: true,
+                skipPreview: true, // refactor 8C: Quick-Start loads at once, with no upload preview
                 successLabel: "Quick-Start Loaded!",
                 successToast: res.short
                     ? { text: `Quick-Start loaded only {count} players. ${note} Upload your own rankings for a full player pool.`, opts: { isError: true, duration: 12000 } }

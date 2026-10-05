@@ -1,7 +1,8 @@
 // Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // --- FOCUS TRAPPING FOR OVERLAYS ---
-// Shared by the hamburger drawer and the rankings preview modal (js/mls/nav.js, js/mls/rankings/uploadPreview.js) so a
+// Shared by the hamburger drawer and the rankings preview modal (js/mls/nav.js; both apps' preview since 8C,
+// through createPreviewShell in js/shared/rankings/uploadPreview.js) so a
 // keyboard user Tabbing through an open overlay stays inside it instead of tabbing into the
 // page behind it -- previously neither one did this, despite the preview modal's markup
 // already declaring role="dialog" aria-modal="true", a promise the JS wasn't keeping.

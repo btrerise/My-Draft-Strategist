@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.8.71';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.72';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -82,6 +82,7 @@ const PRECACHE_ASSETS = [
     '/js/mds/export.js',
     '/js/mds/affinity.js',
     '/js/mds/setupGuide.js',
+    '/js/mds/uploadPreview.js',       // 8C: rankings upload preview
     '/js/boot.js',                    // plain script, first on every page
     '/js/shared/globals.js',          // module on every page; assigns the shared window.* names
     // globals.js's static imports (a module graph like mls.js's -- one missing file and the
@@ -91,6 +92,7 @@ const PRECACHE_ASSETS = [
     '/js/shared/html.js',
     '/js/shared/freshness.js',        // 8B: "Updated 3 days ago" labels, all three pages
     '/js/shared/rankings/diagnostics.js',
+    '/js/shared/rankings/uploadPreview.js', // 8C: preview shell + unmatched-name wording, both apps
     '/js/shared/ui/banners.js',
     '/js/shared/ui/confirm.js',
     '/js/shared/ui/delegate.js',

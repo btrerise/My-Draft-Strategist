@@ -1364,36 +1364,36 @@
 </nav>
 
 <!-- Rankings Upload Preview Modal (shared by ROS & Weekly uploads) -->
-<div id="rankingsPreviewOverlay" class="mls-preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingsPreviewTitle">
-    <div class="mls-preview-modal">
+<div id="rankingsPreviewOverlay" class="preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingsPreviewTitle">
+    <div class="preview-modal">
         <h3 id="rankingsPreviewTitle">Preview Rankings</h3>
-        <p id="rankingsPreviewCount" class="mls-preview-count"></p>
+        <p id="rankingsPreviewCount" class="preview-count"></p>
         <!-- Files that contributed no players (multi-file uploads) and workbook tabs skipped as
              notes, each with the reason. Reuses the unmatched-names styling. Filled by
              openRankingsPreview. -->
-        <div id="rankingsPreviewSkipped" class="mls-preview-unmatched" style="display: none; margin-top: 0; margin-bottom: 0.75rem;">
-            <div class="mls-preview-unmatched-title"></div>
-            <div class="mls-preview-unmatched-list"></div>
-            <p class="mls-preview-unmatched-hint">The players below don't include anything from these. If that's intended, save as usual. Otherwise, cancel, fix the file and upload it again.</p>
+        <div id="rankingsPreviewSkipped" class="preview-unmatched" style="display: none; margin-top: 0; margin-bottom: 0.75rem;">
+            <div class="preview-unmatched-title"></div>
+            <div class="preview-unmatched-list"></div>
+            <p class="preview-unmatched-hint">The players below don't include anything from these. If that's intended, save as usual. Otherwise, cancel, fix the file and upload it again.</p>
         </div>
-        <ul id="rankingsPreviewList" class="mls-preview-list"></ul>
-        <p id="rankingsPreviewNote" class="mls-preview-note" style="display: none;">This file also includes Strength of Schedule data, which will be updated too.</p>
-        <div id="rankingsPreviewDerived" class="mls-preview-derived" style="display: none;">
-            <div class="mls-preview-derived-title">Positional ranks will be derived</div>
-            <p class="mls-preview-derived-body"></p>
+        <ul id="rankingsPreviewList" class="preview-list"></ul>
+        <p id="rankingsPreviewNote" class="preview-note" style="display: none;">This file also includes Strength of Schedule data, which will be updated too.</p>
+        <div id="rankingsPreviewDerived" class="preview-derived" style="display: none;">
+            <div class="preview-derived-title">Positional ranks will be derived</div>
+            <p class="preview-derived-body"></p>
         </div>
-        <div id="rankingsPreviewUnmatched" class="mls-preview-unmatched" style="display: none;">
-            <div class="mls-preview-unmatched-title"></div>
-            <div class="mls-preview-unmatched-list"></div>
-            <p class="mls-preview-unmatched-hint">Players are matched by name, so these stay unranked everywhere in the app - including your lineup and waiver scans. Team defenses are often named differently than Sleeper names them. You can still save this file; renaming them to match Sleeper fixes it.</p>
+        <div id="rankingsPreviewUnmatched" class="preview-unmatched" style="display: none;">
+            <div class="preview-unmatched-title"></div>
+            <div class="preview-unmatched-list"></div>
+            <p class="preview-unmatched-hint">Players are matched by name, so these stay unranked everywhere in the app - including your lineup and waiver scans. Team defenses are often named differently than Sleeper names them. You can still save this file; renaming them to match Sleeper fixes it.</p>
         </div>
         <!-- Says where this upload lands: a new set, or an in-place overwrite of an existing
              one (and how many leagues follow that set). Filled by openRankingsPreview. -->
-        <p id="rankingsPreviewTarget" class="mls-preview-target" style="display: none;"></p>
+        <p id="rankingsPreviewTarget" class="preview-target" style="display: none;"></p>
         <!-- Other leagues to point at this set, picked before saving. Only shown when there's
              more than one league. Filled by openRankingsPreview via renderLeaguePicker. -->
         <div id="rankingsPreviewLeagues" class="mls-league-picker" style="display: none;"></div>
-        <div class="mls-preview-actions">
+        <div class="preview-actions">
             <button class="btn btn-secondary" data-action="cancelRankingsPreview">Cancel</button>
             <button id="rankingsPreviewConfirmBtn" class="btn btn-primary" data-action="confirmRankingsPreview">Looks Good, Save It</button>
         </div>
@@ -1402,12 +1402,12 @@
 
 <!-- Ranking Set League Picker (shared by ROS & Weekly). Opened from "Choose leagues..." on a
      rankings card, and after an auto-fetch creates a new set. Filled by openLeaguePickerDialog. -->
-<div id="rankingLeaguesOverlay" class="mls-preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingLeaguesTitle">
-    <div class="mls-preview-modal">
+<div id="rankingLeaguesOverlay" class="preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingLeaguesTitle">
+    <div class="preview-modal">
         <h3 id="rankingLeaguesTitle">Choose leagues</h3>
-        <p id="rankingLeaguesIntro" class="mls-preview-count"></p>
+        <p id="rankingLeaguesIntro" class="preview-count"></p>
         <div id="rankingLeaguesList" class="mls-league-picker"></div>
-        <div class="mls-preview-actions">
+        <div class="preview-actions">
             <button type="button" class="btn btn-secondary" data-league-picker="cancel">Cancel</button>
             <button type="button" class="btn btn-primary" data-league-picker="ok">Save</button>
         </div>

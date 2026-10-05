@@ -15,6 +15,7 @@ import { isDraftPickName } from '../trade/valueCurve.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
+import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
     // One scanner, two lenses, picked with the "Compare Against" toggle:
@@ -248,17 +249,6 @@ import { isPreferredSleeperEntry } from '../players.js';
             scanDisplay: scan && scan.basis === 'ros' ? rosDisplay : wkDisplay,
             scanCross: scan && scan.basis === 'ros' ? 'overall' : 'flex'
         };
-    }
-
-    // "Marquise Brown, Gabe Davis and 4 more." -- capped so a badly-matched file doesn't push
-    // the actual results off the screen. Names come straight from the rankings file, so they're
-    // exactly what the person would search for to fix them.
-    export function formatUnmatchedNames(names, max = 6) {
-        const shown = (names || []).slice(0, max).map(n => escapeHtml(n));
-        const rest = (names || []).length - shown.length;
-        if (shown.length === 0) return '';
-        const list = shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
-        return rest > 0 ? `${shown.join(', ')} and ${rest} more.` : `${list}.`;
     }
 
     // What a file actually leaves the app to infer -- and whether that's worth saying at all,

@@ -139,10 +139,22 @@ export const WAIVER_RANKINGS_CSV = readFileSync(here('./fixtures/rankings-waiver
 
 export const FIXTURE_LEAGUE_ID = '1000000000000000001';
 
-/** MDS: loads the 24-player fixture through the paste box, then makes five picks. */
+/**
+ * MDS (refactor 8C): a rankings upload or paste opens the upload preview and loads nothing until
+ * its confirm button. This waits for the preview and saves it.
+ */
+export async function confirmMdsPreview(page) {
+    const overlay = page.locator('#rankingsPreviewOverlay');
+    await expect(overlay).toBeVisible();
+    await page.locator('#rankingsPreviewConfirmBtn').click();
+    await expect(overlay).toBeHidden();
+}
+
+/** MDS: loads the 24-player fixture through the paste box (and its preview), then makes five picks. */
 export async function seedMds(page) {
     await page.fill('#csvPasteArea', RANKINGS_CSV);
     await page.getByRole('button', { name: 'Process Pasted Data' }).click();
+    await confirmMdsPreview(page);
     await expect(page.locator('.toast-message').filter({ hasText: 'Loaded 24 players' })).toBeVisible();
     await showTab(page, 'tracker');
     // Pick, Taken, Taken, Pick, Taken: two players on my team, three elsewhere.

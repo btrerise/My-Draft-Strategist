@@ -8,7 +8,7 @@
 // Cloudflare Pages Function, which the static test server doesn't run).
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, RANKINGS_CSV, FIXTURE_LEAGUE_ID } from './helpers.mjs';
+import { openApp, expectClean, showTab, RANKINGS_CSV, FIXTURE_LEAGUE_ID, confirmMdsPreview } from './helpers.mjs';
 
 // The fixture player map plus a two-way player the way Sleeper lists Travis Hunter: position
 // DB, fantasy_positions DB and WR. Served only by the test that needs him, so the shared
@@ -50,6 +50,7 @@ const ffcRow = (name, position, team, adp, bye = 7) => ({ player_id: 1, name, po
 async function pasteRankings(page) {
     await page.fill('#csvPasteArea', RANKINGS_CSV);
     await page.getByRole('button', { name: 'Process Pasted Data' }).click();
+    await confirmMdsPreview(page);
     await expect(toast(page, 'Loaded 24 players').last()).toBeVisible();
     await page.waitForLoadState('networkidle');
 }
