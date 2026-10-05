@@ -285,10 +285,13 @@ const SCENARIOS = {
         await allDetailsOpen(page, snap, MLS_TABS);
         // Scout: the same actions as mls-scout.spec.mjs.
         await showTab(page, 'scout');
+        // Since improvements S1 the pasted list and Auto-Find are modes (no setWaiverMode before that).
+        await page.evaluate(async () => (await import('/js/mls/main.js')).setWaiverMode?.('list'));
         await page.fill('#waiverInput', "Ja'Marr Chase\nJosh Allen\nNobody McFakename");
         await page.click('#waiverScanBtn');
         await page.waitForLoadState('networkidle');
         await snap('scout, pasted list scanned');
+        await page.evaluate(async () => (await import('/js/mls/main.js')).setWaiverMode?.('auto'));
         await page.evaluate(async () => ((await import('/js/mls/main.js')).setWaiverCompare ?? window.setWaiverCompare)('roster'));
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await page.waitForLoadState('networkidle');

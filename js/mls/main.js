@@ -29,7 +29,7 @@ import { generateSoSGrid, saveManualSoS } from './sos.js';
 import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
-import { refreshTopAvailable, setTopAvailableBasis, setTopAvailablePos, showMoreTopAvailable, showTopAvailable } from './scout/topAvailable.js';
+import { onScoutTabShown, refreshTopAvailable, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
 import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
@@ -63,10 +63,10 @@ import { dismissBannerAndReveal, dismissBanner } from '../shared/ui/banners.js';
 // state.js would then read State in its TDZ, and the headshot/SoS/market load-time code would run
 // out of mls.js order. main.js is the entry module, so it is always mid-evaluation while the
 // others evaluate, and importing from it never triggers an evaluation.
-export { checkForDraftStrategistHandoff, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderLineupUI, renderSyncLogs, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
+export { checkForDraftStrategistHandoff, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderLineupUI, renderSyncLogs, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
-export { confirmRankingsPreview, createManualLeague, openRankingSetLeagues, setTopAvailablePos, setWaiverCompare, setWaiverScope, toggleDrawer };
+export { confirmRankingsPreview, createManualLeague, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
 
 // The only window.* names left. Until refactor chunk 5D this block held every name something read
 // through window (originally the inline on*="..." handlers); 5B and 5C replaced the handlers with
@@ -139,10 +139,9 @@ const clickActions = {
     runMatchupSim() { runMatchupSim(); },
     // Scout tab (and scout/waivers.js, scout/allLeaguesSearch.js) (5C). The Sleeper sync banner
     // uses dismissBanner above; the waiver sections' toggles use toggleRankingsCard.
-    // Top Available card (scout/topAvailable.js, improvements S1)
-    showTopAvailable() { showTopAvailable(); },
-    setTopAvailablePos() { setTopAvailablePos(this.dataset.pos); },
-    setTopAvailableBasis() { setTopAvailableBasis(this.dataset.basis); },
+    // Waiver Wire Assistant modes, Position chips and Top Available (scout/topAvailable.js, improvements S1)
+    setWaiverMode() { setWaiverMode(this.dataset.mode); },
+    setWaiverPos() { setWaiverPos(this.dataset.pos); },
     showMoreTopAvailable() { showMoreTopAvailable(); },
     clearWaiverScout() { document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML=''; },
     setWaiverCompare() { setWaiverCompare(this.dataset.compare); },
@@ -175,7 +174,7 @@ const changeActions = {
     importMlsSettings() { importMlsSettings(this); },
     updatePowerSetting() { updatePowerSetting(this.dataset.setting, this.value); },
     updateSimSetting() { updateSimSetting(this.dataset.setting, this.checked); },
-    // Rank By is shared with Top Available, which redraws if it's showing.
+    // Rank By is shared with Top Available, which redraws if it's on screen.
     updateWaiverScanSetting() { updateWaiverScanSetting(this.dataset.setting, this.value); if (this.dataset.setting === 'basis') refreshTopAvailable(); },
     updateWaiverScanSettingInt() { updateWaiverScanSetting(this.dataset.setting, parseInt(this.value, 10)); },
     updateWaiverScanSettingChecked() { updateWaiverScanSetting(this.dataset.setting, this.checked); },

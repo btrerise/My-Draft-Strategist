@@ -8,7 +8,7 @@
 // tests cover 3G's fix: a fresh page compares free agents, and when none can be given a position the
 // card says that instead of blaming game history and kickoffs.
 import { test, expect } from '@playwright/test';
-import { preparePage, expectClean, showTab, seedMls, loadMlsRankings, seedSimRandom, RANKINGS_CSV, WAIVER_RANKINGS_CSV } from './helpers.mjs';
+import { preparePage, expectClean, showTab, seedMls, loadMlsRankings, seedSimRandom, callApp, RANKINGS_CSV, WAIVER_RANKINGS_CSV } from './helpers.mjs';
 
 async function openSeeded(page, csv = WAIVER_RANKINGS_CSV, count = 30) {
     const state = await preparePage(page);
@@ -42,6 +42,7 @@ test.describe('Lineup Strategist Waiver Insights', () => {
         const state = await openSeeded(page);
         // Scan Pasted List builds the position lookup (sleeperPosByName, js/mls/players.js) as a side effect.
         await showTab(page, 'scout');
+        await callApp(page, 'setWaiverMode', 'list');
         await page.fill('#waiverInput', 'Jayden Daniels');
         await page.click('#waiverScanBtn');
         await expect(page.locator('#waiverOutput')).toContainText('Jayden Daniels');

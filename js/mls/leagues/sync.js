@@ -286,12 +286,15 @@ import { showToast } from '../../shared/ui/toast.js';
         if (activeTab === 'lineupTab') optimizeLineup(false);
         if (activeTab === 'rosterTab') loadRosterTab();
         
+        // The Waiver Wire Assistant's results area follows its mode (improvements S1): Top
+        // Available redraws for the new league, Check a List re-runs a pasted list, and anything
+        // else (Auto-Find, an empty list) is cleared.
         const waiverInput = document.getElementById('waiverInput');
         const waiverOutput = document.getElementById('waiverOutput');
-        if (waiverInput && waiverInput.value.trim() !== '') runScout('waiver');
+        const waiverMode = State.waiverScanSettings.mode || 'top';
+        if (waiverMode === 'top') refreshTopAvailable();
+        else if (waiverMode === 'list' && waiverInput && waiverInput.value.trim() !== '') runScout('waiver');
         else if (waiverOutput) waiverOutput.innerHTML = '';
-        // Top Available is one league's list: redraw it for the new league if it's showing.
-        refreshTopAvailable();
         
         // Trade Analyzer and Positional Power Rankings were already cleared by
         // loadActiveLeagueData above (see clearLeagueScopedResults). The trade used to be

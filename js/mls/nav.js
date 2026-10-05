@@ -2,7 +2,7 @@
 import { State } from './state.js';
 import { updatePulsePrompts } from './init.js';
 import { refreshLeagueDropdown } from './leagues/sync.js';
-import { loadRosterTab, optimizeLineup } from './main.js';
+import { loadRosterTab, onScoutTabShown, optimizeLineup } from './main.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 
@@ -122,6 +122,7 @@ import { getTabFromHash } from '../shared/ui/tabHash.js';
         if (tabId === 'lineup') optimizeLineup(false);
         if (tabId === 'roster') loadRosterTab();
         if (tabId === 'setup') refreshLeagueDropdown();
+        if (tabId === 'scout') onScoutTabShown();
         window.scrollTo(0, 0);
 
         if (typeof updatePulsePrompts === 'function') updatePulsePrompts();

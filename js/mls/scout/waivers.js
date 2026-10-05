@@ -64,6 +64,13 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 
     const WAIVER_SCAN_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
+    export const WAIVER_MODES = ['top', 'auto', 'list'];
+    const WAIVER_MODE_HINTS = {
+        top: 'The best-ranked players nobody in this league has rostered, by your rankings.',
+        auto: 'Free agents measured against your starting lineup or your whole roster.',
+        list: 'Paste the players you want to check, in this league or across all your leagues.'
+    };
+
     export const updateWaiverScanSetting = function(key, value) {
         State.waiverScanSettings[key] = value;
         localStorage.setItem(KEYS.mls.waiverScanSettings, JSON.stringify(State.waiverScanSettings));
@@ -74,15 +81,25 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const s = State.waiverScanSettings;
         const set = (id, prop, val) => { const el = document.getElementById(id); if (el) el[prop] = val; };
         set('waiverScanBasis', 'value', s.basis);
-        set('waiverScanPos', 'value', s.pos);
         set('waiverScanLimit', 'value', String(s.limit));
         set('waiverScanStartersOnly', 'checked', !!s.startersOnly);
-        // Top Available's Rank By toggle (scout/topAvailable.js) shows this same setting.
-        document.querySelectorAll('#topAvailableBasisToggle [data-basis]').forEach(b => {
-            const on = (b.dataset.basis === 'ros') === (s.basis === 'ros');
+        const pressed = (selector, isOn) => document.querySelectorAll(selector).forEach(b => {
+            const on = isOn(b);
             b.classList.toggle('active', on);
             b.setAttribute('aria-pressed', on ? 'true' : 'false');
         });
+        pressed('#waiverPosChips [data-pos]', b => b.dataset.pos === s.pos);
+
+        // --- MODE (Top Available | Auto-Find | Check a List), improvements S1 ---
+        // One card, one results area: each block lists the modes it belongs to in
+        // data-waiver-modes, and the rest are hidden.
+        const mode = WAIVER_MODES.includes(s.mode) ? s.mode : 'top';
+        pressed('#waiverModeToggle [data-mode]', b => b.dataset.mode === mode);
+        document.querySelectorAll('[data-waiver-modes]').forEach(el => {
+            el.hidden = !el.dataset.waiverModes.split(' ').includes(mode);
+        });
+        const modeHint = document.getElementById('waiverModeHint');
+        if (modeHint) modeHint.innerText = WAIVER_MODE_HINTS[mode];
         document.querySelectorAll('#waiverCompareToggle [data-compare]').forEach(b => {
             const on = b.dataset.compare === s.compare;
             b.classList.toggle('active', on);

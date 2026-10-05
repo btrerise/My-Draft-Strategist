@@ -163,6 +163,10 @@ something looks:
   ownership filters (checked by `tests/unit/bootKeyFilters.test.mjs`).
 - **Bye weeks** (7C): only from `getByeWeek` in `js/shared/data/byes.js`, regenerated each May with
   `node scripts/update-byes.mjs <season>` (see the README).
+- **Icons are SVG, never emoji** (owner's rule, improvements S1): any icon users see is an inline `<svg
+  aria-hidden="true">` drawn with `stroke="currentColor"` (the existing icons are Feather-style, 24×24 viewBox), so it
+  follows the theme and renders the same on every OS. Plain text symbols already used as glyphs (✕ on close buttons, ★)
+  are fine; emoji (🔥, 🎉, 🔴) are not. A few older emoji remain; `docs/improvements/LOG.md` lists them.
 - **User-visible changes** (8A): add a plain-language line under the app's **Unreleased** section in
   `CHANGELOG.md`. Bumping an app's footer version (the `APP VERSION` comment in `index.html` or
   `lineup/index.html`) turns those lines into that version's entry.

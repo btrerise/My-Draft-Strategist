@@ -52,10 +52,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **Top Available on the Scout tab:** the best-ranked players nobody in your league has rostered, by your Weekly or
-  ROS rankings, with position chips (All shows the top 5 at each position; one position or FLEX shows 15 at a time,
-  with Show 15 more) and a Would Start pill when he'd make your lineup this week. In a manual league it lists players
-  not on your roster and says so.
+- **Top Available in the Waiver Wire Assistant:** the Scout tab's waiver card now has three modes, Top Available,
+  Auto-Find and Check a List, sharing one Rank By, one row of position chips and one results area. Top Available (the
+  default) is a compact list of the best-ranked players nobody in your league has rostered: All shows the top 5 at
+  each position side by side, one position or FLEX shows 15 at a time with Show 15 more, and "Starts" marks anyone
+  who'd make your lineup this week. It redraws when you come back to the Scout tab after uploading rankings or
+  syncing, and when you switch leagues. In a manual league it lists players not on your roster and says so.
 
 ### v2.14.0 — 2026-10-05
 

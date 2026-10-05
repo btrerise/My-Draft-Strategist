@@ -1,109 +1,123 @@
-// --- TOP AVAILABLE (Scout tab) ---
+// --- TOP AVAILABLE (Scout tab, Waiver Wire Assistant's first mode) ---
 // Added in improvements card S1. The best-ranked players nobody in the active league has rostered,
-// by the rankings you've loaded, with a position filter. No lineup lens and no pasted list: Auto-Find
-// answers "who beats my players?" and Scan Pasted List "are these players free?"; this answers
-// "who's the best player nobody has?".
+// by the rankings you've loaded. No lineup lens and no pasted list: Auto-Find answers "who beats my
+// players?" and Check a List "are these players free?"; this answers "who's the best player nobody
+// has?". It shares the card's Rank By, Position chips and results area with the other two modes
+// (owner's choice after the first version, which was a separate card above).
 //
 // Everything that decides who counts as available, and in what order, is Auto-Find's own code:
 // buildWaiverContext (positions from the cached Sleeper player map, the display ranks, the Would
-// Start check), resolveWaiverBasis (the shared Rank By choice, with its fallback note) and
-// findFreeAgents (not in globalRosterMap, draft picks out, unresolvable names reported, sorted by
-// compareForScan). getTopWaiverCandidatesByPosition (trade/waiverValue.js) isn't used: it ranks by
-// ROS or Market only, so it can't follow a Weekly Rank By, and it drops unresolvable names silently.
+// Start check), resolveWaiverBasis (Rank By, with its fallback note) and findFreeAgents (not in
+// globalRosterMap, draft picks out, unresolvable names reported, sorted by compareForScan).
+// getTopWaiverCandidatesByPosition (trade/waiverValue.js) isn't used: it ranks by ROS or Market
+// only, so it can't follow a Weekly Rank By, and it drops unresolvable names silently.
 //
-// Chips and paging live in memory (reset on reload); Rank By is the waiver scan's existing setting.
+// When it draws: whenever the Scout tab is shown in this mode (nav.js), and on a league switch,
+// a mode/position/Rank By change while it's on screen. Rankings uploads and syncs happen on other
+// tabs, so coming back to the Scout tab redraws with them. Paging is in memory only.
 import { escapeHtml } from '../../shared/html.js';
 import { FANTASY_POSITIONS } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, isConnectionError } from '../helpers.js';
-import { getByeBadgeHTML, getGameInfoHTML } from '../lineup/gameInfo.js';
-import { findFreeAgents, matchesPosFilter } from './waiverScanner.js';
-import { buildWaiverContext, resolveWaiverBasis, updateWaiverScanSetting, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts } from './waivers.js';
+import { getByeBadgeHTML } from '../lineup/gameInfo.js';
+import { findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
+import { buildWaiverContext, resolveWaiverBasis, updateWaiverScanSetting, waiverDerivedNotes, WAIVER_MODES } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { getFreshness } from '../../shared/freshness.js';
 
-    export const TOP_AVAILABLE_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
+    const POSITION_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
     const PER_GROUP = 5;   // All: top 5 at each position
     const PAGE = 15;       // one position or FLEX: 15 at a time, "Show 15 more"
 
-    const view = { pos: 'ALL', limit: PAGE, shown: false };
+    let pageLimit = PAGE;
 
-    const outputEl = () => document.getElementById('topAvailableOutput');
+    const outputEl = () => document.getElementById('waiverOutput');
+    const inTopMode = () => (State.waiverScanSettings.mode || 'top') === 'top';
+    const scoutTabShown = () => {
+        const tab = document.getElementById('scoutTab');
+        return !!(tab && tab.classList.contains('active'));
+    };
 
-    // Chip and Rank By buttons reflect the current choice (aria-pressed for screen readers).
-    export function applyTopAvailableUI() {
-        document.querySelectorAll('#topAvailablePosChips [data-pos]').forEach(b => {
-            const on = b.dataset.pos === view.pos;
-            b.classList.toggle('active', on);
-            b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
-        const ros = State.waiverScanSettings.basis === 'ros';
-        document.querySelectorAll('#topAvailableBasisToggle [data-basis]').forEach(b => {
-            const on = (b.dataset.basis === 'ros') === ros;
-            b.classList.toggle('active', on);
-            b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
+    // Mode switch. Each mode answers a different question, so the results area is cleared;
+    // Top Available draws straight away (the tap is the request).
+    export function setWaiverMode(mode) {
+        updateWaiverScanSetting('mode', WAIVER_MODES.includes(mode) ? mode : 'top');
+        const out = outputEl();
+        if (out) out.innerHTML = '';
+        pageLimit = PAGE;
+        if (inTopMode()) renderTopAvailable();
     }
 
-    export function setTopAvailablePos(pos) {
-        view.pos = TOP_AVAILABLE_FILTERS.includes(pos) ? pos : 'ALL';
-        view.limit = PAGE;
-        applyTopAvailableUI();
-        if (view.shown) showTopAvailable();
-    }
-
-    // Writes the waiver scan's Rank By (the same setting as its dropdown), so the two never disagree.
-    export function setTopAvailableBasis(basis) {
-        updateWaiverScanSetting('basis', basis === 'ros' ? 'ros' : 'weekly');
-        applyTopAvailableUI();
-        refreshTopAvailable();
+    // Position chips: the same setting the old Position dropdown wrote (Auto-Find reads it too).
+    export function setWaiverPos(pos) {
+        updateWaiverScanSetting('pos', POSITION_FILTERS.includes(pos) ? pos : 'FLEX');
+        pageLimit = PAGE;
+        if (inTopMode()) renderTopAvailable();
     }
 
     export function showMoreTopAvailable() {
-        view.limit += PAGE;
-        if (view.shown) showTopAvailable();
+        pageLimit += PAGE;
+        renderTopAvailable();
     }
 
-    // Re-run only if the list is on screen: after a league switch or a Rank By change elsewhere.
+    // League switch or Rank By change: redraw if the list is what's on screen.
     export function refreshTopAvailable() {
-        applyTopAvailableUI();
-        if (view.shown) {
-            view.limit = PAGE;
-            showTopAvailable();
-        }
+        if (!inTopMode() || !scoutTabShown()) return;
+        pageLimit = PAGE;
+        renderTopAvailable();
     }
 
-    function topAvailableRowHTML(ctx, fa, knowsWholeLeague) {
+    // The Scout tab was just shown (nav.js showTab).
+    export function onScoutTabShown() {
+        if (!inTopMode()) return;
+        pageLimit = PAGE;
+        renderTopAvailable();
+    }
+
+    const STARTS_ICON = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+    // One compact row: #, name, team, position rank (tier), injury/bye, a Would Start flag, and the
+    // cross-position number for the basis on the right (Weekly Flex for RB/WR/TE, ROS Overall).
+    function rowHTML(ctx, fa, i) {
         const row = ctx.evaluate(fa);
         const { player, verdict } = row;
-        // Only the cheap, positive half of Auto-Find's verdict: a Would Start pill. Bench / Out
-        // pills would turn a plain list back into Auto-Find.
-        const pill = verdict && verdict.status === 'starts' ? waiverVerdictParts(ctx, row).pill : '';
+        const d = ctx.scanDisplay[fa.cleanName] || {};
+        const posRank = d.posRank ? `${escapeHtml(player.pos)}${d.posRank}` : escapeHtml(player.pos);
+        const tier = Number.isFinite(d.posTier) && d.posTier > 0 ? ` <span class="mls-ta-tier">T${d.posTier}</span>` : '';
+        const cross = ctx.scanCross === 'overall' ? d.rank : (FLEX_POSITIONS.includes(player.pos) ? d.flexRank : null);
         const injBadge = player.inj ? `<span class="badge inj-badge">${escapeHtml(player.inj)}</span>` : '';
-        const teamText = player.team ? `<span class="mls-opp">${escapeHtml(player.team)}</span>` : '';
-        const notMine = knowsWholeLeague ? '' : `<span class="mls-topavail-notmine">Not on your roster</span>`;
-        return `
-        <div class="scout-result-card mls-scan-card mls-topavail-row">
-            <div class="mls-scan-main">
-                <div class="mls-item-name mls-topavail-name">
-                    <span class="badge pos-badge ${escapeHtml(player.pos)} mls-pos-badge-sizing">${escapeHtml(player.pos)}</span>
-                    <span>${escapeHtml(fa.name)}</span>
-                    ${teamText}
-                </div>
-                <div class="mls-player-badges-row">${notMine}${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team)}</div>
-                ${waiverRanksRowHTML(ctx, fa.cleanName, player.pos)}
+        // Only the cheap, positive half of Auto-Find's verdict; Bench/Out pills would turn the list
+        // back into Auto-Find.
+        const starts = verdict && verdict.status === 'starts'
+            ? `<span class="mls-ta-starts" title="Would start for you this week">${STARTS_ICON}Starts</span>` : '';
+        return `<li class="mls-ta-row">
+            <span class="mls-ta-idx">${i + 1}.</span>
+            <span class="mls-ta-player">
+                <span class="mls-ta-name">${escapeHtml(fa.name)}</span>
+                ${player.team ? `<span class="mls-ta-team">${escapeHtml(player.team)}</span>` : ''}
+                <span class="mls-ta-pos">${posRank}${tier}</span>${injBadge}${getByeBadgeHTML(player.team)}
+            </span>
+            ${starts}
+            <span class="mls-ta-num">${cross ? `#${cross}` : '&ndash;'}</span>
+        </li>`;
+    }
+
+    function listHTML(ctx, items, title, countText, extra = '') {
+        const crossLabel = ctx.scanCross === 'overall' ? `${ctx.scan.label} Ovr` : 'Wk Flex';
+        return `<div class="mls-ta-group">
+            <div class="mls-ta-head">
+                <h4 class="mls-ta-title">${title} <span class="mls-ta-count">&middot; ${countText}</span></h4>
+                ${extra}<span class="mls-ta-col">${crossLabel}</span>
             </div>
-            <div class="mls-text-right">${pill}</div>
+            <ol class="mls-ta-list">${items.map((fa, i) => rowHTML(ctx, fa, i)).join('')}</ol>
         </div>`;
     }
 
-    export async function showTopAvailable() {
+    export async function renderTopAvailable() {
         const out = outputEl();
         if (!out) return;
-        view.shown = true;
-        applyTopAvailableUI();
 
         const league = getActiveLeague();
         if (!league || !league.globalRosterMap) {
@@ -116,16 +130,17 @@ import { getFreshness } from '../../shared/freshness.js';
             return;
         }
 
+        const pos = POSITION_FILTERS.includes(State.waiverScanSettings.pos) ? State.waiverScanSettings.pos : 'FLEX';
         const knowsWholeLeague = isFullyMappedLeague(league);
         const freeWord = knowsWholeLeague ? 'available' : 'not on your roster';
         const takenText = knowsWholeLeague ? 'rostered in this league' : 'on your roster';
         try {
             const ctx = await buildWaiverContext(league);
-            // A league switch while the player map loaded: the newer call draws its own list.
-            if (getActiveLeague() !== league) return;
+            // A league switch or mode change while the player map loaded: the newer call draws.
+            if (getActiveLeague() !== league || !inTopMode()) return;
 
             const { freeAgents, unresolvedCount, unresolvedNames } = findFreeAgents(scan.rankings, {
-                posFilter: view.pos === 'FLEX' ? 'FLEX' : 'ALL',
+                posFilter: pos === 'FLEX' ? 'FLEX' : 'ALL',
                 getPos: ctx.getPos,
                 isRostered: (clean) => !!league.globalRosterMap[clean],
                 isExcluded: (r) => isDraftPickName(r.name)
@@ -136,8 +151,8 @@ import { getFreshness } from '../../shared/freshness.js';
             const rankedAtPos = {};
             scan.rankings.forEach(r => {
                 if (!r || !r.cleanName || isDraftPickName(r.name)) return;
-                const pos = ctx.getPos(r.cleanName);
-                if (pos && pos !== 'UNK') rankedAtPos[pos] = (rankedAtPos[pos] || 0) + 1;
+                const p = ctx.getPos(r.cleanName);
+                if (p && p !== 'UNK') rankedAtPos[p] = (rankedAtPos[p] || 0) + 1;
             });
             const rankedIn = (filter) => FANTASY_POSITIONS.filter(p => matchesPosFilter(p, filter)).reduce((n, p) => n + (rankedAtPos[p] || 0), 0);
             const groupName = (filter) => filter === 'FLEX' ? 'RB/WR/TE' : filter === 'ALL' ? 'player' : filter;
@@ -160,40 +175,36 @@ import { getFreshness } from '../../shared/freshness.js';
             if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference; renaming them in your rankings file to match Sleeper brings them back.`);
 
             let body;
-            if (view.pos === 'ALL') {
+            if (pos === 'ALL') {
                 if (freeAgents.length === 0) {
                     body = `<div class="mls-scan-empty">${noneText('ALL')}</div>`;
                 } else {
-                    // Grouped by position: ranks from different positions aren't on one scale.
-                    // Positions the file doesn't rank at all are left out.
-                    body = FANTASY_POSITIONS.filter(pos => rankedIn(pos) > 0).map(pos => {
-                        const items = freeAgents.filter(f => f.pos === pos);
+                    // Grouped by position (ranks from different positions aren't on one scale), in a
+                    // grid that is two columns on desktop. Positions the file doesn't rank are left out.
+                    body = `<div class="mls-ta-grid">${FANTASY_POSITIONS.filter(p => rankedIn(p) > 0).map(p => {
+                        const items = freeAgents.filter(f => f.pos === p);
+                        if (items.length === 0) {
+                            return `<div class="mls-ta-group"><div class="mls-ta-head"><h4 class="mls-ta-title">${p} <span class="mls-ta-count">&middot; none ${freeWord}</span></h4></div><div class="mls-scan-empty">${noneText(p)}</div></div>`;
+                        }
                         const more = items.length > PER_GROUP
-                            ? `<button type="button" class="btn-bare mls-topavail-more-link" data-action="setTopAvailablePos" data-pos="${pos}">See all ${items.length}</button>` : '';
-                        const rows = items.length
-                            ? items.slice(0, PER_GROUP).map(fa => topAvailableRowHTML(ctx, fa, knowsWholeLeague)).join('')
-                            : `<div class="mls-scan-empty">${noneText(pos)}</div>`;
-                        return `<div class="mls-topavail-group">
-                            <h4 class="mls-topavail-group-title">${pos} <span class="mls-topavail-count">&middot; ${items.length} ${freeWord}</span>${more}</h4>
-                            ${rows}
-                        </div>`;
-                    }).join('');
+                            ? `<button type="button" class="btn-bare mls-ta-more-link" data-action="setWaiverPos" data-pos="${p}">See all ${items.length}</button>` : '';
+                        return listHTML(ctx, items.slice(0, PER_GROUP), p, `${items.length} ${freeWord}`, more);
+                    }).join('')}</div>`;
                 }
             } else {
-                const items = view.pos === 'FLEX' ? freeAgents : freeAgents.filter(f => f.pos === view.pos);
+                const items = pos === 'FLEX' ? freeAgents : freeAgents.filter(f => f.pos === pos);
                 if (items.length === 0) {
-                    body = `<div class="mls-scan-empty">${noneText(view.pos)}</div>`;
+                    body = `<div class="mls-scan-empty">${noneText(pos)}</div>`;
                 } else {
-                    const shown = items.slice(0, view.limit);
+                    const shown = items.slice(0, pageLimit);
                     const left = items.length - shown.length;
-                    body = `<div class="mls-topavail-count-line">Showing ${shown.length} of ${items.length} ${freeWord}.</div>`
-                        + shown.map(fa => topAvailableRowHTML(ctx, fa, knowsWholeLeague)).join('')
-                        + (left > 0 ? `<button type="button" class="btn btn-secondary mls-topavail-more" data-action="showMoreTopAvailable">Show ${Math.min(PAGE, left)} more</button>` : '');
+                    body = listHTML(ctx, shown, pos === 'FLEX' ? 'FLEX' : pos, `showing ${shown.length} of ${items.length} ${freeWord}`)
+                        + (left > 0 ? `<button type="button" class="btn btn-secondary mls-ta-more" data-action="showMoreTopAvailable">Show ${Math.min(PAGE, left)} more</button>` : '');
                 }
             }
 
             // "Top available WRs in X", or "Top WRs not on your roster in X" in a manual league.
-            const which = view.pos === 'ALL' ? 'players' : view.pos === 'FLEX' ? 'RB/WR/TE' : `${view.pos}s`;
+            const which = pos === 'ALL' ? 'players' : pos === 'FLEX' ? 'RB/WR/TE' : `${pos}s`;
             const lead = knowsWholeLeague ? `Top available ${which}` : `Top ${which} not on your roster`;
             out.innerHTML = `
             <div class="mls-scan-summary">
@@ -207,11 +218,4 @@ import { getFreshness } from '../../shared/freshness.js';
                 ? `<span class="mls-error-text">Couldn't reach Sleeper to list the top available players in ${leagueName}. Check your connection and try again.</span>`
                 : `<span class="mls-error-text">Couldn't list the top available players in ${leagueName} - its saved roster data may be out of date. Tap Sync All Leagues on the Dashboard, then try again.</span>`;
         }
-    }
-
-    export function clearTopAvailable() {
-        view.shown = false;
-        view.limit = PAGE;
-        const out = outputEl();
-        if (out) out.innerHTML = '';
     }

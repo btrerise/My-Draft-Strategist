@@ -11,6 +11,8 @@ test.describe('Lineup Strategist Scout tab', () => {
         await showTab(page, 'scout');
         const waivers = page.locator('#waiverOutput');
 
+        // The pasted list and Auto-Find are modes of the Waiver Wire Assistant since improvements S1.
+        await callApp(page, 'setWaiverMode', 'list');
         await page.fill('#waiverInput', "Ja'Marr Chase\nJosh Allen\nNobody McFakename");
         await page.click('#waiverScanBtn');
         await expect(waivers).toContainText('Your list, checked in Fixture League by Weekly rank');
@@ -21,6 +23,7 @@ test.describe('Lineup Strategist Scout tab', () => {
         await expect(waivers).toContainText('Searched 1 league for 3 players.');
         await callApp(page, 'setWaiverScope', 'league');
 
+        await callApp(page, 'setWaiverMode', 'auto');
         await callApp(page, 'setWaiverCompare', 'roster');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(waivers).toContainText('Top available in Fixture League by Weekly rank, compared against your weakest rostered player');
