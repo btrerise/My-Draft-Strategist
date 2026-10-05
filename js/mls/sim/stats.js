@@ -80,6 +80,13 @@ const POSITION_BOOM_BUST_THRESHOLDS = {
 const DEFAULT_BUST_MULTIPLIER = 0.5;
 const DEFAULT_BOOM_MULTIPLIER = 1.5;
 
+// The mean those multipliers apply to never goes below this many points (refactor 9B). Without it,
+// a defense averaging below zero had its bust line above its boom line, so one week counted as both,
+// and an average near zero squeezed the two lines together (an average of 1 put them at 0.5 and 1.5).
+// 4 sits below every kicker's and all but one defense's 2025 season average (Sleeper default
+// scoring), so normal kickers and defenses keep their own relative lines; the owner chose it in 9B.
+const RELATIVE_LINE_FLOOR = 4;
+
 // Once the season has genuinely progressed, a player's own current-season games are a more
 // honest read on their role right now than anything blended in from last year -- last year's
 // box scores describe a different opportunity than a player might have today (a bigger role,
@@ -93,19 +100,17 @@ const DEFAULT_BOOM_MULTIPLIER = 1.5;
 // fallback rather than trusted as a primary signal once something better exists.
 const MIN_WEEK_FOR_CURRENT_SEASON_ONLY = 5;
 
-// Whether a score exactly on a line counts. The published thresholds read as "20+ points", so a
-// score on the line is a boom (or a bust) there (refactor 9A; before it, exactly 20 was not a boom).
-// The K/DEF lines stay strict: they come from the player's own mean, and a player with no data
-// has a mean of 0, where both lines are 0 and every 0-point week would be a boom and a bust at once.
-function thresholdTests(bustThreshold, boomThreshold, inclusive) {
-    return inclusive
-        ? { isBust: s => s <= bustThreshold, isBoom: s => s >= boomThreshold }
-        : { isBust: s => s < bustThreshold, isBoom: s => s > boomThreshold };
+// A score exactly on a line counts. The published thresholds read as "20+ points", so a score on the
+// line is a boom (or a bust) there (refactor 9A; before it, exactly 20 was not a boom). K/DEF lines
+// count the same way since 9B: RELATIVE_LINE_FLOOR keeps them at least 2 and 6, so they can't meet.
+// (Before the floor, a player with no data had both lines at 0, which is why 9A kept them strict.)
+function thresholdTests(bustThreshold, boomThreshold) {
+    return { isBust: s => s <= bustThreshold, isBoom: s => s >= boomThreshold };
 }
 
-function computeEmpiricalBoomBust(scores, bustThreshold, boomThreshold, inclusive, meta) {
+function computeEmpiricalBoomBust(scores, bustThreshold, boomThreshold, meta) {
     const n = scores.length;
-    const { isBust, isBoom } = thresholdTests(bustThreshold, boomThreshold, inclusive);
+    const { isBust, isBoom } = thresholdTests(bustThreshold, boomThreshold);
     const bustCount = scores.filter(isBust).length;
     const boomCount = scores.filter(isBoom).length;
     return {
@@ -117,13 +122,13 @@ function computeEmpiricalBoomBust(scores, bustThreshold, boomThreshold, inclusiv
     };
 }
 
-function computeModelBoomBust(mean, stdDev, bustThreshold, boomThreshold, inclusive, meta) {
+function computeModelBoomBust(mean, stdDev, bustThreshold, boomThreshold, meta) {
     // A 0 stdDev means the "distribution" is a single fixed point at mean -- it's either
     // always or never past a threshold, never sometimes, so the CDF math below (which
     // divides by stdDev) doesn't apply. The CDF itself doesn't care whether the line counts:
     // a single exact value has probability 0.
     if (stdDev === 0) {
-        const { isBust, isBoom } = thresholdTests(bustThreshold, boomThreshold, inclusive);
+        const { isBust, isBoom } = thresholdTests(bustThreshold, boomThreshold);
         return {
             bustRate: isBust(mean) ? 100 : 0,
             boomRate: isBoom(mean) ? 100 : 0,
@@ -145,10 +150,11 @@ function computeModelBoomBust(mean, stdDev, bustThreshold, boomThreshold, inclus
 
 /**
  * Given a player's variance profile and their actual weekly scores, returns how often (as a
- * %) they scored at or below a "bust" threshold or at or above a "boom" threshold (strictly
- * below / above for K and DEF; see thresholdTests). Thresholds come from
+ * %) they scored at or below a "bust" threshold or at or above a "boom" threshold (see
+ * thresholdTests). Thresholds come from
  * POSITION_BOOM_BUST_THRESHOLDS when the player's position is in that table; otherwise (K,
- * DEF) they're derived from the player's own mean instead (see that table's comment).
+ * DEF) they're derived from the player's own mean instead, or RELATIVE_LINE_FLOOR when the mean is
+ * lower (see that table's comment).
  *
  * Which DATA answers the question is a tiered fallback, evaluated fresh on every call so
  * there's nothing to remember to come back and change later:
@@ -172,8 +178,8 @@ function computeModelBoomBust(mean, stdDev, bustThreshold, boomThreshold, inclus
  * @param {Object} [options]
  * @param {Array<number>} [options.currentSeasonScores] - this season's games only (tier 2 input)
  * @param {number} [options.currentWeek] - the current NFL week, used for the tier 2 gate
- * @param {number} [options.bustMultiplier=0.5] - K/DEF-only bust threshold, as a fraction of mean
- * @param {number} [options.boomMultiplier=1.5] - K/DEF-only boom threshold, as a multiple of mean
+ * @param {number} [options.bustMultiplier=0.5] - K/DEF-only bust threshold, as a fraction of max(mean, RELATIVE_LINE_FLOOR)
+ * @param {number} [options.boomMultiplier=1.5] - K/DEF-only boom threshold, as a multiple of max(mean, RELATIVE_LINE_FLOOR)
  */
 export function getBoomBustRates(profile, weeklyScores, options = {}) {
     const {
@@ -191,29 +197,29 @@ export function getBoomBustRates(profile, weeklyScores, options = {}) {
     }
 
     const positionThresholds = POSITION_BOOM_BUST_THRESHOLDS[pos];
-    const bustThreshold = positionThresholds ? positionThresholds.bust : mean * bustMultiplier;
-    const boomThreshold = positionThresholds ? positionThresholds.boom : mean * boomMultiplier;
-    const inclusive = !!positionThresholds;
+    const lineBase = Math.max(mean, RELATIVE_LINE_FLOOR);
+    const bustThreshold = positionThresholds ? positionThresholds.bust : lineBase * bustMultiplier;
+    const boomThreshold = positionThresholds ? positionThresholds.boom : lineBase * boomMultiplier;
 
     // Tier 1: projection-driven mean -- stay consistent with it rather than counting old games.
     if (usingProjection) {
-        return computeModelBoomBust(mean, stdDev, bustThreshold, boomThreshold, inclusive, { isEstimated: false, tier: 'projection' });
+        return computeModelBoomBust(mean, stdDev, bustThreshold, boomThreshold, { isEstimated: false, tier: 'projection' });
     }
 
     // Tier 2: season has matured AND this player individually has enough current-season games.
     const seasonHasMatured = typeof currentWeek === 'number' && currentWeek >= MIN_WEEK_FOR_CURRENT_SEASON_ONLY;
     const hasEnoughCurrentSeasonGames = Array.isArray(currentSeasonScores) && currentSeasonScores.length >= MIN_RELIABLE_GAMES;
     if (seasonHasMatured && hasEnoughCurrentSeasonGames) {
-        return computeEmpiricalBoomBust(currentSeasonScores, bustThreshold, boomThreshold, inclusive, { isEstimated: false, tier: 'current-season' });
+        return computeEmpiricalBoomBust(currentSeasonScores, bustThreshold, boomThreshold, { isEstimated: false, tier: 'current-season' });
     }
 
     // Tier 3: blended current+prior-season data, same as before this tiering existed.
     if (weeklyScores && weeklyScores.length >= MIN_RELIABLE_GAMES) {
-        return computeEmpiricalBoomBust(weeklyScores, bustThreshold, boomThreshold, inclusive, { isEstimated: false, tier: 'blended' });
+        return computeEmpiricalBoomBust(weeklyScores, bustThreshold, boomThreshold, { isEstimated: false, tier: 'blended' });
     }
 
     // Tier 4: not even blended data clears the bar.
-    return computeModelBoomBust(mean, stdDev, bustThreshold, boomThreshold, inclusive, { isEstimated: true, tier: 'model-fallback' });
+    return computeModelBoomBust(mean, stdDev, bustThreshold, boomThreshold, { isEstimated: true, tier: 'model-fallback' });
 }
 
 /**
