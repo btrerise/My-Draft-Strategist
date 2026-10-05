@@ -104,10 +104,10 @@ write its own under `baselines/darwin/`. Don't commit those unless you mean to k
   localStorage snapshot, and both resets) and 1 saved-name-key test (`name-keys.spec.mjs`, 9A: all three
   pages opened on a pre-9A localStorage + IndexedDB snapshot) and 1 SoS-upload test (`mls-sos.spec.mjs`, 9A: the
   SoS grid's file upload in all three file shapes) and 4 MLS bye-week tests (`mls-byes.spec.mjs`, 7C: Sleeper's
-  week stubbed to 5, BYE badges and the optimizer, and the open Roster/Lineup tab when Sleeper's week answers late) and 2
-  name-lookup tests (`mls-player-lookup.spec.mjs`, 9C: the simulator's "Josh Allen" with a namesake guard in the player map, and
-  every name lookup agreeing on shared names). `backup.spec.mjs` has 4 tests since 6B (round trip and a
-  pre-6B backup file, per app). Each runs at both widths: 104 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
+  week stubbed to 5, BYE badges and the optimizer, and the open Roster/Lineup tab when Sleeper's week answers late) and 3
+  name-lookup tests (`mls-player-lookup.spec.mjs`, 9C: the simulator's "Josh Allen" with a namesake guard in the player map,
+  every name lookup agreeing on shared names, and a rostered two-way player starting at WR). `backup.spec.mjs` has 4 tests since 6B (round trip and a
+  pre-6B backup file, per app). Each runs at both widths: 106 Playwright tests in all. `seedSimRandom` and `loadMlsRankings` in
   `helpers.mjs` seed the simulator and upload rankings for any spec. The smoke test's simulator run
   only checks that the results box isn't empty; `mls-sim.spec.mjs` and `mls-waiver-insights.spec.mjs`
   check the numbers.
@@ -4648,7 +4648,10 @@ owner asked for the leftovers to be done here instead of in a new card: every Li
 name into *one* Sleeper player now uses the same rule, and the stale comments are fixed. **Owner's decision on the
 rule order:** a fantasy position first, then an NFL team (the card had team first). Every name these lookups get
 comes from a fantasy context (rankings files, the fantasy-only autocomplete), and with this order all of them pick
-the same player for a name (see "Agreement" below).
+the same player for a name (see "Agreement" below). **Then, also at the owner's request: two-way players.**
+Lineup Strategist read only Sleeper's listed `position`, so Travis Hunter (listed DB, scored at WR) was a "DB"
+everywhere; Draft Strategist was fixed for this in 7A. Every place MLS reads a Sleeper position now uses
+`fantasyPosition` (below).
 
 **What users see.** In Lineup Strategist, a name that several Sleeper entries share now finds the player a user
 means, wherever it's looked up:
@@ -4671,8 +4674,15 @@ means, wherever it's looked up:
   former Buccaneers RB, Ryan Griffin → the QB…).
 - **Roster tab "R" rookie badge, name fallback** (`render/rookies.js`, used only for manual and Draft Strategist
   handoff rosters, whose ids aren't Sleeper's): same rule; 9 obscure names' badges change on the live map.
-The Injury Auditor's candidate list and the headshot fallback are unchanged: they pick among namesakes using the
-team and position on the roster row, which is better than any general rule. Two other name maps are not "pick one
+- **Two-way players and fullbacks** (`fantasyPosition`): a rostered **Travis Hunter used to be saved as "DB", fit no
+  lineup slot and stay on the bench** even when ranked first; he's now a WR on the Roster tab, starts at WR/FLEX,
+  shows in the simulator's search (`WR ·JAX`; it listed fantasy positions only, so he was missing), and Scout's
+  Auto-Find and All-Leagues search include him (they skipped him). Fullbacks Sleeper scores at RB (Kyle Juszczyk
+  and 9 others on teams) become RBs the same way. **A league synced before this keeps "DB" until its next sync**
+  (syncing is always started by the user; the change summary after a sync doesn't compare positions, so it says
+  nothing about it). No storage key changes.
+The Injury Auditor's candidate list and the headshot fallback still pick among namesakes using the team and position
+on the roster row, which is better than any general rule; they now count a two-way player at his fantasy position. Two other name maps are not "pick one
 of several namesakes" lookups and were left alone: league sync's position map (only players on the league's rosters,
 by id) and the SoS upload's name → team map (only QB/RB/WR/TE on a team).
 
@@ -4681,9 +4691,19 @@ plus Sleeper's guard entry 2212 (fields as on the live map, 2026-10-04; added by
 other spec's fixture changes). Typing "Josh All" in the simulator's search lists one row, `QB ·BUF`; selecting it
 showed the "doesn't have enough game history" message above, at both widths. With the fix it shows the QB card.
 
+**A player's position** (`fantasyPosition(p)` and `FANTASY_POSITIONS`, exported from js/mls/constants.js, which
+evaluates 10th of 69, before every user). The listed `position` when it's QB/RB/WR/TE/K/DEF; otherwise the first of
+those in `fantasy_positions`; otherwise the listed position unchanged (a guard stays "G"). Used by: league sync (each
+roster entry's `pos` and `globalPosMap`, which the optimizer, Roster tab and Scout read), `sleeperPosByName`,
+`getSleeperMetaByName` (its filter and `pos`), the autocomplete search index (players.js), Waiver Insights' `faPos`,
+the simulator's players and its lookup card badge (sim/matchup.js), the headshot and Injury Auditor name fallbacks,
+and the SoS upload's name → team map. The one `.position` read left in js/mls/ is the Injury Auditor's team-defense
+check (`def.position !== 'DEF'`), which is right as it is. On the live map 124 entries get a different position,
+only 11 of them on a team: Travis Hunter (DB → WR) and 10 fullbacks (FB → RB).
+
 **The rule** (`isPreferredSleeperEntry(candidate, kept)`, exported from js/mls/players.js). An entry replaces the
 one kept for its clean name only if it's strictly better on, in order:
-1. a fantasy position: `fantasy_positions` holds QB/RB/WR/TE/K/DEF, or `position` is one;
+1. a fantasy position: `fantasyPosition(p)` is QB/RB/WR/TE/K/DEF;
 2. an NFL `team`;
 3. a lower `search_rank` (missing or non-numeric counts as worst; Sleeper uses 9999999 for unranked).
 A full tie keeps the first entry in the map's order (Sleeper's ids ascending), as before.
@@ -4691,25 +4711,26 @@ A full tie keeps the first entry in the map's order (Sleeper's ids ascending), a
 Used by:
 - `getCleanNameToIdIndex` (players.js): name, return shape (clean name → one id string) and session cache unchanged.
 - `ensureSleeperPosByName` / `sleeperPosByName` (players.js): the position of the same entry (was: the last entry).
-- `getSleeperMetaByName` (scout/waivers.js): still fantasy positions only (by `position`, as before), now picked by
-  the rule (was: a team, else the first).
+- `getSleeperMetaByName` (scout/waivers.js): still fantasy positions only, now by `fantasyPosition`, and picked by
+  the rule (was: listed position only; a team, else the first).
 - `getRookieIndex`'s `byName` (render/rookies.js): picked by the rule (was: a team, else the first).
 Comments updated where they described the old behavior: `getSleeperMetaByName`, `buildCleanNameCandidateIndex`
 (lineup/injuryAudit.js) and the rookie lookup.
 
 **Load order (the 3E/3F import rule).** waivers.js and rookies.js import `isPreferredSleeperEntry` straight from
 `../players.js`, which evaluates before both (main.js imports players.js at position 20 of 69; waivers.js is 28th,
-rookies.js 54th). A DFS post-order simulation of static imports from js/mls/main.js gives the identical 69-module
-order before and after. It's only called at run time, never at module top level.
+rookies.js 54th). `fantasyPosition` comes straight from constants.js (10th) into players.js, leagues/sync.js,
+lineup/headshots.js, sos.js, lineup/injuryAudit.js, scout/waiverInsights.js and sim/matchup.js, all later. A DFS
+post-order simulation of static imports from js/mls/main.js gives the identical 69-module order before and after.
+Both are only called at run time, never at module top level.
 
 **Agreement, on Sleeper's live player map** (`api.sleeper.app/v1/players/nfl`, fetched 2026-10-05: 12,229 entries,
 11,871 clean names, 228 shared by two or more entries). Names where the id lookup and the position lookup or Scout's
-lookup named different players: **195 before, 0 after**, except two where Sleeper's data itself splits: Robert
-Burns (the CHI one is listed FB with RB eligibility, the other RB has no team) and Brandon Williams (a CB tagged
-TE-eligible). The id lookup counts `fantasy_positions`, as the card says, but Scout's lookup only takes players whose
-listed `position` is a fantasy one, since its cards and lineup check use that position; widening it would put FB or
-DB on Scout cards, which is worse than these two names differing. Also checked: no fantasy-position player with a
-team loses his name to anyone.
+lookup named different players, or the position lookup gave another position than the picked player's: **195
+before, 0 after**. (Before `fantasyPosition`, two were left: Robert Burns, where the CHI one is a fullback scored at
+RB, and a Brandon Williams listed CB but scored at TE. Scout's lookup took listed fantasy positions only and so
+couldn't name either.) The rookie fallback agrees too. Also checked: no fantasy-position player with a team loses his
+name to anyone.
 
 **New test convention: loading an MLS module in Node.** `js/mls/players.js` imports `main.js` and `state.js`, which
 pull in the whole page and, entered from players.js, hit the temporal dead zone. `tests/unit/helpers/playersEnv.mjs`
@@ -4720,18 +4741,24 @@ session cache, and `url` can point at another copy of players.js (an old version
 works for other MLS modules: add the module's own app imports to the hook's stub table.
 
 **Tests.**
-- `tests/unit/cleanNameIndex.test.mjs` (6 tests): the six names 7B found, with their fields copied from the live map
+- `tests/unit/fantasyPosition.test.mjs` (4 tests): a listed fantasy position is kept (also over another scored
+  one), Travis Hunter → WR and a fullback → RB, no fantasy position → the listed one (and null-safe).
+- `tests/unit/cleanNameIndex.test.mjs` (7 tests): the six names 7B found, with their fields copied from the live map
   (Josh Allen → 4984, DJ Moore / D.J. Moore → 4983, Kenneth Walker III → 8151, Kaleb Johnson → 12504, Kyle Williams
   → 12547, Antonio Williams → 13301); one name per rule (fantasy position beats a team and a better rank; `position`
   when `fantasy_positions` is missing; with both or neither fantasy, team beats no team; lower search_rank; a missing
   rank loses to a number; a full tie keeps the first of three); a unique lineman, a team defense and a nameless
-  entry as before; `sleeperPosByName` gives the index's player's position for every name; the rule is strict; a
+  entry as before; `sleeperPosByName` gives the index's player's fantasy position for every name; Travis Hunter and
+  Robert Burns (live entries) in the index and the position lookup; the rule is strict; a
   worse later entry doesn't replace a better earlier one; the session cache and retry.
-- `tests/mls-player-lookup.spec.mjs` (2 tests, both widths): the simulator lookup above; and, in the page, the id
+- `tests/mls-player-lookup.spec.mjs` (3 tests, both widths): the simulator lookup above; in the page, the id
   index, `sleeperPosByName`, `getSleeperMetaByName` and the rookie fallback all pick the same player for Josh Allen
-  and two invented pairs (a teamless WR vs a CB on a team; two WRs on teams, the better-ranked one second).
+  and two invented pairs (a teamless WR vs a CB on a team; two WRs on teams, the better-ranked one second); and
+  Travis Hunter (his live entry) added to mds_test's fixture roster and ranked first as a WR: after a sync his saved
+  `pos` and `globalPosMap` are WR, the optimizer starts him, and the simulator's search lists him as `WR ·JAX`.
 - **Mutation checks:** with main's players.js, the unit tests fail (`'2212' !== '4984'` and others); with main's
-  players.js, waivers.js and rookies.js, both Playwright tests fail.
+  players.js, waivers.js and rookies.js, both Playwright tests fail. With the code from before `fantasyPosition`, the
+  Hunter test fails: he's saved as `{"pos":"DB","globalPos":"DB"}` and, with that check skipped, isn't in the lineup.
 - Screenshots: none changed (the fixture map has no shared names).
 
 **Every id that changes** in `getCleanNameToIdIndex`, main → this branch, on the live map: **89 names.** Each row:
@@ -4846,12 +4873,8 @@ With no team (every entry for the name is teamless):
 | tonyjones | 2639 WR no team | 6984 RB no team #630 | search_rank |
 | tylerdavis | 5251 K no team | 7131 TE no team #706 | search_rank |
 
-**Left for later.**
-- The two names in "Agreement" (Robert Burns, Brandon Williams), only if Sleeper's data for them ever matters.
-- `getSleeperMetaByName` skips players whose listed `position` isn't a fantasy one even when `fantasy_positions` is
-  (Travis Hunter is `DB` with WR eligibility, per a comment in js/mds/import.js), so Scout falls back to Market data
-  for their position. That predates 9C and wasn't changed.
+**Left for later.** Nothing from 9C. (Saved leagues pick up two-way players' positions at their next sync, above.)
 
-**Checks run.** `node scripts/check-precache.mjs` OK (109 precached). `node --test` 203/203 (6 new).
-`cd tests && npx playwright test` 104/104 (4 new: 2 tests × 2 widths), screenshots unchanged. `CACHE_NAME` v2.8.68 →
-v2.8.69.
+**Checks run.** `node scripts/check-precache.mjs` OK (109 precached). `node --test` 208/208 (11 new).
+`cd tests && npx playwright test` 106/106 (6 new: 3 tests × 2 widths), screenshots unchanged. `CACHE_NAME` v2.8.68 →
+v2.8.69 (one bump for the whole branch, which isn't on main yet; no file added to or removed from the pages).
