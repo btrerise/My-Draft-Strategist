@@ -3,6 +3,7 @@
 //
 // Don't edit the table by hand. Each May, once the NFL publishes the schedule, run
 //   node scripts/update-byes.mjs <season>
+// and bump CACHE_NAME in sw.js, so browsers fetch the new table instead of the cached one.
 // It downloads nflverse's schedule (github.com/nflverse/nfldata, data/games.csv), gives each
 // team the regular-season week it has no game, and rewrites only that season's line below.
 // Team codes are the apps' own (the Rams are LAR; nflverse writes LA).

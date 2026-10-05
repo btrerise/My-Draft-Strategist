@@ -80,7 +80,7 @@ cd tests && npm install && npm test    # Playwright smoke tests + screenshot com
 See [`docs/refactor/LOG.md`](docs/refactor/LOG.md) for details, including how to update screenshot baselines.
 
 ## Yearly: bye weeks
-Each May, once the NFL publishes the schedule, run `node scripts/update-byes.mjs <season>` (for example `2027`) and commit `js/shared/data/byes.js`. Until then neither app knows that season's byes (Draft Strategist still shows any bye column a rankings file has). Schedule data comes from [nflverse](https://github.com/nflverse/nfldata) (`data/games.csv`), with thanks.
+Each May, once the NFL publishes the schedule, run `node scripts/update-byes.mjs <season>` (for example `2027`), bump `CACHE_NAME` in `sw.js` (the service worker serves cached files first, so without a bump users keep the old table), and commit both. Until then neither app knows that season's byes (Draft Strategist still shows any bye column a rankings file has). Schedule data comes from [nflverse](https://github.com/nflverse/nfldata) (`data/games.csv`), with thanks.
 
 ---
 

@@ -35,9 +35,10 @@ test('unknown team, FA, or missing team gives null', () => {
     assert.equal(getByeWeek('toString', 2026), null);
 });
 
+// 2099 and 1999 stand in for "a season the script hasn't been run for"; 2027 is added each May.
 test('unknown or missing season gives null, never another season\'s week', () => {
-    assert.equal(getByeWeek('CAR', 2027), null);
-    assert.equal(getByeWeek('CAR', 2024), null);
+    assert.equal(getByeWeek('CAR', 2099), null);
+    assert.equal(getByeWeek('CAR', 1999), null);
     assert.equal(getByeWeek('CAR', null), null);
     assert.equal(getByeWeek('CAR', undefined), null);
     assert.equal(getByeWeek('CAR', 'constructor'), null);
