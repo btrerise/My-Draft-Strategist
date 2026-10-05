@@ -5497,3 +5497,32 @@ unchanged. No user-visible change, so no CHANGELOG line.
 | Question | Owner's decision |
 |---|---|
 | What the public site serves (tests/, docs/, scripts/, README, CHANGELOG are all reachable on the site) | **Leave it**: harmless, nothing secret, and "no build step" stays true. No Cloudflare change needed. |
+
+#### CI and screenshots
+
+- **CI renders the baselines identically.** PR #177's run 2 (commit e5cab2e, ubuntu-24.04, Playwright 1.56.1's own
+  Chromium 141, revision 1194, installed with `--with-deps`): check-precache OK, `node --test` 219/219, Playwright
+  130/130 including all 40 screenshots, at the unchanged tolerance (`threshold: 0`, `maxDiffPixels: 10`). So the
+  owner didn't need to choose between pinning, a Docker image or dropping screenshots from CI. Why it matches: the
+  pinned `@playwright/test` uses the same Chromium revision as the cloud sessions' `/opt/pw-browsers`, and the cloud
+  image has the same font packages Playwright's `--with-deps` installs on Ubuntu 24.04. **If either changes** (a
+  Playwright bump, a runner image moving off 24.04), expect screenshot failures in CI first: re-take the baselines
+  in a cloud session on the same Playwright version and check CI agrees before merging.
+- The whole job takes about 3.5 minutes. Run 1 (the first commit) sat in `playwright install --with-deps` for over
+  7 minutes before run 2 cancelled it (the workflow cancels a superseded run on the same PR); run 2's install took
+  21 seconds. If installs hang often, cache the browser or add a timeout to that step.
+- The run warns that `actions/checkout@v4` and `actions/setup-node@v4` target Node 20 and are forced onto Node 24.
+  They work; bump them to their next major when convenient.
+
+#### Checks run
+
+- Locally after every change: `node scripts/check-precache.mjs` OK (115 precached). `node --test` 219/219.
+  `cd tests && npm run check`: Playwright 130/130, no screenshot changed. compare-css wasn't needed (no CSS change).
+- CI on PR #177: green (above).
+
+#### Left for later
+
+- **10B:** remove CLAUDE.md's "6C is pending" line and bring TESTING.md and CLAUDE.md up to date with 6C (its key-
+  migration tests, any new marker key); the rest of 10B's card as planned.
+- Nothing else for 10A. The owner can make the `Checks / check` job a required status check for `main` in GitHub's
+  branch protection settings, so a red PR can't be merged by mistake (optional, the owner's call).
