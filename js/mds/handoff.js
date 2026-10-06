@@ -20,8 +20,8 @@ import { showToast } from '../shared/ui/toast.js';
         const players = myPlayers.map(p => ({ name: p.name, pos: p.posGroup, team: p.team || "FA" }));
 
         const limits = draft.limits || {};
-        // W/T goes over as MLS's own WR/TE slot type (WRTE, improvements S1). It used to be folded
-        // into FLEX, which let MLS's optimizer start an RB there.
+        // W/T and W/R go over as MLS's own slot types (WRTE, WRRB; improvements S1). W/T used to be
+        // folded into FLEX, which let MLS's optimizer start an RB there.
         const reqs = {
             QB: limits.QB || 0,
             RB: limits.RB || 0,
@@ -29,6 +29,7 @@ import { showToast } from '../shared/ui/toast.js';
             TE: limits.TE || 0,
             FLEX: limits.FLEX || 0,
             WRTE: limits.WT || 0,
+            WRRB: limits.WRRB || 0,
             SFLEX: limits.SFLEX || 0,
             K: limits.K || 0,        // NEW
             DEF: limits.DEF || 0

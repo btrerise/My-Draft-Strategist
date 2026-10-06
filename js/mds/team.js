@@ -78,6 +78,13 @@ import { KEYS } from '../shared/storage/keys.js';
             }
         });
 
+        // W/R (Wide Receiver / Running Back) flex slots, then W/T, then FLEX: most restrictive first.
+        for (let i = 0; i < (limits.WRRB || 0); i++) {
+            let idx = availablePool.findIndex(p => ['WR', 'RB'].includes(p.posGroup));
+            let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
+            rosterSlotsHTML += buildSlotHTML('W/R', null, p, 'wr-blend-text');
+        }
+
         // NEW: Fill W/T (Wide Receiver / Tight End) Flex Slots
         for (let i = 0; i < (limits.WT || 0); i++) {
             let idx = availablePool.findIndex(p => ['WR', 'TE'].includes(p.posGroup));

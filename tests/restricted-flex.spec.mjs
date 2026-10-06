@@ -2,7 +2,8 @@
 // WR/TE only ("W/T") and WRRB_FLEX takes WR/RB only ("W/R"). Before this, Lineup Strategist's sync
 // counted both as a full FLEX, so the optimizer could start a TE in a W/R slot or an RB in a W/T
 // slot, a lineup Sleeper won't accept; the Draft Strategist hand-off folded W/T into FLEX too; and
-// Draft Strategist's own league sync looked for "W/T", which Sleeper's league data never uses.
+// Draft Strategist's own league sync looked for "W/T", which Sleeper's league data never uses, and
+// had no W/R slot type at all (added at the owner's request in the same session).
 // Each test serves the fixture league with its FLEX slot replaced.
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
@@ -30,6 +31,23 @@ const RANKS = `Rank,Player,Pos,Team
 8,Brock Bowers,TE,LV
 9,Puka Nacua,WR,LAR
 `;
+
+// A live Sleeper draft in the fixture league, with no picks yet (Draft Strategist's sync).
+const DRAFT_ID = '1100000000000000001';
+async function routeDraft(page) {
+    await page.route(new RegExp(`api\\.sleeper\\.app/v1/draft/${DRAFT_ID}(/picks)?$`), (route) => {
+        const body = route.request().url().endsWith('/picks') ? [] : {
+            draft_id: DRAFT_ID, league_id: LEAGUE.league_id, status: 'drafting',
+            settings: { teams: 2, rounds: 15 }, draft_order: { 900001: 1, 900002: 2 }, metadata: { name: 'Fixture Draft' },
+        };
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    });
+}
+/** The active Draft Strategist draft's slot limits, as saved. */
+const activeLimits = (page) => page.evaluate(() => {
+    const active = localStorage.getItem('mds_active_draft_id');
+    return JSON.parse(localStorage.getItem('mds_drafts')).find(d => d.draftId === active).limits;
+});
 
 const starterIn = (page, label) => page.locator('#optimalLineupContainer .lineup-slot')
     .filter({ has: page.locator('.slot-badge', { hasText: new RegExp(`^${label.replace('/', '\\/')}$`) }) });
@@ -80,29 +98,62 @@ test.describe('Restricted flex slots (W/T, W/R)', () => {
         await expectClean(page, state);
     });
 
+    test('Draft Strategist W/R: Team tab slot, Tracker limits, and the hand-off to Lineup Strategist', async ({ page }) => {
+        const state = await openApp(page, '/');
+        await seedMds(page); // my picks: Ja'Marr Chase (WR), Jahmyr Gibbs (RB)
+        // No fixed RB/WR slots: both picks are flex starters, one W/R and one FLEX.
+        await page.evaluate(async () => {
+            const { getActiveDraft } = await import('/js/mds/state.js');
+            getActiveDraft().limits = { QB: 1, RB: 0, WR: 0, TE: 1, WT: 0, WRRB: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1, BENCH: 5, TOTAL: 10 };
+        });
+        await showTab(page, 'tracker');
+        // FLX counts every flex-type slot: W/R plus FLEX, both filled.
+        await expect(page.locator('#limitsBody td').nth(4)).toHaveText('2 / 2');
+        await showTab(page, 'team');
+        const wr = page.locator('.roster-slot').filter({ has: page.locator('.roster-label', { hasText: /^W\/R$/ }) });
+        await expect(wr).toHaveCount(1);
+        await expect(wr).toContainText("Ja'Marr Chase");
+        await expect(wr.locator('.roster-label')).toHaveClass(/\bwr-blend-text\b/);
+
+        await page.click('#sendToLineupBtn');
+        await page.waitForURL('**/lineup/**');
+        await page.waitForLoadState('networkidle');
+        await page.locator('#handoffBanner').getByRole('button', { name: 'Import as New League' }).click();
+        await expect(page.locator('#handoffBanner')).toBeHidden();
+        const reqs = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).at(-1).reqs);
+        expect(reqs).toMatchObject({ WRRB: 1, FLEX: 1 });
+        await expect(page.locator('#reqWRRB')).toHaveValue('1');
+        await expectClean(page, state);
+    });
+
+    test("Draft Strategist's league sync counts Sleeper's WRRB_FLEX as a W/R slot", async ({ page }) => {
+        const state = await openApp(page, '/');
+        await page.fill('#csvPasteArea', RANKINGS_CSV);
+        await page.getByRole('button', { name: 'Process Pasted Data' }).click();
+        await confirmMdsPreview(page);
+        await leagueWithFlexAs(page, ['WRRB_FLEX']);
+        await routeDraft(page);
+        await page.fill('#sleeperUsername', 'mds_test');
+        await page.fill('#sleeperDraftId', DRAFT_ID);
+        await page.click('#syncBtn');
+        await expect(page.locator('#syncBtn')).toContainText('Sync Complete!');
+        expect(await activeLimits(page)).toMatchObject({ WRRB: 1, FLEX: 0 });
+        await page.waitForLoadState('networkidle');
+        await expectClean(page, state);
+    });
+
     test("Draft Strategist's league sync counts Sleeper's REC_FLEX as a W/T slot", async ({ page }) => {
         const state = await openApp(page, '/');
         await page.fill('#csvPasteArea', RANKINGS_CSV);
         await page.getByRole('button', { name: 'Process Pasted Data' }).click();
         await confirmMdsPreview(page);
         await leagueWithFlexAs(page, ['REC_FLEX']);
-        const DRAFT_ID = '1100000000000000001';
-        await page.route(new RegExp(`api\\.sleeper\\.app/v1/draft/${DRAFT_ID}(/picks)?$`), (route) => {
-            const body = route.request().url().endsWith('/picks') ? [] : {
-                draft_id: DRAFT_ID, league_id: LEAGUE.league_id, status: 'drafting',
-                settings: { teams: 2, rounds: 15 }, draft_order: { 900001: 1, 900002: 2 }, metadata: { name: 'Fixture Draft' },
-            };
-            return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
-        });
+        await routeDraft(page);
         await page.fill('#sleeperUsername', 'mds_test');
         await page.fill('#sleeperDraftId', DRAFT_ID);
         await page.click('#syncBtn');
         await expect(page.locator('#syncBtn')).toContainText('Sync Complete!');
-        const limits = await page.evaluate(() => {
-            const active = localStorage.getItem('mds_active_draft_id');
-            return JSON.parse(localStorage.getItem('mds_drafts')).find(d => d.draftId === active).limits;
-        });
-        expect(limits).toMatchObject({ WT: 1, FLEX: 0 });
+        expect(await activeLimits(page)).toMatchObject({ WT: 1, FLEX: 0 });
         await page.waitForLoadState('networkidle');
         await expectClean(page, state);
     });

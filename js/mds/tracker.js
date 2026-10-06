@@ -327,7 +327,7 @@ import { updateSetupGuidance } from './setupGuide.js';
             const limitsBodyElEmpty = document.getElementById('limitsBody');
             if (limitsBodyElEmpty) {
                 const dLimits = getActiveDraft()?.limits || { QB:1, RB:2, WR:3, TE:1, FLEX:1, SFLEX:0, BENCH:6, TOTAL:14 };
-                limitsBodyElEmpty.innerHTML = `<tr><td>0 / ${dLimits.QB}</td><td>0 / ${dLimits.RB}</td><td>0 / ${dLimits.WR}</td><td>0 / ${dLimits.TE}</td><td>0 / ${dLimits.FLEX}</td><td>0 / ${dLimits.SFLEX}</td><td><strong>0 / ${dLimits.TOTAL}</strong></td></tr>`;
+                limitsBodyElEmpty.innerHTML = `<tr><td>0 / ${dLimits.QB}</td><td>0 / ${dLimits.RB}</td><td>0 / ${dLimits.WR}</td><td>0 / ${dLimits.TE}</td><td>0 / ${(dLimits.FLEX || 0) + (dLimits.WT || 0) + (dLimits.WRRB || 0)}</td><td>0 / ${dLimits.SFLEX}</td><td><strong>0 / ${dLimits.TOTAL}</strong></td></tr>`;
             }
             return;
         }
@@ -571,9 +571,19 @@ import { updateSetupGuidance } from './setupGuide.js';
         }
         if (otherEl) otherEl.innerHTML = newOtherHTML;
 
-        let flexOverflow = Math.max(0, posCounts['RB'] - limits.RB) + Math.max(0, posCounts['WR'] - limits.WR) + Math.max(0, posCounts['TE'] - limits.TE);
-        let flexUsed = Math.min(flexOverflow, limits.FLEX);
-        let sflexOverflow = Math.max(0, posCounts['QB'] - limits.QB) + Math.max(0, flexOverflow - limits.FLEX);
+        // FLX counts every flex-type slot: W/R and W/T (Sleeper's restricted flex slots) and FLEX.
+        // RB/WR/TE beyond their own slots fill W/R first (RBs before WRs), then W/T (TEs before
+        // WRs), then FLEX: WRs fit all three, so saving them for last fills the most slots.
+        // Before improvements S1 only FLEX counted, so a W/T slot never showed as filled.
+        const overflow = { RB: Math.max(0, posCounts['RB'] - limits.RB), WR: Math.max(0, posCounts['WR'] - limits.WR), TE: Math.max(0, posCounts['TE'] - limits.TE) };
+        const fillFlex = (slots, positions) => positions.reduce((used, pos) => {
+            const n = Math.min(overflow[pos], slots - used);
+            overflow[pos] -= n;
+            return used + n;
+        }, 0);
+        let flexUsed = fillFlex(limits.WRRB || 0, ['RB', 'WR']) + fillFlex(limits.WT || 0, ['TE', 'WR']) + fillFlex(limits.FLEX || 0, ['RB', 'WR', 'TE']);
+        let flexSlots = (limits.WRRB || 0) + (limits.WT || 0) + (limits.FLEX || 0);
+        let sflexOverflow = Math.max(0, posCounts['QB'] - limits.QB) + overflow.RB + overflow.WR + overflow.TE;
         let sflexUsed = Math.min(sflexOverflow, limits.SFLEX);
 
         const limitsBodyEl = document.getElementById('limitsBody');
@@ -584,7 +594,7 @@ import { updateSetupGuidance } from './setupGuide.js';
                     <td>${posCounts['RB']} / ${limits.RB || 0}</td>
                     <td>${posCounts['WR']} / ${limits.WR || 0}</td>
                     <td>${posCounts['TE']} / ${limits.TE || 0}</td>
-                    <td>${flexUsed} / ${limits.FLEX || 0}</td>
+                    <td>${flexUsed} / ${flexSlots}</td>
                     <td>${sflexUsed} / ${limits.SFLEX || 0}</td>
                     <td>${posCounts['K'] || 0} / ${limits.K || 0}</td>
                     <td>${posCounts['DEF'] || 0} / ${limits.DEF || 0}</td>

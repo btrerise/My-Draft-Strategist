@@ -15,8 +15,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **W/T slots from Sleeper leagues are counted.** Syncing a draft whose Sleeper league has a WR/TE flex slot used to
-  leave that slot out of your roster limits; it now shows on the Team tab as W/T.
+- **W/T and W/R slots from Sleeper leagues are counted.** Syncing a draft whose Sleeper league has a WR/TE or WR/RB
+  flex slot used to leave that slot out of your roster limits. They now show on the Team tab as W/T and W/R, count in
+  the Tracker's FLX column (which only counted plain FLEX before), and carry over to Lineup Strategist with Send to
+  Lineup Strategist.
 - **Flex slot labels on the Team tab show the positions they take:** a filled FLX label runs green-blue-yellow
   (RB/WR/TE), SFLX red-green-blue-yellow, and W/T blue-yellow, instead of borrowing one position's color.
 - **The bye-week warning on the Team tab uses a warning icon** instead of the ⚠️ emoji, so it looks the same on
@@ -71,7 +73,7 @@ What changed for users in each version of the two apps, in plain language. Newes
   regular FLEX, so the optimizer could start an RB in a W/T slot or a TE in a W/R slot, a lineup Sleeper won't
   take. They now sync as W/T and W/R (new boxes under Active League Requirements), are filled only with eligible
   players, and show as W/T and W/R on the Lineup tab, in Copy as Text and in Power Rankings. Run Sync All once to
-  update leagues synced before this. A roster sent from Draft Strategist keeps its W/T slot too.
+  update leagues synced before this. A roster sent from Draft Strategist keeps its W/T and W/R slots too.
 - **FLEX and SFLEX badges show the positions they take:** the Lineup tab's FLEX slot badge has a green-blue-yellow
   (RB/WR/TE) border and SFLEX a red-green-blue-yellow (QB/RB/WR/TE) one, instead of the shared violet. The Scout tab's
   FLEX button and heading match.

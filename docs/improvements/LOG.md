@@ -131,9 +131,24 @@ Strategist's W/T slot).
   (SFLEX kickoff) rewrites that function and now notes this.
 - **Existing leagues:** re-sync rewrites `league.reqs` from Sleeper (the sync builds `reqs` from scratch each
   time), so Sync All fixes a league synced before this. No storage key changed; `reqs` just has two more fields.
+- **Draft Strategist W/R** (owner's follow-up request, same round). A new `WRRB` limit beside `WT`:
+  - `js/mds/sleeperSync.js` counts Sleeper's `WRRB_FLEX` (and `'W/R'`); the draft-settings fallback reads
+    `slots_wrrb_flex`, named like `slots_rec_flex` and 0 when absent. Unverified against a live Sleeper draft.
+  - `js/mds/settings.js` keeps `WRRB` on save (like `WT`, it's set by sync and not editable) and counts it in TOTAL.
+  - `js/mds/team.js` fills W/R slots before W/T and FLEX, with a W/R label in the RB→WR blend
+    (`.roster-label.wr-blend-text`, `--wr-blend` in `css/base.css`).
+  - `js/mds/handoff.js` sends it as `WRRB`.
+  - The Tracker's roster-limits FLX column (`js/mds/tracker.js`) now counts W/R, W/T and FLEX together. It only
+    counted FLEX before, so a filled W/T never showed. Extra RB/WR/TE fill W/R (RBs first), then W/T (TEs first),
+    then FLEX, which fills the most slots since WRs fit all three. The `<th>` has a title saying so.
+  - Tests, written first and seen failing (`tests/restricted-flex.spec.mjs`):
+    - Draft Strategist counts `WRRB_FLEX` as W/R.
+    - A W/R limit gives a Team tab W/R slot and a Tracker FLX of "2 / 2" (was "1 / 1").
+    - The hand-off sends `WRRB`.
 - **Left over:**
-  - Draft Strategist has no W/R slot type: its sync still ignores `WRRB_FLEX`, so the hand-off can't send one.
-    Lineup Strategist gets W/R right from its own sync.
+  - The Tracker's roster-limits table, before any player is drafted, has seven cells under nine headers (no K or
+    DEF cell), so TOT shows under K. Pre-existing and unrelated; left for the owner (`js/mds/tracker.js`,
+    `limitsBodyElEmpty`).
   - Power Rankings fills W/R before W/T greedily; in a league with both, a lineup can come out slightly below its
     best (noted in `power/shared.js`).
 - **Screenshots re-taken:** `mls-empty-setup.png` and `mls-league-setup.png`, both widths (the two new

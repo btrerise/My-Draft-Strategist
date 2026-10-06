@@ -115,13 +115,14 @@ import { getFreshness } from '../shared/freshness.js';
                 WR: parseInt(getVal('limitWR')) || 0,
                 TE: parseInt(getVal('limitTE')) || 0,
                 WT: draft.limits?.WT || 0,
+                WRRB: draft.limits?.WRRB || 0, // like WT: set by Sleeper sync, not editable here
                 FLEX: parseInt(getVal('limitFLEX')) || 0,
                 SFLEX: parseInt(getVal('limitSFLEX')) || 0,
                 K: parseInt(getVal('limitK')) || 0,
                 DEF: parseInt(getVal('limitDEF')) || 0,
                 BENCH: parseInt(getVal('limitBENCH')) || 0,
             };
-            draft.limits.TOTAL = draft.limits.QB + draft.limits.RB + draft.limits.WR + draft.limits.TE + draft.limits.WT + draft.limits.FLEX + draft.limits.SFLEX + draft.limits.K + draft.limits.DEF + draft.limits.BENCH;
+            draft.limits.TOTAL = draft.limits.QB + draft.limits.RB + draft.limits.WR + draft.limits.TE + draft.limits.WT + draft.limits.WRRB + draft.limits.FLEX + draft.limits.SFLEX + draft.limits.K + draft.limits.DEF + draft.limits.BENCH;
             saveActiveDraftState();
         }
 
