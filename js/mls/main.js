@@ -30,6 +30,7 @@ import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
 import { onScoutTabShown, refreshTopAvailable, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
+import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restoreBestAvailable, setBestAvailableBasis, toggleBestAvailable, viewLeagueTopAvailable } from './scout/bestAvailable.js';
 import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
@@ -63,7 +64,7 @@ import { dismissBannerAndReveal, dismissBanner } from '../shared/ui/banners.js';
 // state.js would then read State in its TDZ, and the headshot/SoS/market load-time code would run
 // out of mls.js order. main.js is the entry module, so it is always mid-evaluation while the
 // others evaluate, and importing from it never triggers an evaluation.
-export { checkForDraftStrategistHandoff, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderLineupUI, renderSyncLogs, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
+export { checkForDraftStrategistHandoff, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLineupUI, renderSyncLogs, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
 export { confirmRankingsPreview, createManualLeague, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
@@ -107,6 +108,13 @@ const clickActions = {
     switchActiveLeague() { switchActiveLeague(this.dataset.leagueId); },
     moveLeague() { moveLeague(Number(this.dataset.index), Number(this.dataset.direction)); },
     deleteLeagueManager() { deleteLeagueManager(this.dataset.leagueId); },
+    // Best available in your leagues (scout/bestAvailable.js, improvements S5)
+    viewLeagueTopAvailable() { viewLeagueTopAvailable(this.dataset.leagueId); },
+    bestAvailableUpload() { bestAvailableUpload(this.dataset.leagueId); },
+    toggleBestAvailable() { toggleBestAvailable(); },
+    setBestAvailableBasis() { setBestAvailableBasis(this.dataset.basis); },
+    dismissBestAvailable() { dismissBestAvailable(this.dataset.leagueId, this.dataset.player); },
+    restoreBestAvailable() { restoreBestAvailable(this.dataset.leagueId); },
     // ROS (Roster tab) and Weekly (Lineup tab) rankings cards
     toggleRankingsCard() { toggleRankingsCard(this.dataset.card); },
     deleteRankingSet() { deleteRankingSet(this.dataset.type); },

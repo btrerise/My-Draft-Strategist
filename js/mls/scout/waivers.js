@@ -194,16 +194,57 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
     // by the same comparator that orders free agents (compareForScan), so "ranked ahead of your
     // weakest" means the same thing everywhere. Raw basis ranks drive the comparison; the
     // derived display ranks keep the same order within a group, so the numbers shown agree.
-    function rosterBenchmark(league, getPos, basisByName, filter) {
+    // Also the Dashboard's Best Available card's upgrade check (scout/bestAvailable.js).
+    //
+    // Only your active roster counts (improvements S5, round 6, owner's request): taxi-squad players
+    // and anyone Sleeper lists as IR, Out, PUP, NFI, suspended or did-not-report are left out and
+    // returned as `skipped` ({ name, why }) so the UI can say so. Before, an injured star on IR, or
+    // an Out player, both unranked in Weekly rankings because they aren't playing, became "your
+    // weakest", and every free agent beat him. Statuses are the roster's own (`inj`, `isTaxi`), set
+    // at the last sync, like ownership. Questionable and Doubtful players still count.
+    export function rosterBenchmark(league, getPos, basisByName, filter) {
+        const skipped = [];
         const mine = (league.roster || [])
             .map(p => ({ ...p, pos: getPos(p.cleanName) }))
             .filter(p => matchesPosFilter(p.pos, filter))
+            .filter(p => {
+                const why = notOnActiveRoster(p);
+                if (why) skipped.push({ name: p.name, why });
+                return !why;
+            })
             .map(p => {
                 const r = basisByName[p.cleanName] || {};
                 return { ...p, rank: r.rank ?? 999, posRank: r.posRank ?? 999, flexRank: r.flexRank ?? 999 };
             })
             .sort((a, b) => compareForScan(a, b, filter));
-        return { mine, bench: mine.length ? mine[mine.length - 1] : null };
+        skipped.sort((a, b) => a.name.localeCompare(b.name));
+        return { mine, bench: mine.length ? mine[mine.length - 1] : null, skipped };
+    }
+
+    const INACTIVE_STATUSES = ['IR', 'OUT', 'PUP', 'NFI', 'SUS', 'DNR'];
+    // Why a rostered player isn't on your active roster ('taxi', or his short injury status), or null.
+    function notOnActiveRoster(p) {
+        if (p.isTaxi) return 'taxi';
+        return INACTIVE_STATUSES.includes(p.inj) ? p.inj : null;
+    }
+
+    // "A.J. Brown (taxi), Garrett Wilson (OUT)" for rosterBenchmark's skipped list.
+    export function skippedPlayersText(skipped) {
+        return (skipped || []).map(s => `${escapeHtml(s.name)} (${escapeHtml(s.why)})`).join(', ');
+    }
+
+    // A league's position lookup for the waiver tools: the league's own synced positions, then the
+    // cached Sleeper player map (meta, from getSleeperMetaByName), then market values, else 'UNK'.
+    // getPos is called once per free agent in a scan, so the market fallback is indexed rather than
+    // re-scanned each time. Shared with the Dashboard's Best Available card (scout/bestAvailable.js).
+    export function makeLeagueGetPos(league, meta) {
+        const marketIndex = rankingIndex(State.marketRankings);
+        return (clean) => {
+            if (league.globalPosMap && league.globalPosMap[clean]) return league.globalPosMap[clean];
+            if (meta && meta[clean]) return meta[clean].pos;
+            const m = marketIndex.get(clean);
+            return (m && m.pos) ? m.pos : 'UNK';
+        };
     }
 
     // Everything a waiver card needs, built once per scan: positions/teams/injuries from Sleeper,
@@ -219,15 +260,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
             console.warn('Waiver scan: Sleeper player map unavailable, falling back to league/market positions.', e);
         }
 
-        // getPos is called once per free agent in the scan, so the market fallback is indexed
-        // rather than re-scanned each time.
-        const marketIndex = rankingIndex(State.marketRankings);
-        const getPos = (clean) => {
-            if (league.globalPosMap && league.globalPosMap[clean]) return league.globalPosMap[clean];
-            if (meta[clean]) return meta[clean].pos;
-            const m = marketIndex.get(clean);
-            return (m && m.pos) ? m.pos : 'UNK';
-        };
+        const getPos = makeLeagueGetPos(league, meta);
 
         const checkIsWeekly = State.weeklyRankings.length > 0;
         const checkRankings = checkIsWeekly ? State.weeklyRankings : State.rosRankings;
@@ -406,8 +439,13 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
     export function pastedRosterVerdict(ctx, player) {
         const filter = (State.waiverScanSettings.pos === 'FLEX' && FLEX_POSITIONS.includes(player.pos)) ? 'FLEX' : player.pos;
         const groupLabel = filter;
-        const { bench } = rosterBenchmark(ctx.league, ctx.getPos, ctx.scan.byName, filter);
-        if (!bench) return { line: `You have no ${groupLabel} on your roster to compare against.`, upgrade: false };
+        const { bench, skipped } = rosterBenchmark(ctx.league, ctx.getPos, ctx.scan.byName, filter);
+        if (!bench) {
+            const line = skipped.length
+                ? `You have no active ${groupLabel} on your roster to compare against (not counted: ${skipped.map(x => `${escapeHtml(x.name)}, ${escapeHtml(x.why)}`).join('; ')}).`
+                : `You have no ${groupLabel} on your roster to compare against.`;
+            return { line, upgrade: false };
+        }
         const faRanks = ctx.scan.byName[player.cleanName] || {};
         const upgrade = compareForScan({ pos: player.pos, rank: faRanks.rank, posRank: faRanks.posRank, flexRank: faRanks.flexRank }, bench, filter) < 0;
         const line = waiverCompareLine(player, bench, `weakest ${groupLabel}`, upgrade ? 'Upgrade over' : "Doesn't pass",
@@ -674,9 +712,10 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
             // the group (by the same comparator used to order the free agents) is the benchmark;
             // every free agent ranked ahead of him is listed.
             const renderRosterGroup = (g) => {
-                const { mine, bench } = rosterBenchmark(league, ctx.getPos, basisByName, g.filter);
+                const { mine, bench, skipped } = rosterBenchmark(league, ctx.getPos, basisByName, g.filter);
+                const notCounted = skipped.length ? `<div class="mls-scan-benchmark-next">Not counted: ${skippedPlayersText(skipped)}.</div>` : '';
                 if (!bench) {
-                    return { body: `<div class="mls-scan-empty">You have no ${groupName(g)} on your roster to compare against.</div>`, count: 0, countText: 'no roster players' };
+                    return { body: `<div class="mls-scan-empty">You have no ${skipped.length ? 'active ' : ''}${groupName(g)} on your roster to compare against.</div>${notCounted}`, count: 0, countText: 'no roster players' };
                 }
                 const basisKind = g.filter === 'FLEX' ? 'flex' : 'pos';
                 const upgrades = g.items.filter(fa => compareForScan(fa, bench, g.filter) < 0).slice(0, limit);
@@ -697,6 +736,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                         : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
                         : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}
                     ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(', ')}</div>` : ''}
+                    ${notCounted}
                 </div>`;
                 const cards = upgrades.map(fa => {
                     const row = ctx.evaluate(fa);

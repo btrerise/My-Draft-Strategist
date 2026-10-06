@@ -149,6 +149,30 @@ export function findFreeAgents(rankings, { posFilter, getPos, isRostered, isExcl
     return { freeAgents: list, unresolvedCount: unresolvedNames.length, unresolvedNames };
 }
 
+// --- UPGRADE RULE (Dashboard's Best Available card, improvements S5) ---
+// Is a league's best free agent at a position worth flagging over your weakest rostered player
+// there? Ranks are display position ranks (buildRankDisplayIndex); tiers are the rankings file's
+// own (position tier, else the list's tier), or null when the file has none. Returns the gap in
+// position spots (the card sorts leagues by it), or null for "not an upgrade":
+//   - The free agent must be ranked. Any ranked player can count, with no startable-range cutoff:
+//     in a dynasty or an 18-team guillotine league, a deep name is a real pickup (owner's rule;
+//     round 4 had a cutoff, removed in round 5).
+//   - Unranked player of yours: any ranked free agent is an upgrade. He counts as one spot below
+//     the last ranked player at the position for the gap.
+//   - Both tiered: only a better tier counts. A higher rank in the same tier isn't an upgrade
+//     (owner's rule).
+//   - Otherwise: at least UPGRADE_MIN_GAP position spots better.
+export const UPGRADE_MIN_GAP = 3;
+export function upgradeGap({ faRank, faTier = null, benchRank, benchTier = null, rankedAtPos = 0 }) {
+    if (!isRanked(faRank) || !faRank) return null;
+    const benchRanked = isRanked(benchRank) && !!benchRank;
+    const gap = (benchRanked ? benchRank : rankedAtPos + 1) - faRank;
+    if (gap <= 0) return null;
+    if (!benchRanked) return gap;
+    if (faTier != null && benchTier != null) return faTier < benchTier ? gap : null;
+    return gap >= UPGRADE_MIN_GAP ? gap : null;
+}
+
 // --- LINEUP SIMULATION ---
 // Fills a set of starter slots from a candidate pool using the exact same rules as
 // optimizeLineup in js/mls/render/lineup.js (strict slots by posRank, FLEX by flexRank-then-posRank, SFLEX by

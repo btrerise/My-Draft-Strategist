@@ -66,6 +66,24 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Best available in your leagues, on the Dashboard:** a new card under the League Command Center shows, for every
+  league synced from Sleeper, its top 3 available RBs, WRs and TEs with their position ranks and injury badges
+  ("James Cook RB8"), ranked by that league's own Weekly or ROS rankings. A Weekly | ROS switch picks which; it's the
+  same Rank By as the Scout tab's Waiver Wire Assistant, so the two always agree. Free agents worth a roster spot over
+  your weakest player at their position are marked as upgrades ("James Cook RB5 over Derrick Henry RB8"): any ranked
+  player can count, but he must be in a better tier when your rankings have tiers (otherwise at least 3 spots
+  better). Leagues with the biggest upgrades come first; the rest fold under "Show N more leagues". View opens that
+  league's Top Available on the Scout tab, filtered to RB/WR/TE like the line. On a computer, a Sleeper link opens the
+  league on sleeper.com. Each line says when the league hasn't synced in over 2 days. The card collapses and
+  remembers it, keeping a one-line summary ("Upgrades in 2 of 5 leagues"). Manual leagues are left out, since the
+  app only knows your own roster there. A league with no rankings yet says where to upload them. Tap × on a player
+  you're not interested in to hide him from that league's line for the week; "Restore" brings him back, and
+  dismissals clear themselves when the NFL week changes.
+- **"Your weakest player" skips IR, Out and taxi players.** Check a List and Auto-Find's Whole Roster comparison (and
+  the Dashboard's Best Available card) used to name an injured star on IR, an Out player or a taxi-squad stash as
+  your drop candidate, since Weekly rankings leave those players out, so every free agent "beat" him. They now
+  compare against your weakest active player (PUP, NFI and suspended players are skipped too) and say who wasn't
+  counted.
 - **Top Available in the Waiver Wire Assistant:** the Scout tab's waiver card now has three modes, Top Available,
   Auto-Find and Check a List, sharing one Rank By, one row of position chips and one results area. Top Available (the
   default) is a compact list of the best-ranked players nobody in your league has rostered, with rank chips in the
