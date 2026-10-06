@@ -2,7 +2,7 @@
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { escapeHtml } from '../../shared/html.js';
 import { KEYS } from '../../shared/storage/keys.js';
-import { normalizeName } from '../../shared/names.js';
+import { headshotInitials, normalizeName } from '../../shared/names.js';
 import { fantasyPosition } from '../constants.js';
 
 // --- PLAYER HEADSHOTS (Roster tab list + Lineup tab starters/bench) ---
@@ -23,7 +23,6 @@ import { fantasyPosition } from '../constants.js';
 // index, preferring a same-team match, then anyone currently on an NFL team -- the same
 // tiebreak order resolveManualPlayer uses for the injury audit.
 const HEADSHOT_URL = id => `https://sleepercdn.com/content/nfl/players/thumb/${encodeURIComponent(id)}.jpg`;
-const HEADSHOT_NAME_SUFFIX_RE = /^(jr|sr|ii|iii|iv|v)\.?$/i;
 let _headshotNameIndex = null;
 let _headshotNameIndexPromise = null;
 // Renderers waiting to redraw once the name index lands. A Set of function references, so
@@ -74,15 +73,6 @@ function resolveHeadshotId(p) {
     return pick.id;
 }
 
-function headshotInitials(p) {
-    if (p.pos === 'DEF') return String(p.team && p.team !== 'FA' ? p.team : 'DEF').slice(0, 3);
-    const words = String(p.name || '').trim().split(/\s+/).filter(w => w && !HEADSHOT_NAME_SUFFIX_RE.test(w));
-    if (words.length === 0) return '';
-    const first = words[0][0] || '';
-    const last = words.length > 1 ? (words[words.length - 1][0] || '') : '';
-    return (first + last).toUpperCase();
-}
-
 export function playerHeadshotHTML(p) {
     if (!p) return '';
     const id = resolveHeadshotId(p);
@@ -92,7 +82,7 @@ export function playerHeadshotHTML(p) {
     const img = id
         ? `<img class="mls-headshot-img" src="${HEADSHOT_URL(id)}" alt="" width="32" height="32" loading="lazy" decoding="async" data-action="removeImage">`
         : '';
-    return `<span class="mls-headshot${p.pos === 'DEF' ? ' mls-headshot-def' : ''}" aria-hidden="true"><span class="mls-headshot-initials">${escapeHtml(headshotInitials(p))}</span>${img}</span>`;
+    return `<span class="mls-headshot${p.pos === 'DEF' ? ' mls-headshot-def' : ''}" aria-hidden="true"><span class="mls-headshot-initials">${escapeHtml(headshotInitials(p.name, p.pos, p.team))}</span>${img}</span>`;
 }
 
 // "Show Player Headshots" (Settings > Advanced Settings). Defaults on, like MDS's toggle, but

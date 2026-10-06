@@ -74,3 +74,16 @@ export function isNameMatch(name1, name2) {
 
     return false;
 }
+
+// The letters in a player's headshot circle, shown when there's no photo (improvements F3; moved from
+// js/mls/lineup/headshots.js so Draft Strategist uses the same rule). First and last initial, skipping a
+// suffix ("Kenneth Walker III" -> "KW"); a one-word name gives one letter. DEF shows the team code instead.
+const HEADSHOT_NAME_SUFFIX_RE = /^(jr|sr|ii|iii|iv|v)\.?$/i;
+export function headshotInitials(name, pos, team) {
+    if (pos === 'DEF') return String(team && team !== 'FA' ? team : 'DEF').slice(0, 3);
+    const words = String(name || '').trim().split(/\s+/).filter(w => w && !HEADSHOT_NAME_SUFFIX_RE.test(w));
+    if (words.length === 0) return '';
+    const first = words[0][0] || '';
+    const last = words.length > 1 ? (words[words.length - 1][0] || '') : '';
+    return (first + last).toUpperCase();
+}

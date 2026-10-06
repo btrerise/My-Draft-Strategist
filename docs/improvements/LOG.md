@@ -492,3 +492,51 @@ main.
 **Left over.**
 - Check a real Sleeper thumbnail for transparency when a session can reach `sleepercdn.com` (allow it in the
   environment's network settings). Optional: the fix covers both causes either way.
+
+### F3, round 2: initials in Draft Strategist too (owner's request)
+
+**Owner's request** (after the first push): "add the letters to Draft Strategist when a photo doesn't load, for
+consistency".
+
+**User-visible effect.** On the Draft Board and the Team tab, every drafted player now has a circle with their initials
+(DEF: the team code), with the Sleeper photo on top. Before, a photo that failed hid itself: the board cell showed only
+the name, and on the Team tab the name slid left, out of line with the empty slots. Now a missing photo leaves the
+initials, and the names stay lined up. Custom players from an uploaded file (no Sleeper id) and Sleeper picks the app
+can't match to a ranked player used to get no picture at all; they get initials too, as in Lineup Strategist. A photo
+that loads covers the initials completely, the same as round 1. Show Player Headshots off still hides the board's
+circles (initials included); the Team tab's avatars were never covered by that toggle and still aren't. Export Team
+still leaves the avatars out of the image (it hides `.roster-avatar`, which the new circle keeps as its class).
+
+**What changed and where.**
+- `js/mds/headshots.js` (new, in `PRECACHE_ASSETS`): `headshotHTML({ id, name, pos, team }, sizeClass)` builds the
+  circle, `<span class="<sizeClass> mds-headshot">` with `.mds-headshot-initials` and, for a Sleeper id (not
+  `custom_…`), `<img class="mds-headshot-img" data-action="removeImage">`.
+- `js/mds/board.js` and `js/mds/team.js` use it, with the size classes they already had (`draft-cell-img`,
+  `roster-avatar`); those now style the circle instead of the `<img>`. The Team tab's empty-slot spacer is unchanged.
+- `js/mds/main.js`: a `removeImage` error action, like Lineup Strategist's. `hideImage` stays for the hero logo.
+- `css/mds.css`: `.mds-headshot`, `.mds-headshot-initials` (0.62rem on the Team tab's 32px circle, 0.45rem on the
+  board's 22px, 0.75rem on its 38px desktop size) and `.mds-headshot-img` (with the circle's background, as in MLS).
+- `js/shared/names.js`: `headshotInitials(name, pos, team)`, moved out of `js/mls/lineup/headshots.js` so both apps
+  use one rule. Lineup Strategist's output is unchanged (its screenshots are pixel-identical).
+- `sw.js`: `CACHE_NAME` v2.8.77 → v2.8.78. CHANGELOG line under Draft Strategist's Unreleased.
+
+**Tests.**
+- `tests/mds-headshots.spec.mjs` (both widths, written first and seen failing): serves a partly transparent photo for
+  Chase and 404s for everyone else. On the board, Gibbs and Robinson show "JG" and "BR" with no `<img>`, and Chase's
+  photo hides "JC"; the headshot toggle hides and restores the circles. On the Team tab, the same for Gibbs and Chase,
+  and empty slots keep their spacer.
+- The "initials visible" check (both specs) now compares only the middle of the circle: on the board's 38px circle
+  the anti-aliased rim differed between two shots with nothing else changed. The MLS spec still fails without round 1's
+  CSS fix (re-checked).
+- `tests/unit/names.test.mjs`: `headshotInitials` cases (suffixes, one word, empty, DEF with and without a team).
+
+**Screenshots: four change, as intended.** The screenshot tests block the CDN, so these avatars used to hide
+themselves and now show initials. Rendered before and after in this container (`npm run pxdiff`), only these differ:
+- `desktop/mds-draft-board.png`, `phone/mds-draft-board.png`: initials circles in the five picked cells (taller by
+  7px and 18px, since the circle now keeps its space).
+- `desktop/mds-draft-team.png`, `phone/mds-draft-team.png`: "JG" and "JC" circles beside Gibbs and Chase; their names
+  move right to line up with the empty slots.
+
+These four baselines are **not yet re-taken**: this container renders text differently from CI (see F1), and CI's
+artifact storage is blocked here. They need CI's own renders, the `-actual.png` files from a PR's
+`playwright-results` artifact, as in F1.

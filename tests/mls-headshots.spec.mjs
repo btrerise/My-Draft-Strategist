@@ -36,13 +36,17 @@ const avatarFor = (page, id) => page.locator('#rosterTab .mls-headshot').filter(
     has: page.locator(`img[src$="/thumb/${id}.jpg"]`),
 });
 
-// Two screenshots of the avatar, with its initials as rendered and with them hidden. Equal means the letters
-// can't be seen.
+// Two screenshots of the middle of the avatar (where the initials sit; the anti-aliased rim can vary between
+// shots), with its initials as rendered and with them hidden. Different means the letters can be seen.
 async function initialsVisible(avatar) {
-    const asRendered = await avatar.screenshot({ animations: 'disabled' });
-    await avatar.locator('.mls-headshot-initials').evaluate((el) => { el.style.visibility = 'hidden'; });
-    const withoutLetters = await avatar.screenshot({ animations: 'disabled' });
-    await avatar.locator('.mls-headshot-initials').evaluate((el) => { el.style.visibility = ''; });
+    const initials = avatar.locator('.mls-headshot-initials');
+    const box = await avatar.boundingBox();
+    const inset = box.width * 0.2;
+    const clip = { x: box.x + inset, y: box.y + inset, width: box.width - 2 * inset, height: box.height - 2 * inset };
+    const asRendered = await avatar.page().screenshot({ clip, animations: 'disabled' });
+    await initials.evaluate((el) => { el.style.visibility = 'hidden'; });
+    const withoutLetters = await avatar.page().screenshot({ clip, animations: 'disabled' });
+    await initials.evaluate((el) => { el.style.visibility = ''; });
     return !asRendered.equals(withoutLetters);
 }
 
@@ -96,9 +100,7 @@ test.describe('MLS headshots', () => {
         await expect(jefferson.locator('img')).toHaveCount(0);
         await jefferson.scrollIntoViewIfNeeded();
         await expect(jefferson.locator('.mls-headshot-initials')).toBeVisible();
-        const jeffersonShot = await jefferson.screenshot({ animations: 'disabled' });
-        await jefferson.locator('.mls-headshot-initials').evaluate((el) => { el.style.visibility = 'hidden'; });
-        expect(jeffersonShot.equals(await jefferson.screenshot({ animations: 'disabled' })), 'the 404 avatar shows its initials').toBe(false);
+        expect(await initialsVisible(jefferson), 'the 404 avatar shows its initials').toBe(true);
 
         // DEF rows: the team code, never a photo.
         const def = page.locator('#rosterTab .mls-headshot-def');
