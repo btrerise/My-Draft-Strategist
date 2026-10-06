@@ -363,3 +363,59 @@ types, and this step never changes which slots exist or who starts. The labels o
   - Desktop differs only in the help-text paragraph (y 1667-1704, same height).
   - Phone is 23px taller from the paragraph down. Below it, a few text rows differ slightly after the shift, but they
     read the same, with no content change.
+
+## F2 — Sync All spinner keeps spinning
+
+**User-visible effect.** While Sync All Leagues runs, the button's spinner now turns smoothly the whole time. Before,
+it jumped back to the start of its turn every time the count moved on ("Syncing 1/5…" to "Syncing 2/5…"), because the
+button's whole HTML, spinner included, was rewritten for each league. The text still counts league by league, and the
+button is restored as before when the run ends. The Combine & Process Files button on the multi-file rankings upload
+("Processing 2/3…") had the same restart and is fixed the same way. Nothing else on screen changed.
+
+**Owner's decisions.** None needed (no "Asks you" on this card).
+
+**What changed and where.**
+- `js/mls/render/dashboard.js` (`syncAllLeagues`): builds the spinner SVG and a `.sync-progress-label` span once, and
+  the loop sets only that span's `textContent`. The finally block still restores the button's saved HTML, disables
+  and opacity as before.
+- `js/mls/rankings/uploadPreview.js` (`processMultiRankings`): `updateProgress` builds the spinner and a
+  `.busy-label` span on its first call, then updates only the span's text. Restore is unchanged.
+- `sw.js`: `CACHE_NAME` v2.8.75 → v2.8.76. CHANGELOG line under Lineup Strategist's Unreleased.
+
+**Was the button replaced during the loop?** No. `#syncAllBtn` is static markup in `lineup/index.html` and no render
+touches it, so `processSleeperData` → `switchActiveLeague` → dashboard render leaves the same button element on
+screen. The spec asserts this (same button element before and after), so nothing needed updating beyond the text.
+
+**The same pattern elsewhere, checked:**
+- `importAllSleeperLeagues` (`js/mls/leagues/importAll.js`): sets `innerText` only, with no spinner element, so there is
+  nothing to restart. Unchanged.
+- `optimizeAllLineups` (`dashboard.js`): sets the spinner once ("Optimizing All…") and has no count. Unchanged.
+- Simulator progress (`js/mls/sim/ui.js`, `renderProgress`): already writes the spinner once and updates only
+  `.sim-progress-count`. Unchanged.
+- Multi-file upload (`uploadPreview.js`): restarted the spinner for every file. Fixed (above).
+- Draft Strategist: the only spinner on a button is the draft sync's "Syncing…" in `js/mds/sleeperSync.js`, set once
+  with no count, and the "Processing…" lines use `setProcessingStatus`, also once. Nothing to fix.
+- Other single-text spinners ("Syncing…" in `js/mls/leagues/sync.js`, "Simulating…" in `js/mls/sim/matchup.js`) have
+  no count and are set once.
+
+**Helper.** Only two places needed the fix (the card asks for a shared helper at three or more), so each is fixed in
+place and `js/shared/ui/` is unchanged. No new file, so `PRECACHE_ASSETS` is unchanged.
+
+**Tests, written first and seen failing on main** (`tests/mls-busy-spinner.spec.mjs`, both widths):
+- Sync All over two Fixture League syncs (the fixture server answers any league id with the Fixture League, so a second
+  id makes a second league). Each league's rosters request is held in turn. It checks the `.sync-spinner` element
+  at "Syncing 1/2…" is the same one on screen at "Syncing 2/2…" and that the button element is unchanged, then that
+  the button ends restored (label back, no spinner, enabled). On main the spinner at 2/2 was a new element.
+- Multi-file rankings upload with two position files: a MutationObserver counts the distinct spinner elements the
+  button gets during the run. On main it was 3 (0/2, 1/2, 2/2); now 1.
+
+**Screenshots.** None re-taken; no screenshot shows either button mid-run. This session's container can't reproduce the
+committed baselines (the same 10 `visual.spec.mjs` tests fail on clean main here, as F1's entry describes), so I
+rendered all 40 screenshots on main and on this branch in the same container and compared them with `npm run pxdiff`:
+every PNG is pixel-identical, desktop and phone. CI's own screenshot step is the check against the committed baselines.
+
+**Checks run.** `npm run check` here: check-precache and the unit tests pass, and 150 Playwright tests pass, including
+the new spec at both widths. The only failures are those 10 environment-related screenshot comparisons, identical on
+clean main.
+
+**Left over.** Nothing.
