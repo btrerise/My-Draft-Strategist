@@ -359,7 +359,7 @@ types, and this step never changes which slots exist or who starts. The labels o
   (`npm run pxdiff`): only the two guide PNGs differ. The new PNGs are the `mls-league-guide-actual.png` files from
   the first CI run on the PR (`playwright-results` artifact, uploaded by the owner because the session's network
   policy blocks GitHub's artifact host). Checked before committing:
-  - Each artifact's `-expected.png` is byte-for-byte the committed baseline.
+  - Each artifact's `-expected.png` is pixel-identical to the committed baseline.
   - Desktop differs only in the help-text paragraph (y 1667-1704, same height).
   - Phone is 23px taller from the paragraph down. Below it, a few text rows differ slightly after the shift, but they
     read the same, with no content change.
