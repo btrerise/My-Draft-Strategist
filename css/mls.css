@@ -1457,6 +1457,23 @@ button.close-chip {
 .mls-ta-num { min-width: 2.5rem; text-align: right; font-weight: 600; color: var(--text-main); font-variant-numeric: tabular-nums; }
 .mls-ta-more { width: 100%; margin-top: 0.6rem; }
 
+/* Best available in your leagues (Dashboard, js/mls/scout/bestAvailable.js, improvements S5): one
+   line per league, its top 3 RB/WR/TE with Top Available's rank chips, and a View button. */
+.mls-ba-note { margin: 0 0 0.75rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+.mls-ba-note strong { color: var(--text-main); }
+.mls-ba-list { list-style: none; margin: 0; padding: 0; }
+.mls-ba-line { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0; }
+.mls-ba-line + .mls-ba-line { border-top: 1px solid var(--border); }
+.mls-ba-main { flex: 1; min-width: 0; }
+.mls-ba-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 0.5rem; margin-bottom: 0.25rem; }
+.mls-ba-league { font-weight: 600; color: var(--text-main); font-size: 0.9rem; }
+.mls-ba-source { font-size: 0.72rem; color: var(--text-muted); }
+.mls-ba-players { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; font-size: 0.85rem; }
+.mls-ba-player { display: inline-flex; align-items: center; gap: 0.3rem; }
+.mls-ba-name { color: var(--text-main); }
+.mls-ba-empty { font-size: 0.8rem; color: var(--text-muted); }
+.mls-ba-line > .btn { flex-shrink: 0; }
+
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
    One card per player, with a per-league ownership row beneath the header. Markup comes from
    runAllLeaguesSearch in js/mls/scout/allLeaguesSearch.js. The card is deliberately its own box rather than a

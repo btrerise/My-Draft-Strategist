@@ -206,6 +206,20 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         return { mine, bench: mine.length ? mine[mine.length - 1] : null };
     }
 
+    // A league's position lookup for the waiver tools: the league's own synced positions, then the
+    // cached Sleeper player map (meta, from getSleeperMetaByName), then market values, else 'UNK'.
+    // getPos is called once per free agent in a scan, so the market fallback is indexed rather than
+    // re-scanned each time. Shared with the Dashboard's Best Available card (scout/bestAvailable.js).
+    export function makeLeagueGetPos(league, meta) {
+        const marketIndex = rankingIndex(State.marketRankings);
+        return (clean) => {
+            if (league.globalPosMap && league.globalPosMap[clean]) return league.globalPosMap[clean];
+            if (meta && meta[clean]) return meta[clean].pos;
+            const m = marketIndex.get(clean);
+            return (m && m.pos) ? m.pos : 'UNK';
+        };
+    }
+
     // Everything a waiver card needs, built once per scan: positions/teams/injuries from Sleeper,
     // display ranks for both rankings sets, your current starters, and an evaluate(fa) that runs
     // the lineup check. lineupReady is false when no starting lineup could be built -- callers
@@ -219,15 +233,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
             console.warn('Waiver scan: Sleeper player map unavailable, falling back to league/market positions.', e);
         }
 
-        // getPos is called once per free agent in the scan, so the market fallback is indexed
-        // rather than re-scanned each time.
-        const marketIndex = rankingIndex(State.marketRankings);
-        const getPos = (clean) => {
-            if (league.globalPosMap && league.globalPosMap[clean]) return league.globalPosMap[clean];
-            if (meta[clean]) return meta[clean].pos;
-            const m = marketIndex.get(clean);
-            return (m && m.pos) ? m.pos : 'UNK';
-        };
+        const getPos = makeLeagueGetPos(league, meta);
 
         const checkIsWeekly = State.weeklyRankings.length > 0;
         const checkRankings = checkIsWeekly ? State.weeklyRankings : State.rosRankings;

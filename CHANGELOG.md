@@ -66,6 +66,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Best available in your leagues, on the Dashboard:** a new card under the League Command Center lists, for every
+  league, its top 3 available RBs, WRs and TEs with their position ranks ("James Cook RB8"), each ranked by the
+  rankings that league uses (its Weekly set, else its ROS set). View opens that league's Top Available on the Scout
+  tab. Ownership is from each league's last sync; manual leagues say "not on your roster", since the app only knows
+  your own roster there. A league with no rankings yet says where to upload them.
 - **Top Available in the Waiver Wire Assistant:** the Scout tab's waiver card now has three modes, Top Available,
   Auto-Find and Check a List, sharing one Rank By, one row of position chips and one results area. Top Available (the
   default) is a compact list of the best-ranked players nobody in your league has rostered, with rank chips in the

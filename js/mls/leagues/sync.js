@@ -14,7 +14,7 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable } from '../main.js';
+import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderBestAvailable } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { applyMarketSettingsToUI } from '../settings.js';
@@ -49,6 +49,9 @@ import { showToast } from '../../shared/ui/toast.js';
         const tbody = document.getElementById('dashboardMatrixBody');
         
         if (!cmdCenter || !tbody) return;
+
+        // The card under this one (scout/bestAvailable.js); it draws only while the Dashboard is shown.
+        renderBestAvailable();
 
         if (State.leagues.length === 0) {
             cmdCenter.style.display = 'none';
@@ -219,20 +222,26 @@ import { showToast } from '../../shared/ui/toast.js';
         if (!league) return;
         ['ros', 'weekly'].forEach(type => {
             const cfg = RANKING_TYPE_CONFIG[type];
-            const setId = league[cfg.leagueSetIdKey];
-            const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
-
-            if (set) {
-                State[cfg.stateKey] = [...set.data];
-                State[cfg.updatedAtKey] = set.updatedAt;
-            } else if (Array.isArray(league[cfg.leagueLegacyDataKey]) && league[cfg.leagueLegacyDataKey].length > 0) {
-                State[cfg.stateKey] = [...league[cfg.leagueLegacyDataKey]];
-                State[cfg.updatedAtKey] = league[cfg.leagueLegacyUpdatedKey] || null;
-            } else {
-                State[cfg.stateKey] = [];
-                State[cfg.updatedAtKey] = null;
-            }
+            const found = getLeagueRankings(league, type);
+            State[cfg.stateKey] = found ? [...found.data] : [];
+            State[cfg.updatedAtKey] = found ? found.updatedAt : null;
         });
+    }
+
+    // One league's rankings of one type ('ros' | 'weekly'), read without making it the active league.
+    // Priority: its named set, then its legacy per-league upload (from before named sets), then none
+    // (null). hydrateRankingsForLeague loads these into State; the Dashboard's Best Available card
+    // (scout/bestAvailable.js) reads every league's this way. `data` is the stored array: copy it
+    // before changing it.
+    export function getLeagueRankings(league, type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        if (!league || !cfg) return null;
+        const setId = league[cfg.leagueSetIdKey];
+        const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
+        if (set) return { data: set.data, updatedAt: set.updatedAt, setName: set.name || null };
+        const legacy = league[cfg.leagueLegacyDataKey];
+        if (Array.isArray(legacy) && legacy.length > 0) return { data: legacy, updatedAt: league[cfg.leagueLegacyUpdatedKey] || null, setName: null };
+        return null;
     }
 
     // Identifies the rankings a league currently resolves to, in the same priority order
