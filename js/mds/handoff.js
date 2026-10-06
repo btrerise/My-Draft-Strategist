@@ -20,15 +20,15 @@ import { showToast } from '../shared/ui/toast.js';
         const players = myPlayers.map(p => ({ name: p.name, pos: p.posGroup, team: p.team || "FA" }));
 
         const limits = draft.limits || {};
-        // MLS doesn't have a WR/TE-only flex slot type yet -- folding W/T into FLEX keeps the
-        // total roster-spot count correct, though MLS's optimizer will (for now) also consider
-        // RB eligible there, unlike the stricter W/T rule this count came from.
+        // W/T goes over as MLS's own WR/TE slot type (WRTE, improvements S1). It used to be folded
+        // into FLEX, which let MLS's optimizer start an RB there.
         const reqs = {
             QB: limits.QB || 0,
             RB: limits.RB || 0,
             WR: limits.WR || 0,
             TE: limits.TE || 0,
-            FLEX: (limits.FLEX || 0) + (limits.WT || 0),
+            FLEX: limits.FLEX || 0,
+            WRTE: limits.WT || 0,
             SFLEX: limits.SFLEX || 0,
             K: limits.K || 0,        // NEW
             DEF: limits.DEF || 0

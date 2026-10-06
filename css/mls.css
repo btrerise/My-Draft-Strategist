@@ -391,6 +391,9 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 /* FLEX and SFLEX: a border blended from the positions each takes (--flex-blend, --sflex-blend in css/base.css). */
 .slot-badge.slot-FLEX { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--flex-blend) border-box; }
 .slot-badge.slot-SFLEX { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--sflex-blend) border-box; }
+/* Sleeper's restricted flex slots (improvements S1): W/T (WR/TE) and W/R (RB/WR). */
+.slot-badge.slot-WRTE { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--wt-blend) border-box; }
+.slot-badge.slot-WRRB { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--wr-blend) border-box; }
 .slot-badge.slot-BN,
 .slot-badge.slot-ROS { background-color: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
 /* Taxi squad, at the foot of the bench list. Same muted greys as .slot-BN rather than a new

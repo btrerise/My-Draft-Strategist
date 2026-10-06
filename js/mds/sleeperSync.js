@@ -181,7 +181,10 @@ import { showToast } from '../shared/ui/toast.js';
                     else if (pos === 'RB') draftLimits.RB++;
                     else if (pos === 'WR') draftLimits.WR++;
                     else if (pos === 'TE') draftLimits.TE++;
-                    else if (pos === 'W/T') draftLimits.WT++; // NEW: W/T Slot
+                    // Sleeper's league data calls the W/T slot REC_FLEX ('W/T' is kept in case
+                    // anything still sends it); before improvements S1 only 'W/T' was checked, so
+                    // a W/T slot was never counted.
+                    else if (pos === 'REC_FLEX' || pos === 'W/T') draftLimits.WT++;
                     else if (pos === 'FLEX' || pos === 'W/R/T') draftLimits.FLEX++;
                     else if (pos === 'SUPER_FLEX' || pos === 'Q/W/R/T') draftLimits.SFLEX++;
                     else if (pos === 'K') draftLimits.K++;

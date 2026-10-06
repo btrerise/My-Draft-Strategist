@@ -1,6 +1,7 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3D: TEXT EXPORT
 // (DISCORD/GROUP CHAT) and SCREENSHOT EXPORT (copyLineupAsText, exportLineup).
 import { State } from '../state.js';
+import { slotDisplayName } from '../constants.js';
 import { getActiveLeague } from '../helpers.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { flashButton } from '../../shared/ui/flashButton.js';
@@ -23,7 +24,7 @@ import { ensureHtml2Canvas } from '../../shared/ui/scriptLoader.js';
         textLines.push(`${leagueName} Lineup\n`);
         
         starters.forEach(s => {
-            let cleanSlotType = s.slot.replace(/[0-9]/g, ''); 
+            let cleanSlotType = slotDisplayName(s.slot.replace(/[0-9]/g, ''));
             
             if (s.player) {
                 textLines.push(`${cleanSlotType}: ${s.player.name} (${s.player.team})`);

@@ -30,12 +30,16 @@ export const POWER_STARTER_CARRY_CAP = 1.5;
 
 // Same fallback lineup the rest of this file uses for a league with no saved reqs.
 const POWER_DEFAULT_REQS = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
-// Filled in this order: fixed slots first, then FLEX, then Superflex -- most restrictive to
-// least. Taking the best available player for each slot in that order is optimal here, since
-// every eligibility set contains the one before it and a player's value doesn't depend on which
-// slot he fills. K/DEF slots are skipped: power rankings don't score those positions.
+// Filled in this order: fixed slots first, then Sleeper's restricted flex slots (W/R, W/T; added in
+// improvements S1), then FLEX, then Superflex -- most restrictive to least, the optimizer's order.
+// Taking the best available player for each slot in that order is optimal for the fixed-FLEX-SFLEX
+// chain, where every eligibility set contains the one before it; W/R and W/T don't contain each
+// other, so a league with both can (rarely) come out a little below its true best. A player's
+// value doesn't depend on which slot he fills. K/DEF slots are skipped: power rankings don't score
+// those positions.
 const POWER_STARTER_SLOTS = [
     ['QB', ['QB']], ['RB', ['RB']], ['WR', ['WR']], ['TE', ['TE']],
+    ['WRRB', ['WR', 'RB']], ['WRTE', ['WR', 'TE']],
     ['FLEX', ['RB', 'WR', 'TE']], ['SFLEX', ['QB', 'RB', 'WR', 'TE']]
 ];
 function pickPowerStarters(players, reqs) {

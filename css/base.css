@@ -64,6 +64,7 @@
     --flex-blend: linear-gradient(90deg, var(--pos-rb-border), var(--pos-wr-border), var(--pos-te-border));
     --sflex-blend: linear-gradient(90deg, var(--pos-qb-border), var(--pos-rb-border), var(--pos-wr-border), var(--pos-te-border));
     --wt-blend: linear-gradient(90deg, var(--pos-wr-border), var(--pos-te-border));
+    --wr-blend: linear-gradient(90deg, var(--pos-rb-border), var(--pos-wr-border));
     --blend-fill: linear-gradient(rgba(23, 30, 45, 0.92), rgba(23, 30, 45, 0.92));
 
     /* Spacing scale -- a token version of the ad-hoc rem values (0.4rem, 0.6rem, 0.85rem...)

@@ -7,7 +7,9 @@
 // under Node for validation without a browser.
 
 export const FLEX_POSITIONS = ['RB', 'WR', 'TE'];
-const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SFLEX', 'K', 'DEF'];
+// WRRB / WRTE: Sleeper's W/R and W/T slots (improvements S1), filled before FLEX like optimizeLineup does.
+const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'WRRB', 'WRTE', 'FLEX', 'SFLEX', 'K', 'DEF'];
+const RESTRICTED_FLEX = { WRRB: ['WR', 'RB'], WRTE: ['WR', 'TE'] };
 const UNRANKED = 999;
 
 const isRanked = (v) => v !== undefined && v !== null && v !== UNRANKED;
@@ -162,9 +164,10 @@ export function findFreeAgents(rankings, { posFilter, getPos, isRostered, isExcl
 // player who only fits it stays in leftover, where checkAgainstLineup would name him "displaced".
 // That can't happen today (0B finding 9, traced and kept in refactor 9A by the owner's decision):
 // slot types come from State.manualStartersMap, whose slot labels only optimizeLineup
-// (js/mls/render/lineup.js) creates, one per league.reqs count, and reqs only has these eight keys.
-// League sync (js/mls/leagues/sync.js) maps Sleeper's FLEX / REC_FLEX / WRRB_FLEX to FLEX and
-// SUPER_FLEX to SFLEX and drops everything else (IDP slots, BN); the Draft Strategist hand-off
+// (js/mls/render/lineup.js) creates, one per league.reqs count, and reqs only has these ten keys.
+// League sync (js/mls/leagues/sync.js) maps Sleeper's FLEX to FLEX, REC_FLEX to WRTE, WRRB_FLEX to
+// WRRB (since improvements S1; before, all three became FLEX) and SUPER_FLEX to SFLEX, and drops
+// everything else (IDP slots, BN); the Draft Strategist hand-off
 // (js/mls/leagues/handoff.js) sets the same counts; swaps and undo keep existing labels. A new slot
 // type there needs handling here first.
 export function fillLineup(slotTypes, candidates) {
@@ -209,10 +212,13 @@ export function fillLineup(slotTypes, candidates) {
                 take(slotType, idx);
                 continue;
             }
-            const accepts = slotType === 'FLEX' ? (p => FLEX_POSITIONS.includes(p.pos)) : (p => p.pos === slotType);
+            const accepts = slotType === 'FLEX' ? (p => FLEX_POSITIONS.includes(p.pos))
+                : RESTRICTED_FLEX[slotType] ? (p => RESTRICTED_FLEX[slotType].includes(p.pos))
+                : (p => p.pos === slotType);
+            const isFlexType = slotType === 'FLEX' || !!RESTRICTED_FLEX[slotType];
             const lockedIdx = pool.findIndex(p => p.isLocked && accepts(p));
             if (lockedIdx !== -1) { take(slotType, lockedIdx); continue; }
-            take(slotType, findBest(accepts, slotType === 'FLEX' ? byFlex : byPosRank));
+            take(slotType, findBest(accepts, isFlexType ? byFlex : byPosRank));
         }
     });
 
@@ -221,6 +227,7 @@ export function fillLineup(slotTypes, candidates) {
 
 export function slotAcceptsPos(slotType, pos) {
     if (slotType === 'FLEX') return FLEX_POSITIONS.includes(pos);
+    if (RESTRICTED_FLEX[slotType]) return RESTRICTED_FLEX[slotType].includes(pos);
     if (slotType === 'SFLEX') return pos === 'QB' || FLEX_POSITIONS.includes(pos);
     return slotType === pos;
 }

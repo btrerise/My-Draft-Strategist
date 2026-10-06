@@ -98,6 +98,47 @@ FLEX is shown).
 - **Screenshots re-taken:** `mls-league-lineup.png` (the fixture's FLEX slot badge) and `mls-league-scout.png`, both
   widths. Draft Strategist's screenshots are unchanged: their FLX slot is empty.
 
+**Round 6: W/T and W/R slots in Lineup Strategist** (bug fix; owner's request after round 5 mentioned Draft
+Strategist's W/T slot).
+- **The bug:**
+  - Lineup Strategist's league sync (`processSleeperData`, `js/mls/leagues/sync.js`) counted Sleeper's `REC_FLEX`
+    (WR/TE only) and `WRRB_FLEX` (WR/RB only) as a full FLEX. The optimizer could start an RB in a W/T slot or a TE
+    in a W/R slot, a lineup Sleeper rejects; the swap check allowed the same.
+  - The Draft Strategist hand-off (`js/mds/handoff.js`) folded W/T into FLEX, and its comment said so.
+  - Draft Strategist's own league sync (`js/mds/sleeperSync.js`) looked for `'W/T'`, but Sleeper's `roster_positions`
+    says `REC_FLEX`, so a league's W/T slot was never counted at all.
+- **Tests written first and seen failing:**
+  - `tests/unit/waiverScanner.test.mjs`: W/T and W/R in `slotAcceptsPos` and `fillLineup`.
+  - `tests/restricted-flex.spec.mjs`, which serves the fixture league with its FLEX swapped for Sleeper's slot names:
+    - Lineup Strategist syncs W/R and W/T, and the W/R slot gets Lamb (WR), not McBride (TE). On main, McBride was
+      in that slot.
+    - A Draft Strategist W/T slot arrives in Lineup Strategist as W/T.
+    - Draft Strategist counts `REC_FLEX` as W/T.
+- **The fix.** Two new slot types: `WRTE` (shown "W/T") and `WRRB` (shown "W/R"). `SLOT_POSITIONS` and
+  `slotDisplayName` live in `js/mls/constants.js`. They are used by:
+  - sync's mapping;
+  - the requirements editor (two new inputs, `reqWRTE` and `reqWRRB`);
+  - `optimizeLineup`, which fills W/R and W/T after the fixed slots and before FLEX, by the FLEX comparator;
+  - `slotAcceptsPos`, for swaps and Waiver Insights;
+  - the waiver scanner's mirror (`SLOT_ORDER`, `fillLineup`, `slotAcceptsPos`), so Auto-Find's Would Start agrees
+    with the optimizer;
+  - Power Rankings' starter slots;
+  - Auto-Find's comparison wording ("your W/T"), Copy as Text and the Power Rankings tooltip;
+  - the hand-off, which sends W/T as `WRTE`;
+  - the slot badges, which use the W/T (WR→TE) and W/R (RB→WR) color blends.
+- **Kickoff relabeling.** `optimizeFlexKickoffOrder` already leaves any slot other than RB/WR/TE/FLEX alone, so W/T
+  and W/R players stay where the fill put them and never trade places with FLEX for a later kickoff. Runbook card F1
+  (SFLEX kickoff) rewrites that function and now notes this.
+- **Existing leagues:** re-sync rewrites `league.reqs` from Sleeper (the sync builds `reqs` from scratch each
+  time), so Sync All fixes a league synced before this. No storage key changed; `reqs` just has two more fields.
+- **Left over:**
+  - Draft Strategist has no W/R slot type: its sync still ignores `WRRB_FLEX`, so the hand-off can't send one.
+    Lineup Strategist gets W/R right from its own sync.
+  - Power Rankings fills W/R before W/T greedily; in a league with both, a lineup can come out slightly below its
+    best (noted in `power/shared.js`).
+- **Screenshots re-taken:** `mls-empty-setup.png` and `mls-league-setup.png`, both widths (the two new
+  requirement inputs; the grid is now two rows of five).
+
 **Owner's decisions:**
 - Before building: All = top 5 per position; a position or FLEX = top 15 plus "Show 15 more". A flat top-25 list was
   turned down because, with per-position or FLEX Weekly sheets, the parser's `rank` is a FLEX or position rank, not an

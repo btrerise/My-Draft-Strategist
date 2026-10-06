@@ -4,7 +4,7 @@
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { buildRankDisplayIndex, checkAgainstLineup, compareForScan, findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
 import { escapeHtml } from '../../shared/html.js';
-import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, tierTag } from '../constants.js';
+import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';
 import { getByeBadgeHTML, getGameInfoHTML, hasKickedOff } from '../lineup/gameInfo.js';
@@ -437,7 +437,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const bothFlex = FLEX_POSITIONS.includes(faPlayer.pos) && FLEX_POSITIONS.includes(other.pos);
         const useFlex = basis === 'flex' ? bothFlex
             : basis === 'pos' ? false
-            : bothFlex && (slotType === 'FLEX' || slotType === 'SFLEX' || faPlayer.pos !== other.pos);
+            : bothFlex && (['FLEX', 'SFLEX', 'WRRB', 'WRTE'].includes(slotType) || faPlayer.pos !== other.pos);
         const crossField = crossKind === 'overall' ? 'rank' : 'flexRank';
         const crossName = crossKind === 'overall' ? 'Overall' : 'Flex';
         const faD = display[faPlayer.cleanName] || {};
@@ -445,7 +445,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const fmt = (v, pos) => (v === null || v === undefined) ? 'unranked' : (useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`);
         const faVal = useFlex ? faD[crossField] : faD.posRank;
         const oVal = useFlex ? oD[crossField] : oD.posRank;
-        const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotType})</span>` : '';
+        const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotDisplayName(slotType)})</span>` : '';
         // The two ranks go on their own line under the verdict (see .mls-verdict-nums), and each
         // label/name+rank pair is kept unbreakable -- at phone width this line otherwise wrapped
         // mid-phrase ("Wk" on one line, "Flex: Dobbins #58" on the next), which read as garbled.

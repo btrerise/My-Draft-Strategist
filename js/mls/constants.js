@@ -26,6 +26,19 @@ import { KEYS } from '../shared/storage/keys.js';
         return scored || p.position || null;
     }
 
+    // Lineup slot types and the positions each accepts. WRTE and WRRB are Sleeper's restricted flex
+    // slots (REC_FLEX = WR/TE, WRRB_FLEX = WR/RB), shown as "W/T" and "W/R" (improvements S1; before,
+    // league sync counted them as a full FLEX, which let the optimizer start an RB in a W/T slot).
+    // Starter slot labels are the type plus a number ("WRTE1"); the digit-stripped label is the type.
+    // js/mls/scout/waiverScanner.js keeps its own copy, since it has to run under Node without imports.
+    export const SLOT_POSITIONS = {
+        QB: ['QB'], RB: ['RB'], WR: ['WR'], TE: ['TE'],
+        WRRB: ['WR', 'RB'], WRTE: ['WR', 'TE'], FLEX: ['RB', 'WR', 'TE'], SFLEX: ['QB', 'RB', 'WR', 'TE'],
+        K: ['K'], DEF: ['DEF']
+    };
+    const SLOT_NAMES = { WRRB: 'W/R', WRTE: 'W/T' };
+    export const slotDisplayName = (slotType) => SLOT_NAMES[slotType] || slotType;
+
     // Small muted "(T2)" suffix for a rank shown on a player card, when the rankings file that
     // rank came from also had a Tier column (see js/shared/rankings/parse.js). Returns "" for a missing tier
     // -- the common case, since Tier is an optional column -- so callers can append it
