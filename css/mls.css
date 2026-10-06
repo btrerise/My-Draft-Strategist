@@ -1488,6 +1488,10 @@ button.close-chip {
 .mls-ba-sync { font-size: 0.72rem; }
 .mls-ba-actions { display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; flex-shrink: 0; }
 .mls-ba-sleeper { display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; text-decoration: none; }
+/* Desktop only (owner's choice): on phones and tablets the link opens the Sleeper app's home, not the league. */
+@media (max-width: 600px), (hover: none) and (pointer: coarse) {
+    .mls-ba-sleeper { display: none; }
+}
 .mls-ba-player .inj-badge { margin-left: 0.1rem; }
 .mls-ba-none { font-size: 0.85rem; color: var(--text-muted); padding: 0.25rem 0 0.5rem; }
 .mls-ba-more { margin-top: 0.25rem; border-top: 1px solid var(--border); }

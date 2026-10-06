@@ -104,6 +104,9 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(line(page, 'Fixture League').locator('.mls-ba-sync')).toHaveCount(0);
         await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('href', `https://sleeper.com/leagues/${FIXTURE_LEAGUE_ID}`);
         await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('target', '_blank');
+        // Desktop only: on phones the link would open the Sleeper app's home, not the league.
+        if (test.info().project.name === 'phone') await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toBeHidden();
+        else await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toBeVisible();
 
         // Ahead in rank but the same tier: no upgrade (and the 3-spot gap doesn't override the tiers).
         await showTab(page, 'lineup');
@@ -176,13 +179,13 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(fixture.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['RB5', 'WR11', 'RB9']);
         await expect(fixture.locator('.mls-ta-pos').first()).toHaveClass(/\bpos-badge\b.*\bRB\b/);
         await expect(fixture.locator('.is-upgrade .mls-ba-name')).toHaveText(['James Cook']);
-        await expect(fixture.locator('.mls-ba-over')).toHaveText(['over your Derrick Henry RB8']);
+        await expect(fixture.locator('.mls-ba-over')).toHaveText(['over Derrick Henry RB8']);
         // Two upgrades, biggest first, then the best of the rest; an injury badge; an old sync is flagged.
         await expect(second.locator('.mls-ba-source')).toHaveText('Weekly');
         await expect(second.locator('.mls-ba-sync')).toHaveText('Synced 4 days ago');
         expect(await names(page, 'Second League')).toEqual(['Zay Flowers', 'Sam LaPorta', 'James Cook']);
         await expect(second.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['WR10', 'TE3', 'RB8']);
-        await expect(second.locator('.mls-ba-over')).toHaveText(['over your Garrett Wilson WR12', 'over your George Kittle TE4']);
+        await expect(second.locator('.mls-ba-over')).toHaveText(['over Garrett Wilson WR12', 'over George Kittle TE4']);
         await expect(second.locator('.mls-ba-player').first().locator('.inj-badge')).toHaveText('Q');
         await expect(second.locator('a.mls-ba-sleeper')).toHaveAttribute('href', `https://sleeper.com/leagues/${SECOND_LEAGUE_ID}`);
 
@@ -217,13 +220,16 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await toggle.click();
         await expect(second).toBeVisible();
 
-        // View: switches to that league and opens its Top Available in the same rankings, even from another mode.
+        // View: switches to that league and opens its Top Available filtered like the line (same rankings,
+        // FLEX chip), even from another mode and another chip.
         await callApp(page, 'setWaiverMode', 'auto');
+        await callApp(page, 'setWaiverPos', 'QB');
         await second.locator('[data-action="viewLeagueTopAvailable"]').click();
         await expect(page.locator('#scoutTab')).toHaveClass(/\bactive\b/);
         await expect(page.locator('#waiverModeToggle [data-mode="top"]')).toHaveAttribute('aria-pressed', 'true');
         await expect(page.locator('#headerLeagueSelect option:checked')).toHaveText('Second League');
-        await expect(page.locator('#waiverOutput')).toContainText('in Second League by Weekly rank');
+        await expect(page.locator('#waiverPosChips [data-pos="FLEX"]')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#waiverOutput')).toContainText('Top available RB/WR/TE in Second League by Weekly rank');
         await expect(page.locator('#waiverOutput')).toContainText('No ROS rankings loaded for this league - using Weekly rank instead.');
 
         // Back on the Dashboard, Weekly again: the card redraws and doesn't depend on the active league.

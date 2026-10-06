@@ -12,7 +12,7 @@ import {
 describe('exports', () => {
     test('public surface is unchanged', () => {
         assert.deepEqual(Object.keys(scanner).sort(), [
-            'FLEX_POSITIONS', 'UPGRADE_MIN_GAP', 'UPGRADE_RANK_CUTOFF', 'buildRankDisplayIndex', 'checkAgainstLineup',
+            'FLEX_POSITIONS', 'UPGRADE_MIN_GAP', 'buildRankDisplayIndex', 'checkAgainstLineup',
             'compareForScan', 'fillLineup', 'findFreeAgents', 'matchesPosFilter', 'slotAcceptsPos', 'upgradeGap'
         ]);
         assert.deepEqual(FLEX_POSITIONS, ['RB', 'WR', 'TE']);
@@ -321,17 +321,13 @@ describe('upgradeGap', () => {
         assert.equal(upgradeGap({ ...base, faRank: 9, faTier: 1, benchRank: 8, benchTier: 4 }), null);
         assert.equal(upgradeGap({ ...base, faRank: 8, benchRank: 8 }), null);
     });
-    test('an unranked player of yours: any relevant free agent, gap from one past the last ranked', () => {
+    test('an unranked player of yours: any ranked free agent, gap from one past the last ranked', () => {
         assert.equal(upgradeGap({ ...base, faRank: 30, benchRank: null, rankedAtPos: 40 }), 11);
         assert.equal(upgradeGap({ ...base, faRank: 30, benchRank: 999, rankedAtPos: 40 }), 11);
-    });
-    test('relevance cutoff by position and rankings type', () => {
-        assert.equal(upgradeGap({ ...base, faRank: 37, benchRank: null, rankedAtPos: 60 }), null);
-        assert.equal(upgradeGap({ ...base, faRank: 36, benchRank: null, rankedAtPos: 60 }), 25);
-        assert.equal(upgradeGap({ pos: 'TE', basis: 'weekly', faRank: 13, benchRank: null, rankedAtPos: 30 }), null);
-        assert.equal(upgradeGap({ pos: 'TE', basis: 'ros', faRank: 13, benchRank: null, rankedAtPos: 30 }), 18);
-        assert.equal(upgradeGap({ pos: 'WR', basis: 'ros', faRank: 60, benchRank: null, rankedAtPos: 80 }), 21);
-        assert.equal(upgradeGap({ pos: 'WR', basis: 'ros', faRank: 61, benchRank: null, rankedAtPos: 80 }), null);
         assert.equal(upgradeGap({ ...base, faRank: null, benchRank: null, rankedAtPos: 10 }), null, 'an unranked free agent never');
+    });
+    test('no startable-range cutoff: deep ranked players count (dynasty, deep leagues)', () => {
+        assert.equal(upgradeGap({ ...base, faRank: 80, benchRank: null, rankedAtPos: 120 }), 41);
+        assert.equal(upgradeGap({ pos: 'TE', basis: 'weekly', faRank: 40, faTier: 9, benchRank: 52, benchTier: 11 }), 12);
     });
 });

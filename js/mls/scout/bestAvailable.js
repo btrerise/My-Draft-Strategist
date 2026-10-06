@@ -30,13 +30,18 @@
 //   type falls back to its other one, and its label says so.
 //
 // Owner's choices in round 4 (after my second review as a user):
-// - Upgrades must matter: upgradeGap (waiverScanner.js) only flags a free agent inside a startable
-//   range, and, when the rankings have tiers, only from a better tier (same tier isn't an upgrade);
-//   without tiers, at least 3 position spots better.
+// - Upgrades must matter: upgradeGap (waiverScanner.js) flags a free agent only from a better tier
+//   when the rankings have tiers (same tier isn't an upgrade); without tiers, at least 3 position
+//   spots better. (Round 4's startable-range cutoff was removed in round 5: any ranked player can
+//   count, for dynasty and deep leagues.)
 // - Every upgrade shows (at most one per position), marked inside the line's players instead of a
 //   separate sentence, so no name appears twice.
 // - A league synced more than 2 days ago says so; each line has an "Open in Sleeper" link; players
 //   carry injury badges; the fold uses the site's chevron.
+//
+// Owner's choices in round 5: no startable-range cutoff (above); "over Derrick Henry RB8" without
+// "your"; the Sleeper link on desktop only (on phones it opens the Sleeper app's home, not the
+// league; hidden by CSS); and View opens Top Available on the FLEX chip, so its list is the line's.
 //
 // No second copy of the candidate logic: findFreeAgents (not in globalRosterMap, draft picks out,
 // unresolvable names left out, sorted by compareForScan), rosterBenchmark, buildRankDisplayIndex
@@ -138,9 +143,8 @@ import { showTab, switchActiveLeague } from '../main.js';
         });
 
         // Upgrades: at each position, the best free agent against your weakest rostered player
-        // there (Check a List's Whole Roster benchmark), judged by upgradeGap: startable range,
-        // a better tier when both are tiered, else 3+ spots. Biggest gap first; the first one sorts
-        // the league.
+        // there (Check a List's Whole Roster benchmark), judged by upgradeGap: a better tier when
+        // both are tiered, else 3+ spots. Biggest gap first; the first one sorts the league.
         const upgrades = [];
         FLEX_POSITIONS.forEach(pos => {
             const best = findFreeAgents(basis.data, { ...options, posFilter: pos }).freeAgents[0];
@@ -149,7 +153,7 @@ import { showTab, switchActiveLeague } from '../main.js';
             const faRank = posRankOf(best.cleanName);
             const benchRank = posRankOf(bench.cleanName);
             const gap = upgradeGap({
-                pos, basis: basis.type, faRank, faTier: tierOf(best.cleanName),
+                faRank, faTier: tierOf(best.cleanName),
                 benchRank, benchTier: tierOf(bench.cleanName), rankedAtPos: rankedAtPos[pos] || 0
             });
             if (gap) upgrades.push({ pos, fa: best, faRank, bench, benchRank, gap });
@@ -169,7 +173,7 @@ import { showTab, switchActiveLeague } from '../main.js';
     function playerHTML(a, { fa, upgrade }) {
         const inj = a.inj(fa.cleanName);
         const over = upgrade
-            ? `<span class="mls-ba-over">over your ${escapeHtml(upgrade.bench.name)} ${upgrade.benchRank ? rankText(upgrade.pos, upgrade.benchRank) : '(unranked)'}</span>` : '';
+            ? `<span class="mls-ba-over">over ${escapeHtml(upgrade.bench.name)} ${upgrade.benchRank ? rankText(upgrade.pos, upgrade.benchRank) : '(unranked)'}</span>` : '';
         return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${over}</li>`;
     }
 
@@ -311,12 +315,13 @@ import { showTab, switchActiveLeague } from '../main.js';
         renderBestAvailable();
     }
 
-    // View: that league's Top Available on the Scout tab, in the rankings the line used (the switch
-    // is Rank By); the position chips stay as they were. showTab('scout') draws the list.
+    // View: that league's Top Available on the Scout tab, filtered like the line: the same rankings
+    // (the switch is Rank By) and the FLEX chip (RB/WR/TE in FLEX order). showTab('scout') draws it.
     export function viewLeagueTopAvailable(leagueId) {
         if (!(State.leagues || []).some(l => l.leagueId === leagueId)) return;
         if (leagueId !== State.activeLeagueId) switchActiveLeague(leagueId);
         updateWaiverScanSetting('mode', 'top');
+        updateWaiverScanSetting('pos', 'FLEX');
         showTab('scout');
     }
 
