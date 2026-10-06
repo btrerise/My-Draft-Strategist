@@ -367,6 +367,14 @@
     color: var(--text-muted);
 }
 
+/* Team tab labels for flex-type slots (FLX, SFLX, W/T): the text runs through the colors of the
+   positions the slot takes (--flex-blend etc. in css/base.css). Two classes, to beat .roster-label's
+   own color. An empty slot's label keeps the muted color (js/mds/team.js only adds these when filled). */
+.roster-label.flex-blend-text, .roster-label.sflex-blend-text, .roster-label.wt-blend-text { -webkit-background-clip: text; background-clip: text; color: transparent; }
+.roster-label.flex-blend-text { background-image: var(--flex-blend); }
+.roster-label.sflex-blend-text { background-image: var(--sflex-blend); }
+.roster-label.wt-blend-text { background-image: var(--wt-blend); }
+
 .roster-slot.empty { 
     opacity: 0.5; 
 }

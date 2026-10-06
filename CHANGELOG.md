@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Flex slot labels on the Team tab show the positions they take:** a filled FLX label runs green-blue-yellow
+  (RB/WR/TE), SFLX red-green-blue-yellow, and W/T blue-yellow, instead of borrowing one position's color.
 - **The bye-week warning on the Team tab uses a warning icon** instead of the ⚠️ emoji, so it looks the same on
   every device and matches the rest of the site.
 - **Rankings and ADP say how old they are.** The status line in Load Rankings reads "Loaded: 220 players • Updated
@@ -63,6 +65,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   TE against your weakest of all three, any other choice against his own position. It redraws when you come back to the Scout tab after uploading rankings or
   syncing, and when you switch leagues. In a manual league it lists players not on your roster and says so.
 - **No emoji in the "Lineup Optimized!" message** at the end of setup.
+- **FLEX and SFLEX badges show the positions they take:** the Lineup tab's FLEX slot badge has a green-blue-yellow
+  (RB/WR/TE) border and SFLEX a red-green-blue-yellow (QB/RB/WR/TE) one, instead of the shared violet. The Scout tab's
+  FLEX button and heading match.
 
 ### v2.14.0 — 2026-10-05
 

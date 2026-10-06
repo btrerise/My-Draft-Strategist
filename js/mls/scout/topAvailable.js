@@ -111,8 +111,9 @@ import { runScout } from './engine.js';
         </li>`;
     }
 
-    // A box's position heading as a colored position badge; FLEX has no color of its own.
-    const posTitle = (pos) => FANTASY_POSITIONS.includes(pos) ? `<span class="badge pos-badge ${pos} mls-ta-title-badge">${pos}</span>` : pos;
+    // A box's position heading as a colored position badge; FLEX gets the RB/WR/TE blend (css/base.css).
+    const posTitle = (pos) => FANTASY_POSITIONS.includes(pos) ? `<span class="badge pos-badge ${pos} mls-ta-title-badge">${pos}</span>`
+        : pos === 'FLEX' ? `<span class="badge flex-blend mls-ta-title-badge">FLEX</span>` : pos;
 
     function listHTML(ctx, items, title, countText, extra = '') {
         const crossLabel = ctx.scanCross === 'overall' ? `${ctx.scan.label} Ovr` : 'Wk Flex';

@@ -61,7 +61,7 @@ rows**. This entry describes the final version.
   grayed, the picked one is full color, and ALL lights every button, as in the Tracker (`js/mds/tracker.js`).
   aria-pressed marks only the picked one. The layout is one row of eight, two rows of four on phones
   (`.mls-pos-filter-grid`). FLEX has no position color: lit by ALL it reads plain, and picked itself it turns green
-  (`.mls-pos-filter-flex` in `css/mls.css`).
+  (`.mls-pos-filter-flex` in `css/mls.css`; replaced in round 5).
 - **CSS move:** the `.pos-filter` rules (base, hover, active, ALL's green, the button reset and focus ring) moved
   from `css/mds.css` to the end of `css/base.css`, so both apps load them. They sit at the end so `.pos-filter` still
   beats the shared `.badge` rule. `button.edit-link` keeps its half of the old shared rule in `css/mds.css`. The
@@ -72,6 +72,31 @@ rows**. This entry describes the final version.
     `display: none -> block`, which is the "Loaded N players" message a timer hides, not a style; re-runs show 0
     differences. MLS differs as intended.
 - Screenshots re-taken: the same two `mls-league-scout.png` files.
+
+**Round 5: one look for FLEX everywhere** (owner's choice from four rendered options: violet like the Lineup tab,
+neutral slate, an RB/WR/TE blend, or round 4's gray-then-green; the owner picked the blend and asked for it everywhere
+FLEX is shown).
+- **Shared definition** in `css/base.css`:
+  - `:root` variables `--flex-blend` (RB→WR→TE), `--sflex-blend` (QB→RB→WR→TE) and `--wt-blend` (WR→TE), built from
+    the existing `--pos-*-border` colors, plus `--blend-fill` (the dark fill inside the border).
+  - Classes `.flex-blend`, `.sflex-blend` and `.wt-blend` at the end of the file: a transparent 1px border with the
+    gradient behind it (`padding-box` fill over a `border-box` gradient), kept on `.pos-filter` hover.
+- **Where it's used:**
+  - The Waiver Wire Assistant's FLEX button (`badge pos-filter flex-blend`). Like every other position button, it
+    looks the same whether ALL lit it or it was picked; round 4's green-on-pick is gone.
+  - Top Available's FLEX box heading.
+  - The Lineup tab's `.slot-badge.slot-FLEX` and `.slot-badge.slot-SFLEX`, which were violet (`css/mls.css`).
+  - Draft Strategist's Team tab: filled FLX, SFLX and W/T labels are gradient text (`.roster-label.flex-blend-text`
+    etc. in `css/mds.css`, two classes to beat `.roster-label`'s gray). `buildSlotHTML` in `js/mds/team.js` takes
+    an optional text class. They were green, red and teal, borrowed from single positions. Empty slots keep the
+    muted label.
+- **SFLEX and W/T** were not named by the owner. They got the same treatment with their own positions, because
+  SFLEX shared FLEX's violet badge and W/T is the other flex slot. Each is one rule to revert.
+- **Not changed:** the "FLEX" badge Draft Strategist shows for players uploaded without a position, and the Scout
+  tab's "FA" badge for unknown positions (`badgeClass = 'FLEX'` in `scout/engine.js` and `allLeaguesSearch.js`). Both
+  mean "unknown position", not the FLEX slot, and neither uses these classes.
+- **Screenshots re-taken:** `mls-league-lineup.png` (the fixture's FLEX slot badge) and `mls-league-scout.png`, both
+  widths. Draft Strategist's screenshots are unchanged: their FLX slot is empty.
 
 **Owner's decisions:**
 - Before building: All = top 5 per position; a position or FLEX = top 15 plus "Show 15 more". A flat top-25 list was

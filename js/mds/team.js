@@ -25,7 +25,9 @@ import { KEYS } from '../shared/storage/keys.js';
         let rosterSlotsHTML = '';
         let limits = draft.limits || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
 
-                const buildSlotHTML = (label, color, p) => {
+                // textClass: a gradient-text class for flex-type slots (.flex-blend-text etc., css/base.css),
+                // used instead of the single color.
+                const buildSlotHTML = (label, color, p, textClass = '') => {
             if (p) {
                 let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
                 
@@ -38,7 +40,7 @@ import { KEYS } from '../shared/storage/keys.js';
                 return `
                 <div class="roster-slot">
                     <div class="roster-slot-label-row">
-                        <span class="roster-label" style="color:${color}">${label}</span>
+                        <span class="roster-label ${textClass}"${textClass ? '' : ` style="color:${color}"`}>${label}</span>
                         ${imgHTML} <!-- Inject Image Here -->
                         <div>
                             <div style="font-weight: bold;">${escapeHtml(p.name)} ${rookieBadge}</div>
@@ -80,20 +82,20 @@ import { KEYS } from '../shared/storage/keys.js';
         for (let i = 0; i < (limits.WT || 0); i++) {
             let idx = availablePool.findIndex(p => ['WR', 'TE'].includes(p.posGroup));
             let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
-            rosterSlotsHTML += buildSlotHTML('W/T', '#2dd4bf', p); // Distinct teal color
+            rosterSlotsHTML += buildSlotHTML('W/T', null, p, 'wt-blend-text');
         }
 
         // Fill Standard W/R/T Flex Slots
         for (let i = 0; i < (limits.FLEX || 0); i++) {
             let idx = availablePool.findIndex(p => ['RB', 'WR', 'TE'].includes(p.posGroup));
             let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
-            rosterSlotsHTML += buildSlotHTML('FLX', '#86efac', p);
+            rosterSlotsHTML += buildSlotHTML('FLX', null, p, 'flex-blend-text');
         }
 
         for (let i = 0; i < (limits.SFLEX || 0); i++) {
             let idx = availablePool.findIndex(p => ['QB', 'RB', 'WR', 'TE'].includes(p.posGroup));
             let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
-            rosterSlotsHTML += buildSlotHTML('SFLX', '#fca5a5', p);
+            rosterSlotsHTML += buildSlotHTML('SFLX', null, p, 'sflex-blend-text');
         }
 
         if (availablePool.length > 0) {

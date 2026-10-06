@@ -388,8 +388,9 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 .slot-badge.slot-TE  { background-color: var(--pos-te);  color: #fde047; border: 1px solid var(--pos-te-border); }
 .slot-badge.slot-K   { background-color: var(--pos-k);   color: #e2e8f0; border: 1px solid var(--pos-k-border); }
 .slot-badge.slot-DEF { background-color: var(--pos-def); color: #e9d8fd; border: 1px solid var(--pos-def-border); }
-.slot-badge.slot-FLEX,
-.slot-badge.slot-SFLEX { background-color: rgba(168, 85, 247, 0.18); color: #d8b4fe; border: 1px solid #a855f7; }
+/* FLEX and SFLEX: a border blended from the positions each takes (--flex-blend, --sflex-blend in css/base.css). */
+.slot-badge.slot-FLEX { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--flex-blend) border-box; }
+.slot-badge.slot-SFLEX { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--sflex-blend) border-box; }
 .slot-badge.slot-BN,
 .slot-badge.slot-ROS { background-color: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
 /* Taxi squad, at the foot of the bench list. Same muted greys as .slot-BN rather than a new
@@ -1426,9 +1427,6 @@ button.close-chip {
    four on phones. */
 .mls-pos-filter-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.5rem; }
 @media (max-width: 520px) { .mls-pos-filter-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-/* FLEX has no position color. Lit by ALL it reads plain; picked itself it turns green like ALL does. */
-.pos-filter.mls-pos-filter-flex.active-filter { color: var(--text-main); }
-.pos-filter.mls-pos-filter-flex.active-filter[aria-pressed="true"] { color: var(--primary-green); background: var(--target-bg); border-color: var(--primary-green); }
 /* Top Available's compact list (js/mls/scout/topAvailable.js): one boxed list per position, two
    columns on desktop in All, one column on phones. */
 .mls-ta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.75rem 1rem; }
