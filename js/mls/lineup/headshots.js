@@ -13,7 +13,9 @@ import { fantasyPosition } from '../constants.js';
 // Every avatar is a fixed-size circle holding the player's initials, with the photo layered
 // on top. When the photo can't load -- no Sleeper id, a 404 for a player Sleeper has no photo
 // of, the CDN blocked or offline -- the <img> removes itself and the initials show through,
-// so rows keep the same shape and alignment either way. DEF rows get the team code instead
+// so rows keep the same shape and alignment either way. Until then the photo paints the
+// circle's background, so no letters show behind it, even where it's transparent or while it
+// loads (css/mls.css, improvements F3). DEF rows get the team code instead
 // of a photo or logo (team logos are NFL trademarks, so they're deliberately not used here).
 //
 // Synced Sleeper leagues store the real Sleeper id as p.id. Manual and MDS-handoff rosters

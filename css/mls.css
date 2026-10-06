@@ -175,7 +175,9 @@
 /* MLS player headshots (Roster list + Lineup starters/bench) -- see playerHeadshotHTML in
    js/mls/lineup/headshots.js. The circle always renders at a fixed size with the player's initials inside;
    the Sleeper photo sits on top and removes itself if it fails to load, so rows keep one
-   shape and the name column starts at the same x whether or not a photo exists. */
+   shape and the name column starts at the same x whether or not a photo exists. The photo
+   paints the circle's background (improvements F3), so the initials never show through its
+   transparent parts or while it loads; they show only once a failed photo has removed itself. */
 .mls-headshot {
     position: relative;
     width: 32px;
@@ -204,6 +206,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    background-color: var(--card-bg);
 }
 .mls-headshot-def .mls-headshot-initials { font-size: 0.56rem; }
 body.mls-hide-headshots .mls-headshot { display: none; }

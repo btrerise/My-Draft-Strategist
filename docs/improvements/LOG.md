@@ -419,3 +419,76 @@ the new spec at both widths. The only failures are those 10 environment-related 
 clean main.
 
 **Left over.** Nothing.
+
+## F3 — Hide the initials when a headshot is showing
+
+**User-visible effect.** On Lineup Strategist's Roster and Lineup tabs, a player's photo now covers their initials
+completely. Before, the letters showed through every see-through part of the photo (around the head and shoulders of
+a cutout headshot) and filled the circle while the photo was still loading, then the photo landed on top of them. Now
+the circle stays plain (the card color) until the photo appears. Initials still show when there's no photo: no Sleeper
+id, a 404, the CDN blocked, offline. DEF rows still show the team code. Nothing else on screen changed.
+
+**Owner's decisions.** None needed (no "Asks you" on this card).
+
+**The cause, confirmed.**
+- A real Sleeper thumbnail couldn't be checked: this session's network policy blocks `sleepercdn.com` (the proxy
+  answers 403), so I couldn't see whether Sleeper's `.jpg` thumbnails carry transparency. Two hints that some do:
+  the owner saw letters behind photos, and Draft Strategist's photo rules (`.draft-cell-img`, `.roster-avatar`)
+  already set `background-color: var(--card-bg)`, which only matters for a see-through image.
+- Either way the cause is the same, and the spec shows both sides on main with a stand-in image: `.mls-headshot-img`
+  had no background, so a partly transparent PNG showed the initials through it, and a photo whose request was still
+  open showed the initials too (an `<img>` that hasn't loaded paints nothing).
+
+**The two options, and the pick.**
+- **A, picked: give the photo the circle's background** (`background-color: var(--card-bg)` on `.mls-headshot-img`
+  in `css/mls.css`). CSS only. The photo covers the initials from the moment it's laid out, loaded or not. While it
+  loads, the circle is empty; if it fails, the existing `data-action="removeImage"` error handler removes it and the
+  initials come back. Lazy loading starts well before a row scrolls into view, the thumbnails are small, and a blocked
+  or offline request fails quickly, so in practice the empty circle is brief. Only a stalled request (very slow
+  network) leaves it empty longer, as any loading image would be.
+- **B, not picked: hide the initials once the photo's load event fires** (a delegated `load` handler adding a class to
+  the circle). The initials would show while loading, then the photo would replace them: a flash of letters on every
+  render, which is close to what the owner reported, and it needs JS plus the same background anyway for the
+  see-through parts. A is simpler and gives the cleaner result.
+
+**What changed and where.**
+- `css/mls.css`: `background-color: var(--card-bg)` on `.mls-headshot-img`, and the comment above `.mls-headshot`.
+- `js/mls/lineup/headshots.js`: the header comment says the photo hides the initials until it removes itself. No code
+  change.
+- `sw.js`: `CACHE_NAME` v2.8.76 → v2.8.77. CHANGELOG line under Lineup Strategist's Unreleased.
+
+**Checked.**
+- **Draft Strategist:** no change needed. Its photos (`.draft-cell-img` on the board, `.roster-avatar` on the Team tab)
+  sit in the normal flow, above the name in a board cell and beside it in a roster slot, with no initials behind them,
+  and both already have the card background. A failed photo hides itself and nothing replaces it. So letters can't
+  show behind a photo there.
+- **Themes:** the site has one theme (dark; `color-scheme: dark` in `css/base.css`, no light variant or
+  `prefers-color-scheme` rules anywhere), so there was only one to check. The fix uses `var(--card-bg)`, the same
+  variable as the circle, so a future light theme would follow it.
+- **The 28px phone size:** the spec runs at both widths and asserts the circle is 28px on phone and 32px on desktop.
+  I also rendered the Roster tab on phone with a cutout-shaped stand-in photo on main and on this branch: on main the
+  letters show beside the cutout's neck; now the photo is clean.
+
+**Tests, written first and seen failing on main** (`tests/mls-headshots.spec.mjs`, both widths). It serves its own
+images for the CDN (helpers.mjs aborts it otherwise): a 64×64 PNG that's transparent in its top two thirds for Josh
+Allen, a 404 for Justin Jefferson, and a held request for Ja'Marr Chase. "Initials visible" is measured by
+screenshotting the avatar as rendered and again with the initials set to `visibility: hidden`; equal shots mean the
+letters can't be seen.
+- Loaded, partly transparent photo: initials not visible. Failed on main.
+- Photo still loading: initials not visible. Also failed on main (checked with the first assertion removed).
+- The held photo then 404s: it removes itself and its initials show.
+- 404: no `<img>`, initials showing (the two shots differ).
+- DEF row: shows BAL, never an `<img>`.
+
+**Screenshots.** None re-taken. The screenshot tests block the CDN, so their avatars show initials only, as before.
+This container still can't reproduce the committed baselines (the same 10 `visual.spec.mjs` failures as on clean
+main, see F1), so I rendered all 40 on main and on this branch here and compared them with `npm run pxdiff`: every PNG
+is pixel-identical.
+
+**Checks run.** `npm run check`: check-precache OK, 238 unit tests pass, 152 Playwright tests pass including the new
+spec at both widths. The only failures are those 10 environment-related screenshot comparisons, identical on clean
+main.
+
+**Left over.**
+- Check a real Sleeper thumbnail for transparency when a session can reach `sleepercdn.com` (allow it in the
+  environment's network settings). Optional: the fix covers both causes either way.

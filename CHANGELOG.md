@@ -86,6 +86,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **The Sync All Leagues spinner keeps spinning.** It used to jump back to the start of its turn each time the
   count moved on to the next league ("Syncing 2/5…"). It now turns smoothly for the whole sync while the count still
   updates. The Combine & Process Files button on the rankings upload ("Processing 2/3…") does the same.
+- **No more letters behind player photos.** On the Roster and Lineup tabs, a player's initials used to show through
+  the see-through parts of their headshot, and while it loaded. Now a photo covers them completely (the circle stays
+  plain until it appears). Players without a photo, and DEF rows, still show their initials or team code.
 
 ### v2.14.0 — 2026-10-05
 
