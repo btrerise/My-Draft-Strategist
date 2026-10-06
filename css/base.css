@@ -2029,3 +2029,68 @@ a.nav-btn,
 .preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
 .preview-derived-title { color: #93c5fd; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
 .preview-derived-body { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin: 0; }
+
+/* --- POSITION FILTER BUTTONS (both apps) ---
+   Draft Strategist's Tracker filters (js/mds/tracker.js) and Lineup Strategist's Waiver Wire Assistant
+   position chips (lineup/index.html). Moved here from css/mds.css in improvements S1; kept at the end
+   of base.css so .pos-filter still beats the shared .badge rule it overrides. Each button also carries
+   .badge plus .pos-badge.<POS> for its color, or .badge-all when it has none (ALL; Lineup Strategist's FLEX has its own rule in css/mls.css). */
+.pos-filter { 
+    cursor: pointer; 
+    color: var(--text-muted);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    border: 1px solid var(--border); 
+    border-radius: 8px; 
+    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    font-size: 0.85rem;
+    font-weight: 600;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    
+    /* Visually mute non-selected filters */
+    opacity: 0.35;
+    filter: grayscale(85%);
+}
+
+.pos-filter:hover { 
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    transform: translateY(-2px);
+    
+    /* Slightly illuminate when hovering over an inactive filter */
+    opacity: 0.7;
+    filter: grayscale(40%);
+}
+
+.pos-filter.active-filter { 
+    /* Snaps the filter back to full vibrancy, inheriting its native positional color */
+    opacity: 1;
+    filter: grayscale(0%);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.08); 
+}
+
+/* Specific rule for ALL button so it turns green when active, since it lacks a positional color */
+.pos-filter.badge-all.active-filter {
+    color: var(--primary-green);
+    background: var(--target-bg);
+    border-color: var(--primary-green); 
+}
+
+/* Position filters used to be <div>s and are now <button>s: strip the browser's button font and
+   chrome so they look exactly as before. */
+button.pos-filter {
+  font-family: inherit;
+  line-height: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.pos-filter:focus-visible {
+  outline: 2px solid var(--primary-green);
+  outline-offset: 2px;
+  opacity: 1;
+}

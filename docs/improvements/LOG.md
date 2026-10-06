@@ -55,6 +55,24 @@ rows**. This entry describes the final version.
   then re-checked against "George Kittle (your weakest FLEX)" with FLEX.
 - Screenshots re-taken again (the All chip is now the active one): the same two `mls-league-scout.png` files.
 
+**Round 4: position buttons styled like Draft Strategist's** (owner's request).
+- The Waiver Wire Assistant's position chips are now Draft Strategist's Tracker filter buttons:
+  `badge pos-badge <POS> pos-filter`, with `badge badge-all pos-filter` for ALL. Unpicked buttons are faded and
+  grayed, the picked one is full color, and ALL lights every button, as in the Tracker (`js/mds/tracker.js`).
+  aria-pressed marks only the picked one. The layout is one row of eight, two rows of four on phones
+  (`.mls-pos-filter-grid`). FLEX has no position color: lit by ALL it reads plain, and picked itself it turns green
+  (`.mls-pos-filter-flex` in `css/mls.css`).
+- **CSS move:** the `.pos-filter` rules (base, hover, active, ALL's green, the button reset and focus ring) moved
+  from `css/mds.css` to the end of `css/base.css`, so both apps load them. They sit at the end so `.pos-filter` still
+  beats the shared `.badge` rule. `button.edit-link` keeps its half of the old shared rule in `css/mds.css`. The
+  `.mls-chip` styles are gone.
+- **Checked:**
+  - Draft Strategist's screenshots are pixel-identical.
+  - `npm run compare-css` against main: every MDS state matches. One phone run showed `#rankingsSuccessMsg`
+    `display: none -> block`, which is the "Loaded N players" message a timer hides, not a style; re-runs show 0
+    differences. MLS differs as intended.
+- Screenshots re-taken: the same two `mls-league-scout.png` files.
+
 **Owner's decisions:**
 - Before building: All = top 5 per position; a position or FLEX = top 15 plus "Show 15 more". A flat top-25 list was
   turned down because, with per-position or FLEX Weekly sheets, the parser's `rank` is a FLEX or position rank, not an

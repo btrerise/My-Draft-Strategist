@@ -88,7 +88,13 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
             b.classList.toggle('active', on);
             b.setAttribute('aria-pressed', on ? 'true' : 'false');
         });
-        pressed('#waiverPosChips [data-pos]', b => b.dataset.pos === s.pos);
+        // Position chips look and light up like Draft Strategist's Tracker filters (.pos-filter in
+        // css/base.css): the picked one at full color, ALL lighting every chip, the rest faded.
+        // aria-pressed marks only the picked chip.
+        document.querySelectorAll('#waiverPosChips [data-pos]').forEach(b => {
+            b.classList.toggle('active-filter', s.pos === 'ALL' || b.dataset.pos === s.pos);
+            b.setAttribute('aria-pressed', b.dataset.pos === s.pos ? 'true' : 'false');
+        });
 
         // --- MODE (Top Available | Auto-Find | Check a List), improvements S1 ---
         // One card, one results area: each block lists the modes it belongs to in

@@ -59,7 +59,7 @@ What changed for users in each version of the two apps, in plain language. Newes
   default) is a compact list of the best-ranked players nobody in your league has rostered, with rank chips in the
   usual position colors: All (now the default position, for Auto-Find too) shows the top 5 at each position side by
   side, one position or FLEX shows 15 at a time with Show 15 more, and "Starts" marks anyone who'd make your lineup
-  this week. In Check a List with Whole Roster, the chips appear as "Compare Within": FLEX weighs a pasted RB, WR or
+  this week. The position buttons look and light up like Draft Strategist's Tracker filters. In Check a List with Whole Roster, the chips appear as "Compare Within": FLEX weighs a pasted RB, WR or
   TE against your weakest of all three, any other choice against his own position. It redraws when you come back to the Scout tab after uploading rankings or
   syncing, and when you switch leagues. In a manual league it lists players not on your roster and says so.
 - **No emoji in the "Lineup Optimized!" message** at the end of setup.

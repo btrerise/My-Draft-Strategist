@@ -1422,11 +1422,13 @@ button.close-chip {
 /* --- WAIVER WIRE ASSISTANT MODES and TOP AVAILABLE (Scout tab, improvements S1) ---
    Blocks for other modes carry [hidden]; .input-group's display:flex would otherwise win. */
 [data-waiver-modes][hidden] { display: none !important; }
-/* Position chips wrap onto a second line at phone width. */
-.mls-chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.mls-chip { min-width: 2.75rem; min-height: 2.25rem; padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: 999px; background: rgba(0, 0, 0, 0.15); color: var(--text-muted); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; }
-.mls-chip.active { background: var(--target-bg); color: var(--primary-green); border-color: var(--target-border); }
-.mls-chip:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+/* Position chips: Draft Strategist's .pos-filter buttons (css/base.css) in one row of eight, two rows of
+   four on phones. */
+.mls-pos-filter-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.5rem; }
+@media (max-width: 520px) { .mls-pos-filter-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* FLEX has no position color. Lit by ALL it reads plain; picked itself it turns green like ALL does. */
+.pos-filter.mls-pos-filter-flex.active-filter { color: var(--text-main); }
+.pos-filter.mls-pos-filter-flex.active-filter[aria-pressed="true"] { color: var(--primary-green); background: var(--target-bg); border-color: var(--primary-green); }
 /* Top Available's compact list (js/mls/scout/topAvailable.js): one boxed list per position, two
    columns on desktop in All, one column on phones. */
 .mls-ta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.75rem 1rem; }
