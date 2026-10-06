@@ -93,9 +93,11 @@ const inputActions = {
     updateWeightLabels() { document.getElementById('weightLabelOld').innerText = (100 - this.value) + '% Existing'; document.getElementById('weightLabelNew').innerText = this.value + '% New Upload'; this.setAttribute('aria-valuetext', this.value + '% new, ' + (100 - this.value) + '% existing'); },
 };
 
-// The hero logo, Draft Board thumbnails and Team tab avatars hide themselves if they fail to load.
+// The hero logo hides itself if it fails to load; a Draft Board or Team tab headshot (headshots.js)
+// removes itself, leaving the initials underneath.
 const errorActions = {
     hideImage() { this.style.display='none'; },
+    removeImage() { this.remove(); },
 };
 
 // Queue cards (tracker.js): drag to reorder. `dragend` is the one event not delegated: it fires on

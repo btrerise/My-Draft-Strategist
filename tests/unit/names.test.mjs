@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { normalizeName, isNameMatch, NAME_ALIASES } from '../../js/shared/names.js';
+import { normalizeName, isNameMatch, NAME_ALIASES, headshotInitials } from '../../js/shared/names.js';
 
 // Every NAME_ALIASES entry, with a real-looking display name for each side. The first test
 // below fails if an alias is added or removed without a matching row here.
@@ -138,5 +138,29 @@ describe('isNameMatch', () => {
         // A lone suffix keeps its letters now (see normalizeName), so these compare as words.
         assert.equal(isNameMatch('Jr.', 'Sr.'), false);
         assert.equal(isNameMatch('Jr.', 'jr'), true);
+    });
+});
+
+// Improvements F3: the letters in a headshot circle, shared by both apps (moved from js/mls/lineup/headshots.js).
+describe('headshotInitials', () => {
+    test('first and last initial, upper case', () => {
+        assert.equal(headshotInitials('Josh Allen', 'QB', 'BUF'), 'JA');
+        assert.equal(headshotInitials("Ja'Marr Chase", 'WR', 'CIN'), 'JC');
+        assert.equal(headshotInitials('Amon-Ra St. Brown', 'WR', 'DET'), 'AB');
+        assert.equal(headshotInitials('de\'von achane', 'RB', 'MIA'), 'DA');
+    });
+    test('a suffix is skipped', () => {
+        assert.equal(headshotInitials('Kenneth Walker III', 'RB', 'SEA'), 'KW');
+        assert.equal(headshotInitials('Marvin Harrison Jr.', 'WR', 'ARI'), 'MH');
+    });
+    test('one word gives one letter; no name gives none', () => {
+        assert.equal(headshotInitials('Bijan', 'RB', 'ATL'), 'B');
+        assert.equal(headshotInitials('', 'RB', 'ATL'), '');
+        assert.equal(headshotInitials(undefined, 'K', null), '');
+    });
+    test('DEF shows the team code, or DEF without a team', () => {
+        assert.equal(headshotInitials('Baltimore Ravens', 'DEF', 'BAL'), 'BAL');
+        assert.equal(headshotInitials('Ravens', 'DEF', 'FA'), 'DEF');
+        assert.equal(headshotInitials('Ravens', 'DEF', null), 'DEF');
     });
 });

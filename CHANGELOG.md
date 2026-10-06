@@ -15,6 +15,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Player initials when a photo doesn't load,** as in Lineup Strategist. On the Draft Board and the Team tab, a
+  player whose Sleeper photo is missing (no photo, offline, a custom player from your file) now shows a circle with
+  their initials, or the team code for a defense, instead of nothing. Photos that do load cover the circle, and
+  names on the Team tab stay lined up either way. Show Player Headshots off still hides the board's circles.
 - **W/T and W/R slots from Sleeper leagues are counted.** Syncing a draft whose Sleeper league has a WR/TE or WR/RB
   flex slot used to leave that slot out of your roster limits. They now show on the Team tab as W/T and W/R, count in
   the roster-limits FLX column under My Team (which only counted plain FLEX before), and carry over to Lineup Strategist with Send to
@@ -86,6 +90,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **The Sync All Leagues spinner keeps spinning.** It used to jump back to the start of its turn each time the
   count moved on to the next league ("Syncing 2/5…"). It now turns smoothly for the whole sync while the count still
   updates. The Combine & Process Files button on the rankings upload ("Processing 2/3…") does the same.
+- **No more letters behind player photos.** On the Roster and Lineup tabs, a player's initials used to show through
+  the see-through parts of their headshot, and while it loaded. Now a photo covers them completely (the circle stays
+  plain until it appears). Players without a photo, and DEF rows, still show their initials or team code.
 
 ### v2.14.0 — 2026-10-05
 

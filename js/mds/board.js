@@ -2,6 +2,7 @@
 // RENDER DRAFT MATRIX.
 import { escapeHtml } from '../shared/html.js';
 import { State, getActiveDraft } from './state.js';
+import { headshotHTML } from './headshots.js';
 
     // --- RENDER DRAFT MATRIX ---
     export function renderDraftMatrix() {
@@ -118,9 +119,8 @@ import { State, getActiveDraft } from './state.js';
                     // 1. Grab the exact Sleeper ID safely (removing the undefined matchedPick variable)
                     let playerId = pObj ? (pObj.sleeperId || pObj.id) : null;
                     
-                    // 2. Build the image string (excluding custom uploaded players)
-                    let imgHTML = playerId && !playerId.toString().startsWith('custom_') ? 
-                        `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="draft-cell-img" alt="" width="22" height="22" loading="lazy" decoding="async" data-action="hideImage">` : '';
+                    // 2. The headshot: initials, with the photo on top when there's a Sleeper id (headshots.js)
+                    let imgHTML = headshotHTML({ id: playerId, name: pName, pos: pPos, team: pObj?.team }, 'draft-cell-img');
 
                     // 3. Inject into the cell
                     cellContent = `

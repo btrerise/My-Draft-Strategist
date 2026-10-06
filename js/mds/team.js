@@ -2,6 +2,7 @@
 // the Team tab roster (renderFantasyRoster), which sat at the end of RENDER DRAFT MATRIX.
 import { escapeHtml } from '../shared/html.js';
 import { State, getActiveDraft } from './state.js';
+import { headshotHTML } from './headshots.js';
 import { KEYS } from '../shared/storage/keys.js';
 
     // `playerById` is optional: renderBoard, the main caller, already has one built for its own
@@ -31,11 +32,8 @@ import { KEYS } from '../shared/storage/keys.js';
             if (p) {
                 let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
                 
-                // 1. Grab ID and build the image tag (crossorigin removed)
-                let playerId = p.sleeperId || p.id;
-                let imgHTML = playerId && !playerId.toString().startsWith('custom_') 
-                    ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg" class="roster-avatar" alt="" width="32" height="32" loading="lazy" decoding="async" data-action="hideImage">` 
-                    : `<div class="roster-avatar placeholder"></div>`;
+                // 1. The headshot: initials, with the photo on top when there's a Sleeper id (headshots.js)
+                let imgHTML = headshotHTML({ id: p.sleeperId || p.id, name: p.name, pos: p.posGroup, team: p.team }, 'roster-avatar');
 
                 return `
                 <div class="roster-slot">

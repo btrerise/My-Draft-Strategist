@@ -419,3 +419,134 @@ the new spec at both widths. The only failures are those 10 environment-related 
 clean main.
 
 **Left over.** Nothing.
+
+## F3 — Hide the initials when a headshot is showing
+
+**User-visible effect.** On Lineup Strategist's Roster and Lineup tabs, a player's photo now covers their initials
+completely. Before, the letters showed through every see-through part of the photo (around the head and shoulders of
+a cutout headshot) and filled the circle while the photo was still loading, then the photo landed on top of them. Now
+the circle stays plain (the card color) until the photo appears. Initials still show when there's no photo: no Sleeper
+id, a 404, the CDN blocked, offline. DEF rows still show the team code. Nothing else on screen changed.
+
+**Owner's decisions.** None needed (no "Asks you" on this card).
+
+**The cause, confirmed.**
+- A real Sleeper thumbnail couldn't be checked: this session's network policy blocks `sleepercdn.com` (the proxy
+  answers 403), so I couldn't see whether Sleeper's `.jpg` thumbnails carry transparency. Two hints that some do:
+  the owner saw letters behind photos, and Draft Strategist's photo rules (`.draft-cell-img`, `.roster-avatar`)
+  already set `background-color: var(--card-bg)`, which only matters for a see-through image.
+- Either way the cause is the same, and the spec shows both sides on main with a stand-in image: `.mls-headshot-img`
+  had no background, so a partly transparent PNG showed the initials through it, and a photo whose request was still
+  open showed the initials too (an `<img>` that hasn't loaded paints nothing).
+
+**The two options, and the pick.**
+- **A, picked: give the photo the circle's background** (`background-color: var(--card-bg)` on `.mls-headshot-img`
+  in `css/mls.css`). CSS only. The photo covers the initials from the moment it's laid out, loaded or not. While it
+  loads, the circle is empty; if it fails, the existing `data-action="removeImage"` error handler removes it and the
+  initials come back. Lazy loading starts well before a row scrolls into view, the thumbnails are small, and a blocked
+  or offline request fails quickly, so in practice the empty circle is brief. Only a stalled request (very slow
+  network) leaves it empty longer, as any loading image would be.
+- **B, not picked: hide the initials once the photo's load event fires** (a delegated `load` handler adding a class to
+  the circle). The initials would show while loading, then the photo would replace them: a flash of letters on every
+  render, which is close to what the owner reported, and it needs JS plus the same background anyway for the
+  see-through parts. A is simpler and gives the cleaner result.
+
+**What changed and where.**
+- `css/mls.css`: `background-color: var(--card-bg)` on `.mls-headshot-img`, and the comment above `.mls-headshot`.
+- `js/mls/lineup/headshots.js`: the header comment says the photo hides the initials until it removes itself. No code
+  change.
+- `sw.js`: `CACHE_NAME` v2.8.76 → v2.8.77. CHANGELOG line under Lineup Strategist's Unreleased.
+
+**Checked.**
+- **Draft Strategist:** no change needed. Its photos (`.draft-cell-img` on the board, `.roster-avatar` on the Team tab)
+  sit in the normal flow, above the name in a board cell and beside it in a roster slot, with no initials behind them,
+  and both already have the card background. A failed photo hides itself and nothing replaces it. So letters can't
+  show behind a photo there.
+- **Themes:** the site has one theme (dark; `color-scheme: dark` in `css/base.css`, no light variant or
+  `prefers-color-scheme` rules anywhere), so there was only one to check. The fix uses `var(--card-bg)`, the same
+  variable as the circle, so a future light theme would follow it.
+- **The 28px phone size:** the spec runs at both widths and asserts the circle is 28px on phone and 32px on desktop.
+  I also rendered the Roster tab on phone with a cutout-shaped stand-in photo on main and on this branch: on main the
+  letters show beside the cutout's neck; now the photo is clean.
+
+**Tests, written first and seen failing on main** (`tests/mls-headshots.spec.mjs`, both widths). It serves its own
+images for the CDN (helpers.mjs aborts it otherwise): a 64×64 PNG that's transparent in its top two thirds for Josh
+Allen, a 404 for Justin Jefferson, and a held request for Ja'Marr Chase. "Initials visible" is measured by
+screenshotting the avatar as rendered and again with the initials set to `visibility: hidden`; equal shots mean the
+letters can't be seen.
+- Loaded, partly transparent photo: initials not visible. Failed on main.
+- Photo still loading: initials not visible. Also failed on main (checked with the first assertion removed).
+- The held photo then 404s: it removes itself and its initials show.
+- 404: no `<img>`, initials showing (the two shots differ).
+- DEF row: shows BAL, never an `<img>`.
+
+**Screenshots.** None re-taken. The screenshot tests block the CDN, so their avatars show initials only, as before.
+This container still can't reproduce the committed baselines (the same 10 `visual.spec.mjs` failures as on clean
+main, see F1), so I rendered all 40 on main and on this branch here and compared them with `npm run pxdiff`: every PNG
+is pixel-identical.
+
+**Checks run.** `npm run check`: check-precache OK, 238 unit tests pass, 152 Playwright tests pass including the new
+spec at both widths. The only failures are those 10 environment-related screenshot comparisons, identical on clean
+main.
+
+**Left over.**
+- Check a real Sleeper thumbnail for transparency when a session can reach `sleepercdn.com` (allow it in the
+  environment's network settings). Optional: the fix covers both causes either way.
+
+### F3, round 2: initials in Draft Strategist too (owner's request)
+
+**Owner's request** (after the first push): "add the letters to Draft Strategist when a photo doesn't load, for
+consistency".
+
+**User-visible effect.** On the Draft Board and the Team tab, every drafted player now has a circle with their initials
+(DEF: the team code), with the Sleeper photo on top. Before, a photo that failed hid itself: the board cell showed only
+the name, and on the Team tab the name slid left, out of line with the empty slots. Now a missing photo leaves the
+initials, and the names stay lined up. Custom players from an uploaded file (no Sleeper id) and Sleeper picks the app
+can't match to a ranked player used to get no picture at all; they get initials too, as in Lineup Strategist. A photo
+that loads covers the initials completely, the same as round 1. Show Player Headshots off still hides the board's
+circles (initials included); the Team tab's avatars were never covered by that toggle and still aren't. Export Team
+still leaves the avatars out of the image (it hides `.roster-avatar`, which the new circle keeps as its class).
+
+**What changed and where.**
+- `js/mds/headshots.js` (new, in `PRECACHE_ASSETS`): `headshotHTML({ id, name, pos, team }, sizeClass)` builds the
+  circle, `<span class="<sizeClass> mds-headshot">` with `.mds-headshot-initials` and, for a Sleeper id (not
+  `custom_…`), `<img class="mds-headshot-img" data-action="removeImage">`.
+- `js/mds/board.js` and `js/mds/team.js` use it, with the size classes they already had (`draft-cell-img`,
+  `roster-avatar`); those now style the circle instead of the `<img>`. The Team tab's empty-slot spacer is unchanged.
+- `js/mds/main.js`: a `removeImage` error action, like Lineup Strategist's. `hideImage` stays for the hero logo.
+- `css/mds.css`: `.mds-headshot`, `.mds-headshot-initials` (0.62rem on the Team tab's 32px circle, 0.45rem on the
+  board's 22px, 0.75rem on its 38px desktop size) and `.mds-headshot-img` (with the circle's background, as in MLS).
+- `js/shared/names.js`: `headshotInitials(name, pos, team)`, moved out of `js/mls/lineup/headshots.js` so both apps
+  use one rule. Lineup Strategist's output is unchanged (its screenshots are pixel-identical).
+- `sw.js`: `CACHE_NAME` v2.8.77 → v2.8.78. CHANGELOG line under Draft Strategist's Unreleased.
+
+**Tests.**
+- `tests/mds-headshots.spec.mjs` (both widths, written first and seen failing): serves a partly transparent photo for
+  Chase and 404s for everyone else. On the board, Gibbs and Robinson show "JG" and "BR" with no `<img>`, and Chase's
+  photo hides "JC"; the headshot toggle hides and restores the circles. On the Team tab, the same for Gibbs and Chase,
+  and empty slots keep their spacer.
+- The "initials visible" check (both specs) now compares only the middle of the circle: on the board's 38px circle
+  the anti-aliased rim differed between two shots with nothing else changed. The MLS spec still fails without round 1's
+  CSS fix (re-checked).
+- `tests/unit/names.test.mjs`: `headshotInitials` cases (suffixes, one word, empty, DEF with and without a team).
+
+**Screenshots: four change, as intended.** The screenshot tests block the CDN, so these avatars used to hide
+themselves and now show initials. Rendered before and after in this container (`npm run pxdiff`), only these differ:
+- `desktop/mds-draft-board.png`, `phone/mds-draft-board.png`: initials circles in the five picked cells (taller by
+  7px and 18px, since the circle now keeps its space).
+- `desktop/mds-draft-team.png`, `phone/mds-draft-team.png`: "JG" and "JC" circles beside Gibbs and Chase; their names
+  move right to line up with the empty slots.
+
+These four baselines are CI's own renders (this container renders text differently from CI, see F1), taken from the
+PR's `playwright-results` artifact. The owner allowed `*.blob.core.windows.net` in the environment's network settings,
+so the session downloads the artifact itself (`download_workflow_run_artifact` in the GitHub tools gives a short-lived
+link on a `productionresultssaN.blob.core.windows.net` host, whose number changes between runs).
+- `mds-draft-team.png` (desktop, phone): from the first CI run on PR #181. Checked before committing: each artifact
+  `-expected.png` is pixel-identical to the old baseline, and the new PNG differs only around the Gibbs and Chase rows
+  (desktop box x 142-290, y 589-762; phone x 74-222, y 520-693).
+- `mds-draft-board.png` (desktop, phone): from the second CI run (the screenshot test stops at its first mismatch, so
+  the board was compared only once the Team tab passed). Each artifact `-expected.png` is pixel-identical to the old
+  baseline. The new PNGs are 7px (desktop) and 18px (phone) taller, the same growth as rendered in this container:
+  the first board row keeps room for the circles. Everything above that row is identical; below it, the page is the
+  same shifted down, apart from the fixed bottom nav bar, which a full-page screenshot draws at the same viewport
+  position and so now covers different grid rows, and one grid-line pixel row on desktop (rounding).
