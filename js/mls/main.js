@@ -30,7 +30,7 @@ import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
 import { onScoutTabShown, refreshTopAvailable, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
-import { bestAvailableUpload, renderBestAvailable, setBestAvailableBasis, toggleBestAvailable, viewLeagueTopAvailable } from './scout/bestAvailable.js';
+import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restoreBestAvailable, setBestAvailableBasis, toggleBestAvailable, viewLeagueTopAvailable } from './scout/bestAvailable.js';
 import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
@@ -113,6 +113,8 @@ const clickActions = {
     bestAvailableUpload() { bestAvailableUpload(this.dataset.leagueId); },
     toggleBestAvailable() { toggleBestAvailable(); },
     setBestAvailableBasis() { setBestAvailableBasis(this.dataset.basis); },
+    dismissBestAvailable() { dismissBestAvailable(this.dataset.leagueId, this.dataset.player); },
+    restoreBestAvailable() { restoreBestAvailable(this.dataset.leagueId); },
     // ROS (Roster tab) and Weekly (Lineup tab) rankings cards
     toggleRankingsCard() { toggleRankingsCard(this.dataset.card); },
     deleteRankingSet() { deleteRankingSet(this.dataset.type); },

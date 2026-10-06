@@ -39,6 +39,15 @@
 // - A league synced more than 2 days ago says so; each line has an "Open in Sleeper" link; players
 //   carry injury badges; the fold uses the site's chevron.
 //
+// Owner's choices in round 6:
+// - "Your weakest" leaves out taxi, IR, Out (and PUP/NFI/suspended) players everywhere
+//   (rosterBenchmark in waivers.js), so an injured star unranked in Weekly isn't the drop candidate.
+// - Dismiss: a × on any player on a line hides him from that league's line (the next-best free agent
+//   takes his place and is checked as an upgrade like any other). A "N dismissed · Restore" link
+//   brings them back, and a league's dismissals clear themselves when the NFL week changes, since
+//   waivers reset weekly. Saved in KEYS.mls.bestAvailableDismissed: { leagueId: { week, players } }.
+//   Only this card hides them; Top Available still lists everyone.
+//
 // Owner's choices in round 5: no startable-range cutoff (above); "over Derrick Henry RB8" without
 // "your"; the Sleeper link on desktop only (on phones it opens the Sleeper app's home, not the
 // league; hidden by CSS); and View opens Top Available on the FLEX chip, so its list is the line's.
@@ -68,6 +77,41 @@ import { isDraftPickName } from '../trade/valueCurve.js';
 import { showTab, switchActiveLeague } from '../main.js';
 
     const PER_LEAGUE = 3;
+    const DISMISS_ICON = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+
+    // --- Dismissed players: { leagueId: { week: '2026:2', players: [cleanName] } } ---
+    // The week is the NFL season and week from Sleeper (State.currentNflWeek). A league's list is
+    // dropped once the week moves on; a list saved before the week was known adopts the next known week.
+    const currentWeekKey = () => (State.currentNflWeek ? `${State.currentNflSeason || ''}:${State.currentNflWeek}` : null);
+    function readDismissed() {
+        try {
+            const v = JSON.parse(localStorage.getItem(KEYS.mls.bestAvailableDismissed) || '{}');
+            return v && typeof v === 'object' ? v : {};
+        } catch (e) { return {}; }
+    }
+    function writeDismissed(all) {
+        try {
+            if (Object.keys(all).length) localStorage.setItem(KEYS.mls.bestAvailableDismissed, JSON.stringify(all));
+            else localStorage.removeItem(KEYS.mls.bestAvailableDismissed);
+        } catch (e) { /* storage blocked: dismissals last for this visit only */ }
+    }
+    // This week's dismissed players per league, clearing any from an earlier week.
+    function currentDismissed() {
+        const all = readDismissed();
+        const week = currentWeekKey();
+        let changed = false;
+        Object.keys(all).forEach(id => {
+            const entry = all[id];
+            if (!entry || !Array.isArray(entry.players) || entry.players.length === 0) { delete all[id]; changed = true; return; }
+            if (week && entry.week !== week) {
+                if (entry.week) delete all[id];
+                else entry.week = week;
+                changed = true;
+            }
+        });
+        if (changed) writeDismissed(all);
+        return all;
+    }
     const CARD_ID = 'dashboardBestAvailable';
 
     const UPGRADE_ICON = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
@@ -112,16 +156,18 @@ import { showTab, switchActiveLeague } from '../main.js';
     const chip = (pos, posRank) => `<span class="badge pos-badge ${escapeHtml(pos)} mls-ta-pos">${rankText(pos, posRank)}</span>`;
 
     // Everything a league's line needs, worked out without making it the active league.
-    function analyzeLeague(league, meta) {
+    function analyzeLeague(league, meta, dismissedAll) {
         const basis = leagueBasis(league);
         if (!basis) return { league, basis: null, upgrade: null };
 
         const getPos = makeLeagueGetPos(league, meta);
         const roster = league.globalRosterMap || {};
+        const dismissed = new Set((dismissedAll[league.leagueId] && dismissedAll[league.leagueId].players) || []);
         const options = {
             getPos,
             isRostered: (clean) => !!roster[clean],
-            isExcluded: (r) => isDraftPickName(r.name)
+            // Draft picks, and players you dismissed from this league's line this week.
+            isExcluded: (r) => isDraftPickName(r.name) || dismissed.has(r.cleanName)
         };
         const { freeAgents } = findFreeAgents(basis.data, { ...options, posFilter: 'FLEX' });
         const display = buildRankDisplayIndex(basis.data, getPos);
@@ -167,14 +213,15 @@ import { showTab, switchActiveLeague } from '../main.js';
             ...freeAgents.filter(fa => !flagged.has(fa.cleanName)).map(fa => ({ fa, upgrade: null }))
         ].slice(0, PER_LEAGUE);
 
-        return { league, basis, freeAgents, players, posRankOf, rankedAtPos, upgrade: upgrades[0] || null, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
+        return { league, basis, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
     }
 
     function playerHTML(a, { fa, upgrade }) {
         const inj = a.inj(fa.cleanName);
         const over = upgrade
             ? `<span class="mls-ba-over">over ${escapeHtml(upgrade.bench.name)} ${upgrade.benchRank ? rankText(upgrade.pos, upgrade.benchRank) : '(unranked)'}</span>` : '';
-        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${over}</li>`;
+        const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
+        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${dismiss}${over}</li>`;
     }
 
     // "Synced 4 days ago" when a league's ownership is old enough that an upgrade may already be gone
@@ -202,11 +249,16 @@ import { showTab, switchActiveLeague } from '../main.js';
             source = sourceLabel(basis);
             if (a.players.length > 0) {
                 body = `<ol class="mls-ba-players">${a.players.map(p => playerHTML(a, p)).join('')}</ol>`;
+            } else if (a.dismissedCount > 0) {
+                body = `<div class="mls-ba-empty">Every other ranked RB, WR and TE is rostered in this league.</div>`;
             } else {
                 const ranked = FLEX_POSITIONS.reduce((n, p) => n + (a.rankedAtPos[p] || 0), 0);
                 body = `<div class="mls-ba-empty">${ranked > 0
                     ? `Every RB, WR and TE in its ${basis.name} rankings (${ranked} ranked) is already rostered in this league. A deeper rankings file would show who's left.`
                     : `Its ${basis.name} rankings don't include any RB, WR or TE.`}</div>`;
+            }
+            if (a.dismissedCount > 0) {
+                body += `<div class="mls-ba-dismissed">${a.dismissedCount} dismissed this week &middot; <button type="button" class="btn-bare mls-ba-restore" data-action="restoreBestAvailable" data-league-id="${id}" aria-label="Restore the players you dismissed in ${name}">Restore</button></div>`;
             }
             button = `<button type="button" class="btn btn-secondary mls-btn-sm" data-action="viewLeagueTopAvailable" data-league-id="${id}" aria-label="View top available in ${name}">View</button>`;
         }
@@ -262,7 +314,8 @@ import { showTab, switchActiveLeague } from '../main.js';
             body.innerHTML = `<div class="mls-scan-empty">Best available needs a league synced from Sleeper. Manual leagues only know your own roster, not who's on the waiver wire. Sync a Sleeper league under Add/Sync League below.</div>`;
             return;
         }
-        const analyses = synced.map(l => analyzeLeague(l, meta));
+        const dismissedAll = currentDismissed();
+        const analyses = synced.map(l => analyzeLeague(l, meta, dismissedAll));
         if (summary) summary.textContent = summaryText(analyses);
 
         // Biggest upgrade first; ties keep the Command Center's league order (sort is stable).
@@ -291,6 +344,25 @@ import { showTab, switchActiveLeague } from '../main.js';
         const leftOut = leagues.length - synced.length;
         if (leftOut > 0) html += `<p class="mls-ba-excluded">${plural(leftOut, 'manual league')} not included: the app only knows your own roster there, not who's on the waiver wire.</p>`;
         body.innerHTML = html;
+    }
+
+    // × on a player: hide him from this league's line for the rest of the NFL week.
+    export function dismissBestAvailable(leagueId, cleanName) {
+        if (!leagueId || !cleanName) return;
+        const all = currentDismissed();
+        const entry = all[leagueId] || { week: currentWeekKey(), players: [] };
+        if (!entry.players.includes(cleanName)) entry.players.push(cleanName);
+        all[leagueId] = entry;
+        writeDismissed(all);
+        renderBestAvailable();
+    }
+
+    // Restore: bring back every player dismissed in this league.
+    export function restoreBestAvailable(leagueId) {
+        const all = currentDismissed();
+        delete all[leagueId];
+        writeDismissed(all);
+        renderBestAvailable();
     }
 
     function isCollapsedSaved() {

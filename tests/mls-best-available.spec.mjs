@@ -189,6 +189,34 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(second.locator('.mls-ba-player').first().locator('.inj-badge')).toHaveText('Q');
         await expect(second.locator('a.mls-ba-sleeper')).toHaveAttribute('href', `https://sleeper.com/leagues/${SECOND_LEAGUE_ID}`);
 
+        // Dismiss: Cook leaves Fixture League's line; Chase Brown (RB9 tier 5) doesn't beat Henry (RB8 tier 4),
+        // so the league has no upgrade left and folds. Restore brings him back; so does a new NFL week.
+        await fixture.getByRole('button', { name: /^Not interested in James Cook/ }).click();
+        await expect(summary(page)).toHaveText('Upgrades in 1 of 2 leagues');
+        await expect(leaguesAboveFold(page)).toHaveText(['Second League']);
+        await more(page).locator('summary').click();
+        expect(await names(page, 'Fixture League')).toEqual(['Jaxon Smith-Njigba', 'Chase Brown', 'Zay Flowers']);
+        await expect(fixture.locator('.mls-ba-dismissed')).toHaveText('1 dismissed this week · Restore');
+        // Only this league: Cook still shows in Second League.
+        expect(await names(page, 'Second League')).toContain('James Cook');
+        // Kept across a reload.
+        await page.reload();
+        await showTab(page, 'setup');
+        await expect(summary(page)).toHaveText('Upgrades in 1 of 2 leagues');
+        await more(page).locator('summary').click();
+        await fixture.locator('[data-action="restoreBestAvailable"]').click();
+        await expect(summary(page)).toHaveText('Upgrades in 2 of 2 leagues');
+        expect(await names(page, 'Fixture League')).toEqual(['James Cook', 'Jaxon Smith-Njigba', 'Chase Brown']);
+        await expect(fixture.locator('.mls-ba-dismissed')).toHaveCount(0);
+        expect(await page.evaluate(() => localStorage.getItem('mls_best_available_dismissed'))).toBeNull();
+        // A dismissal from an earlier week is cleared on the next load (this week is 2026 week 2).
+        await page.evaluate(() => localStorage.setItem('mls_best_available_dismissed', JSON.stringify({ '1000000000000000001': { week: '2026:1', players: ['jamescook'] } })));
+        await page.reload();
+        await showTab(page, 'setup');
+        await expect(summary(page)).toHaveText('Upgrades in 2 of 2 leagues');
+        await expect(fixture.locator('.mls-ba-dismissed')).toHaveCount(0);
+        await expect.poll(() => page.evaluate(() => localStorage.getItem('mls_best_available_dismissed'))).toBeNull();
+
         // ROS: Fixture League's ROS set has no upgrade, so it folds; Second League has no ROS and falls back.
         await basisBtn(page, 'ros').click();
         await expect(basisBtn(page, 'ros')).toHaveAttribute('aria-pressed', 'true');

@@ -1493,6 +1493,10 @@ button.close-chip {
     .mls-ba-sleeper { display: none; }
 }
 .mls-ba-player .inj-badge { margin-left: 0.1rem; }
+.mls-ba-dismiss { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 0.1rem; border-radius: 50%; color: var(--text-muted); opacity: 0.6; cursor: pointer; }
+.mls-ba-dismiss:hover, .mls-ba-dismiss:focus-visible { opacity: 1; color: var(--text-main); background: rgba(255, 255, 255, 0.08); }
+.mls-ba-dismissed { margin-top: 0.25rem; font-size: 0.75rem; color: var(--text-muted); }
+.mls-ba-restore { font-size: 0.75rem; font-weight: 600; color: var(--primary-green); cursor: pointer; text-decoration: underline; }
 .mls-ba-none { font-size: 0.85rem; color: var(--text-muted); padding: 0.25rem 0 0.5rem; }
 .mls-ba-more { margin-top: 0.25rem; border-top: 1px solid var(--border); }
 .mls-ba-more > summary { cursor: pointer; padding: 0.6rem 0 0.2rem; font-size: 0.82rem; font-weight: 600; color: var(--primary-green); list-style: none; display: inline-flex; align-items: center; gap: 0.3rem; }

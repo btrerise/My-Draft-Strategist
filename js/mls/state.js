@@ -6,7 +6,7 @@ import { getNflState } from '../shared/api/sleeper.js';
 // readJSON is js/boot.js's window.readJSON (boot.js is a plain script, so it can't be imported).
 import { ESPN_TEAM_ALIASES } from './constants.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
-import { loadRosterTab, renderLineupUI, optimizeLineup } from './main.js';
+import { loadRosterTab, renderBestAvailable, renderLineupUI, optimizeLineup } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { showToast } from '../shared/ui/toast.js';
 import { mdsFetch } from '../shared/net.js';
@@ -234,6 +234,9 @@ export function applyLineupSettingsToUI() {
                     const activeTab = document.querySelector('.tab-content.active');
                     if (activeTab && activeTab.id === 'lineupTab') optimizeLineup(false);
                     if (activeTab && activeTab.id === 'rosterTab') loadRosterTab();
+                    // The Dashboard's Best Available card clears last week's dismissed players
+                    // (improvements S5), so it redraws once the week is known.
+                    if (activeTab && activeTab.id === 'setupTab') renderBestAvailable();
                     // Kickoff times are keyed by week, so we can't fetch them until we know
                     // which week we're on -- chain it here rather than firing both requests
                     // independently at page load.

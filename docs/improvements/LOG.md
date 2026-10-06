@@ -566,7 +566,8 @@ Sleeper leagues:
     ownership is more than 2 days old;
   - its 3 players, each with a position-rank chip in the position colors and Sleeper's injury badge if any. The
     **upgrades** come first (at most one per position), each with a green up-arrow and "over Derrick Henry RB8";
-    the rest of the 3 are the best other available RB/WR/TE;
+    the rest of the 3 are the best other available RB/WR/TE. Each has a small × ("not interested") that hides him from
+    that league's line for the rest of the NFL week; "1 dismissed this week · Restore" brings them back;
   - a **View** button that makes that league active and opens the Scout tab's Top Available filtered like the line
     (same rankings, FLEX chip), and, on desktop only, a **Sleeper** link (external-link icon) that opens the league on
     sleeper.com in a new tab.
@@ -605,6 +606,13 @@ Sleeper leagues:
   - **The Sleeper link on desktop only.** On phones it opens the Sleeper app's home, not the league, which felt
     misleading. I offered remove / desktop only / keep everywhere; the owner chose desktop only.
   - **View matches the line's filter.**
+- Round 6, after my third review as a user:
+  - **"Your weakest" leaves out IR, Out and taxi players, everywhere** (not just on this card), plus PUP, NFI,
+    suspended and did-not-report.
+  - **Dismissing a player.** The owner asked whether syncing would count as the new saved setting. No: dismissals
+    are stored in their own key, and sync only knows rosters. The owner also wanted bringing a player back to be easy.
+    I offered a Restore link and/or a weekly reset; the owner chose **both**, and **any player on the line** can be
+    dismissed (not only upgrades).
 
 **Round 2: from a list to a to-do list.** After the first push, I reviewed the card as a user with many leagues would.
 My points:
@@ -712,9 +720,47 @@ round 4).
   upgrade at TE can sit lower in the full list than on the line; the list itself is unchanged (it's out of scope to
   change Top Available's output).
 
+**Round 6: an active-roster benchmark everywhere, and dismissing players** (owner's requests after my third review).
+- **The bug** (a bug fix, so the test came first):
+  - `rosterBenchmark` (`js/mls/scout/waivers.js`) picked "your weakest" from your whole synced roster, taxi squad,
+    IR and Out players included.
+  - An injured star on IR, or an Out player, is missing from accurate Weekly rankings because he isn't playing. So
+    he became the drop candidate, and every free agent "beat" him: on this card, in Check a List's Whole Roster
+    verdicts, and in Auto-Find's Whole Roster benchmark.
+  - `tests/mls-weakest-player.spec.mjs` was written first and failed on this branch before the fix. It said "Garrett
+    Wilson (your weakest WR)" with Wilson Out, and compared with Derrick Henry on IR.
+- **The fix, one place for all three tools:**
+  - `rosterBenchmark` skips players with `isTaxi`, or whose short injury status (`inj`, from the last sync) is IR,
+    OUT, PUP, NFI, SUS or DNR. Questionable and Doubtful still count.
+  - It returns the skipped players, and the tools say so:
+    - Auto-Find's Whole Roster benchmark adds "Not counted: A.J. Brown (taxi), Garrett Wilson (OUT)." (new
+      `skippedPlayersText`).
+    - When every player at a position is skipped, Check a List and Auto-Find say "You have no active RB on your
+      roster to compare against", and Check a List adds "(not counted: Derrick Henry, IR)".
+  - **Out applies to ROS too** (the owner asked for Out in general). A player out for a week usually keeps his ROS
+    rank, so skipping him there can only make the benchmark the next-weakest player, which flags a little less, not
+    more.
+- **Dismissing players:**
+  - **A × on each player on a line** (Feather `x` SVG, aria-label "Not interested in James Cook (hide him here this
+    week)") hides him from that league's line. He's left out through `findFreeAgents`' `isExcluded`, so the next-best
+    free agent takes his place and goes through the same upgrade check. The league can lose its upgrade and fold, as
+    in the spec.
+  - **Restore:** "1 dismissed this week · Restore" on the line brings back every player dismissed there.
+  - **Weekly reset:** dismissals carry the NFL season and week (`State.currentNflWeek`, from Sleeper). A league's list
+    clears itself once the week changes. A list saved before the week was known takes the next known week instead of
+    clearing. `refreshCurrentNflWeek` (`js/mls/state.js`) redraws the card when the week arrives, so last week's
+    dismissals clear even on the first draw.
+  - **Only this card hides them.** Top Available, Auto-Find and Check a List still list everyone; Sync doesn't touch
+    dismissals (a claimed player drops off the line on his own).
+  - **Storage:** a new key, `KEYS.mls.bestAvailableDismissed` (`mls_best_available_dismissed`):
+    `{ leagueId: { week: '2026:2', players: [cleanName] } }`. It's removed when empty, so Backup/Restore and Factory
+    Reset cover it.
+  - Spec: dismiss Cook, after which Fixture League loses its upgrade and folds, and Cook still shows in Second League;
+    still dismissed after a reload; Restore; and a dismissal saved for week 1 is gone on load in week 2.
+
 **What changed and where.**
 - `js/mls/scout/bestAvailable.js` (new, in `PRECACHE_ASSETS`): `renderBestAvailable`, `setBestAvailableBasis`,
-  `toggleBestAvailable`, `viewLeagueTopAvailable`, `bestAvailableUpload`.
+  `toggleBestAvailable`, `dismissBestAvailable`, `restoreBestAvailable`, `viewLeagueTopAvailable`, `bestAvailableUpload`.
 - **Reuse, no second copy of the candidate logic:**
   - `findFreeAgents` (available = not in the league's `globalRosterMap`; draft picks out; unresolvable names left
     out), called once for the FLEX list and once per position for the upgrade check;
@@ -755,7 +801,10 @@ round 4).
 - **`js/mls/scout/waiverScanner.js`:** `upgradeGap` and `UPGRADE_MIN_GAP` (round 4; the cutoff table went in round 5).
 - **`css/mls.css`:** `.mls-ba-*`. The rank chips reuse `.mls-ta-pos` and the position badge classes, the injury badge
   `.inj-badge`, the switch `.mls-segmented`, and the sync note `.freshness-stale` / `.sync-failed`.
-- **`js/shared/storage/keys.js`:** `bestAvailableCollapsed`.
+- **`js/shared/storage/keys.js`:** `bestAvailableCollapsed` and `bestAvailableDismissed`.
+- **`js/mls/scout/waivers.js`:** `rosterBenchmark` skips inactive players and returns them; `skippedPlayersText`;
+  the Whole Roster wording in Check a List and Auto-Find (round 6).
+- **`js/mls/state.js`:** `refreshCurrentNflWeek` redraws the card on the Dashboard (round 6).
 - **`sw.js`:** `CACHE_NAME` v2.8.78 → v2.8.79. CHANGELOG line under Lineup Strategist's Unreleased.
 
 **Tests:** `tests/unit/waiverScanner.test.mjs` covers `upgradeGap`: tiers (better, same, a one-spot gap across a
