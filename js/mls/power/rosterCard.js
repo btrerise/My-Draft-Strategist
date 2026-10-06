@@ -3,7 +3,7 @@
 // (goToPowerRankings, runPositionalStrength, renderPowerRankingsTable), which sat after ACTIVE
 // ROSTER: POWER RANKINGS SNAPSHOT.
 import { escapeHtml } from '../../shared/html.js';
-import { tierTag } from '../constants.js';
+import { slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { ordinal } from './allLeagues.js';
@@ -122,7 +122,7 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
         } else {
             html += players.slice(0, limit).map(p => `
                 <div class="mls-power-tooltip-row">
-                    <span class="mls-power-tooltip-name">${slot ? `<span class="mls-power-tooltip-slot">${p.slot === 'SFLEX' ? 'SF' : p.slot}</span>` : ''}${escapeHtml(p.name)}</span>
+                    <span class="mls-power-tooltip-name">${slot ? `<span class="mls-power-tooltip-slot">${p.slot === 'SFLEX' ? 'SF' : slotDisplayName(p.slot)}</span>` : ''}${escapeHtml(p.name)}</span>
                     <span class="mls-power-tooltip-rank">#${p.rank}${tierTag(p.tier)}</span>
                 </div>`).join('');
             if (players.length > limit) {
@@ -166,7 +166,7 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
         }
         html += t.starters.map(p => `
             <div class="mls-power-tooltip-row">
-                <span class="mls-power-tooltip-name"><span class="mls-power-tooltip-slot">${p.slot === 'SFLEX' ? 'SF' : p.slot}</span>${escapeHtml(p.name)}</span>
+                <span class="mls-power-tooltip-name"><span class="mls-power-tooltip-slot">${p.slot === 'SFLEX' ? 'SF' : slotDisplayName(p.slot)}</span>${escapeHtml(p.name)}</span>
                 <span class="mls-power-tooltip-rank">#${p.rank}${tierTag(p.tier)}</span>
             </div>`).join('');
         return html + `</div>`;

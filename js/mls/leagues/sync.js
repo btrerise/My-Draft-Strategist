@@ -14,7 +14,7 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab, optimizeLineup } from '../main.js';
+import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { applyMarketSettingsToUI } from '../settings.js';
@@ -286,9 +286,14 @@ import { showToast } from '../../shared/ui/toast.js';
         if (activeTab === 'lineupTab') optimizeLineup(false);
         if (activeTab === 'rosterTab') loadRosterTab();
         
+        // The Waiver Wire Assistant's results area follows its mode (improvements S1): Top
+        // Available redraws for the new league, Check a List re-runs a pasted list, and anything
+        // else (Auto-Find, an empty list) is cleared.
         const waiverInput = document.getElementById('waiverInput');
         const waiverOutput = document.getElementById('waiverOutput');
-        if (waiverInput && waiverInput.value.trim() !== '') runScout('waiver');
+        const waiverMode = State.waiverScanSettings.mode || 'top';
+        if (waiverMode === 'top') refreshTopAvailable();
+        else if (waiverMode === 'list' && waiverInput && waiverInput.value.trim() !== '') runScout('waiver');
         else if (waiverOutput) waiverOutput.innerHTML = '';
         
         // Trade Analyzer and Positional Power Rankings were already cleared by
@@ -395,6 +400,8 @@ import { showToast } from '../../shared/ui/toast.js';
         setVal('reqWR', reqs.WR);
         setVal('reqTE', reqs.TE);
         setVal('reqFLEX', reqs.FLEX);
+        setVal('reqWRTE', reqs.WRTE || 0);
+        setVal('reqWRRB', reqs.WRRB || 0);
         setVal('reqSFLEX', reqs.SFLEX);
         setVal('reqK', reqs.K !== undefined ? reqs.K : 1);
         setVal('reqDEF', reqs.DEF !== undefined ? reqs.DEF : 1);
@@ -411,7 +418,7 @@ import { showToast } from '../../shared/ui/toast.js';
         const getInt = id => parseInt(document.getElementById(id)?.value) || 0;
         league.reqs = {
             QB: getInt('reqQB'), RB: getInt('reqRB'), WR: getInt('reqWR'),
-            TE: getInt('reqTE'), FLEX: getInt('reqFLEX'), SFLEX: getInt('reqSFLEX'),
+            TE: getInt('reqTE'), FLEX: getInt('reqFLEX'), WRTE: getInt('reqWRTE'), WRRB: getInt('reqWRRB'), SFLEX: getInt('reqSFLEX'),
             K: getInt('reqK'), DEF: getInt('reqDEF')
         };
         localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
@@ -504,14 +511,18 @@ import { showToast } from '../../shared/ui/toast.js';
                 formatBadge = `${typeStr} ${isSF} ${pprStr} ${tepStr}`.trim();
             }
 
-            let autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SFLEX: 0, K: 0, DEF: 0 };
+            // REC_FLEX (WR/TE) and WRRB_FLEX (WR/RB) are their own slot types since improvements S1;
+            // counting them as FLEX let the optimizer start an RB in a W/T slot.
+            let autoReqs = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, WRTE: 0, WRRB: 0, SFLEX: 0, K: 0, DEF: 0 };
             if (leagueData.roster_positions) {
                 leagueData.roster_positions.forEach(pos => {
                     if (pos === 'QB') autoReqs.QB++;
                     else if (pos === 'RB') autoReqs.RB++;
                     else if (pos === 'WR') autoReqs.WR++;
                     else if (pos === 'TE') autoReqs.TE++;
-                    else if (['FLEX', 'REC_FLEX', 'WRRB_FLEX'].includes(pos)) autoReqs.FLEX++;
+                    else if (pos === 'FLEX') autoReqs.FLEX++;
+                    else if (pos === 'REC_FLEX') autoReqs.WRTE++;
+                    else if (pos === 'WRRB_FLEX') autoReqs.WRRB++;
                     else if (pos === 'SUPER_FLEX') autoReqs.SFLEX++;
                     else if (pos === 'K') autoReqs.K++;
                     else if (pos === 'DEF') autoReqs.DEF++;

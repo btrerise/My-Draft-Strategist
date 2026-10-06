@@ -15,6 +15,16 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **W/T and W/R slots from Sleeper leagues are counted.** Syncing a draft whose Sleeper league has a WR/TE or WR/RB
+  flex slot used to leave that slot out of your roster limits. They now show on the Team tab as W/T and W/R, count in
+  the roster-limits FLX column under My Team (which only counted plain FLEX before), and carry over to Lineup Strategist with Send to
+  Lineup Strategist.
+- **Flex slot labels on the Team tab show the positions they take:** a filled FLX label runs green-blue-yellow
+  (RB/WR/TE), SFLX red-green-blue-yellow, and W/T blue-yellow, instead of borrowing one position's color.
+- **The Team tab's roster-limits row lines up before rankings are loaded.** It was missing its K and DEF cells, so
+  the total showed under K.
+- **The bye-week warning on the Team tab uses a warning icon** instead of the ⚠️ emoji, so it looks the same on
+  every device and matches the rest of the site.
 - **Rankings and ADP say how old they are.** The status line in Load Rankings reads "Loaded: 220 players • Updated
   3 days ago" instead of a fixed date, and turns amber with "consider refreshing" after 14 days. The ADP line reads
   "FFC: Redraft - 1QB (PPR) • Fetched today" and turns amber with "fetch again before you draft" after 3 days.
@@ -52,7 +62,23 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-Nothing yet.
+- **Top Available in the Waiver Wire Assistant:** the Scout tab's waiver card now has three modes, Top Available,
+  Auto-Find and Check a List, sharing one Rank By, one row of position chips and one results area. Top Available (the
+  default) is a compact list of the best-ranked players nobody in your league has rostered, with rank chips in the
+  usual position colors: All (now the default position, for Auto-Find too) shows the top 5 at each position side by
+  side, one position or FLEX shows 15 at a time with Show 15 more, and "Starts" marks anyone who'd make your lineup
+  this week. The position buttons look and light up like Draft Strategist's Tracker filters. In Check a List with Whole Roster, the chips appear as "Compare Within": FLEX weighs a pasted RB, WR or
+  TE against your weakest of all three, any other choice against his own position. It redraws when you come back to the Scout tab after uploading rankings or
+  syncing, and when you switch leagues. In a manual league it lists players not on your roster and says so.
+- **No emoji in the "Lineup Optimized!" message** at the end of setup.
+- **W/T and W/R slots are their own slots.** Sleeper's WR/TE-only and WR/RB-only flex slots used to be read as a
+  regular FLEX, so the optimizer could start an RB in a W/T slot or a TE in a W/R slot, a lineup Sleeper won't
+  take. They now sync as W/T and W/R (new boxes under Active League Requirements), are filled only with eligible
+  players, and show as W/T and W/R on the Lineup tab, in Copy as Text and in Power Rankings. Run Sync All once to
+  update leagues synced before this. A roster sent from Draft Strategist keeps its W/T and W/R slots too.
+- **FLEX and SFLEX badges show the positions they take:** the Lineup tab's FLEX slot badge has a green-blue-yellow
+  (RB/WR/TE) border and SFLEX a red-green-blue-yellow (QB/RB/WR/TE) one, instead of the shared violet. The Scout tab's
+  FLEX button and heading match.
 
 ### v2.14.0 — 2026-10-05
 

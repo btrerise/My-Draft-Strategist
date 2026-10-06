@@ -43,6 +43,7 @@ all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.md`).
 - Bump `CACHE_NAME` in `sw.js` (last number, above main's) whenever a file the site serves changes.
 - Every storage key is spelled only in `js/shared/storage/keys.js`, with its app's prefix (`mds_` / `mls_`).
 - No inline `on*=` handlers: use `data-action` and `delegate()`.
+- Icons are inline SVG (`aria-hidden="true"`, `stroke="currentColor"`), never emoji, in anything users see (owner's rule).
 - User-visible change → a line under the app's "Unreleased" in `CHANGELOG.md`.
 - Keep the public URLs (`/`, `/lineup/`, `/t-score/`) and `sw.js` at the root.
 - **Refactor chunk 6C is pending** (not before 2026-10-17): don't rename or remove storage keys, and don't edit

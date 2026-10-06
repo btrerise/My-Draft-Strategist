@@ -172,7 +172,8 @@ import { showToast } from '../shared/ui/toast.js';
                 is3RR: dInfo.settings?.reversal_round === 3
             };
 
-            let draftLimits = { QB: 0, RB: 0, WR: 0, TE: 0, WT: 0, FLEX: 0, SFLEX: 0, K: 0, DEF: 0, BENCH: 0 };
+            // WT = W/T (WR/TE only), WRRB = W/R (WR/RB only): Sleeper's restricted flex slots.
+            let draftLimits = { QB: 0, RB: 0, WR: 0, TE: 0, WT: 0, WRRB: 0, FLEX: 0, SFLEX: 0, K: 0, DEF: 0, BENCH: 0 };
 
             // Parse Sleeper's roster_positions array if we successfully grabbed the league
             if (fetchedLeague && fetchedLeague.roster_positions) {
@@ -181,7 +182,11 @@ import { showToast } from '../shared/ui/toast.js';
                     else if (pos === 'RB') draftLimits.RB++;
                     else if (pos === 'WR') draftLimits.WR++;
                     else if (pos === 'TE') draftLimits.TE++;
-                    else if (pos === 'W/T') draftLimits.WT++; // NEW: W/T Slot
+                    // Sleeper's league data calls the W/T slot REC_FLEX ('W/T' is kept in case
+                    // anything still sends it); before improvements S1 only 'W/T' was checked, so
+                    // a W/T slot was never counted.
+                    else if (pos === 'REC_FLEX' || pos === 'W/T') draftLimits.WT++;
+                    else if (pos === 'WRRB_FLEX' || pos === 'W/R') draftLimits.WRRB++; // W/R, added in improvements S1
                     else if (pos === 'FLEX' || pos === 'W/R/T') draftLimits.FLEX++;
                     else if (pos === 'SUPER_FLEX' || pos === 'Q/W/R/T') draftLimits.SFLEX++;
                     else if (pos === 'K') draftLimits.K++;
@@ -199,6 +204,7 @@ import { showToast } from '../shared/ui/toast.js';
                     WR: getSlot('slots_wr', 3),
                     TE: getSlot('slots_te', 0),
                     WT: getSlot('slots_rec_flex', 0), // NEW: Sleeper identifies W/T as rec_flex
+                    WRRB: getSlot('slots_wrrb_flex', 0), // W/R, named like rec_flex; 0 when the draft doesn't say
                     FLEX: getSlot('slots_flex', 1),
                     SFLEX: getSlot('slots_super_flex', 0),
                     K: getSlot('slots_k', 0),
@@ -206,7 +212,7 @@ import { showToast } from '../shared/ui/toast.js';
                     BENCH: getSlot('slots_bn', 6),
                 };
             }
-            draftLimits.TOTAL = draftLimits.QB + draftLimits.RB + draftLimits.WR + draftLimits.TE + draftLimits.WT + draftLimits.FLEX + draftLimits.SFLEX + draftLimits.K + draftLimits.DEF + draftLimits.BENCH;
+            draftLimits.TOTAL = draftLimits.QB + draftLimits.RB + draftLimits.WR + draftLimits.TE + draftLimits.WT + draftLimits.WRRB + draftLimits.FLEX + draftLimits.SFLEX + draftLimits.K + draftLimits.DEF + draftLimits.BENCH;
 
             const picksData = await getSleeperDraftPicks(draftId);
 
@@ -397,7 +403,7 @@ import { showToast } from '../shared/ui/toast.js';
             console.error(err);
 
             // Every branch below is gated on !isSilent, so a failed tick of the 3s live-draft
-            // poll used to be a console.error and nothing else: the 🔴 LIVE pill kept pulsing
+            // poll used to be a console.error and nothing else: the red LIVE pill kept pulsing
             // while the board silently stopped updating -- a false "I'm live" signal at the
             // worst possible moment. Count the misses instead, and let the pill flip to amber
             // "LIVE · stalled" with the last good sync time once there have been enough of

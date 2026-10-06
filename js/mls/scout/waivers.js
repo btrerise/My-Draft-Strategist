@@ -4,7 +4,7 @@
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { buildRankDisplayIndex, checkAgainstLineup, compareForScan, findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
 import { escapeHtml } from '../../shared/html.js';
-import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, tierTag } from '../constants.js';
+import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';
 import { getByeBadgeHTML, getGameInfoHTML, hasKickedOff } from '../lineup/gameInfo.js';
@@ -64,6 +64,13 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 
     const WAIVER_SCAN_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
+    export const WAIVER_MODES = ['top', 'auto', 'list'];
+    const WAIVER_MODE_HINTS = {
+        top: 'The best-ranked players nobody in this league has rostered, by your rankings.',
+        auto: 'Free agents measured against your starting lineup or your whole roster.',
+        list: 'Paste the players you want to check, in this league or across all your leagues.'
+    };
+
     export const updateWaiverScanSetting = function(key, value) {
         State.waiverScanSettings[key] = value;
         localStorage.setItem(KEYS.mls.waiverScanSettings, JSON.stringify(State.waiverScanSettings));
@@ -74,9 +81,37 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const s = State.waiverScanSettings;
         const set = (id, prop, val) => { const el = document.getElementById(id); if (el) el[prop] = val; };
         set('waiverScanBasis', 'value', s.basis);
-        set('waiverScanPos', 'value', s.pos);
         set('waiverScanLimit', 'value', String(s.limit));
         set('waiverScanStartersOnly', 'checked', !!s.startersOnly);
+        const pressed = (selector, isOn) => document.querySelectorAll(selector).forEach(b => {
+            const on = isOn(b);
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        // Position chips look and light up like Draft Strategist's Tracker filters (.pos-filter in
+        // css/base.css): the picked one at full color, ALL lighting every chip, the rest faded.
+        // aria-pressed marks only the picked chip.
+        document.querySelectorAll('#waiverPosChips [data-pos]').forEach(b => {
+            b.classList.toggle('active-filter', s.pos === 'ALL' || b.dataset.pos === s.pos);
+            b.setAttribute('aria-pressed', b.dataset.pos === s.pos ? 'true' : 'false');
+        });
+
+        // --- MODE (Top Available | Auto-Find | Check a List), improvements S1 ---
+        // One card, one results area: each block lists the modes it belongs to in
+        // data-waiver-modes, and the rest are hidden.
+        const mode = WAIVER_MODES.includes(s.mode) ? s.mode : 'top';
+        pressed('#waiverModeToggle [data-mode]', b => b.dataset.mode === mode);
+        document.querySelectorAll('[data-waiver-modes]').forEach(el => {
+            el.hidden = !el.dataset.waiverModes.split(' ').includes(mode);
+        });
+        const modeHint = document.getElementById('waiverModeHint');
+        if (modeHint) modeHint.innerText = WAIVER_MODE_HINTS[mode];
+        // Check a List reads Position only for its Whole Roster verdict (pastedRosterVerdict:
+        // FLEX groups RB/WR/TE, anything else compares within the player's position), so the chips
+        // show there only with Whole Roster, under a label that says what they do.
+        const posWrap = document.getElementById('waiverPosWrap');
+        if (posWrap && mode === 'list' && s.compare !== 'roster') posWrap.hidden = true;
+        set('waiverPosLabel', 'innerText', mode === 'list' ? 'Compare Within' : 'Position');
         document.querySelectorAll('#waiverCompareToggle [data-compare]').forEach(b => {
             const on = b.dataset.compare === s.compare;
             b.classList.toggle('active', on);
@@ -402,7 +437,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const bothFlex = FLEX_POSITIONS.includes(faPlayer.pos) && FLEX_POSITIONS.includes(other.pos);
         const useFlex = basis === 'flex' ? bothFlex
             : basis === 'pos' ? false
-            : bothFlex && (slotType === 'FLEX' || slotType === 'SFLEX' || faPlayer.pos !== other.pos);
+            : bothFlex && (['FLEX', 'SFLEX', 'WRRB', 'WRTE'].includes(slotType) || faPlayer.pos !== other.pos);
         const crossField = crossKind === 'overall' ? 'rank' : 'flexRank';
         const crossName = crossKind === 'overall' ? 'Overall' : 'Flex';
         const faD = display[faPlayer.cleanName] || {};
@@ -410,7 +445,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const fmt = (v, pos) => (v === null || v === undefined) ? 'unranked' : (useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`);
         const faVal = useFlex ? faD[crossField] : faD.posRank;
         const oVal = useFlex ? oD[crossField] : oD.posRank;
-        const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotType})</span>` : '';
+        const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotDisplayName(slotType)})</span>` : '';
         // The two ranks go on their own line under the verdict (see .mls-verdict-nums), and each
         // label/name+rank pair is kept unbreakable -- at phone width this line otherwise wrapped
         // mid-phrase ("Wk" on one line, "Flex: Dobbins #58" on the next), which read as garbled.

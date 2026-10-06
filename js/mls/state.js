@@ -44,7 +44,7 @@ import { mdsFetch } from '../shared/net.js';
         // localStorage key the rest of the Waiver Wire Assistant's settings already use.
         // intent ('buy' | 'sell') rides along for the same reason: it only steers the All My
         // Leagues search's Positional Power Rank recommendations (see runAllLeaguesSearch).
-        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'FLEX', limit: 10, startersOnly: false, scope: 'league', intent: 'buy' }, readJSON(KEYS.mls.waiverScanSettings, {})),
+        waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'ALL', limit: 10, startersOnly: false, scope: 'league', intent: 'buy', mode: 'top' }, readJSON(KEYS.mls.waiverScanSettings, {})),
         // --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
         // flexKickoffOptimization gates optimizeFlexKickoffOrder() (see below): when on, the
         // optimizer reassigns which flex-eligible starters sit in strict RB/WR/TE slots vs the

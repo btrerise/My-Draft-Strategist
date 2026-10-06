@@ -1,7 +1,7 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Lineup tab part of RENDERERS. Locks, swaps, the
 // optimizer (optimizeLineup) and the lineup renderer (renderLineupUI).
 import { escapeHtml } from '../../shared/html.js';
-import { tierTag } from '../constants.js';
+import { SLOT_POSITIONS, slotDisplayName, tierTag } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
 import { pushLineupUndoSnapshot, State } from '../state.js';
 import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } from '../helpers.js';
@@ -109,24 +109,13 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         optimizeLineup(true);
     };
 
-    // True if `pos` is allowed to occupy a slot of type `slotType` ('QB', 'RB', 'WR', 'TE',
-    // 'FLEX', 'SFLEX', 'K', or 'DEF' -- i.e. a starter slot label with its trailing number
-    // stripped, same convention used everywhere else in this file). Mirrors the exact
-    // eligibility rules fillSlot()/the SFLEX loop use when building the lineup in the first
-    // place, so a manual swap can never produce a slot/position combination the optimizer
-    // itself would never have created.
+    // True if `pos` is allowed to occupy a slot of type `slotType` (a key of SLOT_POSITIONS in
+    // constants.js -- i.e. a starter slot label with its trailing number stripped, same convention
+    // used everywhere else in this file). The same eligibility fillSlot()/the SFLEX loop use when
+    // building the lineup in the first place, so a manual swap can never produce a slot/position
+    // combination the optimizer itself would never have created.
     export function slotAcceptsPos(slotType, pos) {
-        switch (slotType) {
-            case 'QB': return pos === 'QB';
-            case 'RB': return pos === 'RB';
-            case 'WR': return pos === 'WR';
-            case 'TE': return pos === 'TE';
-            case 'FLEX': return ['RB', 'WR', 'TE'].includes(pos);
-            case 'SFLEX': return ['QB', 'RB', 'WR', 'TE'].includes(pos);
-            case 'K': return pos === 'K';
-            case 'DEF': return pos === 'DEF';
-            default: return false;
-        }
+        return !!(SLOT_POSITIONS[slotType] && SLOT_POSITIONS[slotType].includes(pos));
     }
 
     export const initiateSwap = function(playerId) {
@@ -455,6 +444,10 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         for (let i = 0; i < (reqs.RB || 0); i++) fillSlot(`RB${i+1}`, pos => pos === 'RB', false);
         for (let i = 0; i < (reqs.WR || 0); i++) fillSlot(`WR${i+1}`, pos => pos === 'WR', false);
         for (let i = 0; i < (reqs.TE || 0); i++) fillSlot(`TE${i+1}`, pos => pos === 'TE', false);
+        // Sleeper's restricted flex slots (W/R, W/T) before FLEX: most restrictive first, so FLEX
+        // gets the best player the narrower slots couldn't take (a W/T can't use a spare RB).
+        for (let i = 0; i < (reqs.WRRB || 0); i++) fillSlot(`WRRB${i+1}`, pos => SLOT_POSITIONS.WRRB.includes(pos), true);
+        for (let i = 0; i < (reqs.WRTE || 0); i++) fillSlot(`WRTE${i+1}`, pos => SLOT_POSITIONS.WRTE.includes(pos), true);
         for (let i = 0; i < (reqs.FLEX || 0); i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos), true);
         
         for (let i = 0; i < reqs.SFLEX; i++) {
@@ -533,7 +526,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         if (isManualAction) {
             let hasOptimizedBefore = localStorage.getItem(KEYS.mls.hasOptimized);
             if (!hasOptimizedBefore) {
-                showToast("🎉 Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
+                showToast("Lineup Optimized! You've successfully completed the setup flow.", { duration: 6000 });
                 localStorage.setItem(KEYS.mls.hasOptimized, 'true');
             } else {
                 showToast("Optimal lineup set");
@@ -686,7 +679,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 html += `
                 <div class="lineup-slot ${lockClass}">
                     <div class="mls-player-row-info">
-                        <span class="slot-badge slot-${slotType}">${slotType}</span>
+                        <span class="slot-badge slot-${slotType}">${slotDisplayName(slotType)}</span>
                         ${playerHeadshotHTML(p)}
                         <div class="mls-player-row-text">
                             <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}</div>
@@ -707,7 +700,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             } else {
                 html += `
                 <div class="lineup-slot empty">
-                    <span class="slot-badge slot-${slotType}">${slotType}</span>
+                    <span class="slot-badge slot-${slotType}">${slotDisplayName(slotType)}</span>
                     <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
                 </div>`;
             }

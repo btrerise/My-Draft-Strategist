@@ -58,6 +58,14 @@
     --pos-te: rgba(245, 158, 11, 0.15);  --pos-te-border: #f59e0b;
     --pos-k: rgba(167, 139, 250, 0.15);   --pos-k-border: #a78bfa; /* Sleeper Kicker Lavender */
     --pos-def: rgba(146, 93, 72, 0.15);   --pos-def-border: #925d48; /* Sleeper DEF Rust */
+    /* Flex-type slots (owner's choice, improvements S1): no color of their own, so their border (or,
+       for plain-text labels, their text) runs through the colors of the positions they accept. Used
+       by .flex-blend / .sflex-blend / .wt-blend at the end of this file and .slot-badge in css/mls.css. */
+    --flex-blend: linear-gradient(90deg, var(--pos-rb-border), var(--pos-wr-border), var(--pos-te-border));
+    --sflex-blend: linear-gradient(90deg, var(--pos-qb-border), var(--pos-rb-border), var(--pos-wr-border), var(--pos-te-border));
+    --wt-blend: linear-gradient(90deg, var(--pos-wr-border), var(--pos-te-border));
+    --wr-blend: linear-gradient(90deg, var(--pos-rb-border), var(--pos-wr-border));
+    --blend-fill: linear-gradient(rgba(23, 30, 45, 0.92), rgba(23, 30, 45, 0.92));
 
     /* Spacing scale -- a token version of the ad-hoc rem values (0.4rem, 0.6rem, 0.85rem...)
        scattered through inline styles. The margin/padding/gap utilities below, and the
@@ -2029,3 +2037,78 @@ a.nav-btn,
 .preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
 .preview-derived-title { color: #93c5fd; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
 .preview-derived-body { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin: 0; }
+
+/* --- POSITION FILTER BUTTONS (both apps) ---
+   Draft Strategist's Tracker filters (js/mds/tracker.js) and Lineup Strategist's Waiver Wire Assistant
+   position chips (lineup/index.html). Moved here from css/mds.css in improvements S1; kept at the end
+   of base.css so .pos-filter still beats the shared .badge rule it overrides. Each button also carries
+   .badge plus .pos-badge.<POS> for its color, or .badge-all for ALL, or .flex-blend for FLEX (end of this file). */
+.pos-filter { 
+    cursor: pointer; 
+    color: var(--text-muted);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    border: 1px solid var(--border); 
+    border-radius: 8px; 
+    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    font-size: 0.85rem;
+    font-weight: 600;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    
+    /* Visually mute non-selected filters */
+    opacity: 0.35;
+    filter: grayscale(85%);
+}
+
+.pos-filter:hover { 
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    transform: translateY(-2px);
+    
+    /* Slightly illuminate when hovering over an inactive filter */
+    opacity: 0.7;
+    filter: grayscale(40%);
+}
+
+.pos-filter.active-filter { 
+    /* Snaps the filter back to full vibrancy, inheriting its native positional color */
+    opacity: 1;
+    filter: grayscale(0%);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.08); 
+}
+
+/* Specific rule for ALL button so it turns green when active, since it lacks a positional color */
+.pos-filter.badge-all.active-filter {
+    color: var(--primary-green);
+    background: var(--target-bg);
+    border-color: var(--primary-green); 
+}
+
+/* Position filters used to be <div>s and are now <button>s: strip the browser's button font and
+   chrome so they look exactly as before. */
+button.pos-filter {
+  font-family: inherit;
+  line-height: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.pos-filter:focus-visible {
+  outline: 2px solid var(--primary-green);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
+/* --- FLEX-TYPE BADGES (both apps) ---
+   A badge or button for a slot that takes several positions: a border blended from those positions'
+   colors (the --*-blend variables in :root). Last in the file so it beats .pos-filter's background
+   and border, including on hover. Draft Strategist's Team tab colors its plain-text slot labels with
+   the same variables (.roster-label.flex-blend-text etc. in css/mds.css). */
+.flex-blend, .sflex-blend, .wt-blend { color: #e2e8f0; border: 1px solid transparent; }
+.flex-blend, .pos-filter.flex-blend:hover { background: var(--blend-fill) padding-box, var(--flex-blend) border-box; }
+.sflex-blend, .pos-filter.sflex-blend:hover { background: var(--blend-fill) padding-box, var(--sflex-blend) border-box; }
+.wt-blend, .pos-filter.wt-blend:hover { background: var(--blend-fill) padding-box, var(--wt-blend) border-box; }

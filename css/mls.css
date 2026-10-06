@@ -388,8 +388,12 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 .slot-badge.slot-TE  { background-color: var(--pos-te);  color: #fde047; border: 1px solid var(--pos-te-border); }
 .slot-badge.slot-K   { background-color: var(--pos-k);   color: #e2e8f0; border: 1px solid var(--pos-k-border); }
 .slot-badge.slot-DEF { background-color: var(--pos-def); color: #e9d8fd; border: 1px solid var(--pos-def-border); }
-.slot-badge.slot-FLEX,
-.slot-badge.slot-SFLEX { background-color: rgba(168, 85, 247, 0.18); color: #d8b4fe; border: 1px solid #a855f7; }
+/* FLEX and SFLEX: a border blended from the positions each takes (--flex-blend, --sflex-blend in css/base.css). */
+.slot-badge.slot-FLEX { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--flex-blend) border-box; }
+.slot-badge.slot-SFLEX { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--sflex-blend) border-box; }
+/* Sleeper's restricted flex slots (improvements S1): W/T (WR/TE) and W/R (RB/WR). */
+.slot-badge.slot-WRTE { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--wt-blend) border-box; }
+.slot-badge.slot-WRRB { color: #e2e8f0; border: 1px solid transparent; background: var(--blend-fill) padding-box, var(--wr-blend) border-box; }
 .slot-badge.slot-BN,
 .slot-badge.slot-ROS { background-color: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
 /* Taxi squad, at the foot of the bench list. Same muted greys as .slot-BN rather than a new
@@ -1418,6 +1422,37 @@ button.close-chip {
 .mls-segmented-btn.active { background: var(--target-bg); color: var(--primary-green); }
 .mls-segmented-btn:focus-visible { outline: 2px solid var(--primary-green); outline-offset: -2px; }
 .mls-nowrap { white-space: nowrap; }
+
+/* --- WAIVER WIRE ASSISTANT MODES and TOP AVAILABLE (Scout tab, improvements S1) ---
+   Blocks for other modes carry [hidden]; .input-group's display:flex would otherwise win. */
+[data-waiver-modes][hidden] { display: none !important; }
+/* Position chips: Draft Strategist's .pos-filter buttons (css/base.css) in one row of eight, two rows of
+   four on phones. */
+.mls-pos-filter-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.5rem; }
+@media (max-width: 520px) { .mls-pos-filter-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* Top Available's compact list (js/mls/scout/topAvailable.js): one boxed list per position, two
+   columns on desktop in All, one column on phones. */
+.mls-ta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.75rem 1rem; }
+.mls-ta-group { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.75rem; background: rgba(255, 255, 255, 0.02); min-width: 0; }
+.mls-ta-head { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.35rem; }
+.mls-ta-title { margin: 0; font-size: 1rem; color: var(--text-main); }
+.mls-ta-count { font-size: 0.78rem; font-weight: 400; color: var(--text-muted); }
+.mls-ta-more-link { margin-left: auto; font-size: 0.78rem; font-weight: 600; color: var(--primary-green); cursor: pointer; }
+.mls-ta-col { margin-left: auto; font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+.mls-ta-more-link + .mls-ta-col { margin-left: 0.5rem; }
+.mls-ta-list { list-style: none; margin: 0; padding: 0; }
+.mls-ta-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; font-size: 0.88rem; }
+.mls-ta-row + .mls-ta-row { border-top: 1px solid rgba(255, 255, 255, 0.05); }
+.mls-ta-idx { width: 1.6rem; flex-shrink: 0; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mls-ta-player { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; }
+.mls-ta-name { color: var(--text-main); font-weight: 600; }
+.mls-ta-team { font-size: 0.72rem; color: var(--text-muted); }
+.mls-ta-pos { padding: 1px 5px; }
+.mls-ta-title-badge { font-size: 0.8rem; padding: 1px 6px; }
+.mls-ta-tier { opacity: 0.8; }
+.mls-ta-starts { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.72rem; font-weight: 600; color: var(--primary-green); white-space: nowrap; }
+.mls-ta-num { min-width: 2.5rem; text-align: right; font-weight: 600; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.mls-ta-more { width: 100%; margin-top: 0.6rem; }
 
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
    One card per player, with a per-league ownership row beneath the header. Markup comes from

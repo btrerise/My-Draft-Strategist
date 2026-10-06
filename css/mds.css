@@ -232,52 +232,6 @@
     margin-bottom: 1.5rem; 
 }
 
-.pos-filter { 
-    cursor: pointer; 
-    color: var(--text-muted);
-    background: rgba(0, 0, 0, 0.2);
-    padding: 0.5rem; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    border: 1px solid var(--border); 
-    border-radius: 8px; 
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-    font-size: 0.85rem;
-    font-weight: 600;
-    width: auto;
-    min-width: 0;
-    max-width: none;
-    
-    /* Visually mute non-selected filters */
-    opacity: 0.35;
-    filter: grayscale(85%);
-}
-
-.pos-filter:hover { 
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-main);
-    transform: translateY(-2px);
-    
-    /* Slightly illuminate when hovering over an inactive filter */
-    opacity: 0.7;
-    filter: grayscale(40%);
-}
-
-.pos-filter.active-filter { 
-    /* Snaps the filter back to full vibrancy, inheriting its native positional color */
-    opacity: 1;
-    filter: grayscale(0%);
-    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.08); 
-}
-
-/* Specific rule for ALL button so it turns green when active, since it lacks a positional color */
-.pos-filter.badge-all.active-filter {
-    color: var(--primary-green);
-    background: var(--target-bg);
-    border-color: var(--primary-green); 
-}
-
 /* Premium Tier Dividers (Replaces heavy green block) */
 .tier-divider { 
     display: flex;
@@ -412,6 +366,15 @@
     font-size: 0.85rem; 
     color: var(--text-muted);
 }
+
+/* Team tab labels for flex-type slots (FLX, SFLX, W/T, W/R): the text runs through the colors of the
+   positions the slot takes (--flex-blend etc. in css/base.css). Two classes, to beat .roster-label's
+   own color. An empty slot's label keeps the muted color (js/mds/team.js only adds these when filled). */
+.roster-label.flex-blend-text, .roster-label.sflex-blend-text, .roster-label.wt-blend-text, .roster-label.wr-blend-text { -webkit-background-clip: text; background-clip: text; color: transparent; }
+.roster-label.flex-blend-text { background-image: var(--flex-blend); }
+.roster-label.sflex-blend-text { background-image: var(--sflex-blend); }
+.roster-label.wt-blend-text { background-image: var(--wt-blend); }
+.roster-label.wr-blend-text { background-image: var(--wr-blend); }
 
 .roster-slot.empty { 
     opacity: 0.5; 
@@ -793,21 +756,18 @@
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
-/* Position filters and the edit pencil used to be a <div>/<span> and are now <button>s:
-   strip the browser's button font and chrome so they look exactly as before. */
-button.pos-filter,
+/* The edit pencil used to be a <span> and is now a <button>: strip the browser's button font and
+   chrome so it looks exactly as before. (The position filters' half of this rule moved to the end
+   of css/base.css in improvements S1, when Lineup Strategist's Waiver Wire Assistant started using them.) */
 button.edit-link {
   font-family: inherit;
   line-height: inherit;
   -webkit-appearance: none;
   appearance: none;
-}
-button.edit-link {
   background: none;
   border: none;
   padding: 0;
 }
-.pos-filter:focus-visible,
 .edit-link:focus-visible {
   outline: 2px solid var(--primary-green);
   outline-offset: 2px;

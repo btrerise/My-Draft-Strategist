@@ -25,7 +25,9 @@ import { KEYS } from '../shared/storage/keys.js';
         let rosterSlotsHTML = '';
         let limits = draft.limits || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
 
-                const buildSlotHTML = (label, color, p) => {
+                // textClass: a gradient-text class for flex-type slots (.flex-blend-text etc., css/base.css),
+                // used instead of the single color.
+                const buildSlotHTML = (label, color, p, textClass = '') => {
             if (p) {
                 let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
                 
@@ -38,7 +40,7 @@ import { KEYS } from '../shared/storage/keys.js';
                 return `
                 <div class="roster-slot">
                     <div class="roster-slot-label-row">
-                        <span class="roster-label" style="color:${color}">${label}</span>
+                        <span class="roster-label ${textClass}"${textClass ? '' : ` style="color:${color}"`}>${label}</span>
                         ${imgHTML} <!-- Inject Image Here -->
                         <div>
                             <div style="font-weight: bold;">${escapeHtml(p.name)} ${rookieBadge}</div>
@@ -76,24 +78,31 @@ import { KEYS } from '../shared/storage/keys.js';
             }
         });
 
+        // W/R (Wide Receiver / Running Back) flex slots, then W/T, then FLEX: most restrictive first.
+        for (let i = 0; i < (limits.WRRB || 0); i++) {
+            let idx = availablePool.findIndex(p => ['WR', 'RB'].includes(p.posGroup));
+            let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
+            rosterSlotsHTML += buildSlotHTML('W/R', null, p, 'wr-blend-text');
+        }
+
         // NEW: Fill W/T (Wide Receiver / Tight End) Flex Slots
         for (let i = 0; i < (limits.WT || 0); i++) {
             let idx = availablePool.findIndex(p => ['WR', 'TE'].includes(p.posGroup));
             let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
-            rosterSlotsHTML += buildSlotHTML('W/T', '#2dd4bf', p); // Distinct teal color
+            rosterSlotsHTML += buildSlotHTML('W/T', null, p, 'wt-blend-text');
         }
 
         // Fill Standard W/R/T Flex Slots
         for (let i = 0; i < (limits.FLEX || 0); i++) {
             let idx = availablePool.findIndex(p => ['RB', 'WR', 'TE'].includes(p.posGroup));
             let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
-            rosterSlotsHTML += buildSlotHTML('FLX', '#86efac', p);
+            rosterSlotsHTML += buildSlotHTML('FLX', null, p, 'flex-blend-text');
         }
 
         for (let i = 0; i < (limits.SFLEX || 0); i++) {
             let idx = availablePool.findIndex(p => ['QB', 'RB', 'WR', 'TE'].includes(p.posGroup));
             let p = idx !== -1 ? availablePool.splice(idx, 1)[0] : null;
-            rosterSlotsHTML += buildSlotHTML('SFLX', '#fca5a5', p);
+            rosterSlotsHTML += buildSlotHTML('SFLX', null, p, 'sflex-blend-text');
         }
 
         if (availablePool.length > 0) {
@@ -115,7 +124,7 @@ import { KEYS } from '../shared/storage/keys.js';
 
             let heavyByes = Object.keys(byeCounts).filter(bye => byeCounts[bye] >= 3);
             if (heavyByes.length > 0) {
-                bannerContainer.innerHTML = `<div class="bye-warning-banner"><span>⚠️ WARNING: You have ${byeCounts[heavyByes[0]]} starting players on Bye in Week ${heavyByes[0]}!</span></div>`;
+                bannerContainer.innerHTML = `<div class="bye-warning-banner"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span>WARNING: You have ${byeCounts[heavyByes[0]]} starting players on Bye in Week ${heavyByes[0]}!</span></div>`;
             } else {
                 bannerContainer.innerHTML = '';
             }

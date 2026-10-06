@@ -332,6 +332,8 @@
             <div class="input-group"><label for="reqWR">WR</label><input type="number" id="reqWR" class="form-input text-center" value="2" aria-label="WR lineup slots"></div>
             <div class="input-group"><label for="reqTE">TE</label><input type="number" id="reqTE" class="form-input text-center" value="1" aria-label="TE lineup slots"></div>
             <div class="input-group"><label for="reqFLEX">FLEX</label><input type="number" id="reqFLEX" class="form-input text-center" value="2" aria-label="Flex lineup slots"></div>
+            <div class="input-group"><label for="reqWRTE">W/T</label><input type="number" id="reqWRTE" class="form-input text-center" value="0" aria-label="WR/TE flex lineup slots"></div>
+            <div class="input-group"><label for="reqWRRB">W/R</label><input type="number" id="reqWRRB" class="form-input text-center" value="0" aria-label="WR/RB flex lineup slots"></div>
             <div class="input-group"><label for="reqSFLEX">SFLEX</label><input type="number" id="reqSFLEX" class="form-input text-center" value="0" aria-label="Superflex lineup slots"></div>
             <div class="input-group"><label for="reqK">K</label><input type="number" id="reqK" class="form-input text-center" value="1" aria-label="K lineup slots"></div>
             <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
@@ -901,22 +903,33 @@
     <button class="close-banner-btn close-banner-btn-sm ml-3" data-action="dismissBanner" data-banner="sleeperSyncBanner" data-storage-key="mls_hide_sleeper_sync_banner" aria-label="Dismiss Banner" style="flex-shrink: 0;">✕</button>
 </div>
 
-    <!-- WAIVER WIRE ASSISTANT -->
-    <section class="settings-card">
+    <!-- WAIVER WIRE ASSISTANT: one card, three modes (improvements S1). Each block names the modes
+         it belongs to in data-waiver-modes; applyWaiverScanSettingsToUI (scout/waivers.js) hides the
+         rest. All three share Rank By, the Position chips and #waiverOutput. -->
+    <section class="settings-card" id="waiverCard">
         <header class="card-header">
             <h3>
                 <span>Waiver Wire Assistant</span>
             </h3>
             <div class="header-actions-inline">
-                <button class="btn btn-secondary mls-btn-sm" data-action="clearWaiverScout">Clear</button>
+                <button class="btn btn-secondary mls-btn-sm" data-action="clearWaiverScout" data-waiver-modes="auto list">Clear</button>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">Auto-Find scans every player nobody in this league has rostered, sorted by your Weekly or ROS rankings. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules; "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Or paste your own list of targets below; available players are checked the same way, using the Compare Against and Rank By settings above. Switch "Search In" to All My Leagues and the same pasted list is checked against every league you've synced at once, showing where each player is a free agent, where you already own him, and who has him everywhere else. Each league also shows your Positional Power Rank at his position; set Looking To to Buy / Add or Sell / Drop and the search flags the leagues where that move makes the most sense.</span>
+                    <span class="tooltip-text">Top Available lists the best-ranked players nobody in this league has rostered, by your Weekly or ROS rankings: All shows the top 5 at each position, and a position or FLEX shows more. "Starts" means he'd make your lineup this week. Ownership comes from your last sync; in a manual league the app only knows your own roster, so the list is everyone not on your roster. Auto-Find scans the same players against your team. "Starting Lineup" adds each one to your current starters and re-runs the lineup optimizer's own rules; "Would Start" means he'd make your lineup this week, and it names who he'd bench. "Whole Roster" lists players ranked ahead of your weakest rostered player at the position (your drop candidate). The Would Start check uses the same rankings as the optimizer (Weekly when loaded, otherwise ROS). Check a List takes your own list of targets; available players are checked the same way, using the Compare Against and Rank By settings. Switch "Search In" to All My Leagues and the same pasted list is checked against every league you've synced at once, showing where each player is a free agent, where you already own him, and who has him everywhere else. Each league also shows your Positional Power Rank at his position; set Looking To to Buy / Add or Sell / Drop and the search flags the leagues where that move makes the most sense.</span>
                 </div>
             </div>
         </header>
 
         <div class="input-group mb-2">
+            <div class="mls-segmented" id="waiverModeToggle" role="group" aria-label="Waiver tool">
+                <button type="button" class="mls-segmented-btn active" data-mode="top" aria-pressed="true" data-action="setWaiverMode">Top Available</button>
+                <button type="button" class="mls-segmented-btn" data-mode="auto" aria-pressed="false" data-action="setWaiverMode">Auto-Find</button>
+                <button type="button" class="mls-segmented-btn" data-mode="list" aria-pressed="false" data-action="setWaiverMode">Check a List</button>
+            </div>
+            <small id="waiverModeHint" class="text-helper mt-1">The best-ranked players nobody in this league has rostered, by your rankings.</small>
+        </div>
+
+        <div class="input-group mb-2" data-waiver-modes="auto list" hidden>
             <label id="waiverCompareLabel">Compare Against</label>
             <div class="mls-segmented" id="waiverCompareToggle" role="group" aria-labelledby="waiverCompareLabel">
                 <button type="button" class="mls-segmented-btn active" data-compare="lineup" aria-pressed="true" data-action="setWaiverCompare">Starting Lineup</button>
@@ -933,23 +946,7 @@
                     <option value="ros">ROS Rank</option>
                 </select>
             </div>
-            <div class="input-group">
-                <label for="waiverScanPos">Position</label>
-                <select id="waiverScanPos" class="form-input" data-action="updateWaiverScanSetting" data-setting="pos" aria-label="Filter available players by position">
-                    <option value="FLEX">FLEX (RB/WR/TE)</option>
-                    <option value="ALL">All (grouped by position)</option>
-                    <option value="QB">QB</option>
-                    <option value="RB">RB</option>
-                    <option value="WR">WR</option>
-                    <option value="TE">TE</option>
-                    <option value="K">K</option>
-                    <option value="DEF">DEF</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="settings-grid mb-3" style="align-items: center;">
-            <div class="input-group">
+            <div class="input-group" data-waiver-modes="auto" hidden>
                 <label for="waiverScanLimit">Show Top</label>
                 <select id="waiverScanLimit" class="form-input" data-action="updateWaiverScanSettingInt" data-setting="limit" aria-label="Number of players to show">
                     <option value="5">5</option>
@@ -958,43 +955,59 @@
                     <option value="30">30</option>
                 </select>
             </div>
-            <div class="input-group input-group-end" id="waiverScanStartersOnlyWrap">
-                <div class="toggle-row toggle-row-flush">
-                    <div class="toggle-info">
-                        <label class="toggle-title" for="waiverScanStartersOnly">Only Would-Starts</label>
-                    </div>
-                    <input type="checkbox" id="waiverScanStartersOnly" class="toggle-switch" data-action="updateWaiverScanSettingChecked" data-setting="startersOnly">
+        </div>
+
+        <!-- In Check a List the chips only matter for Whole Roster, so they show only then, relabelled
+             "Compare Within" (applyWaiverScanSettingsToUI). -->
+        <div class="input-group mb-3" id="waiverPosWrap" data-waiver-modes="top auto list">
+            <label id="waiverPosLabel">Position</label>
+            <div class="mls-pos-filter-grid" id="waiverPosChips" role="group" aria-labelledby="waiverPosLabel">
+                <button type="button" class="badge badge-all pos-filter active-filter" data-pos="ALL" aria-pressed="true" data-action="setWaiverPos">ALL</button>
+                <button type="button" class="badge pos-badge QB pos-filter active-filter" data-pos="QB" aria-pressed="false" data-action="setWaiverPos">QB</button>
+                <button type="button" class="badge pos-badge RB pos-filter active-filter" data-pos="RB" aria-pressed="false" data-action="setWaiverPos">RB</button>
+                <button type="button" class="badge pos-badge WR pos-filter active-filter" data-pos="WR" aria-pressed="false" data-action="setWaiverPos">WR</button>
+                <button type="button" class="badge pos-badge TE pos-filter active-filter" data-pos="TE" aria-pressed="false" data-action="setWaiverPos">TE</button>
+                <button type="button" class="badge pos-filter flex-blend active-filter" data-pos="FLEX" aria-pressed="false" data-action="setWaiverPos">FLEX</button>
+                <button type="button" class="badge pos-badge K pos-filter active-filter" data-pos="K" aria-pressed="false" data-action="setWaiverPos">K</button>
+                <button type="button" class="badge pos-badge DEF pos-filter active-filter" data-pos="DEF" aria-pressed="false" data-action="setWaiverPos">DEF</button>
+            </div>
+            <small id="waiverPosHint" class="text-helper mt-1" data-waiver-modes="list" hidden>FLEX compares a pasted RB, WR or TE against your weakest RB, WR or TE together. Any other choice compares each player within his own position.</small>
+        </div>
+
+        <div data-waiver-modes="auto" hidden>
+            <div class="toggle-row toggle-row-flush mb-3" id="waiverScanStartersOnlyWrap">
+                <div class="toggle-info">
+                    <label class="toggle-title" for="waiverScanStartersOnly">Only Would-Starts</label>
                 </div>
+                <input type="checkbox" id="waiverScanStartersOnly" class="toggle-switch" data-action="updateWaiverScanSettingChecked" data-setting="startersOnly">
             </div>
+            <button class="btn btn-primary" style="width: 100%;" data-action="autoFindWaiverUpgrades">Auto-Find</button>
         </div>
 
-        <button class="btn btn-primary" style="width: 100%;" data-action="autoFindWaiverUpgrades">Auto-Find</button>
-
-        <hr class="card-divider">
-        <div class="divider-text">OR CHECK YOUR OWN LIST</div>
-
-        <div class="input-group mb-2">
-            <label id="waiverScopeLabel">Search In</label>
-            <div class="mls-segmented" id="waiverScopeToggle" role="group" aria-labelledby="waiverScopeLabel">
-                <button type="button" class="mls-segmented-btn active" data-scope="league" aria-pressed="true" data-action="setWaiverScope">This League</button>
-                <button type="button" class="mls-segmented-btn" data-scope="all" aria-pressed="false" data-action="setWaiverScope">All My Leagues</button>
+        <div data-waiver-modes="list" hidden>
+            <div class="input-group mb-2">
+                <label id="waiverScopeLabel">Search In</label>
+                <div class="mls-segmented" id="waiverScopeToggle" role="group" aria-labelledby="waiverScopeLabel">
+                    <button type="button" class="mls-segmented-btn active" data-scope="league" aria-pressed="true" data-action="setWaiverScope">This League</button>
+                    <button type="button" class="mls-segmented-btn" data-scope="all" aria-pressed="false" data-action="setWaiverScope">All My Leagues</button>
+                </div>
+                <small id="waiverScopeHint" class="text-helper mt-1">Checks these players against the league you have active, using the Compare Against and Rank By settings above.</small>
             </div>
-            <small id="waiverScopeHint" class="text-helper mt-1">Checks these players against the league you have active, using the Compare Against and Rank By settings above.</small>
-        </div>
 
-        <!-- Only shown in All My Leagues mode (see applyWaiverScanSettingsToUI). Steers which
-             leagues the search flags, using each league's Positional Power Rankings. -->
-        <div class="input-group mb-2" id="waiverIntentWrap" style="display: none;">
-            <label id="waiverIntentLabel">Looking To</label>
-            <div class="mls-segmented" id="waiverIntentToggle" role="group" aria-labelledby="waiverIntentLabel">
-                <button type="button" class="mls-segmented-btn active" data-intent="buy" aria-pressed="true" data-action="setWaiverIntent">Buy / Add</button>
-                <button type="button" class="mls-segmented-btn" data-intent="sell" aria-pressed="false" data-action="setWaiverIntent">Sell / Drop</button>
+            <!-- Only shown in All My Leagues mode (see applyWaiverScanSettingsToUI). Steers which
+                 leagues the search flags, using each league's Positional Power Rankings. -->
+            <div class="input-group mb-2" id="waiverIntentWrap" style="display: none;">
+                <label id="waiverIntentLabel">Looking To</label>
+                <div class="mls-segmented" id="waiverIntentToggle" role="group" aria-labelledby="waiverIntentLabel">
+                    <button type="button" class="mls-segmented-btn active" data-intent="buy" aria-pressed="true" data-action="setWaiverIntent">Buy / Add</button>
+                    <button type="button" class="mls-segmented-btn" data-intent="sell" aria-pressed="false" data-action="setWaiverIntent">Sell / Drop</button>
+                </div>
+                <small id="waiverIntentHint" class="text-helper mt-1"></small>
             </div>
-            <small id="waiverIntentHint" class="text-helper mt-1"></small>
-        </div>
 
-        <textarea id="waiverInput" class="scout-textarea" aria-label="Players to check" placeholder="Paste waiver targets here… (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
-        <button id="waiverScanBtn" class="btn btn-purple mt-3" style="width: 100%;" data-action="runScout" data-scout-type="waiver">Scan Pasted List</button>
+            <textarea id="waiverInput" class="scout-textarea" aria-label="Players to check" placeholder="Paste waiver targets here… (e.g. Isiah Pacheco, Puka Nacua)"></textarea>
+            <button id="waiverScanBtn" class="btn btn-purple mt-3" style="width: 100%;" data-action="runScout" data-scout-type="waiver">Scan Pasted List</button>
+        </div>
 
         <div id="waiverOutput" class="scout-output-container" aria-live="polite"></div>
     </section>

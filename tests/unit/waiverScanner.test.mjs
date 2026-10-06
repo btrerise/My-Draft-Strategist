@@ -128,6 +128,15 @@ describe('matchesPosFilter / slotAcceptsPos', () => {
         assert.equal(slotAcceptsPos('DEF', 'DEF'), true);
         assert.equal(slotAcceptsPos('WR', 'RB'), false);
     });
+    // Sleeper's restricted flex slots (REC_FLEX = W/T, WRRB_FLEX = W/R), added in improvements S1.
+    test('slotAcceptsPos: W/T (WRTE) and W/R (WRRB)', () => {
+        assert.equal(slotAcceptsPos('WRTE', 'WR'), true);
+        assert.equal(slotAcceptsPos('WRTE', 'TE'), true);
+        assert.equal(slotAcceptsPos('WRTE', 'RB'), false);
+        assert.equal(slotAcceptsPos('WRRB', 'WR'), true);
+        assert.equal(slotAcceptsPos('WRRB', 'RB'), true);
+        assert.equal(slotAcceptsPos('WRRB', 'TE'), false);
+    });
 });
 
 describe('findFreeAgents', () => {
@@ -207,6 +216,16 @@ describe('fillLineup', () => {
         assert.deepEqual(ids(fillLineup(['SFLEX'], [c('qb', 'QB', 999)])), [['SFLEX', null]]);
         // A locked QB or FLEX player wins outright.
         assert.deepEqual(ids(fillLineup(['SFLEX'], [c('qb', 'QB', 1), c('te', 'TE', 30, 999, { isLocked: true })])), [['SFLEX', 'te']]);
+    });
+    test('W/T and W/R: only their positions, by flexRank, filled before FLEX', () => {
+        // The best flex player is an RB, but W/T can't take him: it gets the best WR/TE.
+        assert.deepEqual(ids(fillLineup(['WRTE'], [c('rb', 'RB', 1, 1), c('te', 'TE', 9, 20), c('wr', 'WR', 5, 12)])), [['WRTE', 'wr']]);
+        // W/R skips the TE ranked above everyone.
+        assert.deepEqual(ids(fillLineup(['WRRB'], [c('te', 'TE', 1, 1), c('rb', 'RB', 9, 15), c('wr', 'WR', 5, 30)])), [['WRRB', 'rb']]);
+        // Restricted slots fill first, so FLEX gets the RB the W/T slot couldn't use.
+        assert.deepEqual(ids(fillLineup(['FLEX', 'WRTE'], [c('rb', 'RB', 1, 1), c('te', 'TE', 9, 20), c('wr', 'WR', 5, 12)])), [['WRTE', 'wr'], ['FLEX', 'rb']]);
+        // A locked player still has to fit the slot.
+        assert.deepEqual(ids(fillLineup(['WRTE'], [c('rb', 'RB', 1, 1, { isLocked: true }), c('te', 'TE', 9, 20)])), [['WRTE', 'te']]);
     });
     test('an unfillable slot gets player null', () => {
         assert.deepEqual(ids(fillLineup(['QB', 'DEF'], [c('qb', 'QB', 1)])), [['QB', 'qb'], ['DEF', null]]);
