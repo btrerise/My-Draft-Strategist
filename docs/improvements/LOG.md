@@ -352,13 +352,14 @@ types, and this step never changes which slots exist or who starts. The labels o
 - No fixture is superflex, and the 38 lineup/other PNGs render identically to main.
 - `mls-league-guide.png` (desktop and phone) changes: the Guide's FLEX Kickoff Optimization help text is a line longer
   (+23px).
-- **Not re-taken in this session.** This session's container can't reproduce the committed baselines: every
-  screenshot, on main too, differs in text rendering. Since 2026-10-03 the image has `56-prefer-inter.conf`,
+- **Re-taken from CI**, since this session's container can't reproduce the committed baselines: every screenshot,
+  on main too, differs in text rendering. Since 2026-10-03 the image has `56-prefer-inter.conf`,
   `12-unhinted-grayscale.conf` and extra fonts (Inter, Caladea/Carlito, LibreOffice's); removing those got close but
-  not pixel-identical. So the comparison was done here between main and this branch, both rendered in this container
-  (`npm run pxdiff`), and only the two guide PNGs differ.
-- **Left over:** re-take `tests/baselines/linux/{desktop,phone}/mls-league-guide.png` where rendering matches CI.
-  Either take the two `-actual.png` files from the PR's failed CI run (the `playwright-results` artifact) after
-  checking them, or run `npx playwright test visual.spec.mjs -g "MLS synced league tabs" --update-snapshots=all` in a
-  session whose screenshots pass on main and keep only those two. Until then, CI's screenshot step fails on exactly
-  those two files.
+  not pixel-identical. Before re-taking, main and this branch were compared rendered in this container
+  (`npm run pxdiff`): only the two guide PNGs differ. The new PNGs are the `mls-league-guide-actual.png` files from
+  the first CI run on the PR (`playwright-results` artifact, uploaded by the owner because the session's network
+  policy blocks GitHub's artifact host). Checked before committing:
+  - Each artifact's `-expected.png` is byte-for-byte the committed baseline.
+  - Desktop differs only in the help-text paragraph (y 1667-1704, same height).
+  - Phone is 23px taller from the paragraph down. Below it, a few text rows differ slightly after the shift, but they
+    read the same, with no content change.
