@@ -69,6 +69,7 @@ export const KEYS = {
         weekly: 'mls_weekly',
         weeklyUpdated: 'mls_weekly_updated',
         autolockOverridesMap: 'mls_autolock_overrides_map',
+        bestAvailableCollapsed: 'mls_best_available_collapsed', // '1' while the Dashboard's Best Available card is collapsed (improvements S5)
         hasOptimized: 'mls_has_optimized',
         hasSeenRankingsToast: 'mls_has_seen_rankings_toast',
         hideDraftBanner: 'mls_hide_draft_banner',

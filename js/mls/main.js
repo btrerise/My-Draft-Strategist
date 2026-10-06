@@ -30,7 +30,7 @@ import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
 import { onScoutTabShown, refreshTopAvailable, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
-import { bestAvailableUpload, renderBestAvailable, viewLeagueTopAvailable } from './scout/bestAvailable.js';
+import { bestAvailableUpload, renderBestAvailable, toggleBestAvailable, viewLeagueTopAvailable } from './scout/bestAvailable.js';
 import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
@@ -111,6 +111,7 @@ const clickActions = {
     // Best available in your leagues (scout/bestAvailable.js, improvements S5)
     viewLeagueTopAvailable() { viewLeagueTopAvailable(this.dataset.leagueId); },
     bestAvailableUpload() { bestAvailableUpload(this.dataset.leagueId); },
+    toggleBestAvailable() { toggleBestAvailable(); },
     // ROS (Roster tab) and Weekly (Lineup tab) rankings cards
     toggleRankingsCard() { toggleRankingsCard(this.dataset.card); },
     deleteRankingSet() { deleteRankingSet(this.dataset.type); },

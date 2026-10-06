@@ -194,7 +194,8 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
     // by the same comparator that orders free agents (compareForScan), so "ranked ahead of your
     // weakest" means the same thing everywhere. Raw basis ranks drive the comparison; the
     // derived display ranks keep the same order within a group, so the numbers shown agree.
-    function rosterBenchmark(league, getPos, basisByName, filter) {
+    // Also the Dashboard's Best Available card's upgrade check (scout/bestAvailable.js).
+    export function rosterBenchmark(league, getPos, basisByName, filter) {
         const mine = (league.roster || [])
             .map(p => ({ ...p, pos: getPos(p.cleanName) }))
             .filter(p => matchesPosFilter(p.pos, filter))
