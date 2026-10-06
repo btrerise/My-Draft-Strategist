@@ -149,7 +149,11 @@ export const syncAllLeagues = async function(btn) {
         }
 
         const origText = btn.innerHTML;
-        btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing All…`;
+        // The spinner and the text beside it are built once. The loop below changes only the span's
+        // text for "Syncing 2/5…": rewriting the button's whole innerHTML made a new spinner element
+        // each time, which restarted its animation from the top for every league.
+        btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> <span class="sync-progress-label">Syncing All…</span>`;
+        const progressLabel = btn.querySelector('.sync-progress-label');
         btn.disabled = true;
         btn.style.opacity = '0.8';
 
@@ -189,8 +193,8 @@ export const syncAllLeagues = async function(btn) {
                     let l = sleeperLeagues[i];
                     // Mirrors importAllSleeperLeagues' per-league progress text below, instead
                     // of a static "Syncing All..." for the whole loop regardless of how many
-                    // leagues or how long it takes.
-                    btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing ${i + 1}/${sleeperLeagues.length}…`;
+                    // leagues or how long it takes. Text only: the spinner element stays as it is.
+                    progressLabel.textContent = `Syncing ${i + 1}/${sleeperLeagues.length}…`;
                     // processSleeperData re-optimizes the league it just synced, and the optimizer
                     // reads whatever rankings are in State -- so load THIS league's first, or every
                     // league gets a lineup built from the originally active league's rankings.

@@ -336,8 +336,16 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         if (btn) btn.disabled = true;
         setUploadInputsDisabled(type, true);
 
+        // The spinner and a text span are built on the first call; after that only the span's text
+        // changes, so the spinner element (and its animation) lasts the whole run.
         const updateProgress = (done, total) => {
-            if (btn) btn.innerHTML = `${SPINNER_SVG} Processing ${done}/${total}…`;
+            if (!btn) return;
+            let label = btn.querySelector('.busy-label');
+            if (!label) {
+                btn.innerHTML = `${SPINNER_SVG} <span class="busy-label"></span>`;
+                label = btn.querySelector('.busy-label');
+            }
+            label.textContent = `Processing ${done}/${total}…`;
         };
         updateProgress(0, filesWithContext.length);
 
