@@ -6,14 +6,14 @@ import assert from 'node:assert/strict';
 import * as scanner from '../../js/mls/scout/waiverScanner.js';
 import {
     FLEX_POSITIONS, buildRankDisplayIndex, compareForScan, matchesPosFilter, findFreeAgents,
-    fillLineup, slotAcceptsPos, checkAgainstLineup
+    fillLineup, slotAcceptsPos, checkAgainstLineup, upgradeGap
 } from '../../js/mls/scout/waiverScanner.js';
 
 describe('exports', () => {
     test('public surface is unchanged', () => {
         assert.deepEqual(Object.keys(scanner).sort(), [
-            'FLEX_POSITIONS', 'buildRankDisplayIndex', 'checkAgainstLineup', 'compareForScan',
-            'fillLineup', 'findFreeAgents', 'matchesPosFilter', 'slotAcceptsPos'
+            'FLEX_POSITIONS', 'UPGRADE_MIN_GAP', 'UPGRADE_RANK_CUTOFF', 'buildRankDisplayIndex', 'checkAgainstLineup',
+            'compareForScan', 'fillLineup', 'findFreeAgents', 'matchesPosFilter', 'slotAcceptsPos', 'upgradeGap'
         ]);
         assert.deepEqual(FLEX_POSITIONS, ['RB', 'WR', 'TE']);
     });
@@ -300,5 +300,38 @@ describe('checkAgainstLineup', () => {
         const res = checkAgainstLineup(P('nobody', 'WR'), lineup, deps());
         assert.equal(res.status, 'bench');
         assert.equal(res.bubble.id, 'rb3');
+    });
+});
+
+// The Dashboard's Best Available upgrade rule (improvements S5, round 4).
+describe('upgradeGap', () => {
+    const base = { pos: 'RB', basis: 'weekly' };
+    test('tiers decide when both have one: a better tier is an upgrade, the same tier is not', () => {
+        assert.equal(upgradeGap({ ...base, faRank: 5, faTier: 3, benchRank: 8, benchTier: 4 }), 3);
+        assert.equal(upgradeGap({ ...base, faRank: 5, faTier: 3, benchRank: 20, benchTier: 3 }), null);
+        // A one-spot gap across a tier break still counts.
+        assert.equal(upgradeGap({ ...base, faRank: 7, faTier: 2, benchRank: 8, benchTier: 3 }), 1);
+    });
+    test('without tiers, at least 3 position spots better', () => {
+        assert.equal(upgradeGap({ ...base, faRank: 5, benchRank: 8 }), 3);
+        assert.equal(upgradeGap({ ...base, faRank: 6, benchRank: 8 }), null);
+        assert.equal(upgradeGap({ ...base, faRank: 5, faTier: 2, benchRank: 8 }), 3, 'one side untiered: the gap rule');
+    });
+    test('never when the free agent is ranked behind or level', () => {
+        assert.equal(upgradeGap({ ...base, faRank: 9, faTier: 1, benchRank: 8, benchTier: 4 }), null);
+        assert.equal(upgradeGap({ ...base, faRank: 8, benchRank: 8 }), null);
+    });
+    test('an unranked player of yours: any relevant free agent, gap from one past the last ranked', () => {
+        assert.equal(upgradeGap({ ...base, faRank: 30, benchRank: null, rankedAtPos: 40 }), 11);
+        assert.equal(upgradeGap({ ...base, faRank: 30, benchRank: 999, rankedAtPos: 40 }), 11);
+    });
+    test('relevance cutoff by position and rankings type', () => {
+        assert.equal(upgradeGap({ ...base, faRank: 37, benchRank: null, rankedAtPos: 60 }), null);
+        assert.equal(upgradeGap({ ...base, faRank: 36, benchRank: null, rankedAtPos: 60 }), 25);
+        assert.equal(upgradeGap({ pos: 'TE', basis: 'weekly', faRank: 13, benchRank: null, rankedAtPos: 30 }), null);
+        assert.equal(upgradeGap({ pos: 'TE', basis: 'ros', faRank: 13, benchRank: null, rankedAtPos: 30 }), 18);
+        assert.equal(upgradeGap({ pos: 'WR', basis: 'ros', faRank: 60, benchRank: null, rankedAtPos: 80 }), 21);
+        assert.equal(upgradeGap({ pos: 'WR', basis: 'ros', faRank: 61, benchRank: null, rankedAtPos: 80 }), null);
+        assert.equal(upgradeGap({ ...base, faRank: null, benchRank: null, rankedAtPos: 10 }), null, 'an unranked free agent never');
     });
 });

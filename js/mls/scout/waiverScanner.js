@@ -149,6 +149,32 @@ export function findFreeAgents(rankings, { posFilter, getPos, isRostered, isExcl
     return { freeAgents: list, unresolvedCount: unresolvedNames.length, unresolvedNames };
 }
 
+// --- UPGRADE RULE (Dashboard's Best Available card, improvements S5) ---
+// Is a league's best free agent at a position worth flagging over your weakest rostered player
+// there? Ranks are display position ranks (buildRankDisplayIndex); tiers are the rankings file's
+// own (position tier, else the list's tier), or null when the file has none. Returns the gap in
+// position spots (the card sorts leagues by it), or null for "not an upgrade":
+//   - Relevance: the free agent must be inside a startable range for the rankings type
+//     (UPGRADE_RANK_CUTOFF). On deep rosters your weakest player is usually a stash, so without
+//     this nearly every league would flag someone.
+//   - Unranked player of yours: any relevant free agent is an upgrade. He counts as one spot below
+//     the last ranked player at the position for the gap.
+//   - Both tiered: only a better tier counts. A higher rank in the same tier isn't an upgrade
+//     (owner's rule).
+//   - Otherwise: at least UPGRADE_MIN_GAP position spots better.
+export const UPGRADE_RANK_CUTOFF = { weekly: { RB: 36, WR: 36, TE: 12 }, ros: { RB: 48, WR: 60, TE: 18 } };
+export const UPGRADE_MIN_GAP = 3;
+export function upgradeGap({ pos, basis, faRank, faTier = null, benchRank, benchTier = null, rankedAtPos = 0 }) {
+    const cutoff = (UPGRADE_RANK_CUTOFF[basis] || UPGRADE_RANK_CUTOFF.weekly)[pos];
+    if (!isRanked(faRank) || !faRank || (cutoff && faRank > cutoff)) return null;
+    const benchRanked = isRanked(benchRank) && !!benchRank;
+    const gap = (benchRanked ? benchRank : rankedAtPos + 1) - faRank;
+    if (gap <= 0) return null;
+    if (!benchRanked) return gap;
+    if (faTier != null && benchTier != null) return faTier < benchTier ? gap : null;
+    return gap >= UPGRADE_MIN_GAP ? gap : null;
+}
+
 // --- LINEUP SIMULATION ---
 // Fills a set of starter slots from a candidate pool using the exact same rules as
 // optimizeLineup in js/mls/render/lineup.js (strict slots by posRank, FLEX by flexRank-then-posRank, SFLEX by

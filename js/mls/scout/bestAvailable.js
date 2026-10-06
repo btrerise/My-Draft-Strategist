@@ -29,6 +29,15 @@
 //   in the same rankings the line used, and no new key is needed. A league without the chosen
 //   type falls back to its other one, and its label says so.
 //
+// Owner's choices in round 4 (after my second review as a user):
+// - Upgrades must matter: upgradeGap (waiverScanner.js) only flags a free agent inside a startable
+//   range, and, when the rankings have tiers, only from a better tier (same tier isn't an upgrade);
+//   without tiers, at least 3 position spots better.
+// - Every upgrade shows (at most one per position), marked inside the line's players instead of a
+//   separate sentence, so no name appears twice.
+// - A league synced more than 2 days ago says so; each line has an "Open in Sleeper" link; players
+//   carry injury badges; the fold uses the site's chevron.
+//
 // No second copy of the candidate logic: findFreeAgents (not in globalRosterMap, draft picks out,
 // unresolvable names left out, sorted by compareForScan), rosterBenchmark, buildRankDisplayIndex
 // (the RB8 numbers), makeLeagueGetPos (positions) and isFullyMappedLeague (manual leagues) are the
@@ -42,11 +51,12 @@
 // Sync All (its finally re-renders the Command Center) and adding, importing or deleting a league.
 // Rankings change on the Lineup and Roster tabs, so coming back to the Dashboard picks them up.
 import { escapeHtml } from '../../shared/html.js';
+import { getFreshness } from '../../shared/freshness.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { State } from '../state.js';
 import { getLeagueRankings } from '../leagues/sync.js';
 import { setRankingsCardExpanded } from '../rankings/engine.js';
-import { buildRankDisplayIndex, compareForScan, findFreeAgents, FLEX_POSITIONS } from './waiverScanner.js';
+import { buildRankDisplayIndex, findFreeAgents, FLEX_POSITIONS, upgradeGap } from './waiverScanner.js';
 import { getSleeperMetaByName, makeLeagueGetPos, rosterBenchmark, updateWaiverScanSetting } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
@@ -56,6 +66,8 @@ import { showTab, switchActiveLeague } from '../main.js';
     const CARD_ID = 'dashboardBestAvailable';
 
     const UPGRADE_ICON = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+    const EXTERNAL_ICON = `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+    const CHEVRON_ICON = `<svg aria-hidden="true" class="mls-ba-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 
     // Renders are async (the player map), and Sync All asks for one per league it syncs; only the
     // newest one writes.
@@ -112,6 +124,12 @@ import { showTab, switchActiveLeague } from '../main.js';
 
         const byName = {};
         basis.data.forEach(r => { if (r && r.cleanName) byName[r.cleanName] = r; });
+        // The file's own tier: the position tier, else the list's (a single-file upload's Tier column).
+        const tierOf = (clean) => {
+            const r = byName[clean];
+            if (!r) return null;
+            return r.posTier ?? r.tier ?? null;
+        };
         const rankedAtPos = {};
         basis.data.forEach(r => {
             if (!r || !r.cleanName || isDraftPickName(r.name)) return;
@@ -119,28 +137,57 @@ import { showTab, switchActiveLeague } from '../main.js';
             if (FLEX_POSITIONS.includes(p)) rankedAtPos[p] = (rankedAtPos[p] || 0) + 1;
         });
 
-        // The upgrade: at each position, the best free agent against your weakest rostered player
-        // (who leads that position's free agents; compareForScan decides "ahead", as in Check a
-        // List). The size is the gap in position ranks; an unranked player of yours counts as one
-        // spot below the last ranked player there. The biggest gap is the league's upgrade.
-        let upgrade = null;
+        // Upgrades: at each position, the best free agent against your weakest rostered player
+        // there (Check a List's Whole Roster benchmark), judged by upgradeGap: startable range,
+        // a better tier when both are tiered, else 3+ spots. Biggest gap first; the first one sorts
+        // the league.
+        const upgrades = [];
         FLEX_POSITIONS.forEach(pos => {
             const best = findFreeAgents(basis.data, { ...options, posFilter: pos }).freeAgents[0];
             const { bench } = rosterBenchmark(league, getPos, byName, pos);
-            if (!best || !bench || compareForScan(best, bench, pos) >= 0) return;
-            const benchRank = posRankOf(bench.cleanName);
+            if (!best || !bench) return;
             const faRank = posRankOf(best.cleanName);
-            const gap = (benchRank || (rankedAtPos[pos] || 0) + 1) - (faRank || 0);
-            if (!upgrade || gap > upgrade.gap) upgrade = { pos, fa: best, faRank, bench, benchRank, gap };
+            const benchRank = posRankOf(bench.cleanName);
+            const gap = upgradeGap({
+                pos, basis: basis.type, faRank, faTier: tierOf(best.cleanName),
+                benchRank, benchTier: tierOf(bench.cleanName), rankedAtPos: rankedAtPos[pos] || 0
+            });
+            if (gap) upgrades.push({ pos, fa: best, faRank, bench, benchRank, gap });
         });
+        upgrades.sort((x, y) => y.gap - x.gap);
 
-        return { league, basis, freeAgents, posRankOf, rankedAtPos, upgrade };
+        // The line's players: the upgrades first, then the best of the rest in FLEX order, PER_LEAGUE in all.
+        const flagged = new Set(upgrades.map(u => u.fa.cleanName));
+        const players = [
+            ...upgrades.map(u => ({ fa: u.fa, upgrade: u })),
+            ...freeAgents.filter(fa => !flagged.has(fa.cleanName)).map(fa => ({ fa, upgrade: null }))
+        ].slice(0, PER_LEAGUE);
+
+        return { league, basis, freeAgents, players, posRankOf, rankedAtPos, upgrade: upgrades[0] || null, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
+    }
+
+    function playerHTML(a, { fa, upgrade }) {
+        const inj = a.inj(fa.cleanName);
+        const over = upgrade
+            ? `<span class="mls-ba-over">over your ${escapeHtml(upgrade.bench.name)} ${upgrade.benchRank ? rankText(upgrade.pos, upgrade.benchRank) : '(unranked)'}</span>` : '';
+        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${over}</li>`;
+    }
+
+    // "Synced 4 days ago" when a league's ownership is old enough that an upgrade may already be gone
+    // (the Command Center's 2-day rule), or when its last sync failed.
+    function syncNote(league) {
+        if (league.lastSyncFailedAt) return `<span class="mls-ba-sync sync-failed">Last sync failed</span>`;
+        const fresh = getFreshness(league.lastSyncedAt, 2, 'Synced');
+        if (fresh && !fresh.isStale) return '';
+        return `<span class="mls-ba-sync freshness-stale">${fresh ? fresh.label : 'Last sync unknown'}</span>`;
     }
 
     function leagueLineHTML(a) {
         const { league, basis, upgrade } = a;
         const id = escapeHtml(league.leagueId);
         const name = escapeHtml(league.name || 'Unnamed league');
+        // Sleeper's web app, where the claim actually happens. A plain link: no data is fetched.
+        const sleeperLink = `<a class="btn btn-secondary mls-btn-sm mls-ba-sleeper" href="https://sleeper.com/leagues/${encodeURIComponent(league.leagueId)}" target="_blank" rel="noopener" aria-label="Open ${name} in Sleeper (new tab)">${EXTERNAL_ICON}Sleeper</a>`;
 
         let source, body, button;
         if (!basis) {
@@ -149,27 +196,23 @@ import { showTab, switchActiveLeague } from '../main.js';
             button = `<button type="button" class="btn btn-secondary mls-btn-sm" data-action="bestAvailableUpload" data-league-id="${id}" aria-label="Upload rankings for ${name}">Upload</button>`;
         } else {
             source = sourceLabel(basis);
-            const top = a.freeAgents.slice(0, PER_LEAGUE);
-            if (top.length > 0) {
-                body = `<ol class="mls-ba-players">${top.map(fa => `<li class="mls-ba-player"><span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}</li>`).join('')}</ol>`;
+            if (a.players.length > 0) {
+                body = `<ol class="mls-ba-players">${a.players.map(p => playerHTML(a, p)).join('')}</ol>`;
             } else {
                 const ranked = FLEX_POSITIONS.reduce((n, p) => n + (a.rankedAtPos[p] || 0), 0);
                 body = `<div class="mls-ba-empty">${ranked > 0
                     ? `Every RB, WR and TE in its ${basis.name} rankings (${ranked} ranked) is already rostered in this league. A deeper rankings file would show who's left.`
                     : `Its ${basis.name} rankings don't include any RB, WR or TE.`}</div>`;
             }
-            if (upgrade) {
-                body = `<div class="mls-ba-upgrade">${UPGRADE_ICON}<span>Upgrade: <strong>${escapeHtml(upgrade.fa.name)}</strong> ${rankText(upgrade.pos, upgrade.faRank)} over your <strong>${escapeHtml(upgrade.bench.name)}</strong> ${rankText(upgrade.pos, upgrade.benchRank)}</span></div>` + body;
-            }
             button = `<button type="button" class="btn btn-secondary mls-btn-sm" data-action="viewLeagueTopAvailable" data-league-id="${id}" aria-label="View top available in ${name}">View</button>`;
         }
 
         return `<li class="mls-ba-line${upgrade ? ' has-upgrade' : ''}" data-league-id="${id}">
             <div class="mls-ba-main">
-                <div class="mls-ba-head"><span class="mls-ba-league">${name}</span><span class="mls-ba-source">${source}</span></div>
+                <div class="mls-ba-head"><span class="mls-ba-league">${name}</span><span class="mls-ba-source">${source}</span>${syncNote(league)}</div>
                 ${body}
             </div>
-            ${button}
+            <div class="mls-ba-actions">${button}${sleeperLink}</div>
         </li>`;
     }
 
@@ -238,7 +281,7 @@ import { showTab, switchActiveLeague } from '../main.js';
             const restList = `<ul class="mls-ba-list">${rest.map(leagueLineHTML).join('')}</ul>`;
             // With nothing above them (no league has rankings yet), the lines show unfolded.
             html += anyRanked
-                ? `<details class="mls-ba-more"><summary><span class="mls-ba-when-closed">Show</span><span class="mls-ba-when-open">Hide</span> ${plural(rest.length, withUpgrade.length > 0 ? 'more league' : 'league')}</summary>${restList}</details>`
+                ? `<details class="mls-ba-more"><summary>${CHEVRON_ICON}<span><span class="mls-ba-when-closed">Show</span><span class="mls-ba-when-open">Hide</span> ${plural(rest.length, withUpgrade.length > 0 ? 'more league' : 'league')}</span></summary>${restList}</details>`
                 : restList;
         }
         const leftOut = leagues.length - synced.length;

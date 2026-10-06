@@ -5,23 +5,34 @@
 // leagues with the biggest upgrade first, the rest folded, and a View button that opens that league's
 // Top Available. Manual leagues are left out. The card collapses and remembers it.
 //
+// An upgrade (upgradeGap, unit-tested in tests/unit/waiverScanner.test.mjs) needs a better tier when both
+// players are tiered; rankings-waivers.csv has a Tier column, so these files move tiers with ranks.
+//
 // Leagues:
 // - Fixture League (synced). Your RB is Derrick Henry, your weakest WR Garrett Wilson, your weakest TE
 //   George Kittle (the fixture alternates players between the two teams). Free RB/WR/TE: James Cook,
 //   Jaxon Smith-Njigba, Chase Brown, Zay Flowers, Sam LaPorta.
 //   - rankings-waivers.csv (its ROS set here): no free agent beats your weakest (Cook RB8 < Henry RB5).
-//   - UPGRADE_CSV (its Weekly set here; Cook and Henry swapped): Cook RB5 beats Henry RB8, a gap of 3.
+//   - SAME_TIER_CSV: Cook RB5 is ahead of Henry RB8, but both are tier 3, so it's no upgrade.
+//   - UPGRADE_CSV (its Weekly set here): Cook RB5 tier 3 beats Henry RB8 tier 4, a gap of 3.
 // - Second League: a copy of the fixture league written straight into storage (only one Sleeper
-//   fixture league exists, and this one is never synced). Weekly only, as legacy per-league data:
-//   rankings-waivers.csv with Zay Flowers and Garrett Wilson swapped, so Flowers WR10 beats Wilson
-//   WR12, a gap of 2. With ROS picked it falls back to its Weekly rankings and says so.
+//   fixture league exists, and this one is never synced), last synced 4 days ago. Weekly only, as
+//   legacy per-league data: rankings-waivers.csv with Zay Flowers/Garrett Wilson and Sam
+//   LaPorta/George Kittle swapped (tiers too), so it has two upgrades: Flowers WR10 over Wilson WR12
+//   (gap 2) and LaPorta TE3 over Kittle TE4 (gap 1). It sorts after Fixture League. With ROS picked
+//   it falls back to its Weekly rankings and says so. Flowers is listed as Questionable by Sleeper here.
 // - Manual League: left out, with a line saying so.
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, WAIVER_RANKINGS_CSV, RANKINGS_CSV, FIXTURE_LEAGUE_ID } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, WAIVER_RANKINGS_CSV, RANKINGS_CSV, FIXTURE_LEAGUE_ID, FIXED_NOW } from './helpers.mjs';
 
-const UPGRADE_CSV = WAIVER_RANKINGS_CSV
-    .replace('15,Derrick Henry,RB,BAL', '26,Derrick Henry,RB,BAL')
-    .replace('26,James Cook,RB,BUF', '15,James Cook,RB,BUF');
+// The fixture lines are "15,Derrick Henry,RB,BAL,3,7" and "26,James Cook,RB,BUF,4,7" (Rank,Player,Pos,Team,Tier,Bye).
+const withCookAndHenry = (cook, henry) => WAIVER_RANKINGS_CSV
+    .replace('15,Derrick Henry,RB,BAL,3,7', henry)
+    .replace('26,James Cook,RB,BUF,4,7', cook);
+const UPGRADE_CSV = withCookAndHenry('15,James Cook,RB,BUF,3,7', '26,Derrick Henry,RB,BAL,4,7');
+const SAME_TIER_CSV = withCookAndHenry('15,James Cook,RB,BUF,3,7', '26,Derrick Henry,RB,BAL,3,7');
+const PLAYERS_JSON = readFileSync(new URL('./fixtures/sleeper/players-nfl.json', import.meta.url), 'utf8');
 const SECOND_LEAGUE_ID = '1000000000000000002';
 
 const card = (page) => page.locator('#dashboardBestAvailable');
@@ -88,7 +99,20 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await more(page).locator('summary').click();
         expect(await names(page, 'Fixture League')).toEqual(['James Cook', 'Jaxon Smith-Njigba', 'Chase Brown']);
         await expect(line(page, 'Fixture League').locator('.mls-ta-pos')).toHaveText(['RB8', 'WR11', 'RB9']);
-        await expect(line(page, 'Fixture League').locator('.mls-ba-upgrade')).toHaveCount(0);
+        await expect(line(page, 'Fixture League').locator('.is-upgrade')).toHaveCount(0);
+        // Synced today: no sync note. Every line links to the league in Sleeper.
+        await expect(line(page, 'Fixture League').locator('.mls-ba-sync')).toHaveCount(0);
+        await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('href', `https://sleeper.com/leagues/${FIXTURE_LEAGUE_ID}`);
+        await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('target', '_blank');
+
+        // Ahead in rank but the same tier: no upgrade (and the 3-spot gap doesn't override the tiers).
+        await showTab(page, 'lineup');
+        await loadMlsRankings(page, SAME_TIER_CSV, 30);
+        await showTab(page, 'setup');
+        await expect(summary(page)).toHaveText('No upgrades in your 1 league');
+        await more(page).locator('summary').click();
+        await expect(line(page, 'Fixture League').locator('.mls-ta-pos')).toHaveText(['RB5', 'WR11', 'RB9']);
+        await expect(line(page, 'Fixture League').locator('.is-upgrade')).toHaveCount(0);
 
         // Sync All redraws the card.
         await page.click('#syncAllBtn');
@@ -103,6 +127,12 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
 
     test('upgrades first by size, the Weekly/ROS switch, View and collapse', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
+        // Sleeper lists Zay Flowers as Questionable (registered after openApp's routes, so it runs first).
+        await page.route(/api\.sleeper\.app\/v1\/players\/nfl$/, (route) => {
+            const players = JSON.parse(PLAYERS_JSON);
+            players['9997'].injury_status = 'Questionable';
+            return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(players) });
+        });
         await seedMls(page);
         await createManualLeague(page, 'Manual League');
         await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
@@ -111,17 +141,20 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await upload(page, 'weeklyFileInput', UPGRADE_CSV, 30);
 
         // Second League: a synced copy of the fixture league with its own (legacy) Weekly rankings.
-        await page.evaluate((secondId) => {
+        await page.evaluate(({ secondId, syncedAt }) => {
             const leagues = JSON.parse(localStorage.getItem('mls_leagues'));
             const fixture = leagues.find(l => l.leagueId === '1000000000000000001');
             const rosSet = JSON.parse(localStorage.getItem('mls_ranking_sets_ros')).find(s => s.id === fixture.rosRankingSetId);
             const weekly = rosSet.data.map(r => ({ ...r }));
-            const flowers = weekly.find(r => r.name === 'Zay Flowers');
-            const wilson = weekly.find(r => r.name === 'Garrett Wilson');
-            for (const k of ['rank', 'posRank', 'flexRank']) [flowers[k], wilson[k]] = [wilson[k], flowers[k]];
-            leagues.push({ ...fixture, leagueId: secondId, name: 'Second League', weeklyRankingSetId: null, rosRankingSetId: null, weeklyRankings: weekly, rosRankings: [] });
+            const swap = (a, b) => {
+                const x = weekly.find(r => r.name === a), y = weekly.find(r => r.name === b);
+                for (const k of ['rank', 'posRank', 'flexRank', 'tier', 'posTier', 'flexTier']) [x[k], y[k]] = [y[k], x[k]];
+            };
+            swap('Zay Flowers', 'Garrett Wilson');
+            swap('Sam LaPorta', 'George Kittle');
+            leagues.push({ ...fixture, leagueId: secondId, name: 'Second League', lastSyncedAt: syncedAt, weeklyRankingSetId: null, rosRankingSetId: null, weeklyRankings: weekly, rosRankings: [] });
             localStorage.setItem('mls_leagues', JSON.stringify(leagues));
-        }, SECOND_LEAGUE_ID);
+        }, { secondId: SECOND_LEAGUE_ID, syncedAt: FIXED_NOW.getTime() - 4 * 86400000 });
         await page.reload();
         await showTab(page, 'setup');
 
@@ -137,12 +170,21 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         const fixture = line(page, 'Fixture League');
         const second = line(page, 'Second League');
         await expect(fixture.locator('.mls-ba-source')).toHaveText('Weekly · 9/15/2026');
-        await expect(fixture.locator('.mls-ba-upgrade')).toHaveText('Upgrade: James Cook RB5 over your Derrick Henry RB8');
+        await expect(fixture.locator('.mls-ba-sync')).toHaveCount(0);
+        // The upgrade is marked inside the list (no name twice): Cook, then the best of the rest.
         expect(await names(page, 'Fixture League')).toEqual(['James Cook', 'Jaxon Smith-Njigba', 'Chase Brown']);
         await expect(fixture.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['RB5', 'WR11', 'RB9']);
         await expect(fixture.locator('.mls-ta-pos').first()).toHaveClass(/\bpos-badge\b.*\bRB\b/);
+        await expect(fixture.locator('.is-upgrade .mls-ba-name')).toHaveText(['James Cook']);
+        await expect(fixture.locator('.mls-ba-over')).toHaveText(['over your Derrick Henry RB8']);
+        // Two upgrades, biggest first, then the best of the rest; an injury badge; an old sync is flagged.
         await expect(second.locator('.mls-ba-source')).toHaveText('Weekly');
-        await expect(second.locator('.mls-ba-upgrade')).toHaveText('Upgrade: Zay Flowers WR10 over your Garrett Wilson WR12');
+        await expect(second.locator('.mls-ba-sync')).toHaveText('Synced 4 days ago');
+        expect(await names(page, 'Second League')).toEqual(['Zay Flowers', 'Sam LaPorta', 'James Cook']);
+        await expect(second.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['WR10', 'TE3', 'RB8']);
+        await expect(second.locator('.mls-ba-over')).toHaveText(['over your Garrett Wilson WR12', 'over your George Kittle TE4']);
+        await expect(second.locator('.mls-ba-player').first().locator('.inj-badge')).toHaveText('Q');
+        await expect(second.locator('a.mls-ba-sleeper')).toHaveAttribute('href', `https://sleeper.com/leagues/${SECOND_LEAGUE_ID}`);
 
         // ROS: Fixture League's ROS set has no upgrade, so it folds; Second League has no ROS and falls back.
         await basisBtn(page, 'ros').click();
@@ -155,7 +197,7 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(more(page).locator('summary')).toHaveText('Show 1 more league', { useInnerText: true });
         await more(page).locator('summary').click();
         await expect(fixture.locator('.mls-ba-source')).toHaveText('ROS · 9/15/2026');
-        await expect(fixture.locator('.mls-ba-upgrade')).toHaveCount(0);
+        await expect(fixture.locator('.is-upgrade')).toHaveCount(0);
         await expect(fixture.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['RB8', 'WR11', 'RB9']);
 
         // Drawing every line didn't change the active league.
