@@ -544,5 +544,9 @@ link on a `productionresultssaN.blob.core.windows.net` host, whose number change
 - `mds-draft-team.png` (desktop, phone): from the first CI run on PR #181. Checked before committing: each artifact
   `-expected.png` is pixel-identical to the old baseline, and the new PNG differs only around the Gibbs and Chase rows
   (desktop box x 142-290, y 589-762; phone x 74-222, y 520-693).
-- `mds-draft-board.png` (desktop, phone): the screenshot test stops at its first mismatch, so the board is compared only
-  once the Team tab passes; taken from the next run.
+- `mds-draft-board.png` (desktop, phone): from the second CI run (the screenshot test stops at its first mismatch, so
+  the board was compared only once the Team tab passed). Each artifact `-expected.png` is pixel-identical to the old
+  baseline. The new PNGs are 7px (desktop) and 18px (phone) taller, the same growth as rendered in this container:
+  the first board row keeps room for the circles. Everything above that row is identical; below it, the page is the
+  same shifted down, apart from the fixed bottom nav bar, which a full-page screenshot draws at the same viewport
+  position and so now covers different grid rows, and one grid-line pixel row on desktop (rounding).
