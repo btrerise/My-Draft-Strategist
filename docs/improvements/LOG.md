@@ -537,6 +537,12 @@ themselves and now show initials. Rendered before and after in this container (`
 - `desktop/mds-draft-team.png`, `phone/mds-draft-team.png`: "JG" and "JC" circles beside Gibbs and Chase; their names
   move right to line up with the empty slots.
 
-These four baselines are **not yet re-taken**: this container renders text differently from CI (see F1), and CI's
-artifact storage is blocked here. They need CI's own renders, the `-actual.png` files from a PR's
-`playwright-results` artifact, as in F1.
+These four baselines are CI's own renders (this container renders text differently from CI, see F1), taken from the
+PR's `playwright-results` artifact. The owner allowed `*.blob.core.windows.net` in the environment's network settings,
+so the session downloads the artifact itself (`download_workflow_run_artifact` in the GitHub tools gives a short-lived
+link on a `productionresultssaN.blob.core.windows.net` host, whose number changes between runs).
+- `mds-draft-team.png` (desktop, phone): from the first CI run on PR #181. Checked before committing: each artifact
+  `-expected.png` is pixel-identical to the old baseline, and the new PNG differs only around the Gibbs and Chase rows
+  (desktop box x 142-290, y 589-762; phone x 74-222, y 520-693).
+- `mds-draft-board.png` (desktop, phone): the screenshot test stops at its first mismatch, so the board is compared only
+  once the Team tab passes; taken from the next run.
