@@ -555,13 +555,14 @@ link on a `productionresultssaN.blob.core.windows.net` host, whose number change
 
 **User-visible effect.** A new **Best available in your leagues** card on the Dashboard, under the League Command
 Center (a card of its own, not a fifth column in the Command Center's table). It works as a to-do list across your
-leagues:
+Sleeper leagues:
 - **Header:** the title, a summary line that stays visible when the card is collapsed ("Upgrades in 2 of 5 leagues ·
   1 league without rankings"), a tooltip, and a chevron. The card collapses with a tap on the header and remembers it.
-- **A one-line note:** "Each league by its own rankings. Ownership is from the last sync: Sync All Leagues refreshes it."
-- **One line per league:**
-  - the league's name and a short source label ("Weekly · 9/15/2026", "ROS · Dynasty PPR"; manual and Draft
-    Strategist hand-off leagues add "manual: not on your roster");
+- **A Weekly | ROS switch**, beside a one-line note: "Each league by its own Weekly rankings. Ownership is from the
+  last sync: Sync All Leagues refreshes it." The switch is the Scout tab's Rank By (below).
+- **One line per Sleeper-synced league:**
+  - the league's name and a short source label ("Weekly · 9/15/2026", "ROS · Dynasty PPR", or "Weekly (no ROS set)"
+    when the league lacks the picked type);
   - when there is one, a green **upgrade** line with an SVG up-arrow: "Upgrade: James Cook RB5 over your Derrick
     Henry RB8";
   - its top 3 available RB/WR/TE, each with a position-rank chip in the position colors ("James Cook RB5");
@@ -570,8 +571,12 @@ leagues:
 - **Order:** leagues with an upgrade come first, the biggest one first. Leagues with no upgrade, then leagues with no
   rankings, fold under **Show N more leagues** (it reads "Hide" while open). If no league has an upgrade, a line says
   so above the fold. If no league has rankings, the lines show unfolded.
+- **Manual and Draft Strategist hand-off leagues are left out**, with one line at the bottom: "1 manual league not
+  included: the app only knows your own roster there, not who's on the waiver wire."
 
-With no leagues the card still shows, saying where to add one.
+**Empty states:**
+- With no leagues, the card still shows, saying where to add one.
+- With only manual leagues, it says best available needs a league synced from Sleeper.
 
 **Owner's decisions.**
 - Before building:
@@ -581,8 +586,11 @@ With no leagues the card still shows, saying where to add one.
     which is the overall rank for a single-file ROS upload). QBs, Ks and DEFs are in View's full list.
   - **Position-rank chip, no tier** ("RB8").
   - Always open (changed in round 2).
-- After the first version (round 2, below): the upgrade check, upgrades first and the rest folded, a collapse that's
-  remembered, and a shorter source label and note.
+- Round 2, after the first push: the upgrade check, upgrades first and the rest folded, a collapse that's remembered,
+  and a shorter source label and note.
+- Round 3, after the second push:
+  - **Leave manual leagues out**, since the app can't read their waiver wire.
+  - **A switch between ROS and Weekly rankings.**
 
 **Round 2: from a list to a to-do list.** After the first push, I reviewed the card as a user with many leagues would.
 My points:
@@ -596,7 +604,7 @@ collapse, and a shorter label and note. Changes:
 - **Upgrade check:**
   - At each of RB, WR and TE, the league's best free agent is compared with your weakest rostered player there.
     "Weakest" comes from Check a List's Whole Roster benchmark, `rosterBenchmark` (now exported from
-    `js/mls/scout/waivers.js`), by that league's own rankings. `compareForScan` decides who is ahead, as Check a List
+    `js/mls/scout/waivers.js`), by that league's rankings. `compareForScan` decides who is ahead, as Check a List
     does.
   - It needs only your roster and rankings, not a lineup, so it works without making the league active. That's why
     it's allowed where Would Start isn't.
@@ -613,19 +621,40 @@ collapse, and a shorter label and note. Changes:
     collapsed), so Backup/Restore and Factory Reset include it. Reads and writes are wrapped in try/catch.
   - The summary is `#bestAvailableSummary`. It uses the rankings cards' header style but wraps instead of cutting off.
 - **Shorter text:** the source label drops the default set-name prefix ("Weekly Rankings – 9/15/2026" →
-  "Weekly · 9/15/2026") and keeps custom names. The note is one sentence. The manual-league explanation moved onto
-  each manual line ("manual: not on your roster"). The no-rankings line reads "Upload Weekly rankings on the Lineup
-  tab (or ROS on the Roster tab) with this league active."
+  "Weekly · 9/15/2026") and keeps custom names. The note is one sentence. The no-rankings line reads "Upload Weekly
+  rankings on the Lineup tab (or ROS on the Roster tab) with this league active."
+
+**Round 3: Sleeper leagues only, and a Weekly | ROS switch** (owner's requests after round 2).
+- **Manual leagues left out:**
+  - The card lists only leagues `isFullyMappedLeague` accepts (synced from Sleeper, so their `globalRosterMap` holds
+    every team). Manual and hand-off leagues know only your roster. Their "best available" was really "best not on
+    your roster", and any upgrade line there might name a player already on another team.
+  - One line at the bottom counts what was left out and why. If every league is manual, the card says it needs a
+    Sleeper league; the summary reads "No Sleeper-synced leagues".
+  - Round 2's "manual: not on your roster" label is gone, since those lines no longer exist.
+- **Weekly | ROS switch:**
+  - A segmented control (`.mls-segmented`, like the Waiver Wire Assistant's mode toggle) at the top of the card's
+    body.
+  - **It is the Waiver Wire Assistant's Rank By** (`State.waiverScanSettings.basis`, set through
+    `updateWaiverScanSetting`). It's already saved, so no new key is needed, and the Scout tab's dropdown follows it.
+    That also fixes round 1's View mismatch: View now opens Top Available in the same rankings the line used. The
+    flip side is that changing it on the Dashboard changes the Scout tab's Rank By too; the tooltip says they're
+    shared.
+  - **Default Weekly**, as before.
+  - **Fallback:** a league without the picked type uses its other one, and its label says so ("Weekly (no ROS set)").
+    That matches Top Available's own fallback, which View lands on with its "No ROS rankings loaded for this league -
+    using Weekly rank instead." note.
+  - The upgrade check uses the picked type too, so ROS answers "who's better for the rest of the season".
 
 **What changed and where.**
-- `js/mls/scout/bestAvailable.js` (new, in `PRECACHE_ASSETS`): `renderBestAvailable`, `toggleBestAvailable`,
-  `viewLeagueTopAvailable`, `bestAvailableUpload`.
+- `js/mls/scout/bestAvailable.js` (new, in `PRECACHE_ASSETS`): `renderBestAvailable`, `setBestAvailableBasis`,
+  `toggleBestAvailable`, `viewLeagueTopAvailable`, `bestAvailableUpload`.
 - **Reuse, no second copy of the candidate logic:**
   - `findFreeAgents` (available = not in the league's `globalRosterMap`; draft picks out; unresolvable names left
     out), called once for the FLEX list and once per position for the upgrade check;
   - `rosterBenchmark` and `compareForScan` (the upgrade check);
   - `buildRankDisplayIndex` (the RB8 numbers, derived the same way Top Available derives them);
-  - `isFullyMappedLeague` (manual and hand-off wording).
+  - `isFullyMappedLeague` (which leagues count).
 - **New shared helpers** (each replaces code that was inline, so there's still one copy):
   - `getLeagueRankings(league, type)` in `js/mls/leagues/sync.js`: a league's named set, else its legacy per-league
     upload, else null. `hydrateRankingsForLeague` now uses it, so the card reads each league's rankings exactly the
@@ -639,58 +668,62 @@ collapse, and a shorter label and note. Changes:
   tab. That covers:
   - the Dashboard being shown (nav.js → `refreshLeagueDropdown`);
   - Sync All (its finally re-renders the Command Center);
-  - adding, importing or deleting a league.
+  - adding, importing or deleting a league;
+  - the switch.
 
   Rankings change on the Lineup and Roster tabs, so coming back to the Dashboard picks them up. Renders are async
   (the player map); a counter makes sure only the newest one writes, since Sync All asks for one per league.
-- **View** keeps Rank By and the position chips as they were. So with Rank By on ROS, a league whose line used Weekly
-  opens in ROS order; Top Available says which rankings it's using.
 - **Empty states:**
   - No leagues: "No leagues yet. Sync a Sleeper league or import all of yours under Add/Sync League below…"
-  - A league with no rankings: source "No rankings", the upload hint above, and an **Upload** button (makes the league
+  - Only manual leagues: "Best available needs a league synced from Sleeper…"
+  - A league with no rankings: source "No rankings", the upload hint, and an **Upload** button (makes the league
     active and opens the Lineup tab) instead of View.
   - Everyone ranked is rostered: "Every RB, WR and TE in its Weekly rankings (20 ranked) is already rostered in this
-    league. A deeper rankings file would show who's left." ("on your roster" for manual leagues.)
+    league. A deeper rankings file would show who's left."
   - Rankings with no RB/WR/TE: "Its ROS rankings don't include any RB, WR or TE."
   - No upgrade anywhere: "No free agent is ranked ahead of your weakest RB, WR or TE in any league."
 - **`lineup/index.html`:** the card's static frame: a collapsible header with a Feather `user-plus` SVG and a chevron,
-  the summary line, the tooltip (which also defines an upgrade), and `#bestAvailableBody`. It's hidden until the first
-  render. Buttons use data-action; `js/mls/main.js` has the three actions.
-- **`css/mls.css`:** `.mls-ba-*`. The rank chips reuse `.mls-ta-pos` and the position badge classes.
+  the summary line, the tooltip (which defines an upgrade, says the switch is shared with the Scout tab, and says
+  manual leagues are left out), and `#bestAvailableBody`. It's hidden until the first render. Buttons use
+  data-action; `js/mls/main.js` has the four actions.
+- **`css/mls.css`:** `.mls-ba-*`. The rank chips reuse `.mls-ta-pos` and the position badge classes; the switch
+  reuses `.mls-segmented`.
 - **`js/shared/storage/keys.js`:** `bestAvailableCollapsed`.
 - **`sw.js`:** `CACHE_NAME` v2.8.78 → v2.8.79. CHANGELOG line under Lineup Strategist's Unreleased.
 
 **Tests:** `tests/mls-best-available.spec.mjs` (both widths).
-- **Empty states:**
+- **Empty states, manual leagues and Sync All:**
   - no leagues;
-  - a synced league with no rankings: lines unfolded, summary "1 league without rankings", and Upload opens the
-    Lineup tab;
+  - only a manual league ("No Sleeper-synced leagues", no switch);
+  - a synced league with no rankings beside a manual one: only the synced line, the "1 manual league not included"
+    line, nothing folded, and Upload opens the Lineup tab;
   - rankings.csv, where every ranked RB/WR/TE is rostered: "No upgrades in your 1 league", the no-upgrade line, and
     the fold reading Show, then Hide;
-  - rankings-waivers.csv, which has free agents but none ahead of your weakest.
-- **Three leagues** (upgrades sorted by size, and the fold):
-  - Fixture League: Weekly, with Cook and Henry swapped in rankings-waivers.csv. Gives "Upgrade: James Cook RB5 over
-    your Derrick Henry RB8" (gap 3), then Cook RB5, Jaxon Smith-Njigba WR11, Chase Brown RB9.
-  - A manual league: ROS only (falls back to ROS), with Kyren Williams added by hand. Gives "Upgrade: Chase Brown RB1
-    over your Kyren Williams RB3" (gap 2), the manual label, and LaPorta TE1, Flowers WR1, Brown RB1 (QB Josh Allen
-    left out).
-  - A manual league with no rankings, folded under "Show 1 more league".
-- **Other checks:**
-  - the summary;
-  - drawing every line doesn't change the active league;
-  - collapse hides the lines, keeps the summary, and survives a reload;
-  - View from Auto-Find lands on the manual league's Top Available;
-  - the card redraws on return to the Dashboard and after Sync All.
+  - rankings-waivers.csv, which has free agents but none ahead of your weakest;
+  - Sync All redraws the card.
+- **Two synced leagues, the switch, View and collapse:**
+  - **Fixture League:** ROS from rankings-waivers.csv (no upgrade), Weekly with Cook and Henry swapped. Weekly gives
+    "Upgrade: James Cook RB5 over your Derrick Henry RB8" (gap 3).
+  - **Second League:** a synced copy of the fixture league written into storage (only one Sleeper fixture league
+    exists; it's never synced in this test, so it needs no new fixture). It has legacy Weekly rankings with Zay Flowers
+    and Garrett Wilson swapped: "Upgrade: Zay Flowers WR10 over your Garrett Wilson WR12" (gap 2), so it sorts second.
+  - **A manual league,** left out with its line.
+  - **ROS:** Fixture League folds (no upgrade; "ROS · 9/15/2026", RB8/WR11/RB9). Second League falls back ("Weekly (no
+    ROS set)") and leads. The Scout tab's Rank By reads ROS.
+  - **Collapse:** hides the lines, keeps the summary, and survives a reload, as does the ROS choice.
+  - **View:** from Auto-Find, it lands on Second League's Top Available "by Weekly rank" with its fallback note.
+  - **Also checked:** drawing every line doesn't change the active league; switching back to Weekly restores the
+    order and the Scout tab's Rank By.
 - **Test-only wrinkle:** set and manual-league ids are `'rset_' + Date.now()` and `'manual_' + Date.now()`, and the
-  tests fix the clock, so a second one created in the same test reuses the first one's id. The spec moves the clock a
-  minute between them. Real users never create two in the same millisecond.
+  tests fix the clock, so a second one created in the same test would reuse the first one's id. This spec creates only
+  one manual league per test, and its ROS and Weekly sets live in separate pools.
 
 **Screenshots.** This container still can't reproduce the committed baselines (the same 10 `visual.spec.mjs`
 failures as on clean main; see F1). So I rendered all 40 on main and on this branch here and compared them with
 `npm run pxdiff`. Exactly four differ, all from the new card:
 - `desktop/mls-empty-setup.png`, `phone/mls-empty-setup.png`: the card with its no-leagues line (+164px, +180px).
 - `desktop/mls-league-setup.png`, `phone/mls-league-setup.png`: the card with its summary ("1 league without
-  rankings"), the note, and Fixture League's no-rankings line and Upload button (+219px, +252px).
+  rankings"), the Weekly | ROS switch and note, and Fixture League's no-rankings line and Upload button (+231px, +291px).
 
 The other 36 are pixel-identical. **Not re-taken yet:** the baselines have to be CI's own renders, and CI only runs on
 a pull request (see F3 for fetching the `playwright-results` artifact). Until those four PNGs are replaced with CI's
@@ -698,7 +731,8 @@ a pull request (see F3 for fetching the `playwright-results` artifact). Until th
 
 **Left over.**
 - The four Dashboard baselines above (needs a PR's CI run).
-- The bug below (runbook card F4).
+- The bug below (runbook card F4). It no longer reaches this card, since manual leagues are left out, but it still
+  affects the manual league's own lineup and Top Available.
 - Unmatched ranked names aren't listed on the card (Top Available lists them); the line just skips them.
 - Per-position Weekly uploads without a FLEX file have no FLEX rank, so the line's order there falls back to position
   rank (RB1 and WR1 tie). Same as Top Available's FLEX view. The upgrade check compares within one position, so it
@@ -717,13 +751,13 @@ the runbook as **F4** (Fix now group).
   the league has no set assigned yet.
 - **What you see:**
   - the new league shows "Unassigned Upload (legacy)" holding rankings you never gave it;
-  - its lineup, Top Available and the Dashboard's Best Available card all use them. The card's line reads "Weekly"
-    with no set name.
+  - its lineup and Top Available use them. The Dashboard's Best Available card used them too until round 3 left manual
+    leagues out.
 - **Reproduce:** sync the fixture league and upload rankings, create a manual league, upload only ROS there. The new
   league now has the fixture league's Weekly rankings as legacy data.
 - **Likely fix:** call `switchActiveLeague(newId)` at the end of `createManualLeague`. Also check the hand-off import,
   first-time Sleeper sync and Import All for the same gap.
 - **Existing data:** don't delete it. Copied rankings can't be told apart from a real legacy upload, and picking a set
   or uploading replaces them.
-- **Test workaround to remove once fixed:** S5's spec works around the bug (its `createManualLeague` helper switches
-  to the new league before uploading). F4's fix should remove that.
+- **Test note:** S5's spec no longer needs a workaround (manual leagues are off the card), so F4's own spec is the
+  test.

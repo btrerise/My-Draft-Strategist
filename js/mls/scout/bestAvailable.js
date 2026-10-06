@@ -20,6 +20,15 @@
 // - The card collapses, and remembers it (KEYS.mls.bestAvailableCollapsed). Its header keeps a
 //   summary line ("Upgrades in 2 of 5 leagues") so it's useful closed.
 //
+// Owner's choices in round 3:
+// - Sleeper-synced leagues only. A manual or Draft Strategist hand-off league knows only your own
+//   roster, not who's on the waiver wire, so "best available" there would be a guess; those
+//   leagues are left out, with one line saying so (isFullyMappedLeague decides).
+// - A Weekly | ROS switch. It is the Waiver Wire Assistant's Rank By (State.waiverScanSettings.basis,
+//   the one setting Top Available, Auto-Find and Check a List share), so View opens Top Available
+//   in the same rankings the line used, and no new key is needed. A league without the chosen
+//   type falls back to its other one, and its label says so.
+//
 // No second copy of the candidate logic: findFreeAgents (not in globalRosterMap, draft picks out,
 // unresolvable names left out, sorted by compareForScan), rosterBenchmark, buildRankDisplayIndex
 // (the RB8 numbers), makeLeagueGetPos (positions) and isFullyMappedLeague (manual leagues) are the
@@ -59,12 +68,18 @@ import { showTab, switchActiveLeague } from '../main.js';
 
     const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-    // The rankings a league's line uses: Weekly, else ROS, else none.
+    const NAMES = { weekly: 'Weekly', ros: 'ROS' };
+    const chosenBasis = () => (State.waiverScanSettings.basis === 'ros' ? 'ros' : 'weekly');
+
+    // The rankings a league's line uses: the chosen type (the Weekly | ROS switch), else the
+    // other one, flagged as a fallback; else none.
     function leagueBasis(league) {
-        const weekly = getLeagueRankings(league, 'weekly');
-        if (weekly && weekly.data.length > 0) return { ...weekly, name: 'Weekly' };
-        const ros = getLeagueRankings(league, 'ros');
-        if (ros && ros.data.length > 0) return { ...ros, name: 'ROS' };
+        const wanted = chosenBasis();
+        const other = wanted === 'ros' ? 'weekly' : 'ros';
+        for (const type of [wanted, other]) {
+            const found = getLeagueRankings(league, type);
+            if (found && found.data.length > 0) return { ...found, type, name: NAMES[type], fallback: type !== wanted };
+        }
         return null;
     }
 
@@ -72,7 +87,8 @@ import { showTab, switchActiveLeague } from '../main.js';
     // "Weekly · Dynasty PPR" for a named one, "Weekly" for a legacy upload.
     function sourceLabel(basis) {
         const name = (basis.setName || '').replace(/^(Weekly|ROS) Rankings\s*[–-]\s*/i, '').trim();
-        return name ? `${basis.name} · ${escapeHtml(name)}` : basis.name;
+        const label = name ? `${basis.name} · ${escapeHtml(name)}` : basis.name;
+        return basis.fallback ? `${label} (no ${NAMES[chosenBasis()]} set)` : label;
     }
 
     const rankText = (pos, posRank) => posRank ? `${escapeHtml(pos)}${posRank}` : `${escapeHtml(pos)}, unranked`;
@@ -80,9 +96,8 @@ import { showTab, switchActiveLeague } from '../main.js';
 
     // Everything a league's line needs, worked out without making it the active league.
     function analyzeLeague(league, meta) {
-        const knowsWholeLeague = isFullyMappedLeague(league);
         const basis = leagueBasis(league);
-        if (!basis) return { league, knowsWholeLeague, basis: null, upgrade: null };
+        if (!basis) return { league, basis: null, upgrade: null };
 
         const getPos = makeLeagueGetPos(league, meta);
         const roster = league.globalRosterMap || {};
@@ -119,11 +134,11 @@ import { showTab, switchActiveLeague } from '../main.js';
             if (!upgrade || gap > upgrade.gap) upgrade = { pos, fa: best, faRank, bench, benchRank, gap };
         });
 
-        return { league, knowsWholeLeague, basis, freeAgents, posRankOf, rankedAtPos, upgrade };
+        return { league, basis, freeAgents, posRankOf, rankedAtPos, upgrade };
     }
 
     function leagueLineHTML(a) {
-        const { league, knowsWholeLeague, basis, upgrade } = a;
+        const { league, basis, upgrade } = a;
         const id = escapeHtml(league.leagueId);
         const name = escapeHtml(league.name || 'Unnamed league');
 
@@ -133,14 +148,14 @@ import { showTab, switchActiveLeague } from '../main.js';
             body = `<div class="mls-ba-empty">Upload Weekly rankings on the Lineup tab (or ROS on the Roster tab) with this league active.</div>`;
             button = `<button type="button" class="btn btn-secondary mls-btn-sm" data-action="bestAvailableUpload" data-league-id="${id}" aria-label="Upload rankings for ${name}">Upload</button>`;
         } else {
-            source = `${sourceLabel(basis)}${knowsWholeLeague ? '' : ' &middot; manual: not on your roster'}`;
+            source = sourceLabel(basis);
             const top = a.freeAgents.slice(0, PER_LEAGUE);
             if (top.length > 0) {
                 body = `<ol class="mls-ba-players">${top.map(fa => `<li class="mls-ba-player"><span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}</li>`).join('')}</ol>`;
             } else {
                 const ranked = FLEX_POSITIONS.reduce((n, p) => n + (a.rankedAtPos[p] || 0), 0);
                 body = `<div class="mls-ba-empty">${ranked > 0
-                    ? `Every RB, WR and TE in its ${basis.name} rankings (${ranked} ranked) is already ${knowsWholeLeague ? 'rostered in this league' : 'on your roster'}. A deeper rankings file would show who's left.`
+                    ? `Every RB, WR and TE in its ${basis.name} rankings (${ranked} ranked) is already rostered in this league. A deeper rankings file would show who's left.`
                     : `Its ${basis.name} rankings don't include any RB, WR or TE.`}</div>`;
             }
             if (upgrade) {
@@ -178,8 +193,10 @@ import { showTab, switchActiveLeague } from '../main.js';
         card.style.display = 'block';
         setRankingsCardExpanded(CARD_ID, !isCollapsedSaved());
 
+        const leagues = State.leagues || [];
+        const synced = leagues.filter(isFullyMappedLeague);
         let meta = {};
-        if ((State.leagues || []).length > 0) {
+        if (synced.length > 0) {
             try {
                 meta = await getSleeperMetaByName();
             } catch (e) {
@@ -188,14 +205,17 @@ import { showTab, switchActiveLeague } from '../main.js';
         }
         if (gen !== renderGen) return;
 
-        const leagues = State.leagues || [];
         if (leagues.length === 0) {
             if (summary) summary.textContent = '';
             body.innerHTML = `<div class="mls-scan-empty">No leagues yet. Sync a Sleeper league or import all of yours under Add/Sync League below, and each league's best available players show here.</div>`;
             return;
         }
-
-        const analyses = leagues.map(l => analyzeLeague(l, meta));
+        if (synced.length === 0) {
+            if (summary) summary.textContent = 'No Sleeper-synced leagues';
+            body.innerHTML = `<div class="mls-scan-empty">Best available needs a league synced from Sleeper. Manual leagues only know your own roster, not who's on the waiver wire. Sync a Sleeper league under Add/Sync League below.</div>`;
+            return;
+        }
+        const analyses = synced.map(l => analyzeLeague(l, meta));
         if (summary) summary.textContent = summaryText(analyses);
 
         // Biggest upgrade first; ties keep the Command Center's league order (sort is stable).
@@ -203,7 +223,12 @@ import { showTab, switchActiveLeague } from '../main.js';
         const rest = [...analyses.filter(a => a.basis && !a.upgrade), ...analyses.filter(a => !a.basis)];
         const anyRanked = analyses.some(a => a.basis);
 
-        let html = `<p class="mls-ba-note">Each league by its own rankings. Ownership is from the last sync: <strong>Sync All Leagues</strong> refreshes it.</p>`;
+        const basis = chosenBasis();
+        const basisBtn = (b) => `<button type="button" class="mls-segmented-btn${b === basis ? ' active' : ''}" data-action="setBestAvailableBasis" data-basis="${b}" aria-pressed="${b === basis}">${NAMES[b]}</button>`;
+        let html = `<div class="mls-ba-controls">
+                <div class="mls-segmented mls-ba-basis" role="group" aria-label="Rank by">${basisBtn('weekly')}${basisBtn('ros')}</div>
+                <p class="mls-ba-note">Each league by its own ${NAMES[basis]} rankings. Ownership is from the last sync: <strong>Sync All Leagues</strong> refreshes it.</p>
+            </div>`;
         if (withUpgrade.length > 0) {
             html += `<ul class="mls-ba-list">${withUpgrade.map(leagueLineHTML).join('')}</ul>`;
         } else if (anyRanked) {
@@ -216,6 +241,8 @@ import { showTab, switchActiveLeague } from '../main.js';
                 ? `<details class="mls-ba-more"><summary><span class="mls-ba-when-closed">Show</span><span class="mls-ba-when-open">Hide</span> ${plural(rest.length, withUpgrade.length > 0 ? 'more league' : 'league')}</summary>${restList}</details>`
                 : restList;
         }
+        const leftOut = leagues.length - synced.length;
+        if (leftOut > 0) html += `<p class="mls-ba-excluded">${plural(leftOut, 'manual league')} not included: the app only knows your own roster there, not who's on the waiver wire.</p>`;
         body.innerHTML = html;
     }
 
@@ -235,8 +262,14 @@ import { showTab, switchActiveLeague } from '../main.js';
         } catch (e) { /* storage blocked: it still toggles for this visit */ }
     }
 
-    // View: that league's Top Available on the Scout tab. Rank By and the position chips stay as
-    // they were; showTab('scout') draws the list (onScoutTabShown).
+    // The Weekly | ROS switch: the Waiver Wire Assistant's Rank By, shared with the Scout tab.
+    export function setBestAvailableBasis(basis) {
+        updateWaiverScanSetting('basis', basis === 'ros' ? 'ros' : 'weekly');
+        renderBestAvailable();
+    }
+
+    // View: that league's Top Available on the Scout tab, in the rankings the line used (the switch
+    // is Rank By); the position chips stay as they were. showTab('scout') draws the list.
     export function viewLeagueTopAvailable(leagueId) {
         if (!(State.leagues || []).some(l => l.leagueId === leagueId)) return;
         if (leagueId !== State.activeLeagueId) switchActiveLeague(leagueId);

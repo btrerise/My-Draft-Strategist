@@ -67,13 +67,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **Best available in your leagues, on the Dashboard:** a new card under the League Command Center shows, for every
-  league, its top 3 available RBs, WRs and TEs with their position ranks ("James Cook RB8"), each ranked by the
-  rankings that league uses (its Weekly set, else its ROS set). When a free agent is ranked ahead of your weakest
-  player at his position, the league gets an upgrade line ("Upgrade: James Cook RB5 over your Derrick Henry RB8"),
-  and leagues with the biggest upgrades come first; the rest fold under "Show N more leagues". View opens that
-  league's Top Available on the Scout tab. The card collapses and remembers it, keeping a one-line summary ("Upgrades
-  in 2 of 5 leagues"). Ownership is from each league's last sync; manual leagues say "not on your roster", since the
-  app only knows your own roster there. A league with no rankings yet says where to upload them.
+  league synced from Sleeper, its top 3 available RBs, WRs and TEs with their position ranks ("James Cook RB8"),
+  ranked by that league's own Weekly or ROS rankings. A Weekly | ROS switch picks which; it's the same Rank By as the
+  Scout tab's Waiver Wire Assistant, so the two always agree. When a free agent is ranked ahead of your weakest player
+  at his position, the league gets an upgrade line ("Upgrade: James Cook RB5 over your Derrick Henry RB8"), and
+  leagues with the biggest upgrades come first; the rest fold under "Show N more leagues". View opens that league's
+  Top Available on the Scout tab. The card collapses and remembers it, keeping a one-line summary ("Upgrades in 2 of
+  5 leagues"). Manual leagues are left out, since the app only knows your own roster there, not who's on the waiver
+  wire. A league with no rankings yet says where to upload them.
 - **Top Available in the Waiver Wire Assistant:** the Scout tab's waiver card now has three modes, Top Available,
   Auto-Find and Check a List, sharing one Rank By, one row of position chips and one results area. Top Available (the
   default) is a compact list of the best-ranked players nobody in your league has rostered, with rank chips in the
