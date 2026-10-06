@@ -98,7 +98,7 @@ test.describe('Restricted flex slots (W/T, W/R)', () => {
         await expectClean(page, state);
     });
 
-    test('Draft Strategist W/R: Team tab slot, Tracker limits, and the hand-off to Lineup Strategist', async ({ page }) => {
+    test('Draft Strategist W/R: Team tab slot, roster-limits row, and the hand-off to Lineup Strategist', async ({ page }) => {
         const state = await openApp(page, '/');
         await seedMds(page); // my picks: Ja'Marr Chase (WR), Jahmyr Gibbs (RB)
         // No fixed RB/WR slots: both picks are flex starters, one W/R and one FLEX.
@@ -106,10 +106,9 @@ test.describe('Restricted flex slots (W/T, W/R)', () => {
             const { getActiveDraft } = await import('/js/mds/state.js');
             getActiveDraft().limits = { QB: 1, RB: 0, WR: 0, TE: 1, WT: 0, WRRB: 1, FLEX: 1, SFLEX: 0, K: 1, DEF: 1, BENCH: 5, TOTAL: 10 };
         });
-        await showTab(page, 'tracker');
-        // FLX counts every flex-type slot: W/R plus FLEX, both filled.
-        await expect(page.locator('#limitsBody td').nth(4)).toHaveText('2 / 2');
         await showTab(page, 'team');
+        // The roster-limits row's FLX counts every flex-type slot: W/R plus FLEX, both filled.
+        await expect(page.locator('#limitsBody td').nth(4)).toHaveText('2 / 2');
         const wr = page.locator('.roster-slot').filter({ has: page.locator('.roster-label', { hasText: /^W\/R$/ }) });
         await expect(wr).toHaveCount(1);
         await expect(wr).toContainText("Ja'Marr Chase");

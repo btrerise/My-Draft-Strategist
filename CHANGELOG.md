@@ -17,10 +17,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **W/T and W/R slots from Sleeper leagues are counted.** Syncing a draft whose Sleeper league has a WR/TE or WR/RB
   flex slot used to leave that slot out of your roster limits. They now show on the Team tab as W/T and W/R, count in
-  the Tracker's FLX column (which only counted plain FLEX before), and carry over to Lineup Strategist with Send to
+  the roster-limits FLX column under My Team (which only counted plain FLEX before), and carry over to Lineup Strategist with Send to
   Lineup Strategist.
 - **Flex slot labels on the Team tab show the positions they take:** a filled FLX label runs green-blue-yellow
   (RB/WR/TE), SFLX red-green-blue-yellow, and W/T blue-yellow, instead of borrowing one position's color.
+- **The Team tab's roster-limits row lines up before rankings are loaded.** It was missing its K and DEF cells, so
+  the total showed under K.
 - **The bye-week warning on the Team tab uses a warning icon** instead of the ⚠️ emoji, so it looks the same on
   every device and matches the rest of the site.
 - **Rankings and ADP say how old they are.** The status line in Load Rankings reads "Loaded: 220 players • Updated

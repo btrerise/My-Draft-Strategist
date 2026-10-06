@@ -138,21 +138,24 @@ Strategist's W/T slot).
   - `js/mds/team.js` fills W/R slots before W/T and FLEX, with a W/R label in the RB→WR blend
     (`.roster-label.wr-blend-text`, `--wr-blend` in `css/base.css`).
   - `js/mds/handoff.js` sends it as `WRRB`.
-  - The Tracker's roster-limits FLX column (`js/mds/tracker.js`) now counts W/R, W/T and FLEX together. It only
+  - The Team tab's roster-limits FLX column (drawn by `renderBoard` in `js/mds/tracker.js`) now counts W/R, W/T and FLEX together. It only
     counted FLEX before, so a filled W/T never showed. Extra RB/WR/TE fill W/R (RBs first), then W/T (TEs first),
     then FLEX, which fills the most slots since WRs fit all three. The `<th>` has a title saying so.
   - Tests, written first and seen failing (`tests/restricted-flex.spec.mjs`):
     - Draft Strategist counts `WRRB_FLEX` as W/R.
-    - A W/R limit gives a Team tab W/R slot and a Tracker FLX of "2 / 2" (was "1 / 1").
+    - A W/R limit gives a Team tab W/R slot and an FLX of "2 / 2" in the roster-limits row (was "1 / 1").
     - The hand-off sends `WRRB`.
 - **Left over:**
-  - The Tracker's roster-limits table, before any player is drafted, has seven cells under nine headers (no K or
-    DEF cell), so TOT shows under K. Pre-existing and unrelated; left for the owner (`js/mds/tracker.js`,
-    `limitsBodyElEmpty`).
   - Power Rankings fills W/R before W/T greedily; in a league with both, a lineup can come out slightly below its
     best (noted in `power/shared.js`).
 - **Screenshots re-taken:** `mls-empty-setup.png` and `mls-league-setup.png`, both widths (the two new
   requirement inputs; the grid is now two rows of five).
+
+**Round 7: the empty roster-limits row** (owner's request; found during round 6). Before any rankings are loaded,
+`renderBoard`'s empty-state branch (`js/mds/tracker.js`) drew the Team tab's roster-limits row with seven cells under
+nine headers (no K or DEF), so the total sat under K. It now has K and DEF cells. Test written first and seen failing:
+`tests/mds-limits-table.spec.mjs` (headers and all nine cells). Screenshots re-taken: `mds-empty-team.png`, both
+widths (the row now lines up).
 
 **Owner's decisions:**
 - Before building: All = top 5 per position; a position or FLEX = top 15 plus "Show 15 more". A flat top-25 list was

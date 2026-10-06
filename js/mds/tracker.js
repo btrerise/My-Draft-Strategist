@@ -327,7 +327,7 @@ import { updateSetupGuidance } from './setupGuide.js';
             const limitsBodyElEmpty = document.getElementById('limitsBody');
             if (limitsBodyElEmpty) {
                 const dLimits = getActiveDraft()?.limits || { QB:1, RB:2, WR:3, TE:1, FLEX:1, SFLEX:0, BENCH:6, TOTAL:14 };
-                limitsBodyElEmpty.innerHTML = `<tr><td>0 / ${dLimits.QB}</td><td>0 / ${dLimits.RB}</td><td>0 / ${dLimits.WR}</td><td>0 / ${dLimits.TE}</td><td>0 / ${(dLimits.FLEX || 0) + (dLimits.WT || 0) + (dLimits.WRRB || 0)}</td><td>0 / ${dLimits.SFLEX}</td><td><strong>0 / ${dLimits.TOTAL}</strong></td></tr>`;
+                limitsBodyElEmpty.innerHTML = `<tr><td>0 / ${dLimits.QB}</td><td>0 / ${dLimits.RB}</td><td>0 / ${dLimits.WR}</td><td>0 / ${dLimits.TE}</td><td>0 / ${(dLimits.FLEX || 0) + (dLimits.WT || 0) + (dLimits.WRRB || 0)}</td><td>0 / ${dLimits.SFLEX}</td><td>0 / ${dLimits.K || 0}</td><td>0 / ${dLimits.DEF || 0}</td><td><strong>0 / ${dLimits.TOTAL}</strong></td></tr>`;
             }
             return;
         }
