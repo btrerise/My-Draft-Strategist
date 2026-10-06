@@ -851,12 +851,27 @@ failures as on clean main; see F1). So I rendered all 40 on main and on this bra
 - `desktop/mls-league-setup.png`, `phone/mls-league-setup.png`: the card with its summary ("1 league without
   rankings"), the Weekly | ROS switch and note, and Fixture League's no-rankings line with its Upload button and, on desktop, Sleeper link (+246px, +291px).
 
-The other 36 are pixel-identical. **Not re-taken yet:** the baselines have to be CI's own renders, and CI only runs on
-a pull request (see F3 for fetching the `playwright-results` artifact). Until those four PNGs are replaced with CI's
-`-actual.png` files, CI's screenshot step fails on them.
+The other 36 are pixel-identical.
+
+**Re-taken from CI.** The four baselines are CI's own renders: the `-actual.png` files from the first CI run on
+[btrerise/My-Draft-Strategist#182](https://github.com/btrerise/My-Draft-Strategist/pull/182) (run 37548144119, head
+dc7855e, `playwright-results` artifact 11451950413). That run failed only on these four, with 166 tests passing. The
+session downloaded the artifact itself, through the GitHub tools' short-lived link (see F3). Checked before committing:
+- Each artifact `-expected.png` is pixel-identical to the old baseline.
+- Each new PNG is identical to the old one above the card. It grows by +163px and +177px (`mls-empty-setup`, desktop
+  and phone) and +242px and +274px (`mls-league-setup`), close to this container's +164/+180/+246/+291 (different
+  fonts).
+- Below the card, the page is the old page shifted down by that amount, except for:
+  - the fixed bottom nav bar, which a full-page screenshot draws at the same position, so it now covers different
+    rows;
+  - a few text rows in `mls-league-setup` that differ by anti-aliasing after the shift and read the same.
+- The card itself, viewed in each PNG: the no-leagues line, and the summary, Weekly | ROS switch, note and Fixture
+  League's no-rankings line with Upload and, on desktop only, the Sleeper link.
+
+The "MLS synced league tabs" screenshot test stops at its first mismatch (the Dashboard), so CI compared that test's
+other tabs only after this push. This container found them pixel-identical to main.
 
 **Left over.**
-- The four Dashboard baselines above (needs a PR's CI run).
 - The bug below (runbook card F4). It no longer reaches this card, since manual leagues are left out, but it still
   affects the manual league's own lineup and Top Available.
 - Unmatched ranked names aren't listed on the card (Top Available lists them); the line just skips them.
