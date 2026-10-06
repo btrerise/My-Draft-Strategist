@@ -281,3 +281,84 @@ The owner liked this in S1's discussion. Not built; on the runbook as S6 (Needs:
 - **(b) Trending chip or toggle:** in Top Available, the trending adds still free in this league, ordered by add count,
   each with your rank or "UR". That surfaces players the crowd is chasing whose value your rankings disagree with.
 - A failed fetch hides the badge and chip quietly (no `console.error`, which fails tests). Offline still works.
+
+## F1 — FLEX Kickoff Optimization covers SFLEX slots
+
+**User-visible effect.** With FLEX Kickoff Optimization on (the default), a superflex lineup now puts the latest
+kickoffs in SFLEX first, then FLEX:
+- A QB who plays later than your QB-slot QB moves to SFLEX, and the earlier QB takes the QB slot. With two QBs
+  starting and one QB slot, SFLEX always keeps a QB.
+- An RB/WR/TE in SFLEX trades places with a later-playing FLEX or strict-slot starter, as long as the slots still
+  fit (an RB stays in an RB slot if the other RB slots need him).
+- W/T and W/R slots get the same treatment within their positions, after FLEX: a W/T can trade with a later WR or TE,
+  never an RB.
+- Who starts never changes. With the toggle off, slots are exactly the rank-based fill, as before.
+- Lineups without SFLEX, W/T or W/R are unchanged, slot for slot.
+- Wording: the toggle's tooltip, the Optimize Lineup tooltip and the Guide's help text now name SFLEX (and W/T, W/R).
+
+**Owner's decisions.**
+- "Asks you" (a real league and week to test against): no real case. The tests use the runbook's two made-up cases.
+- W/T and W/R: included (the card left it to the session). They're more flexible than a strict WR/RB/TE slot, so the
+  same late-swap reasoning applies. They're settled after FLEX, W/T before W/R (later in fill order, so with no
+  kickoff data nothing moves).
+
+**Reproduced on main first** (`tests/mls-sflex-kickoff.spec.mjs`, both widths). It serves the fixture league with a
+SUPER_FLEX slot (QB 1, RB 2, WR 2, TE 1, FLEX 1, SFLEX 1, K 1, DEF 1), gives mds_test Hurts (QB) and Gibbs (RB) from
+the rival's roster, and sets `State.gameTimesByTeam` in the page (ESPN is blocked in tests). On main:
+- (a) Allen (BUF, Sunday night) in QB, Hurts (PHI, 1pm) in SFLEX. Now: QB Hurts, SFLEX Allen.
+- (b) Hurts unranked, so the fill puts Nacua (WR) in SFLEX. Main had WR Jefferson, WR Lamb, FLEX Chase (CIN, Monday
+  night), SFLEX Nacua (LAR, 4:05). Now: WR Jefferson, WR Nacua, FLEX Lamb (4:25), SFLEX Chase (Monday night).
+- (c) Toggle off: the rank-based fill (WR Chase, WR Jefferson, FLEX Lamb, SFLEX Nacua), on main and now.
+
+**What changed and where.**
+- `js/mls/lineup/kickoffOrder.js` (new, in `PRECACHE_ASSETS`): `optimizeFlexKickoffOrder(starters, kickoffMs)`, moved
+  out of `js/mls/render/lineup.js` and made pure (no State), so Node can test it. How it works:
+  - The pool is every unlocked starter in a QB/RB/WR/TE/W/R/W/T/FLEX/SFLEX slot. Locked players and their slots stay
+    out, as before; empty slots stay empty; K and DEF never move.
+  - Slot types are settled in order SFLEX, FLEX, W/T, W/R, then the strict slots. Each slot takes the latest-kickoff
+    player it accepts (`SLOT_POSITIONS`) for whom the remaining players can still fill the remaining slots. The check
+    is a small bipartite matching; a lineup has about a dozen movable starters at most.
+  - This covers the runbook's suggested approach: the number of QBs in SFLEX is forced, the QB slots end up with the
+    earliest QBs, and the strict RB/WR/TE slots keep the earliest per position.
+  - Unknown kickoff still counts as latest. Ties keep the rank-based fill (the player the fill placed lower counts as
+    later).
+  - Display rule kept: several slots of one type read earliest to latest, top to bottom (ties RB, WR, TE, as FLEX did).
+  - QB slots only take part when an SFLEX slot is open, so a 2-QB league without SFLEX keeps QB1/QB2 in rank order,
+    as on main.
+- `js/mls/render/lineup.js`: calls it with a kickoff lookup on `State.gameTimesByTeam`; the old function is gone.
+  Comments in `optimizeLineup` and in `js/mls/state.js` (the setting) updated.
+- `lineup/index.html`: the three wording changes above.
+- `sw.js`: `CACHE_NAME` v2.8.74 → v2.8.75. CHANGELOG line under Lineup Strategist's Unreleased.
+
+**Waiver scanner** (`js/mls/scout/waiverScanner.js`). Slot labels don't matter there, so it's unchanged. Its
+`fillLineup` re-slots the current starters plus the free agent from scratch by rank, using only the multiset of slot
+types, and this step never changes which slots exist or who starts. The labels only feed the wording of Auto-Find's
+"(your SUPERFLEX)" / "(your FLEX)" on the displaced or bubble starter, which now names the slot the Lineup tab shows.
+
+**Tests.**
+- `tests/unit/kickoffOrder.test.mjs`:
+  - 1 and 2 SFLEX slots, 3 QBs, a locked player in SFLEX, a locked QB in the QB slot, no kickoff time, no kickoff
+    data at all (nothing moves), and empty slots.
+  - W/T and W/R cases.
+  - Random superflex lineups checked against a brute-force search: same starters, legal slots, locks fixed, and SFLEX
+    holds the latest kickoff any valid seating could give it.
+  - 500 random lineups without SFLEX/W/T/W/R (1-2 QBs, 0-3 FLEX, ties, unknowns, locks), compared slot for slot with
+    a copy of main's function. While writing this, it caught two differences that are now fixed: main sorts strict
+    slots by kickoff even when no FLEX is movable, and never moved QBs.
+- The toggle-off case is in the spec (the function isn't called then).
+- All existing specs pass unchanged.
+
+**Screenshots.**
+- No fixture is superflex, and the 38 lineup/other PNGs render identically to main.
+- `mls-league-guide.png` (desktop and phone) changes: the Guide's FLEX Kickoff Optimization help text is a line longer
+  (+23px).
+- **Not re-taken in this session.** This session's container can't reproduce the committed baselines: every
+  screenshot, on main too, differs in text rendering. Since 2026-10-03 the image has `56-prefer-inter.conf`,
+  `12-unhinted-grayscale.conf` and extra fonts (Inter, Caladea/Carlito, LibreOffice's); removing those got close but
+  not pixel-identical. So the comparison was done here between main and this branch, both rendered in this container
+  (`npm run pxdiff`), and only the two guide PNGs differ.
+- **Left over:** re-take `tests/baselines/linux/{desktop,phone}/mls-league-guide.png` where rendering matches CI.
+  Either take the two `-actual.png` files from the PR's failed CI run (the `playwright-results` artifact) after
+  checking them, or run `npx playwright test visual.spec.mjs -g "MLS synced league tabs" --update-snapshots=all` in a
+  session whose screenshots pass on main and keep only those two. Until then, CI's screenshot step fails on exactly
+  those two files.

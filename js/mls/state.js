@@ -46,10 +46,10 @@ import { mdsFetch } from '../shared/net.js';
         // Leagues search's Positional Power Rank recommendations (see runAllLeaguesSearch).
         waiverScanSettings: Object.assign({ compare: 'lineup', basis: 'weekly', pos: 'ALL', limit: 10, startersOnly: false, scope: 'league', intent: 'buy', mode: 'top' }, readJSON(KEYS.mls.waiverScanSettings, {})),
         // --- LINEUP OPTIMIZER SETTINGS (FLEX Kickoff Optimization) ---
-        // flexKickoffOptimization gates optimizeFlexKickoffOrder() (see below): when on, the
-        // optimizer reassigns which flex-eligible starters sit in strict RB/WR/TE slots vs the
-        // true FLEX slot(s) so FLEX always holds the latest kickoff(s), maximizing late-swap
-        // flexibility. Defaults to true -- this is a strict improvement for anyone using their
+        // flexKickoffOptimization gates optimizeFlexKickoffOrder() (js/mls/lineup/kickoffOrder.js):
+        // when on, the optimizer reassigns which starters sit in strict QB/RB/WR/TE slots vs the
+        // SFLEX, FLEX, W/T and W/R slots so SFLEX, then FLEX, hold the latest kickoff(s),
+        // maximizing late-swap flexibility. Defaults to true -- this is a strict improvement for anyone using their
         // platform's real-time swap window, but some people prefer their FLEX slot to just
         // reflect rank order without the extra slot-shuffling, hence the escape valve. This is
         // separate from kickoff-based auto-lock (see hasKickedOff/isSleeperStarter in

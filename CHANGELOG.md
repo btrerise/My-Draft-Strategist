@@ -79,6 +79,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **FLEX and SFLEX badges show the positions they take:** the Lineup tab's FLEX slot badge has a green-blue-yellow
   (RB/WR/TE) border and SFLEX a red-green-blue-yellow (QB/RB/WR/TE) one, instead of the shared violet. The Scout tab's
   FLEX button and heading match.
+- **FLEX Kickoff Optimization covers SFLEX.** In superflex leagues, SFLEX used to keep whoever rank put there, even
+  when your QB-slot QB or a FLEX starter played later. Now SFLEX holds the latest-kickoff starter it can take (a QB
+  who plays after your other QB, or an RB/WR/TE), then FLEX, so you keep the most room for a late swap. W/T and W/R
+  slots get the same treatment within the positions they take. Who starts doesn't change.
 
 ### v2.14.0 — 2026-10-05
 

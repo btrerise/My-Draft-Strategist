@@ -7,6 +7,7 @@ import { pushLineupUndoSnapshot, State } from '../state.js';
 import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } from '../helpers.js';
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
+import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
 import { getByeBadgeHTML, getGameInfoHTML, getLineupInjuryWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -176,90 +177,6 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         }
         renderLineupUI();
     };
-
-    // FLEX kickoff optimization: given the starters array that fillSlot()/the SFLEX loop above
-    // already produced (i.e. WHO starts is fully decided), reorders which specific players sit
-    // in strict RB/WR/TE slots vs the true FLEX slot(s), so that FLEX is always occupied by the
-    // latest-kickoff player(s) among that week's flex-eligible starters. This maximizes
-    // late-swap flexibility: the slot with the most schedule flexibility (FLEX, in most
-    // platforms' swap UIs) ends up genuinely being the one you can wait longest to lock in.
-    //
-    // This never changes the SET of starting players, never touches QB/K/DEF/SFLEX, and never
-    // puts a player in a slot whose position they don't match (a WR can never occupy an "RB"
-    // labeled slot) -- it only decides, among players who are already flex-eligible (RB/WR/TE)
-    // and already starting, which of them gets which slot label.
-    //
-    // How it works: for each position (RB/WR/TE), sort that position's starters by kickoff time
-    // ascending. Whichever `count` of them is needed to fill that position's strict slots (e.g.
-    // 2 RB slots) are exactly the `count` earliest-kickoff players at that position -- anyone
-    // left over (because they were already flex-allocated by rank) is "surplus" and gets
-    // reassigned into a FLEX-labeled slot instead, in kickoff order. If kickoff data isn't
-    // available for a player, they sort last (Infinity) so we never assume a game is early
-    // without evidence -- and if kickoff data isn't available at all, the sort is a no-op and
-    // slot assignments are left exactly as fillSlot() originally produced them.
-    function optimizeFlexKickoffOrder(starters) {
-        const FLEX_POSITIONS = ['RB', 'WR', 'TE'];
-        const byPos = { RB: [], WR: [], TE: [] };
-        const strictSlotCount = { RB: 0, WR: 0, TE: 0 };
-
-        starters.forEach((s, idx) => {
-            const slotType = s.slot.replace(/[0-9]/g, '');
-            // Locked players (manually locked, or auto-locked because their game already
-            // kicked off -- see optimizeLineup) are pinned exactly where fillSlot put them.
-            // Their slot doesn't count toward strictSlotCount either, since it's not available
-            // for the unpinned pool below to be reassigned into.
-            if (s.player && s.player.isLocked) return;
-            if (FLEX_POSITIONS.includes(slotType)) strictSlotCount[slotType]++;
-            if (!s.player) return;
-            if (slotType !== 'FLEX' && !FLEX_POSITIONS.includes(slotType)) return;
-            if (!FLEX_POSITIONS.includes(s.player.pos)) return; // safety guard against malformed data
-            byPos[s.player.pos].push(idx);
-        });
-
-        const getKickoffMs = (idx) => {
-            const p = starters[idx].player;
-            const iso = p && p.team ? State.gameTimesByTeam[p.team] : null;
-            const ms = iso ? new Date(iso).getTime() : NaN;
-            return isNaN(ms) ? Infinity : ms;
-        };
-
-        FLEX_POSITIONS.forEach(pos => {
-            byPos[pos].sort((a, b) => getKickoffMs(a) - getKickoffMs(b));
-        });
-
-        const strictAssignees = {};
-        let flexAssignees = [];
-        FLEX_POSITIONS.forEach(pos => {
-            const indices = byPos[pos];
-            strictAssignees[pos] = indices.slice(0, strictSlotCount[pos]).map(i => starters[i].player);
-            flexAssignees.push(...indices.slice(strictSlotCount[pos]).map(i => starters[i].player));
-        });
-        // Earliest kickoff first, so multiple FLEX slots read chronologically top-to-bottom,
-        // the same way the strict RB/WR/TE slots above them do. (This used to sort latest-
-        // first, which put e.g. the MNF player in FLEX1 above the SNF player in FLEX2 and read
-        // as reversed.) Which FLEX slot a player lands in doesn't affect late-swap flexibility
-        // -- every FLEX slot accepts the same positions -- so this is purely display order.
-        // Unknown kickoff sorts last, matching byPos above.
-        flexAssignees.sort((a, b) => {
-            const aMs = a.team && State.gameTimesByTeam[a.team] ? new Date(State.gameTimesByTeam[a.team]).getTime() : NaN;
-            const bMs = b.team && State.gameTimesByTeam[b.team] ? new Date(State.gameTimesByTeam[b.team]).getTime() : NaN;
-            return (isNaN(aMs) ? Infinity : aMs) - (isNaN(bMs) ? Infinity : bMs) || 0;
-        });
-
-        const cursors = { RB: 0, WR: 0, TE: 0, FLEX: 0 };
-        starters.forEach(s => {
-            if (!s.player) return;
-            if (s.player.isLocked) return; // pinned above -- leave exactly as fillSlot placed them
-            const slotType = s.slot.replace(/[0-9]/g, '');
-            if (FLEX_POSITIONS.includes(slotType)) {
-                const newPlayer = strictAssignees[slotType][cursors[slotType]++];
-                if (newPlayer) s.player = newPlayer;
-            } else if (slotType === 'FLEX') {
-                const newPlayer = flexAssignees[cursors.FLEX++];
-                if (newPlayer) s.player = newPlayer;
-            }
-        });
-    }
 
     // opts.batch marks a call made as one iteration of a multi-league run (optimizeAllLineups).
     // In batch mode this function computes and stores the lineup in State exactly as normal,
@@ -498,14 +415,18 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         taxiPlayers.sort(benchOrder);
         pool.push(...taxiPlayers);
 
-        // Reassign which specific players occupy strict RB/WR/TE slots vs the FLEX slot(s),
+        // Reassign which starters sit in the strict QB/RB/WR/TE slots vs SFLEX, FLEX, W/T and W/R,
         // purely by kickoff time -- who actually starts is already decided above by rank; this
-        // only relabels slots so FLEX holds the latest games. See optimizeFlexKickoffOrder for
-        // why this is safe (it never changes the set of starters, only slot labels). Gated by
-        // the user-facing toggle (State.lineupSettings.flexKickoffOptimization, default on) --
-        // when off, slots are left exactly as fillSlot()/the SFLEX loop above assigned them.
+        // only relabels slots so SFLEX, then FLEX, hold the latest games. See
+        // optimizeFlexKickoffOrder (js/mls/lineup/kickoffOrder.js) for why this is safe (it never
+        // changes the set of starters, only slot labels). Gated by the user-facing toggle
+        // (State.lineupSettings.flexKickoffOptimization, default on) -- when off, slots are left
+        // exactly as fillSlot()/the SFLEX loop above assigned them.
         if (State.lineupSettings.flexKickoffOptimization) {
-            optimizeFlexKickoffOrder(starters);
+            optimizeFlexKickoffOrder(starters, p => {
+                const iso = p.team ? State.gameTimesByTeam[p.team] : null;
+                return iso ? new Date(iso).getTime() : NaN;
+            });
         }
 
         State.manualStartersMap[State.activeLeagueId] = starters;
