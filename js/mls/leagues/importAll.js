@@ -2,7 +2,9 @@
 import { getNflState, getSleeperPlayerMap, getSleeperUser, getSleeperUserLeagues } from '../../shared/api/sleeper.js';
 import { State } from '../state.js';
 import { updatePulsePrompts } from '../init.js';
-import { formatNameList, loadActiveLeagueData, processSleeperData, refreshLeagueDropdown } from './sync.js';
+import { formatNameList, hydrateRankingsForLeague, loadActiveLeagueData, processSleeperData, refreshLeagueDropdown } from './sync.js';
+import { getActiveLeague } from '../helpers.js';
+import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { showToast } from '../../shared/ui/toast.js';
 
@@ -68,6 +70,11 @@ import { showToast } from '../../shared/ui/toast.js';
                 State.activeLeagueId = State.leagues[0].leagueId;
                 localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
             }
+            // processSleeperData loaded each league's own rankings as it made it active, but
+            // leaves the rankings cards to bulk callers: refresh them once for the league the
+            // loop ended on (improvements F4).
+            hydrateRankingsForLeague(getActiveLeague());
+            updateRankingsMetaDisplay();
             loadActiveLeagueData();
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
 

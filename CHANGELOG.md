@@ -66,6 +66,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A new league starts with no rankings.** Creating a manual league, syncing a Sleeper league for the first time,
+  Import All and importing a roster from Draft Strategist used to keep the rankings of the league you were on. The new
+  league's lineup used them, and its first rankings upload saved them into it as "Unassigned Upload (legacy)". After
+  a reload, any league with no rankings of its own picked up your latest upload from another league the same way. A
+  league now has no rankings until you upload or pick a set for it, as when you switch to it. A league that already
+  got another league's rankings this way still shows them as "Unassigned Upload (legacy)": pick a set in that
+  dropdown, or upload new rankings, to replace them.
 - **Sleeper trending adds in Top Available** (Scout tab, Waiver Wire Assistant). A player among Sleeper's 50
   most-added of the last 24 hours gets a small green trending-up icon in his row; hover it for how many leagues added him.
   A new **Show: Your rankings | Trending** switch lists those trending players who are still available in your league,

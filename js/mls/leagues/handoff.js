@@ -1,7 +1,6 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3B: DRAFT STRATEGIST
 // ROSTER HANDOFF.
-import { State } from '../state.js';
-import { loadActiveLeagueData, refreshLeagueDropdown } from './sync.js';
+import { addLeagueAndOpen } from './sync.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { showToast } from '../../shared/ui/toast.js';
@@ -51,19 +50,14 @@ import { showToast } from '../../shared/ui/toast.js';
             rosRankings: [], weeklyRankings: [], rosRankingsUpdatedAt: null, weeklyRankingsUpdatedAt: null,
             rosRankingSetId: null, weeklyRankingSetId: null
         };
-        State.leagues.push(leagueObj);
-        State.activeLeagueId = newId;
-        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
-        localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
         localStorage.removeItem(KEYS.shared.handoffRoster);
 
         const banner = document.getElementById('handoffBanner');
         if (banner) banner.style.display = 'none';
 
-        refreshLeagueDropdown();
-        const leagueSelect = document.getElementById('headerLeagueSelect');
-        if (leagueSelect) leagueSelect.value = newId;
-        loadActiveLeagueData();
+        // Opens it like a league switch, which loads its own rankings (none yet) instead of
+        // leaving the previous league's in State (improvements F4).
+        addLeagueAndOpen(leagueObj);
 
         showToast(`Imported "${leagueObj.name}" with ${roster.length} players.`);
     };

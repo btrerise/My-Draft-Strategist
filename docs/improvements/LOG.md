@@ -1033,3 +1033,87 @@ renders. All 40 matched. The committed baselines are untouched. CI (the real bas
 - A trending player whose name collides with another Sleeper player picks up the team, injury and Starts check of the
   name-index winner (`getSleeperMetaByName`). Rare, and the same rule the rest of the Waiver Wire Assistant uses.
 - Trending drops, and trending on the Dashboard's Best Available card, are out of scope (runbook: later ideas).
+
+## F4 — A new league starts with no rankings
+
+Found during S5 (see "Bug found during S5" above).
+
+**User-visible effect.** A league you add starts with no rankings: its Lineup tab's Weekly set dropdown and the Roster
+tab's ROS dropdown read "+ Create New Set", no "Loaded: N players" line shows, and the rankings cards open to ask for
+an upload. Uploading only ROS there no longer adds a Weekly "Unassigned Upload (legacy)" holding another league's
+Weekly rankings. Its first lineup is built from its own rankings (none), not from the league you were on. After a
+reload, a league with no rankings of its own loads none too, as when you switch to it, unless no league has rankings
+of that type of its own (owner's choice, below).
+
+**What was wrong, per way of adding a league.** All four made the new league active without loading its rankings
+(`hydrateRankingsForLeague`), so `State.rosRankings` / `State.weeklyRankings` kept the previous league's. The next
+`saveActiveLeagueState` (any upload, or picking a set) copied them into the new league's legacy slots for each type it
+had no set for. The spec reproduced all four on main.
+- **Manual league** (`createManualLeague`, `js/mls/leagues/sync.js`): the gap as described in the card.
+- **Draft Strategist hand-off** (`importDraftStrategistRoster`, `js/mls/leagues/handoff.js`): the same code shape,
+  the same gap.
+- **First-time Sleeper sync** (`addAndSyncLeague` → `processSleeperData`): the same gap, plus `processSleeperData`'s
+  `optimizeLineup(true)` built and stamped the new league's first lineup from the previous league's rankings.
+- **Import All** (`js/mls/leagues/importAll.js`): each league went through `processSleeperData` without hydrating, so
+  every league in the loop (re-imported ones too) was optimized with the rankings of the league active before the
+  import, and the league the loop ended on kept them in State. If that league was re-imported and had a legacy
+  upload of its own, its next save could overwrite it with them.
+- Sync All already hydrated each league before `processSleeperData` (dashboard.js) and was fine.
+
+**What changed and where.**
+- `js/mls/leagues/sync.js`:
+  - `addLeagueAndOpen(leagueObj)`: adds a league, saves `mls_leagues`, redraws the header's league `<select>`
+    (`renderHeaderLeagueSelect`, split out of `refreshLeagueDropdown`) and calls `switchActiveLeague`.
+    `createManualLeague` and the hand-off both use it. Only `switchActiveLeague` draws the Dashboard's league table,
+    so it still draws once (main: `refreshLeagueDropdown` once, then `loadActiveLeagueData`). The "Manual League 'X'
+    Created" message is set after the switch, so nothing clears it; the hand-off's toast also follows it.
+  - `processSleeperData` hydrates the synced league (`leagueObj`, which keeps a re-synced league's assignment) right
+    after making it active, before `optimizeLineup`. For a re-sync of the active league that reloads the same
+    rankings. It refreshes the rankings cards (`updateRankingsMetaDisplay`) only for single-league syncs
+    (`!skipSave`): that function opens a card whose type has no rankings and never closes it, so calling it per league
+    in Sync All would leave your league's cards open. Bulk callers refresh once after their loop (Sync All through its
+    closing `switchActiveLeague`).
+- `js/mls/leagues/importAll.js`: after the loop, hydrates the active league and calls `updateRankingsMetaDisplay`
+  before `loadActiveLeagueData`.
+- `js/mls/init.js` (start-up, owner's choice): a league with no rankings of a type of its own now loads none of that
+  type when any league has rankings of that type of its own (a set that exists, or a legacy upload). The flat
+  `mls_ros` / `mls_weekly` copy (the latest upload from any league) is used only when no league has any of that type,
+  i.e. a setup from before per-league rankings, where it's the only copy. Per type, so the two are decided separately.
+  Uses `getLeagueRankings`, the same priority as before. Nothing is deleted; the flat keys are still written on every
+  upload.
+- `sw.js`: `CACHE_NAME` v2.8.81 → v2.8.82. No new files. CHANGELOG line under Lineup Strategist's Unreleased.
+
+**Owner's decision (asked during the card).** I found that a reload brought the leak back: start-up gave a league with
+nothing of its own the flat "last upload, any league" copy, so a new league showed other rankings after a reload and
+its first ROS upload copied the Weekly ones in again. Offered: ignore that copy at start-up when any league has
+rankings of its own; always ignore it; or leave it for a follow-up card. The owner picked **ignore it when any league
+has rankings of its own** (recommended). This also changes an existing league with nothing of its own: after a reload
+it now shows no rankings instead of the latest upload from another league, which is what switching to it already did.
+
+**Existing data.** Not deleted or migrated: copied rankings can't be told apart from a real legacy upload. A league
+that got them shows "Unassigned Upload (legacy) — N players" in that type's dropdown. To clear it, pick a set there (a
+league's set wins over its legacy data), or upload new rankings, which saves them as a set for that league. The legacy
+copy stays stored on the league but is no longer used while a set is assigned.
+
+**Tests.** `tests/mls-new-league-rankings.spec.mjs` (both widths):
+- One test per way of adding a league: a first league with ROS and Weekly rankings, then a second added (manual,
+  first-time Sleeper sync, Import All, Draft Strategist hand-off). Right after: both dropdowns read "+ Create New Set"
+  and no "Loaded" line shows (soft checks, so the stored-data checks still run). After a ROS-only upload: the Weekly
+  dropdown reads "+ Create New Set" with no legacy option, the stored league's `weeklyRankings` is empty and has no
+  Weekly set, and it has its own ROS set. The manual test also checks the "Created" message and that the first
+  league keeps its Weekly set. All four failed on main with "Unassigned Upload (legacy) — 24 players".
+- After a reload: a new league still starts with no rankings (fails without the init.js change), and the flat copy
+  still loads when no league has rankings of its own.
+- Test-only: the manual league ids (`'manual_' + Date.now()`) are why each test moves `page.clock` on a second before
+  adding the second league.
+
+**Screenshots: none re-taken.** As in S6, this container's fonts don't match the committed baselines (all 10 visual
+tests fail on unchanged main too, page heights differ). I rendered origin/main's 40 screenshots here and ran this
+branch's visual tests against them: all 40 matched. The committed baselines are untouched; CI is the final word.
+
+**Left over / notes.**
+- Sync All's own `hydrateRankingsForLeague` before each `processSleeperData` (`js/mls/render/dashboard.js`) is now
+  redundant but harmless; left as it is.
+- `saveRankingsAsSet`'s comment says the flat keys serve "a brand new league with nothing assigned yet". After this
+  card they serve only the pre-per-league case at start-up; the comment wasn't changed (`js/mls/rankings/sets.js` is
+  S2/S3's file).
