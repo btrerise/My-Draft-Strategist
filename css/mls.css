@@ -1456,6 +1456,12 @@ button.close-chip {
 .mls-ta-starts { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.72rem; font-weight: 600; color: var(--primary-green); white-space: nowrap; }
 .mls-ta-num { min-width: 2.5rem; text-align: right; font-weight: 600; color: var(--text-main); font-variant-numeric: tabular-nums; }
 .mls-ta-more { width: 100%; margin-top: 0.6rem; }
+/* Sleeper trending adds (improvements S6): the icon on a row, the Trending view's heading, and the toggle's
+   icon. #waiverTopViewWrap is an .input-group (display:flex), so its [hidden] needs the same help as the mode blocks. */
+#waiverTopViewWrap[hidden] { display: none !important; }
+.mls-ta-trend { display: inline-flex; align-items: center; color: var(--stack-color); cursor: help; }
+.mls-ta-trend-title { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--stack-color); }
+.mls-trend-icon { vertical-align: -2px; margin-right: 0.35rem; }
 
 /* Best available in your leagues (Dashboard, js/mls/scout/bestAvailable.js, improvements S5): one
    line per league, its top 3 RB/WR/TE with Top Available's rank chips, and a View button. */

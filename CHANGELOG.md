@@ -66,6 +66,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Sleeper trending adds in Top Available** (Scout tab, Waiver Wire Assistant). A player among Sleeper's 50
+  most-added of the last 24 hours gets a small trending-up icon in his row; hover it for how many leagues added him.
+  A new **Show: Your rankings | Trending** switch lists those trending players who are still available in your league,
+  most adds first, each with your position rank or "UR" when your rankings leave him out, so you can see when the
+  crowd is chasing someone your rankings don't like, or skipping someone they do. The position buttons filter it too.
+  Your rankings' order never changes. If Sleeper can't be reached, the icon and the switch just don't show.
 - **Best available in your leagues, on the Dashboard:** a new card under the League Command Center shows, for every
   league synced from Sleeper, its top 3 available RBs, WRs and TEs with their position ranks and injury badges
   ("James Cook RB8"), ranked by that league's own Weekly or ROS rankings. A Weekly | ROS switch picks which; it's the

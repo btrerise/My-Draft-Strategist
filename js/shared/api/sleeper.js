@@ -134,6 +134,30 @@ export async function getSleeperSeasonAdp(season, orderBy) {
     return res.json();
 }
 
+// --- TRENDING ADDS ---
+/**
+ * Sleeper's most-added players across all its leagues: `[{ player_id, count }]`, most adds first
+ * (improvements S6, Lineup Strategist's Top Available). Public, no auth. Cached in memory for an
+ * hour per lookback/limit pair, so moving around the Scout tab doesn't re-ask; a reload asks again,
+ * which is fine for a response of a few KB. Throws on a non-ok status or a body that isn't that
+ * array, and nothing is cached then: the caller hides its trending UI quietly.
+ */
+const SLEEPER_TRENDING_MAX_AGE_MS = 60 * 60 * 1000;
+const _sleeperTrendingCache = new Map(); // "hours|limit" -> { data, fetchedAt }
+export async function getSleeperTrendingAdds({ lookbackHours = 24, limit = 50 } = {}) {
+    const key = `${lookbackHours}|${limit}`;
+    const cached = _sleeperTrendingCache.get(key);
+    if (cached && (Date.now() - cached.fetchedAt) < SLEEPER_TRENDING_MAX_AGE_MS) return cached.data;
+    const res = await mdsFetch(`https://api.sleeper.app/v1/players/nfl/trending/add?lookback_hours=${lookbackHours}&limit=${limit}`);
+    if (!res.ok) throw sleeperResponseError(`Sleeper's trending adds request failed (HTTP ${res.status}).`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw sleeperResponseError("Sleeper's trending adds came back in an unexpected format.");
+    const rows = data.filter(r => r && r.player_id != null && Number.isFinite(Number(r.count)))
+        .map(r => ({ player_id: String(r.player_id), count: Number(r.count) }));
+    _sleeperTrendingCache.set(key, { data: rows, fetchedAt: Date.now() });
+    return rows;
+}
+
 // --- INDEXEDDB CACHE FOR THE SLEEPER PLAYER MAP ---
 // Sleeper's players/nfl payload is about 15MB (14.6MB, 12,229 players, in Oct 2026; it was
 // close to 5MB when this cache was written), and their own docs say not to call this
