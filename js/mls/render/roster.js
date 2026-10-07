@@ -11,6 +11,7 @@ import { renderManualAddLog } from '../leagues/addPlayer.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
 import { refreshPowerRankings } from '../main.js';
+import { rankMoveChip } from '../rankings/moveChips.js';
 
     // --- RENDERERS ---
 
@@ -118,7 +119,7 @@ import { refreshPowerRankings } from '../main.js';
                     <div class="mls-player-row-text">
                         <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}${statusBadges ? ` <span class="mls-name-badges">${statusBadges}</span>` : ''}</div>
                         <div class="mls-player-row-meta">
-                            <span class="badge">${escapeHtml(p.team)}</span>
+                            <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip('ros', p.cleanName)}
                             <span class="badge mls-rank-badge">${rankBadge}</span>
                             ${sosBadge}
                         </div>

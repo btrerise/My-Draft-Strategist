@@ -80,7 +80,10 @@ import { clearRankingsChange, noteRankingsReplace } from './changeSummary.js';
             if (existing) {
                 // Keep the old rankings in memory for the "What changed" card (changeSummary.js),
                 // which the caller shows once it has re-optimized. Not stored anywhere.
-                noteRankingsReplace(type, { setId: existing.id, oldData: existing.data, newData: parsedData });
+                // A Weekly set uploaded in an earlier week isn't compared (see changeSummary.js).
+                noteRankingsReplace(type, { setId: existing.id, oldData: existing.data, newData: parsedData, previousUpdatedAt: existing.updatedAt });
+                // The chips on player rows describe the previous upload; showRankingsChange sets new ones.
+                delete existing.lastChanges;
                 existing.data = parsedData;
                 existing.updatedAt = Date.now();
                 setId = existing.id;

@@ -148,6 +148,7 @@ const PRECACHE_ASSETS = [
     '/js/mls/rankings/engine.js',
     '/js/mls/rankings/sets.js',
     '/js/mls/rankings/changeSummary.js',
+    '/js/mls/rankings/moveChips.js',
     '/js/mls/rankings/uploadPreview.js',
     '/js/mls/scout/marketDisconnect.js',
     '/js/mls/rankings/rosFetch.js',

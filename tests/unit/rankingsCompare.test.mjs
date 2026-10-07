@@ -3,7 +3,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compareRankings, changesByName, findPlayerChange, rankLabel, DEFAULT_MOVE_THRESHOLD } from '../../js/shared/rankings/compare.js';
+import { compareRankings, changesByName, findPlayerChange, rankLabel, DEFAULT_MOVE_THRESHOLD, RELEVANT_RANKS, rankingsWeekStart, isSameRankingsWeek } from '../../js/shared/rankings/compare.js';
 
 // A parser-shaped row. pos is optional (Lineup Strategist's rows don't carry it).
 const row = (name, rank, posRank, extra = {}) => ({ name, cleanName: 'stale-key', rank, posRank, flexRank: rank, ...extra });
@@ -179,6 +179,58 @@ describe('compareRankings', () => {
         assert.equal(r.compared, 2);
         assert.equal(r.unchanged, 2);
         assert.deepEqual(r.counts, { moved: 0, rose: 0, fell: 0, added: 0, dropped: 0, posChanged: 0 });
+    });
+});
+
+describe('relevance limits (round 2)', () => {
+    test('moves, adds and drops deep in the lists are ignored; touching the range in either version counts', () => {
+        const oldList = [
+            row('Deep Mover', 300, 70, { pos: 'WR' }),
+            row('Climber', 200, 52, { pos: 'WR' }),
+            row('Sinker', 100, 46, { pos: 'WR' }),
+            row('Deep TE', 300, 30, { pos: 'TE' }),
+            row('Deep Gone', 400, 90, { pos: 'RB' }),
+            row('Top Gone', 20, 10, { pos: 'RB' })
+        ];
+        const newList = [
+            row('Deep Mover', 290, 65, { pos: 'WR' }), // WR70 -> WR65: outside 48 both times
+            row('Climber', 150, 40, { pos: 'WR' }), // WR52 -> WR40: inside now
+            row('Sinker', 180, 60, { pos: 'WR' }), // WR46 -> WR60: was inside
+            row('Deep TE', 250, 25, { pos: 'TE' }), // TE30 -> TE25: TE's range is 24
+            row('Deep Add', 500, 80, { pos: 'QB' }),
+            row('Top Add', 30, 12, { pos: 'QB' })
+        ];
+        const r = compareRankings(oldList, newList, { limits: RELEVANT_RANKS });
+        assert.deepEqual(names(r.moves), ['Sinker', 'Climber']);
+        assert.deepEqual(names(r.added), ['Top Add']);
+        assert.deepEqual(names(r.dropped), ['Top Gone']);
+        assert.equal(r.ignored, 4);
+        // Without limits everything counts, as before.
+        const all = compareRankings(oldList, newList);
+        assert.equal(all.counts.moved, 4);
+        assert.equal(all.ignored, 0);
+    });
+
+    test('overall-rank moves use the overall limit', () => {
+        const r = compareRankings([row('Far', 400, 999), row('Near', 160, 999)], [row('Far', 300, 999), row('Near', 120, 999)], { limits: RELEVANT_RANKS });
+        assert.deepEqual(names(r.moves), ['Near']);
+    });
+});
+
+describe('rankings weeks: Tuesday 10:00 UTC to Tuesday 10:00 UTC', () => {
+    const t = (iso) => Date.parse(iso);
+    test('the week starts on Tuesday morning after Monday Night Football', () => {
+        assert.equal(rankingsWeekStart(t('2026-09-15T16:00:00Z')), t('2026-09-15T10:00:00Z')); // Tuesday afternoon
+        assert.equal(rankingsWeekStart(t('2026-09-15T09:59:00Z')), t('2026-09-08T10:00:00Z')); // MNF still on
+        assert.equal(rankingsWeekStart(t('2026-09-20T17:00:00Z')), t('2026-09-15T10:00:00Z')); // Sunday
+        assert.equal(rankingsWeekStart(t('2026-09-22T03:30:00Z')), t('2026-09-15T10:00:00Z')); // Monday night ET
+        assert.equal(rankingsWeekStart(t('2026-12-01T10:00:00Z')), t('2026-12-01T10:00:00Z')); // exactly the start
+    });
+    test('same week or not', () => {
+        assert.equal(isSameRankingsWeek(t('2026-09-15T16:00:00Z'), t('2026-09-19T23:00:00Z')), true); // Tue -> Sat
+        assert.equal(isSameRankingsWeek(t('2026-09-15T16:00:00Z'), t('2026-09-22T12:00:00Z')), false); // next Tuesday
+        assert.equal(isSameRankingsWeek(t('2026-09-21T23:00:00Z'), t('2026-09-22T11:00:00Z')), false); // MNF -> Tuesday
+        assert.equal(isSameRankingsWeek(undefined, t('2026-09-15T16:00:00Z')), false);
     });
 });
 

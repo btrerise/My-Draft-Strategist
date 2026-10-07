@@ -22,9 +22,43 @@
 // true overall rank). Only moves of at least `threshold` spots count (default 3, so RB8 -> RB6 is
 // noise). A player with no position rank on either side (999 or missing) falls back to overall
 // rank. Tier changes are reported on the moves; a tier change on its own doesn't count as a move.
+//
+// Relevance (owner's choice, round 2): with `limits`, a move, add or drop counts only when the player
+// is inside the range at his position in either version (RELEVANT_RANKS: top 24 QB/TE, 48 RB/WR, 16
+// K/DEF), so WR70 -> WR73-style noise deep in a file stays out. Those are counted in `ignored`.
 import { normalizeName } from '../names.js';
 
 export const DEFAULT_MOVE_THRESHOLD = 3;
+
+// The range a move has to touch to count (position rank, or overall rank when there's none).
+export const RELEVANT_RANKS = { QB: 24, TE: 24, RB: 48, WR: 48, K: 16, DEF: 16, other: 48, overall: 150 };
+
+// Weekly rankings change every week with the matchups, so only updates within one NFL week are
+// compared (owner's choice, round 2). A rankings week starts on Tuesday at 10:00 UTC (6am Eastern in
+// daylight time, 5am in standard), after Monday Night Football. Returns that start for a time in ms.
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+export function rankingsWeekStart(ms) {
+    const d = new Date(ms);
+    const daysSinceTuesday = (d.getUTCDay() - 2 + 7) % 7;
+    let start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - daysSinceTuesday, 10);
+    if (start > ms) start -= WEEK_MS;
+    return start;
+}
+
+// True when two upload times fall in the same rankings week; false when either is unknown.
+export function isSameRankingsWeek(a, b) {
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+    return rankingsWeekStart(a) === rankingsWeekStart(b);
+}
+
+function withinLimits(side, basis, limits) {
+    if (!limits || !side) return true;
+    if (basis !== 'overall' && side.posRank !== null) {
+        const cap = (side.pos && limits[side.pos]) || limits.other;
+        return side.posRank <= cap;
+    }
+    return side.rank !== null && side.rank <= limits.overall;
+}
 
 // The parser writes 999 for "no rank"; anything that isn't a positive number below that is no rank.
 function validRank(n) {
@@ -80,7 +114,8 @@ function compareKeys(a, b) {
 
 // oldList / newList: the two versions. options.posOf(entry, cleanName): a position for an entry
 // without `pos` (or null). options.threshold: the smallest move that counts.
-export function compareRankings(oldList, newList, { posOf = null, threshold = DEFAULT_MOVE_THRESHOLD } = {}) {
+// options.limits: RELEVANT_RANKS (or your own) to leave out changes deep in the lists; null keeps all.
+export function compareRankings(oldList, newList, { posOf = null, threshold = DEFAULT_MOVE_THRESHOLD, limits = null } = {}) {
     const oldRows = indexList(oldList, posOf);
     const newRows = indexList(newList, posOf);
 
@@ -118,10 +153,12 @@ export function compareRankings(oldList, newList, { posOf = null, threshold = DE
     const moves = [];
     const posChanged = [];
     let unchanged = 0;
+    let ignored = 0;
 
     pairs.forEach(([o, n]) => {
         const bothKnown = o.pos && n.pos;
         if (bothKnown && o.pos !== n.pos) {
+            if (!withinLimits(snapshot(o.entry, o.pos), 'pos', limits) && !withinLimits(snapshot(n.entry, n.pos), 'pos', limits)) { ignored++; return; }
             posChanged.push({
                 type: 'posChanged',
                 name: n.entry.name || o.entry.name || '',
@@ -149,6 +186,10 @@ export function compareRankings(oldList, newList, { posOf = null, threshold = DE
             unchanged++;
             return;
         }
+        if (!withinLimits(before, basis, limits) && !withinLimits(after, basis, limits)) {
+            ignored++;
+            return;
+        }
         moves.push({
             type: 'moved',
             name: n.entry.name || o.entry.name || '',
@@ -172,11 +213,17 @@ export function compareRankings(oldList, newList, { posOf = null, threshold = DE
 
     // Added and dropped players mix positions, so they're listed by overall rank (QB4 isn't ahead of RB7).
     const overallKey = (side, order) => [side.rank ?? 1e6, side.posRank ?? 1e6, order];
-    const addedOut = added.map(n => ({
+    const relevant = (entry, pos) => {
+        const side = snapshot(entry, pos);
+        if (withinLimits(side, side.posRank !== null ? 'pos' : 'overall', limits)) return true;
+        ignored++;
+        return false;
+    };
+    const addedOut = added.filter(n => relevant(n.entry, n.pos)).map(n => ({
         type: 'added', name: n.entry.name || '', cleanName: n.clean, pos: n.pos,
         old: null, new: snapshot(n.entry, n.pos), order: n.order
     })).sort((a, b) => compareKeys(overallKey(a.new, a.order), overallKey(b.new, b.order)));
-    const droppedOut = dropped.map(o => ({
+    const droppedOut = dropped.filter(o => relevant(o.entry, o.pos)).map(o => ({
         type: 'dropped', name: o.entry.name || '', cleanName: o.clean, pos: o.pos,
         old: snapshot(o.entry, o.pos), new: null, order: o.order
     })).sort((a, b) => compareKeys(overallKey(a.old, a.order), overallKey(b.old, b.order)));
@@ -189,6 +236,7 @@ export function compareRankings(oldList, newList, { posOf = null, threshold = DE
         threshold,
         compared: pairs.length,
         unchanged,
+        ignored,
         counts: {
             moved: moves.length,
             rose: risers.length,

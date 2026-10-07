@@ -1,8 +1,11 @@
 // "What changed" after replacing a ranking set (improvements S3). Replace Set in the upload preview,
-// or the ROS auto-fetch's "Replace saved set?", shows a card under that set's rankings card: counts,
-// the top 5 risers and fallers, every move by position, the added and dropped players, your rostered
-// players' changes, and (Weekly only) the active league's starters that changed. Saving a new set
-// shows nothing. ✕ removes the card, and it isn't kept: a reload has none.
+// or the ROS auto-fetch's "Replace saved set?", shows a card under that set's rankings card: your
+// players' changes, (Weekly only) the active league's starters that changed, free agents moving up,
+// and a Details fold with the counts, top 5 risers and fallers, every move by position and the added
+// and dropped players. Your moved players get a chip on their Lineup / Roster rows until the set's
+// next upload. Saving a new set shows nothing; a Weekly set's first upload of a new rankings week
+// (Tuesday morning to Tuesday morning) shows nothing either, with a note in the toast. ✕ removes the
+// card, and it isn't kept: a reload has none (the chips stay).
 //
 // Setup: the synced Fixture League with ROS and Weekly sets from rankings.csv (loadMlsRankings), then
 // REPLACED below, a reordered copy. mds_test's roster (even rows of the fixture) holds Wilson, A.J.
@@ -44,13 +47,17 @@ const REPLACED = `Rank,Player,Pos,Team,Tier,Bye
 `;
 
 const TYPES = {
-    weekly: { tab: 'lineup', card: 'weeklyRankingsCard', input: '#weeklyFileInput', select: '#weeklyRankingSetSelect', change: '#weeklyRankingsChange', nameInput: '#weeklyNewSetName', label: 'Weekly' },
-    ros: { tab: 'roster', card: 'rosRankingsCard', input: '#rosFileInput', select: '#rosRankingSetSelect', change: '#rosRankingsChange', nameInput: '#rosNewSetName', label: 'ROS' }
+    weekly: { tab: 'lineup', card: 'weeklyRankingsCard', input: '#weeklyFileInput', select: '#weeklyRankingSetSelect', change: '#weeklyRankingsChange', nameInput: '#weeklyNewSetName', label: 'Weekly', rows: '#lineupTab .mls-player-row-text' },
+    ros: { tab: 'roster', card: 'rosRankingsCard', input: '#rosFileInput', select: '#rosRankingSetSelect', change: '#rosRankingsChange', nameInput: '#rosNewSetName', label: 'ROS', rows: '#rosterTab .roster-item' }
 };
 const SET_NAME = (label) => `${label} Rankings – 9/15/2026`;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const card = (page, t) => page.locator(`${t.change} .mls-change-card`);
-const rowsText = (page, t, label) => card(page, t).getByRole('list', { name: label, exact: true }).locator('.mls-change-row');
+const items = (page, t, label) => card(page, t).getByRole('list', { name: label, exact: true }).locator(':scope > li');
+const toast = (page, text) => page.locator('.toast-message').filter({ hasText: text });
+// The chip on a player's row in the type's tab.
+const chip = (page, t, name) => page.locator(t.rows).filter({ hasText: name }).locator('.mls-move-chip');
 
 async function openCard(page, t) {
     await showTab(page, t.tab);
@@ -88,66 +95,98 @@ async function expectSummary(page, t) {
     const c = card(page, t);
     await expect(c).toBeVisible();
     await expect(c.locator('h3')).toHaveText(`What changed: ${SET_NAME(t.label)}`);
-    await expect(c.locator('.mls-change-counts')).toHaveText('4 moved · 3 added · 2 dropped');
-    await expect(c.locator('.mls-change-note').first()).toHaveText('Moves of 3 or more spots in position rank. 22 players in both versions.');
 
-    await expect(rowsText(page, t, 'Risers')).toHaveText([
+    // Your players first: mds_test's moves, biggest first. Henry (RB5 -> RB6) is below the
+    // threshold; the adds, drops and Barkley aren't on his roster.
+    await expect(items(page, t, 'Your players')).toHaveText([
+        /Garrett Wilson\s*\+8/, /A\.J\. Brown\s*\+5/, /Amon-Ra St\. Brown\s*−4/
+    ]);
+    await expect(items(page, t, 'Your players').first()).toHaveAttribute('title', 'WR10 → WR2');
+    await expect(c.getByText('Rank changes also show on your player cards until the next upload of this set.')).toBeVisible();
+
+    // Free agents moving up in the Sleeper league (Bench League is manual, so it isn't listed): the
+    // three newly ranked players nobody rosters, best first. Barkley fell; the risers are rostered.
+    await expect(items(page, t, 'Free agents moving up in Fixture League')).toHaveText([
+        /James Cook\s*new, RB3/, /Jayden Daniels\s*new, QB2/, /Chase Brown\s*new, RB7/
+    ]);
+    await expect(c.getByRole('button', { name: 'View top available in Fixture League' })).toBeVisible();
+
+    // Details: folded, with the counts on its summary line.
+    const details = c.locator('details.mls-change-details');
+    await expect(details).not.toHaveAttribute('open', '');
+    await expect(details.locator('> summary .mls-change-when-closed')).toBeVisible();
+    await expect(details.locator('> summary .mls-change-when-closed')).toHaveText('Details');
+    await expect(details.locator('> summary .mls-change-counts')).toHaveText('4 moved · 3 added · 2 dropped');
+    await expect(items(page, t, 'Risers')).toBeHidden();
+    await details.locator('> summary').click();
+    await expect(details.locator('.mls-change-note').first()).toHaveText('Moves of 3 or more spots in position rank, for players in the top 24 QB/TE, 48 RB/WR or 16 K/DEF before or after. 22 players in both versions.');
+    await expect(items(page, t, 'Risers')).toHaveText([
         /Garrett Wilson\s*WR10 → WR2\s*\+8\s*T4 → T1/,
         /A\.J\. Brown\s*WR9 → WR4\s*\+5\s*T3 → T2/
     ]);
-    await expect(rowsText(page, t, 'Fallers')).toHaveText([
+    await expect(items(page, t, 'Fallers')).toHaveText([
         /Saquon Barkley\s*RB3 → RB8\s*−5\s*T1 → T4/,
         /Amon-Ra St\. Brown\s*WR6 → WR10\s*−4\s*T2 → T4/
     ]);
-    await expect(rowsText(page, t, 'Added players')).toHaveText([/James Cook\s*RB3/, /Jayden Daniels\s*QB2/, /Chase Brown\s*RB7/]);
-    await expect(rowsText(page, t, 'Dropped players')).toHaveText([/Joe Burrow\s*was QB4/, /Kyren Williams\s*was RB7/]);
+    await expect(items(page, t, 'Added players')).toHaveText([/James Cook\s*new, RB3/, /Jayden Daniels\s*new, QB2/, /Chase Brown\s*new, RB7/]);
+    await expect(items(page, t, 'Dropped players')).toHaveText([/Joe Burrow\s*was QB4/, /Kyren Williams\s*was RB7/]);
+    await expect(items(page, t, 'Your players by league')).toHaveText([
+        /Garrett Wilson[\s\S]*Fixture League/, /A\.J\. Brown[\s\S]*Fixture League/, /Amon-Ra St\. Brown[\s\S]*Fixture League/
+    ]);
 
-    // Every move, by position, behind "Show all 4 moves".
+    // Every move, by position, behind "Show all 4 moves" inside Details.
     const all = c.locator('details.mls-change-all');
     await expect(all.locator('summary')).toHaveText('Show all 4 moves', { useInnerText: true });
-    await expect(rowsText(page, t, 'WR moves')).toBeHidden();
+    await expect(items(page, t, 'WR moves')).toBeHidden();
     await all.locator('summary').click();
     await expect(all.locator('summary')).toHaveText('Hide all moves', { useInnerText: true });
-    await expect(rowsText(page, t, 'RB moves')).toHaveText([/Saquon Barkley/]);
-    await expect(rowsText(page, t, 'WR moves')).toHaveText([/Garrett Wilson/, /A\.J\. Brown/, /Amon-Ra St\. Brown/]);
-
-    // Your players: the moves for mds_test's roster, each with the league. Henry (RB5 -> RB6) is
-    // below the threshold; the adds, drops and Barkley aren't on his roster.
-    await expect(rowsText(page, t, 'Your players')).toHaveText([
-        /Garrett Wilson\s*WR10 → WR2\s*\+8.*Fixture League/,
-        /A\.J\. Brown\s*WR9 → WR4\s*\+5.*Fixture League/,
-        /Amon-Ra St\. Brown\s*WR6 → WR10\s*−4.*Fixture League/
-    ]);
+    await expect(items(page, t, 'RB moves')).toHaveText([/Saquon Barkley/]);
+    await expect(items(page, t, 'WR moves')).toHaveText([/Garrett Wilson/, /A\.J\. Brown/, /Amon-Ra St\. Brown/]);
     // Icons are SVG.
     await expect(c.locator('.mls-change-icon svg[aria-hidden="true"]').first()).toBeAttached();
 }
 
+// The chips on the type's tab: Wilson and A.J. Brown up, St. Brown down, nobody else.
+async function expectChips(page, t) {
+    await showTab(page, t.tab);
+    await expect(chip(page, t, 'Garrett Wilson')).toHaveText('Up 8 spots in your ' + t.label + ' rankings since the last update', { useInnerText: false });
+    await expect(chip(page, t, 'Garrett Wilson')).toHaveAttribute('title', `Up 8 spots in your ${t.label} rankings since the last update (WR10 → WR2)`);
+    await expect(chip(page, t, 'Garrett Wilson').locator('svg[aria-hidden="true"]')).toBeAttached();
+    await expect(chip(page, t, 'A.J. Brown')).toHaveClass(/is-up/);
+    await expect(chip(page, t, 'Amon-Ra St. Brown')).toHaveClass(/is-down/);
+    await expect(chip(page, t, 'Amon-Ra St. Brown')).toHaveAttribute('title', `Down 4 spots in your ${t.label} rankings since the last update (WR6 → WR10)`);
+    await expect(page.locator(`${t.rows} .mls-move-chip`)).toHaveCount(3);
+}
+
 test.describe('What changed after Replace Set', () => {
-    test('Weekly: risers, fallers, your players and the starters that changed; dismissed for good', async ({ page }) => {
+    test('Weekly: your players, the lineup, free agents, details, chips; dismissed for good', async ({ page }) => {
         const state = await setUp(page);
         const t = TYPES.weekly;
         // Saving the first sets (loadMlsRankings) showed nothing.
         await expect(page.locator(t.change)).toBeHidden();
         await expect(page.locator(TYPES.ros.change)).toBeHidden();
+        await showTab(page, 'lineup');
+        await expect(page.locator('.mls-move-chip')).toHaveCount(0);
 
         await openCard(page, t);
         await upload(page, t, REPLACED, { expectReplace: true, alsoLeague: 'Bench League' });
+        await expect(toast(page, 'Weekly Rankings loaded')).not.toContainText('New week');
         await expectSummary(page, t);
         // The card sits under the Weekly rankings card, which collapsed after the save.
         await expect(page.locator(`#${t.card}`)).not.toHaveClass(/\bexpanded\b/);
         await expect(page.locator(`#${t.card} + ${t.change}`)).toBeVisible();
         await expect(page.locator(TYPES.ros.change)).toBeHidden();
 
-        // Starters: the Lineup tab re-optimized Fixture League. Wilson starts now; Lamb (FLEX) sits.
+        // The lineup: the Lineup tab re-optimized Fixture League. Wilson starts now; Lamb (FLEX) sits.
         const starters = card(page, t).locator('.mls-change-group.is-starters');
-        await expect(starters.locator('.mls-change-group-title').first()).toHaveText('Starters changed in Fixture League');
-        await expect(rowsText(page, t, 'Starters in')).toHaveText([/Garrett Wilson/]);
-        await expect(rowsText(page, t, 'Starters out')).toHaveText([/CeeDee Lamb\s*FLEX/]);
+        await expect(starters.locator('.mls-change-group-title')).toHaveText('Fixture League lineup');
+        await expect(items(page, t, 'Starters in and out')).toHaveText([/In: Garrett Wilson\s*WR/, /Out: CeeDee Lamb\s*FLEX/]);
         await expect(starters.locator('.mls-change-note')).toHaveText('Lineups in Bench League update when you open them.');
-        // ...and the lineup on screen agrees.
         await expect(page.locator('#optimalLineupContainer')).toContainText('Garrett Wilson');
 
-        // ✕ removes it, and a reload doesn't bring it back.
+        await expectChips(page, t);
+
+        // ✕ removes the card, and a reload doesn't bring it back. The chips stay until the next upload.
         await card(page, t).getByRole('button', { name: 'Dismiss what changed' }).click();
         await expect(page.locator(t.change)).toBeHidden();
         await page.reload();
@@ -155,21 +194,61 @@ test.describe('What changed after Replace Set', () => {
         await showTab(page, t.tab);
         await expect(page.locator(t.change)).toBeHidden();
         await expect(page.locator('.mls-change-card')).toHaveCount(0);
-        // Nothing about it was stored.
+        await expectChips(page, t);
+        // Only the moves are stored, on the set itself (no new key, not the old rankings).
+        const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_ranking_sets_weekly'))[0]);
+        expect(Object.keys(stored.lastChanges)).toEqual(['moves', 'added']);
+        expect(stored.lastChanges.moves['garrettwilson']).toEqual({ d: 8, f: 'WR10', t: 'WR2' });
+        expect(Object.keys(stored.lastChanges.added).sort()).toEqual(['chasebrown', 'jamescook', 'jaydendaniels']);
+        expect(stored.data).toHaveLength(25);
         const keys = await page.evaluate(() => Object.keys(localStorage).filter(k => /change/i.test(k)));
         expect(keys).toEqual([]);
         await expectClean(page, state);
     });
 
-    test('ROS: shown on the Roster tab, with no starters part', async ({ page }) => {
+    test('Weekly: the first upload of a new week shows nothing and clears the chips; a mid-week update shows the card', async ({ page }) => {
+        const state = await setUp(page);
+        const t = TYPES.weekly;
+        await openCard(page, t);
+        await upload(page, t, REPLACED, { expectReplace: true });
+        await expect(card(page, t)).toBeVisible();
+        await expect(chip(page, t, 'Garrett Wilson')).toHaveCount(1);
+
+        // Next Tuesday afternoon: a new rankings week. Back to rankings.csv.
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + WEEK_MS));
+        await openCard(page, t);
+        await upload(page, t, RANKINGS_CSV, { expectReplace: true });
+        await expect(toast(page, 'Weekly Rankings loaded successfully!')).toContainText('New week: changes will show when you update these rankings.');
+        await expect(page.locator(t.change)).toBeHidden();
+        await expect(page.locator('.mls-move-chip')).toHaveCount(0);
+        const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_ranking_sets_weekly'))[0]);
+        expect(stored.lastChanges).toBeUndefined();
+
+        // Saturday of that week: an update is compared again.
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + WEEK_MS + 4 * 24 * 60 * 60 * 1000));
+        await openCard(page, t);
+        await upload(page, t, REPLACED, { expectReplace: true });
+        await expect(toast(page, 'Weekly Rankings loaded successfully!').last()).not.toContainText('New week');
+        await expect(items(page, t, 'Your players')).toHaveText([/Garrett Wilson\s*\+8/, /A\.J\. Brown\s*\+5/, /Amon-Ra St\. Brown\s*−4/]);
+        await expect(chip(page, t, 'Garrett Wilson')).toHaveCount(1);
+        await expectClean(page, state);
+    });
+
+    test('ROS: shown on the Roster tab, chips on the roster, no lineup part, no week rule', async ({ page }) => {
         const state = await setUp(page);
         const t = TYPES.ros;
+        // A week later still compares: the week rule is for Weekly sets only.
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + WEEK_MS));
         await openCard(page, t);
         await upload(page, t, REPLACED, { expectReplace: true });
         await expectSummary(page, t);
         await expect(page.locator(`#${t.card} + ${t.change}`)).toBeVisible();
         await expect(card(page, t).locator('.mls-change-group.is-starters')).toHaveCount(0);
         await expect(page.locator(TYPES.weekly.change)).toBeHidden();
+        await expectChips(page, t);
+        // The Lineup tab uses Weekly rankings, which didn't change: no chips there.
+        await showTab(page, 'lineup');
+        await expect(page.locator('#lineupTab .mls-move-chip')).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -187,6 +266,8 @@ test.describe('What changed after Replace Set', () => {
         await expect(page.locator(`${t.select} option:checked`)).toHaveText('Second Opinion (25 players)');
         await expect(page.locator(t.change)).toBeHidden();
         await expect(page.locator('.mls-change-card')).toHaveCount(0);
+        // The league now uses the new set, which has no recent changes.
+        await expect(page.locator('#lineupTab .mls-move-chip')).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -196,11 +277,15 @@ test.describe('What changed after Replace Set', () => {
         await openCard(page, t);
         await upload(page, t, RANKINGS_CSV, { expectReplace: true });
         const c = card(page, t);
-        await expect(c.locator('.mls-change-counts')).toHaveText('0 moved · 0 added · 0 dropped');
+        await expect(c.locator('.mls-change-group.is-yours .mls-change-none')).toHaveText('None of your players moved 3 or more spots, joined or left these rankings.');
+        await expect(c.locator('.mls-change-group.is-starters .mls-change-none')).toHaveText('Same starters.');
+        await expect(c.locator('.mls-change-group.is-free-agents')).toHaveCount(0);
+        await expect(c.getByText('Rank changes also show')).toHaveCount(0);
+        await expect(c.locator('details.mls-change-details > summary .mls-change-counts')).toHaveText('0 moved · 0 added · 0 dropped');
+        await c.locator('details.mls-change-details > summary').click();
         await expect(c.locator('.mls-change-empty')).toHaveText('No player moved 3 or more spots, and no one was added or dropped.');
         await expect(c.locator('details.mls-change-all')).toHaveCount(0);
-        await expect(c.locator('.mls-change-group.is-yours .mls-change-none')).toHaveText('No player on your rosters in leagues using this set moved 3 or more spots, joined or left the list.');
-        await expect(c.locator('.mls-change-group.is-starters .mls-change-none')).toHaveText('Same starters in Fixture League.');
+        await expect(page.locator('.mls-move-chip')).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -230,10 +315,10 @@ test.describe('What changed after Replace Set', () => {
         await confirm.getByRole('button', { name: 'Replace Set' }).click();
         const c = card(page, t);
         await expect(c).toBeVisible();
-        await expect(c.locator('.mls-change-counts')).toHaveText('1 moved · 0 added · 0 dropped');
-        await expect(rowsText(page, t, 'Risers')).toHaveText([/Garrett Wilson\s*WR10 → WR2\s*\+8/]);
-        await expect(rowsText(page, t, 'Your players')).toHaveText([/Garrett Wilson\s*WR10 → WR2\s*\+8\s*Fixture League/]);
+        await expect(items(page, t, 'Your players')).toHaveText([/Garrett Wilson\s*\+8/]);
+        await expect(c.locator('details.mls-change-details > summary .mls-change-counts')).toHaveText('1 moved · 0 added · 0 dropped');
         await expect(c.locator('.mls-change-group.is-starters')).toHaveCount(0);
+        await expect(chip(page, t, 'Garrett Wilson')).toHaveClass(/is-up/);
         await expectClean(page, state);
     });
 });

@@ -10,6 +10,7 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
 import { getByeBadgeHTML, getGameInfoHTML, getLineupInjuryWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
+import { rankMoveChip } from '../rankings/moveChips.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
@@ -607,7 +608,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                             ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 ${plainPos}
-                                <span class="badge">${escapeHtml(p.team)}</span>
+                                <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'ros' : 'weekly', p.cleanName)}
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
@@ -687,7 +688,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                             ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 ${plainPos}
-                                <span class="badge">${escapeHtml(p.team)}</span>
+                                <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'ros' : 'weekly', p.cleanName)}
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
