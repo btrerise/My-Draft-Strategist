@@ -102,6 +102,17 @@ async function expectSummary(page, t) {
         /Garrett Wilson\s*\+8/, /A\.J\. Brown\s*\+5/, /Amon-Ra St\. Brown\s*−4/
     ]);
     await expect(items(page, t, 'Your players').first()).toHaveAttribute('title', 'WR10 → WR2');
+    // "Show all 3": each with its ranks and leagues.
+    const yoursAll = card(page, t).locator('details.mls-change-yours-all');
+    await expect(yoursAll.locator('summary')).toHaveText('Show all 3', { useInnerText: true });
+    await expect(items(page, t, 'All your players')).toBeHidden();
+    await yoursAll.locator('summary').click();
+    await expect(yoursAll.locator('summary')).toHaveText('Hide', { useInnerText: true });
+    await expect(items(page, t, 'All your players')).toHaveText([
+        /Garrett Wilson\s*WR10 → WR2\s*\+8[\s\S]*Fixture League/,
+        /A\.J\. Brown\s*WR9 → WR4\s*\+5[\s\S]*Fixture League/,
+        /Amon-Ra St\. Brown\s*WR6 → WR10\s*−4[\s\S]*Fixture League/
+    ]);
     await expect(c.getByText('Rank changes also show on your player cards until the next upload of this set.')).toBeVisible();
 
     // Free agents moving up in the Sleeper league (Bench League is manual, so it isn't listed): the
@@ -130,9 +141,6 @@ async function expectSummary(page, t) {
     ]);
     await expect(items(page, t, 'Added players')).toHaveText([/James Cook\s*new, RB3/, /Jayden Daniels\s*new, QB2/, /Chase Brown\s*new, RB7/]);
     await expect(items(page, t, 'Dropped players')).toHaveText([/Joe Burrow\s*was QB4/, /Kyren Williams\s*was RB7/]);
-    await expect(items(page, t, 'Your players by league')).toHaveText([
-        /Garrett Wilson[\s\S]*Fixture League/, /A\.J\. Brown[\s\S]*Fixture League/, /Amon-Ra St\. Brown[\s\S]*Fixture League/
-    ]);
 
     // Every move, by position, behind "Show all 4 moves" inside Details.
     const all = c.locator('details.mls-change-all');
@@ -249,6 +257,40 @@ test.describe('What changed after Replace Set', () => {
         // The Lineup tab uses Weekly rankings, which didn't change: no chips there.
         await showTab(page, 'lineup');
         await expect(page.locator('#lineupTab .mls-move-chip')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    test('Your players: the 5 biggest changes, and Show all for the rest', async ({ page }) => {
+        const state = await setUp(page);
+        const t = TYPES.weekly;
+        // rankings.csv with the WRs and the QBs each in reverse order (every other row stays put):
+        // seven of mds_test's players move 3 or more spots.
+        const lines = RANKINGS_CSV.trim().split('\n');
+        const reordered = [...lines];
+        for (const pos of ['WR', 'QB']) {
+            const at = lines.map((l, i) => (l.split(',')[2] === pos ? i : -1)).filter(i => i >= 0);
+            const names = at.map(i => lines[i].split(',').slice(1).join(',')).reverse();
+            at.forEach((i, k) => { reordered[i] = `${lines[i].split(',')[0]},${names[k]}`; });
+        }
+        await openCard(page, t);
+        await upload(page, t, reordered.join('\n') + '\n', { expectReplace: true });
+
+        const c = card(page, t);
+        await expect(c.locator('.mls-change-group.is-yours .mls-change-group-title')).toHaveText('Your players 7');
+        // Biggest first; equal moves by name.
+        await expect(items(page, t, 'Your players')).toHaveText([
+            /Garrett Wilson\s*\+9/, /Ja'Marr Chase\s*−9/, /A\.J\. Brown\s*\+7/, /Justin Jefferson\s*−7/, /CeeDee Lamb\s*−5/
+        ]);
+        const all = c.locator('details.mls-change-yours-all');
+        await expect(all.locator('summary')).toHaveText('Show all 7', { useInnerText: true });
+        await all.locator('summary').click();
+        await expect(items(page, t, 'All your players')).toHaveText([
+            /Garrett Wilson\s*WR10 → WR1\s*\+9/, /Ja'Marr Chase\s*WR1 → WR10\s*−9/, /A\.J\. Brown\s*WR9 → WR2\s*\+7/,
+            /Justin Jefferson\s*WR2 → WR9\s*−7/, /CeeDee Lamb\s*WR3 → WR8\s*−5/, /Josh Allen\s*QB1 → QB4\s*−3/,
+            /Puka Nacua\s*WR4 → WR7\s*−3/
+        ]);
+        // Every one of them has a chip.
+        await expect(page.locator('#lineupTab .mls-move-chip')).toHaveCount(7);
         await expectClean(page, state);
     });
 

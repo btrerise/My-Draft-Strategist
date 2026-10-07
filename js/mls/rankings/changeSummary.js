@@ -29,6 +29,7 @@
 //   existing storage key): no new key, and not the old rankings.
 // - A shorter card: your players, the starters that changed and free agents moving up come first;
 //   league-wide risers, fallers, adds and drops sit behind one "Details" fold.
+//   (Round 3: Your players shows the 5 biggest changes, with "Show all N" for the rest.)
 // - Only changes inside a useful range count (RELEVANT_RANKS: top 24 QB/TE, 48 RB/WR, 16 K/DEF,
 //   before or after), so moves deep in a file don't crowd out the ones that matter.
 // - Free agents moving up: risers and newly ranked players nobody rosters, per Sleeper-synced league
@@ -382,10 +383,6 @@ function renderCard(type, { result, setName, yourPlayers, freeAgents, starters }
             details += group(`Changed position <span class="mls-change-count">${result.posChanged.length}</span>`,
                 list(result.posChanged.map(c => posChangeRow(c)), 'Changed position'));
         }
-        if (yourPlayers.length) {
-            details += group('Your players by league', list(yourPlayers.map(({ change, leagues }) =>
-                rowFor(change, `<span class="mls-change-leagues">${escapeHtml(leagues.join(', '))}</span>`)), 'Your players by league'), 'is-yours-detail');
-        }
     }
 
     body += `<details class="mls-change-fold mls-change-details">
@@ -406,8 +403,15 @@ function renderYourPlayers(yourPlayers, threshold) {
     if (yourPlayers.length === 0) {
         return group('Your players', `<p class="mls-change-none">None of your players moved ${threshold} or more spots, joined or left these rankings.</p>`, 'is-yours');
     }
-    return group(`Your players <span class="mls-change-count">${yourPlayers.length}</span>`,
-        list(yourPlayers.map(({ change }) => compactItem(change)), 'Your players', 'mls-change-inline'), 'is-yours');
+    // The 5 biggest changes, like Risers and Fallers; "Show all N" lists every one with its ranks and
+    // the leagues he's in (owner's choice, round 3).
+    const top = list(yourPlayers.slice(0, TOP_N).map(({ change }) => compactItem(change)), 'Your players', 'mls-change-inline');
+    const n = yourPlayers.length;
+    const all = `<details class="mls-change-fold mls-change-yours-all">
+        <summary>${CHEVRON_ICON}<span class="mls-change-when-closed">Show all ${n}</span><span class="mls-change-when-open">Hide</span></summary>
+        ${list(yourPlayers.map(({ change, leagues }) => rowFor(change, `<span class="mls-change-leagues">${escapeHtml(leagues.join(', '))}</span>`)), 'All your players')}
+    </details>`;
+    return group(`Your players <span class="mls-change-count">${n}</span>`, top + all, 'is-yours');
 }
 
 function renderStarters({ leagueName, hadLineup, cameIn, wentOut, otherLeagues }) {

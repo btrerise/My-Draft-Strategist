@@ -68,7 +68,7 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **What changed after you replace a ranking set.** When an upload's Replace Set (or the ROS Auto-Fetch's Replace
   Set) overwrites a saved set, a "What changed" card now shows under that rankings card. It leads with your players'
-  moves, who came into and went out of this league's lineup (Weekly), and free agents moving up in your Sleeper
+  moves (the 5 biggest, with Show all for the rest), who came into and went out of this league's lineup (Weekly), and free agents moving up in your Sleeper
   leagues (with a View button to Top Available). League-wide risers, fallers, added and dropped players are under
   Details. Your players whose rank moved also get a small up/down chip beside their rank on the Lineup and Roster
   tabs, kept until the set's next upload. Only moves of 3 or more spots for players in a useful range (top 24 QB/TE,

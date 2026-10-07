@@ -1879,7 +1879,7 @@ button.close-chip {
 .mls-change-fold[open] > summary .mls-change-chevron { transform: none; }
 .mls-change-fold:not([open]) > summary .mls-change-when-open,
 .mls-change-fold[open] > summary .mls-change-when-closed { display: none; }
-.mls-change-all { margin-top: 0.6rem; }
+.mls-change-all, .mls-change-yours-all { margin-top: 0.6rem; }
 /* The chip beside a player's rank on the Lineup and Roster tabs (js/mls/rankings/moveChips.js). */
 .mls-move-chip { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; cursor: help; }
 .mls-move-chip.is-up { color: var(--primary-green); border-color: rgba(16, 185, 129, 0.45); }

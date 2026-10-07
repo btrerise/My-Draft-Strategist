@@ -1397,3 +1397,27 @@ are the 10 environment-related screenshot comparisons, identical on main.
 - A Weekly set last uploaded before this change has no `lastChanges`, so it shows chips only after its next same-week
   replace.
 
+### S3, round 3: Your players shows the top 5
+
+**Owner's request** (after round 2, "close"): Your players should work like Risers and Fallers: the 5 biggest changes,
+and a way to see all of them.
+
+**User-visible effect.** The Your players line now shows the 5 biggest changes (biggest move first; equal moves by
+name; adds, drops and position changes after the moves), and under it a **Show all N** fold (it reads "Hide" while
+open) listing every one of them with its ranks ("WR10 → WR1 +9") and the leagues he's in. That full list replaces the
+"Your players by league" section that round 2 had inside Details, so nothing is listed twice. The count stays in the
+heading ("Your players 7"). Like Risers and Fallers' "Show all moves", the fold shows even when there are 5 or fewer,
+since it adds the ranks and leagues.
+
+**What changed and where.** `renderYourPlayers` in `js/mls/rankings/changeSummary.js` (top 5 plus the
+`.mls-change-yours-all` fold; the Details section removed); one CSS rule in `css/mls.css`; the CHANGELOG line.
+
+**Tests.** `tests/mls-rankings-change.spec.mjs` (14 runs): the existing tests open "Show all 3" and check its rows and
+leagues; a new test reverses rankings.csv's WRs and QBs so seven of mds_test's players move, and checks the top 5
+(Wilson +9, Chase −9, A.J. Brown +7, Jefferson −7, Lamb −5), "Show all 7" with all seven rows (Allen and Nacua −3
+after them), and seven chips on the Lineup tab. Checked by eye at both widths, closed and open.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 214 Playwright tests pass; the only failures
+are the 10 environment-related screenshot comparisons, identical on main. No screenshot changes (the card only appears
+after a replace).
+
