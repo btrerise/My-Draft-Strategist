@@ -466,5 +466,7 @@ function renderStarters({ leagueName, hadLineup, cameIn, wentOut, otherLeagues }
         const item = (s, isIn) => `<li class="mls-change-item ${isIn ? 'is-added' : 'is-dropped'}"><span class="mls-change-icon">${isIn ? PLUS_ICON : MINUS_ICON}</span><span class="sr-only">${isIn ? 'In: ' : 'Out: '}</span><span class="mls-change-name">${escapeHtml(s.name)}</span><span class="mls-change-ranks">${escapeHtml(slotLabel(s.slot))}</span></li>`;
         inner = list([...cameIn.map(s => item(s, true)), ...wentOut.map(s => item(s, false))], 'Starters in and out', 'mls-change-inline');
     }
-    return group(`${escapeHtml(leagueName)} lineup`, inner + others, 'is-starters');
+    // "this update": the lineup is compared with the one just before this upload, while Your players
+    // can count from the week's first upload (owner's choice, round 6), so the two windows are told apart.
+    return group(`${escapeHtml(leagueName)} lineup, this update`, inner + others, 'is-starters');
 }

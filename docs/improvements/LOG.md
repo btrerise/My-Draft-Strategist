@@ -1503,3 +1503,19 @@ already has the free agents (Chase Brown up 7 "since Tue 9/22", and a tap).
 
 
 **Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 222 Playwright tests pass; the only failures are the 10 environment-related screenshot comparisons, identical on main. No screenshot changes (the card and chips only appear after a replace).
+
+### S3, round 6: the lineup part's label
+
+After round 5 my review as a user found one small mismatch: Your players counts from the week's first upload, but the
+lineup's In/Out compares with the lineup just before this upload. On a Friday, a player can read "+8" under Your players
+and not appear under the lineup, because he moved into it on Wednesday. Correct, but puzzling. The owner agreed to
+relabel it: the heading is now "<League> lineup, this update" (`renderStarters` in `js/mls/rankings/changeSummary.js`;
+the spec checks the new heading). Nothing else changed.
+
+**Owner's question: hold the PR until a real mid-week update can be tried?** My view: no. The mid-week flow is covered
+by the spec with the clock moved through a week (Tuesday, Wednesday, Friday, the next Tuesday). What only real files can
+show is tuning, not correctness: how many moves a 300-player mid-week update produces, and whether the 3-spot cutoff
+and the ranges feel right. Those are single numbers (`DEFAULT_MOVE_THRESHOLD`, `RELEVANT_RANKS` in
+`js/shared/rankings/compare.js`) that a later change can adjust. The feature only adds data inside each set's existing
+key and removes nothing, so trying it on real data after merging is low-risk.
+

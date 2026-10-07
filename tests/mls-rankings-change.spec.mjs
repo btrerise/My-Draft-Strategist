@@ -193,7 +193,7 @@ test.describe('What changed after Replace Set', () => {
 
         // The lineup: the Lineup tab re-optimized Fixture League. Wilson starts now; Lamb (FLEX) sits.
         const starters = card(page, t).locator('.mls-change-group.is-starters');
-        await expect(starters.locator('.mls-change-group-title')).toHaveText('Fixture League lineup');
+        await expect(starters.locator('.mls-change-group-title')).toHaveText('Fixture League lineup, this update');
         await expect(items(page, t, 'Starters in and out')).toHaveText([/In: Garrett Wilson\s*WR/, /Out: CeeDee Lamb\s*FLEX/]);
         await expect(starters.locator('.mls-change-note')).toHaveText('Lineups in Bench League update when you open them.');
         await expect(page.locator('#optimalLineupContainer')).toContainText('Garrett Wilson');
