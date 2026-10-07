@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Export Team shows the flex slot labels again.** In the exported image, filled FLX, SFLX, W/T and W/R labels
+  came out as solid color bars with no letters. They're now readable, in the same blended colors as on the Team tab.
 - **Player initials when a photo doesn't load,** as in Lineup Strategist. On the Draft Board and the Team tab, a
   player whose Sleeper photo is missing (no photo, offline, a custom player from your file) now shows a circle with
   their initials, or the team code for a defense, instead of nothing. Photos that do load cover the circle, and
@@ -66,6 +68,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Export Lineup keeps the FLEX badge's blended border.** In the exported image, the FLEX, SFLEX, W/T and W/R slot
+  badges lost their colored border and showed as plain dark boxes. They now look as they do on the Lineup tab.
 - **What changed after you replace a ranking set.** When an upload's Replace Set (or the ROS Auto-Fetch's Replace
   Set) overwrites a saved set, a "What changed" card now shows under that rankings card, saying what it's compared
   with. It leads with your players' moves (the 5 biggest, with Show all for the rest) and who came into and went out

@@ -3,6 +3,60 @@
 import { ensureHtml2Canvas } from '../shared/ui/scriptLoader.js';
 import { showToast } from '../shared/ui/toast.js';
 
+// html2canvas draws the image at this scale; the flex labels' canvases below match it so they stay sharp.
+const EXPORT_SCALE = 2;
+
+// The Team tab's filled FLX, SFLX, W/T and W/R labels are gradient text (css/mds.css: background-clip: text).
+// html2canvas 1.4.1 doesn't support background-clip: text and paints the label's whole box with the gradient,
+// so the letters vanish into a color bar (improvements F5). In the export's clone only, each such label's text
+// is redrawn on a canvas, which html2canvas copies as it is: the same gradient across the same box, in the
+// label's own font, with the text where the page puts it. The page's labels are never touched.
+const FLEX_LABEL_SELECTOR = '.roster-label.flex-blend-text, .roster-label.sflex-blend-text, .roster-label.wt-blend-text, .roster-label.wr-blend-text';
+
+async function drawFlexLabelsOnCanvas(clonedDoc) {
+    const view = clonedDoc.defaultView;
+    for (const label of clonedDoc.querySelectorAll(FLEX_LABEL_SELECTOR)) {
+        const style = view.getComputedStyle(label);
+        // The gradient's colors as resolved (e.g. "linear-gradient(90deg, rgb(16, 185, 129), ...)"), evenly
+        // spaced, as the --*-blend variables in css/base.css define them.
+        const colors = style.backgroundImage.match(/rgba?\([^)]*\)/g);
+        const text = label.textContent.trim();
+        if (!colors || !text) continue;
+
+        // Where the text sits: its left edge, and its baseline (the bottom of an empty inline-block on it).
+        const textSpan = clonedDoc.createElement('span');
+        textSpan.textContent = text;
+        const baselineMark = clonedDoc.createElement('span');
+        baselineMark.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
+        label.replaceChildren(textSpan, baselineMark);
+        const box = label.getBoundingClientRect();
+        const textX = textSpan.getBoundingClientRect().left - box.left;
+        const baseline = baselineMark.getBoundingClientRect().bottom - box.top;
+
+        const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        try { await clonedDoc.fonts.load(font, text); } catch (e) { /* draw with whatever font is there */ }
+
+        const canvas = clonedDoc.createElement('canvas');
+        canvas.width = Math.ceil(box.width * EXPORT_SCALE);
+        canvas.height = Math.ceil(box.height * EXPORT_SCALE);
+        canvas.style.cssText = `display:block;width:${box.width}px;height:${box.height}px`;
+        canvas.setAttribute('aria-label', text);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(EXPORT_SCALE, EXPORT_SCALE);
+        ctx.font = font;
+        ctx.textBaseline = 'alphabetic';
+        const gradient = ctx.createLinearGradient(0, 0, box.width, 0);
+        colors.forEach((color, i) => gradient.addColorStop(colors.length === 1 ? 0 : i / (colors.length - 1), color));
+        ctx.fillStyle = gradient;
+        ctx.fillText(text, textX, baseline);
+
+        label.style.backgroundImage = 'none';
+        label.style.webkitBackgroundClip = 'border-box';
+        label.style.backgroundClip = 'border-box';
+        label.replaceChildren(canvas);
+    }
+}
+
     // --- TEAM EXPORT LOGIC ---
     export const exportTeam = async function() {
         // Fetched on first use rather than on every page load -- see loadScriptOnce in
@@ -29,10 +83,10 @@ import { showToast } from '../shared/ui/toast.js';
                 try {
             const canvas = await html2canvas(container, { 
                 backgroundColor: '#0a0e17', // Updated to match your true app background
-                scale: 2,
+                scale: EXPORT_SCALE,
                 useCORS: true,     
                 allowTaint: true,
-                onclone: (clonedDoc) => {
+                onclone: async (clonedDoc) => {
                     const clonedContainer = clonedDoc.getElementById('exportableTeamContainer');
                     const includeRecap = clonedDoc.getElementById('includeRecapInExport')?.checked;
                     const branding = clonedDoc.getElementById('exportBranding');
@@ -58,6 +112,9 @@ import { showToast } from '../shared/ui/toast.js';
                         clonedContainer.style.padding = '1.5rem'; // Slight padding bump to frame the logo beautifully
                         clonedContainer.style.boxSizing = 'border-box';
                     }
+
+                    // After the width change above, so each label is measured where it will be drawn.
+                    await drawFlexLabelsOnCanvas(clonedDoc);
                 }
             });
 
