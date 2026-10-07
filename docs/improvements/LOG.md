@@ -1421,3 +1421,35 @@ after them), and seven chips on the Lineup tab. Checked by eye at both widths, c
 are the 10 environment-related screenshot comparisons, identical on main. No screenshot changes (the card only appears
 after a replace).
 
+### S3, round 4: chips on Top Available; the free-agent section removed
+
+**Owner's question and choice.** The owner asked whether the card should be more permanent, at least on the Roster
+tab, so each league shows its changes while it's active. My view: the chips already give a per-league, lasting view of
+your own players; what's lost after a reload is free agents moving up. I suggested putting the chips where waiver
+decisions happen (Top Available, and possibly the Dashboard's Best Available) rather than a new lasting card, which
+would repeat the chips, go stale quietly and need a second copy for Weekly. The owner chose **chips on the Scout tab's
+Top Available rows**, **not** on the Dashboard's Best Available lines (already busy), and **removing the "Free agents
+moving up" section** from the card, since that information is now in the Scout tab.
+
+**User-visible effect.**
+- **Top Available rows** (Scout tab, Waiver Wire Assistant) show the same chip after the player's position-rank badge:
+  green up-arrow and the spots moved, red down-arrow, or "New", by the rankings Top Available is using (Rank By,
+  including its fallback). The Trending view's rows get it too when the player is in your rankings. It lasts until that
+  set's next upload, per league, like the Lineup and Roster chips.
+- **The card** no longer has "Free agents moving up". Its note now reads "Rank changes also show as chips on your
+  player cards and in the Scout tab's Top Available (free agents) until the next upload of this set." and shows
+  whenever anything moved or was added (not only when one of your players did).
+
+**What changed and where.** `js/mls/scout/topAvailable.js`: `rankMoveChip(ctx.scan.basis, cleanName)` in `rowHTML`
+and `trendRowHTML`. `js/mls/rankings/changeSummary.js`: `risingFreeAgents`, `renderFreeAgents` and the
+`isFullyMappedLeague` import removed; the note's wording and condition. `css/mls.css`: the `.mls-change-fa*` rules
+removed. CHANGELOG line updated.
+
+**Tests.** `tests/mls-rankings-change.spec.mjs` (16 runs): the card has no free-agent section and the new note; a new
+test replaces the Weekly set with rankings-waivers.csv (six "New" chips on Top Available, tooltip "New in your Weekly
+rankings since the last update (RB8)"), then moves Chase Brown from RB9 to RB2 (one up chip, "Up 7 spots ... (RB9 →
+RB2)"), then switches Rank By to ROS (no chips: the ROS set wasn't replaced). Checked by eye on a phone: the chip sits
+beside the trending icon and wraps with the row's other badges.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 216 Playwright tests pass; the only failures are the 10 environment-related screenshot comparisons, identical on main. No screenshot changes.
+

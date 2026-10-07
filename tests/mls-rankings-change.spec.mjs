@@ -1,6 +1,6 @@
 // "What changed" after replacing a ranking set (improvements S3). Replace Set in the upload preview,
 // or the ROS auto-fetch's "Replace saved set?", shows a card under that set's rankings card: your
-// players' changes, (Weekly only) the active league's starters that changed, free agents moving up,
+// players' changes, (Weekly only) the active league's starters that changed,
 // and a Details fold with the counts, top 5 risers and fallers, every move by position and the added
 // and dropped players. Your moved players get a chip on their Lineup / Roster rows until the set's
 // next upload. Saving a new set shows nothing; a Weekly set's first upload of a new rankings week
@@ -12,7 +12,7 @@
 // Brown and St. Brown; Barkley is the rival's. Position ranks are derived from the file's order, as
 // the Waiver Wire Assistant derives them (rankings.csv has no Pos Rank column).
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, FIXED_NOW, FIXTURE_LEAGUE_ID, RANKINGS_CSV } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, FIXED_NOW, FIXTURE_LEAGUE_ID, RANKINGS_CSV, WAIVER_RANKINGS_CSV } from './helpers.mjs';
 
 // Against rankings.csv: Wilson WR10 -> WR2 (T4 -> T1) and A.J. Brown WR9 -> WR4 (T3 -> T2) rise;
 // Barkley RB3 -> RB8 (T1 -> T4) and St. Brown WR6 -> WR10 (T2 -> T4) fall; everyone else moves 2
@@ -113,14 +113,10 @@ async function expectSummary(page, t) {
         /A\.J\. Brown\s*WR9 → WR4\s*\+5[\s\S]*Fixture League/,
         /Amon-Ra St\. Brown\s*WR6 → WR10\s*−4[\s\S]*Fixture League/
     ]);
-    await expect(c.getByText('Rank changes also show on your player cards until the next upload of this set.')).toBeVisible();
+    await expect(c.getByText("Rank changes also show as chips on your player cards and in the Scout tab's Top Available (free agents) until the next upload of this set.")).toBeVisible();
 
-    // Free agents moving up in the Sleeper league (Bench League is manual, so it isn't listed): the
-    // three newly ranked players nobody rosters, best first. Barkley fell; the risers are rostered.
-    await expect(items(page, t, 'Free agents moving up in Fixture League')).toHaveText([
-        /James Cook\s*new, RB3/, /Jayden Daniels\s*new, QB2/, /Chase Brown\s*new, RB7/
-    ]);
-    await expect(c.getByRole('button', { name: 'View top available in Fixture League' })).toBeVisible();
+    // No free-agent section (round 4): those chips are on the Scout tab's Top Available rows instead.
+    await expect(c.locator('.mls-change-group-title', { hasText: 'Free agents' })).toHaveCount(0);
 
     // Details: folded, with the counts on its summary line.
     const details = c.locator('details.mls-change-details');
@@ -294,6 +290,43 @@ test.describe('What changed after Replace Set', () => {
         await expectClean(page, state);
     });
 
+    test('Top Available: free agents who moved or are new get the same chips, by the Rank By rankings', async ({ page }) => {
+        const state = await setUp(page);
+        const t = TYPES.weekly;
+        const ta = page.locator('#waiverOutput');
+        const taChip = (name) => ta.locator('.mls-ta-row').filter({ hasText: name }).locator('.mls-move-chip');
+        // Weekly: rankings.csv -> rankings-waivers.csv adds the six free agents (25-30).
+        await openCard(page, t);
+        await upload(page, t, WAIVER_RANKINGS_CSV, { expectReplace: true });
+        await showTab(page, 'scout');
+        await expect(ta.locator('.mls-ta-row')).toHaveCount(6);
+        await expect(taChip('James Cook')).toHaveText('New in your Weekly rankings since the last update');
+        await expect(taChip('James Cook')).toHaveAttribute('title', 'New in your Weekly rankings since the last update (RB8)');
+        await expect(ta.locator('.mls-move-chip.is-new')).toHaveCount(6);
+
+        // Then Chase Brown moves up to 3rd overall: RB9 -> RB2.
+        const lines = WAIVER_RANKINGS_CSV.trim().split('\n');
+        const cb = lines.findIndex(l => l.includes('Chase Brown'));
+        const moved = lines.filter((_, i) => i !== cb);
+        moved.splice(3, 0, lines[cb]);
+        const csv = moved.map((l, i) => (i === 0 ? l : `${i},${l.split(',').slice(1).join(',')}`)).join('\n') + '\n';
+        await openCard(page, t);
+        await upload(page, t, csv, { expectReplace: true });
+        await showTab(page, 'scout');
+        await expect(taChip('Chase Brown')).toHaveClass(/is-up/);
+        await expect(taChip('Chase Brown')).toHaveAttribute('title', 'Up 7 spots in your Weekly rankings since the last update (RB9 → RB2)');
+        await expect(taChip('Chase Brown').locator('svg[aria-hidden="true"]')).toBeAttached();
+        // Nobody else free moved 3 or more spots, or is new.
+        await expect(ta.locator('.mls-move-chip')).toHaveCount(1);
+
+        // Rank By ROS: the ROS set wasn't replaced, so no chips.
+        // (Its rankings.csv ranks no free agents, so the list is the "all rostered" note.)
+        await page.locator('#waiverScanBasis').selectOption('ros');
+        await expect(ta).toContainText('Every player in your ROS rankings');
+        await expect(ta.locator('.mls-move-chip')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
     test('saving a new set shows nothing, and clears an earlier summary', async ({ page }) => {
         const state = await setUp(page);
         const t = TYPES.weekly;
@@ -321,7 +354,6 @@ test.describe('What changed after Replace Set', () => {
         const c = card(page, t);
         await expect(c.locator('.mls-change-group.is-yours .mls-change-none')).toHaveText('None of your players moved 3 or more spots, joined or left these rankings.');
         await expect(c.locator('.mls-change-group.is-starters .mls-change-none')).toHaveText('Same starters.');
-        await expect(c.locator('.mls-change-group.is-free-agents')).toHaveCount(0);
         await expect(c.getByText('Rank changes also show')).toHaveCount(0);
         await expect(c.locator('details.mls-change-details > summary .mls-change-counts')).toHaveText('0 moved · 0 added · 0 dropped');
         await c.locator('details.mls-change-details > summary').click();

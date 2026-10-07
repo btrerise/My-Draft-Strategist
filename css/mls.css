@@ -1831,7 +1831,7 @@ button.close-chip {
 .mls-moved-pointer-link { color: #c4b5fd; font-weight: 600; white-space: nowrap; text-decoration: underline; }
 
 /* "What changed" after replacing a ranking set (js/mls/rankings/changeSummary.js, improvements S3): under the
-   rankings card that owns the set. The top lists your players, your lineup and free agents moving up as compact
+   rankings card that owns the set. The top lists your players and your lineup as compact
    inline items; everything league-wide is in the Details fold. Up is green, down is red. */
 .mls-change-card { border-left: 3px solid var(--primary-green); }
 .mls-change-head { gap: 0.75rem; }
@@ -1864,12 +1864,6 @@ button.close-chip {
 .mls-change-tier { font-size: 0.72rem; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; white-space: nowrap; }
 .mls-change-leagues { flex-basis: 100%; padding-left: calc(13px + 0.45rem); font-size: 0.72rem; color: var(--text-muted); }
 .mls-change-more-note { margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--text-muted); }
-/* Free agents moving up: one line per league, its players, then View. */
-.mls-change-fa-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.75rem; padding: 0.35rem 0; }
-.mls-change-fa-line + .mls-change-fa-line { border-top: 1px solid rgba(255, 255, 255, 0.05); }
-.mls-change-fa-league { font-size: 0.82rem; font-weight: 600; color: var(--text-main); }
-.mls-change-fa-line > .mls-change-inline { flex: 1 1 220px; }
-@media (max-width: 600px) { .mls-change-fa-league { flex-basis: 100%; } }
 /* The folds: Details (everything league-wide) and, inside it, Show all moves. */
 .mls-change-fold { margin-top: 0.9rem; }
 .mls-change-details { padding-top: 0.6rem; border-top: 1px solid var(--border); }

@@ -27,13 +27,14 @@
 // - Rank changes go on the player rows too (rankMoveChip in moveChips.js: Lineup and Roster tabs), kept until the
 //   set's next upload. Only the moves are kept, on the set itself (`lastChanges`, inside the set's
 //   existing storage key): no new key, and not the old rankings.
-// - A shorter card: your players, the starters that changed and free agents moving up come first;
+// - A shorter card: your players and the starters that changed come first;
 //   league-wide risers, fallers, adds and drops sit behind one "Details" fold.
 //   (Round 3: Your players shows the 5 biggest changes, with "Show all N" for the rest.)
 // - Only changes inside a useful range count (RELEVANT_RANKS: top 24 QB/TE, 48 RB/WR, 16 K/DEF,
 //   before or after), so moves deep in a file don't crowd out the ones that matter.
 // - Free agents moving up: risers and newly ranked players nobody rosters, per Sleeper-synced league
-//   using the set, with View (Top Available).
+//   using the set, with View (Top Available). Removed in round 4 (owner's choice): the chips now show on
+//   the Scout tab's Top Available rows instead, per league, for as long as the chips last.
 // - Weekly rankings change every week with the matchups, so a Weekly replace is compared only when
 //   the old upload is from the same rankings week (isSameRankingsWeek: Tuesday morning to Tuesday
 //   morning). The first upload of a new week shows no card, clears last week's chips, and the upload
@@ -45,13 +46,11 @@ import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
-import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { renderLineupUI } from '../render/lineup.js';
 import { loadRosterTab } from '../main.js';
 
 const TOP_N = 5;
 const NAMES_SHOWN = 10;
-const FREE_AGENTS_SHOWN = 3;
 const POSITION_ORDER = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
 // Per type ('weekly' | 'ros'): a replace waiting for showRankingsChange.
@@ -156,7 +155,6 @@ export async function showRankingsChange(type) {
         result,
         setName: set ? set.name : `${cfg.label} set`,
         yourPlayers: yourPlayerChanges(result, leagues),
-        freeAgents: risingFreeAgents(result, leagues),
         starters: p.startersBefore && startersAfter ? {
             leagueName: p.leagueName,
             ...diffStarters(p.startersBefore, startersAfter),
@@ -229,17 +227,6 @@ function yourPlayerChanges(result, leagues) {
         (typeOrder[a.change.type] - typeOrder[b.change.type])
         || (Math.abs(b.change.delta || 0) - Math.abs(a.change.delta || 0))
         || a.change.name.localeCompare(b.change.name));
-}
-
-// Risers and newly ranked players nobody rosters, per Sleeper-synced league using the set (a manual
-// league only knows your roster, so "free" can't be told there). Best new rank first, a few each.
-function risingFreeAgents(result, leagues) {
-    const candidates = [...result.risers, ...result.added]
-        .sort((a, b) => ((a.new.rank ?? 1e6) - (b.new.rank ?? 1e6)) || ((a.new.posRank ?? 1e6) - (b.new.posRank ?? 1e6)));
-    return leagues.filter(isFullyMappedLeague).map(league => ({
-        league,
-        players: candidates.filter(c => !(league.globalRosterMap || {})[c.cleanName]).slice(0, FREE_AGENTS_SHOWN)
-    })).filter(l => l.players.length > 0);
 }
 
 function diffStarters(before, after) {
@@ -322,11 +309,10 @@ function countsLine(counts) {
 }
 
 // A compact inline item for the top of the card: "Garrett Wilson +8", "James Cook new, RB3".
-// withRank adds the new rank to a move ("Chase Brown RB7 +9"), for free agents.
-function compactItem(c, { withRank = false } = {}) {
+function compactItem(c) {
     const cls = c.type === 'moved' ? (c.delta > 0 ? 'is-up' : 'is-down') : c.type === 'added' ? 'is-added' : c.type === 'dropped' ? 'is-dropped' : 'is-pos';
     const icon = c.type === 'moved' ? (c.delta > 0 ? UP_ICON : DOWN_ICON) : c.type === 'added' ? PLUS_ICON : c.type === 'dropped' ? MINUS_ICON : SWAP_ICON;
-    const what = c.type === 'moved' ? `${withRank ? `<span class="mls-change-ranks">${escapeHtml(rankLabel(c.new, c.basis))}</span>` : ''}<span class="mls-change-delta">${signed(c.delta)}</span>`
+    const what = c.type === 'moved' ? `<span class="mls-change-delta">${signed(c.delta)}</span>`
         : c.type === 'added' ? `<span class="mls-change-ranks">new, ${escapeHtml(rankLabel(c.new))}</span>`
         : c.type === 'dropped' ? `<span class="mls-change-ranks">dropped</span>`
         : `<span class="mls-change-ranks">now ${escapeHtml(rankLabel(c.new))}</span>`;
@@ -334,17 +320,16 @@ function compactItem(c, { withRank = false } = {}) {
     return `<li class="mls-change-item ${cls}"${title ? ` title="${escapeHtml(title)}"` : ''}><span class="mls-change-icon">${icon}</span><span class="mls-change-name">${escapeHtml(c.name)}</span>${what}</li>`;
 }
 
-function renderCard(type, { result, setName, yourPlayers, freeAgents, starters }) {
+function renderCard(type, { result, setName, yourPlayers, starters }) {
     const { counts } = result;
     const titleId = `${type}RankingsChangeTitle`;
     const nothing = counts.moved === 0 && counts.added === 0 && counts.dropped === 0 && counts.posChanged === 0;
 
-    // The parts to act on first: your players, your lineup, free agents moving up.
+    // The parts to act on first: your players and your lineup.
     let body = renderYourPlayers(yourPlayers, result.threshold);
     if (starters) body += renderStarters(starters);
-    body += renderFreeAgents(freeAgents);
-    if (yourPlayers.some(y => y.change.type === 'moved' || y.change.type === 'added')) {
-        body += `<p class="mls-change-note">Rank changes also show on your player cards until the next upload of this set.</p>`;
+    if (counts.moved > 0 || counts.added > 0) {
+        body += `<p class="mls-change-note">Rank changes also show as chips on your player cards and in the Scout tab's Top Available (free agents) until the next upload of this set.</p>`;
     }
 
     // Everything else, folded.
@@ -428,18 +413,4 @@ function renderStarters({ leagueName, hadLineup, cameIn, wentOut, otherLeagues }
         inner = list([...cameIn.map(s => item(s, true)), ...wentOut.map(s => item(s, false))], 'Starters in and out', 'mls-change-inline');
     }
     return group(`${escapeHtml(leagueName)} lineup`, inner + others, 'is-starters');
-}
-
-function renderFreeAgents(freeAgents) {
-    if (freeAgents.length === 0) return '';
-    const lines = freeAgents.map(({ league, players }) => {
-        const name = escapeHtml(league.name || 'Unnamed league');
-        const items = players.map(c => compactItem(c, { withRank: true })).join('');
-        return `<li class="mls-change-fa-line">
-            <span class="mls-change-fa-league">${name}</span>
-            <ul class="mls-change-list mls-change-inline" aria-label="${escapeHtml(`Free agents moving up in ${league.name || 'Unnamed league'}`)}">${items}</ul>
-            <button type="button" class="btn btn-secondary mls-btn-sm" data-action="viewLeagueTopAvailable" data-league-id="${escapeHtml(league.leagueId)}" aria-label="View top available in ${name}">View</button>
-        </li>`;
-    }).join('');
-    return group('Free agents moving up', `<ul class="mls-change-list mls-change-fa">${lines}</ul>`, 'is-free-agents');
 }
