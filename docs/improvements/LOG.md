@@ -1734,8 +1734,8 @@ environment-only screenshot failures as round 1, and all 40 renders pixel-identi
 (rendered text), its `aria-label`, a click showing the toast, the compared player's badge showing "2" / "SoS: 2", and
 the Roster tab's badge still a `<span>` reading "SoS: 25" at both widths.
 
-**Proposed follow-up: a legend for the badges.** The owner noted the app may need a legend for all its symbols and
-badges. Not built here. A runbook card could add one "What the badges mean" list (position-rank chip and tier,
+**Follow-up: a legend for the badges (runbook card S10).** The owner noted the app may need a legend for all its symbols
+and badges, and asked for a runbook card (added the same day; Needs: S7). Not built here. The card adds one "What the badges mean" list (position-rank chip and tier,
 rank-change chips, trending icon, Starts, injury and bye, SoS, TAXI, R, the FLEX blends), probably as a section of
 the Guide tab plus a small info link on the Scout tab's Waiver Wire Assistant, drawn with the real badge markup so it
 can't drift from what the rows show.
