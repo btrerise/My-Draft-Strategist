@@ -40,6 +40,8 @@ test.describe('Lineup Strategist trending adds', () => {
         await expect(brown).toHaveAttribute('aria-label', 'Trending: added in 8,214 sleeper leagues in the last 24 hours');
         await expect(brown.locator('svg')).toHaveAttribute('aria-hidden', 'true');
         await expect(brown.locator('svg')).toHaveAttribute('stroke', 'currentColor');
+        // Green, like Sleeper's own trending arrow (--primary-green, css/base.css).
+        await expect(brown).toHaveCSS('color', 'rgb(16, 185, 129)');
         await expect(row(page, 'Zay Flowers').locator('.mls-ta-trend')).toHaveAttribute('title', 'Added in 640 Sleeper leagues in the last 24 hours');
         await expect(row(page, 'Sam LaPorta').locator('.mls-ta-trend')).toHaveCount(1);
         await expect(row(page, 'James Cook').locator('.mls-ta-trend')).toHaveCount(0);
@@ -83,6 +85,16 @@ test.describe('Lineup Strategist trending adds', () => {
 
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
+        await expectClean(page, state);
+    });
+
+    test('add counts are abbreviated with k and M', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        const shown = await page.evaluate(async (ns) => {
+            const { compactCount } = await import('/js/mls/scout/topAvailable.js');
+            return ns.map(compactCount);
+        }, [640, 999, 1000, 2010, 8214, 9960, 15400, 999499, 999600, 1240000, 3000000, 12600000]);
+        expect(shown).toEqual(['640', '999', '1k', '2k', '8.2k', '10k', '15k', '999k', '1M', '1.2M', '3M', '13M']);
         await expectClean(page, state);
     });
 

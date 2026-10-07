@@ -93,11 +93,17 @@ import { runScout } from './engine.js';
         renderTopAvailable();
     }
 
-    // 8214 -> "8.2k", 15400 -> "15k", 640 -> "640".
-    function compactCount(n) {
+    // 640 -> "640", 8214 -> "8.2k", 15400 -> "15k", 1240000 -> "1.2M", 3000000 -> "3M". One decimal
+    // below 10 of a unit, none above; a value that rounds up to the next unit moves to it (999,600 -> "1M").
+    export function compactCount(n) {
         if (n < 1000) return String(n);
-        if (n < 10000) return `${(Math.round(n / 100) / 10).toFixed(1).replace(/\.0$/, '')}k`;
-        return `${Math.round(n / 1000)}k`;
+        const units = [[1e3, 'k'], [1e6, 'M']];
+        for (let i = 0; i < units.length; i++) {
+            const [size, suffix] = units[i];
+            const v = n / size;
+            const shown = v < 10 ? Math.round(v * 10) / 10 : Math.round(v);
+            if (shown < 1000 || i === units.length - 1) return `${String(shown).replace(/\.0$/, '')}${suffix}`;
+        }
     }
     const addsText = (n) => `Added in ${n.toLocaleString('en-US')} Sleeper leagues in the last ${TRENDING.lookbackHours} hours`;
 

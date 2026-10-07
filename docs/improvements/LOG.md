@@ -907,7 +907,7 @@ the runbook as **F4** (Fix now group).
 ## S6 — Sleeper trending adds in Top Available
 
 **User-visible effect.** On the Scout tab's Waiver Wire Assistant, in Top Available:
-- **Badge:** a player in Sleeper's 50 most-added of the last 24 hours gets a small orange Feather `trending-up` icon
+- **Badge:** a player in Sleeper's 50 most-added of the last 24 hours gets a small green Feather `trending-up` icon
   right after his rank chip. The icon only; its tooltip and aria-label give the count ("Added in 8,214 Sleeper leagues
   in the last 24 hours"). Rank order is unchanged: "by your rankings" stays exactly that.
 - **Show: Your rankings | Trending:** a new switch above the position buttons. Trending lists the trending adds still
@@ -948,8 +948,7 @@ the runbook as **F4** (Fix now group).
 - `lineup/index.html`: the toggle (`#waiverTopViewWrap` inside a `data-waiver-modes="top"` block, data-action
   `setTopAvailableView`, inline SVG with `aria-hidden`/`currentColor`), and a sentence in the card's tooltip.
 - `js/mls/main.js`: the `setTopAvailableView` action. `css/mls.css`: `.mls-ta-trend`, `.mls-ta-trend-title`,
-  `.mls-trend-icon` and `#waiverTopViewWrap[hidden]`. The icon uses `--stack-color` (orange) to stand apart from the
-  green Starts flag.
+  `.mls-trend-icon` and `#waiverTopViewWrap[hidden]`. The icon is `--primary-green` (round 2).
 - `sw.js`: `CACHE_NAME` v2.8.79 → v2.8.80. No new files, so `PRECACHE_ASSETS` is unchanged. CHANGELOG line under
   Lineup Strategist's Unreleased.
 
@@ -971,6 +970,16 @@ the runbook as **F4** (Fix now group).
 fetched. This container's fonts don't match the committed baselines: all 10 visual tests fail on unchanged main
 too (page heights differ). So I rendered main's 40 screenshots here and ran this branch's visual tests against those
 renders. All 40 matched. The committed baselines are untouched. CI (the real baseline environment) is the final word.
+
+**Round 2 (owner's review of the first push):**
+- **Green arrow.** The icon (and the Trending view's heading) was orange (`--stack-color`), chosen to stand apart from
+  the green Starts flag. The owner asked for green, a more positive color and the one Sleeper uses for its trending
+  arrow. Now `--primary-green`, the site's green, the same as the Starts flag; the shapes (arrow vs. check and the
+  word "Starts") tell them apart. The spec checks the computed color.
+- **Millions as M.** `compactCount` (now exported) abbreviates a million and up as "1.2M" / "3M", with the same rule as
+  thousands: one decimal below 10, none above. A value that rounds up to the next unit moves to it (999,600 → "1M",
+  not "1000k"). A spec runs it over 640 to 12.6M.
+- Screenshots: still none to re-take (the screenshot league has no rankings, so no icon).
 
 **Left over / notes.**
 - Phones show the icon without a count (owner's choice). If that reads too bare, the next step is the "8.2k" text

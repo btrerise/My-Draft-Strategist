@@ -67,7 +67,7 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **Sleeper trending adds in Top Available** (Scout tab, Waiver Wire Assistant). A player among Sleeper's 50
-  most-added of the last 24 hours gets a small trending-up icon in his row; hover it for how many leagues added him.
+  most-added of the last 24 hours gets a small green trending-up icon in his row; hover it for how many leagues added him.
   A new **Show: Your rankings | Trending** switch lists those trending players who are still available in your league,
   most adds first, each with your position rank or "UR" when your rankings leave him out, so you can see when the
   crowd is chasing someone your rankings don't like, or skipping someone they do. The position buttons filter it too.

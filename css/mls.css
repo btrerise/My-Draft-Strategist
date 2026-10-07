@@ -1459,8 +1459,8 @@ button.close-chip {
 /* Sleeper trending adds (improvements S6): the icon on a row, the Trending view's heading, and the toggle's
    icon. #waiverTopViewWrap is an .input-group (display:flex), so its [hidden] needs the same help as the mode blocks. */
 #waiverTopViewWrap[hidden] { display: none !important; }
-.mls-ta-trend { display: inline-flex; align-items: center; color: var(--stack-color); cursor: help; }
-.mls-ta-trend-title { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--stack-color); }
+.mls-ta-trend { display: inline-flex; align-items: center; color: var(--primary-green); cursor: help; }
+.mls-ta-trend-title { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--primary-green); }
 .mls-trend-icon { vertical-align: -2px; margin-right: 0.35rem; }
 
 /* Best available in your leagues (Dashboard, js/mls/scout/bestAvailable.js, improvements S5): one
