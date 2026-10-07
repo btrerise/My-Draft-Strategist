@@ -1528,7 +1528,8 @@ key and removes nothing, so trying it on real data after merging is low-risk.
 - **Lineup Strategist, Export Lineup** (found while checking, fixed the same way): the FLEX, SFLEX, W/T and W/R slot
   badges lost their blended border in the image and showed as plain dark boxes. They now look as they do on the
   Lineup tab.
-- Nothing on either page changed; only the exported PNGs.
+- Nothing on either page changed for the export fixes; only the exported PNGs. (The follow-up below changes the
+  Team tab's flex labels on the page.)
 
 **Owner's decision.** Shown test exports of five looks, each made with html2canvas 1.4.1 (A: the gradient drawn on
 a canvas; B: the gradient as SVG text; C: each letter one color, sampled where it sits on the gradient; D: one
@@ -1581,13 +1582,27 @@ app's `onclone`, where each label and badge sits in the clone (the image's origi
   `.highlight-card`, `.danger-card`, the board's tier divider), and none is inside either captured area. The Waiver
   Wire's FLEX button and Top Available's FLEX heading (`.flex-blend`) are never exported.
 
-**Noticed, not changed (on-screen, out of scope).** The Team tab's gradient spans the label's 45px box, but "FLX" is
-only about 25px wide, so the letters show the first half of the blend: FLX reads green to blue and never reaches TE's
-yellow, and W/T reads blue to gray. The export now matches the page, so it shows this too. If the owner wants each
-label to run through all its positions, sizing the label to its text (or `background-size`) would do it, in a
-separate card.
+**Follow-up in the same session: the labels run through all their colors** (owner's request after the summary;
+no runbook card covered it).
+- **The problem.** The Team tab's gradient was painted on the `.roster-label` itself, whose box is a fixed 45px
+  (it keeps the player names lined up), but "FLX" is only about 25px wide. So the letters showed only the first half of
+  the blend: FLX ran green to blue and never reached TE's yellow, W/T ran blue to gray, SFLX stopped at blue.
+- **The fix.** `buildSlotHTML` in `js/mds/team.js` wraps a flex label's text in `<span class="roster-label-text">`,
+  an inline span as wide as the letters, and css/mds.css's rules (`.roster-label.flex-blend-text >
+  .roster-label-text` etc.) put the gradient there. The outer label keeps its classes and 45px width, so nothing
+  moves. The export follows: `drawFlexLabelsOnCanvas` reads the gradient from the inner span and spans it across
+  the letters. The comment in css/base.css that points at these rules is updated.
+- **Test.** The Export Team test now also checks that, on the page and in the export, each label's first letter is
+  nearest its first position's color and its last letter nearest its last's, among the label's positions. On the
+  previous code it failed ("page: FLX ends in TE's color"). The page check runs at 1x, where the edge pixels are partly
+  background, hence "nearest" rather than an exact match.
+- **Seen by eye.** Before/after renders of the page at 2x: same layout; FLX, W/T and SFLX now end in yellow, W/R in
+  blue.
+- **No screenshot changes.** No baseline has a filled flex slot on the Team tab. The 30 screenshots that pass here
+  still pass; the 10 that fail in this session are pixel-identical to this branch's earlier renders.
+- CHANGELOG line under Draft Strategist. `CACHE_NAME` stays v2.8.85 (one bump per branch, still above main's).
 
-**Screenshots.** None re-taken: neither page changes, and no screenshot runs an export.
+**Screenshots.** None re-taken: no screenshot runs an export or has a filled flex label.
 
 **Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 226 Playwright tests pass (the new spec's 4
 included). The 10 screenshot comparisons that fail in this cloud session (`visual.spec.mjs`, image heights differ from

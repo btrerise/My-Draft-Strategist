@@ -2133,7 +2133,7 @@ button.pos-filter {
    A badge or button for a slot that takes several positions: a border blended from those positions'
    colors (the --*-blend variables in :root). Last in the file so it beats .pos-filter's background
    and border, including on hover. Draft Strategist's Team tab colors its plain-text slot labels with
-   the same variables (.roster-label.flex-blend-text etc. in css/mds.css). */
+   the same variables (.roster-label.flex-blend-text > .roster-label-text etc. in css/mds.css). */
 .flex-blend, .sflex-blend, .wt-blend { color: #e2e8f0; border: 1px solid transparent; }
 .flex-blend, .pos-filter.flex-blend:hover { background: var(--blend-fill) padding-box, var(--flex-blend) border-box; }
 .sflex-blend, .pos-filter.sflex-blend:hover { background: var(--blend-fill) padding-box, var(--sflex-blend) border-box; }

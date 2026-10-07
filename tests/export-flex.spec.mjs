@@ -3,6 +3,8 @@
 //   * Draft Strategist's Team tab: filled FLX, SFLX, W/T and W/R labels are gradient text (`background-clip: text`
 //     in css/mds.css). html2canvas doesn't support that and painted each label's whole box with the gradient, so
 //     Export Team showed color bars with no letters. js/mds/export.js now redraws them on canvases in its clone.
+//     The same test checks the page's labels run through all their positions' colors: the gradient used to span
+//     the label's 45px box, so the letters only showed its first half (fixed in the same round).
 //   * Lineup Strategist's Lineup tab: the FLEX, SFLEX, W/T and W/R slot badges' blended border (a padding-box
 //     fill over a border-box gradient, css/mls.css). html2canvas painted the fill over the border too, so Export
 //     Lineup's FLEX badge lost its border. js/mls/trade/export.js now splits the two layers in its clone.
@@ -54,23 +56,59 @@ const HTML2CANVAS = readFileSync(here('./node_modules/html2canvas/dist/html2canv
 
 const SCALE = 2;
 
-// Share of the pixels in a label's box that differ clearly from the card background behind it. Readable text
-// leaves most of its box as background; the bug filled it all.
-function inkCoverage(png, box) {
+const distance = (a, b) => a.reduce((sum, v, i) => sum + Math.abs(v - b[i]), 0);
+
+// The pixels of a label's box (in CSS px, drawn at `scale`) that differ clearly from the background behind the
+// letters, taken as the box's most common color.
+function inkPixels(png, box, scale) {
     const px = (x, y) => { const i = (y * png.width + x) * 4; return [png.data[i], png.data[i + 1], png.data[i + 2]]; };
-    // Background: just above the label, inside the slot's top padding.
-    const bg = px(Math.round((box.x + 2) * SCALE), Math.round((box.y - 4) * SCALE));
-    const x0 = Math.round(box.x * SCALE), x1 = Math.round((box.x + box.width) * SCALE);
-    const y0 = Math.round(box.y * SCALE), y1 = Math.round((box.y + box.height) * SCALE);
-    let ink = 0, total = 0;
+    const x0 = Math.round(box.x * scale), x1 = Math.round((box.x + box.width) * scale);
+    const y0 = Math.round(box.y * scale), y1 = Math.round((box.y + box.height) * scale);
+    const counts = new Map();
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const k = px(x, y).join(); counts.set(k, (counts.get(k) || 0) + 1); }
+    const bg = [...counts].reduce((a, b) => (b[1] > a[1] ? b : a))[0].split(',').map(Number);
+    const ink = [];
+    let total = 0;
     for (let y = y0; y < y1; y++) {
         for (let x = x0; x < x1; x++) {
-            const [r, g, b] = px(x, y);
-            if (Math.abs(r - bg[0]) + Math.abs(g - bg[1]) + Math.abs(b - bg[2]) > 60) ink++;
+            const color = px(x, y);
+            if (distance(color, bg) > 60) ink.push({ x, color, strength: distance(color, bg) });
             total++;
         }
     }
-    return ink / total;
+    return { ink, total };
+}
+
+// Share of the label's box drawn in color. Readable text leaves most of it as background; the export bug filled it.
+function inkCoverage(png, box, scale = SCALE) {
+    const { ink, total } = inkPixels(png, box, scale);
+    return ink.length / total;
+}
+
+// The colors at the two ends of the letters: the most solid pixel within `reach` CSS px of the first and the last
+// ink column (edge pixels are blended with the background).
+function letterEnds(png, box, scale, reach = 2) {
+    const { ink } = inkPixels(png, box, scale);
+    const xs = ink.map((p) => p.x);
+    const first = Math.min(...xs), last = Math.max(...xs);
+    const strongest = (pixels) => pixels.reduce((a, b) => (b.strength > a.strength ? b : a)).color;
+    return {
+        left: strongest(ink.filter((p) => p.x <= first + reach * scale)),
+        right: strongest(ink.filter((p) => p.x >= last - reach * scale)),
+    };
+}
+
+// --pos-*-border in css/base.css, and the positions each flex label's gradient runs through (--*-blend).
+const POS = { QB: [239, 68, 68], RB: [16, 185, 129], WR: [59, 130, 246], TE: [245, 158, 11] };
+const LABEL_POSITIONS = { 'W/R': ['RB', 'WR'], 'W/T': ['WR', 'TE'], FLX: ['RB', 'WR', 'TE'], SFLX: ['QB', 'RB', 'WR', 'TE'] };
+
+// The first letter is closest to the first position's color and the last letter to the last's, among the label's
+// positions (edge pixels are partly background, so it's the nearest color rather than an exact one).
+function expectEnds(ends, label, where) {
+    const positions = LABEL_POSITIONS[label];
+    const nearest = (color) => positions.reduce((a, b) => (distance(color, POS[b]) < distance(color, POS[a]) ? b : a));
+    expect(nearest(ends.left), `${where}: ${label} starts in ${positions[0]}'s color`).toBe(positions[0]);
+    expect(nearest(ends.right), `${where}: ${label} ends in ${positions.at(-1)}'s color`).toBe(positions.at(-1));
 }
 
 test.describe('Exported images', () => {
@@ -91,8 +129,18 @@ test.describe('Exported images', () => {
 
         const labels = page.locator('#exportableTeamContainer .roster-slot:not(.empty) .roster-label');
         await expect(labels).toHaveText(['W/R', 'W/T', 'FLX', 'SFLX']);
-        // On the page they stay gradient text.
-        const screenStyles = await labels.evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundClip));
+        // Each label runs through all its positions' colors, first letter to last (the gradient used to span the
+        // label's 45px box, so the letters stopped about halfway: FLX never reached TE's yellow).
+        await page.mouse.move(0, 0);
+        for (const label of await labels.all()) {
+            const r = await label.boundingBox();
+            const shot = PNG.sync.read(await page.screenshot({ clip: r, animations: 'disabled' }));
+            expectEnds(letterEnds(shot, { x: 0, y: 0, width: r.width, height: r.height }, 1), await label.innerText(), 'page');
+        }
+
+        // On the page they stay gradient text (on the label's inner span, which is as wide as the letters).
+        const textStyles = (els) => els.map((el) => getComputedStyle(el.querySelector('.roster-label-text')).backgroundClip);
+        const screenStyles = await labels.evaluateAll(textStyles);
         expect(screenStyles).toEqual(['text', 'text', 'text', 'text']);
 
         const download = page.waitForEvent('download');
@@ -108,12 +156,13 @@ test.describe('Exported images', () => {
             const coverage = inkCoverage(png, box);
             expect(coverage, `${box.label}: share of its box drawn in color`).toBeGreaterThan(0.05);
             expect(coverage, `${box.label}: share of its box drawn in color`).toBeLessThan(0.5);
+            expectEnds(letterEnds(png, box, SCALE), box.label, 'export');
         }
 
         expect(clone.clipText, 'elements html2canvas would draw as a color block').toEqual([]);
 
         // The page itself is unchanged afterwards.
-        expect(await labels.evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundClip))).toEqual(screenStyles);
+        expect(await labels.evaluateAll(textStyles)).toEqual(screenStyles);
         await expect(page.locator('#exportTeamBtn')).toContainText('Export');
         await expectClean(page, state);
     });
@@ -142,7 +191,6 @@ test.describe('Exported images', () => {
         // pixels, so each side takes the closest of the few pixels around it.
         const box = clone.badges.find((b) => b.label === 'FLEX');
         const px = (x, y) => { const i = (y * png.width + x) * 4; return [png.data[i], png.data[i + 1], png.data[i + 2]]; };
-        const distance = (a, b) => a.reduce((sum, v, i) => sum + Math.abs(v - b[i]), 0);
         const midY = Math.round((box.y + box.height / 2) * SCALE);
         const closest = (x, color) => Math.min(...[-3, -2, -1, 0, 1, 2, 3].map((d) => distance(px(Math.round(x * SCALE) + d, midY), color)));
         expect(closest(box.x, [16, 185, 129]), 'left border is RB green').toBeLessThan(40);
