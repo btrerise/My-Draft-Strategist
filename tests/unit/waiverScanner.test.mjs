@@ -6,13 +6,13 @@ import assert from 'node:assert/strict';
 import * as scanner from '../../js/mls/scout/waiverScanner.js';
 import {
     FLEX_POSITIONS, buildRankDisplayIndex, compareForScan, matchesPosFilter, findFreeAgents,
-    fillLineup, slotAcceptsPos, checkAgainstLineup, upgradeGap
+    fillLineup, slotAcceptsPos, checkAgainstLineup, upgradeGap, bestLineup
 } from '../../js/mls/scout/waiverScanner.js';
 
 describe('exports', () => {
     test('public surface is unchanged', () => {
         assert.deepEqual(Object.keys(scanner).sort(), [
-            'FLEX_POSITIONS', 'UPGRADE_MIN_GAP', 'buildRankDisplayIndex', 'checkAgainstLineup',
+            'FLEX_POSITIONS', 'UPGRADE_MIN_GAP', 'bestLineup', 'buildRankDisplayIndex', 'checkAgainstLineup',
             'compareForScan', 'fillLineup', 'findFreeAgents', 'matchesPosFilter', 'slotAcceptsPos', 'upgradeGap'
         ]);
         assert.deepEqual(FLEX_POSITIONS, ['RB', 'WR', 'TE']);
@@ -329,5 +329,39 @@ describe('upgradeGap', () => {
     test('no startable-range cutoff: deep ranked players count (dynasty, deep leagues)', () => {
         assert.equal(upgradeGap({ ...base, faRank: 80, benchRank: null, rankedAtPos: 120 }), 41);
         assert.equal(upgradeGap({ pos: 'TE', basis: 'weekly', faRank: 40, faTier: 9, benchRank: 52, benchTier: 11 }), 12);
+    });
+});
+
+// Your best lineup from the whole roster, for the Best Available card's Weekly check (improvements S5, round 7).
+describe('bestLineup', () => {
+    const roster = [
+        { id: 'w1', cleanName: 'wr one' }, { id: 'w2', cleanName: 'wr two' }, { id: 'w3', cleanName: 'wr three' },
+        { id: 'hig', cleanName: 'tee higgins' },                 // unranked this week (analyst expects him to sit)
+        { id: 'tx', cleanName: 'taxi rookie', isTaxi: true },   // taxi: never in the lineup
+        { id: 'r1', cleanName: 'rb one' }, { id: 'out', cleanName: 'rb out' },
+    ];
+    const pos = { 'wr one': 'WR', 'wr two': 'WR', 'wr three': 'WR', 'tee higgins': 'WR', 'taxi rookie': 'WR', 'rb one': 'RB', 'rb out': 'RB' };
+    const ranks = { 'wr one': { posRank: 3, flexRank: 5 }, 'wr two': { posRank: 20, flexRank: 40 }, 'wr three': { posRank: 44, flexRank: 90 },
+        'taxi rookie': { posRank: 1, flexRank: 1 }, 'rb one': { posRank: 12, flexRank: 25 }, 'rb out': { posRank: 2, flexRank: 2 } };
+    const deps = {
+        getPos: (c) => pos[c], rankOf: (p) => ranks[p.cleanName] || null,
+        isLocked: () => false, isUnavailable: (p) => p.id === 'out'
+    };
+    const names = (lineup) => lineup.map(s => `${s.slotType}:${s.player ? s.player.id : '-'}`);
+
+    test('the optimizer\'s fill from the whole roster: ranked players over an unranked one, no taxi, Out only as a last resort', () => {
+        const lineup = bestLineup({ RB: 1, WR: 2, FLEX: 1 }, roster, deps);
+        assert.deepEqual(names(lineup), ['RB:r1', 'WR:w1', 'WR:w2', 'FLEX:w3']);
+    });
+    test('an unranked player starts only when nobody else can, and an empty slot stays empty', () => {
+        const lineup = bestLineup({ WR: 4, TE: 1 }, roster, deps);
+        assert.deepEqual(names(lineup), ['WR:w1', 'WR:w2', 'WR:w3', 'WR:hig', 'TE:-']);
+    });
+    test('a free agent checked against it names the starter he pushes out', () => {
+        const lineup = bestLineup({ RB: 1, WR: 2, FLEX: 1 }, roster, deps);
+        const v = checkAgainstLineup({ id: 'fa', cleanName: 'free wr', pos: 'WR' }, lineup,
+            { ...deps, rankOf: (p) => (p.id === 'fa' ? { posRank: 31, flexRank: 70 } : ranks[p.cleanName] || null) });
+        assert.equal(v.status, 'starts');
+        assert.equal(v.displaced.id, 'w3');
     });
 });

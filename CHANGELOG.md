@@ -76,9 +76,10 @@ What changed for users in each version of the two apps, in plain language. Newes
   league synced from Sleeper, its top 3 available RBs, WRs and TEs with their position ranks and injury badges
   ("James Cook RB8"), ranked by that league's own Weekly or ROS rankings. A Weekly | ROS switch picks which; it's the
   same Rank By as the Scout tab's Waiver Wire Assistant, so the two always agree. Free agents worth a roster spot over
-  your weakest player at their position are marked as upgrades ("James Cook RB5 over Derrick Henry RB8"): any ranked
-  player can count, but he must be in a better tier when your rankings have tiers (otherwise at least 3 spots
-  better). Leagues with the biggest upgrades come first; the rest fold under "Show N more leagues". View opens that
+  a player of yours are marked as upgrades ("James Cook RB5 over Derrick Henry RB8"). On Weekly that means he'd start
+  over someone in your best lineup this week (or fill an empty starting spot); on ROS, that he beats your weakest
+  rostered player at his position. He must be in a better tier when your rankings have tiers (otherwise at least 3
+  spots better), but any ranked player can count. Leagues with the biggest upgrades come first; the rest fold under "Show N more leagues". View opens that
   league's Top Available on the Scout tab, filtered to RB/WR/TE like the line. On a computer, a Sleeper link opens the
   league on sleeper.com. Each line says when the league hasn't synced in over 2 days. The card collapses and
   remembers it, keeping a one-line summary ("Upgrades in 2 of 5 leagues"). Manual leagues are left out, since the

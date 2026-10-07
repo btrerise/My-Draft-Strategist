@@ -247,6 +247,32 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         };
     }
 
+    // A league's saved starting lineup (State.manualStartersMap, written by the optimizer and by
+    // swaps) as checkAgainstLineup's [{ slotType, player }]; [] when it has none yet.
+    function savedStarters(leagueId) {
+        return (State.manualStartersMap[leagueId] || [])
+            .map(st => ({ slotType: st.slot.replace(/[0-9]/g, ''), player: st.player }));
+    }
+
+    // checkAgainstLineup's callbacks for one league: ranks from `byName` (raw posRank/flexRank, the
+    // same fields optimizeLineup reads; the derived display ranks keep the same order within each
+    // group, so verdicts and shown numbers agree), that league's locks and kickoff auto-locks, and
+    // this week's byes and hard-outs. Shared with the Dashboard's Best Available card.
+    export function lineupCheckDeps(leagueId, byName) {
+        const locks = State.lockedPlayersMap[leagueId] || [];
+        return {
+            rankOf: (p) => byName[p.cleanName] || null,
+            isLocked: (p) => locks.includes(p.id) || (hasKickedOff(p) && !isAutoLockOverridden(leagueId, p.id)),
+            isUnavailable: (p) => isUnavailableThisWeek(p)
+        };
+    }
+
+    // A ranked free agent as a lineup player, with his team and injury from the Sleeper player map.
+    export function freeAgentPlayer(fa, meta) {
+        const m = (meta && meta[fa.cleanName]) || {};
+        return { id: m.id || `fa:${fa.cleanName}`, name: fa.name, cleanName: fa.cleanName, pos: fa.pos, team: m.team || null, inj: m.inj || null };
+    }
+
     // Everything a waiver card needs, built once per scan: positions/teams/injuries from Sleeper,
     // display ranks for both rankings sets, your current starters, and an evaluate(fa) that runs
     // the lineup check. lineupReady is false when no starting lineup could be built -- callers
@@ -272,18 +298,9 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const rosDisplay = buildRankDisplayIndex(State.rosRankings, getPos);
 
         if (!State.manualStartersMap[State.activeLeagueId]) optimizeLineup(false);
-        const currentStarters = (State.manualStartersMap[State.activeLeagueId] || [])
-            .map(st => ({ slotType: st.slot.replace(/[0-9]/g, ''), player: st.player }));
+        const currentStarters = savedStarters(State.activeLeagueId);
         const lineupReady = currentStarters.length > 0 && checkRankings.length > 0;
-
-        const locks = State.lockedPlayersMap[State.activeLeagueId] || [];
-        const deps = {
-            // Raw posRank/flexRank, the same fields optimizeLineup reads. The derived display
-            // ranks keep the same order within each group, so verdicts and shown numbers agree.
-            rankOf: (p) => checkByName[p.cleanName] || null,
-            isLocked: (p) => locks.includes(p.id) || (hasKickedOff(p) && !isAutoLockOverridden(State.activeLeagueId, p.id)),
-            isUnavailable: (p) => isUnavailableThisWeek(p)
-        };
+        const deps = lineupCheckDeps(State.activeLeagueId, checkByName);
 
         // Cheap "his game already kicked off" test -- no lineup simulation needed, so the scan
         // can filter these out before applying the Show Top limit rather than after.
@@ -293,8 +310,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         };
 
         const evaluate = (fa) => {
-            const m = meta[fa.cleanName] || {};
-            const player = { id: m.id || `fa:${fa.cleanName}`, name: fa.name, cleanName: fa.cleanName, pos: fa.pos, team: m.team || null, inj: m.inj || null };
+            const player = freeAgentPlayer(fa, meta);
             let verdict = null;
             if (!player.team && meta[fa.cleanName]) verdict = { status: 'noTeam' };
             else if (hasKickedOff(player)) verdict = { status: 'kickedOff' };
