@@ -949,3 +949,87 @@ the runbook as **F4** (Fix now group).
   or uploading replaces them.
 - **Test note:** S5's spec no longer needs a workaround (manual leagues are off the card), so F4's own spec is the
   test.
+
+## S6 — Sleeper trending adds in Top Available
+
+**User-visible effect.** On the Scout tab's Waiver Wire Assistant, in Top Available:
+- **Badge:** a player in Sleeper's 50 most-added of the last 24 hours gets a small green Feather `trending-up` icon
+  right after his rank chip. The icon only; its tooltip and aria-label give the count ("Added in 8,214 Sleeper leagues
+  in the last 24 hours"). Rank order is unchanged: "by your rankings" stays exactly that.
+- **Show: Your rankings | Trending:** a new switch above the position buttons. Trending lists the trending adds still
+  free in the active league, most adds first, as one list. Each row shows name, team, your position rank chip with
+  tier ("RB9", "TE4") or "WR UR" when the chosen rankings leave him out, the injury and bye badges, and the Starts flag.
+  On the right is the add count ("8.2k", full count on hover) under an "Adds 24h" heading. The position buttons filter
+  it too (Trending + WR = most-added free WRs). The summary names the Rank By set the ranks come from.
+- **Manual and hand-off leagues** read "Sleeper's most-added players … not on your roster in X", with S1's manual
+  note. Only your own roster is known there, so a rostered-elsewhere player can show.
+- **When it shows:** the switch and the icons appear once the trending data has loaded and there's a list to show
+  (a league and rankings). Offline or after a failed fetch, neither shows and the ranked list looks exactly like S1's.
+  There's no toast and no `console.error`; a single `console.warn` notes the failure.
+
+**Owner's decisions (asked before building):**
+- Lookback and size: **24 hours, top 50** (recommended; also offered: 24h/100, 48h/50).
+- Badge wording: **icon only**, with the count on hover (also offered: icon + "8.2k", icon + "+8.2k adds"). Phones have
+  no hover, so the count there comes from the Trending view's Adds column, plus the badge's aria-label for screen
+  readers.
+- **A separate toggle** ("Show: Your rankings | Trending"), not a ninth chip after the positions, so the position
+  buttons still work inside Trending.
+
+**What changed and where.**
+- `js/shared/api/sleeper.js`: `getSleeperTrendingAdds({ lookbackHours, limit })` fetches
+  `players/nfl/trending/add` and returns `[{ player_id, count }]`. It's cached **in memory** for an hour per
+  lookback/limit, with no IndexedDB and no new storage key: the response is a few KB. A non-ok status or a body that
+  isn't an array throws a `SleeperResponseError`, and nothing is cached.
+- `js/mls/scout/topAvailable.js`:
+  - `ensureTrending()` starts the fetch in the background after the list draws, so a slow Sleeper never holds Top
+    Available up. A success redraws if the list is still on screen. A failure clears the data and backs off 5 minutes
+    before asking again, so redraws while offline don't re-ask each time.
+  - The badge in `rowHTML`. Ids come from `ctx.meta[cleanName].id`, the same cached player map
+    `buildWaiverContext` already reads.
+  - `trendRowHTML` / `trendingBodyHTML` for the view. Ids map to names and positions through `getSleeperPlayerMap()`
+    (`fantasyPosition`, fantasy positions only). "Free" is the same `globalRosterMap` test as the ranked list. Ranks
+    come from `ctx.scanDisplay`, and "ranked" means present in the Rank By set (`scan.byName`).
+  - `setTopAvailableView` and `updateTopViewToggle`. The view choice lives **in memory** (resets to Your rankings on
+    reload): no new key, and nothing added to `mls_waiver_scan_settings`.
+- `lineup/index.html`: the toggle (`#waiverTopViewWrap` inside a `data-waiver-modes="top"` block, data-action
+  `setTopAvailableView`, inline SVG with `aria-hidden`/`currentColor`), and a sentence in the card's tooltip.
+- `js/mls/main.js`: the `setTopAvailableView` action. `css/mls.css`: `.mls-ta-trend`, `.mls-ta-trend-title`,
+  `.mls-trend-icon` and `#waiverTopViewWrap[hidden]`. The icon is `--primary-green` (round 2).
+- `sw.js`: `CACHE_NAME` v2.8.80 → v2.8.81 (main reached v2.8.80 with S5 round 7 while this was open). No new files, so `PRECACHE_ASSETS` is unchanged. CHANGELOG line under
+  Lineup Strategist's Unreleased.
+
+**Tests.**
+- `tests/fixtures/sleeper/make-fixtures.mjs` writes `trending-add.json`: Chase Brown 8214 (free), Ja'Marr Chase 7012
+  (rostered), Tre Tucker 5120 (free, in no rankings file), Sam LaPorta 2010, an unknown id 1500 and Zay Flowers 640.
+  Tre Tucker (`10229`, WR LV) is new in the player map only, with no stats or projections. The route is in
+  `SLEEPER_FIXTURES` (`tests/helpers.mjs`).
+- `tests/mls-trending.spec.mjs` (both widths):
+  - The toggle stays hidden with no league or no rankings.
+  - The badges: which rows, the tooltip and aria-label, the SVG's attributes, and the ranked order unchanged.
+  - The Trending view: order, rostered and unknown ids left out, `RB9`/`TE4`/`WR12`/`WR UR`, the add counts, a
+    position filter and the empty-position message, back to Your rankings, and the toggle hidden in Auto-Find.
+  - A manual league's wording, where Ja'Marr Chase is listed because only your empty roster is known.
+  - Offline (aborted) and HTTP 500: no badge, no toggle, no "Trending" text, no error toast or console error, and no
+    second request on a redraw.
+
+**Screenshots: none re-taken.** The screenshot league has no rankings, so the toggle never shows and nothing is
+fetched. This container's fonts don't match the committed baselines: all 10 visual tests fail on unchanged main
+too (page heights differ). So I rendered main's 40 screenshots here and ran this branch's visual tests against those
+renders. All 40 matched. The committed baselines are untouched. CI (the real baseline environment) is the final word.
+
+**Round 2 (owner's review of the first push):**
+- **Green arrow.** The icon (and the Trending view's heading) was orange (`--stack-color`), chosen to stand apart from
+  the green Starts flag. The owner asked for green, a more positive color and the one Sleeper uses for its trending
+  arrow. Now `--primary-green`, the site's green, the same as the Starts flag; the shapes (arrow vs. check and the
+  word "Starts") tell them apart. The spec checks the computed color.
+- **Millions as M.** `compactCount` (now exported) abbreviates a million and up as "1.2M" / "3M", with the same rule as
+  thousands: one decimal below 10, none above. A value that rounds up to the next unit moves to it (999,600 → "1M",
+  not "1000k"). A spec runs it over 640 to 12.6M.
+- Screenshots: still none to re-take (the screenshot league has no rankings, so no icon).
+
+**Left over / notes.**
+- Phones show the icon without a count (owner's choice). If that reads too bare, the next step is the "8.2k" text
+  beside it.
+- A trending player whose name collides with another Sleeper player picks up the team, injury and Starts check of the
+  name-index winner (`getSleeperMetaByName`). Rare, and the same rule the rest of the Waiver Wire Assistant uses.
+- Trending drops, and trending on the Dashboard's Best Available card, are out of scope (runbook: later ideas).

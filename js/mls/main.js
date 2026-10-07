@@ -29,7 +29,7 @@ import { generateSoSGrid, saveManualSoS } from './sos.js';
 import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
-import { onScoutTabShown, refreshTopAvailable, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
+import { onScoutTabShown, refreshTopAvailable, setTopAvailableView, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
 import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restoreBestAvailable, setBestAvailableBasis, toggleBestAvailable, viewLeagueTopAvailable } from './scout/bestAvailable.js';
 import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
@@ -151,6 +151,7 @@ const clickActions = {
     setWaiverMode() { setWaiverMode(this.dataset.mode); },
     setWaiverPos() { setWaiverPos(this.dataset.pos); },
     showMoreTopAvailable() { showMoreTopAvailable(); },
+    setTopAvailableView() { setTopAvailableView(this.dataset.view); },
     clearWaiverScout() { document.getElementById('waiverInput').value=''; document.getElementById('waiverOutput').innerHTML=''; },
     setWaiverCompare() { setWaiverCompare(this.dataset.compare); },
     autoFindWaiverUpgrades() { autoFindWaiverUpgrades(this); },

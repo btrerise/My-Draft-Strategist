@@ -21,6 +21,7 @@ export const FIXED_NOW = new Date('2026-09-15T16:00:00Z');
 const SLEEPER_FIXTURES = [
     [/^\/v1\/state\/nfl$/, 'state-nfl.json'],
     [/^\/v1\/players\/nfl$/, 'players-nfl.json'],
+    [/^\/v1\/players\/nfl\/trending\/add$/, 'trending-add.json'],
     [/^\/v1\/league\/\d+$/, 'league.json'],
     [/^\/v1\/league\/\d+\/users$/, 'league-users.json'],
     [/^\/v1\/league\/\d+\/rosters$/, 'league-rosters.json'],

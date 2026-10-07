@@ -34,9 +34,12 @@ const FREE_AGENTS = [
     ['9997', 'Zay', 'Flowers', 'WR', 'BAL', 3], ['9480', 'Sam', 'LaPorta', 'TE', 'DET', 3],
 ];
 const ALL_PLAYERS = [...PLAYERS, ...FREE_AGENTS];
+// In the player map only (no stats or projections): a free agent no rankings file ranks, for the
+// Trending view's "UR" (improvements S6).
+const UNRANKED_FREE_AGENTS = [['10229', 'Tre', 'Tucker', 'WR', 'LV', 3]];
 
 const players = {};
-for (const [id, first, last, pos, team, exp] of ALL_PLAYERS) {
+for (const [id, first, last, pos, team, exp] of [...ALL_PLAYERS, ...UNRANKED_FREE_AGENTS]) {
     players[id] = {
         player_id: id, first_name: first, last_name: last, full_name: `${first} ${last}`,
         search_full_name: `${first}${last}`.toLowerCase().replace(/[^a-z]/g, ''),
@@ -86,6 +89,18 @@ function points(id, season, week) {
 }
 const weekFile = (season, week) => Object.fromEntries(ALL_PLAYERS.map(p => [p[0], points(p[0], season, week)]));
 
+// Sleeper's trending adds (players/nfl/trending/add, improvements S6), most adds first as Sleeper sends
+// them: free agents (ranked and not), a rostered player the Trending view must leave out, and an id
+// the player map doesn't have.
+const trendingAdd = [
+    { player_id: '9224', count: 8214 },   // Chase Brown, free, ranked
+    { player_id: '4866', count: 7012 },   // Ja'Marr Chase, rostered
+    { player_id: '10229', count: 5120 },  // Tre Tucker, free, unranked
+    { player_id: '9480', count: 2010 },   // Sam LaPorta, free, ranked
+    { player_id: '99999', count: 1500 },  // not in the player map
+    { player_id: '9997', count: 640 },    // Zay Flowers, free, ranked
+];
+
 const out = {
     'players-nfl.json': players,
     'league.json': league,
@@ -94,6 +109,7 @@ const out = {
     'league-matchups.json': matchups,
     'user.json': USERS[0],
     'user-leagues.json': [league],
+    'trending-add.json': trendingAdd,
     'projections-2026-2.json': weekFile('2026-proj', 2),
     'stats-2026-1.json': weekFile('2026', 1),
 };

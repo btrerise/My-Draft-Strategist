@@ -15,8 +15,17 @@
 // When it draws: whenever the Scout tab is shown in this mode (nav.js), and on a league switch,
 // a mode/position/Rank By change while it's on screen. Rankings uploads and syncs happen on other
 // tabs, so coming back to the Scout tab redraws with them. Paging is in memory only.
+//
+// Sleeper trending adds (improvements S6): beside your rankings, never blended into them. Rows of a
+// player in Sleeper's 50 most-added of the last 24 hours get a trending-up icon (the count is in its
+// tooltip), and a "Your rankings | Trending" toggle shows those players that are still free here,
+// most adds first, each with your position rank or UR. Rank order never changes. The fetch runs in the
+// background after the list draws, so a slow Sleeper never holds the list up; when it fails (offline,
+// an outage) the icon and the toggle simply don't show. The view choice is in memory only.
 import { escapeHtml } from '../../shared/html.js';
-import { FANTASY_POSITIONS } from '../constants.js';
+import { getSleeperPlayerMap, getSleeperTrendingAdds } from '../../shared/api/sleeper.js';
+import { normalizeName } from '../../shared/names.js';
+import { FANTASY_POSITIONS, fantasyPosition } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, isConnectionError } from '../helpers.js';
 import { getByeBadgeHTML } from '../lineup/gameInfo.js';
@@ -33,6 +42,70 @@ import { runScout } from './engine.js';
     const PAGE = 15;       // one position or FLEX: 15 at a time, "Show 15 more"
 
     let pageLimit = PAGE;
+
+    // --- SLEEPER TRENDING ADDS (S6) ---
+    const TRENDING = { lookbackHours: 24, limit: 50 };   // owner's choice before building
+    const TREND_REFRESH_MS = 60 * 60 * 1000;             // matches getSleeperTrendingAdds' cache
+    const TREND_RETRY_MS = 5 * 60 * 1000;                // after a failure, don't ask again on every redraw
+    let topView = 'ranked';                              // 'ranked' | 'trending'
+    let trend = null;                                    // { rows: [{ player_id, count }], byId: Map, at }
+    let trendLoading = false;
+    let trendFailedAt = 0;
+
+    // Starts the fetch when there's nothing fresh and no recent failure. A success redraws the list if
+    // it's still on screen, which adds the icons and the toggle; a failure drops what was shown.
+    function ensureTrending() {
+        const now = Date.now();
+        if (trendLoading) return;
+        if (trend && now - trend.at < TREND_REFRESH_MS) return;
+        if (trendFailedAt && now - trendFailedAt < TREND_RETRY_MS) return;
+        trendLoading = true;
+        getSleeperTrendingAdds(TRENDING).then(rows => {
+            trend = { rows, byId: new Map(rows.map(r => [r.player_id, r.count])), at: Date.now() };
+            trendFailedAt = 0;
+        }, err => {
+            // Quiet by design (the card's rule): no toast, no console.error; the UI just hides it.
+            console.warn('Sleeper trending adds unavailable; hiding the trending icons and view.', err);
+            trend = null;
+            trendFailedAt = Date.now();
+        }).finally(() => {
+            trendLoading = false;
+            if (inTopMode() && scoutTabShown()) renderTopAvailable();
+        });
+    }
+
+    // "Your rankings | Trending", above the position chips. Shown only once trending data is in and
+    // there's a list to look at (a league and rankings), so nothing moves on a page without them.
+    function updateTopViewToggle(show) {
+        const wrap = document.getElementById('waiverTopViewWrap');
+        if (!wrap) return;
+        wrap.hidden = !show;
+        wrap.querySelectorAll('[data-view]').forEach(b => {
+            const on = b.dataset.view === (show ? topView : 'ranked');
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+
+    export function setTopAvailableView(view) {
+        topView = view === 'trending' ? 'trending' : 'ranked';
+        pageLimit = PAGE;
+        renderTopAvailable();
+    }
+
+    // 640 -> "640", 8214 -> "8.2k", 15400 -> "15k", 1240000 -> "1.2M", 3000000 -> "3M". One decimal
+    // below 10 of a unit, none above; a value that rounds up to the next unit moves to it (999,600 -> "1M").
+    export function compactCount(n) {
+        if (n < 1000) return String(n);
+        const units = [[1e3, 'k'], [1e6, 'M']];
+        for (let i = 0; i < units.length; i++) {
+            const [size, suffix] = units[i];
+            const v = n / size;
+            const shown = v < 10 ? Math.round(v * 10) / 10 : Math.round(v);
+            if (shown < 1000 || i === units.length - 1) return `${String(shown).replace(/\.0$/, '')}${suffix}`;
+        }
+    }
+    const addsText = (n) => `Added in ${n.toLocaleString('en-US')} Sleeper leagues in the last ${TRENDING.lookbackHours} hours`;
 
     const outputEl = () => document.getElementById('waiverOutput');
     const inTopMode = () => (State.waiverScanSettings.mode || 'top') === 'top';
@@ -82,12 +155,19 @@ import { runScout } from './engine.js';
         renderTopAvailable();
     }
 
+    // Feather trending-up.
+    const TREND_ICON = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>`;
+    // The icon alone (owner's choice: rows are tight on a phone); the count is in the tooltip and the label.
+    const trendBadgeHTML = (count) => `<span class="mls-ta-trend" role="img" title="${addsText(count)}" aria-label="Trending: ${addsText(count).toLowerCase()}">${TREND_ICON}</span>`;
+
     const STARTS_ICON = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
     // One compact row: #, name, team, position rank (tier), injury/bye, a Would Start flag, and the
     // cross-position number for the basis on the right (Weekly Flex for RB/WR/TE, ROS Overall).
     function rowHTML(ctx, fa, i) {
         const row = ctx.evaluate(fa);
+        const sleeperId = ctx.meta[fa.cleanName] && ctx.meta[fa.cleanName].id;
+        const adds = trend && sleeperId ? trend.byId.get(String(sleeperId)) : undefined;
         const { player, verdict } = row;
         const d = ctx.scanDisplay[fa.cleanName] || {};
         // The rank chip is colored like the position badges everywhere else (.pos-badge.QB etc., css/base.css).
@@ -104,7 +184,7 @@ import { runScout } from './engine.js';
             <span class="mls-ta-player">
                 <span class="mls-ta-name">${escapeHtml(fa.name)}</span>
                 ${player.team ? `<span class="mls-ta-team">${escapeHtml(player.team)}</span>` : ''}
-                <span class="badge pos-badge ${escapeHtml(player.pos)} mls-ta-pos">${posRank}${tier}</span>${injBadge}${getByeBadgeHTML(player.team)}
+                <span class="badge pos-badge ${escapeHtml(player.pos)} mls-ta-pos">${posRank}${tier}</span>${adds ? trendBadgeHTML(adds) : ''}${injBadge}${getByeBadgeHTML(player.team)}
             </span>
             ${starts}
             <span class="mls-ta-num">${cross ? `#${cross}` : '&ndash;'}</span>
@@ -126,17 +206,72 @@ import { runScout } from './engine.js';
         </div>`;
     }
 
+    // One Trending row: like rowHTML, but the chip is your position rank or "UR", and the number on
+    // the right is Sleeper's add count (the list's order).
+    function trendRowHTML(ctx, t, i) {
+        const { player, verdict } = ctx.evaluate(t);
+        const team = t.team || player.team;
+        const d = ctx.scanDisplay[t.cleanName] || {};
+        const ranked = !!ctx.scan.byName[t.cleanName];
+        const chip = ranked
+            ? `${escapeHtml(t.pos)}${d.posRank || ''}${Number.isFinite(d.posTier) && d.posTier > 0 ? ` <span class="mls-ta-tier">T${d.posTier}</span>` : ''}`
+            : `${escapeHtml(t.pos)} <span class="mls-ta-tier" title="Not in your ${ctx.scan.name} rankings">UR</span>`;
+        const injBadge = player.inj ? `<span class="badge inj-badge">${escapeHtml(player.inj)}</span>` : '';
+        const starts = verdict && verdict.status === 'starts'
+            ? `<span class="mls-ta-starts" title="Would start for you this week">${STARTS_ICON}Starts</span>` : '';
+        return `<li class="mls-ta-row">
+            <span class="mls-ta-idx">${i + 1}.</span>
+            <span class="mls-ta-player">
+                <span class="mls-ta-name">${escapeHtml(t.name)}</span>
+                ${team ? `<span class="mls-ta-team">${escapeHtml(team)}</span>` : ''}
+                <span class="badge pos-badge ${escapeHtml(t.pos)} mls-ta-pos">${chip}</span>${injBadge}${getByeBadgeHTML(team)}
+            </span>
+            ${starts}
+            <span class="mls-ta-num" title="${addsText(t.count)}">${compactCount(t.count)}</span>
+        </li>`;
+    }
+
+    // The Trending view's body: Sleeper's trending adds that are free here (by the same
+    // globalRosterMap test as the ranked list) and match the position chip, most adds first.
+    function trendingBodyHTML(ctx, map, league, pos, freeWord) {
+        const items = [];
+        trend.rows.forEach(({ player_id, count }) => {
+            const p = map[player_id];
+            const pPos = p && fantasyPosition(p);
+            if (!p || !p.first_name || !FANTASY_POSITIONS.includes(pPos)) return;
+            const clean = normalizeName(`${p.first_name} ${p.last_name}`);
+            if (league.globalRosterMap[clean] || !matchesPosFilter(pPos, pos)) return;
+            items.push({ name: `${p.first_name} ${p.last_name}`, cleanName: clean, pos: pPos, team: p.team || null, count });
+        });
+        items.sort((a, b) => b.count - a.count);
+        const among = `Sleeper's ${trend.rows.length} most-added players of the last ${TRENDING.lookbackHours} hours`;
+        if (items.length === 0) {
+            const who = pos === 'ALL' ? 'None of' : pos === 'FLEX' ? 'No RB, WR or TE among' : `No ${pos} among`;
+            return `<div class="mls-scan-empty">${who} ${among} is ${freeWord === 'available' ? 'available in this league' : 'off your roster'}.</div>`;
+        }
+        const title = pos === 'ALL' ? 'Trending' : pos;
+        return `<div class="mls-ta-group mls-ta-trending">
+            <div class="mls-ta-head">
+                <h4 class="mls-ta-title">${pos === 'ALL' ? `<span class="mls-ta-trend-title">${TREND_ICON}Trending</span>` : posTitle(title)} <span class="mls-ta-count">&middot; ${items.length} ${freeWord}</span></h4>
+                <span class="mls-ta-col">Adds ${TRENDING.lookbackHours}h</span>
+            </div>
+            <ol class="mls-ta-list">${items.map((t, i) => trendRowHTML(ctx, t, i)).join('')}</ol>
+        </div>`;
+    }
+
     export async function renderTopAvailable() {
         const out = outputEl();
         if (!out) return;
 
         const league = getActiveLeague();
         if (!league || !league.globalRosterMap) {
+            updateTopViewToggle(false);
             out.innerHTML = `<div class="mls-scan-empty">No league yet. Sync a Sleeper league on the Dashboard first, so the app knows who's rostered.</div>`;
             return;
         }
         const scan = resolveWaiverBasis();
         if (!scan) {
+            updateTopViewToggle(false);
             out.innerHTML = `<div class="mls-scan-empty">No rankings loaded. Upload Weekly rankings (Lineup tab) or ROS rankings (Roster tab) first.</div>`;
             return;
         }
@@ -149,6 +284,16 @@ import { runScout } from './engine.js';
             const ctx = await buildWaiverContext(league);
             // A league switch or mode change while the player map loaded: the newer call draws.
             if (getActiveLeague() !== league || !inTopMode()) return;
+            ensureTrending();
+            // Trending needs the data and the player map (to put names to Sleeper's ids; already in
+            // memory when buildWaiverContext got it, and when it didn't, trending stays hidden).
+            let trendMap = null;
+            if (trend && Object.keys(ctx.meta).length > 0) {
+                try { trendMap = await getSleeperPlayerMap(); } catch (e) { trendMap = null; }
+                if (getActiveLeague() !== league || !inTopMode()) return;
+            }
+            const showTrending = !!trendMap && topView === 'trending';
+            updateTopViewToggle(!!trendMap);
 
             const { freeAgents, unresolvedCount, unresolvedNames } = findFreeAgents(scan.rankings, {
                 posFilter: pos === 'FLEX' ? 'FLEX' : 'ALL',
@@ -186,7 +331,9 @@ import { runScout } from './engine.js';
             if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference; renaming them in your rankings file to match Sleeper brings them back.`);
 
             let body;
-            if (pos === 'ALL') {
+            if (showTrending) {
+                body = trendingBodyHTML(ctx, trendMap, league, pos, freeWord);
+            } else if (pos === 'ALL') {
                 if (freeAgents.length === 0) {
                     body = `<div class="mls-scan-empty">${noneText('ALL')}</div>`;
                 } else {
@@ -217,9 +364,13 @@ import { runScout } from './engine.js';
             // "Top available WRs in X", or "Top WRs not on your roster in X" in a manual league.
             const which = pos === 'ALL' ? 'players' : pos === 'FLEX' ? 'RB/WR/TE' : `${pos}s`;
             const lead = knowsWholeLeague ? `Top available ${which}` : `Top ${which} not on your roster`;
+            const leagueName = `<strong>${escapeHtml(league.name || 'this league')}</strong>`;
+            const summary = showTrending
+                ? `Sleeper's most-added ${which} in the last ${TRENDING.lookbackHours} hours ${knowsWholeLeague ? 'still available' : 'not on your roster'} in ${leagueName}, most adds first. Beside each: your <strong>${scan.name}</strong> position rank, or UR when your rankings don't include him.`
+                : `${lead} in ${leagueName} by <strong>${scan.name} rank</strong>.`;
             out.innerHTML = `
             <div class="mls-scan-summary">
-                ${lead} in <strong>${escapeHtml(league.name || 'this league')}</strong> by <strong>${scan.name} rank</strong>.
+                ${summary}
                 <ul class="mls-scan-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>
             </div>${body}`;
         } catch (err) {

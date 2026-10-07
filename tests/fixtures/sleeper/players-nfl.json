@@ -521,6 +521,24 @@
   "age": 24,
   "number": 1
  },
+ "10229": {
+  "player_id": "10229",
+  "first_name": "Tre",
+  "last_name": "Tucker",
+  "full_name": "Tre Tucker",
+  "search_full_name": "tretucker",
+  "position": "WR",
+  "fantasy_positions": [
+   "WR"
+  ],
+  "team": "LV",
+  "years_exp": 3,
+  "status": "Active",
+  "active": true,
+  "injury_status": null,
+  "age": 24,
+  "number": 1
+ },
  "11566": {
   "player_id": "11566",
   "first_name": "Jayden",
