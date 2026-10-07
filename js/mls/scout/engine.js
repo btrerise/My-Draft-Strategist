@@ -6,7 +6,8 @@ import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';
 import { ensureSleeperPosByName, findClosestRankedName, sleeperPosByName } from '../players.js';
-import { buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts } from './waivers.js';
+import { buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts, WAIVER_SOS_OPTS } from './waivers.js';
+import { getSoSBadgeHTML } from '../sos.js';
 import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
@@ -196,9 +197,13 @@ import { normalizeName } from '../../shared/names.js';
             // under Whole Roster the explanation line becomes the drop-candidate comparison.
             // The most actionable adds sort ahead of other free agents (availabilityOrder -0.5):
             // would-starts under Starting Lineup, upgrades under Whole Roster.
-            let ranksRowHTML = null, verdictLineHTML = "";
+            let ranksRowHTML = null, verdictLineHTML = "", sosBadge = "";
             if (waiverCtx && pos !== "UNK") {
                 ranksRowHTML = waiverRanksRowHTML(waiverCtx, clean, pos);
+                // The SoS badge at the end of the name line (improvements S7), for every listed
+                // player whose team Sleeper knows, whoever has him: a schedule is the same either way.
+                const meta = waiverCtx.meta[clean];
+                sosBadge = getSoSBadgeHTML(meta && meta.team, pos, WAIVER_SOS_OPTS);
                 if (!owner) {
                     let row = waiverCtx.evaluate({ name: displayName, cleanName: clean, pos });
                     let { pill, line } = waiverVerdictParts(waiverCtx, row);
@@ -242,7 +247,7 @@ import { normalizeName } from '../../shared/names.js';
                     <div>
                         <div style="font-weight:bold; font-size:0.95rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
                             <span class="badge pos-badge ${badgeClass} mls-pos-badge-sizing">${displayPos}</span>
-                            ${displayName} ${roleTag}
+                            ${displayName} ${roleTag}${sosBadge}
                         </div>
                         ${ranksRowHTML || `<div class="mls-meta-row">
                             <span>Wk Rank: <strong class="mls-stat-blue">${wRank}</strong>${tierTag(weekObj?.tier)}${posRankTag(weekObj, 'mls-stat-blue')}</span>

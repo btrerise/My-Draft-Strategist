@@ -155,7 +155,14 @@ import { parseSosValue } from '../shared/rankings/parse.js';
         });
     }
 
-    export function getSoSBadgeHTML(team, pos) {
+    // The "SoS: 7" badge: a team's matchup rank (1-32) at a position from the SoS upload or the
+    // manual grid, colored green (1, easiest) to red (32, hardest). Nothing when there's no team,
+    // the position isn't in the grid (K, DEF) or the value isn't 1-32. The color is passed as two
+    // custom properties; the rest of the look is .sos-badge in css/mls.css (improvements S7 moved
+    // it there from an inline style, unchanged for the Roster tab).
+    // opts.compact: the Waiver Wire Assistant's rows (improvements S7), padded like the injury and
+    // bye badges beside it. opts.explain: a title saying what the number means.
+    export function getSoSBadgeHTML(team, pos, { compact = false, explain = false } = {}) {
         if (!team || team === "FA" || !pos) return "";
         let teamData = State.sosMap[team];
         if (!teamData) return "";
@@ -169,6 +176,8 @@ import { parseSosValue } from '../shared/rankings/parse.js';
         let hue = Math.max(0, 120 - ((rank - 1) * 3.87));
         let color = `hsl(${hue}, 80%, 65%)`;
         let bg = `hsl(${hue}, 80%, 15%)`;
+        const title = explain
+            ? ` title="Strength of schedule: ${rank} of 32 for ${pos}s on ${team} (1 = easiest, 32 = hardest)"` : '';
         
-        return `<span class="badge" style="background:${bg}; border:1px solid ${color}; color:${color}; font-size:0.65rem; margin-left:4px;">SoS: ${rank}</span>`;
+        return `<span class="badge sos-badge${compact ? ' sos-badge-compact' : ''}" style="--sos-color:${color}; --sos-bg:${bg};"${title}>SoS: ${rank}</span>`;
     }

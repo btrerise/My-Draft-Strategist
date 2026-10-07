@@ -1059,6 +1059,12 @@ button.close-chip {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
+/* The SoS badge (getSoSBadgeHTML in js/mls/sos.js). Its color comes per rank in --sos-color and
+   --sos-bg; this was an inline style until improvements S7, and the Roster tab's badge looks the
+   same as before. Compact: the Waiver Wire Assistant's rows, padded like .inj-badge/.bye-badge. */
+.badge.sos-badge { background: var(--sos-bg); border: 1px solid var(--sos-color); color: var(--sos-color); font-size: 0.65rem; margin-left: 4px; }
+.badge.sos-badge-compact { padding: 1px 4px; }
+
 /* --- MLS SETUP TAB SPECIFIC STYLES --- */
 .league-req-subtitle {
     font-size: 0.85rem;

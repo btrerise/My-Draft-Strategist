@@ -1610,3 +1610,86 @@ the baselines) fail the same way on main; the branch's renders are pixel-identic
 runs' actual PNGs, the one size difference gone when re-run alone on each).
 
 **Left over.** None.
+
+## S7 — SoS badge in the Waiver Wire Assistant
+
+**User-visible effect.** With SoS loaded (the Roster tab's upload or manual grid), the Scout tab's Waiver Wire
+Assistant shows the Roster tab's "SoS: 7" badge:
+- **Top Available** (the ranked list): last in each row's badges, after the rank chip, rank-change chip, trending
+  icon, injury and bye.
+- **Auto-Find:** last in each card's badge row (after injury, bye and kickoff).
+- **Check a List** (This League): at the end of each card's name line, for every listed player whose team Sleeper
+  knows (free agent, yours or another team's: a schedule is the same whoever has him).
+- **The player a free agent is compared with:** right after his name in Auto-Find's and Check a List's verdict line
+  ("Would need to pass Josh Allen SoS: 2 (your QB)", "Doesn't pass Derrick Henry SoS: 25 (your weakest RB)") and in
+  Auto-Find's Whole Roster drop candidate ("Your weakest RB is Derrick Henry SoS: 25 (Wk RB5)").
+
+Its title says what the number means: "Strength of schedule: 3 of 32 for RBs on BUF (1 = easiest, 32 = hardest)".
+The upload's help text only says "matchup ranks (1-32)"; the badge has always colored 1 green and 32 red, so 1 is
+read as the easiest. With no SoS loaded, or for a player with no team or at K/DEF (the grid has no column for them),
+there's no badge and the rows look exactly as before. SoS is one grid, so the badge is the same for either Rank By.
+Display only: no rank, order, upgrade verdict or score uses it.
+
+**Owner's decisions (asked before building).**
+- **Views:** Top Available, Auto-Find and Check a List. **Not the Trending view** (I'd suggested all four).
+- **Placement in the compact rows:** at the end of the badges, so nothing that's there today moves (rather than right
+  after the rank chip). I said it would be the first thing to wrap on a phone.
+- **The compared player shows his badge too**, beside his name, so the two schedules sit side by side.
+- **Not on the Dashboard's Best Available lines.**
+
+**What changed and where.**
+- `js/mls/sos.js`: `getSoSBadgeHTML(team, pos, { compact, explain })`. The inline style is now the class
+  `.badge.sos-badge` in `css/mls.css`, with the per-rank colors passed as `--sos-color` / `--sos-bg`. `compact`
+  adds `.sos-badge-compact` (padding 1px 4px, like the injury and bye badges beside it); `explain` adds the title. The
+  Roster tab calls it as before (no options), so its badge has the same look and no title. Checked: every computed
+  style of all 12 Roster badges in the fixture league (colors, border, font, padding, margin, size) is identical to
+  main's at both widths.
+- `js/mls/scout/waivers.js`: `WAIVER_SOS_OPTS` (`{ compact: true, explain: true }`, exported), the badge in
+  `renderWaiverScanCard`'s badge row, in `waiverCompareLine` after the compared player's name (Auto-Find's Replaces /
+  Would need to pass, Whole Roster's Upgrade over, Check a List's verdicts) and in `renderRosterGroup`'s drop
+  candidate line. Teams come from the roster entry for your players and from the cached Sleeper player map for free
+  agents (`freeAgentPlayer`), as the rows already did.
+- `js/mls/scout/topAvailable.js`: the badge at the end of `rowHTML`'s badges. `trendRowHTML` is unchanged.
+- `js/mls/scout/engine.js`: Check a List's card (waiver path only, so the Trade Analyzer's cards are unchanged),
+  team from `waiverCtx.meta`.
+- `sw.js`: `CACHE_NAME` v2.8.85 → v2.8.86. No new files. CHANGELOG line under Lineup Strategist.
+
+**Phone width (375px), what wraps.** The compact rows were already full at 375px, so the badge goes onto a second line:
+- **Top Available:** every row wraps at 375px (30px → 52px tall), including the shortest ("Jayden Daniels WAS QB5").
+  At 390px (the tests' phone width), rows with a Starts flag or a long name wrap and the rest stay on one line. On
+  desktop, the FLEX or single-position list stays on one line; in All's three-across boxes, rows with a Starts flag
+  or a long name wrap.
+- **Auto-Find:** in the fixture league the card's badge row is otherwise empty (no kickoff info), so the badge adds
+  a line (about 18px). With kickoff info it joins that line. In a verdict line it sits beside the name and wraps
+  with the text.
+- **Check a List:** joins the name line; a long name ("Jaxon Smith-Njigba") wraps onto two lines with it.
+- A wrapped badge starts 4px in from the line, like a wrapped injury or bye badge (they share `margin-left: 4px`).
+
+**Tests.** `tests/mls-waiver-sos.spec.mjs` (both widths), loading SoS through the upload (a team-by-position grid):
+- With no SoS: no badge in Top Available, Auto-Find or Check a List.
+- Top Available: each free agent's value for his team and position (CIN RB 28 for Chase Brown, CIN WR 10 for
+  Ja'Marr Chase), the title, the compact class, last in the row, 1 green and 32 red; the same badges with Rank By ROS;
+  none in the Trending view.
+- Auto-Find: the card's badge, the compared starter's (Josh Allen SoS: 2, CeeDee Lamb SoS: 30) and the drop
+  candidates' (Derrick Henry, Garrett Wilson).
+- Check a List: a free agent's badge and his comparison's, a rostered player's, none for a kicker.
+- The Roster tab's badge: same text, no compact class, no title.
+- A free agent with no NFL team (Chase Brown's team removed from the player map): no badge in Top Available or
+  Auto-Find.
+
+**Screenshots.** None re-taken: the screenshot league has no SoS, so no badge shows, and the Roster tab's badge
+looks the same.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 230 Playwright tests pass (the new spec's 4
+included). The 10 screenshot comparisons that fail in this cloud session (`visual.spec.mjs`, the font environment
+noted in earlier entries) fail the same way on main: I rendered all 40 screenshots on main and on this branch here and
+`npm run pxdiff` found them all pixel-identical. CI (the baseline environment) is the final word.
+
+**Left over.**
+- **Rows wrap on phones** (above). If that's too much, the next step could be a number-only badge in the compact rows
+  ("7" in the SoS colors, the title explaining it), or moving SoS into the row's right-hand column. Either is a small
+  follow-up; I didn't change the placement you chose.
+- Check a List's **All my leagues** search (where a player is rostered across leagues) has no badge; it answers a
+  different question and wasn't asked about.
+- The Roster tab's badge has no title. Adding the same one there is one word in `js/mls/render/roster.js`
+  (`{ explain: true }`), left alone because the card kept the Roster badge out of scope.
