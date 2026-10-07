@@ -1739,3 +1739,41 @@ and badges, and asked for a runbook card (added the same day; Needs: S7). Not bu
 rank-change chips, trending icon, Starts, injury and bye, SoS, TAXI, R, the FLEX blends), probably as a section of
 the Guide tab plus a small info link on the Scout tab's Waiver Wire Assistant, drawn with the real badge markup so it
 can't drift from what the rows show.
+
+### S7, round 3: not on Top Available; a calendar icon on phones (owner's choices)
+
+**The question.** The owner asked me to judge, as a user, whether the badge helps on Top Available or clutters it. My
+answer: mostly clutter there. Top Available is a list to browse; schedule matters where you decide, a free agent
+against your player, which Auto-Find and Check a List show side by side. Weekly rankings already price in the week's
+matchup. Most values (a 14, a 19) say nothing, yet each row got a bright badge that pulled the eye from the rank chip
+the list is sorted by, in colors that compete with the position colors. On phones the bare number read like another
+rank ("RB8 3 … #21"). And the grid has no K or DEF, where weekly schedule matters most. I offered: badges only for
+standout schedules (1–8, 25–32), remove it from Top Available, a calendar icon so it can't be read as a rank, or
+leave it. **The owner chose to remove it from Top Available, and to add the calendar icon on phones where it stays.**
+
+**User-visible effect.**
+- **Top Available** rows have no SoS badge, with or without SoS loaded: exactly as before S7.
+- **Auto-Find and Check a List** keep it, including the compared player's. On phones and touch screens it's now a
+  small calendar icon and the number (Feather `calendar`, in the badge's own green-to-red color) instead of the bare
+  number. Desktop still shows "SoS: 7", unchanged.
+- The Roster tab is unchanged (full "SoS: 25" at every width, no icon).
+
+**What changed and where.**
+- `js/mls/scout/topAvailable.js`: the badge and its imports removed from `rowHTML`; the comment says why.
+- `js/mls/sos.js`: the explaining badge starts with an inline SVG (`.sos-badge-icon`, `aria-hidden="true"`,
+  `stroke="currentColor"`, 10px).
+- `css/mls.css`: `.sos-badge-icon` hidden by default and shown in compact badges inside the phone rule that hides
+  "SoS: "; round 2's `margin-left: 0` for Top Available rows removed (nothing there now).
+- CHANGELOG line reworded. `CACHE_NAME` stays v2.8.86.
+
+**Phone width.** Top Available's rows are back to their pre-S7 heights. In Auto-Find the badge sits in the card's
+badge row (with kickoff info when there is any) and in the verdict line beside the compared name; the icon adds
+about 12px to the badge.
+
+**Tests.** `tests/mls-waiver-sos.spec.mjs` rewritten around Auto-Find: no badge on Top Available with SoS loaded; each
+free agent's value, title, aria-label, tap toast and colors on Auto-Find cards; the icon visible on the phone project
+and hidden on desktop, with `aria-hidden` and `currentColor`; the same badges under ROS; the drop candidates, Check a
+List, the no-team case and the Roster tab as before.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests, 230 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders pixel-identical to main's.
