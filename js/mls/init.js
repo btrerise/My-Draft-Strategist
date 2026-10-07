@@ -8,7 +8,7 @@ import { setRankingsCardExpanded, updateRankingsMetaDisplay } from './rankings/e
 import { RANKING_TYPE_CONFIG } from './constants.js';
 import { attachPlayerAutocomplete, attachScoutSuggestionHandler } from './players.js';
 import { populateEarlyGameDropdown } from './lineup/earlyGames.js';
-import { loadActiveLeagueData, refreshLeagueDropdown } from './leagues/sync.js';
+import { getLeagueRankings, loadActiveLeagueData, refreshLeagueDropdown } from './leagues/sync.js';
 import { initManualAddForm } from './leagues/addPlayer.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
@@ -147,22 +147,25 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         // and only switchActiveLeague() used to replace them with the active league's own set.
         // So after a reload, a league on set A showed set B's players until you switched away
         // and back, while its dropdown (and now the card header) said A. Hydrate up front, per
-        // type, and only where the league has something of its own (a saved set that still
-        // exists, or legacy data): otherwise that type keeps the global fallback, as before.
+        // type, from the league's own rankings (a saved set that still exists, or legacy data).
+        // A league with none of its own loads none, the same as switching to it, whenever any
+        // league has rankings of that type of its own: keeping the global copy there let a new
+        // league pick up another league's rankings after a reload, and its first save copied
+        // them into its legacy slots (improvements F4, owner's choice). The global copy is kept
+        // only when no league has any of its own (a setup from before per-league rankings,
+        // where it's the only copy).
         {
             const bootLeague = getActiveLeague() || State.leagues[0] || null;
             if (bootLeague) {
                 ['ros', 'weekly'].forEach(t => {
                     const cfg = RANKING_TYPE_CONFIG[t];
-                    const setId = bootLeague[cfg.leagueSetIdKey];
-                    const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
-                    const legacy = bootLeague[cfg.leagueLegacyDataKey];
-                    if (set) {
-                        State[cfg.stateKey] = [...set.data];
-                        State[cfg.updatedAtKey] = set.updatedAt;
-                    } else if (Array.isArray(legacy) && legacy.length > 0) {
-                        State[cfg.stateKey] = [...legacy];
-                        State[cfg.updatedAtKey] = bootLeague[cfg.leagueLegacyUpdatedKey] || null;
+                    const own = getLeagueRankings(bootLeague, t);
+                    if (own) {
+                        State[cfg.stateKey] = [...own.data];
+                        State[cfg.updatedAtKey] = own.updatedAt;
+                    } else if (State.leagues.some(l => getLeagueRankings(l, t))) {
+                        State[cfg.stateKey] = [];
+                        State[cfg.updatedAtKey] = null;
                     }
                 });
             }

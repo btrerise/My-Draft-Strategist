@@ -130,3 +130,51 @@ test.describe('A new league starts with no rankings', () => {
         await expectClean(page, state);
     });
 });
+
+// Start-up (js/mls/init.js) used to give a league with no rankings of its own the flat "last upload,
+// any league" copy, so the same leak came back after a reload. Owner's choice: that copy is used only
+// when no league has rankings of that type of its own.
+test.describe('After a reload', () => {
+    test('a new league still starts with no rankings', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 1000));
+        await showTab(page, 'setup');
+        await createManualLeague(page, 'Bench League');
+
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await expect(page.locator('#headerLeagueSelect option:checked')).toHaveText('Bench League');
+        await expectNoRankingsLoaded(page);
+
+        await uploadRos(page);
+        await expectOnlyRos(page, await storedLeague(page, { prefix: 'manual_' }));
+        await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
+        await expect(page.locator('#weeklyRankingSetSelect option:checked')).toContainText('Weekly Rankings');
+        await expectClean(page, state);
+    });
+
+    test('the app-wide copy still loads when no league has rankings of its own', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await createManualLeague(page, 'Old League');
+        await loadMlsRankings(page);
+        // A setup from before per-league rankings: the uploads live only in the flat mls_ros /
+        // mls_weekly keys, with no sets and nothing stored on the league.
+        await page.evaluate(() => {
+            const leagues = JSON.parse(localStorage.getItem('mls_leagues'));
+            for (const l of leagues) Object.assign(l, { rosRankingSetId: null, weeklyRankingSetId: null, rosRankings: [], weeklyRankings: [] });
+            localStorage.setItem('mls_leagues', JSON.stringify(leagues));
+            localStorage.removeItem('mls_ranking_sets_ros');
+            localStorage.removeItem('mls_ranking_sets_weekly');
+        });
+
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await showTab(page, 'lineup');
+        await expect(page.locator('#weeklyMetaDisplay')).toContainText('Loaded: 24 players');
+        await showTab(page, 'roster');
+        await expect(page.locator('#rosMetaDisplay')).toContainText('Loaded: 24 players');
+        await expectClean(page, state);
+    });
+});

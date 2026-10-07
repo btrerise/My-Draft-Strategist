@@ -26,8 +26,14 @@ import { showToast } from '../../shared/ui/toast.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
-        const select = document.getElementById('headerLeagueSelect');
         renderLeagueManager();
+        renderHeaderLeagueSelect();
+    }
+
+    // The header's league <select> and its prev/next buttons, without the Dashboard's league
+    // table (addLeagueAndOpen's switchActiveLeague draws that).
+    function renderHeaderLeagueSelect() {
+        const select = document.getElementById('headerLeagueSelect');
         if (!select) return;
         if (State.leagues.length === 0) {
             select.innerHTML = `<option value="">No Leagues</option>`;
@@ -318,6 +324,18 @@ import { showToast } from '../../shared/ui/toast.js';
         clearSimResults();
     };
 
+    // Adds a league the app builds itself (a manual league, a Draft Strategist hand-off) and
+    // opens it the way switching to it would. switchActiveLeague is what loads the new league's
+    // own rankings (none yet): without it State kept the previous league's, and the first
+    // rankings save in the new league (saveActiveLeagueState) copied them into its legacy
+    // per-league slots (improvements F4).
+    export function addLeagueAndOpen(leagueObj) {
+        State.leagues.push(leagueObj);
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        renderHeaderLeagueSelect();
+        switchActiveLeague(leagueObj.leagueId);
+    }
+
     export const cycleLeague = function(direction) {
         if (!State.leagues || State.leagues.length <= 1) return;
         
@@ -447,14 +465,8 @@ import { showToast } from '../../shared/ui/toast.js';
             rosRankings: [], weeklyRankings: [], rosRankingsUpdatedAt: null, weeklyRankingsUpdatedAt: null,
             rosRankingSetId: null, weeklyRankingSetId: null
         };
-        State.leagues.push(leagueObj);
-        State.activeLeagueId = newId;
-        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
-        localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
-
         if (nameInput) nameInput.value = "";
-        refreshLeagueDropdown();
-        loadActiveLeagueData();
+        addLeagueAndOpen(leagueObj);
 
         setManualAddMsg(`Manual League '${name}' Created`, { clearAfterMs: 3000 });
     };
@@ -652,6 +664,14 @@ import { showToast } from '../../shared/ui/toast.js';
             rosterSaved = true;
 
             State.activeLeagueId = leagueId;
+            // Load this league's own rankings before optimizeLineup below reads State: a league
+            // synced for the first time has none, and keeping the previous league's meant its
+            // first lineup was built from them and its first rankings save copied them into its
+            // legacy slots (improvements F4). A re-sync keeps its assignment (leagueObj above),
+            // so this reloads the same rankings. The card display is refreshed here only for a
+            // single-league sync: the bulk callers refresh it once after their loop.
+            hydrateRankingsForLeague(leagueObj);
+            if (!skipSave) updateRankingsMetaDisplay();
             // Bulk callers (importAllSleeperLeagues, syncAllLeagues) pass skipSave=true and
             // write to localStorage once after their loop finishes, instead of every iteration
             // serializing the entire State.leagues array to disk.
