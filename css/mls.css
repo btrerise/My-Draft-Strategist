@@ -1290,6 +1290,14 @@ button.close-chip {
 }
 .mls-set-leagues-row .btn-link-inline { margin-left: auto; }
 
+/* Rename button beside a saved set's delete button (improvements S2). The border matches its fill
+   so it stands as tall as the bordered .btn-danger beside it. */
+.mls-rename-set-btn {
+    flex-shrink: 0;
+    gap: 0.3rem;
+    border: 1px solid var(--border);
+}
+
 /* League checklist (upload preview + standalone picker dialog) */
 .mls-league-picker { margin: 0 0 1rem 0; }
 .mls-league-picker-head {

@@ -1117,3 +1117,82 @@ branch's visual tests against them: all 40 matched. The committed baselines are 
 - `saveRankingsAsSet`'s comment says the flat keys serve "a brand new league with nothing assigned yet". After this
   card they serve only the pre-per-league case at start-up; the comment wasn't changed (`js/mls/rankings/sets.js` is
   S2/S3's file).
+
+## S2 — Rename a ranking set
+
+**User-visible effect.** A saved ranking set now has a **Rename** button (a pencil icon and the word Rename, in the
+site's secondary button style) to the left of the red ✕ Delete button: the Weekly set on the Lineup tab, the ROS set
+on the Roster tab. It shows only while a saved set is selected, like Delete: not for "+ Create New Set" or
+"Unassigned Upload (legacy)". It opens an in-page dialog, "Rename Weekly set" / "Rename ROS set", with a "Set name"
+field holding the current name (selected, so typing replaces it), and Cancel / Rename buttons. Enter saves; Escape,
+Cancel or a click outside the card closes it with nothing changed. On save the dropdown and the card header show the
+new name at once, with a toast `Renamed to "…"`; every league using the set keeps it. An unchanged name closes with
+"No changes made.".
+- **Validation:** surrounding spaces are trimmed. An empty name shows "Enter a name for this set." in red under the
+  field and the dialog stays open. The field takes at most 60 characters (a set already named longer than that, from
+  before, gets a red "Keep it to 60 characters or fewer"). A name another set of the same type already has
+  (ignoring case) shows an amber "Another ROS set already has this name. You can still use it." and saves anyway.
+- **Also:** the "New Set Name (optional)" fields now take at most 60 characters too, so new and renamed sets follow
+  the same limit. Nothing else about creating a set changed.
+- On phones the set dropdown is about 90px narrower while Rename shows, so a long set name is cut off a little sooner
+  in the closed dropdown; the card header above it still shows the whole name.
+
+**What changed and where.**
+- `js/shared/ui/prompt.js` (new, in `PRECACHE_ASSETS`): `showPrompt(label, { title, value, placeholder, maxLength,
+  confirmText, cancelText, validate })`, the text-input sibling of `showConfirm` for both apps. Same overlay and card
+  (`.mds-modal-overlay` / `.mds-modal`), focus trap, Escape and backdrop handling; one dialog at a time. Resolves the
+  trimmed text or null. `validate(text)` runs on every keystroke and on save: `{ error }` blocks saving,
+  `{ warning }` doesn't; the message line is `aria-live`, and an error sets `aria-invalid`. Everything goes in through
+  textContent / `.value`, never innerHTML. Styles: `.mds-prompt-*` in `css/base.css` after the confirm dialog's.
+- `js/mls/rankings/sets.js`: `renameRankingSet(type)` changes only the selected set's `name`, saves the same key
+  (`cfg.localStorageSetsKey`) and redraws the dropdown (`populateRankingSetDropdown`, which also redraws the header and
+  the "Used in N of M leagues" row). The id, `data` and `updatedAt` are untouched (`updatedAt` dates the rankings and
+  feeds the freshness labels and `getLeagueRankingsStamp`, so a rename doesn't make anything look re-uploaded).
+  `checkRankingSetName(type, setId, text)` is the validator; `RANKING_SET_NAME_MAX = 60`. `showSavedSetButtons`
+  replaces the three places that showed or hid Delete, so Rename and Delete always show together.
+- `js/mls/constants.js`: `renameBtnId` in `RANKING_TYPE_CONFIG`. `js/mls/main.js`: the `renameRankingSet` click
+  action. `lineup/index.html`: the two buttons (inline SVG, Feather `edit-2`, `aria-hidden="true"`) and `maxlength`
+  on the two New Set Name inputs. `css/mls.css`: `.mls-rename-set-btn`.
+- `sw.js`: `CACHE_NAME` v2.8.82 → v2.8.83. CHANGELOG line under Lineup Strategist's Unreleased.
+
+**Where a set's name shows, and how each picks up a rename.** All of them look the set up in `State.rankingSets` by id
+when they draw, so none keeps a stale copy:
+- The set dropdown, the card header ("Set: …", via `describeLeagueRankings`) and the leagues row: redrawn by the rename.
+- The league picker (its title `Leagues using "…"` and other leagues' "Currently: …" notes), the upload preview's
+  "Replaces the saved set …", Auto-Fetch's "… is saved for this league" dialog: drawn when opened.
+- The Dashboard's Best Available line ("Weekly · …", `sourceLabel` in `js/mls/scout/bestAvailable.js`) and the Waiver
+  Wire Assistant's notes (`Weekly rankings ("…")`, `rankingSetLabel` in `js/mls/scout/waivers.js`): redrawn when their
+  tab is shown or the search runs. Rename is on the Lineup and Roster tabs, so neither is on screen during a rename.
+- Not set names, despite the card's list: the power-rank source note (`renderPowerSourceNote`) and Auto-Find's basis
+  name (`resolveWaiverBasis().name`) say only "ROS" / "Weekly"; nothing to update there.
+- Escaping: every one of these already escaped the name (`escapeHtml`) or set it as text (toasts, dialog titles). The
+  spec renames to `Borischen <b>Wk 2</b> & "PPR"` and checks it shows as typed.
+
+**Tests.** `tests/mls-rename-ranking-set.spec.mjs` (both widths, 16 runs), for Weekly and ROS each:
+- Rename (spaces trimmed, saved with Enter), then the dropdown and header show it; the stored set keeps its id and
+  24 players; the league picker's title names it and Bench League is added to it; after a reload the dropdown, header
+  and "Used in 2 of 2 leagues" show it, both leagues still hold the set's id, Bench League's dropdown shows it, and
+  the upload preview reads "Replaces the saved set <new name> (24 players). Used by 2 leagues."; for Weekly, the
+  Dashboard's Best Available line reads "Weekly · <new name>".
+- Cancel, Escape, and saving the unchanged name ("No changes made.") leave the stored sets exactly as they were.
+- An empty (all spaces) name: the error, `aria-invalid`, focus back in the field, nothing stored; typing clears the
+  error; typing 70 characters leaves 60, which save.
+- Plus: a duplicate name within ROS warns and saves (the Weekly set's name is no clash; the check ignores case), and
+  Rename is hidden for "+ Create New Set" and for legacy data.
+
+**Screenshots: none re-taken.** The card expected new ones for the button, but Rename shows only with a saved set
+selected, and no screenshot has rankings loaded (the visual spec's MLS states are the empty Setup tab and the synced
+league with no uploads), so the button is hidden in all 40. As in S6 and F4, this container's fonts don't match the
+committed baselines (all 10 visual tests fail on unchanged main), so I rendered origin/main's 40 screenshots here and
+ran this branch's visual tests against them: all 40 matched. The committed baselines are untouched. Adding a new
+screenshot of the card with a set loaded would need a baseline rendered with CI's fonts, which this container can't
+make; I checked the button and dialog by eye at both widths instead.
+
+**Owner's decisions.** None asked: the card has no "Asks you". Choices I made: the button shows a pencil icon *and* the
+word Rename (an icon alone next to ✕ was less clear); a 60-character cap, also applied to the New Set Name fields;
+duplicates compared ignoring case and surrounding spaces, within the same type only (ROS and Weekly are separate pools).
+
+**Left over / notes.**
+- F4's note on `saveRankingsAsSet`'s comment (the flat keys no longer serve "a brand new league") still stands; I
+  left it for S3, which rewrites that function.
+- `showPrompt` is available to Draft Strategist and T-Score but nothing there uses it yet.

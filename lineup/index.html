@@ -468,6 +468,7 @@
                 <div class="cluster cluster-sm">
                     <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" data-action="onRankingSetSelectChange" data-type="ros" aria-label="Select ROS Ranking Set">
                     </select>
+                    <button id="rosRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="ros" title="Rename this ranking set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>Rename</button>
                     <button id="rosDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" data-action="deleteRankingSet" data-type="ros" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
@@ -477,7 +478,7 @@
             </div>
             <div id="rosNewSetNameWrap" class="input-group mb-3">
                 <label for="rosNewSetName">New Set Name (optional)</label>
-                <input type="text" id="rosNewSetName" class="form-input" placeholder="e.g. Dynasty PPR 2026">
+                <input type="text" id="rosNewSetName" class="form-input" maxlength="60" placeholder="e.g. Dynasty PPR 2026">
             </div>
 
             <div id="rosMetaDisplay" class="status-badge-meta"></div>
@@ -700,6 +701,7 @@
                 <div class="cluster cluster-sm">
                     <select id="weeklyRankingSetSelect" class="form-input" style="flex: 1;" data-action="onRankingSetSelectChange" data-type="weekly" aria-label="Select Weekly Ranking Set">
                     </select>
+                    <button id="weeklyRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="weekly" title="Rename this ranking set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>Rename</button>
                     <button id="weeklyDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" data-action="deleteRankingSet" data-type="weekly" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
@@ -709,7 +711,7 @@
             </div>
             <div id="weeklyNewSetNameWrap" class="input-group mb-3">
                 <label for="weeklyNewSetName">New Set Name (optional)</label>
-                <input type="text" id="weeklyNewSetName" class="form-input" placeholder="e.g. Week 5 Rankings">
+                <input type="text" id="weeklyNewSetName" class="form-input" maxlength="60" placeholder="e.g. Week 5 Rankings">
             </div>
 
             <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>

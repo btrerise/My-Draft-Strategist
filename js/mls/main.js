@@ -34,7 +34,7 @@ import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restore
 import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
-import { deleteRankingSet, onRankingSetSelectChange, openRankingSetLeagues } from './rankings/sets.js';
+import { deleteRankingSet, onRankingSetSelectChange, openRankingSetLeagues, renameRankingSet } from './rankings/sets.js';
 import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings } from './rankings/uploadPreview.js';
 import { fetchMarketValue, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
 import { autoFetchRosRankings } from './rankings/rosFetch.js';
@@ -118,6 +118,7 @@ const clickActions = {
     // ROS (Roster tab) and Weekly (Lineup tab) rankings cards
     toggleRankingsCard() { toggleRankingsCard(this.dataset.card); },
     deleteRankingSet() { deleteRankingSet(this.dataset.type); },
+    renameRankingSet() { renameRankingSet(this.dataset.type); },
     openRankingSetLeagues() { openRankingSetLeagues(this.dataset.type); },
     processMultiRankings() { processMultiRankings(this.dataset.type, this.dataset.successMsgId); },
     autoFetchRosRankings() { autoFetchRosRankings(this); },

@@ -12,6 +12,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { createFocusTrap } from '../../shared/ui/focusTrap.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
+import { showPrompt } from '../../shared/ui/prompt.js';
 
     // --- NAMED RANKING SETS ---
     // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
@@ -108,7 +109,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 
     // Fills a type's <select> with the active league's legacy data (if any), every named set,
     // and a "+ Create New Set" option -- then selects whichever one the active league is
-    // actually using right now, and shows/hides the name input and delete button to match.
+    // actually using right now, and shows/hides the name input and the Rename/Delete buttons to match.
     export function populateRankingSetDropdown(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const selectEl = document.getElementById(cfg.selectId);
@@ -140,12 +141,20 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         selectEl.value = selectedVal;
 
         const nameWrap = document.getElementById(cfg.nameInputWrapId);
-        const deleteBtn = document.getElementById(cfg.deleteBtnId);
         if (nameWrap) nameWrap.style.display = (selectedVal === '__new__') ? 'flex' : 'none';
-        if (deleteBtn) deleteBtn.style.display = (selectedVal !== '__new__' && selectedVal !== '__legacy__') ? 'inline-block' : 'none';
+        showSavedSetButtons(cfg, selectedVal !== '__new__' && selectedVal !== '__legacy__');
 
         updateRankingSetHeader(type);
         updateSetLeaguesRow(type);
+    }
+
+    // Rename and Delete act on a saved set, so they show only while one is selected: not for
+    // "+ Create New Set" or "Unassigned Upload (legacy)".
+    function showSavedSetButtons(cfg, isSavedSet) {
+        const deleteBtn = document.getElementById(cfg.deleteBtnId);
+        const renameBtn = document.getElementById(cfg.renameBtnId);
+        if (deleteBtn) deleteBtn.style.display = isSavedSet ? 'inline-block' : 'none';
+        if (renameBtn) renameBtn.style.display = isSavedSet ? 'inline-flex' : 'none';
     }
 
     // Header line naming the set the active league actually uses. Kept in the card header (not
@@ -187,11 +196,10 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         const cfg = RANKING_TYPE_CONFIG[type];
         const val = selectEl.value;
         const nameWrap = document.getElementById(cfg.nameInputWrapId);
-        const deleteBtn = document.getElementById(cfg.deleteBtnId);
 
         if (val === '__new__') {
             if (nameWrap) nameWrap.style.display = 'flex';
-            if (deleteBtn) deleteBtn.style.display = 'none';
+            showSavedSetButtons(cfg, false);
             updateSetLeaguesRow(type);
             return; // don't touch State yet -- wait for an actual upload/fetch to create the set
         }
@@ -204,14 +212,14 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             State[cfg.stateKey] = league[cfg.leagueLegacyDataKey] || [];
             State[cfg.updatedAtKey] = league[cfg.leagueLegacyUpdatedKey] || null;
             league[cfg.leagueSetIdKey] = null;
-            if (deleteBtn) deleteBtn.style.display = 'none';
+            showSavedSetButtons(cfg, false);
         } else {
             const set = State.rankingSets[cfg.setsKey].find(s => s.id === val);
             if (!set) return;
             State[cfg.stateKey] = [...set.data];
             State[cfg.updatedAtKey] = set.updatedAt;
             league[cfg.leagueSetIdKey] = set.id;
-            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            showSavedSetButtons(cfg, true);
         }
 
         saveActiveLeagueState();
@@ -429,4 +437,58 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 
         showToast(`Deleted "${set.name}".`);
         updateRankingsMetaDisplay();
+    };
+
+    // --- RENAMING A RANKING SET (improvements S2) ---
+    // A set's name was fixed when it was created, and the only way to change it was to delete the
+    // set and upload again, which also unassigned every league using it. Leagues point at a set by
+    // id (cfg.leagueSetIdKey), so a rename changes only `name`: the id, data and updatedAt stay as
+    // they are (updatedAt dates the rankings, and a rename doesn't make them any fresher).
+    //
+    // Every place a set's name shows reads it from State.rankingSets when it draws (the dropdown,
+    // the card header, the league picker, the upload preview, the Dashboard's Best Available card,
+    // the Waiver Wire Assistant's notes), so redrawing this card is all a rename needs here; the
+    // others pick the new name up the next time they draw.
+    export const RANKING_SET_NAME_MAX = 60;
+
+    // What's wrong with a proposed name, for showPrompt's validate: an error blocks saving, a
+    // warning doesn't. `text` is already trimmed. Same-named sets are allowed (they're told apart
+    // by id), but worth a warning, since the dropdown would then show two identical names.
+    export function checkRankingSetName(type, setId, text) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        if (!text) return { error: 'Enter a name for this set.' };
+        if (text.length > RANKING_SET_NAME_MAX) return { error: `Keep it to ${RANKING_SET_NAME_MAX} characters or fewer (this is ${text.length}).` };
+        const lower = text.toLowerCase();
+        const clash = State.rankingSets[cfg.setsKey].some(s => s.id !== setId && String(s.name || '').trim().toLowerCase() === lower);
+        if (clash) return { warning: `Another ${cfg.label} set already has this name. You can still use it.` };
+        return null;
+    }
+
+    // Renames the set selected in the dropdown.
+    export const renameRankingSet = async function(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const selectEl = document.getElementById(cfg.selectId);
+        const setId = selectEl ? selectEl.value : null;
+        if (!setId || setId === '__new__' || setId === '__legacy__') return;
+
+        const set = State.rankingSets[cfg.setsKey].find(s => s.id === setId);
+        if (!set) return;
+
+        const name = await showPrompt('Set name', {
+            title: `Rename ${cfg.label} set`,
+            value: set.name || '',
+            maxLength: RANKING_SET_NAME_MAX,
+            confirmText: 'Rename',
+            validate: (text) => checkRankingSetName(type, set.id, text)
+        });
+        if (name === null) return;
+        if (name === set.name) {
+            showToast('No changes made.');
+            return;
+        }
+
+        set.name = name;
+        localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
+        populateRankingSetDropdown(type);
+        showToast(`Renamed to "${name}".`);
     };

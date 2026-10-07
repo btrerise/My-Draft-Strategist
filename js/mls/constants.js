@@ -79,7 +79,7 @@ import { KEYS } from '../shared/storage/keys.js';
             localStorageSetsKey: KEYS.mls.rankingSetsRos,
             globalDataKey: KEYS.mls.ros, globalUpdatedKey: KEYS.mls.rosUpdated,
             selectId: 'rosRankingSetSelect', nameInputWrapId: 'rosNewSetNameWrap',
-            nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn',
+            nameInputId: 'rosNewSetName', deleteBtnId: 'rosDeleteSetBtn', renameBtnId: 'rosRenameSetBtn',
             cardId: 'rosRankingsCard', headerSetNameId: 'rosHeaderSetName',
             leaguesRowId: 'rosSetLeaguesRow', leaguesSummaryId: 'rosSetLeaguesSummary',
             label: 'ROS', staleAfterDays: 14
@@ -91,7 +91,7 @@ import { KEYS } from '../shared/storage/keys.js';
             localStorageSetsKey: KEYS.mls.rankingSetsWeekly,
             globalDataKey: KEYS.mls.weekly, globalUpdatedKey: KEYS.mls.weeklyUpdated,
             selectId: 'weeklyRankingSetSelect', nameInputWrapId: 'weeklyNewSetNameWrap',
-            nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn',
+            nameInputId: 'weeklyNewSetName', deleteBtnId: 'weeklyDeleteSetBtn', renameBtnId: 'weeklyRenameSetBtn',
             cardId: 'weeklyRankingsCard', headerSetNameId: 'weeklyHeaderSetName',
             leaguesRowId: 'weeklySetLeaguesRow', leaguesSummaryId: 'weeklySetLeaguesSummary',
             label: 'Weekly', staleAfterDays: 6
