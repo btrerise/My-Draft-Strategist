@@ -39,6 +39,13 @@
 //   the old upload is from the same rankings week (isSameRankingsWeek: Tuesday morning to Tuesday
 //   morning). The first upload of a new week shows no card, clears last week's chips, and the upload
 //   toast says changes will show when the rankings are updated.
+//
+// Owner's choices in round 5 (after another review as a user):
+// - A Weekly set is compared with this week's first upload (weekBaseline), not only the upload just
+//   before, so Tuesday -> Wednesday -> Friday shows Friday's chips from Tuesday.
+// - The card says what it's measured from ("Compared with this week's first upload, Tue 9/15, 4:10 PM").
+// - Chips explain themselves on a tap (phones have no hover), and go away on their own: Weekly ones when
+//   the rankings week ends, ROS ones after 7 days (moveChips.js).
 import { escapeHtml } from '../../shared/html.js';
 import { compareRankings, changesByName, findPlayerChange, rankLabel, isSameRankingsWeek, RELEVANT_RANKS } from '../../shared/rankings/compare.js';
 import { RANKING_TYPE_CONFIG, slotDisplayName } from '../constants.js';
@@ -47,6 +54,7 @@ import { getActiveLeague } from '../helpers.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
 import { renderLineupUI } from '../render/lineup.js';
+import { formatUploadTime } from './moveChips.js';
 import { loadRosterTab } from '../main.js';
 
 const TOP_N = 5;
@@ -76,22 +84,61 @@ function currentStarters() {
     }));
 }
 
-// Called by saveRankingsAsSet just before it overwrites a saved set. oldData is the set's previous
-// array (saveRankingsAsSet assigns a new one, so this reference stays as it was); previousUpdatedAt
-// is when it was uploaded, which decides whether a Weekly replace is an update within the week.
-export function noteRankingsReplace(type, { setId, oldData, newData, previousUpdatedAt, now = Date.now() }) {
+// A Weekly set keeps a small copy of this week's first upload (`weekBaseline`: when, and each
+// player's name and ranks; not the rest of the file), so updates later in the week are compared with
+// the week's start, not only with the upload just before (owner's choice, round 5). About 45 bytes a
+// player, one per Weekly set, replaced each new week.
+function baselineRows(data) {
+    return (Array.isArray(data) ? data : []).filter(r => r && r.name)
+        .map(r => [r.name, r.cleanName || '', r.rank ?? 999, r.posRank ?? 999, r.posTier ?? null, r.tier ?? null]);
+}
+function rowsFromBaseline(rows) {
+    return (rows || []).map(([name, cleanName, rank, posRank, posTier, tier]) => ({ name, cleanName, rank, posRank, posTier, tier }));
+}
+
+// Called by saveRankingsAsSet when it makes a new set: nothing was replaced, so any earlier card for
+// this type goes, and a new Weekly set starts its week's baseline.
+export function noteNewRankingsSet(type, set, now = Date.now()) {
+    clearRankingsChange(type);
+    if (type === 'weekly' && set) set.weekBaseline = { at: now, rows: baselineRows(set.data) };
+}
+
+// Called by saveRankingsAsSet just before it overwrites a saved set's data with newData (so `set.data`
+// is still the previous upload). Decides what the replace is compared with:
+//   Weekly, first upload of a new rankings week: nothing (no card); the new data becomes the baseline.
+//   Weekly, later in the week: the week's baseline, else (a set saved before baselines existed) the
+//     previous upload, which becomes the baseline.
+//   ROS: the previous upload.
+export function noteRankingsReplace(type, { set, newData, now = Date.now() }) {
     // An earlier card for this type described an earlier upload.
     hideCard(type);
-    if (type === 'weekly' && !isSameRankingsWeek(previousUpdatedAt, now)) {
-        pending[type] = { kind: 'newWeek' };
-        return;
+    let oldData = Array.isArray(set.data) ? set.data : [];
+    let since = set.updatedAt || null;
+    let sinceKind = 'previous';
+    if (type === 'weekly') {
+        if (!isSameRankingsWeek(set.updatedAt, now)) {
+            set.weekBaseline = { at: now, rows: baselineRows(newData) };
+            pending[type] = { kind: 'newWeek' };
+            return;
+        }
+        const base = set.weekBaseline;
+        if (base && Array.isArray(base.rows) && isSameRankingsWeek(base.at, now)) {
+            oldData = rowsFromBaseline(base.rows);
+            since = base.at;
+            sinceKind = 'week';
+        } else {
+            // The earliest upload of this week we know of; labeled as the previous upload, which it is.
+            set.weekBaseline = { at: set.updatedAt, rows: baselineRows(set.data) };
+        }
     }
     const league = getActiveLeague() || null;
     pending[type] = {
         kind: 'replace',
-        setId,
-        oldData: Array.isArray(oldData) ? oldData : [],
+        setId: set.id,
+        oldData,
         newData: Array.isArray(newData) ? newData : [],
+        since,
+        sinceKind,
         leagueId: league ? league.leagueId : null,
         leagueName: league ? (league.name || 'This league') : null,
         // Only a Weekly replace re-optimizes (the Lineup tab), so only it gets a starters part.
@@ -142,9 +189,10 @@ export async function showRankingsChange(type) {
     const set = State.rankingSets[cfg.setsKey].find(s => s.id === p.setId);
     const leagues = State.leagues.filter(l => l[cfg.leagueSetIdKey] === p.setId);
 
-    // The chips: saved on the set until its next upload (saveRankingsAsSet clears them).
+    // The chips: saved on the set until its next upload (saveRankingsAsSet clears them), with when
+    // they were made and what they're measured from (moveChips.js hides old ones).
     if (set) {
-        set.lastChanges = chipData(result);
+        set.lastChanges = { at: Date.now(), since: p.since, ...chipData(result) };
         localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
         redrawPlayerRows();
     }
@@ -154,6 +202,8 @@ export async function showRankingsChange(type) {
     el.innerHTML = renderCard(type, {
         result,
         setName: set ? set.name : `${cfg.label} set`,
+        since: p.since,
+        sinceKind: p.sinceKind,
         yourPlayers: yourPlayerChanges(result, leagues),
         starters: p.startersBefore && startersAfter ? {
             leagueName: p.leagueName,
@@ -320,13 +370,17 @@ function compactItem(c) {
     return `<li class="mls-change-item ${cls}"${title ? ` title="${escapeHtml(title)}"` : ''}><span class="mls-change-icon">${icon}</span><span class="mls-change-name">${escapeHtml(c.name)}</span>${what}</li>`;
 }
 
-function renderCard(type, { result, setName, yourPlayers, starters }) {
+function renderCard(type, { result, setName, since, sinceKind, yourPlayers, starters }) {
     const { counts } = result;
     const titleId = `${type}RankingsChangeTitle`;
     const nothing = counts.moved === 0 && counts.added === 0 && counts.dropped === 0 && counts.posChanged === 0;
 
+    // What the changes are measured from (round 5): the set's name can be its creation date, so on its
+    // own the title can read like old news.
+    const sinceText = Number.isFinite(since) ? formatUploadTime(since) : '';
+    let body = sinceText ? `<p class="mls-change-since">Compared with ${sinceKind === 'week' ? "this week's first upload" : 'your previous upload'}, ${escapeHtml(sinceText)}.</p>` : '';
     // The parts to act on first: your players and your lineup.
-    let body = renderYourPlayers(yourPlayers, result.threshold);
+    body += renderYourPlayers(yourPlayers, result.threshold);
     if (starters) body += renderStarters(starters);
     if (counts.moved > 0 || counts.added > 0) {
         body += `<p class="mls-change-note">Rank changes also show as chips on your player cards and in the Scout tab's Top Available (free agents) until the next upload of this set.</p>`;

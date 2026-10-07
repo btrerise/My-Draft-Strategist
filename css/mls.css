@@ -1838,6 +1838,7 @@ button.close-chip {
 .mls-change-head h3 { min-width: 0; overflow-wrap: anywhere; }
 .mls-change-close { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; color: var(--text-muted); cursor: pointer; }
 .mls-change-close:hover, .mls-change-close:focus-visible { color: var(--text-main); background: rgba(255, 255, 255, 0.08); }
+.mls-change-since { margin: 0 0 0.75rem; font-size: 0.78rem; color: var(--text-muted); }
 .mls-change-counts { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
 .mls-change-note { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
 .mls-change-empty, .mls-change-none { margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-muted); }
@@ -1875,7 +1876,8 @@ button.close-chip {
 .mls-change-fold[open] > summary .mls-change-when-closed { display: none; }
 .mls-change-all, .mls-change-yours-all { margin-top: 0.6rem; }
 /* The chip beside a player's rank on the Lineup and Roster tabs (js/mls/rankings/moveChips.js). */
-.mls-move-chip { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; cursor: help; }
+.mls-move-chip { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; border: 1px solid transparent; font-family: inherit; font-weight: 700; font-variant-numeric: tabular-nums; line-height: inherit; cursor: pointer; }
+.mls-move-chip:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
 .mls-move-chip.is-up { color: var(--primary-green); border-color: rgba(16, 185, 129, 0.45); }
 .mls-move-chip.is-down { color: var(--error-text); border-color: rgba(252, 165, 165, 0.45); }
 .mls-move-chip.is-new { color: var(--text-main); }

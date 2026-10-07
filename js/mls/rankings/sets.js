@@ -13,7 +13,7 @@ import { createFocusTrap } from '../../shared/ui/focusTrap.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showPrompt } from '../../shared/ui/prompt.js';
-import { clearRankingsChange, noteRankingsReplace } from './changeSummary.js';
+import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
 
     // --- NAMED RANKING SETS ---
     // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
@@ -80,8 +80,9 @@ import { clearRankingsChange, noteRankingsReplace } from './changeSummary.js';
             if (existing) {
                 // Keep the old rankings in memory for the "What changed" card (changeSummary.js),
                 // which the caller shows once it has re-optimized. Not stored anywhere.
-                // A Weekly set uploaded in an earlier week isn't compared (see changeSummary.js).
-                noteRankingsReplace(type, { setId: existing.id, oldData: existing.data, newData: parsedData, previousUpdatedAt: existing.updatedAt });
+                // A Weekly set is compared with this week's first upload, and not at all on a new
+                // week's first upload (see changeSummary.js).
+                noteRankingsReplace(type, { set: existing, newData: parsedData });
                 // The chips on player rows describe the previous upload; showRankingsChange sets new ones.
                 delete existing.lastChanges;
                 existing.data = parsedData;
@@ -97,7 +98,7 @@ import { clearRankingsChange, noteRankingsReplace } from './changeSummary.js';
             State.rankingSets[cfg.setsKey].push(newSet);
             setId = newSet.id;
             if (nameInput) nameInput.value = '';
-            clearRankingsChange(type); // a new set replaced nothing
+            noteNewRankingsSet(type, newSet); // a new set replaced nothing; a Weekly one starts its week
         }
 
         localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));

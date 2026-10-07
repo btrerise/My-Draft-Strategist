@@ -1453,3 +1453,53 @@ beside the trending icon and wraps with the row's other badges.
 
 **Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 216 Playwright tests pass; the only failures are the 10 environment-related screenshot comparisons, identical on main. No screenshot changes.
 
+### S3, round 5: tap to explain, "Compared with", the week's baseline, chips that expire
+
+**My review as a user, and the owner's choices.** After round 4 I listed what still bothered me: (1) chips explain
+themselves only on hover, which phones don't have; (2) the card doesn't say what it's compared with, and a default
+set name is its creation date, so a Friday replace reads like old news; (3) mid-week updates compare only with the
+upload just before, so Tuesday -> Wednesday -> Friday shows only Wednesday-to-Friday moves; (4) ROS chips can sit
+for weeks. The owner took 1, 2 and 4, and asked whether 3's saved rank list would use much storage with 20+ leagues.
+My answer: no. It's one list per Weekly **set**, not per league; about 45 bytes a player, so about 13 KB for a
+300-player file, next to the about 40 KB the set's own data already takes; replaced each week, never accumulating; a
+handful of Weekly sets add well under 1% of the browser's roughly 5 MB. The owner then said to proceed with 3.
+
+**User-visible effect.**
+- **Tap a chip** (Lineup, Roster, Top Available) and a toast explains it: "Up 8 spots in your Weekly rankings since
+  Tue 9/15, 4:00 PM (WR10 → WR2)". Desktop hover shows the same text. The chip is now a small button (keyboard
+  focusable, with the same screen-reader text). The site's tooltip component wasn't used: player rows hide overflow,
+  which would clip it.
+- **The card's first line** says what it compares with: "Compared with this week's first upload, Tue 9/15, 4:00 PM."
+  (Weekly) or "Compared with your previous upload, Tue 9/15, 4:00 PM." (ROS, and a Weekly set saved before this
+  change, the first time).
+- **Weekly sets compare with the week's first upload.** Tuesday's upload is quiet; Wednesday's and Friday's both show
+  changes since Tuesday, on the card and the chips. The Lineup In/Out part still compares the lineup just before and
+  after this upload.
+- **Chips expire:** Weekly ones when their rankings week ends (Tuesday 10:00 UTC), ROS ones 7 days after the upload
+  that made them. The set's next upload still replaces them sooner. Chip texts say "since <date>".
+
+**What changed and where.**
+- `js/mls/rankings/changeSummary.js`: `noteRankingsReplace(type, { set, newData })` picks the comparison: a Weekly
+  set's `weekBaseline` (`{ at, rows: [[name, cleanName, rank, posRank, posTier, tier], ...] }`) when it's from this
+  week; on a new week's first upload, the new data becomes the baseline (no card); a Weekly set without a baseline
+  this week uses its previous upload, which becomes the baseline. `noteNewRankingsSet` starts a new Weekly set's
+  baseline. `lastChanges` gains `at` and `since`. The card's `.mls-change-since` line.
+- `js/mls/rankings/moveChips.js`: the chip is a `<button data-action="explainRankMove">` with `data-tip` and `title`;
+  `explainRankMove` (toast); `formatUploadTime` ("Tue 9/15, 4:00 PM", the browser's locale and time zone);
+  `chipsExpired` (Weekly: `isSameRankingsWeek`; ROS: 7 days).
+- `js/mls/rankings/sets.js`: calls the two functions above. `js/mls/main.js`: the `explainRankMove` action.
+- `css/mls.css`: `.mls-change-since`; the chip's button reset and focus ring.
+- **Storage:** no new key. `weekBaseline` and `lastChanges` live inside each set in its existing key.
+
+**Tests.** `tests/mls-rankings-change.spec.mjs` (22 runs; the file pins UTC and en-US, since dates now show): the
+"Compared with" line for Weekly and ROS; chip texts with "since Tue 9/15, 4:00 PM", and a tap showing the toast;
+the stored `weekBaseline` (24 rows, first `["Ja'Marr Chase", 'jamarrchase', 1, 1, 1, 1]`); Tuesday -> Wednesday
+(Wilson +4) -> Friday (Wilson +8, compared with Tuesday); a set without a baseline (compared with its previous upload,
+then the next update labeled as the week's first); chips expiring (Weekly still there Monday night and gone Tuesday
+afternoon; ROS there at 6 days 23 hours, gone after 7 days); Top Available rewritten so the week's first upload
+already has the free agents (Chase Brown up 7 "since Tue 9/22", and a tap).
+
+**Left over.** None from this round.
+
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 222 Playwright tests pass; the only failures are the 10 environment-related screenshot comparisons, identical on main. No screenshot changes (the card and chips only appear after a replace).

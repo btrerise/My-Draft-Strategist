@@ -67,14 +67,15 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **What changed after you replace a ranking set.** When an upload's Replace Set (or the ROS Auto-Fetch's Replace
-  Set) overwrites a saved set, a "What changed" card now shows under that rankings card. It leads with your players'
-  moves (the 5 biggest, with Show all for the rest) and who came into and went out of this league's lineup (Weekly).
-  League-wide risers, fallers, added and dropped players are under Details. Players whose rank moved, or who are new
-  in the rankings, also get a small up/down/New chip: your players beside their rank on the Lineup and Roster tabs,
-  free agents on the Scout tab's Top Available rows. Chips last until the set's next upload. Only moves of 3 or more
-  spots for players in a useful range (top 24 QB/TE, 48 RB/WR, 16 K/DEF) count. Weekly sets are compared only within
-  one NFL week (Tuesday to Monday): the first upload of a new week shows no card and clears last week's chips.
-  Dismiss the card with ✕; it isn't kept after a reload.
+  Set) overwrites a saved set, a "What changed" card now shows under that rankings card, saying what it's compared
+  with. It leads with your players' moves (the 5 biggest, with Show all for the rest) and who came into and went out
+  of this league's lineup (Weekly). League-wide risers, fallers, added and dropped players are under Details. Players
+  whose rank moved, or who are new in the rankings, also get a small up/down/New chip: your players beside their rank
+  on the Lineup and Roster tabs, free agents on the Scout tab's Top Available rows. Tap a chip to see what it means.
+  Only moves of 3 or more spots for players in a useful range (top 24 QB/TE, 48 RB/WR, 16 K/DEF) count. Weekly sets
+  are compared with the week's first upload (the week runs Tuesday to Monday): that first upload shows no card, and
+  later updates that week show changes since it. Weekly chips go away when the week ends, ROS chips after 7 days, and
+  either sooner at the set's next upload. Dismiss the card with ✕; it isn't kept after a reload.
 - **Rename a ranking set.** A saved Weekly set (Lineup tab) or ROS set (Roster tab) now has a Rename button next to
   Delete. Every league using the set keeps it, and the new name shows everywhere the set is named. Before, the only
   way to change a name was to delete the set and upload it again, which also took it away from every league using it.

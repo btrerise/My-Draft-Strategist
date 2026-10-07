@@ -46,6 +46,10 @@ const REPLACED = `Rank,Player,Pos,Team,Tier,Bye
 25,George Kittle,TE,SF,4,14
 `;
 
+// Dates show in the card and the chips ("Tue 9/15, 4:00 PM"), so pin them.
+test.use({ timezoneId: 'UTC', locale: 'en-US' });
+const TUE = 'Tue 9/15, 4:00 PM'; // FIXED_NOW, when setUp's first sets are saved
+
 const TYPES = {
     weekly: { tab: 'lineup', card: 'weeklyRankingsCard', input: '#weeklyFileInput', select: '#weeklyRankingSetSelect', change: '#weeklyRankingsChange', nameInput: '#weeklyNewSetName', label: 'Weekly', rows: '#lineupTab .mls-player-row-text' },
     ros: { tab: 'roster', card: 'rosRankingsCard', input: '#rosFileInput', select: '#rosRankingSetSelect', change: '#rosRankingsChange', nameInput: '#rosNewSetName', label: 'ROS', rows: '#rosterTab .roster-item' }
@@ -95,6 +99,8 @@ async function expectSummary(page, t) {
     const c = card(page, t);
     await expect(c).toBeVisible();
     await expect(c.locator('h3')).toHaveText(`What changed: ${SET_NAME(t.label)}`);
+    await expect(c.locator('.mls-change-since')).toHaveText(t.label === 'Weekly'
+        ? `Compared with this week's first upload, ${TUE}.` : `Compared with your previous upload, ${TUE}.`);
 
     // Your players first: mds_test's moves, biggest first. Henry (RB5 -> RB6) is below the
     // threshold; the adds, drops and Barkley aren't on his roster.
@@ -151,15 +157,19 @@ async function expectSummary(page, t) {
 }
 
 // The chips on the type's tab: Wilson and A.J. Brown up, St. Brown down, nobody else.
-async function expectChips(page, t) {
+async function expectChips(page, t, since = TUE) {
     await showTab(page, t.tab);
-    await expect(chip(page, t, 'Garrett Wilson')).toHaveText('Up 8 spots in your ' + t.label + ' rankings since the last update', { useInnerText: false });
-    await expect(chip(page, t, 'Garrett Wilson')).toHaveAttribute('title', `Up 8 spots in your ${t.label} rankings since the last update (WR10 → WR2)`);
+    const text = `Up 8 spots in your ${t.label} rankings since ${since} (WR10 → WR2)`;
+    await expect(chip(page, t, 'Garrett Wilson')).toHaveText(`Up 8 spots in your ${t.label} rankings since ${since}`, { useInnerText: false });
+    await expect(chip(page, t, 'Garrett Wilson')).toHaveAttribute('title', text);
     await expect(chip(page, t, 'Garrett Wilson').locator('svg[aria-hidden="true"]')).toBeAttached();
     await expect(chip(page, t, 'A.J. Brown')).toHaveClass(/is-up/);
     await expect(chip(page, t, 'Amon-Ra St. Brown')).toHaveClass(/is-down/);
-    await expect(chip(page, t, 'Amon-Ra St. Brown')).toHaveAttribute('title', `Down 4 spots in your ${t.label} rankings since the last update (WR6 → WR10)`);
+    await expect(chip(page, t, 'Amon-Ra St. Brown')).toHaveAttribute('title', `Down 4 spots in your ${t.label} rankings since ${since} (WR6 → WR10)`);
     await expect(page.locator(`${t.rows} .mls-move-chip`)).toHaveCount(3);
+    // A tap explains it (phones have no hover).
+    await chip(page, t, 'Garrett Wilson').click();
+    await expect(toast(page, text)).toBeVisible();
 }
 
 test.describe('What changed after Replace Set', () => {
@@ -201,7 +211,11 @@ test.describe('What changed after Replace Set', () => {
         await expectChips(page, t);
         // Only the moves are stored, on the set itself (no new key, not the old rankings).
         const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_ranking_sets_weekly'))[0]);
-        expect(Object.keys(stored.lastChanges)).toEqual(['moves', 'added']);
+        expect(Object.keys(stored.lastChanges)).toEqual(['at', 'since', 'moves', 'added']);
+        // This week's baseline: Tuesday's 24 players, names and ranks only.
+        expect(stored.weekBaseline.at).toBe(FIXED_NOW.getTime());
+        expect(stored.weekBaseline.rows).toHaveLength(24);
+        expect(stored.weekBaseline.rows[0]).toEqual(["Ja'Marr Chase", 'jamarrchase', 1, 1, 1, 1]);
         expect(stored.lastChanges.moves['garrettwilson']).toEqual({ d: 8, f: 'WR10', t: 'WR2' });
         expect(Object.keys(stored.lastChanges.added).sort()).toEqual(['chasebrown', 'jamescook', 'jaydendaniels']);
         expect(stored.data).toHaveLength(25);
@@ -234,7 +248,90 @@ test.describe('What changed after Replace Set', () => {
         await upload(page, t, REPLACED, { expectReplace: true });
         await expect(toast(page, 'Weekly Rankings loaded successfully!').last()).not.toContainText('New week');
         await expect(items(page, t, 'Your players')).toHaveText([/Garrett Wilson\s*\+8/, /A\.J\. Brown\s*\+5/, /Amon-Ra St\. Brown\s*−4/]);
-        await expect(chip(page, t, 'Garrett Wilson')).toHaveCount(1);
+        await expect(card(page, t).locator('.mls-change-since')).toHaveText("Compared with this week's first upload, Tue 9/22, 4:00 PM.");
+        await expect(chip(page, t, 'Garrett Wilson')).toHaveAttribute('title', /since Tue 9\/22, 4:00 PM/);
+        await expectClean(page, state);
+    });
+
+    test("Weekly: later updates in the week are compared with the week's first upload", async ({ page }) => {
+        const state = await setUp(page);
+        const t = TYPES.weekly;
+        // Wednesday: Wilson half way up (WR10 -> WR6, just ahead of St. Brown).
+        const lines = RANKINGS_CSV.trim().split('\n');
+        const w = lines.findIndex(l => l.includes('Garrett Wilson'));
+        const sb = lines.findIndex(l => l.includes('Amon-Ra St. Brown'));
+        const wed = lines.filter((_, i) => i !== w);
+        wed.splice(sb, 0, lines[w]);
+        const wedCsv = wed.map((l, i) => (i === 0 ? l : `${i},${l.split(',').slice(1).join(',')}`)).join('\n') + '\n';
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 24 * 60 * 60 * 1000));
+        await openCard(page, t);
+        await upload(page, t, wedCsv, { expectReplace: true });
+        await expect(items(page, t, 'Your players')).toHaveText([/Garrett Wilson\s*\+4/]);
+
+        // Friday: the full move. Compared with Tuesday, not Wednesday: +8, not +4.
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 3 * 24 * 60 * 60 * 1000));
+        await openCard(page, t);
+        await upload(page, t, REPLACED, { expectReplace: true });
+        await expect(card(page, t).locator('.mls-change-since')).toHaveText(`Compared with this week's first upload, ${TUE}.`);
+        await expect(items(page, t, 'Your players')).toHaveText([/Garrett Wilson\s*\+8/, /A\.J\. Brown\s*\+5/, /Amon-Ra St\. Brown\s*−4/]);
+        await expectChips(page, t);
+        await expectClean(page, state);
+    });
+
+    test('a Weekly set saved before week baselines: compared with its previous upload, which becomes the baseline', async ({ page }) => {
+        const state = await setUp(page);
+        const t = TYPES.weekly;
+        await page.evaluate(() => {
+            const sets = JSON.parse(localStorage.getItem('mls_ranking_sets_weekly'));
+            delete sets[0].weekBaseline;
+            localStorage.setItem('mls_ranking_sets_weekly', JSON.stringify(sets));
+        });
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await openCard(page, t);
+        await upload(page, t, REPLACED, { expectReplace: true });
+        await expect(card(page, t).locator('.mls-change-since')).toHaveText(`Compared with your previous upload, ${TUE}.`);
+        await expect(items(page, t, 'Your players')).toHaveText([/Garrett Wilson\s*\+8/, /A\.J\. Brown\s*\+5/, /Amon-Ra St\. Brown\s*−4/]);
+        const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_ranking_sets_weekly'))[0]);
+        expect(stored.weekBaseline.at).toBe(FIXED_NOW.getTime());
+        expect(stored.weekBaseline.rows).toHaveLength(24);
+        // The next update that week is compared with it, now labeled as the week's first upload.
+        await openCard(page, t);
+        await upload(page, t, RANKINGS_CSV, { expectReplace: true });
+        await expect(card(page, t).locator('.mls-change-since')).toHaveText(`Compared with this week's first upload, ${TUE}.`);
+        await expect(card(page, t).locator('.mls-change-group.is-yours .mls-change-none')).toBeVisible();
+        await expectClean(page, state);
+    });
+
+    test('chips go away on their own: Weekly when the week ends, ROS after 7 days', async ({ page }) => {
+        const state = await setUp(page);
+        for (const t of [TYPES.weekly, TYPES.ros]) {
+            await openCard(page, t);
+            await upload(page, t, REPLACED, { expectReplace: true });
+            await expect(chip(page, t, 'Garrett Wilson')).toHaveCount(1);
+        }
+        // Next Monday night: Weekly still this week, ROS 6 days old.
+        await page.clock.setFixedTime(new Date('2026-09-22T03:00:00Z'));
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        for (const t of [TYPES.weekly, TYPES.ros]) {
+            await showTab(page, t.tab);
+            await expect(chip(page, t, 'Garrett Wilson')).toHaveCount(1);
+        }
+        // Tuesday afternoon: the Weekly chips' week is over; ROS is 7 days old (still shown).
+        await page.clock.setFixedTime(new Date('2026-09-22T15:00:00Z'));
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await showTab(page, 'lineup');
+        await expect(page.locator('#lineupTab .mls-move-chip')).toHaveCount(0);
+        await showTab(page, 'roster');
+        await expect(chip(page, TYPES.ros, 'Garrett Wilson')).toHaveCount(1);
+        // A day later: past 7 days, so the ROS chips go too.
+        await page.clock.setFixedTime(new Date('2026-09-23T17:00:00Z'));
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await showTab(page, 'roster');
+        await expect(page.locator('#rosterTab .mls-move-chip')).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -300,24 +397,37 @@ test.describe('What changed after Replace Set', () => {
         await upload(page, t, WAIVER_RANKINGS_CSV, { expectReplace: true });
         await showTab(page, 'scout');
         await expect(ta.locator('.mls-ta-row')).toHaveCount(6);
-        await expect(taChip('James Cook')).toHaveText('New in your Weekly rankings since the last update');
-        await expect(taChip('James Cook')).toHaveAttribute('title', 'New in your Weekly rankings since the last update (RB8)');
+        await expect(taChip('James Cook')).toHaveText(`New in your Weekly rankings since ${TUE}`);
+        await expect(taChip('James Cook')).toHaveAttribute('title', `New in your Weekly rankings since ${TUE} (RB8)`);
         await expect(ta.locator('.mls-move-chip.is-new')).toHaveCount(6);
 
-        // Then Chase Brown moves up to 3rd overall: RB9 -> RB2.
+        // Next week: Tuesday's first upload is rankings-waivers.csv again (no card, chips cleared), and
+        // on Wednesday Chase Brown moves up to 3rd overall: RB9 -> RB2.
+        const nextTue = FIXED_NOW.getTime() + WEEK_MS;
+        await page.clock.setFixedTime(new Date(nextTue));
+        await openCard(page, t);
+        await upload(page, t, WAIVER_RANKINGS_CSV, { expectReplace: true });
+        await showTab(page, 'scout');
+        await expect(ta.locator('.mls-ta-row')).toHaveCount(6);
+        await expect(ta.locator('.mls-move-chip')).toHaveCount(0);
+
         const lines = WAIVER_RANKINGS_CSV.trim().split('\n');
         const cb = lines.findIndex(l => l.includes('Chase Brown'));
         const moved = lines.filter((_, i) => i !== cb);
         moved.splice(3, 0, lines[cb]);
         const csv = moved.map((l, i) => (i === 0 ? l : `${i},${l.split(',').slice(1).join(',')}`)).join('\n') + '\n';
+        await page.clock.setFixedTime(new Date(nextTue + 24 * 60 * 60 * 1000));
         await openCard(page, t);
         await upload(page, t, csv, { expectReplace: true });
         await showTab(page, 'scout');
         await expect(taChip('Chase Brown')).toHaveClass(/is-up/);
-        await expect(taChip('Chase Brown')).toHaveAttribute('title', 'Up 7 spots in your Weekly rankings since the last update (RB9 → RB2)');
+        await expect(taChip('Chase Brown')).toHaveAttribute('title', 'Up 7 spots in your Weekly rankings since Tue 9/22, 4:00 PM (RB9 → RB2)');
         await expect(taChip('Chase Brown').locator('svg[aria-hidden="true"]')).toBeAttached();
         // Nobody else free moved 3 or more spots, or is new.
         await expect(ta.locator('.mls-move-chip')).toHaveCount(1);
+        // A tap explains it.
+        await taChip('Chase Brown').click();
+        await expect(toast(page, 'Up 7 spots in your Weekly rankings since Tue 9/22, 4:00 PM (RB9 → RB2)')).toBeVisible();
 
         // Rank By ROS: the ROS set wasn't replaced, so no chips.
         // (Its rankings.csv ranks no free agents, so the list is the "all rostered" note.)
