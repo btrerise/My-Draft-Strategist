@@ -571,8 +571,10 @@ Sleeper leagues:
   - a **View** button that makes that league active and opens the Scout tab's Top Available filtered like the line
     (same rankings, FLEX chip), and, on desktop only, a **Sleeper** link (external-link icon) that opens the league on
     sleeper.com in a new tab.
-- **What counts as an upgrade:** a ranked free agent in a better tier than your weakest player at his position when
-  the rankings have tiers, otherwise at least 3 spots better (rounds 4 and 5).
+- **What counts as an upgrade:** a ranked free agent who beats one of your players at his position. On Weekly, the
+  player is a starter in your best lineup this week, the one he'd push out (round 7). On ROS, he's your weakest
+  rostered player. Either way: a better tier when the rankings have tiers, otherwise at least 3 spots better (rounds
+  4 and 5).
 - **Order:** leagues with an upgrade come first, the biggest one first. Leagues with no upgrade, then leagues with no
   rankings, fold under **Show N more leagues** (chevron; it reads "Hide" while open). If no league has an upgrade, a line says
   so above the fold. If no league has rankings, the lines show unfolded.
@@ -757,6 +759,50 @@ round 4).
     Reset cover it.
   - Spec: dismiss Cook, after which Fixture League loses its upgrade and folds, and Cook still shows in Second League;
     still dismissed after a reload; Restore; and a dismissal saved for week 1 is gone on load in week 2.
+
+**Round 7: Weekly compares with your starters** (after #182 merged; on a new branch from main). The owner's real
+leagues showed "Upgrades in 20 of 20 leagues", including "Dohnte Meyers WR31 over Tee Higgins (unranked)" and "Tyler
+Higbee TE25 over Travis Kelce (unranked)":
+- **Why it happened:** Higgins was Questionable, not Out, so round 6's skip didn't apply. The analyst's Weekly sheet
+  left him out because he wasn't expected to play. In a Weekly sheet, unranked means "not expected to play" or "too
+  deep for the list", not "your worst player". Combined with "an unranked player of yours loses to any ranked free
+  agent" and no rank cutoff, nearly every league flagged.
+- **The owner's decision** (from three options I offered: starters on Weekly; skip unranked on Weekly; check
+  unranked players against ROS): **Weekly asks "who'd start for me this week?"**, so it compares with your lineup.
+  ROS keeps "who's worth a spot over my weakest player?". The line stays short ("over Jaylen Waddle WR44"), with no
+  slot name, since which slot he takes depends on kickoff times.
+- **How:**
+  - On Weekly, each position's best free agent goes through Auto-Find's own would-start check
+    (`checkAgainstLineup`). It runs with the league's Weekly rankings, locks, kickoff auto-locks, byes and
+    hard-outs (`lineupCheckDeps`, now shared from `waivers.js`).
+  - If he'd start, he's measured with `upgradeGap` against the starter he pushes out. Same position: position ranks
+    and tiers. Another position, after a FLEX reshuffle: FLEX ranks and tiers. If he'd fill an empty starting spot
+    instead, the line reads "fills an empty lineup spot".
+- **Your best lineup, built fresh, not the saved one.** I first planned to use each league's saved lineup
+  (`State.manualStartersMap`). But that's only re-optimized when the league's Lineup tab opens or Optimize All runs,
+  so after a new upload it can still start a player the new rankings leave out, which brings the Higgins problem
+  back.
+  - So a new pure `bestLineup(reqs, roster, deps)` in `waiverScanner.js` fills the league's slots from your whole
+    roster with the optimizer's own `fillLineup`, leaving out taxi players.
+  - An unranked or Out player only starts when nobody else fits, so he isn't the comparison otherwise.
+  - Leagues never optimized work too, so the "no saved lineup" fallback I'd proposed isn't needed.
+  - Manual lineup swaps aren't reflected; the question is "would he start in your best lineup".
+- **Shared code:** `freeAgentPlayer` (the free agent's team and injury from the player map) and `lineupCheckDeps` are
+  now shared helpers in `waivers.js` that Auto-Find's `buildWaiverContext` uses too. Auto-Find's output is unchanged.
+- **Tests:**
+  - Unit (`waiverScanner.test.mjs`): `bestLineup` (ranked over unranked, no taxi, Out only as a last resort, an empty
+    slot stays empty) and a free agent checked against it.
+  - Spec:
+    - The fixture league is served with one RB slot (its team has one RB), so most cases aren't "fills an empty
+      spot". A separate test keeps Sleeper's two RB slots for that case.
+    - The Higgins case: a bench WR missing from the Weekly sheet is no comparison on Weekly, and is on ROS ("over
+      Garrett Wilson (unranked)").
+    - Second League's rankings now beat its actual starters: Flowers WR3 over Puka Nacua WR4, LaPorta TE1 over Trey
+      McBride TE2.
+- **`sw.js`:** `CACHE_NAME` v2.8.79 → v2.8.80. The CHANGELOG line and the card's tooltip describe both meanings of
+  "upgrade".
+- **Screenshots:** none change. All 40, rendered here on main and on this branch, are pixel-identical; the screenshot
+  league has no rankings, so the card shows no players.
 
 **What changed and where.**
 - `js/mls/scout/bestAvailable.js` (new, in `PRECACHE_ASSETS`): `renderBestAvailable`, `setBestAvailableBasis`,

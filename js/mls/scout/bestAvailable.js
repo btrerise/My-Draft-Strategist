@@ -39,6 +39,13 @@
 // - A league synced more than 2 days ago says so; each line has an "Open in Sleeper" link; players
 //   carry injury badges; the fold uses the site's chevron.
 //
+// Owner's choices in round 7 (real leagues showed "Upgrades in 20 of 20", e.g. "over Tee Higgins
+// (unranked)": a Questionable player a Weekly sheet leaves out because the analyst expects him to sit):
+// - Weekly answers "who'd start for me this week?": the free agent is checked against your best
+//   lineup (Auto-Find's would-start check). ROS keeps "who's worth a spot over my weakest player?".
+// - The line stays short ("over Jaylen Waddle WR44", no slot name): which slot he'd take depends on
+//   kickoff times. An empty starting spot reads "fills an empty lineup spot".
+//
 // Owner's choices in round 6:
 // - "Your weakest" leaves out taxi, IR, Out (and PUP/NFI/suspended) players everywhere
 //   (rosterBenchmark in waivers.js), so an injured star unranked in Weekly isn't the drop candidate.
@@ -70,8 +77,8 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { State } from '../state.js';
 import { getLeagueRankings } from '../leagues/sync.js';
 import { setRankingsCardExpanded } from '../rankings/engine.js';
-import { buildRankDisplayIndex, findFreeAgents, FLEX_POSITIONS, upgradeGap } from './waiverScanner.js';
-import { getSleeperMetaByName, makeLeagueGetPos, rosterBenchmark, updateWaiverScanSetting } from './waivers.js';
+import { bestLineup, buildRankDisplayIndex, checkAgainstLineup, findFreeAgents, FLEX_POSITIONS, upgradeGap } from './waiverScanner.js';
+import { freeAgentPlayer, getSleeperMetaByName, lineupCheckDeps, makeLeagueGetPos, rosterBenchmark, updateWaiverScanSetting } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { showTab, switchActiveLeague } from '../main.js';
@@ -188,21 +195,58 @@ import { showTab, switchActiveLeague } from '../main.js';
             if (FLEX_POSITIONS.includes(p)) rankedAtPos[p] = (rankedAtPos[p] || 0) + 1;
         });
 
-        // Upgrades: at each position, the best free agent against your weakest rostered player
-        // there (Check a List's Whole Roster benchmark), judged by upgradeGap: a better tier when
-        // both are tiered, else 3+ spots. Biggest gap first; the first one sorts the league.
+        // Upgrades: at each position, the league's best free agent, judged two ways (round 7, owner's
+        // choice after real leagues showed "Upgrades in 20 of 20" against players like a Questionable
+        // Tee Higgins, left out of a Weekly sheet because the analyst expects him to sit):
+        //   - Weekly: would he start this week? Auto-Find's own check (checkAgainstLineup) against
+        //     your best lineup, built fresh from your roster by the optimizer's rules (bestLineup)
+        //     with this league's Weekly rankings, locks and byes. Not the saved lineup: that's only
+        //     re-optimized when the league's Lineup tab opens or Optimize All runs, so after a new
+        //     upload it can still start someone the new rankings leave out. He's measured against
+        //     the starter he'd push out (same position: position ranks and tiers; another position,
+        //     after the FLEX reshuffles: FLEX ranks and tiers), or he fills an empty starting spot.
+        //     An unranked Higgins only starts when you have no one else, so he's never the
+        //     comparison otherwise.
+        //   - ROS: your weakest rostered player there (Check a List's Whole Roster benchmark).
+        // Either way upgradeGap decides: a better tier when both are tiered, else 3+ spots.
+        const lineupMode = basis.type === 'weekly';
+        const deps = lineupMode ? lineupCheckDeps(league.leagueId, byName) : null;
+        const starters = lineupMode ? bestLineup(league.reqs, league.roster, { ...deps, getPos }) : [];
+        const flexTierOf = (clean) => {
+            const r = byName[clean];
+            if (!r) return null;
+            return r.flexTier ?? r.tier ?? null;
+        };
+        const flexRankOf = (clean) => (display[clean] && display[clean].flexRank) || null;
+        const rankedFlex = Object.values(display).filter(d => d && d.flexRank).length;
         const upgrades = [];
         FLEX_POSITIONS.forEach(pos => {
             const best = findFreeAgents(basis.data, { ...options, posFilter: pos }).freeAgents[0];
-            const { bench } = rosterBenchmark(league, getPos, byName, pos);
-            if (!best || !bench) return;
+            if (!best) return;
             const faRank = posRankOf(best.cleanName);
+            if (lineupMode) {
+                const verdict = checkAgainstLineup(freeAgentPlayer(best, meta), starters, deps);
+                if (verdict.status !== 'starts') return;
+                if (!verdict.displaced) {
+                    if (verdict.fillsEmptySlot) upgrades.push({ pos, fa: best, faRank, emptySlot: true, gap: (rankedAtPos[pos] || 0) + 1 - (faRank || 0) });
+                    return;
+                }
+                const out = verdict.displaced;
+                const outPos = getPos(out.cleanName) !== 'UNK' ? getPos(out.cleanName) : out.pos;
+                const gap = outPos === pos
+                    ? upgradeGap({ faRank, faTier: tierOf(best.cleanName), benchRank: posRankOf(out.cleanName), benchTier: tierOf(out.cleanName), rankedAtPos: rankedAtPos[pos] || 0 })
+                    : upgradeGap({ faRank: flexRankOf(best.cleanName), faTier: flexTierOf(best.cleanName), benchRank: flexRankOf(out.cleanName), benchTier: flexTierOf(out.cleanName), rankedAtPos: rankedFlex });
+                if (gap) upgrades.push({ pos, fa: best, faRank, bench: out, benchPos: outPos, benchRank: posRankOf(out.cleanName), gap });
+                return;
+            }
+            const { bench } = rosterBenchmark(league, getPos, byName, pos);
+            if (!bench) return;
             const benchRank = posRankOf(bench.cleanName);
             const gap = upgradeGap({
                 faRank, faTier: tierOf(best.cleanName),
                 benchRank, benchTier: tierOf(bench.cleanName), rankedAtPos: rankedAtPos[pos] || 0
             });
-            if (gap) upgrades.push({ pos, fa: best, faRank, bench, benchRank, gap });
+            if (gap) upgrades.push({ pos, fa: best, faRank, bench, benchPos: pos, benchRank, gap });
         });
         upgrades.sort((x, y) => y.gap - x.gap);
 
@@ -219,7 +263,8 @@ import { showTab, switchActiveLeague } from '../main.js';
     function playerHTML(a, { fa, upgrade }) {
         const inj = a.inj(fa.cleanName);
         const over = upgrade
-            ? `<span class="mls-ba-over">over ${escapeHtml(upgrade.bench.name)} ${upgrade.benchRank ? rankText(upgrade.pos, upgrade.benchRank) : '(unranked)'}</span>` : '';
+            ? `<span class="mls-ba-over">${upgrade.emptySlot ? 'fills an empty lineup spot'
+                : `over ${escapeHtml(upgrade.bench.name)} ${upgrade.benchRank ? rankText(upgrade.benchPos, upgrade.benchRank) : '(unranked)'}`}</span>` : '';
         const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
         return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${dismiss}${over}</li>`;
     }

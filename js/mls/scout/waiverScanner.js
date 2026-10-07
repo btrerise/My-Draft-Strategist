@@ -249,6 +249,31 @@ export function fillLineup(slotTypes, candidates) {
     return { starters, leftover: pool };
 }
 
+// Your best starting lineup from your whole roster, by the optimizer's own rules (fillLineup), as
+// checkAgainstLineup's currentStarters ([{ slotType, player }]). Used by the Dashboard's Best
+// Available card (improvements S5, round 7) instead of a league's saved lineup, which can be stale:
+// it's only re-optimized when that league's Lineup tab is opened or Optimize All runs, so after a
+// new upload it can still start a player the new rankings leave out. Taxi players are left out;
+// locked and unavailable players are handled as fillLineup does.
+// reqs: { QB: 1, RB: 2, ... }; roster: [{ id, cleanName, isTaxi, ... }];
+// deps: { getPos(cleanName), rankOf(player) -> { posRank, flexRank }, isLocked(player), isUnavailable(player) }
+export function bestLineup(reqs, roster, { getPos, rankOf, isLocked, isUnavailable }) {
+    const slotTypes = [];
+    Object.entries(reqs || {}).forEach(([slotType, n]) => { for (let i = 0; i < (n || 0); i++) slotTypes.push(slotType); });
+    const candidates = (roster || []).filter(p => p && !p.isTaxi).map(p => {
+        const rk = rankOf(p) || {};
+        const pos = getPos(p.cleanName);
+        // The returned player carries the position the lineup was filled with, so a later
+        // checkAgainstLineup slots him the same way.
+        return {
+            id: p.id, pos, ref: { ...p, pos },
+            posRank: rankOr999(rk.posRank), flexRank: rankOr999(rk.flexRank),
+            isLocked: !!isLocked(p), unavailable: !!isUnavailable(p)
+        };
+    });
+    return fillLineup(slotTypes, candidates).starters.map(s => ({ slotType: s.slotType, player: s.player ? s.player.ref : null }));
+}
+
 export function slotAcceptsPos(slotType, pos) {
     if (slotType === 'FLEX') return FLEX_POSITIONS.includes(pos);
     if (RESTRICTED_FLEX[slotType]) return RESTRICTED_FLEX[slotType].includes(pos);
