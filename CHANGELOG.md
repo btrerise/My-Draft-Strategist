@@ -66,6 +66,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Rename a ranking set.** A saved Weekly set (Lineup tab) or ROS set (Roster tab) now has a Rename button next to
+  Delete. Every league using the set keeps it, and the new name shows everywhere the set is named. Before, the only
+  way to change a name was to delete the set and upload it again, which also took it away from every league using it.
+  Names can be up to 60 characters (the New Set Name field now stops there too); you're warned, but not stopped, when
+  another set of the same type already has the name.
 - **A new league starts with no rankings.** Creating a manual league, syncing a Sleeper league for the first time,
   Import All and importing a roster from Draft Strategist used to keep the rankings of the league you were on. The new
   league's lineup used them, and its first rankings upload saved them into it as "Unassigned Upload (legacy)". After

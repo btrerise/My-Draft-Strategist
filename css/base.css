@@ -336,6 +336,32 @@ html { scroll-padding-top: 5rem; }
     margin-top: 1.25rem;
 }
 
+/* --- SHARED IN-APP TEXT-INPUT DIALOG (showPrompt in js/shared/ui/prompt.js, improvements S2) --- */
+/* The same .mds-modal-overlay/.mds-modal card as the confirm dialog, plus a labeled input and a
+   message line under it: a validation error (red) or a warning that doesn't block saving (amber). */
+.mds-prompt-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0.75rem 0 0.4rem 0;
+}
+
+.mds-prompt-msg {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    min-height: 1.1em;
+    margin: 0.4rem 0 0 0;
+    color: var(--text-muted);
+}
+
+.mds-prompt-msg.is-error { color: var(--error-text); }
+.mds-prompt-msg.is-warning { color: var(--pos-te-border); }
+
+.mds-prompt-modal .mds-modal-actions {
+    margin-top: 0.75rem;
+}
+
 .hamburger-menu.open { 
     transform: translateX(0); 
     visibility: visible;
