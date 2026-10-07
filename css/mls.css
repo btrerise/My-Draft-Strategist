@@ -1829,3 +1829,55 @@ button.close-chip {
 .mls-moved-pointer-text { margin: 0; }
 /* Now a <button> (was <a href="#">); the underline keeps the old link look. */
 .mls-moved-pointer-link { color: #c4b5fd; font-weight: 600; white-space: nowrap; text-decoration: underline; }
+
+/* "What changed" after replacing a ranking set (js/mls/rankings/changeSummary.js, improvements S3): under the
+   rankings card that owns the set. The top lists your players and your lineup as compact
+   inline items; everything league-wide is in the Details fold. Up is green, down is red. */
+.mls-change-card { border-left: 3px solid var(--primary-green); }
+.mls-change-head { gap: 0.75rem; }
+.mls-change-head h3 { min-width: 0; overflow-wrap: anywhere; }
+.mls-change-close { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; color: var(--text-muted); cursor: pointer; }
+.mls-change-close:hover, .mls-change-close:focus-visible { color: var(--text-main); background: rgba(255, 255, 255, 0.08); }
+.mls-change-since { margin: 0 0 0.75rem; font-size: 0.78rem; color: var(--text-muted); }
+.mls-change-counts { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+.mls-change-note { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+.mls-change-empty, .mls-change-none { margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-muted); }
+.mls-change-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 1.25rem; }
+.mls-change-group { margin-top: 0.9rem; min-width: 0; }
+.mls-change-card > .mls-change-group:first-of-type { margin-top: 0; }
+.mls-change-group-title { margin: 0 0 0.3rem; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.mls-change-count { font-weight: 600; opacity: 0.8; }
+.mls-change-list { list-style: none; margin: 0; padding: 0; }
+.mls-change-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.15rem 0.45rem; padding: 0.35rem 0; font-size: 0.86rem; }
+.mls-change-row + .mls-change-row { border-top: 1px solid rgba(255, 255, 255, 0.05); }
+/* Compact items: one line that wraps, for the top of the card. */
+.mls-change-inline { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; }
+.mls-change-item { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.86rem; white-space: nowrap; }
+.mls-change-icon { display: inline-flex; flex-shrink: 0; }
+.mls-change-row.is-up .mls-change-icon, .mls-change-row.is-up .mls-change-delta, .mls-change-row.is-added .mls-change-icon,
+.mls-change-item.is-up .mls-change-icon, .mls-change-item.is-up .mls-change-delta, .mls-change-item.is-added .mls-change-icon { color: var(--primary-green); }
+.mls-change-row.is-down .mls-change-icon, .mls-change-row.is-down .mls-change-delta, .mls-change-row.is-dropped .mls-change-icon,
+.mls-change-item.is-down .mls-change-icon, .mls-change-item.is-down .mls-change-delta, .mls-change-item.is-dropped .mls-change-icon { color: var(--error-text); }
+.mls-change-row.is-pos .mls-change-icon, .mls-change-item.is-pos .mls-change-icon { color: var(--text-muted); }
+.mls-change-name { color: var(--text-main); font-weight: 600; min-width: 0; }
+.mls-change-ranks { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mls-change-delta { font-weight: 700; font-variant-numeric: tabular-nums; }
+.mls-change-tier { font-size: 0.72rem; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; white-space: nowrap; }
+.mls-change-leagues { flex-basis: 100%; padding-left: calc(13px + 0.45rem); font-size: 0.72rem; color: var(--text-muted); }
+.mls-change-more-note { margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--text-muted); }
+/* The folds: Details (everything league-wide) and, inside it, Show all moves. */
+.mls-change-fold { margin-top: 0.9rem; }
+.mls-change-details { padding-top: 0.6rem; border-top: 1px solid var(--border); }
+.mls-change-fold > summary { cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--primary-green); list-style: none; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.3rem 0.5rem; }
+.mls-change-fold > summary::-webkit-details-marker { display: none; }
+.mls-change-chevron { transform: rotate(-90deg); transition: transform 0.15s; }
+.mls-change-fold[open] > summary .mls-change-chevron { transform: none; }
+.mls-change-fold:not([open]) > summary .mls-change-when-open,
+.mls-change-fold[open] > summary .mls-change-when-closed { display: none; }
+.mls-change-all, .mls-change-yours-all { margin-top: 0.6rem; }
+/* The chip beside a player's rank on the Lineup and Roster tabs (js/mls/rankings/moveChips.js). */
+.mls-move-chip { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; border: 1px solid transparent; font-family: inherit; font-weight: 700; font-variant-numeric: tabular-nums; line-height: inherit; cursor: pointer; }
+.mls-move-chip:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+.mls-move-chip.is-up { color: var(--primary-green); border-color: rgba(16, 185, 129, 0.45); }
+.mls-move-chip.is-down { color: var(--error-text); border-color: rgba(252, 165, 165, 0.45); }
+.mls-move-chip.is-new { color: var(--text-main); }

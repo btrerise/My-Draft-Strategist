@@ -1196,3 +1196,326 @@ duplicates compared ignoring case and surrounding spaces, within the same type o
 - F4's note on `saveRankingsAsSet`'s comment (the flat keys no longer serve "a brand new league") still stands; I
   left it for S3, which rewrites that function.
 - `showPrompt` is available to Draft Strategist and T-Score but nothing there uses it yet.
+
+## S3 — What changed: a summary after replacing a ranking set
+
+**User-visible effect.** When a saved ranking set is overwritten (Replace Set in the upload preview, or Replace Set in the
+ROS Auto-Fetch's "Replace saved set?" dialog), a **What changed** card now appears right under that set's rankings card:
+the Lineup tab for Weekly, the Roster tab for ROS. It sits outside the rankings card, so it shows while that card is
+collapsed (it collapses after every save). It has:
+- a title naming the set ("What changed: Weekly Rankings – 9/15/2026") and a ✕ to dismiss it;
+- a counts line ("4 moved · 3 added · 2 dropped", plus "· 1 changed position" when that happens) and a note: "Moves of
+  3 or more spots in position rank. 22 players in both versions.";
+- **Risers** and **Fallers**, the top 5 each, as "Garrett Wilson WR10 → WR2 +8 T4 → T1" (green up arrow / red down
+  arrow, tier change as a small pill when the tier changed);
+- **Show all N moves**, a fold listing every move grouped by position (QB, RB, WR, TE, K, DEF);
+- **Added** and **Dropped**, by name in overall-rank order (top 10 each, then "and N more"): "James Cook RB3", "Joe
+  Burrow was QB4";
+- **Changed position**, only when a player's position differs between the two versions;
+- **Your players**: every move, add or drop for players on your rosters in the leagues that use this set, each with the
+  league names under it, or a line saying none of them changed;
+- **Starters changed in <league>** (Weekly only): who came into and went out of the active league's starting lineup,
+  with their slot, then "Lineups in Bench League update when you open them." for the other leagues on the set.
+  "Same starters in Fixture League." when nothing changed.
+
+With nothing over the threshold it says "No player moved 3 or more spots, and no one was added or dropped." Saving a new
+set shows nothing (and removes an earlier summary for that type). The card is never stored: ✕ removes it, and a reload
+has none. Nothing else on screen changed.
+
+**Owner's decisions (asked before building).**
+- **Contents:** all four offered parts: counts plus top 5 risers and fallers; Your players; a "Show all moves" link;
+  added and dropped players by name (not just counts).
+- **Starters changed:** the active league only (I reported that only the active league is re-optimized on replace; see
+  below). A Weekly replace lists In and Out for the active league and names the other leagues using the set, whose
+  lineups update when opened. A ROS replace has no starters part.
+- **ROS Auto-Fetch:** yes, its replace shows the card too.
+- **Rank basis:** position rank ("RB18 → RB9"), threshold 3 spots, as the card suggested.
+
+**Does replacing a set re-optimize the leagues using it?** Only the active league, and only for a Weekly upload:
+`confirmRankingsPreview` calls `optimizeLineup(true)` when the Lineup tab is showing (where the Weekly card is); a ROS
+upload on the Roster tab calls `loadRosterTab()`, and the auto-fetch the same. Other leagues on the set aren't touched:
+their saved lineup's `lineupRankingsStamps` entry no longer matches `getLeagueRankingsStamp` (it includes the set's
+`updatedAt`), so `optimizeLineup` recomputes each one when it's next opened (or by Optimize All). Not changed here, per
+the card; the card says so in one line instead. A follow-up could re-optimize those leagues on replace and list their
+starter changes too.
+
+**What changed and where.**
+- `js/shared/rankings/compare.js` (new, in `PRECACHE_ASSETS`), pure, for Draft Strategist's S4 too:
+  - `compareRankings(oldList, newList, { posOf, threshold = 3 })` matches players by `normalizeName(name)` plus
+    position (rename-safe: suffixes, punctuation, case and the alias table, and it ignores the stored `cleanName`),
+    then pairs what's left by name alone. A known position on both sides that differs is a position change
+    (`posChanged`, not a move); a position known on one side only is the same player. The rest are added or dropped.
+    The first row for a name + position in a list wins.
+  - Moves are in position rank (falls back to overall rank when neither side has one); only moves of at least
+    `threshold` spots count. Each move carries old/new rank, position rank and tier, `delta` (positive = rose),
+    `overallDelta` and `tierChanged`. A tier change alone doesn't count as a move.
+  - Order: biggest move first; ties by the better new rank, then file order (deterministic). Added and dropped are by
+    overall rank, since they mix positions.
+  - Also `changesByName`, `findPlayerChange` (a roster position must agree, so a WR doesn't pick up a same-named RB's
+    move), `rankLabel`, `DEFAULT_MOVE_THRESHOLD`.
+- `js/mls/rankings/changeSummary.js` (new, in `PRECACHE_ASSETS`): `noteRankingsReplace`, `clearRankingsChange`,
+  `showRankingsChange`, `dismissRankingsChange`, and the card's markup.
+  - Position ranks: a single-file upload with no Pos Rank column stores its **overall** rank as `posRank`. So both lists
+    go through `buildRankDisplayIndex` (`js/mls/scout/waiverScanner.js`), the derivation the Waiver Wire Assistant
+    shows, with positions from `makeLeagueGetPos` (league positions, then the cached Sleeper player map). A derived
+    position rank has no tier of its own, so the file's overall tier stands in.
+  - Starters: `noteRankingsReplace` snapshots the active league's saved starters (Weekly only); `showRankingsChange`
+    reads them again after the caller has re-optimized and diffs by player id.
+- `js/mls/rankings/sets.js` (`saveRankingsAsSet`): calls `noteRankingsReplace` with the set's old array just before
+  `existing.data = parsedData` (the old array stays as it was, since the set gets a new one), and `clearRankingsChange`
+  when it makes a new set. The flat-keys comment now says what F4 left them for (F4/S2's leftover note).
+- `js/mls/rankings/uploadPreview.js` (`confirmRankingsPreview`) and `js/mls/rankings/rosFetch.js`
+  (`autoFetchRosRankings`): call `showRankingsChange(type)` after their re-optimize / `loadRosterTab`. It's async (the
+  Sleeper player map), and errors go to `console.warn`, never `console.error`.
+- `js/mls/main.js`: the `dismissRankingsChange` click action (data-action, delegate()).
+- `lineup/index.html`: `#weeklyRankingsChange` and `#rosRankingsChange`, empty and `hidden`, right after each rankings
+  card. `css/mls.css`: `.mls-change-*` at the end. Icons are inline Feather SVGs (arrow-up, arrow-down, plus, minus,
+  repeat, x, chevron).
+- **No storage:** the old rankings live in memory only until the card is drawn; no new key, no undo.
+- `sw.js`: `CACHE_NAME` v2.8.83 → v2.8.84. CHANGELOG line under Lineup Strategist's Unreleased.
+
+**Tests.**
+- `tests/unit/rankingsCompare.test.mjs` (13): the threshold; risers/fallers with tiers; added and dropped in overall
+  order; rename-safe matching (Walker III / Walker, D.J. / DJ, Kenny / Kenneth Gainwell, case and punctuation); two
+  players sharing a name at different positions; a player changing position (QB40 → TE14); positions from `posOf` and a
+  position known on one side only; ties (equal moves, and tied ranks within a file, same order whichever way the file
+  was written); overall-rank fallback; duplicates, empty and missing lists, nameless rows; identical lists; roster
+  look-ups.
+- `tests/mls-rankings-change.spec.mjs` (both widths, 10 runs): uploads rankings.csv as ROS and Weekly sets (no card),
+  then replaces with a reordered copy:
+  - **Weekly:** counts, risers (Wilson WR10 → WR2 +8 T4 → T1, A.J. Brown WR9 → WR4 +5), fallers (Barkley RB3 → RB8 −5,
+    St. Brown WR6 → WR10 −4), Show all moves by position, added and dropped by name, Your players (Wilson, A.J.
+    Brown, St. Brown, each "Fixture League"), Starters In Wilson / Out Lamb (FLEX), "Lineups in Bench League update
+    when you open them."; then ✕, a reload, and no new storage key.
+  - **ROS:** the same summary on the Roster tab, with no starters part.
+  - **New set:** "+ Create New Set" and an upload clear an earlier card and show none.
+  - **Same rankings:** the empty wording for the counts, Your players and starters.
+  - **Auto-Fetch** (FantasyCalc stubbed): Cancel shows nothing; Replace Set shows the card (Wilson +8).
+
+**Screenshots: none re-taken.** The card only appears after a replace, and the screenshot states have no rankings, so
+the hidden containers change nothing. As in S2, S6 and F4, this container's fonts don't match the committed baselines
+(the 10 visual tests fail on unchanged main too), so I rendered origin/main's 40 screenshots here and ran this branch's
+visual tests against them: all 40 matched. The committed baselines are untouched. I checked the card by eye at both
+widths, closed and with Show all moves open.
+
+**Checks run.** `npm run check`: check-precache OK, every unit test passes, 210 Playwright tests pass including the new
+spec at both widths. The only failures are those 10 environment-related screenshot comparisons, identical on main.
+
+**Left over / notes.**
+- Other leagues on a replaced set aren't re-optimized until opened (above); a possible follow-up card.
+- **For S4 (Draft Strategist):** `compareRankings` is ready to reuse. MDS rows carry `pos`, so no `posOf` is needed.
+  Check whether MDS's stored `posRank` is a real position rank or the overall-rank fallback for single files: the
+  derivation used here (`buildRankDisplayIndex`) lives in `js/mls/`, so S4 would need its own (or a move of that
+  function to `js/shared/`).
+
+### S3, round 2: chips on player rows, a shorter card, a relevance range, free agents, the week rule
+
+**Owner's review after the first push.** The owner asked me to think like a typical user: would the moves read better
+on each player's card, and what else felt clunky? My answer: yes to chips on the rows; the card was 2-3 phone screens
+tall every week, led with league-wide risers and fallers of players you mostly don't own, and buried the two parts you
+act on (your players and the lineup) at the bottom; Weekly files are noisy (matchups move dozens of players, and a
+3-spot move means the same at WR2 and WR70); Added/Dropped is mostly bye-week noise for Weekly. I proposed four changes
+and the owner took all four, on this card:
+1. **Rank-change chips on the player rows** (Lineup and Roster tabs), **kept until the set's next upload** (owner's
+   choice over "until reload").
+2. **A shorter card:** your players, the lineup, and free agents first; league-wide details behind one fold.
+3. **A relevance range** so deep moves don't count.
+4. **Free agents moving up**, with a link to Top Available.
+
+The owner also asked whether Weekly changes could be tied to the NFL week, since week-to-week changes are noise but
+updates during a week are useful. The app knows the current week (Sleeper's state endpoint, on each page load) but
+never recorded which week a set was uploaded for. Offered: by date, or by saving Sleeper's week number on the set. The
+owner picked **by date, with a Tuesday cutoff** (works for existing sets and offline; Sleeper's week number may not
+switch until after the next week's rankings are out), and for a new week's first upload **no card plus a note in the
+toast**.
+
+**User-visible effect (replaces the card description above).**
+- **The card**, under the rankings card that owns the set, top to bottom:
+  - **Your players**: one wrapping line, biggest move first: "↑ Garrett Wilson +8 · ↑ A.J. Brown +5 · ↓ Amon-Ra St.
+    Brown −4" (hover shows "WR10 → WR2"); adds read "new, RB3". Or "None of your players moved 3 or more spots,
+    joined or left these rankings."
+  - **<League> lineup** (Weekly): "+ Garrett Wilson WR − CeeDee Lamb FLEX", then "Lineups in Bench League update
+    when you open them." Or "Same starters." / "There was no saved lineup to compare with."
+  - **Free agents moving up**: per Sleeper-synced league using the set, up to 3 risers or newly ranked players nobody
+    rosters there, best new rank first ("Chase Brown RB7 +9", "James Cook new, RB3"), and a **View** button that
+    opens that league's Top Available (the Dashboard card's `viewLeagueTopAvailable`). Manual leagues are left out (their
+    waiver wire can't be read); no line at all when there's nothing.
+  - "Rank changes also show on your player cards until the next upload of this set." when any of yours moved.
+  - **Details** (folded), with the counts on its summary line ("Details 4 moved · 3 added · 2 dropped"): the range
+    note, top 5 risers and fallers, "Show all N moves" by position, added and dropped by name, changed position, and
+    "Your players by league".
+- **Chips**: on the Lineup tab (by the rankings the lineup uses: Weekly, else ROS) and the Roster tab (ROS), between
+  the team badge and the rank badge: a green up-arrow "8", a red down-arrow "4", or "New" for a rostered player newly
+  in the rankings. Tooltip: "Up 8 spots in your Weekly rankings since the last update (WR10 → WR2)"; screen readers get
+  the same words. Dismissing the card leaves them; the set's next upload replaces or clears them. On a phone's Roster
+  tab, a row with a chip can push its rank badge onto a second line (that line was already near full).
+- **Range:** a move, add, drop or position change counts only when the player is in the top 24 QB/TE, 48 RB/WR or 16
+  K/DEF at his position (or top 150 overall, without a position rank) in either version.
+- **Weekly week rule:** a Weekly replace is compared only when the old upload was in the same rankings week, Tuesday
+  10:00 UTC (6am Eastern in daylight time) to the next Tuesday. The first upload of a new week shows no card, clears the
+  set's chips, and its toast adds "New week: changes will show when you update these rankings." ROS sets are always
+  compared.
+
+**What changed and where (round 2).**
+- `js/shared/rankings/compare.js`: `RELEVANT_RANKS` and a `limits` option (out-of-range changes counted in
+  `ignored`); `rankingsWeekStart` and `isSameRankingsWeek`.
+- `js/mls/rankings/changeSummary.js`: the new card layout; `risingFreeAgents` (risers and adds not in the league's
+  `globalRosterMap`, `isFullyMappedLeague` leagues only); after comparing, saves `set.lastChanges` (`{ moves:
+  { cleanName: { d, f, t } }, added: { cleanName: label } }`) in the set's existing key and redraws the Lineup / Roster
+  rows; `noteRankingsReplace` takes `previousUpdatedAt` and marks a new week's first Weekly upload (`isNewWeekReplace`).
+- `js/mls/rankings/moveChips.js` (new, in `PRECACHE_ASSETS`): `rankMoveChip(type, cleanName)`. Its own small module so
+  the row renderers don't import the card's dependencies (main.js's import list sets MLS's load order).
+- `js/mls/rankings/sets.js`: passes `previousUpdatedAt`; deletes the set's `lastChanges` on every upload into it.
+- `js/mls/rankings/uploadPreview.js`: the new-week note in both upload toasts.
+- `js/mls/render/lineup.js`, `js/mls/render/roster.js`: the chip in each row's meta line.
+- `css/mls.css`: the `.mls-change-*` block rewritten (inline items, free-agent lines, folds) and `.mls-move-chip`.
+- **Storage:** no new key. `lastChanges` is a field inside each set in `mls_ranking_sets_weekly` / `_ros`, so Backup
+  and Restore carry it; it holds only the moves (a few dozen short entries), never the old rankings. This goes past the
+  card's first "don't store it" line by the owner's choice (chips until the next upload).
+- `CACHE_NAME` stays v2.8.84 (one bump per branch, still above main's v2.8.83).
+
+**Tests (round 2).**
+- Unit (17 now): the range (in either version counts; TE's 24; overall fallback; adds and drops; `ignored`), and the
+  week boundaries (Tuesday afternoon, Monday Night Football still in the old week, exactly 10:00, unknown times).
+- `tests/mls-rankings-change.spec.mjs` (both widths, 12 runs): rewritten for the layout. Adds the chips (count, classes,
+  tooltip and screen-reader text; still there after dismiss and reload; what's stored on the set), the free-agent line
+  and View, the Details fold, and a week test: a replace next Tuesday shows no card, has the toast note and clears the
+  chips; a replace that Saturday shows the card and chips again. ROS: a week later still compares, chips on the Roster
+  tab and none on the Lineup tab (Weekly unchanged). New set: no chips.
+
+**Screenshots: none re-taken**, same method as round 1: main's 40 rendered in this container, and this branch's visual
+tests matched all 40. The card and chips only appear after a replace, which no screenshot does. Checked by eye at
+both widths: the card, and the chips on Lineup and Roster rows.
+
+**Checks run.** `npm run check`: check-precache OK, all unit tests pass, 212 Playwright tests pass; the only failures
+are the 10 environment-related screenshot comparisons, identical on main.
+
+**Left over / notes (round 2).**
+- Other leagues on a replaced set still aren't re-optimized until opened (round 1's note stands).
+- Chips show only for the active league's set and only on the Lineup and Roster tabs; Top Available rows and the
+  Dashboard's Best Available don't show them. A possible follow-up.
+- A Weekly set last uploaded before this change has no `lastChanges`, so it shows chips only after its next same-week
+  replace.
+
+### S3, round 3: Your players shows the top 5
+
+**Owner's request** (after round 2, "close"): Your players should work like Risers and Fallers: the 5 biggest changes,
+and a way to see all of them.
+
+**User-visible effect.** The Your players line now shows the 5 biggest changes (biggest move first; equal moves by
+name; adds, drops and position changes after the moves), and under it a **Show all N** fold (it reads "Hide" while
+open) listing every one of them with its ranks ("WR10 → WR1 +9") and the leagues he's in. That full list replaces the
+"Your players by league" section that round 2 had inside Details, so nothing is listed twice. The count stays in the
+heading ("Your players 7"). Like Risers and Fallers' "Show all moves", the fold shows even when there are 5 or fewer,
+since it adds the ranks and leagues.
+
+**What changed and where.** `renderYourPlayers` in `js/mls/rankings/changeSummary.js` (top 5 plus the
+`.mls-change-yours-all` fold; the Details section removed); one CSS rule in `css/mls.css`; the CHANGELOG line.
+
+**Tests.** `tests/mls-rankings-change.spec.mjs` (14 runs): the existing tests open "Show all 3" and check its rows and
+leagues; a new test reverses rankings.csv's WRs and QBs so seven of mds_test's players move, and checks the top 5
+(Wilson +9, Chase −9, A.J. Brown +7, Jefferson −7, Lamb −5), "Show all 7" with all seven rows (Allen and Nacua −3
+after them), and seven chips on the Lineup tab. Checked by eye at both widths, closed and open.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 214 Playwright tests pass; the only failures
+are the 10 environment-related screenshot comparisons, identical on main. No screenshot changes (the card only appears
+after a replace).
+
+### S3, round 4: chips on Top Available; the free-agent section removed
+
+**Owner's question and choice.** The owner asked whether the card should be more permanent, at least on the Roster
+tab, so each league shows its changes while it's active. My view: the chips already give a per-league, lasting view of
+your own players; what's lost after a reload is free agents moving up. I suggested putting the chips where waiver
+decisions happen (Top Available, and possibly the Dashboard's Best Available) rather than a new lasting card, which
+would repeat the chips, go stale quietly and need a second copy for Weekly. The owner chose **chips on the Scout tab's
+Top Available rows**, **not** on the Dashboard's Best Available lines (already busy), and **removing the "Free agents
+moving up" section** from the card, since that information is now in the Scout tab.
+
+**User-visible effect.**
+- **Top Available rows** (Scout tab, Waiver Wire Assistant) show the same chip after the player's position-rank badge:
+  green up-arrow and the spots moved, red down-arrow, or "New", by the rankings Top Available is using (Rank By,
+  including its fallback). The Trending view's rows get it too when the player is in your rankings. It lasts until that
+  set's next upload, per league, like the Lineup and Roster chips.
+- **The card** no longer has "Free agents moving up". Its note now reads "Rank changes also show as chips on your
+  player cards and in the Scout tab's Top Available (free agents) until the next upload of this set." and shows
+  whenever anything moved or was added (not only when one of your players did).
+
+**What changed and where.** `js/mls/scout/topAvailable.js`: `rankMoveChip(ctx.scan.basis, cleanName)` in `rowHTML`
+and `trendRowHTML`. `js/mls/rankings/changeSummary.js`: `risingFreeAgents`, `renderFreeAgents` and the
+`isFullyMappedLeague` import removed; the note's wording and condition. `css/mls.css`: the `.mls-change-fa*` rules
+removed. CHANGELOG line updated.
+
+**Tests.** `tests/mls-rankings-change.spec.mjs` (16 runs): the card has no free-agent section and the new note; a new
+test replaces the Weekly set with rankings-waivers.csv (six "New" chips on Top Available, tooltip "New in your Weekly
+rankings since the last update (RB8)"), then moves Chase Brown from RB9 to RB2 (one up chip, "Up 7 spots ... (RB9 →
+RB2)"), then switches Rank By to ROS (no chips: the ROS set wasn't replaced). Checked by eye on a phone: the chip sits
+beside the trending icon and wraps with the row's other badges.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 216 Playwright tests pass; the only failures are the 10 environment-related screenshot comparisons, identical on main. No screenshot changes.
+
+### S3, round 5: tap to explain, "Compared with", the week's baseline, chips that expire
+
+**My review as a user, and the owner's choices.** After round 4 I listed what still bothered me: (1) chips explain
+themselves only on hover, which phones don't have; (2) the card doesn't say what it's compared with, and a default
+set name is its creation date, so a Friday replace reads like old news; (3) mid-week updates compare only with the
+upload just before, so Tuesday -> Wednesday -> Friday shows only Wednesday-to-Friday moves; (4) ROS chips can sit
+for weeks. The owner took 1, 2 and 4, and asked whether 3's saved rank list would use much storage with 20+ leagues.
+My answer: no. It's one list per Weekly **set**, not per league; about 45 bytes a player, so about 13 KB for a
+300-player file, next to the about 40 KB the set's own data already takes; replaced each week, never accumulating; a
+handful of Weekly sets add well under 1% of the browser's roughly 5 MB. The owner then said to proceed with 3.
+
+**User-visible effect.**
+- **Tap a chip** (Lineup, Roster, Top Available) and a toast explains it: "Up 8 spots in your Weekly rankings since
+  Tue 9/15, 4:00 PM (WR10 → WR2)". Desktop hover shows the same text. The chip is now a small button (keyboard
+  focusable, with the same screen-reader text). The site's tooltip component wasn't used: player rows hide overflow,
+  which would clip it.
+- **The card's first line** says what it compares with: "Compared with this week's first upload, Tue 9/15, 4:00 PM."
+  (Weekly) or "Compared with your previous upload, Tue 9/15, 4:00 PM." (ROS, and a Weekly set saved before this
+  change, the first time).
+- **Weekly sets compare with the week's first upload.** Tuesday's upload is quiet; Wednesday's and Friday's both show
+  changes since Tuesday, on the card and the chips. The Lineup In/Out part still compares the lineup just before and
+  after this upload.
+- **Chips expire:** Weekly ones when their rankings week ends (Tuesday 10:00 UTC), ROS ones 7 days after the upload
+  that made them. The set's next upload still replaces them sooner. Chip texts say "since <date>".
+
+**What changed and where.**
+- `js/mls/rankings/changeSummary.js`: `noteRankingsReplace(type, { set, newData })` picks the comparison: a Weekly
+  set's `weekBaseline` (`{ at, rows: [[name, cleanName, rank, posRank, posTier, tier], ...] }`) when it's from this
+  week; on a new week's first upload, the new data becomes the baseline (no card); a Weekly set without a baseline
+  this week uses its previous upload, which becomes the baseline. `noteNewRankingsSet` starts a new Weekly set's
+  baseline. `lastChanges` gains `at` and `since`. The card's `.mls-change-since` line.
+- `js/mls/rankings/moveChips.js`: the chip is a `<button data-action="explainRankMove">` with `data-tip` and `title`;
+  `explainRankMove` (toast); `formatUploadTime` ("Tue 9/15, 4:00 PM", the browser's locale and time zone);
+  `chipsExpired` (Weekly: `isSameRankingsWeek`; ROS: 7 days).
+- `js/mls/rankings/sets.js`: calls the two functions above. `js/mls/main.js`: the `explainRankMove` action.
+- `css/mls.css`: `.mls-change-since`; the chip's button reset and focus ring.
+- **Storage:** no new key. `weekBaseline` and `lastChanges` live inside each set in its existing key.
+
+**Tests.** `tests/mls-rankings-change.spec.mjs` (22 runs; the file pins UTC and en-US, since dates now show): the
+"Compared with" line for Weekly and ROS; chip texts with "since Tue 9/15, 4:00 PM", and a tap showing the toast;
+the stored `weekBaseline` (24 rows, first `["Ja'Marr Chase", 'jamarrchase', 1, 1, 1, 1]`); Tuesday -> Wednesday
+(Wilson +4) -> Friday (Wilson +8, compared with Tuesday); a set without a baseline (compared with its previous upload,
+then the next update labeled as the week's first); chips expiring (Weekly still there Monday night and gone Tuesday
+afternoon; ROS there at 6 days 23 hours, gone after 7 days); Top Available rewritten so the week's first upload
+already has the free agents (Chase Brown up 7 "since Tue 9/22", and a tap).
+
+**Left over.** None from this round.
+
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 222 Playwright tests pass; the only failures are the 10 environment-related screenshot comparisons, identical on main. No screenshot changes (the card and chips only appear after a replace).
+
+### S3, round 6: the lineup part's label
+
+After round 5 my review as a user found one small mismatch: Your players counts from the week's first upload, but the
+lineup's In/Out compares with the lineup just before this upload. On a Friday, a player can read "+8" under Your players
+and not appear under the lineup, because he moved into it on Wednesday. Correct, but puzzling. The owner agreed to
+relabel it: the heading is now "<League> lineup, this update" (`renderStarters` in `js/mls/rankings/changeSummary.js`;
+the spec checks the new heading). Nothing else changed.
+
+**Owner's question: hold the PR until a real mid-week update can be tried?** My view: no. The mid-week flow is covered
+by the spec with the clock moved through a week (Tuesday, Wednesday, Friday, the next Tuesday). What only real files can
+show is tuning, not correctness: how many moves a 300-player mid-week update produces, and whether the 3-spot cutoff
+and the ranges feel right. Those are single numbers (`DEFAULT_MOVE_THRESHOLD`, `RELEVANT_RANKS` in
+`js/shared/rankings/compare.js`) that a later change can adjust. The feature only adds data inside each set's existing
+key and removes nothing, so trying it on real data after merging is low-risk.
+

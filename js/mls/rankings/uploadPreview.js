@@ -10,6 +10,7 @@ import { analyzeRankingsFile, derivedRanksWording } from '../scout/waivers.js';
 import { createPreviewShell, formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { setRankingsCardExpanded } from './engine.js';
 import { resolveRankingsTarget, saveRankingsAsSet, renderLeaguePicker, readLeaguePicker, assignSetToLeagues, leagueCountText } from './sets.js';
+import { isNewWeekReplace, showRankingsChange } from './changeSummary.js';
 import { loadRosterTab, optimizeLineup } from '../main.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
@@ -257,6 +258,12 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         const activeTab = activeTabEl ? activeTabEl.id : '';
         if (activeTab === 'lineupTab') optimizeLineup(true);
         if (activeTab === 'rosterTab') loadRosterTab();
+        // After a Replace Set: the "What changed" card (improvements S3). Drawn after the re-optimize
+        // above, so it can name the starters that changed. A new set has nothing to show, and neither
+        // does a Weekly set's first upload of a new week (said in the toast below).
+        const newWeek = isNewWeekReplace(type);
+        showRankingsChange(type).catch(err => console.warn('What changed summary skipped:', err));
+        const newWeekText = newWeek ? '\n\nNew week: changes will show when you update these rankings.' : '';
 
         let msgEl = document.getElementById(successMsgId);
         if (msgEl) {
@@ -269,10 +276,10 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         const alsoText = leagueChoice.add.length ? ` Also applied to ${leagueCountText(leagueChoice.add.length)}.` : '';
 
         if (isFirstTime) {
-            showToast(`${rankType} Rankings loaded!${alsoText} \n\nTip: We saved this as a reusable set. Use "Choose leagues…" under the set dropdown to share it with more of your leagues any time.`, { duration: 6000 });
+            showToast(`${rankType} Rankings loaded!${alsoText}${newWeekText} \n\nTip: We saved this as a reusable set. Use "Choose leagues…" under the set dropdown to share it with more of your leagues any time.`, { duration: 6000 });
             localStorage.setItem(KEYS.mls.hasSeenRankingsToast, 'true');
         } else {
-            showToast(`${rankType} Rankings loaded successfully!${alsoText}`);
+            showToast(`${rankType} Rankings loaded successfully!${alsoText}${newWeekText}`);
         }
 
         pendingRankingsUpload = null;

@@ -30,6 +30,7 @@ import { State } from '../state.js';
 import { getActiveLeague, isConnectionError } from '../helpers.js';
 import { getByeBadgeHTML } from '../lineup/gameInfo.js';
 import { findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
+import { rankMoveChip } from '../rankings/moveChips.js';
 import { buildWaiverContext, resolveWaiverBasis, updateWaiverScanSetting, waiverDerivedNotes, WAIVER_MODES } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
@@ -162,7 +163,8 @@ import { runScout } from './engine.js';
 
     const STARTS_ICON = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
-    // One compact row: #, name, team, position rank (tier), injury/bye, a Would Start flag, and the
+    // One compact row: #, name, team, position rank (tier), the rank-change chip after a set was
+    // replaced (improvements S3, js/mls/rankings/moveChips.js), injury/bye, a Would Start flag, and the
     // cross-position number for the basis on the right (Weekly Flex for RB/WR/TE, ROS Overall).
     function rowHTML(ctx, fa, i) {
         const row = ctx.evaluate(fa);
@@ -184,7 +186,7 @@ import { runScout } from './engine.js';
             <span class="mls-ta-player">
                 <span class="mls-ta-name">${escapeHtml(fa.name)}</span>
                 ${player.team ? `<span class="mls-ta-team">${escapeHtml(player.team)}</span>` : ''}
-                <span class="badge pos-badge ${escapeHtml(player.pos)} mls-ta-pos">${posRank}${tier}</span>${adds ? trendBadgeHTML(adds) : ''}${injBadge}${getByeBadgeHTML(player.team)}
+                <span class="badge pos-badge ${escapeHtml(player.pos)} mls-ta-pos">${posRank}${tier}</span>${rankMoveChip(ctx.scan.basis, fa.cleanName)}${adds ? trendBadgeHTML(adds) : ''}${injBadge}${getByeBadgeHTML(player.team)}
             </span>
             ${starts}
             <span class="mls-ta-num">${cross ? `#${cross}` : '&ndash;'}</span>
@@ -224,7 +226,7 @@ import { runScout } from './engine.js';
             <span class="mls-ta-player">
                 <span class="mls-ta-name">${escapeHtml(t.name)}</span>
                 ${team ? `<span class="mls-ta-team">${escapeHtml(team)}</span>` : ''}
-                <span class="badge pos-badge ${escapeHtml(t.pos)} mls-ta-pos">${chip}</span>${injBadge}${getByeBadgeHTML(team)}
+                <span class="badge pos-badge ${escapeHtml(t.pos)} mls-ta-pos">${chip}</span>${ranked ? rankMoveChip(ctx.scan.basis, t.cleanName) : ''}${injBadge}${getByeBadgeHTML(team)}
             </span>
             ${starts}
             <span class="mls-ta-num" title="${addsText(t.count)}">${compactCount(t.count)}</span>

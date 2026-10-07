@@ -582,6 +582,10 @@
             </button>
         </div>
     </section>
+    <!-- "What changed" after a Replace Set or auto-fetch replace of the ROS set (improvements S3):
+         filled by js/mls/rankings/changeSummary.js, outside the rankings card so it shows while
+         that card is collapsed. In memory only: gone after a reload or when dismissed. -->
+    <div id="rosRankingsChange" class="mls-change-slot" hidden></div>
 
     <!-- ACTIVE ROSTER -->
     <section class="settings-card">
@@ -759,6 +763,8 @@
             <div id="weeklySuccessMsg" class="weekly-success-feedback" role="status">Uploaded Successfully!</div>
         </div>
     </section>
+    <!-- "What changed" after a Replace Set of the Weekly set (improvements S3); see rosRankingsChange. -->
+    <div id="weeklyRankingsChange" class="mls-change-slot" hidden></div>
     
     <!-- OPTIMAL LINEUP CARD -->
     <section class="settings-card">
