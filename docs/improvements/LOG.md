@@ -1686,10 +1686,56 @@ noted in earlier entries) fail the same way on main: I rendered all 40 screensho
 `npm run pxdiff` found them all pixel-identical. CI (the baseline environment) is the final word.
 
 **Left over.**
-- **Rows wrap on phones** (above). If that's too much, the next step could be a number-only badge in the compact rows
-  ("7" in the SoS colors, the title explaining it), or moving SoS into the row's right-hand column. Either is a small
-  follow-up; I didn't change the placement you chose.
+- ~~Rows wrap on phones~~: round 2 below shows only the number on phones.
 - Check a List's **All my leagues** search (where a player is rostered across leagues) has no badge; it answers a
   different question and wasn't asked about.
 - The Roster tab's badge has no title. Adding the same one there is one word in `js/mls/render/roster.js`
   (`{ explain: true }`), left alone because the card kept the Roster badge out of scope.
+
+### S7, round 2: tap to explain, and only the number on phones (owner's request)
+
+**Owner's request.** After the first push the owner asked for a tooltip on the badge, so phones can show just the
+number and a tap says what it is. Asked for in this session, outside the card's first scope.
+
+**User-visible effect.** In the Waiver Wire Assistant (Top Available, Auto-Find, Check a List, and the compared
+player's badge):
+- **Tap or click the badge** and a toast says what it is: "Strength of schedule: 3 of 32 for RBs on BUF (1 = easiest,
+  32 = hardest)". Desktop hover shows the same text, as before.
+- **Phones and touch screens show only the number** ("3" in the green-to-red SoS colors) instead of "SoS: 3".
+  Desktop still shows "SoS: 3". The breakpoint is the one the Dashboard's Sleeper link uses: `(max-width: 600px),
+  (hover: none) and (pointer: coarse)`, so a touch tablet gets the number too, since a tap explains it there.
+- The Roster tab's badge is unchanged (a plain badge, "SoS: 25" at every width, no title or tap).
+
+**What changed and where.**
+- `js/mls/sos.js`: with `explain`, `getSoSBadgeHTML` returns a `<button data-action="explainSoS">` with `data-tip`,
+  `title` and `aria-label` (screen readers hear the whole sentence even when only the number shows), its "SoS: " in a
+  `.sos-badge-label` span. `explainSoS` shows the tip as a toast. This is the rank-change chips' pattern
+  (`rankings/moveChips.js`, S3 round 5); like them it uses a toast, not the site's tooltip component, which the rows
+  would clip. Without `explain` (the Roster tab) the badge is the same `<span>` as before.
+- `js/mls/main.js`: the `explainSoS` action.
+- `css/mls.css`: the button reset (`font-family`, `font-variant-numeric`, `line-height`, `text-align` inherited, so
+  it's the span's size exactly: every computed style and the size of all 15 badges in Top Available and Auto-Find
+  match round 1's span on desktop), a focus ring, the phone rule hiding `.sos-badge-label` in compact badges, and
+  `margin-left: 0` inside Top Available's rows, which already space their badges with a flex gap (4px saved).
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.86 (one bump per branch, still above main's).
+
+**Phone width now.** Row heights in the fixture league's Top Available (All and FLEX):
+- **390px** (the tests' phone, and most current phones): one line again, except Chase Brown's row, which already
+  wrapped before S7 (trending icon plus Starts).
+- **375px and 360px** (iPhone SE/mini, small Androids): the James Cook row is 4px short of one line and Jaxon
+  Smith-Njigba's (long name) 11px, so those still wrap; QB, TE and rows without Starts fit. Going further would mean
+  tightening the spacing of every badge in the row, which I left alone.
+- Desktop is unchanged from round 1.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests, 230 Playwright tests pass; the same 10
+environment-only screenshot failures as round 1, and all 40 renders pixel-identical to main's.
+
+**Tests.** `tests/mls-waiver-sos.spec.mjs` adds: the badge shows "3" on the phone project and "SoS: 3" on desktop
+(rendered text), its `aria-label`, a click showing the toast, the compared player's badge showing "2" / "SoS: 2", and
+the Roster tab's badge still a `<span>` reading "SoS: 25" at both widths.
+
+**Proposed follow-up: a legend for the badges.** The owner noted the app may need a legend for all its symbols and
+badges. Not built here. A runbook card could add one "What the badges mean" list (position-rank chip and tier,
+rank-change chips, trending icon, Starts, injury and bye, SoS, TAXI, R, the FLEX blends), probably as a section of
+the Guide tab plus a small info link on the Scout tab's Waiver Wire Assistant, drawn with the real badge markup so it
+can't drift from what the rows show.

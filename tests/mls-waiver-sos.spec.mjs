@@ -2,8 +2,9 @@
 // tab's "SoS: 7" badge (getSoSBadgeHTML, js/mls/sos.js) now also shows on Top Available rows, Auto-Find
 // cards and Check a List cards, and beside the player a free agent is compared against (Auto-Find's
 // "Would need to pass ...", the Whole Roster drop candidate, Check a List's verdict). Owner's choices:
-// not in the Trending view, last in the row's badges, not on the Dashboard. Display only: it's one grid,
-// so the badge is the same for Weekly and ROS Rank By.
+// not in the Trending view, last in the row's badges, not on the Dashboard; then (round 2) a tap explains
+// it, and phones show only the number. Display only: it's one grid, so the badge is the same for Weekly
+// and ROS Rank By.
 //
 // The free agents in rankings-waivers.csv (refactor 3G): Jayden Daniels QB WAS, James Cook RB BUF, Chase
 // Brown RB CIN, Jaxon Smith-Njigba WR SEA, Zay Flowers WR BAL, Sam LaPorta TE DET.
@@ -49,7 +50,8 @@ async function runCheckList(page, names) {
 }
 
 test.describe('Lineup Strategist SoS badge in the Waiver Wire Assistant', () => {
-    test('shows each player\'s SoS in Top Available, Auto-Find and Check a List, and nothing without SoS', async ({ page }) => {
+    test('shows each player\'s SoS in Top Available, Auto-Find and Check a List, and nothing without SoS', async ({ page }, testInfo) => {
+        const isPhone = testInfo.project.name === 'phone';
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
@@ -72,8 +74,15 @@ test.describe('Lineup Strategist SoS badge in the Waiver Wire Assistant', () => 
             await expect(sos(taRow(page, name))).toHaveText(`SoS: ${value}`);
         }
         const cook = sos(taRow(page, 'James Cook'));
-        await expect(cook).toHaveAttribute('title', 'Strength of schedule: 3 of 32 for RBs on BUF (1 = easiest, 32 = hardest)');
+        const cookTip = 'Strength of schedule: 3 of 32 for RBs on BUF (1 = easiest, 32 = hardest)';
+        await expect(cook).toHaveAttribute('title', cookTip);
+        await expect(cook).toHaveAttribute('aria-label', cookTip);
         await expect(cook).toHaveClass(/\bsos-badge-compact\b/);
+        // Phones and touch screens show only the number; desktop shows "SoS: 3".
+        await expect(cook).toHaveText(isPhone ? '3' : 'SoS: 3', { useInnerText: true });
+        // A tap (or click) says what it is, since phones have no hover.
+        await cook.click();
+        await expect(page.locator('.toast-message').filter({ hasText: cookTip })).toBeVisible();
         // Last in the row's badges (owner's choice), so nothing that was there moves.
         expect(await taRow(page, 'James Cook').locator('.mls-ta-player > :last-child').getAttribute('class')).toMatch(/\bsos-badge\b/);
         // 1 is green, 32 is red, as on the Roster tab.
@@ -107,6 +116,7 @@ test.describe('Lineup Strategist SoS badge in the Waiver Wire Assistant', () => 
         await expect(sos(daniels.locator('.mls-player-badges-row'))).toHaveText('SoS: 7');
         await expect(daniels.locator('.mls-scan-verdict')).toContainText('Would need to pass Josh Allen');
         await expect(sos(daniels.locator('.mls-scan-verdict'))).toHaveText('SoS: 2');
+        await expect(sos(daniels.locator('.mls-scan-verdict'))).toHaveText(isPhone ? '2' : 'SoS: 2', { useInnerText: true });
         await expect(sos(scanCard(page, 'Jaxon Smith-Njigba').locator('.mls-scan-verdict'))).toHaveText('SoS: 30');
 
         // Auto-Find, Whole Roster: beside the drop candidate.
@@ -125,10 +135,11 @@ test.describe('Lineup Strategist SoS badge in the Waiver Wire Assistant', () => 
         await expect(listCard(page, 'Justin Tucker')).toBeVisible();
         await expect(sos(listCard(page, 'Justin Tucker'))).toHaveCount(0);
 
-        // The Roster tab's badge is unchanged: same size, no title.
+        // The Roster tab's badge is unchanged: a plain badge, full text at every width, no title.
         await showTab(page, 'roster');
         const rosterHenry = page.locator('#rosterList .roster-item').filter({ hasText: 'Derrick Henry' }).locator('.sos-badge');
-        await expect(rosterHenry).toHaveText('SoS: 25');
+        await expect(rosterHenry).toHaveText('SoS: 25', { useInnerText: true });
+        expect(await rosterHenry.evaluate(e => e.tagName)).toBe('SPAN');
         await expect(rosterHenry).not.toHaveClass(/\bsos-badge-compact\b/);
         expect(await rosterHenry.getAttribute('title')).toBeNull();
 

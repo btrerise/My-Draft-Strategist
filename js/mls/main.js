@@ -25,7 +25,7 @@ import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
 import { importAllSleeperLeagues } from './leagues/importAll.js';
-import { generateSoSGrid, saveManualSoS } from './sos.js';
+import { explainSoS, generateSoSGrid, saveManualSoS } from './sos.js';
 import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
@@ -124,6 +124,8 @@ const clickActions = {
     dismissRankingsChange() { dismissRankingsChange(this.dataset.type); },
     // A rank-change chip (js/mls/rankings/moveChips.js): its explanation, for phones with no hover.
     explainRankMove() { explainRankMove(this); },
+    // An SoS badge in the Waiver Wire Assistant (js/mls/sos.js): what the number means, for phones.
+    explainSoS() { explainSoS(this); },
     openRankingSetLeagues() { openRankingSetLeagues(this.dataset.type); },
     processMultiRankings() { processMultiRankings(this.dataset.type, this.dataset.successMsgId); },
     autoFetchRosRankings() { autoFetchRosRankings(this); },

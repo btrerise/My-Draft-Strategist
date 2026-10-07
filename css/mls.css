@@ -1064,6 +1064,16 @@ button.close-chip {
    same as before. Compact: the Waiver Wire Assistant's rows, padded like .inj-badge/.bye-badge. */
 .badge.sos-badge { background: var(--sos-bg); border: 1px solid var(--sos-color); color: var(--sos-color); font-size: 0.65rem; margin-left: 4px; }
 .badge.sos-badge-compact { padding: 1px 4px; }
+/* The Waiver Wire Assistant's badge is a button that explains itself on tap (getSoSBadgeHTML's
+   explain option), reset to look like the span. On phones and touch screens it shows only the
+   number, so it fits the compact rows; the tap says what it is. */
+button.sos-badge { font-family: inherit; font-variant-numeric: inherit; line-height: inherit; text-align: inherit; cursor: pointer; }
+/* Top Available's rows already space their badges with a flex gap; the margin only cost width. */
+.mls-ta-player .sos-badge { margin-left: 0; }
+button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+@media (max-width: 600px), (hover: none) and (pointer: coarse) {
+    .sos-badge-compact .sos-badge-label { display: none; }
+}
 
 /* --- MLS SETUP TAB SPECIFIC STYLES --- */
 .league-req-subtitle {

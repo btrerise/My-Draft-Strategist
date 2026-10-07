@@ -9,6 +9,7 @@ import { flashButton } from '../shared/ui/flashButton.js';
 import { normalizeName } from '../shared/names.js';
 import { showToast } from '../shared/ui/toast.js';
 import { parseSosValue } from '../shared/rankings/parse.js';
+import { escapeHtml } from '../shared/html.js';
 
     // --- SOS ENGINE ---
     export function generateSoSGrid() {
@@ -161,7 +162,10 @@ import { parseSosValue } from '../shared/rankings/parse.js';
     // custom properties; the rest of the look is .sos-badge in css/mls.css (improvements S7 moved
     // it there from an inline style, unchanged for the Roster tab).
     // opts.compact: the Waiver Wire Assistant's rows (improvements S7), padded like the injury and
-    // bye badges beside it. opts.explain: a title saying what the number means.
+    // bye badges beside it. opts.explain: the badge explains itself, like the rank-change chips
+    // (rankings/moveChips.js): a small button whose title shows on hover and whose tap or click shows
+    // the same text as a toast (data-action="explainSoS"), since phones have no hover. With both, phones
+    // show only the number (.sos-badge-label is hidden there, css/mls.css) and the tap says what it is.
     export function getSoSBadgeHTML(team, pos, { compact = false, explain = false } = {}) {
         if (!team || team === "FA" || !pos) return "";
         let teamData = State.sosMap[team];
@@ -176,8 +180,15 @@ import { parseSosValue } from '../shared/rankings/parse.js';
         let hue = Math.max(0, 120 - ((rank - 1) * 3.87));
         let color = `hsl(${hue}, 80%, 65%)`;
         let bg = `hsl(${hue}, 80%, 15%)`;
-        const title = explain
-            ? ` title="Strength of schedule: ${rank} of 32 for ${pos}s on ${team} (1 = easiest, 32 = hardest)"` : '';
-        
-        return `<span class="badge sos-badge${compact ? ' sos-badge-compact' : ''}" style="--sos-color:${color}; --sos-bg:${bg};"${title}>SoS: ${rank}</span>`;
+        const cls = `badge sos-badge${compact ? ' sos-badge-compact' : ''}`;
+        const style = `--sos-color:${color}; --sos-bg:${bg};`;
+        if (!explain) return `<span class="${cls}" style="${style}">SoS: ${rank}</span>`;
+        const tip = escapeHtml(`Strength of schedule: ${rank} of 32 for ${pos}s on ${team} (1 = easiest, 32 = hardest)`);
+        return `<button type="button" class="${cls}" style="${style}" data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}"><span class="sos-badge-label">SoS: </span>${rank}</button>`;
+    }
+
+    // A tap or click on an explaining SoS badge: what the number means, as a toast.
+    export function explainSoS(badgeEl) {
+        const text = badgeEl && badgeEl.dataset ? badgeEl.dataset.tip : '';
+        if (text) showToast(text);
     }
