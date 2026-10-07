@@ -1777,3 +1777,36 @@ List, the no-team case and the Roster tab as before.
 
 **Checks run.** `npm run check`: check-precache OK, 267 unit tests, 230 Playwright tests pass; the same 10
 environment-only screenshot failures, and all 40 renders pixel-identical to main's.
+
+### S7, round 4: the Roster tab's badge works the same way (owner's request)
+
+**The question.** The owner asked whether the Roster tab's badge should match on phones. My view: yes, mainly because
+it had no explanation at all there (no title, no tap) and the Roster tab is where SoS shows most; a single look also
+gives the S10 legend one badge to explain. It saves no space: at 375px the badge already sat on its own line under
+the rank badge before S7, and the narrower version still doesn't fit beside it. The owner: **go ahead, the whole site
+should be consistent.**
+
+**User-visible effect.** Every SoS badge on the site (the Roster tab, Auto-Find, Check a List; Draft Strategist and
+T-Score have none) is the same badge:
+- **Tap or click** for "Strength of schedule: 25 of 32 for RBs on BAL (1 = easiest, 32 = hardest)"; desktop hover
+  shows it too.
+- **Phones and touch screens:** the calendar icon and the number. Desktop: "SoS: 25".
+- The Roster tab keeps its usual size (not the compact cards' padding), so it still matches the team and rank badges
+  beside it. On desktop it's unchanged: every computed style and the size of all 12 Roster badges in the fixture
+  league match main's. On phones it's about 14px narrower.
+
+**What changed and where.**
+- `js/mls/sos.js`: `getSoSBadgeHTML` always returns the explaining button; the `explain` option is gone (every caller
+  wanted it), `compact` stays. `js/mls/render/roster.js` is unchanged: its call already had no options.
+- `js/mls/scout/waivers.js`: `WAIVER_SOS_OPTS` is `{ compact: true }`.
+- `css/mls.css`: the phone rule swapping "SoS: " for the icon applies to every `.sos-badge`, not only compact ones;
+  comments updated.
+- CHANGELOG: the explaining and phone look are their own line, covering both tabs. `CACHE_NAME` stays v2.8.86.
+
+**Tests.** `tests/mls-waiver-sos.spec.mjs`: the Roster tab's badge reads "25" with a visible icon on the phone
+project and "SoS: 25" with the icon hidden on desktop, has the title, isn't compact, and a tap shows the toast.
+`tests/mls-sos.spec.mjs` (the upload) still passes.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests, 230 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders pixel-identical to main's.
+

@@ -541,10 +541,10 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
     }
 
     // The Roster tab's SoS badge (js/mls/sos.js) on Auto-Find's and Check a List's cards and comparison
-    // lines (improvements S7; not Top Available, owner's choice in round 3): compact like the injury and
-    // bye badges, explaining itself on tap. Display only: SoS never changes a rank, order or verdict.
-    // Exported for Check a List (scout/engine.js).
-    export const WAIVER_SOS_OPTS = { compact: true, explain: true };
+    // lines (improvements S7; not Top Available, owner's choice in round 3), compact like the injury and
+    // bye badges. Display only: SoS never changes a rank, order or verdict. Exported for Check a List
+    // (scout/engine.js).
+    export const WAIVER_SOS_OPTS = { compact: true };
 
     // One auto-find result card. rosterLine (Whole Roster lens) replaces the lineup explanation
     // line; the lineup pill stays either way so "would he start?" is always answered.

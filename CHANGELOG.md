@@ -74,9 +74,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Strength of schedule in the Waiver Wire Assistant.** When you've loaded SoS (the upload or the manual grid on
   the Roster tab), the Scout tab's Auto-Find and Check a List cards show the same "SoS: 7" badge as the Roster tab,
   and so does the player each free agent is compared with ("Would need to pass Josh Allen SoS: 2", your weakest
-  player), so the two schedules sit side by side. Hover or tap it for what the number means (1 = easiest,
-  32 = hardest); on phones it's a calendar icon and the number, to keep the cards short. It doesn't change any rank,
-  order or verdict, and without SoS loaded nothing changes.
+  player), so the two schedules sit side by side. It doesn't change any rank, order or verdict, and without SoS
+  loaded nothing changes.
+- **The SoS badge explains itself, everywhere.** On the Roster tab and in the Waiver Wire Assistant, hover or tap
+  the badge for what the number means (1 = easiest, 32 = hardest). On phones it's a calendar icon and the number,
+  so it stays short and doesn't read as another rank. Desktop still shows "SoS: 7".
 - **Export Lineup keeps the FLEX badge's blended border.** In the exported image, the FLEX, SFLEX, W/T and W/R slot
   badges lost their colored border and showed as plain dark boxes. They now look as they do on the Lineup tab.
 - **What changed after you replace a ranking set.** When an upload's Replace Set (or the ROS Auto-Fetch's Replace

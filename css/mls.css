@@ -1059,21 +1059,21 @@ button.close-chip {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
-/* The SoS badge (getSoSBadgeHTML in js/mls/sos.js). Its color comes per rank in --sos-color and
-   --sos-bg; this was an inline style until improvements S7, and the Roster tab's badge looks the
-   same as before. Compact: the Waiver Wire Assistant's rows, padded like .inj-badge/.bye-badge. */
+/* The SoS badge (getSoSBadgeHTML in js/mls/sos.js), the same on the Roster tab and in the Waiver Wire
+   Assistant. Its color comes per rank in --sos-color and --sos-bg; this was an inline style until
+   improvements S7, and on desktop the Roster tab's badge looks the same as before. Compact: the Waiver
+   Wire Assistant's cards, padded like .inj-badge/.bye-badge. */
 .badge.sos-badge { background: var(--sos-bg); border: 1px solid var(--sos-color); color: var(--sos-color); font-size: 0.65rem; margin-left: 4px; }
 .badge.sos-badge-compact { padding: 1px 4px; }
-/* The Waiver Wire Assistant's badge is a button that explains itself on tap (getSoSBadgeHTML's
-   explain option), reset to look like the span. On phones and touch screens it shows a calendar icon
-   and the number instead of "SoS: ", which keeps it short without reading as another rank; the tap
-   says what it is. */
+/* It's a button that explains itself on tap, reset to look like a plain badge. On phones and touch
+   screens it shows a calendar icon and the number instead of "SoS: ", which keeps it short without
+   reading as another rank; the tap says what it is. */
 button.sos-badge { font-family: inherit; font-variant-numeric: inherit; line-height: inherit; text-align: inherit; cursor: pointer; }
 button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
 .sos-badge-icon { display: none; vertical-align: -1px; margin-right: 2px; }
 @media (max-width: 600px), (hover: none) and (pointer: coarse) {
-    .sos-badge-compact .sos-badge-label { display: none; }
-    .sos-badge-compact .sos-badge-icon { display: inline-block; }
+    .sos-badge .sos-badge-label { display: none; }
+    .sos-badge .sos-badge-icon { display: inline-block; }
 }
 
 /* --- MLS SETUP TAB SPECIFIC STYLES --- */

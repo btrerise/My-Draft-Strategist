@@ -3,8 +3,9 @@
 // cards, and beside the player a free agent is compared against (Auto-Find's "Would need to pass ...",
 // the Whole Roster drop candidate, Check a List's verdict). Owner's choices: last in the card's badges,
 // not on the Dashboard; a tap explains it, and phones show a calendar icon and the number instead of
-// "SoS: " (round 2); not on Top Available, a list to browse rather than to decide (round 3). Display
-// only: it's one grid, so the badge is the same for Weekly and ROS Rank By.
+// "SoS: " (round 2); not on Top Available, a list to browse rather than to decide (round 3); and the
+// Roster tab's badge works the same way (round 4). Display only: it's one grid, so the badge is the same
+// for Weekly and ROS Rank By.
 //
 // The free agents in rankings-waivers.csv (refactor 3G): Jayden Daniels QB WAS, James Cook RB BUF, Chase
 // Brown RB CIN, Jaxon Smith-Njigba WR SEA, Zay Flowers WR BAL, Sam LaPorta TE DET.
@@ -130,14 +131,18 @@ test.describe('Lineup Strategist SoS badge in the Waiver Wire Assistant', () => 
         await expect(listCard(page, 'Justin Tucker')).toBeVisible();
         await expect(sos(listCard(page, 'Justin Tucker'))).toHaveCount(0);
 
-        // The Roster tab's badge is unchanged: a plain badge, full text at every width, no title or icon.
+        // The Roster tab's badge is the same badge (owner's choice, round 4: one look across the site):
+        // its usual size (not compact), the calendar icon and number on phones, and a tap explains it.
         await showTab(page, 'roster');
         const rosterHenry = page.locator('#rosterList .roster-item').filter({ hasText: 'Derrick Henry' }).locator('.sos-badge');
-        await expect(rosterHenry).toHaveText('SoS: 25', { useInnerText: true });
-        expect(await rosterHenry.evaluate(e => e.tagName)).toBe('SPAN');
+        const henryTip = 'Strength of schedule: 25 of 32 for RBs on BAL (1 = easiest, 32 = hardest)';
+        await expect(rosterHenry).toHaveText(isPhone ? '25' : 'SoS: 25', { useInnerText: true });
         await expect(rosterHenry).not.toHaveClass(/\bsos-badge-compact\b/);
-        await expect(rosterHenry.locator('svg')).toHaveCount(0);
-        expect(await rosterHenry.getAttribute('title')).toBeNull();
+        await expect(rosterHenry).toHaveAttribute('title', henryTip);
+        if (isPhone) await expect(rosterHenry.locator('svg.sos-badge-icon')).toBeVisible();
+        else await expect(rosterHenry.locator('svg.sos-badge-icon')).toBeHidden();
+        await rosterHenry.click();
+        await expect(page.locator('.toast-message').filter({ hasText: henryTip })).toBeVisible();
 
         await expectClean(page, state);
     });

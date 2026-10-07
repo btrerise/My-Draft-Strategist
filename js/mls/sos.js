@@ -156,21 +156,21 @@ import { escapeHtml } from '../shared/html.js';
         });
     }
 
-    // The "SoS: 7" badge: a team's matchup rank (1-32) at a position from the SoS upload or the
-    // manual grid, colored green (1, easiest) to red (32, hardest). Nothing when there's no team,
+    // The "SoS: 7" badge, the same everywhere it shows (the Roster tab, and Auto-Find's and Check a
+    // List's cards since improvements S7): a team's matchup rank (1-32) at a position from the SoS upload
+    // or the manual grid, colored green (1, easiest) to red (32, hardest). Nothing when there's no team,
     // the position isn't in the grid (K, DEF) or the value isn't 1-32. The color is passed as two
-    // custom properties; the rest of the look is .sos-badge in css/mls.css (improvements S7 moved
-    // it there from an inline style, unchanged for the Roster tab).
-    // opts.compact: the Waiver Wire Assistant's rows (improvements S7), padded like the injury and
-    // bye badges beside it. opts.explain: the badge explains itself, like the rank-change chips
-    // (rankings/moveChips.js): a small button whose title shows on hover and whose tap or click shows
-    // the same text as a toast (data-action="explainSoS"), since phones have no hover. With both, phones
-    // show a calendar icon and the number instead of "SoS: " (css/mls.css swaps .sos-badge-label for
-    // .sos-badge-icon), so it can't be read as another rank, and the tap says what it is.
-    // Feather calendar, for the phone version of the compact badge.
+    // custom properties; the rest of the look is .sos-badge in css/mls.css.
+    // It explains itself like the rank-change chips (rankings/moveChips.js): a small button whose title
+    // shows on hover and whose tap or click shows the same text as a toast (data-action="explainSoS"),
+    // since phones have no hover. On phones and touch screens it shows a calendar icon and the number
+    // instead of "SoS: " (css/mls.css swaps .sos-badge-label for .sos-badge-icon), so it stays short
+    // and can't be read as another rank. Owner's choice in S7, round 4: one look across the site.
+    // opts.compact: the Waiver Wire Assistant's cards, padded like the injury and bye badges beside it.
+    // Feather calendar.
     const SOS_CALENDAR_ICON = `<svg class="sos-badge-icon" aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
 
-    export function getSoSBadgeHTML(team, pos, { compact = false, explain = false } = {}) {
+    export function getSoSBadgeHTML(team, pos, { compact = false } = {}) {
         if (!team || team === "FA" || !pos) return "";
         let teamData = State.sosMap[team];
         if (!teamData) return "";
@@ -186,12 +186,11 @@ import { escapeHtml } from '../shared/html.js';
         let bg = `hsl(${hue}, 80%, 15%)`;
         const cls = `badge sos-badge${compact ? ' sos-badge-compact' : ''}`;
         const style = `--sos-color:${color}; --sos-bg:${bg};`;
-        if (!explain) return `<span class="${cls}" style="${style}">SoS: ${rank}</span>`;
         const tip = escapeHtml(`Strength of schedule: ${rank} of 32 for ${pos}s on ${team} (1 = easiest, 32 = hardest)`);
         return `<button type="button" class="${cls}" style="${style}" data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${SOS_CALENDAR_ICON}<span class="sos-badge-label">SoS: </span>${rank}</button>`;
     }
 
-    // A tap or click on an explaining SoS badge: what the number means, as a toast.
+    // A tap or click on an SoS badge: what the number means, as a toast.
     export function explainSoS(badgeEl) {
         const text = badgeEl && badgeEl.dataset ? badgeEl.dataset.tip : '';
         if (text) showToast(text);
