@@ -13,6 +13,7 @@ import { createFocusTrap } from '../../shared/ui/focusTrap.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showPrompt } from '../../shared/ui/prompt.js';
+import { clearRankingsChange, noteRankingsReplace } from './changeSummary.js';
 
     // --- NAMED RANKING SETS ---
     // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
@@ -77,6 +78,9 @@ import { showPrompt } from '../../shared/ui/prompt.js';
         if (currentSelection && currentSelection !== '__new__' && currentSelection !== '__legacy__') {
             let existing = State.rankingSets[cfg.setsKey].find(s => s.id === currentSelection);
             if (existing) {
+                // Keep the old rankings in memory for the "What changed" card (changeSummary.js),
+                // which the caller shows once it has re-optimized. Not stored anywhere.
+                noteRankingsReplace(type, { setId: existing.id, oldData: existing.data, newData: parsedData });
                 existing.data = parsedData;
                 existing.updatedAt = Date.now();
                 setId = existing.id;
@@ -90,14 +94,16 @@ import { showPrompt } from '../../shared/ui/prompt.js';
             State.rankingSets[cfg.setsKey].push(newSet);
             setId = newSet.id;
             if (nameInput) nameInput.value = '';
+            clearRankingsChange(type); // a new set replaced nothing
         }
 
         localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
 
         State[cfg.stateKey] = [...parsedData];
         State[cfg.updatedAtKey] = Date.now();
-        // Keep the flat global fallback keys updated too, for consistency with how they're
-        // already used elsewhere (e.g. a brand new league with nothing assigned yet).
+        // Keep the flat global fallback keys updated too. Since improvements F4 they're read only at
+        // start-up, and only when no league has rankings of this type of its own (a setup from
+        // before per-league rankings, where they're the only copy); see js/mls/init.js.
         localStorage.setItem(cfg.globalDataKey, JSON.stringify(parsedData));
         localStorage.setItem(cfg.globalUpdatedKey, State[cfg.updatedAtKey]);
 

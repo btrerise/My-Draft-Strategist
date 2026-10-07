@@ -66,6 +66,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **What changed after you replace a ranking set.** When an upload's Replace Set (or the ROS Auto-Fetch's Replace
+  Set) overwrites a saved set, a "What changed" card now shows under that rankings card: how many players moved,
+  were added and were dropped; the top 5 risers and fallers by position rank (with tier changes); every move by
+  position behind "Show all moves"; the added and dropped players by name; your own players' moves in every league
+  using the set; and, for a Weekly set, who came into and went out of this league's starting lineup. Only moves of 3
+  or more spots count. Dismiss it with ✕; it isn't kept after a reload. Saving a new set shows nothing.
 - **Rename a ranking set.** A saved Weekly set (Lineup tab) or ROS set (Roster tab) now has a Rename button next to
   Delete. Every league using the set keeps it, and the new name shows everywhere the set is named. Before, the only
   way to change a name was to delete the set and upload it again, which also took it away from every league using it.

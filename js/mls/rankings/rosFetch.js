@@ -7,6 +7,7 @@ import { getActiveLeague } from '../helpers.js';
 import { setRankingsCardExpanded } from './engine.js';
 import { resolveRankingsTarget, saveRankingsAsSet, assignSetToLeagues, openLeaguePickerDialog, leagueCountText } from './sets.js';
 import { loadRosterTab } from '../main.js';
+import { showRankingsChange } from './changeSummary.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showToast } from '../../shared/ui/toast.js';
     // --- SHARED MARKET-CONSENSUS FETCH ---
@@ -77,6 +78,9 @@ import { showToast } from '../../shared/ui/toast.js';
 
             const activeTab = document.querySelector('.tab-content.active');
             if (activeTab && activeTab.id === 'rosterTab') loadRosterTab();
+            // A replaced set gets the "What changed" card, as an upload's Replace Set does (owner's
+            // choice, improvements S3). A new set has nothing to show.
+            showRankingsChange('ros').catch(err => console.warn('What changed summary skipped:', err));
 
             // Uploads choose leagues in their preview modal; this path has none, so a brand-new
             // set offers the same choice right after saving. A replaced set already carries its

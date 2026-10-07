@@ -10,6 +10,7 @@ import { analyzeRankingsFile, derivedRanksWording } from '../scout/waivers.js';
 import { createPreviewShell, formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { setRankingsCardExpanded } from './engine.js';
 import { resolveRankingsTarget, saveRankingsAsSet, renderLeaguePicker, readLeaguePicker, assignSetToLeagues, leagueCountText } from './sets.js';
+import { showRankingsChange } from './changeSummary.js';
 import { loadRosterTab, optimizeLineup } from '../main.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
@@ -257,6 +258,9 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         const activeTab = activeTabEl ? activeTabEl.id : '';
         if (activeTab === 'lineupTab') optimizeLineup(true);
         if (activeTab === 'rosterTab') loadRosterTab();
+        // After a Replace Set: the "What changed" card (improvements S3). Drawn after the re-optimize
+        // above, so it can name the starters that changed. A new set has nothing to show.
+        showRankingsChange(type).catch(err => console.warn('What changed summary skipped:', err));
 
         let msgEl = document.getElementById(successMsgId);
         if (msgEl) {

@@ -1196,3 +1196,114 @@ duplicates compared ignoring case and surrounding spaces, within the same type o
 - F4's note on `saveRankingsAsSet`'s comment (the flat keys no longer serve "a brand new league") still stands; I
   left it for S3, which rewrites that function.
 - `showPrompt` is available to Draft Strategist and T-Score but nothing there uses it yet.
+
+## S3 — What changed: a summary after replacing a ranking set
+
+**User-visible effect.** When a saved ranking set is overwritten (Replace Set in the upload preview, or Replace Set in the
+ROS Auto-Fetch's "Replace saved set?" dialog), a **What changed** card now appears right under that set's rankings card:
+the Lineup tab for Weekly, the Roster tab for ROS. It sits outside the rankings card, so it shows while that card is
+collapsed (it collapses after every save). It has:
+- a title naming the set ("What changed: Weekly Rankings – 9/15/2026") and a ✕ to dismiss it;
+- a counts line ("4 moved · 3 added · 2 dropped", plus "· 1 changed position" when that happens) and a note: "Moves of
+  3 or more spots in position rank. 22 players in both versions.";
+- **Risers** and **Fallers**, the top 5 each, as "Garrett Wilson WR10 → WR2 +8 T4 → T1" (green up arrow / red down
+  arrow, tier change as a small pill when the tier changed);
+- **Show all N moves**, a fold listing every move grouped by position (QB, RB, WR, TE, K, DEF);
+- **Added** and **Dropped**, by name in overall-rank order (top 10 each, then "and N more"): "James Cook RB3", "Joe
+  Burrow was QB4";
+- **Changed position**, only when a player's position differs between the two versions;
+- **Your players**: every move, add or drop for players on your rosters in the leagues that use this set, each with the
+  league names under it, or a line saying none of them changed;
+- **Starters changed in <league>** (Weekly only): who came into and went out of the active league's starting lineup,
+  with their slot, then "Lineups in Bench League update when you open them." for the other leagues on the set.
+  "Same starters in Fixture League." when nothing changed.
+
+With nothing over the threshold it says "No player moved 3 or more spots, and no one was added or dropped." Saving a new
+set shows nothing (and removes an earlier summary for that type). The card is never stored: ✕ removes it, and a reload
+has none. Nothing else on screen changed.
+
+**Owner's decisions (asked before building).**
+- **Contents:** all four offered parts: counts plus top 5 risers and fallers; Your players; a "Show all moves" link;
+  added and dropped players by name (not just counts).
+- **Starters changed:** the active league only (I reported that only the active league is re-optimized on replace; see
+  below). A Weekly replace lists In and Out for the active league and names the other leagues using the set, whose
+  lineups update when opened. A ROS replace has no starters part.
+- **ROS Auto-Fetch:** yes, its replace shows the card too.
+- **Rank basis:** position rank ("RB18 → RB9"), threshold 3 spots, as the card suggested.
+
+**Does replacing a set re-optimize the leagues using it?** Only the active league, and only for a Weekly upload:
+`confirmRankingsPreview` calls `optimizeLineup(true)` when the Lineup tab is showing (where the Weekly card is); a ROS
+upload on the Roster tab calls `loadRosterTab()`, and the auto-fetch the same. Other leagues on the set aren't touched:
+their saved lineup's `lineupRankingsStamps` entry no longer matches `getLeagueRankingsStamp` (it includes the set's
+`updatedAt`), so `optimizeLineup` recomputes each one when it's next opened (or by Optimize All). Not changed here, per
+the card; the card says so in one line instead. A follow-up could re-optimize those leagues on replace and list their
+starter changes too.
+
+**What changed and where.**
+- `js/shared/rankings/compare.js` (new, in `PRECACHE_ASSETS`), pure, for Draft Strategist's S4 too:
+  - `compareRankings(oldList, newList, { posOf, threshold = 3 })` matches players by `normalizeName(name)` plus
+    position (rename-safe: suffixes, punctuation, case and the alias table, and it ignores the stored `cleanName`),
+    then pairs what's left by name alone. A known position on both sides that differs is a position change
+    (`posChanged`, not a move); a position known on one side only is the same player. The rest are added or dropped.
+    The first row for a name + position in a list wins.
+  - Moves are in position rank (falls back to overall rank when neither side has one); only moves of at least
+    `threshold` spots count. Each move carries old/new rank, position rank and tier, `delta` (positive = rose),
+    `overallDelta` and `tierChanged`. A tier change alone doesn't count as a move.
+  - Order: biggest move first; ties by the better new rank, then file order (deterministic). Added and dropped are by
+    overall rank, since they mix positions.
+  - Also `changesByName`, `findPlayerChange` (a roster position must agree, so a WR doesn't pick up a same-named RB's
+    move), `rankLabel`, `DEFAULT_MOVE_THRESHOLD`.
+- `js/mls/rankings/changeSummary.js` (new, in `PRECACHE_ASSETS`): `noteRankingsReplace`, `clearRankingsChange`,
+  `showRankingsChange`, `dismissRankingsChange`, and the card's markup.
+  - Position ranks: a single-file upload with no Pos Rank column stores its **overall** rank as `posRank`. So both lists
+    go through `buildRankDisplayIndex` (`js/mls/scout/waiverScanner.js`), the derivation the Waiver Wire Assistant
+    shows, with positions from `makeLeagueGetPos` (league positions, then the cached Sleeper player map). A derived
+    position rank has no tier of its own, so the file's overall tier stands in.
+  - Starters: `noteRankingsReplace` snapshots the active league's saved starters (Weekly only); `showRankingsChange`
+    reads them again after the caller has re-optimized and diffs by player id.
+- `js/mls/rankings/sets.js` (`saveRankingsAsSet`): calls `noteRankingsReplace` with the set's old array just before
+  `existing.data = parsedData` (the old array stays as it was, since the set gets a new one), and `clearRankingsChange`
+  when it makes a new set. The flat-keys comment now says what F4 left them for (F4/S2's leftover note).
+- `js/mls/rankings/uploadPreview.js` (`confirmRankingsPreview`) and `js/mls/rankings/rosFetch.js`
+  (`autoFetchRosRankings`): call `showRankingsChange(type)` after their re-optimize / `loadRosterTab`. It's async (the
+  Sleeper player map), and errors go to `console.warn`, never `console.error`.
+- `js/mls/main.js`: the `dismissRankingsChange` click action (data-action, delegate()).
+- `lineup/index.html`: `#weeklyRankingsChange` and `#rosRankingsChange`, empty and `hidden`, right after each rankings
+  card. `css/mls.css`: `.mls-change-*` at the end. Icons are inline Feather SVGs (arrow-up, arrow-down, plus, minus,
+  repeat, x, chevron).
+- **No storage:** the old rankings live in memory only until the card is drawn; no new key, no undo.
+- `sw.js`: `CACHE_NAME` v2.8.83 → v2.8.84. CHANGELOG line under Lineup Strategist's Unreleased.
+
+**Tests.**
+- `tests/unit/rankingsCompare.test.mjs` (13): the threshold; risers/fallers with tiers; added and dropped in overall
+  order; rename-safe matching (Walker III / Walker, D.J. / DJ, Kenny / Kenneth Gainwell, case and punctuation); two
+  players sharing a name at different positions; a player changing position (QB40 → TE14); positions from `posOf` and a
+  position known on one side only; ties (equal moves, and tied ranks within a file, same order whichever way the file
+  was written); overall-rank fallback; duplicates, empty and missing lists, nameless rows; identical lists; roster
+  look-ups.
+- `tests/mls-rankings-change.spec.mjs` (both widths, 10 runs): uploads rankings.csv as ROS and Weekly sets (no card),
+  then replaces with a reordered copy:
+  - **Weekly:** counts, risers (Wilson WR10 → WR2 +8 T4 → T1, A.J. Brown WR9 → WR4 +5), fallers (Barkley RB3 → RB8 −5,
+    St. Brown WR6 → WR10 −4), Show all moves by position, added and dropped by name, Your players (Wilson, A.J.
+    Brown, St. Brown, each "Fixture League"), Starters In Wilson / Out Lamb (FLEX), "Lineups in Bench League update
+    when you open them."; then ✕, a reload, and no new storage key.
+  - **ROS:** the same summary on the Roster tab, with no starters part.
+  - **New set:** "+ Create New Set" and an upload clear an earlier card and show none.
+  - **Same rankings:** the empty wording for the counts, Your players and starters.
+  - **Auto-Fetch** (FantasyCalc stubbed): Cancel shows nothing; Replace Set shows the card (Wilson +8).
+
+**Screenshots: none re-taken.** The card only appears after a replace, and the screenshot states have no rankings, so
+the hidden containers change nothing. As in S2, S6 and F4, this container's fonts don't match the committed baselines
+(the 10 visual tests fail on unchanged main too), so I rendered origin/main's 40 screenshots here and ran this branch's
+visual tests against them: all 40 matched. The committed baselines are untouched. I checked the card by eye at both
+widths, closed and with Show all moves open.
+
+**Checks run.** `npm run check`: check-precache OK, every unit test passes, 210 Playwright tests pass including the new
+spec at both widths. The only failures are those 10 environment-related screenshot comparisons, identical on main.
+
+**Left over / notes.**
+- Other leagues on a replaced set aren't re-optimized until opened (above); a possible follow-up card.
+- **For S4 (Draft Strategist):** `compareRankings` is ready to reuse. MDS rows carry `pos`, so no `posOf` is needed.
+  Check whether MDS's stored `posRank` is a real position rank or the overall-rank fallback for single files: the
+  derivation used here (`buildRankDisplayIndex`) lives in `js/mls/`, so S4 would need its own (or a move of that
+  function to `js/shared/`).

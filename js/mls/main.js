@@ -36,6 +36,7 @@ import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
 import { deleteRankingSet, onRankingSetSelectChange, openRankingSetLeagues, renameRankingSet } from './rankings/sets.js';
 import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings } from './rankings/uploadPreview.js';
+import { dismissRankingsChange } from './rankings/changeSummary.js';
 import { fetchMarketValue, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
 import { autoFetchRosRankings } from './rankings/rosFetch.js';
 import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './settings.js';
@@ -119,6 +120,7 @@ const clickActions = {
     toggleRankingsCard() { toggleRankingsCard(this.dataset.card); },
     deleteRankingSet() { deleteRankingSet(this.dataset.type); },
     renameRankingSet() { renameRankingSet(this.dataset.type); },
+    dismissRankingsChange() { dismissRankingsChange(this.dataset.type); },
     openRankingSetLeagues() { openRankingSetLeagues(this.dataset.type); },
     processMultiRankings() { processMultiRankings(this.dataset.type, this.dataset.successMsgId); },
     autoFetchRosRankings() { autoFetchRosRankings(this); },
