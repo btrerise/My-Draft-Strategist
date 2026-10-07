@@ -995,7 +995,7 @@ the runbook as **F4** (Fix now group).
   `setTopAvailableView`, inline SVG with `aria-hidden`/`currentColor`), and a sentence in the card's tooltip.
 - `js/mls/main.js`: the `setTopAvailableView` action. `css/mls.css`: `.mls-ta-trend`, `.mls-ta-trend-title`,
   `.mls-trend-icon` and `#waiverTopViewWrap[hidden]`. The icon is `--primary-green` (round 2).
-- `sw.js`: `CACHE_NAME` v2.8.79 → v2.8.80. No new files, so `PRECACHE_ASSETS` is unchanged. CHANGELOG line under
+- `sw.js`: `CACHE_NAME` v2.8.80 → v2.8.81 (main reached v2.8.80 with S5 round 7 while this was open). No new files, so `PRECACHE_ASSETS` is unchanged. CHANGELOG line under
   Lineup Strategist's Unreleased.
 
 **Tests.**
