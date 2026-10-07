@@ -26,8 +26,9 @@ import { KEYS } from '../shared/storage/keys.js';
         let rosterSlotsHTML = '';
         let limits = draft.limits || { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLEX: 0, BENCH: 6 };
 
-                // textClass: a gradient-text class for flex-type slots (.flex-blend-text etc., css/base.css),
-                // used instead of the single color.
+                // textClass: a gradient-text class for flex-type slots (.flex-blend-text etc., css/mds.css),
+                // used instead of the single color. The text sits in its own span so the gradient spans the
+                // letters, not the label's fixed 45px box (improvements F5 follow-up).
                 const buildSlotHTML = (label, color, p, textClass = '') => {
             if (p) {
                 let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
@@ -38,7 +39,7 @@ import { KEYS } from '../shared/storage/keys.js';
                 return `
                 <div class="roster-slot">
                     <div class="roster-slot-label-row">
-                        <span class="roster-label ${textClass}"${textClass ? '' : ` style="color:${color}"`}>${label}</span>
+                        ${textClass ? `<span class="roster-label ${textClass}"><span class="roster-label-text">${label}</span></span>` : `<span class="roster-label" style="color:${color}">${label}</span>`}
                         ${imgHTML} <!-- Inject Image Here -->
                         <div>
                             <div style="font-weight: bold;">${escapeHtml(p.name)} ${rookieBadge}</div>

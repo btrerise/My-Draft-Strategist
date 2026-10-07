@@ -6,6 +6,34 @@ import { getActiveLeague } from '../helpers.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { flashButton } from '../../shared/ui/flashButton.js';
 import { ensureHtml2Canvas } from '../../shared/ui/scriptLoader.js';
+
+// The FLEX, SFLEX, W/T and W/R slot badges draw a blended border with two background layers: the dark fill
+// clipped to the padding box over the gradient clipped to the border box (css/mls.css, --*-blend in
+// css/base.css). html2canvas 1.4.1 paints the fill over the whole badge, so the border all but disappeared
+// from the image (improvements F5). In the export's clone only, the gradient stays on the badge and the fill
+// moves to an inner span that covers the padding box: two plain backgrounds, which html2canvas draws as the
+// page does. The page's badges are never touched.
+const BLENDED_SLOT_BADGES = '.slot-badge.slot-FLEX, .slot-badge.slot-SFLEX, .slot-badge.slot-WRTE, .slot-badge.slot-WRRB';
+const GRADIENT_LAYER = /(?:repeating-)?(?:linear|radial|conic)-gradient\((?:[^()]|\([^()]*\))*\)/g;
+
+function splitBlendedBorders(root) {
+    const view = root.ownerDocument.defaultView;
+    root.querySelectorAll(BLENDED_SLOT_BADGES).forEach(badge => {
+        const style = view.getComputedStyle(badge);
+        const [fill, border] = style.backgroundImage.match(GRADIENT_LAYER) || [];
+        if (!fill || !border) return;
+        const inner = root.ownerDocument.createElement('span');
+        inner.append(...badge.childNodes);
+        const pad = ['Top', 'Right', 'Bottom', 'Left'].map(side => style['padding' + side]);
+        inner.style.cssText = `display:block; background-image:${fill}; padding:${pad.join(' ')};` +
+            ` margin:${pad.map(p => '-' + p).join(' ')}; border-radius:${Math.max(parseFloat(style.borderTopLeftRadius) - parseFloat(style.borderTopWidth), 0)}px`;
+        badge.style.backgroundImage = border;
+        badge.style.backgroundClip = 'border-box';
+        badge.style.backgroundOrigin = 'border-box'; // or html2canvas repeats it from the padding box's edge
+        badge.appendChild(inner);
+    });
+}
+
     // --- TEXT EXPORT (DISCORD/GROUP CHAT) ---
     export const copyLineupAsText = function(btn) {
         if (!State.activeLeagueId) return;
@@ -81,6 +109,7 @@ import { ensureHtml2Canvas } from '../../shared/ui/scriptLoader.js';
                     // league chats is the safer default. The initials circles stay, so the
                     // rows keep the same shape as on screen.
                     clonedContainer.querySelectorAll('.mls-headshot-img').forEach(img => img.remove());
+                    splitBlendedBorders(clonedContainer);
                     clonedContainer.style.width = '480px';
                     clonedContainer.style.maxWidth = '100%';
                     clonedContainer.style.margin = '0 auto';

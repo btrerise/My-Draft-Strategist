@@ -1519,3 +1519,94 @@ and the ranges feel right. Those are single numbers (`DEFAULT_MOVE_THRESHOLD`, `
 `js/shared/rankings/compare.js`) that a later change can adjust. The feature only adds data inside each set's existing
 key and removes nothing, so trying it on real data after merging is low-risk.
 
+
+## F5 — Export Team draws the Flex slot labels as color bars
+
+**User-visible effect.**
+- **Draft Strategist, Export Team:** filled FLX, SFLX, W/T and W/R labels in the exported image were solid color
+  bars with no letters. They're now readable, in the same blended colors and font as on the Team tab.
+- **Lineup Strategist, Export Lineup** (found while checking, fixed the same way): the FLEX, SFLEX, W/T and W/R slot
+  badges lost their blended border in the image and showed as plain dark boxes. They now look as they do on the
+  Lineup tab.
+- Nothing on either page changed for the export fixes; only the exported PNGs. (The follow-up below changes the
+  Team tab's flex labels on the page.)
+
+**Owner's decision.** Shown test exports of five looks, each made with html2canvas 1.4.1 (A: the gradient drawn on
+a canvas; B: the gradient as SVG text; C: each letter one color, sampled where it sits on the gradient; D: one
+position's color per letter; E: solid white). **The owner picked A, the canvas gradient.** B looked the same in the
+tests, but html2canvas turns inline SVG into an image, which can't use the page's Outfit font, so real exports would
+have shown the labels in a fallback font.
+
+**The cause.**
+- Team tab labels: `background-clip: text` (css/mds.css, from S1 round 5). html2canvas 1.4.1 doesn't support it and
+  painted the label's whole box with the gradient. Its text is `color: transparent`, so nothing showed on top.
+- Lineup tab badges: two background layers, a 92%-opaque fill clipped to the padding box over the gradient clipped
+  to the border box (css/mls.css). html2canvas painted the fill over the border box too, so the 1px gradient border
+  only showed through at 8%. Readable, but the border was gone.
+
+**What changed and where.** Export-only, in each export's `onclone`; css/ is untouched.
+- `js/mds/export.js`: `drawFlexLabelsOnCanvas` replaces each `.roster-label` with a `*-blend-text` class in the clone
+  with a canvas the size of the label. The canvas draws the label's text with the label's computed font, at the
+  text's own left edge and baseline (measured in the clone), filled with a canvas gradient made from the label's
+  computed `background-image` colors across the label's box, as the page paints it. It's drawn at the export's
+  scale (`EXPORT_SCALE`, 2, now shared with the html2canvas call). It waits for the font (`document.fonts.load`);
+  html2canvas already awaits an async `onclone`. It runs after the existing width change, so labels are measured
+  at the export width. The rest of `onclone` (avatars hidden, branding shown, recap toggle, 480px) is unchanged.
+- `js/mls/trade/export.js`: `splitBlendedBorders` in the clone keeps the gradient on the badge (`background-clip`
+  and `background-origin: border-box`; without the origin, html2canvas repeated the gradient from the padding
+  box's edge and the top-left corner came out orange) and moves the fill to an inner span covering the padding
+  box (negative margins, same padding, radius minus the border). The layers are read from the badge's computed
+  style, so a color change in css/base.css carries over.
+- `sw.js`: `CACHE_NAME` v2.8.84 → v2.8.85. CHANGELOG lines under both apps' Unreleased.
+- `tests/package.json`: `html2canvas` 1.4.1 as a pinned devDependency (like PapaParse), so the spec can serve the
+  same build the pages load from cdnjs. `docs/TESTING.md`'s Stubs list says so.
+
+**Tests.** `tests/export-flex.spec.mjs` (both widths). It serves html2canvas with a wrapper that records, after the
+app's `onclone`, where each label and badge sits in the clone (the image's origin):
+- Draft Strategist: four picks in a draft whose only starting slots are W/R, W/T, FLX and SFLX. It runs Export Team
+  and decodes the PNG. Each label's box must be 5–50% ink against the card background: on main it was 97–100%, a
+  solid block. No element in the clone may still use `background-clip: text`, and the page's labels still do after
+  the export.
+- Lineup Strategist: the fixture league's FLEX badge in Export Lineup. The border's middle must be RB green on the
+  left and TE orange on the right (the closest of a few pixels, since html2canvas snaps edges): on main both were
+  200+ away (the dark fill). The page's badge keeps its two layers.
+- Both fail on main and pass with the fix.
+
+**Checked, nothing else to fix.**
+- `grep background-clip css/`: only the Team tab's labels use `background-clip: text`.
+- Only two places use html2canvas: Export Team (`#exportableTeamContainer`) and Export Lineup
+  (`#optimalLineupContainer`, in `js/mls/trade/export.js`; there's no separate trade export). In Export Lineup's
+  area the only gradient was the FLEX slot badge; SFLEX, W/T and W/R badges use the same rule and the same fix.
+  Export Team's area had only the four labels.
+- The other gradients in css/ are single-layer backgrounds, which html2canvas draws correctly (`.guide-banner`,
+  `.highlight-card`, `.danger-card`, the board's tier divider), and none is inside either captured area. The Waiver
+  Wire's FLEX button and Top Available's FLEX heading (`.flex-blend`) are never exported.
+
+**Follow-up in the same session: the labels run through all their colors** (owner's request after the summary;
+no runbook card covered it).
+- **The problem.** The Team tab's gradient was painted on the `.roster-label` itself, whose box is a fixed 45px
+  (it keeps the player names lined up), but "FLX" is only about 25px wide. So the letters showed only the first half of
+  the blend: FLX ran green to blue and never reached TE's yellow, W/T ran blue to gray, SFLX stopped at blue.
+- **The fix.** `buildSlotHTML` in `js/mds/team.js` wraps a flex label's text in `<span class="roster-label-text">`,
+  an inline span as wide as the letters, and css/mds.css's rules (`.roster-label.flex-blend-text >
+  .roster-label-text` etc.) put the gradient there. The outer label keeps its classes and 45px width, so nothing
+  moves. The export follows: `drawFlexLabelsOnCanvas` reads the gradient from the inner span and spans it across
+  the letters. The comment in css/base.css that points at these rules is updated.
+- **Test.** The Export Team test now also checks that, on the page and in the export, each label's first letter is
+  nearest its first position's color and its last letter nearest its last's, among the label's positions. On the
+  previous code it failed ("page: FLX ends in TE's color"). The page check runs at 1x, where the edge pixels are partly
+  background, hence "nearest" rather than an exact match.
+- **Seen by eye.** Before/after renders of the page at 2x: same layout; FLX, W/T and SFLX now end in yellow, W/R in
+  blue.
+- **No screenshot changes.** No baseline has a filled flex slot on the Team tab. The 30 screenshots that pass here
+  still pass; the 10 that fail in this session are pixel-identical to this branch's earlier renders.
+- CHANGELOG line under Draft Strategist. `CACHE_NAME` stays v2.8.85 (one bump per branch, still above main's).
+
+**Screenshots.** None re-taken: no screenshot runs an export or has a filled flex label.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 226 Playwright tests pass (the new spec's 4
+included). The 10 screenshot comparisons that fail in this cloud session (`visual.spec.mjs`, image heights differ from
+the baselines) fail the same way on main; the branch's renders are pixel-identical to main's (`npm run pxdiff` on both
+runs' actual PNGs, the one size difference gone when re-run alone on each).
+
+**Left over.** None.
