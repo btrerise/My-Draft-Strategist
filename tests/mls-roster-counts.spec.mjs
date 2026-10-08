@@ -65,6 +65,9 @@ test.describe('Roster tab position counts', () => {
         await expect(chip(page, 'WR')).toHaveAttribute('aria-pressed', 'true');
         await expect(chip(page, 'ALL')).toHaveAttribute('aria-pressed', 'false');
         await expect(chip(page, 'TE')).not.toHaveClass(/\bactive-filter\b/); // faded
+        // ...but less than the Waiver Wire's chips (0.35), so the other counts stay readable.
+        expect(await chip(page, 'TE').evaluate(e => getComputedStyle(e).opacity)).toBe('0.6');
+        expect(await chip(page, 'WR').evaluate(e => getComputedStyle(e).opacity)).toBe('1');
         await expect(rows(page)).toHaveCount(7);
         expect(new Set(await rowPositions(page))).toEqual(new Set(['WR']));
         // The counts still cover the whole roster.
@@ -91,6 +94,31 @@ test.describe('Roster tab position counts', () => {
         await expect(rows(page)).toHaveCount(12);
         await expect(chip(page, 'ALL')).toHaveAttribute('aria-pressed', 'true');
         await expect(chip(page, 'QB')).toHaveAttribute('aria-label', 'QB 0');
+        await expectClean(page, state);
+    });
+
+    test('with the keyboard, focus stays on the chosen chip', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await showTab(page, 'roster');
+        const focusedPos = () => page.evaluate(() => document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.pos || null : null);
+
+        await chip(page, 'TE').focus();
+        await page.keyboard.press('Enter');
+        await expect(rows(page)).toHaveCount(3);
+        expect(await focusedPos()).toBe('TE');
+        await page.keyboard.press('Space'); // the same chip again: everyone
+        await expect(rows(page)).toHaveCount(14);
+        expect(await focusedPos()).toBe('TE');
+        await page.keyboard.press('Shift+Tab'); // WR, QB... and All, each pressed in turn
+        expect(await focusedPos()).toBe('WR');
+        await page.keyboard.press('Enter');
+        await expect(rows(page)).toHaveCount(7);
+        expect(await focusedPos()).toBe('WR');
+        await chip(page, 'ALL').focus();
+        await page.keyboard.press('Enter');
+        await expect(rows(page)).toHaveCount(14);
+        expect(await focusedPos()).toBe('ALL');
         await expectClean(page, state);
     });
 
@@ -169,8 +197,12 @@ test.describe('Roster tab position counts', () => {
 
         // IR counts the IR slot or NFL IR, each player once.
         expect(await chipLabels(page)).toEqual(['All 14', 'QB 1', 'RB 1 (1 IR)', 'WR 7 (1 IR)', 'TE 3 (1 IR · 1 taxi)', 'K 1', 'DEF 1']);
-        await expect(chip(page, 'RB').locator('.mls-poscount-note')).toHaveText('1 IR');
-        await expect(chip(page, 'TE').locator('.mls-poscount-note')).toHaveText('1 IR · 1 taxi');
+        await expect(chip(page, 'RB').locator('.mls-poscount-note')).toHaveText(['1 IR']);
+        // One note per line, so a narrow phone chip never splits "1 taxi".
+        await expect(chip(page, 'TE').locator('.mls-poscount-note')).toHaveText(['1 IR', '1 taxi']);
+        const [irNote, taxiNote] = await chip(page, 'TE').locator('.mls-poscount-note').evaluateAll(els => els.map(e => e.getBoundingClientRect()));
+        expect(taxiNote.top).toBeGreaterThanOrEqual(irNote.bottom - 1);
+        for (const r of [irNote, taxiNote]) expect(r.height).toBeLessThan(20); // each on one line
 
         // Row badges: the IR-slot badge (styled like TAXI) for Jefferson and Kittle; Jefferson keeps
         // his OUT; Kittle's NFL IR isn't shown twice; Henry (bench) keeps the red injury IR only.
@@ -200,6 +232,43 @@ test.describe('Roster tab position counts', () => {
         expect(await chipLabels(page)).toEqual(['All 14', 'QB 1', 'RB 1 (1 IR)', 'WR 7', 'TE 3 (1 IR)', 'K 1', 'DEF 1']);
         await expect(row('Justin Jefferson').locator('.ir-slot-badge')).toHaveCount(0);
         await expect(rows(page).locator('.ir-slot-badge')).toHaveCount(1);
+        await expectClean(page, state);
+    });
+
+    test('the Lineup tab shows the IR badge too, on bench and starter rows', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        // In your IR slot: Jefferson (Out), Kittle (NFL IR) and Chase (healthy). Out and IR players
+        // are never started, so the first two sit on the bench; Chase can still be picked to start
+        // (keeping IR-slot players out of the starters is a later decision, see LOG S9 round 2).
+        const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
+        await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
+            const players = fixture('players-nfl.json');
+            players['6794'].injury_status = 'Out';
+            players['4217'].injury_status = 'IR';
+            return route.fulfill({ json: players });
+        });
+        await page.route(/sleeper\.app\/v1\/league\/\d+\/rosters$/, route => {
+            const rosters = fixture('league-rosters.json');
+            rosters[0].reserve = ['6794', '4217', '4866'];
+            return route.fulfill({ json: rosters });
+        });
+        await seedMls(page);
+        await showTab(page, 'lineup');
+
+        const slot = (name) => page.locator('#lineupTab .lineup-slot').filter({ hasText: name });
+        const bench = page.locator('#benchContainer');
+        await expect(bench.locator('.lineup-slot').filter({ hasText: 'Justin Jefferson' }).locator('.ir-slot-badge')).toHaveText('IR');
+        await expect(slot('Justin Jefferson').locator('.inj-badge')).toHaveText('OUT');
+        await expect(bench.locator('.lineup-slot').filter({ hasText: 'George Kittle' }).locator('.ir-slot-badge')).toHaveText('IR');
+        await expect(slot('George Kittle').locator('.inj-badge')).toHaveCount(0);
+        // Chase is starting: his row says he's in the IR slot.
+        await expect(bench.locator('.lineup-slot').filter({ hasText: "Ja'Marr Chase" })).toHaveCount(0);
+        await expect(slot("Ja'Marr Chase").locator('.ir-slot-badge')).toHaveText('IR');
+        await expect(page.locator('#lineupTab .ir-slot-badge')).toHaveCount(3);
+
+        // A tap explains it here too.
+        await slot("Ja'Marr Chase").locator('.ir-slot-badge').click();
+        await expect(page.locator('.toast-message').filter({ hasText: "In your IR slot on Sleeper. A player there can't start until you move him out of it." })).toBeVisible();
         await expectClean(page, state);
     });
 });

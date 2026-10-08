@@ -1,13 +1,12 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Roster tab renderer (loadRosterTab), the first
 // function under RENDERERS.
 import { escapeHtml } from '../../shared/html.js';
-import { showToast } from '../../shared/ui/toast.js';
 import { tierTag, SLOT_POSITIONS } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
 import { State } from '../state.js';
 import { rankingIndex, getActiveLeague } from '../helpers.js';
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
-import { getByeBadgeHTML } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML } from '../lineup/gameInfo.js';
 import { renderManualAddLog } from '../leagues/addPlayer.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
@@ -47,34 +46,37 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
     }
 
     // A chip's tap: show only that position, or everyone again ('ALL', or the picked chip a second time).
+    // The redraw replaces the chips, so a chip that had focus (keyboard use) hands it to its new self;
+    // otherwise focus would fall back to the top of the page.
     export function setRosterPosFilter(pos) {
         const league = getActiveLeague();
         const current = league && rosterPosFilter.leagueId === league.leagueId ? rosterPosFilter.pos : null;
         rosterPosFilter = { leagueId: league ? league.leagueId : null, pos: (!pos || pos === 'ALL' || pos === current) ? null : pos };
+        const active = document.activeElement;
+        const hadFocus = !!(active && active.closest && active.closest('#rosterPosCounts'));
         loadRosterTab();
-    }
-
-    // A tap or click on a row's IR badge: what it means, as a toast (phones have no hover), like the
-    // rank-change chips and SoS badges.
-    export function explainIrSlot(badgeEl) {
-        const text = badgeEl && badgeEl.dataset ? badgeEl.dataset.tip : '';
-        if (text) showToast(text);
+        if (hadFocus) {
+            const strip = document.getElementById('rosterPosCounts');
+            const again = strip && [...strip.querySelectorAll('button[data-pos]')].find(b => b.dataset.pos === (pos || 'ALL'));
+            if (again) again.focus();
+        }
     }
 
     function renderRosterPosCounts(el, counts, total, picked) {
-        const noteOf = c => [c.ir ? `${c.ir} IR` : '', c.taxi ? `${c.taxi} taxi` : ''].filter(Boolean).join(' · ');
-        const chip = (pos, label, count, note, colorClass, extra = '') => {
+        // One note per line ("1 IR" over "1 taxi"), so a narrow chip never breaks a note in two.
+        const notesOf = c => [c.ir ? `${c.ir} IR` : '', c.taxi ? `${c.taxi} taxi` : ''].filter(Boolean);
+        const chip = (pos, label, count, notes, colorClass, extra = '') => {
             const on = picked === pos || (pos === 'ALL' && !picked);
             const lit = !picked || on;
-            const spoken = `${label} ${count}${note ? ` (${note})` : ''}`;
+            const spoken = `${label} ${count}${notes.length ? ` (${notes.join(' · ')})` : ''}`;
             return `<button type="button" class="badge ${colorClass} pos-filter mls-poscount${lit ? ' active-filter' : ''}" data-action="setRosterPos" data-pos="${escapeHtml(pos)}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${escapeHtml(spoken)}"${extra}>`
                 + `<span class="mls-poscount-name">${escapeHtml(label)}</span>`
                 + `<span class="mls-poscount-num">${count}</span>`
-                + (note ? `<span class="mls-poscount-note">${escapeHtml(note)}</span>` : '')
+                + (notes.length ? `<span class="mls-poscount-notes">${notes.map(n => `<span class="mls-poscount-note">${escapeHtml(n)}</span>`).join('')}</span>` : '')
                 + `</button>`;
         };
-        el.innerHTML = chip('ALL', 'All', total, '', 'badge-all')
-            + counts.map(c => chip(c.pos, c.pos, c.count, noteOf(c),
+        el.innerHTML = chip('ALL', 'All', total, [], 'badge-all')
+            + counts.map(c => chip(c.pos, c.pos, c.count, notesOf(c),
                 POS_COUNT_ORDER.includes(c.pos) ? `pos-badge ${c.pos}` : '',
                 c.count === 0 ? ' disabled' : '')).join('');
         el.hidden = false;
@@ -183,12 +185,10 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
             const byeWeek = getByeWeek(p.team, State.currentNflSeason);
             let byeStr = byeWeek ? ` (${byeWeek})` : "";
             let byeBadge = getByeBadgeHTML(p.team);
-            // A player in your Sleeper IR slot gets an IR badge like TAXI (improvements S9). If he's
-            // also on NFL IR, that one badge says it, so the red injury "IR" is left off. Hover shows
-            // the explanation; a tap or click shows it as a toast (explainIrSlot).
-            const irTip = `In your IR slot on Sleeper${p.inj === 'IR' ? ', and on NFL injured reserve' : ''}. A player there can't start until you move him out of it.`;
-            let irSlotBadge = p.isReserve ? `<button type="button" class="badge ir-slot-badge" data-action="explainIrSlot" data-tip="${escapeHtml(irTip)}" title="${escapeHtml(irTip)}" aria-label="${escapeHtml(irTip)}">IR</button>` : "";
-            let injBadge = p.inj && !(p.isReserve && p.inj === 'IR') ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
+            // IR-slot badge (Sleeper IR slot) and the injury badge, shared with the Lineup tab
+            // (js/mls/lineup/gameInfo.js; improvements S9).
+            let irSlotBadge = getIrSlotBadgeHTML(p);
+            let injBadge = getInjuryBadgeHTML(p);
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
             // Same "R" badge as MDS roster cards and the Matchup Simulator.
             let rookieBadge = isRookiePlayer(p, rookieIdx) ? `<span class="badge badge-rookie" title="Rookie" aria-label="Rookie">R</span>` : "";

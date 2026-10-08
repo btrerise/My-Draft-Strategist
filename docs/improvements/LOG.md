@@ -2526,8 +2526,8 @@ notes and his badge.
   out. Fix: leave `isReserve` players out of the pool like taxi players (`js/mls/render/lineup.js`, `pool` /
   `taxiPlayers`), with a divider or badge on the bench. Changes who starts, so it needs its own card.
 - Related, same decision: the Waiver Wire's "your weakest" skips IR, Out and taxi players by status
-  (`js/mls/scout/waivers.js`, `INACTIVE_STATUSES`; `js/mls/scout/bestAvailable.js`), not by the IR slot, and the
-  Lineup tab's bench doesn't show the IR badge. Both could read `isReserve` in the same follow-up.
+  (`js/mls/scout/waivers.js`, `INACTIVE_STATUSES`; `js/mls/scout/bestAvailable.js`), not by the IR slot. It could
+  read `isReserve` in the same follow-up. (The Lineup tab's IR badge was added in round 4.)
 
 ### S9, round 3: the IR badge explains itself on tap (owner's request)
 
@@ -2550,3 +2550,56 @@ Sleeper. A player there can't start until you move him out of it.", with ", and 
 toast, and Kittle's `title`.
 
 **Screenshots.** None changed (the screenshot league has no IR-slot players).
+
+### S9, round 4: a review as a user; the IR badge on the Lineup tab (owner's choices)
+
+**Why.** Asked how the feature feels from a user's side, I used the Roster tab at both widths with rankings loaded
+and players on IR and taxi: reading the counts, filtering, removing, tapping the IR badge, and using the keyboard.
+It answers "how many RBs do I have?" at a glance, but three things were rough. The owner asked for all three fixes,
+plus the IR badge on the Lineup tab.
+
+**User-visible effect.**
+- **Filtered, the other counts stay readable.** With one position picked, the other chips fade to 60% with a little
+  color left (they were at the Waiver Wire's 35% and nearly gray, so "TE 3, 1 IR · 1 taxi" was hard to read). Hover
+  brings them up to 85%. The picked chip is unchanged.
+- **Notes sit one per line.** "1 IR" over "1 taxi", so a phone chip no longer breaks a note in two ("1 IR · 1" over
+  "taxi"). On a computer the notes are a little larger (0.68rem, was 0.6rem); phones keep 0.6rem. Screen readers
+  still hear "TE 3 (1 IR · 1 taxi)".
+- **Keyboard focus stays on the chip you chose.** Choosing a chip redraws the strip, and focus used to fall back to
+  the top of the page. Now the new copy of that chip gets focus, so Tab and Shift+Tab carry on from it. Mouse and
+  touch use look the same as before.
+- **The IR badge on the Lineup tab:** starter and bench rows show the same IR badge for players in your Sleeper IR
+  slot, before the injury badge (Jefferson: "IR" then "OUT"), with the same hover and tap explanation. A starter in
+  the IR slot shows it too, which makes the round 2 leftover visible: the optimizer can still start an IR-slot player
+  who is healthy again, and his row now says he's in the IR slot.
+
+**Left as it is (my review; the owner asked only for the three fixes).** Counts only, without slot numbers, is the owner's round 1 choice, and
+"too few" warnings were out of the card's scope; a 0 still shows for a position the league starts. The empty band
+under the chips on desktop is the list's existing frame.
+
+**What changed and where.**
+- `js/mls/lineup/gameInfo.js` (beside `getByeBadgeHTML`, already shared by the two tabs): `getIrSlotBadgeHTML(p)`,
+  `getInjuryBadgeHTML(p)` (drops the red "IR" when the IR-slot badge says it) and `explainIrSlot` (moved here from
+  roster.js). The Roster tab and both Lineup row types use them; `js/mls/main.js` imports the action from here.
+- `js/mls/render/lineup.js`: starter rows `[lock, IR slot, injury, bye, ...]`, bench rows `[IR slot, injury, TAXI,
+  bye, ...]`.
+- `js/mls/render/roster.js`: notes as one `.mls-poscount-note` per line inside `.mls-poscount-notes`;
+  `setRosterPosFilter` puts focus back on the chosen chip when one had it.
+- `css/mls.css`: `.mls-poscount-notes`, the note sizes, and the lighter fade
+  (`.mls-poscount.pos-filter:not(.active-filter)`). The Waiver Wire's chips are unchanged. `css/base.css`: comment
+  only.
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.89.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`, both widths, 12 tests:
+- New: with the keyboard, Enter or Space on a chip keeps focus on it (TE, TE again, Shift+Tab to WR, All). The
+  walk-through found focus on `<body>` before the fix.
+- New: the Lineup tab, with Jefferson (Out), Kittle (NFL IR) and Chase (healthy) in the IR slot: bench badges for
+  the first two (Jefferson keeps OUT, Kittle shows one IR), Chase starting with the badge, and its tap explanation.
+- Updated: the TE chip's notes are two lines, each one line high; an unpicked chip's opacity is 0.6, the picked one 1.
+
+**Screenshots.** None changed beyond round 1's two Roster PNGs: all 40 renders here match round 1's (the
+screenshot league has no notes, filter or IR-slot players).
+
+**Left over.**
+- The Guide has no Roster-tab section, so the chips and the IR badge are explained only by the card's tooltip and the
+  badge's own tap. S10 (the legend) should include both.

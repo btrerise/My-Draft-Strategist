@@ -8,7 +8,7 @@ import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } 
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
-import { getByeBadgeHTML, getGameInfoHTML, getLineupInjuryWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupInjuryWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
@@ -617,7 +617,9 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 const byeWeek = getByeWeek(p.team, State.currentNflSeason);
                 let byeStr = byeWeek ? ` (${byeWeek})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
-                let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
+                // IR-slot badge before the injury badge, as on the Roster tab (improvements S9).
+                let irSlotBadge = getIrSlotBadgeHTML(p);
+                let injBadge = getInjuryBadgeHTML(p);
                 let kickoffBadge = getGameInfoHTML(p.team);
 
                 let sleeperWarn = "";
@@ -632,7 +634,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 let lockBadge = !p.isLocked ? ""
                     : isAutoLock ? `<span class="badge mls-autolock-badge">AUTO-LOCKED</span>`
                     : `<span class="badge mls-lock-badge">LOCKED</span>`;
-                let badgesRow = [lockBadge, injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
+                let badgesRow = [lockBadge, irSlotBadge, injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
 
                 // The slot badge below already spells out the position for strict slots (RB1
                 // always holds an RB, etc), so a second colored position pill there is pure
@@ -695,7 +697,9 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 const byeWeek = getByeWeek(p.team, State.currentNflSeason);
                 let byeStr = byeWeek ? ` (${byeWeek})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
-                let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
+                // IR-slot badge before the injury badge, as on the Roster tab (improvements S9).
+                let irSlotBadge = getIrSlotBadgeHTML(p);
+                let injBadge = getInjuryBadgeHTML(p);
                 let kickoffBadge = getGameInfoHTML(p.team);
                 // Kept even though the divider above already labels the group: the divider
                 // scrolls off, and these rows get screenshotted and pasted into league chats.
@@ -705,7 +709,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 if (validSleeperStarters.length > 0 && validSleeperStarters.includes(p.id)) {
                     sleeperWarn = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`;
                 }
-                let badgesRow = [injBadge, taxiBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
+                let badgesRow = [irSlotBadge, injBadge, taxiBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
                 // Bench ("BN") never reveals real position the way a strict slot badge does, so
                 // always show it as plain text here -- same reasoning as the starters block above.
                 let plainPos = `<span class="mls-plain-pos pos-text-${escapeHtml(String(p.pos).toLowerCase())}">${escapeHtml(p.pos)}</span>`;

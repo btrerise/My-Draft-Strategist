@@ -6,6 +6,7 @@
 import { getSleeperMatchups } from '../../shared/api/sleeper.js';
 import { getWeeklyProjections } from '../../shared/api/sleeperStats.js';
 import { escapeHtml } from '../../shared/html.js';
+import { showToast } from '../../shared/ui/toast.js';
 import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
 import { refreshGameTimes, State } from '../state.js';
@@ -21,6 +22,28 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
     export function getByeBadgeHTML(team) {
         if (State.currentNflWeek == null || getByeWeek(team, State.currentNflSeason) !== State.currentNflWeek) return "";
         return `<span class="badge bye-badge">BYE</span>`;
+    }
+
+    // A player in your Sleeper IR slot (isReserve, set at sync; improvements S9): an "IR" badge styled
+    // like TAXI, on Roster and Lineup rows. A small button: hovering shows what it means (title), and a
+    // tap or click shows it as a toast (explainIrSlot), since phones have no hover.
+    export function getIrSlotBadgeHTML(p) {
+        if (!p || !p.isReserve) return "";
+        const tip = escapeHtml(`In your IR slot on Sleeper${p.inj === 'IR' ? ', and on NFL injured reserve' : ''}. A player there can't start until you move him out of it.`);
+        return `<button type="button" class="badge ir-slot-badge" data-action="explainIrSlot" data-tip="${tip}" title="${tip}" aria-label="${tip}">IR</button>`;
+    }
+
+    // The red injury badge ("Q", "OUT", "IR"...). Left off when it would read "IR" beside the IR-slot
+    // badge above: that one badge already says it.
+    export function getInjuryBadgeHTML(p) {
+        if (!p || !p.inj || (p.isReserve && p.inj === 'IR')) return "";
+        return `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>`;
+    }
+
+    // A tap or click on an IR-slot badge: what it means, as a toast.
+    export function explainIrSlot(badgeEl) {
+        const text = badgeEl && badgeEl.dataset ? badgeEl.dataset.tip : '';
+        if (text) showToast(text);
     }
 
     // Formats an ISO kickoff timestamp into a short label in the person's local timezone, e.g.
