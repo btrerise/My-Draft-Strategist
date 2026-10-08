@@ -15,6 +15,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
+import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 // --- MARKET DISCONNECT ENGINE ---
     const marketFileEl = document.getElementById('marketFileInput');
     if (marketFileEl) {
@@ -264,6 +265,11 @@ import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
         // every single market entry -- with two ~500-row lists that's ~250,000 comparisons to
         // produce one report, and it was the most expensive single operation left in this file.
         const rosIndex = rankingIndex(State.rosRankings);
+        // Positional Rank needs real position ranks: a single file without a Pos Rank column stores the
+        // overall rank there, which compared the overall rank with the market's position rank. Re-derived per
+        // position as the Waiver Wire and the Lineup and Roster tabs show them (improvements F6); null keeps
+        // a file's own position ranks.
+        const rosDisplay = isPositional ? leagueRankDisplayIndex(league, State.rosRankings, runMarketDisconnectAnalysis) : null;
 
         State.marketRankings.forEach(m => {
             if (posFilter !== 'ALL') {
@@ -282,8 +288,10 @@ import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
             // better across formats than their overall rank does, since SF/TEP mostly re-price
             // whole positions rather than reshuffling players within them.
             let userRank, marketVal;
+            // The position rank and tier this basis shows (the file's own, or the re-derived ones above).
+            const shownPos = isPositional ? displayRanksFor(rosDisplay, userObj.cleanName, { posRank: userObj.posRank, posTier: userObj.posTier ?? userObj.tier }) : null;
             if (isPositional) {
-                userRank = userObj.posRank;
+                userRank = shownPos.posRank;
                 marketVal = marketPosRanks[m.cleanName];
                 // Skip anyone missing a real positional rank on either side -- a user rankings
                 // file with no Pos Rank column (and never uploaded as a position-specific file
@@ -332,7 +340,7 @@ import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
                     name: userObj.name,
                     cleanName: userObj.cleanName,
                     userRank: userRank,
-                    userTier: isPositional ? (userObj.posTier ?? userObj.tier) : userObj.tier, // matches whichever rank userRank is (overall tier when there's no position tier, improvements S8 round 3)
+                    userTier: isPositional ? shownPos.posTier : userObj.tier, // matches whichever rank userRank is (overall tier when there's no position tier, improvements S8 round 3)
                     // The "other" rank for the same player, so the card shows both: the overall rank
                     // when the headline number is positional, the position rank (see posRankTag) when
                     // it's overall.

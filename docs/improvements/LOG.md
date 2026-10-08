@@ -2193,3 +2193,86 @@ branch). The Waiver Wire Assistant corrects that with `buildRankDisplayIndex`, s
 Positional Rank basis (`marketDisconnect.js`) also reads the raw `posRank` and needs checking. Not fixed here (outside
 S8). The owner added it to the runbook as card F6 (Needs: S8), which keeps the fix display-only so the optimizer's
 inputs, and who starts, stay the same.
+
+## F6 — Lineup and Roster tabs show the overall rank as the position rank
+
+**User-visible effect.** With a single rankings file that has no Pos Rank column (one overall list with a Pos
+column, the most common upload), the Lineup and Roster tabs now show the same position and FLEX ranks as the
+Waiver Wire Assistant, instead of each player's overall rank:
+- **Roster tab:** Derrick Henry reads "Ovr: #15 (T3) | Pos: #5 (T3)" (was "Pos: #15 (T3)").
+- **Lineup tab, Weekly loaded:** "Pos: #5 (T3) | Flex: #13 (T3)" (was "Pos: #15 (T3) | Flex: #15 (T3)"). Flex counts
+  RB/WR/TE only, as the Waiver Wire's "Wk Flex" does (George Kittle "Flex: #19", as in S8's spec). QBs, kickers and
+  defenses show only "Pos:", as before ("Pos: #1 (T3)" for Josh Allen, was "#13").
+- **Lineup tab, ROS only:** "Pos: #5 (T3) | Overall: #15 (T3)". The second number is the Overall rank and stays it.
+- **A file with a Pos Rank column** keeps its position ranks. Its FLEX rank was also the overall rank (the parser
+  writes the overall rank to flexRank for every single file), so its Lineup "Flex:" number is now derived too, as the
+  Waiver Wire already showed it ("Flex: #13", was "#15"). The card didn't name this case; it's the same bug, and the
+  position numbers it asked to keep are kept.
+- **Trade Finder, Positional Rank basis:** with a single file it compared your overall rank with the market's
+  position rank, so most of your list looked like a disconnect ("RB #15" against the market's "RB #5"). It now uses
+  the same position ranks. In the spec, a market that agrees with the file except for Henry flags only Henry
+  ("Your Board: RB #5 (T3) · Ovr: #15 (T3)", "Market: RB #1"); on main it flagged 10 players at threshold 2.
+- Tiers are unchanged: a derived rank shows the file's overall tier, as S8 round 3 already did.
+- **Who starts doesn't change**, nor bench order, slot order or FLEX Kickoff Optimization.
+
+**What changed and where.**
+- `js/mls/rankings/displayRanks.js` (new, in `PRECACHE_ASSETS`):
+  - `singleFileFallback(rankings)` recognises the parser's fallback without positions: **positions** when every
+    ranked player's posRank and flexRank equal his rank (a single file, no Pos Rank column); **flex** when every
+    ranked player's flexRank equals his rank, QBs included (any single file).
+  - `leagueRankDisplayIndex(league, rankings, rerender)` builds `buildRankDisplayIndex` once per render, only when
+    one of those holds, with the Waiver Wire's positions (`makeLeagueGetPos`: the league's `globalPosMap`, then
+    Sleeper's player map, then market data) plus the roster's own `pos` for anyone those don't know.
+  - `displayRanksFor(index, cleanName, raw)` gives the numbers to show: derived where the index applies and knows
+    the player's position, otherwise the raw ones.
+- **Why the extra test rather than `buildRankDisplayIndex` alone:** per-position uploads also have posRank equal to
+  rank, so `buildRankDisplayIndex` renumbers them 1..N per group. That gives the same numbers back only when every
+  player's position is known; a name Sleeper can't match would shift everyone below him. The Waiver Wire has that
+  edge today (out of scope here, it's the reference); the Lineup and Roster tabs now show per-position, FLEX-file
+  and horizontal-sheet numbers exactly as stored.
+- **Sleeper's player map:** free agents' positions come from it (a free-agent RB ranked ahead of Henry counts toward
+  "RB5"). The renders can't wait for it, so `getSleeperMetaByName` (waivers.js) now keeps the resolved index
+  (`sleeperMetaByNameIfLoaded`), and a render that finds it missing re-runs once when it lands, the same
+  render-now, redraw-once pattern as the rookie badges and headshots. It's cached in IndexedDB and memory, so this
+  is the first render of a page load at most. Rankings with their own position ranks never ask for it.
+- `js/mls/render/roster.js` `loadRosterTab` and `js/mls/render/lineup.js` `renderLineupUI` / `lineupRankBadge`:
+  the rows read display ranks. The Lineup tab's index uses the rankings the optimizer used (Weekly when loaded, else
+  ROS); ROS's "Overall:" number stays the raw flexRank (the overall rank).
+- **The optimizer is untouched.** `optimizeLineup`'s `scoredRoster` and `compareFlexCandidates` read the raw
+  `posRank` / `flexRank`, and the saved lineup objects keep them. Display ranks are looked up at render time, never
+  stored, so no stored data or storage key changed.
+- `js/mls/scout/marketDisconnect.js`: the Positional Rank basis reads `displayRanksFor` (rank and tier). The Overall
+  basis is unchanged.
+- `sw.js`: `CACHE_NAME` v2.8.87 → v2.8.88. CHANGELOG: two lines under Lineup Strategist.
+
+**Checked, not changed.**
+- `posRankTag` (js/mls/constants.js, the Scout and All-Leagues cards' "Pos:" tag): with a single file posRank equals
+  rank and the tiers match, so it shows nothing; nothing wrong is on screen. Confirmed. Showing the derived rank
+  there would be new information, not a fix, so I left it.
+- Top Available, the Dashboard's Best Available, Auto-Find, Check a List and S3's What changed already use
+  `buildRankDisplayIndex`.
+- **The Waiver Wire's "derived from the file's order" note:** not added to the Lineup and Roster tabs. Their numbers
+  now match the Scout tab, which says it, and a note on two tabs opened every week would repeat it for most users.
+
+**Tests.**
+- `tests/mls-display-ranks.spec.mjs` (new, both widths), all four fail on main:
+  - Single file as ROS and Weekly: Roster and Lineup numbers for Henry, Allen, Kittle and A.J. Brown; the saved
+    starters and bench order equal the ones recorded on main before the fix (`STARTERS`, `BENCH`), and Henry's
+    saved raw ranks are still 15 / 15.
+  - ROS only: "Pos: #5 (T3) | Overall: #15 (T3)", same starters.
+  - Own position ranks: a Pos Rank column with RB numbers doubled (so renumbering would show) reads "Pos: #10";
+    sets rewritten as per-position uploads, also with gaps, read as stored ("Pos: #10", Allen "Pos: #2").
+  - Trade Finder, as above.
+- `tests/unit/displayRanks.test.mjs` (new): the fallback test on each file shape, Pos Rank column (positions kept,
+  FLEX derived), the roster-position stand-in, and one re-render while the Sleeper map loads.
+
+**Screenshots.** None re-taken; the screenshot league has no rankings, so these renders return before building
+anything.
+
+**Checks run.** `npm run check`: check-precache OK, 282 unit tests pass. Playwright: 242 passed and the 10
+screenshot comparisons failed on the first run (MDS, T-Score and MLS pages alike, the environment-only failures
+earlier entries describe); two later full runs passed all 252 with no baseline rewritten.
+
+**Left over.**
+- The Waiver Wire renumbers per-position uploads when a player's position is unknown (above). Using
+  `singleFileFallback` there too would fix it, but it changes the reference numbers this card kept out of scope.

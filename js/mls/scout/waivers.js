@@ -41,6 +41,10 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
     // Before refactor 9C this preferred a team only and otherwise kept the first entry, and read
     // only the listed position, which left two-way players out.
     let _sleeperMetaByNamePromise = null;
+    // The resolved index, for renders that can't wait for it (the Lineup and Roster tabs' position ranks,
+    // js/mls/rankings/displayRanks.js); null until getSleeperMetaByName has resolved once.
+    let _sleeperMetaByName = null;
+    export const sleeperMetaByNameIfLoaded = () => _sleeperMetaByName;
     export function getSleeperMetaByName() {
         if (_sleeperMetaByNamePromise) return _sleeperMetaByNamePromise;
         _sleeperMetaByNamePromise = getSleeperPlayerMap().then(map => {
@@ -55,6 +59,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                 const entry = { id, pos, team: p.team || null, inj: getShortInjuryStatus(p), age: p.age ?? null, birthDate: p.birth_date || null };
                 if (!index[clean] || isPreferredSleeperEntry(p, map[index[clean].id])) index[clean] = entry;
             });
+            _sleeperMetaByName = index;
             return index;
         }).catch(err => {
             _sleeperMetaByNamePromise = null;
