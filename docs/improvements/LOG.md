@@ -2406,3 +2406,79 @@ fit (`expect.poll`) instead of checking once; it still fails if the refit never 
 **Checks run.** `npm run check`: check-precache OK, 284 unit tests pass; Playwright: the same 10 first-run screenshot
 failures on every page, then a full rerun passed all 258 with no baseline changed.
 
+
+## S9 — Position counts on the Roster tab
+
+**User-visible effect.** Lineup Strategist's Roster tab has a row of chips directly above the player list, under
+the Power Rankings strip and the Sync button: **All 14 · QB 1 · RB 1 · WR 7 · TE 3 · K 1 · DEF 1** for the fixture
+league. Each chip stacks the position, the count and, when it applies, a small note: "1 IR", "1 taxi", or both
+("1 IR · 1 taxi"). They're colored like the list's position badges and look and light up like the Waiver Wire
+Assistant's position chips. Tapping a chip shows only that position (still in ROS order); the picked chip stays lit
+and the rest fade. Tapping it again, or All, shows everyone. The counts always cover the whole roster, whichever chip
+is picked.
+- A position you have none of shows as **0** when the league starts one (any slot that takes it, flex slots
+  included, so a QB shows in a superflex league with no QB slot). Those chips can't be tapped. It's left out when no
+  slot takes it: a league without kickers shows no K. Positions outside QB/RB/WR/TE/K/DEF (a roster player whose
+  Sleeper position the app doesn't map) get a plain chip after DEF.
+- The counts follow every roster change: add, remove (on the Roster tab), sync, league switch, and saving the
+  league's starting requirements (Setup tab), so a new K slot shows "K 0" right away.
+- Empty roster (or no league): no chips; the welcome box is unchanged. Manual and Draft Strategist hand-off leagues
+  count the same way (no taxi notes, since only a Sleeper sync sets `isTaxi`).
+- The filter lives in memory, per league: a reload or a league switch shows everyone. Removing the last player at
+  the picked position shows everyone too.
+- The Active Roster card's (i) tooltip says what the chips do.
+
+**Owner's decisions (asked before building).**
+- **Where:** its own strip directly above the list, not in the header.
+- **Starting slots:** counts only ("RB 6"), not "RB 6 / 2". So flex slots (FLEX, SFLEX, W/T, W/R) aren't shown at
+  all; they only decide whether a zero position shows (above).
+- **Taxi and IR:** counted, with a note. IR is the player's NFL status, the same `inj === 'IR'` that puts the IR
+  badge on his row; the app doesn't record Sleeper's IR slot (the roster's `reserve` array), so a player stashed there
+  with another status (Out, PUP) isn't noted. PUP, NFI and suspensions aren't noted either.
+- **Tap to filter:** yes, with an All chip; in memory, no new storage key.
+
+**What changed and where.**
+- `js/mls/render/roster.js`: `rosterPositionCounts(roster, reqs)` (the counts, exported), `setRosterPosFilter(pos)`
+  (the tap) and `renderRosterPosCounts`. `loadRosterTab` draws the strip and filters the list after sorting; the
+  empty-roster path hides the strip and clears the filter. Sort order and row layout unchanged.
+- `lineup/index.html`: `#rosterPosCounts` (a `role="group"`, hidden until filled) above `.roster-container-wrapper`;
+  the tooltip sentence.
+- `js/mls/main.js`: the `setRosterPos` action. Each chip is a `<button>` with `data-action`, `data-pos`,
+  `aria-pressed` (only the picked chip, or All) and an `aria-label` that reads like the card's example ("RB 1 (1 IR)").
+- `js/mls/leagues/sync.js`: `saveRequirements` re-renders the Roster tab (it already re-ran the lineup).
+- `css/mls.css`: `.mls-roster-poscounts` (one row, an equal column per chip) and `.mls-poscount-*`, with a phone size
+  like the Power Rankings strip's. The chips reuse `.pos-filter` from css/base.css.
+- Draft Strategist's Roster Limits row (Team tab) shows "count / limit" per position with an FLX column; with the
+  owner's "counts only" there's nothing to share beyond the position order and colors, which match. No shared code.
+- `sw.js`: `CACHE_NAME` v2.8.88 → v2.8.89. No new file, no new storage key. CHANGELOG line under Lineup Strategist.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs` (new, both widths):
+- The fixture league's counts; removing Derrick Henry on the Roster tab ("RB 0", not tappable, "All 13"); adding
+  James Cook from Setup's Add Player Manually ("RB 1").
+- Filtering: WR shows the 7 WRs with the counts unchanged; a second tap and All show everyone; the filter holds
+  through a remove; removing the last QB while QB is picked shows everyone.
+- League switch: a new manual league shows no chips and the welcome box; straight back to the Fixture League shows
+  everyone (this step failed before the empty-roster path cleared the filter); the manual league with K slots set to
+  0 and a QB and a DEF added shows no K chip; switching back resets a filter.
+- Taxi and IR: Sleeper stubs with Henry on IR and McBride on the taxi squad give "RB 1 (1 IR)" and "TE 3 (1 taxi)";
+  a re-sync after McBride leaves the taxi squad drops the TE note.
+
+**Screenshots.** `mls-league-roster.png` (desktop and phone) is the only screenshot this card changes: the chip row
+above the list (desktop 61px taller, phone 56px). **Not re-taken in this commit**, so CI's two Roster comparisons
+fail until it is. Same as F1: since 2026-10-03 this container renders text differently from CI (`56-prefer-inter.conf`,
+`12-unhinted-grayscale.conf`, Inter and other extra fonts). With both rules removed through a private fontconfig the
+text matches, but symbol glyphs such as the ✕ on every roster row still differ by tens to thousands of pixels per PNG,
+so a PNG re-taken here would fail on CI. What was checked here instead: main (`origin/main`) and this branch rendered
+in this container with `--update-snapshots=all`, compared with `npm run pxdiff`: only the two `mls-league-roster.png`
+differ, and the tooltip edit leaves them unchanged. The re-taken PNGs should be the `mls-league-roster-actual.png`
+files from this branch's first CI run (the `playwright-results` artifact), checked as F1's were: each
+`-expected.png` identical to the committed baseline, and the difference only from the chip row down.
+
+**Checks run.** `npm run check`: check-precache OK, 284 unit tests pass, Playwright 266 passed; the 10 screenshot
+tests failed, on every page, as they do for main in this container (main's own render differs from all 20 committed
+desktop baselines here).
+
+**Left over.**
+- Commit CI's two `mls-league-roster.png` renders (above).
+- The Guide tab has no Roster-tab section, so the chips are explained only in the card's tooltip. S10 (the legend)
+  should include them.

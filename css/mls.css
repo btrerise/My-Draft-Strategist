@@ -1868,6 +1868,23 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     .mls-roster-power-stat-rank { font-size: 0.95rem; }
 }
 
+/* Roster tab's position counts (js/mls/render/roster.js, improvements S9): one chip per position above the
+   list, colored and lit like the Waiver Wire Assistant's position chips (.pos-filter in css/base.css). Each
+   chip stacks the position, the count and a small taxi/IR note. One row, one equal column per chip. */
+.mls-roster-poscounts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0.4rem; margin-bottom: 0.9rem; }
+.mls-roster-poscounts[hidden] { display: none; }
+.mls-poscount.pos-filter { padding: 0.35rem 0.15rem; gap: 1px; justify-content: flex-start; }
+.mls-poscount-name { font-size: 0.68rem; letter-spacing: 0.03em; }
+.mls-poscount-num { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+.mls-poscount-note { font-size: 0.6rem; font-weight: 600; white-space: normal; text-align: center; line-height: 1.2; opacity: 0.85; }
+/* None at a position the league starts (a 0): shown, not tappable. */
+.mls-poscount.pos-filter:disabled { cursor: default; transform: none; }
+@media (max-width: 520px) {
+    .mls-roster-poscounts { gap: 3px; }
+    .mls-poscount-name { font-size: 0.6rem; letter-spacing: 0; }
+    .mls-poscount-num { font-size: 0.95rem; }
+}
+
 /* Scout tab's temporary "moved to the Roster tab" pointer -- see goToPowerRankings in js/mls/power/rosterCard.js
    for when to remove it. */
 .mls-moved-pointer { padding-top: 0.9rem; padding-bottom: 0.9rem; }

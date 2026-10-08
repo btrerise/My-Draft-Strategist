@@ -595,7 +595,7 @@
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Displays all players currently rostered in your active league. Upload ROS Rankings above, or a Strength of Schedule (SoS) matrix below, to unlock trade/roster analysis.</span>
+                <span class="tooltip-text">Displays all players currently rostered in your active league. The chips above the list count them by position, taxi and IR players included; tap one to show only that position, or All to show everyone. Upload ROS Rankings above, or a Strength of Schedule (SoS) matrix below, to unlock trade/roster analysis.</span>
             </div>
         </header>
         
@@ -607,6 +607,11 @@
             Sync Sleeper Waivers & Trades
         </button>
         
+        <!-- How many players you have at each position, with an All chip; tapping a chip filters the list
+             below to that position (improvements S9). Filled by loadRosterTab in js/mls/render/roster.js;
+             hidden while the roster is empty. -->
+        <div id="rosterPosCounts" class="mls-roster-poscounts" role="group" aria-label="Your players by position. Tap one to show only that position." hidden></div>
+
         <div class="roster-container-wrapper">
             <div id="rosterList" class="roster-empty-state">
                 Select or create a league on the Dashboard tab to view your roster.

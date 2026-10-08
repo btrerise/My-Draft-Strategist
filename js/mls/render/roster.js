@@ -1,7 +1,7 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Roster tab renderer (loadRosterTab), the first
 // function under RENDERERS.
 import { escapeHtml } from '../../shared/html.js';
-import { tierTag } from '../constants.js';
+import { tierTag, SLOT_POSITIONS } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
 import { State } from '../state.js';
 import { rankingIndex, getActiveLeague } from '../helpers.js';
@@ -13,6 +13,64 @@ import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
 import { refreshPowerRankings } from '../main.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
+
+    // --- POSITION COUNTS (improvements S9) ---
+    // The strip of chips above the roster list: one per position with how many you roster, a
+    // note for taxi and IR players (they count), and an "All" chip. Tapping a chip filters the
+    // list to that position. The filter lives in memory only, per league: a reload or a league
+    // switch shows everyone again.
+    const POS_COUNT_ORDER = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+    const DEFAULT_REQS = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 }; // as render/lineup.js
+    let rosterPosFilter = { leagueId: null, pos: null };
+
+    // [{ pos, count, ir, taxi }] in QB, RB, WR, TE, K, DEF order, then any other position on the
+    // roster. A standard position is left out only when you have none and no starting slot takes
+    // it (a league without kickers shows no K); a QB still shows in a superflex league with no QB slot.
+    // IR is the player's NFL status (the list's IR badge); Sleeper's IR slot isn't recorded.
+    export function rosterPositionCounts(roster, reqs) {
+        const slots = reqs || DEFAULT_REQS;
+        const hasSlot = pos => Object.entries(SLOT_POSITIONS).some(([type, takes]) => (slots[type] || 0) > 0 && takes.includes(pos));
+        const byPos = new Map();
+        (roster || []).forEach(p => {
+            const c = byPos.get(p.pos) || { pos: p.pos, count: 0, ir: 0, taxi: 0 };
+            c.count++;
+            if (p.inj === 'IR') c.ir++;
+            if (p.isTaxi) c.taxi++;
+            byPos.set(p.pos, c);
+        });
+        const standard = POS_COUNT_ORDER
+            .filter(pos => byPos.has(pos) || hasSlot(pos))
+            .map(pos => byPos.get(pos) || { pos, count: 0, ir: 0, taxi: 0 });
+        const others = [...byPos.keys()].filter(pos => !POS_COUNT_ORDER.includes(pos)).sort().map(pos => byPos.get(pos));
+        return [...standard, ...others];
+    }
+
+    // A chip's tap: show only that position, or everyone again ('ALL', or the picked chip a second time).
+    export function setRosterPosFilter(pos) {
+        const league = getActiveLeague();
+        const current = league && rosterPosFilter.leagueId === league.leagueId ? rosterPosFilter.pos : null;
+        rosterPosFilter = { leagueId: league ? league.leagueId : null, pos: (!pos || pos === 'ALL' || pos === current) ? null : pos };
+        loadRosterTab();
+    }
+
+    function renderRosterPosCounts(el, counts, total, picked) {
+        const noteOf = c => [c.ir ? `${c.ir} IR` : '', c.taxi ? `${c.taxi} taxi` : ''].filter(Boolean).join(' · ');
+        const chip = (pos, label, count, note, colorClass, extra = '') => {
+            const on = picked === pos || (pos === 'ALL' && !picked);
+            const lit = !picked || on;
+            const spoken = `${label} ${count}${note ? ` (${note})` : ''}`;
+            return `<button type="button" class="badge ${colorClass} pos-filter mls-poscount${lit ? ' active-filter' : ''}" data-action="setRosterPos" data-pos="${escapeHtml(pos)}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${escapeHtml(spoken)}"${extra}>`
+                + `<span class="mls-poscount-name">${escapeHtml(label)}</span>`
+                + `<span class="mls-poscount-num">${count}</span>`
+                + (note ? `<span class="mls-poscount-note">${escapeHtml(note)}</span>` : '')
+                + `</button>`;
+        };
+        el.innerHTML = chip('ALL', 'All', total, '', 'badge-all')
+            + counts.map(c => chip(c.pos, c.pos, c.count, noteOf(c),
+                POS_COUNT_ORDER.includes(c.pos) ? `pos-badge ${c.pos}` : '',
+                c.count === 0 ? ' disabled' : '')).join('');
+        el.hidden = false;
+    }
 
     // --- RENDERERS ---
 
@@ -43,8 +101,11 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
 
         const rosterListEl = document.getElementById('rosterList');
         if (!rosterListEl) return;
+        const posCountsEl = document.getElementById('rosterPosCounts');
 
         if (!league || !league.roster || league.roster.length === 0) {
+            if (posCountsEl) { posCountsEl.hidden = true; posCountsEl.innerHTML = ''; }
+            rosterPosFilter = { leagueId: league ? league.leagueId : null, pos: null };
             rosterListEl.innerHTML = `
             <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                 <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to your Roster</div>
@@ -96,6 +157,15 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
             if (a.rosRank !== 999 || b.rosRank !== 999) return a.rosRank - b.rosRank;
             return (posOrder[a.pos] || 99) - (posOrder[b.pos] || 99);
         });
+
+        // Position counts over the whole roster; the picked chip (if any) narrows the list below.
+        // A filter from another league, or on a position you no longer have, shows everyone.
+        const posCounts = rosterPositionCounts(league.roster, league.reqs);
+        let picked = rosterPosFilter.leagueId === league.leagueId ? rosterPosFilter.pos : null;
+        if (picked && !posCounts.some(c => c.pos === picked && c.count > 0)) picked = null;
+        rosterPosFilter = { leagueId: league.leagueId, pos: picked };
+        if (posCountsEl) renderRosterPosCounts(posCountsEl, posCounts, league.roster.length, picked);
+        if (picked) displayRoster = displayRoster.filter(p => p.pos === picked);
 
         let html = "";
         displayRoster.forEach(p => {

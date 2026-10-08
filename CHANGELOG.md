@@ -71,6 +71,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Position counts on the Roster tab.** A row of chips above your roster says how many players you have at each
+  position ("All 14 · QB 1 · RB 1 · WR 7 · TE 3 · K 1 · DEF 1"), in the same colors as the list. Taxi and IR players
+  count, with a note under the number ("1 IR", "1 taxi"). Tap a chip to show only that position; tap it again, or
+  All, to show everyone. A position you have none of shows as 0 when your league starts one, and is left out when it
+  doesn't (no K in a league without kickers). The counts follow every add, remove, sync and league switch.
 - **The Lineup and Roster tabs show real position ranks with a single rankings file.** With one overall list (a Pos
   column but no Pos Rank column, the most common upload), both tabs printed each player's overall rank as his
   position and FLEX rank: Derrick Henry, 15th overall and the 5th RB, read "Pos: #15", while the Waiver Wire

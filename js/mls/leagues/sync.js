@@ -451,6 +451,9 @@ import { showToast } from '../../shared/ui/toast.js';
         localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
         if (btn) flashButton(btn, "Requirements Saved");
         optimizeLineup(true);
+        // The Roster tab's position counts show a position you have none of only when a slot takes it
+        // (improvements S9), so a new K or DEF count shows up, or goes, right away.
+        loadRosterTab();
     };
 
     export const createManualLeague = function() {

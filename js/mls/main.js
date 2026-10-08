@@ -45,7 +45,7 @@ import './trade/valueCurve.js';
 import './trade/waiverValue.js';
 import { copyLineupAsText, exportLineup } from './trade/export.js';
 import './render/rookies.js';
-import { loadRosterTab } from './render/roster.js';
+import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { optimizeAllLineups, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
 import './shortcuts.js';
@@ -132,6 +132,8 @@ const clickActions = {
     // Roster tab (and render/roster.js), SoS
     syncActiveLeague() { syncActiveLeague(); },
     deletePlayer() { deletePlayer(this.dataset.id); },
+    // Position counts above the roster list (improvements S9): filter to a position, or All.
+    setRosterPos() { setRosterPosFilter(this.dataset.pos); },
     saveManualSoS() { saveManualSoS(this); },
     // Setup tab: Advanced Settings card (5C)
     addManualPlayer() { addManualPlayer(); },
