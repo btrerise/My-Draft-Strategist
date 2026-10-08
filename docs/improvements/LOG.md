@@ -2182,3 +2182,14 @@ better (`UPGRADE_MIN_GAP`), while Auto-Find and Check a List counted any better 
 
 **Checks run.** `npm run check`: check-precache OK, 272 unit tests, 244 Playwright tests pass; the same 10
 environment-only screenshot failures, and all 40 renders are pixel-identical to main's.
+
+## Bug found during S8: the Lineup and Roster tabs show the overall rank as the position rank (runbook card F6)
+
+Found in the round-5 review as a user. With a single rankings file that has no Pos Rank column (one overall list
+with a Pos column), the parser stores each player's overall rank as his position and FLEX rank (its "Fallback"
+branch). The Waiver Wire Assistant corrects that with `buildRankDisplayIndex`, so Derrick Henry (overall #15) reads
+"RB5" there. The Roster tab (`loadRosterTab`) and the Lineup tab's rows print the raw numbers: "Ovr: #15 (T3) | Pos:
+#15 (T3)" and "Pos: #15 (T3) | Flex: #15 (T3)". It was already like this on main; S8 didn't change it. Trade Finder's
+Positional Rank basis (`marketDisconnect.js`) also reads the raw `posRank` and needs checking. Not fixed here (outside
+S8). The owner added it to the runbook as card F6 (Needs: S8), which keeps the fix display-only so the optimizer's
+inputs, and who starts, stay the same.
