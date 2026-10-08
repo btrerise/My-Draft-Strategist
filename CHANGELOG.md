@@ -71,6 +71,23 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Strength of schedule in the Waiver Wire Assistant.** When you've loaded SoS (the upload or the manual grid on
+  the Roster tab), the Scout tab's Auto-Find and Check a List cards show the same "SoS: 7" badge as the Roster tab,
+  and so does the player each free agent is compared with ("Would need to pass Josh Allen SoS: 2", your weakest
+  player), so the two schedules sit side by side. It doesn't change any rank, order or verdict, and without SoS
+  loaded nothing changes.
+- **The SoS badge explains itself, everywhere.** On the Roster tab and in the Waiver Wire Assistant, hover or tap
+  the badge for what the number means (1 = easiest, 32 = hardest). On phones it's a calendar icon and the number,
+  so it stays short and doesn't read as another rank. Desktop still shows "SoS: 7".
+- **The SoS card says which end is easy, how old your SoS is, and can flip it.** Once SoS is loaded, the Roster
+  tab's SoS card shows "1 = easiest, 32 = hardest" and when and where it last came from ("SoS updated 3 days ago from
+  your ROS rankings (rankings.csv)", amber after a week); the badge's tap text ends with the date too. If your source
+  ranks 1 = hardest, turn on "My SoS files rank 1 = hardest": it flips what's saved now and every later SoS file, or
+  SoS column in a ROS or Weekly rankings file. If you've edited the manual grid since your last upload, it asks before
+  flipping what's saved. An upload whose numbers only go up to 5 (ratings, not 1-32 ranks) gets a warning.
+- **Cancelling a rankings upload no longer changes your SoS.** A rankings file with an SoS column used to update the
+  SoS on screen even if you cancelled its preview; now it's saved only with the rankings. Uploading an SoS file on
+  the Roster tab now updates the badges right away.
 - **Export Lineup keeps the FLEX badge's blended border.** In the exported image, the FLEX, SFLEX, W/T and W/R slot
   badges lost their colored border and showed as plain dark boxes. They now look as they do on the Lineup tab.
 - **What changed after you replace a ranking set.** When an upload's Replace Set (or the ROS Auto-Fetch's Replace

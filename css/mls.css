@@ -1059,6 +1059,34 @@ button.close-chip {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
+/* The SoS badge (getSoSBadgeHTML in js/mls/sos.js), the same on the Roster tab and in the Waiver Wire
+   Assistant. Its color comes per rank in --sos-color and --sos-bg; this was an inline style until
+   improvements S7, and on desktop the Roster tab's badge looks the same as before. Compact: the Waiver
+   Wire Assistant's cards, padded like .inj-badge/.bye-badge. */
+.badge.sos-badge { background: var(--sos-bg); border: 1px solid var(--sos-color); color: var(--sos-color); font-size: 0.65rem; margin-left: 4px; }
+.badge.sos-badge-compact { padding: 1px 4px; }
+/* It's a button that explains itself on tap, reset to look like a plain badge. On phones and touch
+   screens it shows a calendar icon and the number instead of "SoS: ", which keeps it short without
+   reading as another rank; the tap says what it is. */
+button.sos-badge { font-family: inherit; font-variant-numeric: inherit; line-height: inherit; text-align: inherit; cursor: pointer; }
+button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+.sos-badge-icon { display: none; vertical-align: -1px; margin-right: 2px; }
+@media (max-width: 600px), (hover: none) and (pointer: coarse) {
+    .sos-badge .sos-badge-label { display: none; }
+    .sos-badge .sos-badge-icon { display: inline-block; }
+}
+
+/* The SoS card's status (renderSoSStatus in js/mls/sos.js): age, scale, the 1 = hardest switch. */
+.sos-status { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); display: grid; gap: 0.35rem; }
+.sos-status[hidden] { display: none; }
+.sos-status-scale { color: var(--text-main); white-space: nowrap; }
+.sos-status-muted { color: var(--text-muted); }
+.sos-status-warn { font-size: 0.8rem; }
+.sos-flip { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--text-main); cursor: pointer; }
+.sos-flip input { width: 16px; height: 16px; accent-color: var(--primary-green); margin: 0; }
+.sos-flip-hint { font-size: 0.78rem; line-height: 1.4; }
+.sos-grid-note { font-size: 0.8rem; color: var(--text-muted); margin: 0.5rem 0; }
+
 /* --- MLS SETUP TAB SPECIFIC STYLES --- */
 .league-req-subtitle {
     font-size: 0.85rem;

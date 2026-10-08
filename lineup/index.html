@@ -648,15 +648,18 @@
             <h3><span>Positional Strength of Schedule (SoS)</span></h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Upload a CSV or manually input positional matchup ranks (1-32). Ranks will automatically convert into a color-coded gradient badge on player cards.</span>
+                <span class="tooltip-text">Upload a CSV or manually input positional matchup ranks (1-32): 1 = easiest schedule, 32 = hardest. Ranks will automatically convert into a color-coded gradient badge on player cards. If your source ranks 1 = hardest, upload it and turn on "My SoS files rank 1 = hardest" below.</span>
             </div>
         </header>
         
         <input type="file" id="sosFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload strength of schedule file">
         <div id="sosSuccessMsg" class="success-feedback" role="status">SoS Uploaded Successfully!</div>
+        <!-- How old the SoS is, which end is easy, and the "1 = hardest" switch (js/mls/sos.js, renderSoSStatus). Shown once there's SoS. -->
+        <div id="sosStatus" class="sos-status" hidden></div>
         
         <details class="sos-details-accordion">
             <summary class="sos-summary">Edit Manual SoS Grid</summary>
+            <p class="sos-grid-note">Each team's matchup rank at each position: 1 = easiest, 32 = hardest.</p>
             <div class="sos-table-wrapper">
                 <table class="sos-grid" id="sosGridTable">
                     <thead>

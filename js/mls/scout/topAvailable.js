@@ -165,7 +165,9 @@ import { runScout } from './engine.js';
 
     // One compact row: #, name, team, position rank (tier), the rank-change chip after a set was
     // replaced (improvements S3, js/mls/rankings/moveChips.js), injury/bye, a Would Start flag, and the
-    // cross-position number for the basis on the right (Weekly Flex for RB/WR/TE, ROS Overall).
+    // cross-position number for the basis on the right (Weekly Flex for RB/WR/TE, ROS Overall). No SoS
+    // badge: improvements S7 added one and the owner took it out again (round 3). This is a list to
+    // browse, and schedule is weighed where a free agent meets your player (Auto-Find, Check a List).
     function rowHTML(ctx, fa, i) {
         const row = ctx.evaluate(fa);
         const sleeperId = ctx.meta[fa.cleanName] && ctx.meta[fa.cleanName].id;

@@ -8,6 +8,7 @@ import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, slotDisplayNam
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';
 import { getByeBadgeHTML, getGameInfoHTML, hasKickedOff } from '../lineup/gameInfo.js';
+import { getSoSBadgeHTML } from '../sos.js';
 import { runScout } from './engine.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isAutoLockOverridden, optimizeLineup } from '../main.js';
@@ -506,7 +507,8 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const nums = `<span class="mls-nowrap">${label} ${useFlex ? crossName : 'Pos'}:</span> `
             + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos)}</span>, `
             + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos)}</span>`;
-        return `${verb} <strong>${escapeHtml(other.name)}</strong>${slotText}<span class="mls-verdict-nums">${nums}</span>`;
+        // His SoS badge beside his name (improvements S7), so both schedules sit side by side.
+        return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}<span class="mls-verdict-nums">${nums}</span>`;
     }
 
     // Pill + one-line explanation for a lineup verdict. Returns a neutral pill when there's no
@@ -538,6 +540,12 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         }
     }
 
+    // The Roster tab's SoS badge (js/mls/sos.js) on Auto-Find's and Check a List's cards and comparison
+    // lines (improvements S7; not Top Available, owner's choice in round 3), compact like the injury and
+    // bye badges. Display only: SoS never changes a rank, order or verdict. Exported for Check a List
+    // (scout/engine.js).
+    export const WAIVER_SOS_OPTS = { compact: true };
+
     // One auto-find result card. rosterLine (Whole Roster lens) replaces the lineup explanation
     // line; the lineup pill stays either way so "would he start?" is always answered.
     function renderWaiverScanCard(ctx, row, rosterLine = null) {
@@ -554,7 +562,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                     <span>${escapeHtml(fa.name)}</span>
                     ${teamText}
                 </div>
-                <div class="mls-player-badges-row">${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team)}</div>
+                <div class="mls-player-badges-row">${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team)}${getSoSBadgeHTML(player.team, player.pos, WAIVER_SOS_OPTS)}</div>
                 ${waiverRanksRowHTML(ctx, fa.cleanName, player.pos)}
                 ${shownLine ? `<div class="mls-scan-verdict">${shownLine}</div>` : ''}
             </div>
@@ -747,7 +755,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                 const header = `
                 <div class="mls-scan-benchmark">
                     <div class="mls-scan-benchmark-title">Drop candidate (by ${basisName}):</div>
-                    Your weakest ${groupName(g)} is <strong>${escapeHtml(bench.name)}</strong> (${rankText(bench)}).
+                    Your weakest ${groupName(g)} is <strong>${escapeHtml(bench.name)}</strong>${getSoSBadgeHTML(bench.team, bench.pos, WAIVER_SOS_OPTS)} (${rankText(bench)}).
                     ${upgrades.length ? `Available players ranked ahead of him:`
                         : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
                         : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}

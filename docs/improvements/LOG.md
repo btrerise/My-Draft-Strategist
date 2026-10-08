@@ -1610,3 +1610,304 @@ the baselines) fail the same way on main; the branch's renders are pixel-identic
 runs' actual PNGs, the one size difference gone when re-run alone on each).
 
 **Left over.** None.
+
+## S7 — SoS badge in the Waiver Wire Assistant
+
+**User-visible effect.** With SoS loaded (the Roster tab's upload or manual grid), the Scout tab's Waiver Wire
+Assistant shows the Roster tab's "SoS: 7" badge:
+- **Top Available** (the ranked list): last in each row's badges, after the rank chip, rank-change chip, trending
+  icon, injury and bye.
+- **Auto-Find:** last in each card's badge row (after injury, bye and kickoff).
+- **Check a List** (This League): at the end of each card's name line, for every listed player whose team Sleeper
+  knows (free agent, yours or another team's: a schedule is the same whoever has him).
+- **The player a free agent is compared with:** right after his name in Auto-Find's and Check a List's verdict line
+  ("Would need to pass Josh Allen SoS: 2 (your QB)", "Doesn't pass Derrick Henry SoS: 25 (your weakest RB)") and in
+  Auto-Find's Whole Roster drop candidate ("Your weakest RB is Derrick Henry SoS: 25 (Wk RB5)").
+
+Its title says what the number means: "Strength of schedule: 3 of 32 for RBs on BUF (1 = easiest, 32 = hardest)".
+The upload's help text only says "matchup ranks (1-32)"; the badge has always colored 1 green and 32 red, so 1 is
+read as the easiest. With no SoS loaded, or for a player with no team or at K/DEF (the grid has no column for them),
+there's no badge and the rows look exactly as before. SoS is one grid, so the badge is the same for either Rank By.
+Display only: no rank, order, upgrade verdict or score uses it.
+
+**Owner's decisions (asked before building).**
+- **Views:** Top Available, Auto-Find and Check a List. **Not the Trending view** (I'd suggested all four).
+- **Placement in the compact rows:** at the end of the badges, so nothing that's there today moves (rather than right
+  after the rank chip). I said it would be the first thing to wrap on a phone.
+- **The compared player shows his badge too**, beside his name, so the two schedules sit side by side.
+- **Not on the Dashboard's Best Available lines.**
+
+**What changed and where.**
+- `js/mls/sos.js`: `getSoSBadgeHTML(team, pos, { compact, explain })`. The inline style is now the class
+  `.badge.sos-badge` in `css/mls.css`, with the per-rank colors passed as `--sos-color` / `--sos-bg`. `compact`
+  adds `.sos-badge-compact` (padding 1px 4px, like the injury and bye badges beside it); `explain` adds the title. The
+  Roster tab calls it as before (no options), so its badge has the same look and no title. Checked: every computed
+  style of all 12 Roster badges in the fixture league (colors, border, font, padding, margin, size) is identical to
+  main's at both widths.
+- `js/mls/scout/waivers.js`: `WAIVER_SOS_OPTS` (`{ compact: true, explain: true }`, exported), the badge in
+  `renderWaiverScanCard`'s badge row, in `waiverCompareLine` after the compared player's name (Auto-Find's Replaces /
+  Would need to pass, Whole Roster's Upgrade over, Check a List's verdicts) and in `renderRosterGroup`'s drop
+  candidate line. Teams come from the roster entry for your players and from the cached Sleeper player map for free
+  agents (`freeAgentPlayer`), as the rows already did.
+- `js/mls/scout/topAvailable.js`: the badge at the end of `rowHTML`'s badges. `trendRowHTML` is unchanged.
+- `js/mls/scout/engine.js`: Check a List's card (waiver path only, so the Trade Analyzer's cards are unchanged),
+  team from `waiverCtx.meta`.
+- `sw.js`: `CACHE_NAME` v2.8.85 → v2.8.86. No new files. CHANGELOG line under Lineup Strategist.
+
+**Phone width (375px), what wraps.** The compact rows were already full at 375px, so the badge goes onto a second line:
+- **Top Available:** every row wraps at 375px (30px → 52px tall), including the shortest ("Jayden Daniels WAS QB5").
+  At 390px (the tests' phone width), rows with a Starts flag or a long name wrap and the rest stay on one line. On
+  desktop, the FLEX or single-position list stays on one line; in All's three-across boxes, rows with a Starts flag
+  or a long name wrap.
+- **Auto-Find:** in the fixture league the card's badge row is otherwise empty (no kickoff info), so the badge adds
+  a line (about 18px). With kickoff info it joins that line. In a verdict line it sits beside the name and wraps
+  with the text.
+- **Check a List:** joins the name line; a long name ("Jaxon Smith-Njigba") wraps onto two lines with it.
+- A wrapped badge starts 4px in from the line, like a wrapped injury or bye badge (they share `margin-left: 4px`).
+
+**Tests.** `tests/mls-waiver-sos.spec.mjs` (both widths), loading SoS through the upload (a team-by-position grid):
+- With no SoS: no badge in Top Available, Auto-Find or Check a List.
+- Top Available: each free agent's value for his team and position (CIN RB 28 for Chase Brown, CIN WR 10 for
+  Ja'Marr Chase), the title, the compact class, last in the row, 1 green and 32 red; the same badges with Rank By ROS;
+  none in the Trending view.
+- Auto-Find: the card's badge, the compared starter's (Josh Allen SoS: 2, CeeDee Lamb SoS: 30) and the drop
+  candidates' (Derrick Henry, Garrett Wilson).
+- Check a List: a free agent's badge and his comparison's, a rostered player's, none for a kicker.
+- The Roster tab's badge: same text, no compact class, no title.
+- A free agent with no NFL team (Chase Brown's team removed from the player map): no badge in Top Available or
+  Auto-Find.
+
+**Screenshots.** None re-taken: the screenshot league has no SoS, so no badge shows, and the Roster tab's badge
+looks the same.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests pass, 230 Playwright tests pass (the new spec's 4
+included). The 10 screenshot comparisons that fail in this cloud session (`visual.spec.mjs`, the font environment
+noted in earlier entries) fail the same way on main: I rendered all 40 screenshots on main and on this branch here and
+`npm run pxdiff` found them all pixel-identical. CI (the baseline environment) is the final word.
+
+**Left over.**
+- ~~Rows wrap on phones~~: round 2 below shows only the number on phones.
+- Check a List's **All my leagues** search (where a player is rostered across leagues) has no badge; it answers a
+  different question and wasn't asked about.
+- The Roster tab's badge has no title. Adding the same one there is one word in `js/mls/render/roster.js`
+  (`{ explain: true }`), left alone because the card kept the Roster badge out of scope.
+
+### S7, round 2: tap to explain, and only the number on phones (owner's request)
+
+**Owner's request.** After the first push the owner asked for a tooltip on the badge, so phones can show just the
+number and a tap says what it is. Asked for in this session, outside the card's first scope.
+
+**User-visible effect.** In the Waiver Wire Assistant (Top Available, Auto-Find, Check a List, and the compared
+player's badge):
+- **Tap or click the badge** and a toast says what it is: "Strength of schedule: 3 of 32 for RBs on BUF (1 = easiest,
+  32 = hardest)". Desktop hover shows the same text, as before.
+- **Phones and touch screens show only the number** ("3" in the green-to-red SoS colors) instead of "SoS: 3".
+  Desktop still shows "SoS: 3". The breakpoint is the one the Dashboard's Sleeper link uses: `(max-width: 600px),
+  (hover: none) and (pointer: coarse)`, so a touch tablet gets the number too, since a tap explains it there.
+- The Roster tab's badge is unchanged (a plain badge, "SoS: 25" at every width, no title or tap).
+
+**What changed and where.**
+- `js/mls/sos.js`: with `explain`, `getSoSBadgeHTML` returns a `<button data-action="explainSoS">` with `data-tip`,
+  `title` and `aria-label` (screen readers hear the whole sentence even when only the number shows), its "SoS: " in a
+  `.sos-badge-label` span. `explainSoS` shows the tip as a toast. This is the rank-change chips' pattern
+  (`rankings/moveChips.js`, S3 round 5); like them it uses a toast, not the site's tooltip component, which the rows
+  would clip. Without `explain` (the Roster tab) the badge is the same `<span>` as before.
+- `js/mls/main.js`: the `explainSoS` action.
+- `css/mls.css`: the button reset (`font-family`, `font-variant-numeric`, `line-height`, `text-align` inherited, so
+  it's the span's size exactly: every computed style and the size of all 15 badges in Top Available and Auto-Find
+  match round 1's span on desktop), a focus ring, the phone rule hiding `.sos-badge-label` in compact badges, and
+  `margin-left: 0` inside Top Available's rows, which already space their badges with a flex gap (4px saved).
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.86 (one bump per branch, still above main's).
+
+**Phone width now.** Row heights in the fixture league's Top Available (All and FLEX):
+- **390px** (the tests' phone, and most current phones): one line again, except Chase Brown's row, which already
+  wrapped before S7 (trending icon plus Starts).
+- **375px and 360px** (iPhone SE/mini, small Androids): the James Cook row is 4px short of one line and Jaxon
+  Smith-Njigba's (long name) 11px, so those still wrap; QB, TE and rows without Starts fit. Going further would mean
+  tightening the spacing of every badge in the row, which I left alone.
+- Desktop is unchanged from round 1.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests, 230 Playwright tests pass; the same 10
+environment-only screenshot failures as round 1, and all 40 renders pixel-identical to main's.
+
+**Tests.** `tests/mls-waiver-sos.spec.mjs` adds: the badge shows "3" on the phone project and "SoS: 3" on desktop
+(rendered text), its `aria-label`, a click showing the toast, the compared player's badge showing "2" / "SoS: 2", and
+the Roster tab's badge still a `<span>` reading "SoS: 25" at both widths.
+
+**Follow-up: a legend for the badges (runbook card S10).** The owner noted the app may need a legend for all its symbols
+and badges, and asked for a runbook card (added the same day; Needs: S7). Not built here. The card adds one "What the badges mean" list (position-rank chip and tier,
+rank-change chips, trending icon, Starts, injury and bye, SoS, TAXI, R, the FLEX blends), probably as a section of
+the Guide tab plus a small info link on the Scout tab's Waiver Wire Assistant, drawn with the real badge markup so it
+can't drift from what the rows show.
+
+### S7, round 3: not on Top Available; a calendar icon on phones (owner's choices)
+
+**The question.** The owner asked me to judge, as a user, whether the badge helps on Top Available or clutters it. My
+answer: mostly clutter there. Top Available is a list to browse; schedule matters where you decide, a free agent
+against your player, which Auto-Find and Check a List show side by side. Weekly rankings already price in the week's
+matchup. Most values (a 14, a 19) say nothing, yet each row got a bright badge that pulled the eye from the rank chip
+the list is sorted by, in colors that compete with the position colors. On phones the bare number read like another
+rank ("RB8 3 … #21"). And the grid has no K or DEF, where weekly schedule matters most. I offered: badges only for
+standout schedules (1–8, 25–32), remove it from Top Available, a calendar icon so it can't be read as a rank, or
+leave it. **The owner chose to remove it from Top Available, and to add the calendar icon on phones where it stays.**
+
+**User-visible effect.**
+- **Top Available** rows have no SoS badge, with or without SoS loaded: exactly as before S7.
+- **Auto-Find and Check a List** keep it, including the compared player's. On phones and touch screens it's now a
+  small calendar icon and the number (Feather `calendar`, in the badge's own green-to-red color) instead of the bare
+  number. Desktop still shows "SoS: 7", unchanged.
+- The Roster tab is unchanged (full "SoS: 25" at every width, no icon).
+
+**What changed and where.**
+- `js/mls/scout/topAvailable.js`: the badge and its imports removed from `rowHTML`; the comment says why.
+- `js/mls/sos.js`: the explaining badge starts with an inline SVG (`.sos-badge-icon`, `aria-hidden="true"`,
+  `stroke="currentColor"`, 10px).
+- `css/mls.css`: `.sos-badge-icon` hidden by default and shown in compact badges inside the phone rule that hides
+  "SoS: "; round 2's `margin-left: 0` for Top Available rows removed (nothing there now).
+- CHANGELOG line reworded. `CACHE_NAME` stays v2.8.86.
+
+**Phone width.** Top Available's rows are back to their pre-S7 heights. In Auto-Find the badge sits in the card's
+badge row (with kickoff info when there is any) and in the verdict line beside the compared name; the icon adds
+about 12px to the badge.
+
+**Tests.** `tests/mls-waiver-sos.spec.mjs` rewritten around Auto-Find: no badge on Top Available with SoS loaded; each
+free agent's value, title, aria-label, tap toast and colors on Auto-Find cards; the icon visible on the phone project
+and hidden on desktop, with `aria-hidden` and `currentColor`; the same badges under ROS; the drop candidates, Check a
+List, the no-team case and the Roster tab as before.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests, 230 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders pixel-identical to main's.
+
+### S7, round 4: the Roster tab's badge works the same way (owner's request)
+
+**The question.** The owner asked whether the Roster tab's badge should match on phones. My view: yes, mainly because
+it had no explanation at all there (no title, no tap) and the Roster tab is where SoS shows most; a single look also
+gives the S10 legend one badge to explain. It saves no space: at 375px the badge already sat on its own line under
+the rank badge before S7, and the narrower version still doesn't fit beside it. The owner: **go ahead, the whole site
+should be consistent.**
+
+**User-visible effect.** Every SoS badge on the site (the Roster tab, Auto-Find, Check a List; Draft Strategist and
+T-Score have none) is the same badge:
+- **Tap or click** for "Strength of schedule: 25 of 32 for RBs on BAL (1 = easiest, 32 = hardest)"; desktop hover
+  shows it too.
+- **Phones and touch screens:** the calendar icon and the number. Desktop: "SoS: 25".
+- The Roster tab keeps its usual size (not the compact cards' padding), so it still matches the team and rank badges
+  beside it. On desktop it's unchanged: every computed style and the size of all 12 Roster badges in the fixture
+  league match main's. On phones it's about 14px narrower.
+
+**What changed and where.**
+- `js/mls/sos.js`: `getSoSBadgeHTML` always returns the explaining button; the `explain` option is gone (every caller
+  wanted it), `compact` stays. `js/mls/render/roster.js` is unchanged: its call already had no options.
+- `js/mls/scout/waivers.js`: `WAIVER_SOS_OPTS` is `{ compact: true }`.
+- `css/mls.css`: the phone rule swapping "SoS: " for the icon applies to every `.sos-badge`, not only compact ones;
+  comments updated.
+- CHANGELOG: the explaining and phone look are their own line, covering both tabs. `CACHE_NAME` stays v2.8.86.
+
+**Tests.** `tests/mls-waiver-sos.spec.mjs`: the Roster tab's badge reads "25" with a visible icon on the phone
+project and "SoS: 25" with the icon hidden on desktop, has the title, isn't compact, and a tap shows the toast.
+`tests/mls-sos.spec.mjs` (the upload) still passes.
+
+**Checks run.** `npm run check`: check-precache OK, 267 unit tests, 230 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders pixel-identical to main's.
+
+### S7, round 5: which end is easy, how old it is, and a "1 = hardest" switch (owner's choices)
+
+**The question.** Asked to review the badge again as a user, I listed: (1) nothing said which end of the scale is easy,
+and sources disagree (some rank by defense strength, 1 = toughest), so a reversed file would color everything
+backwards with no warning; the upload also accepted 1-5 ratings as if they were ranks; (2) SoS never showed its age,
+though a weekly grid is wrong a week later; (3) no K/DEF columns. The owner chose **1 and 2, plus a flip switch**, and
+said the switch must cover **SoS inside ROS rankings files** too. (3) stays a possible card.
+
+**User-visible effect.** On the Roster tab's SoS card, once SoS is loaded:
+- **A status line:** "SoS updated today · 1 = easiest, 32 = hardest". Amber with "- consider refreshing" after 7 days
+  (`getFreshness`, as the rankings cards do). SoS saved before this change reads "Upload date unknown (saved before
+  dates were kept)".
+- **"My SoS files rank 1 = hardest"** (a checkbox, remembered). Turning it on flips the SoS saved now (it's always
+  stored as 1 = easiest, so one tap fixes a file that turned out to be reversed, no re-upload) and every later SoS file,
+  and SoS column in a ROS or Weekly rankings upload. Turning it off flips back. The manual grid is always 1 = easiest
+  and is never flipped; its new note says so.
+- **A warning** when the numbers look like 1-5 ratings (at least 8 values, none above 5): a toast on upload and a line on
+  the card that stays until real ranks replace them.
+- **The badge's tap text** ends with the date: "..., as of Tue, 9/15".
+- **The rankings upload preview** says how a file's SoS column will be read: flipped (switch on) or "read as 1 = easiest,
+  32 = hardest" with a pointer to the switch.
+- The card's tooltip says which end is easy.
+
+**Two fixes found on the way.**
+- A rankings file with an SoS column merged its SoS into memory when the file was parsed, before the preview, so
+  Cancel still changed the badges until a reload (the saved copy was untouched). It's now merged on Save, with the flip.
+- Uploading an SoS file didn't redraw the open tab, so the Roster tab's badges kept the old values until you switched
+  tabs. It now redraws like Save Manual SoS.
+
+**Screenshots: why everything new shows only once SoS is loaded.** The SoS card is in the Roster tab's full-page
+screenshot, and this container can't render baselines that match CI's fonts (see S2, S6, F4). So the status line and
+the switch live in `#sosStatus`, hidden with no SoS (the screenshot league has none), the grid note is inside the
+collapsed "Edit Manual SoS Grid", and the scale is added to the card's tooltip, which is hidden and absolutely
+positioned. That's also when they matter. (A first render here made the Roster screenshot 12px taller: `.sos-status`'s `display: grid` beat the
+`hidden` attribute, leaving its margin. `.sos-status[hidden] { display: none; }` fixed it, and the spec checks it.) **Not changed for the same reason:** the Guide tab's SoS bullets still say
+only "(1-32)". Runbook card S10 re-takes the Guide screenshots anyway, so it now carries that line.
+
+**What changed and where.**
+- `js/mls/sosScale.js` (new, in `PRECACHE_ASSETS`): `SOS_SCALE_TEXT`, `reverseSosValue` (1-32 → 33 − n, decimals kept,
+  anything else unchanged), `looksLikeRatings`, `sosValues`. No imports, so it's unit-tested directly.
+- `js/mls/sos.js`: `importSoSUpdates` (flip, warn, merge), `saveImportedSoS` / `saveSoS` (saves the map and today's
+  date, then redraws the grid and the status), `renderSoSStatus` (called from `generateSoSGrid`, so every data change
+  and page load draws it), `setSosReversed`, the dated badge title. The SoS file upload collects its values and imports
+  them through `importSoSUpdates`.
+- `js/mls/rankings/uploadPreview.js`: the parsed SoS waits in `pendingRankingsUpload` and is imported on Save; the
+  preview note's text follows the switch.
+- `js/shared/storage/keys.js`: **two new keys**, `mls_sos_updated` (ms) and `mls_sos_reversed` ('1'/'0'). Both have the
+  `mls_` prefix, so Backup/Restore and Factory Reset include them. `js/mls/state.js` reads them.
+- `lineup/index.html`: `#sosStatus`, the grid note, the tooltip text. `js/mls/main.js`: the `setSosReversed` change
+  action. `css/mls.css`: `.sos-status*`, `.sos-flip*`, `.sos-grid-note`.
+- `sw.js`: `sosScale.js` added to `PRECACHE_ASSETS`. `CACHE_NAME` stays v2.8.86 (one bump per branch, above main's).
+- CHANGELOG: two lines.
+
+**Tests.**
+- `tests/unit/sosScale.test.mjs`: flipping (1↔32, 4.5→28.5, twice is the identity, junk unchanged), the ratings test
+  (8 values, a 6, blanks), `sosValues`.
+- `tests/mls-sos-scale.spec.mjs` (both widths): the card unchanged with no SoS; after an upload, "SoS updated today",
+  the scale, the switch off, the saved date and the badge's dated title; the switch flipping saved values, the grid and
+  a Roster badge without touching the date; an upload with the switch on flipped on the way in; the switch surviving a
+  reload and flipping back; 8 days old in amber; an unknown date; 1-5 ratings (toast and card note); Save Manual SoS
+  dating it and clearing the warning; a ROS rankings upload's SoS column flipped per the preview note, nothing merged on
+  Cancel, merged on Save; the other preview wording with the switch off.
+- `tests/mls-waiver-sos.spec.mjs`: tap texts now end with the date.
+
+**Checks run.** `npm run check`: check-precache OK, 271 unit tests, 236 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders pixel-identical to main's.
+
+### S7, round 6: where SoS came from, and the switch asks before flipping grid edits (owner's choice)
+
+**The question.** Reviewing round 5 as a user, I found a trap and a gap. The trap: everything saved is stored as
+1 = easiest, so with the switch on, grid edits (always 1 = easiest) got flipped when you later turned it off, a typed 5
+becoming 28, silently. The gap: SoS can come from an SoS file, a Weekly rankings file's Matchup column or a ROS rankings
+file's SoS column, the latest quietly overwriting the rest, and nothing said which one the badges showed. The owner
+chose to **fix both now**. (One switch for all sources stays as is: files from one site rank the same way.)
+
+**User-visible effect.**
+- **The status line names the source:** "SoS updated today from sos-week6.csv", "...from your ROS rankings
+  (rankings.csv)", "...from your Weekly rankings (...)" or "...from the manual grid". SoS saved before this round
+  shows no source.
+- **The switch asks first when the grid was saved after the last upload:** "You've edited the manual grid since your
+  last upload, and the grid is always 1 = easiest, 32 = hardest. Flip the SoS you have now too?" **Flip saved SoS**
+  flips as before; **Keep as is** (or Escape) leaves the saved numbers alone, and the switch still applies to later
+  uploads. Each says so in a toast. After an upload, the switch flips without asking, as in round 5.
+
+**What changed and where.**
+- `js/shared/storage/keys.js`: **a third new key**, `mls_sos_source` (`{ kind: 'file' | 'rankings' | 'grid', name?,
+  type? }`), read into `State.sosSource` (`js/mls/state.js`).
+- `js/mls/sos.js`: `saveSoS(source)` records the date and source together (a flip passes none, so both stay);
+  `sosSourceText` (file names escaped); `setSosReversed` is async and uses the site's `showConfirm` when the source is
+  the grid.
+- `js/mls/rankings/uploadPreview.js`: the upload's file names travel with the pending preview and are saved as the
+  source on Save.
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.86.
+
+**Tests.** `tests/mls-sos-scale.spec.mjs`: the source in the status line for an SoS file, the manual grid and a ROS
+rankings upload; the stored source; after a grid save, the switch's dialog, Keep as is (numbers unchanged, switch on,
+toast), then Flip saved SoS (numbers flipped, date and source kept).
+
+**Checks run.** `npm run check`: check-precache OK, 271 unit tests, 236 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders pixel-identical to main's.
+
