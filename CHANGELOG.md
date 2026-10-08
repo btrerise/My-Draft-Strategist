@@ -73,11 +73,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **Your player's tier in the Waiver Wire Assistant.** When your rankings have tiers, the player a free agent is
   measured against now shows his, like the free agent does: Auto-Find's "Your weakest RB is Derrick Henry (ROS RB8
-  (T4))" and its "Next weakest" list, and the two numbers under every verdict ("ROS Pos: Cook RB5 (T3), Henry RB8
-  (T4)"), so you can tell a tier jump from a same-tier shuffle. Each tier is the one for the number shown: position,
-  FLEX or overall. A single rankings file's Tier column is its overall list's, so it shows beside Overall ranks;
-  position tiers come from per-position files. It doesn't change what counts as an upgrade, and rankings without
-  tiers look as before.
+  · T4)" and its "Next weakest" list, and the two numbers under every verdict ("ROS Pos: Cook RB5 (T3), Henry RB8
+  (T4)"). The verdict also says it in words: "Upgrade over Derrick Henry · 1 tier up" (in green), "· same tier" or
+  "· 1 tier down", so you can tell a tier jump from a same-tier shuffle at a glance. Each tier is the one for the
+  number shown: position, FLEX or overall. A single rankings file's Tier column is its overall list's, so it shows
+  beside Overall ranks; position tiers come from per-position files. It doesn't change what counts as an upgrade,
+  and rankings without tiers show none.
+- **"Next weakest" keeps each name with his rank** on a phone, instead of leaving the rank at the start of the next
+  line.
 - **Strength of schedule in the Waiver Wire Assistant.** When you've loaded SoS (the upload or the manual grid on
   the Roster tab), the Scout tab's Auto-Find and Check a List cards show the same "SoS: 7" badge as the Roster tab,
   and so does the player each free agent is compared with ("Would need to pass Josh Allen SoS: 2", your weakest

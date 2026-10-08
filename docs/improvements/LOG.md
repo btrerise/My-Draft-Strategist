@@ -1990,3 +1990,46 @@ noted in earlier entries) also fail on main: I rendered all 40 screenshots on ma
 - With the single-file uploads most people use, position comparisons show no tier, because the file's Tier column
   belongs to its overall list. Showing that tier beside a position rank was the alternative to decision 2.
 - S10 (the badge legend) should describe "(T4)" beside the compared player as the same tier tag.
+
+### S8, round 2: the verdict says the tier gap, a cleaner header, Next weakest kept whole (owner's choices)
+
+**Why.** Asked to review the first push as a user, I took screenshots of each view at both widths and raised four
+points. The owner chose 1, 3 and 4:
+1. The verdict made you compare two small gray tags by eye; the card's point was to tell a tier jump at a glance.
+2. (Not chosen) On phones the two numbers under a verdict now wrap onto two lines.
+3. "(ROS RB8 (T4))" read clumsily with parentheses inside parentheses.
+4. On phones "Next weakest" left a name at the end of one line and his rank on the next.
+
+**User-visible effect.**
+- **The tier gap in words**, after every comparison verdict in Auto-Find and Check a List, when both players are
+  tiered: "Upgrade over Derrick Henry · 1 tier up" (green), "· same tier", "· 2 tiers down" (both muted). The gap
+  comes from the same two tiers as the numbers under it. Hover shows "Tier 3 against tier 4". Display only: the
+  verdict and what counts as an upgrade are unchanged.
+- **The drop-candidate header and Next weakest** read "(ROS RB8 · T4)", using the "·" separator the rank rows already
+  use ("ROS: #15 (T3) · RB5"). The verdict's numbers line keeps "(T4)", matching the free agents' rank rows above it.
+- **Next weakest:** each "name (rank)" wraps as a whole. This applies with or without tiers. Without tiers it changes
+  only where the line breaks on a narrow screen ("A.J. Brown (Wk WR9), Amon-Ra / St. Brown (Wk WR6)" now moves
+  "Amon-Ra St. Brown (Wk WR6)" to the next line).
+
+**What changed and where.**
+- `js/mls/scout/waivers.js`:
+  - `tierGapHTML(faTier, otherTier)`: the gap span, or "" unless both players are tiered.
+  - `waiverCompareLine` appends the gap after the slot text.
+  - `rankText` writes "· T4" (a `.mls-tier` with its "Tier 4" title) inside the same `.mls-nowrap`.
+  - Next weakest items are `.mls-scan-next-item` spans, each carrying its own comma.
+- `css/mls.css`: `.mls-scan-next-item` (inline-block, so each piece wraps whole and only breaks inside when it's
+  wider than a line), and `.mls-tier-gap` (nowrap, muted, green with `.is-up`).
+- CHANGELOG line updated, plus a line for Next weakest. `CACHE_NAME` stays v2.8.87 (this branch's bump).
+
+**Tests.** `tests/mls-waiver-tiers.spec.mjs`:
+- The new header wording, and "· 1 tier up" with the up class and its title.
+- "· 4 tiers down" (Smith-Njigba against Lamb by Wk Flex) and "· 1 tier down" (Chase Brown).
+- A "same tier" upgrade, with position tiers four players wide so Cook RB5 and Henry RB8 are both T2.
+- Every Next weakest piece on one line, with and without tiers.
+- No gap without tiers.
+
+**Left over.** Point 2: on a phone the verdict's two numbers still wrap onto two lines when tiered. The gap in words
+now carries the answer, so I left it.
+
+**Checks run.** `npm run check`: check-precache OK, 271 unit tests, 240 Playwright tests pass; the same 10
+environment-only screenshot failures as round 1, and all 40 renders are still pixel-identical to main's.

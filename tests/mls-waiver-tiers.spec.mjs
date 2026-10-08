@@ -1,9 +1,11 @@
 // Lineup Strategist Scout tab: the tier of the player a free agent is compared against (improvements S8).
 // Free agents' ranks carry their tier ("(T3)", tierTag in js/mls/constants.js); the player they're
 // measured against now does too, wherever he's named: Auto-Find's Whole Roster drop candidate ("Your
-// weakest RB is Derrick Henry (ROS RB8 (T4))") and its "Next weakest" list, and the numbers line under
+// weakest RB is Derrick Henry (ROS RB8 · T4)") and its "Next weakest" list, and the numbers line under
 // every comparison verdict (Upgrade over, Doesn't pass, Replaces, Would need to pass), where the free
-// agent's number gets his tier too. Owner's choices: the same "(T9)" tag; the tier that belongs to the
+// agent's number gets his tier too. Round 2 (owner's choices after a review as a user): the verdict says
+// the gap in words ("· 1 tier up", "· same tier"), the header drops the inner parentheses, and each
+// "Next weakest" name wraps together with his rank. Owner's choices: the same "(T9)" tag; the tier that belongs to the
 // number shown (position tier for "RB8", the overall list's for "Overall #23", the FLEX list's for
 // "Flex #12"), like the rest of the Waiver Wire; not on the Dashboard's Best Available lines; display
 // only, so Auto-Find and Check a List still count any better rank as an upgrade.
@@ -27,23 +29,23 @@ const POS = Object.fromEntries(WAIVER_RANKINGS_CSV.trim().split('\n').slice(1).m
 const UNTIERED_CSV = WAIVER_RANKINGS_CSV.trim().split('\n').map(l => { const c = l.split(','); c.splice(4, 1); return c.join(','); }).join('\n');
 
 // Rewrites both saved sets the way per-position uploads store them: each player's position rank, and a
-// position tier of ceil(posRank / 2), with Cook and Henry swapped. Weekly also gets a FLEX list (RB/WR/TE
+// position tier of ceil(posRank / tierSize), with Cook ahead of Henry. Weekly also gets a FLEX list (RB/WR/TE
 // only, tier ceil(flexRank / 4)), as a Weekly FLEX file gives. Then reloads, so the app reads them.
-async function storePositionTiers(page) {
-    await page.evaluate((POS) => {
+async function storePositionTiers(page, tierSize = 2) {
+    await page.evaluate(({ POS, tierSize }) => {
         for (const key of ['mls_ranking_sets_ros', 'mls_ranking_sets_weekly']) {
             const sets = JSON.parse(localStorage.getItem(key));
             for (const set of sets) {
                 const data = set.data;
                 const cook = data.find(r => r.name === 'James Cook'), henry = data.find(r => r.name === 'Derrick Henry');
-                for (const k of ['rank', 'tier']) [cook[k], henry[k]] = [henry[k], cook[k]];
+                if (cook.rank > henry.rank) for (const k of ['rank', 'tier']) [cook[k], henry[k]] = [henry[k], cook[k]];
                 data.sort((a, b) => a.rank - b.rank);
                 const seen = {};
                 let flex = 0;
                 for (const r of data) {
                     const pos = POS[r.name];
                     r.posRank = seen[pos] = (seen[pos] || 0) + 1;
-                    r.posTier = Math.ceil(r.posRank / 2);
+                    r.posTier = Math.ceil(r.posRank / tierSize);
                     const isFlex = ['RB', 'WR', 'TE'].includes(pos);
                     if (key.endsWith('weekly')) {
                         r.flexRank = isFlex ? ++flex : 999;
@@ -56,7 +58,7 @@ async function storePositionTiers(page) {
             }
             localStorage.setItem(key, JSON.stringify(sets));
         }
-    }, POS);
+    }, { POS, tierSize });
     await page.reload();
 }
 
@@ -74,6 +76,17 @@ async function expectTiersUnbroken(page) {
         }));
     expect(pieces.length, 'tiers on compared players').toBeGreaterThan(0);
     expect(pieces, 'each tier inside one unbroken .mls-nowrap').toEqual(pieces.map(() => 1));
+}
+
+// Each "Next weakest" piece (name and rank) sits on one line.
+async function expectNextWeakestUnbroken(page) {
+    const lines = await benchmark(page).locator('.mls-scan-next-item').evaluateAll(els => els.map(el => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return new Set(Array.from(range.getClientRects()).filter(r => r.width > 0).map(r => Math.round(r.bottom))).size;
+    }));
+    expect(lines.length, 'Next weakest pieces').toBeGreaterThan(0);
+    expect(lines, 'each Next weakest name on one line with his rank').toEqual(lines.map(() => 1));
 }
 
 async function runAutoFind(page, { basis, pos, compare }) {
@@ -108,10 +121,11 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
         // One file with a Tier column: that's the overall list's tier, so it shows beside ROS Overall
         // (Kittle #23 T4, Wilson #21 T4, Brown #19 T3) and not beside a position rank.
         await runAutoFind(page, { basis: 'ros', pos: 'FLEX', compare: 'roster' });
-        await expect(benchmark(page)).toContainText('Your weakest RB/WR/TE is George Kittle (ROS Overall #23 (T4)).');
-        await expect(benchmark(page)).toContainText('Next weakest: Garrett Wilson (ROS Overall #21 (T4)), A.J. Brown (ROS Overall #19 (T3))');
+        await expect(benchmark(page)).toContainText('Your weakest RB/WR/TE is George Kittle (ROS Overall #23 · T4).');
+        await expect(benchmark(page)).toContainText('Next weakest: Garrett Wilson (ROS Overall #21 · T4), A.J. Brown (ROS Overall #19 · T3)');
         await expect(benchmark(page).locator('.mls-tier').first()).toHaveAttribute('title', 'Tier 4');
         await expectTiersUnbroken(page);
+        await expectNextWeakestUnbroken(page);
         await runAutoFind(page, { basis: 'ros', pos: 'RB', compare: 'roster' });
         await expect(benchmark(page)).toContainText('Your weakest RB is Derrick Henry (ROS RB5).');
         await expect(benchmark(page).locator('.mls-tier')).toHaveCount(0);
@@ -121,9 +135,11 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
 
         // Auto-Find, Whole Roster: the drop candidate and the upgrade's numbers line.
         await runAutoFind(page, { basis: 'ros', pos: 'RB', compare: 'roster' });
-        await expect(benchmark(page)).toContainText('Your weakest RB is Derrick Henry (ROS RB8 (T4)).');
+        await expect(benchmark(page)).toContainText('Your weakest RB is Derrick Henry (ROS RB8 · T4).');
         const cook = scanCard(page, 'James Cook');
-        await expect(cook.locator('.mls-scan-verdict')).toContainText('Upgrade over Derrick Henry');
+        await expect(cook.locator('.mls-scan-verdict')).toContainText('Upgrade over Derrick Henry · 1 tier up');
+        await expect(cook.locator('.mls-tier-gap')).toHaveClass(/\bis-up\b/);
+        await expect(cook.locator('.mls-tier-gap')).toHaveAttribute('title', 'Tier 3 against tier 4');
         await expect(cook.locator('.mls-verdict-nums')).toHaveText('ROS Pos: Cook RB5 (T3), Henry RB8 (T4)');
         // His own rank row (unchanged) reads the same tier as the verdict line.
         await expect(cook.locator('.mls-scan-ranks')).toContainText('ROS Pos: RB5 (T3)');
@@ -131,36 +147,48 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
 
         // FLEX by ROS compares Overall ranks, with the overall list's tiers.
         await runAutoFind(page, { basis: 'ros', pos: 'FLEX', compare: 'roster' });
-        await expect(benchmark(page)).toContainText('Your weakest RB/WR/TE is Derrick Henry (ROS Overall #26 (T4)).');
-        await expect(benchmark(page)).toContainText('Next weakest: George Kittle (ROS Overall #23 (T4)), Garrett Wilson (ROS Overall #21 (T4))');
+        await expect(benchmark(page)).toContainText('Your weakest RB/WR/TE is Derrick Henry (ROS Overall #26 · T4).');
+        await expect(benchmark(page)).toContainText('Next weakest: George Kittle (ROS Overall #23 · T4), Garrett Wilson (ROS Overall #21 · T4)');
         await expect(cook.locator('.mls-verdict-nums')).toHaveText('ROS Overall: Cook #15 (T3), Henry #26 (T4)');
+        await expect(cook.locator('.mls-tier-gap')).toHaveText('· 1 tier up');
+        await expectNextWeakestUnbroken(page);
 
         // Auto-Find, Starting Lineup: Would need to pass, by Weekly FLEX (flex tiers) or position (position tiers).
         await runAutoFind(page, { basis: 'weekly', pos: 'FLEX', compare: 'lineup' });
-        await expect(scanCard(page, 'Jaxon Smith-Njigba').locator('.mls-scan-verdict')).toContainText('Would need to pass CeeDee Lamb');
+        await expect(scanCard(page, 'Jaxon Smith-Njigba').locator('.mls-scan-verdict')).toContainText('Would need to pass CeeDee Lamb (your FLEX) · 4 tiers down');
+        await expect(scanCard(page, 'Jaxon Smith-Njigba').locator('.mls-tier-gap')).toHaveClass(/\bis-down\b/);
         await expect(scanCard(page, 'Jaxon Smith-Njigba').locator('.mls-verdict-nums')).toHaveText('Wk Flex: Smith-Njigba #22 (T6), Lamb #5 (T2)');
         await expect(scanCard(page, 'Sam LaPorta').locator('.mls-verdict-nums')).toHaveText('Wk Pos: LaPorta TE4 (T2), Bowers TE1 (T1)');
         await expectTiersUnbroken(page);
 
         // Check a List, Whole Roster: Upgrade over and Doesn't pass.
         await runCheckList(page, { basis: 'ros', pos: 'RB', compare: 'roster' }, ['James Cook', 'Chase Brown']);
-        await expect(listCard(page, 'James Cook')).toContainText('Upgrade over Derrick Henry');
+        await expect(listCard(page, 'James Cook')).toContainText('Upgrade over Derrick Henry (your weakest RB) · 1 tier up');
         await expect(listCard(page, 'James Cook').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Cook RB5 (T3), Henry RB8 (T4)');
-        await expect(listCard(page, 'Chase Brown')).toContainText("Doesn't pass Derrick Henry");
+        await expect(listCard(page, 'Chase Brown')).toContainText("Doesn't pass Derrick Henry (your weakest RB) · 1 tier down");
         await expect(listCard(page, 'Chase Brown').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Brown RB9 (T5), Henry RB8 (T4)');
         await expectTiersUnbroken(page);
+
+        // Wider position tiers (4 players each): Cook RB5 and Henry RB8 are both T2, so the upgrade is a
+        // same-tier one, and Chase Brown (RB9, T3) is one tier down.
+        await storePositionTiers(page, 4);
+        await runCheckList(page, { basis: 'ros', pos: 'RB', compare: 'roster' }, ['James Cook', 'Chase Brown']);
+        await expect(listCard(page, 'James Cook')).toContainText('Upgrade over Derrick Henry (your weakest RB) · same tier');
+        await expect(listCard(page, 'James Cook').locator('.mls-tier-gap')).toHaveClass(/\bis-same\b/);
+        await expect(listCard(page, 'James Cook').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Cook RB5 (T2), Henry RB8 (T2)');
+        await expect(listCard(page, 'Chase Brown')).toContainText("Doesn't pass Derrick Henry (your weakest RB) · 1 tier down");
 
         // Top Available names no compared player; its chip shows the same position tier the lines use.
         await callApp(page, 'setWaiverMode', 'top');
         await callApp(page, 'setWaiverPos', 'RB');
         await page.locator('#waiverScanBasis').selectOption('ros');
-        await expect(out(page).locator('.mls-ta-row').filter({ hasText: 'James Cook' }).locator('.mls-ta-pos')).toHaveText('RB5 T3');
+        await expect(out(page).locator('.mls-ta-row').filter({ hasText: 'James Cook' }).locator('.mls-ta-pos')).toHaveText('RB5 T2');
         await expect(out(page)).not.toContainText('Derrick Henry');
 
         await expectClean(page, state);
     });
 
-    test('rankings without tiers show none, exactly as before', async ({ page }) => {
+    test('rankings without tiers show no tiers', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await loadMlsRankings(page, UNTIERED_CSV, 30);
@@ -171,6 +199,7 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
         // No wrapper is added without a tier, so the line's markup is what it was.
         await expect(benchmark(page).locator('.mls-nowrap')).toHaveCount(0);
         await expect(out(page).locator('.mls-tier')).toHaveCount(0);
+        await expectNextWeakestUnbroken(page);
 
         await runAutoFind(page, { basis: 'weekly', pos: 'FLEX', compare: 'lineup' });
         await expect(scanCard(page, 'Sam LaPorta').locator('.mls-verdict-nums')).toHaveText('Wk Pos: LaPorta TE4, Bowers TE1');
@@ -179,6 +208,7 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
         await runCheckList(page, { basis: 'ros', pos: 'RB', compare: 'roster' }, ['Chase Brown']);
         await expect(listCard(page, 'Chase Brown').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Brown RB9, Henry RB5');
         await expect(out(page).locator('.mls-tier')).toHaveCount(0);
+        await expect(out(page).locator('.mls-tier-gap')).toHaveCount(0);
 
         await expectClean(page, state);
     });

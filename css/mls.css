@@ -1454,6 +1454,11 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-scan-benchmark-title { color: #fca5a5; font-weight: bold; margin-bottom: 4px; }
 .mls-scan-benchmark-ok { margin-top: 0.35rem; color: var(--primary-green); font-weight: 600; }
 .mls-scan-benchmark-next { margin-top: 0.3rem; color: var(--text-muted); font-size: 0.8rem; }
+/* One "name (rank)" in Next weakest: wraps as a whole, and only breaks inside when it's wider than a line. */
+.mls-scan-next-item { display: inline-block; }
+/* "· 1 tier up" after a comparison verdict (improvements S8, round 2): green when he'd jump a tier. */
+.mls-tier-gap { white-space: nowrap; font-weight: 600; color: var(--text-muted); }
+.mls-tier-gap.is-up { color: var(--primary-green); }
 /* Two-option segmented toggle (Compare Against: Starting Lineup | Whole Roster). */
 .mls-segmented { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: rgba(0, 0, 0, 0.15); }
 .mls-segmented-btn { flex: 1; padding: 0.6rem 0.5rem; background: transparent; color: var(--text-muted); border: none; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; }

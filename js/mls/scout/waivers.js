@@ -482,6 +482,19 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
     // FLEX list's, or the position list's. A derived rank has no tier of its own (null), so it shows none.
     const DISPLAY_TIER_FIELD = { rank: 'tier', flexRank: 'flexTier', posRank: 'posTier' };
 
+    // " · 1 tier up" / " · same tier" / " · 2 tiers down" after a verdict (improvements S8, round 2, owner's
+    // choice): the free agent's tier against his, from the same list as the numbers under it, said in
+    // words so a tier jump reads at a glance. Display only: the verdict itself doesn't change. "" unless
+    // both are tiered.
+    function tierGapHTML(faTier, otherTier) {
+        const tiered = (t) => Number.isFinite(t) && t > 0;
+        if (!tiered(faTier) || !tiered(otherTier)) return '';
+        const n = Math.abs(otherTier - faTier);
+        const text = n === 0 ? 'same tier' : `${n} tier${n === 1 ? '' : 's'} ${faTier < otherTier ? 'up' : 'down'}`;
+        const cls = n === 0 ? 'is-same' : faTier < otherTier ? 'is-up' : 'is-down';
+        return ` <span class="mls-tier-gap ${cls}" title="Tier ${faTier} against tier ${otherTier}"><span class="mls-rank-sep">&middot;</span> ${text}</span>`;
+    }
+
     // "Replaces Mike Evans (your FLEX) -- Wk Flex: Dobbins #58, Evans #20". Both numbers carry
     // the name they belong to: an earlier "#58 vs #20" left it to the reader to work out which
     // rank was whose, and the starter's number reads as the free agent's at a glance.
@@ -515,7 +528,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
             + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos, tierOf(faD))}</span>, `
             + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos, tierOf(oD))}</span>`;
         // His SoS badge beside his name (improvements S7), so both schedules sit side by side.
-        return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}<span class="mls-verdict-nums">${nums}</span>`;
+        return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}${tierGapHTML(tierOf(faD), tierOf(oD))}<span class="mls-verdict-nums">${nums}</span>`;
     }
 
     // Pill + one-line explanation for a lineup verdict. Returns a neutral pill when there's no
@@ -758,13 +771,18 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                     const v = d[field];
                     if (!v) return `unranked by ${basisName}`;
                     const text = `${basisLabel} ${basisKind === 'flex' ? `${crossOverall ? 'Overall' : 'Flex'} #${v}` : `${escapeHtml(p.pos)}${v}`}`;
-                    // His tier for that number (improvements S8), kept on one line with it. Without a
-                    // tier the text is exactly as before.
-                    const tier = tierTag(d[DISPLAY_TIER_FIELD[field]]);
-                    return tier ? `<span class="mls-nowrap">${text}${tier}</span>` : text;
+                    // His tier for that number (improvements S8), kept on one line with it: "ROS RB8 · T4"
+                    // (round 2: no parentheses inside the line's own). Without a tier the text is as before.
+                    const tier = d[DISPLAY_TIER_FIELD[field]];
+                    return Number.isFinite(tier) && tier > 0
+                        ? `<span class="mls-nowrap">${text} <span class="mls-rank-sep">&middot;</span> <span class="mls-tier" title="Tier ${tier}">T${tier}</span></span>`
+                        : text;
                 };
-                const nextUp = mine.slice(Math.max(0, mine.length - 3), mine.length - 1).reverse()
-                    .map(p => `${escapeHtml(p.name)} (${rankText(p)})`);
+                // Each "name (rank)" is one piece that wraps whole (round 2), so a phone never leaves a
+                // name at the end of one line and his rank on the next. The comma rides with its piece.
+                const nextUpNames = mine.slice(Math.max(0, mine.length - 3), mine.length - 1).reverse();
+                const nextUp = nextUpNames.map((p, i) =>
+                    `<span class="mls-scan-next-item">${escapeHtml(p.name)} (${rankText(p)})${i < nextUpNames.length - 1 ? ',' : ''}</span>`);
                 const header = `
                 <div class="mls-scan-benchmark">
                     <div class="mls-scan-benchmark-title">Drop candidate (by ${basisName}):</div>
@@ -772,7 +790,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                     ${upgrades.length ? `Available players ranked ahead of him:`
                         : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
                         : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}
-                    ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(', ')}</div>` : ''}
+                    ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(' ')}</div>` : ''}
                     ${notCounted}
                 </div>`;
                 const cards = upgrades.map(fa => {
