@@ -1877,6 +1877,10 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-poscount-name { font-size: 0.68rem; letter-spacing: 0.03em; }
 .mls-poscount-num { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
 .mls-poscount-note { font-size: 0.6rem; font-weight: 600; white-space: normal; text-align: center; line-height: 1.2; opacity: 0.85; }
+/* A Roster row's IR badge (Sleeper IR slot, round 2) is a button so a tap explains it, like button.sos-badge:
+   drop the button's own font and line height so it looks like the TAXI badge beside it. */
+button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: pointer; }
+button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
 /* None at a position the league starts (a 0): shown, not tappable. */
 .mls-poscount.pos-filter:disabled { cursor: default; transform: none; }
 @media (max-width: 520px) {

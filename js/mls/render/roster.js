@@ -1,6 +1,7 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Roster tab renderer (loadRosterTab), the first
 // function under RENDERERS.
 import { escapeHtml } from '../../shared/html.js';
+import { showToast } from '../../shared/ui/toast.js';
 import { tierTag, SLOT_POSITIONS } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
 import { State } from '../state.js';
@@ -51,6 +52,13 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
         const current = league && rosterPosFilter.leagueId === league.leagueId ? rosterPosFilter.pos : null;
         rosterPosFilter = { leagueId: league ? league.leagueId : null, pos: (!pos || pos === 'ALL' || pos === current) ? null : pos };
         loadRosterTab();
+    }
+
+    // A tap or click on a row's IR badge: what it means, as a toast (phones have no hover), like the
+    // rank-change chips and SoS badges.
+    export function explainIrSlot(badgeEl) {
+        const text = badgeEl && badgeEl.dataset ? badgeEl.dataset.tip : '';
+        if (text) showToast(text);
     }
 
     function renderRosterPosCounts(el, counts, total, picked) {
@@ -176,8 +184,10 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
             let byeStr = byeWeek ? ` (${byeWeek})` : "";
             let byeBadge = getByeBadgeHTML(p.team);
             // A player in your Sleeper IR slot gets an IR badge like TAXI (improvements S9). If he's
-            // also on NFL IR, that one badge says it, so the red injury "IR" is left off.
-            let irSlotBadge = p.isReserve ? `<span class="badge ir-slot-badge" title="In your IR slot on Sleeper">IR</span>` : "";
+            // also on NFL IR, that one badge says it, so the red injury "IR" is left off. Hover shows
+            // the explanation; a tap or click shows it as a toast (explainIrSlot).
+            const irTip = `In your IR slot on Sleeper${p.inj === 'IR' ? ', and on NFL injured reserve' : ''}. A player there can't start until you move him out of it.`;
+            let irSlotBadge = p.isReserve ? `<button type="button" class="badge ir-slot-badge" data-action="explainIrSlot" data-tip="${escapeHtml(irTip)}" title="${escapeHtml(irTip)}" aria-label="${escapeHtml(irTip)}">IR</button>` : "";
             let injBadge = p.inj && !(p.isReserve && p.inj === 'IR') ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
             // Same "R" badge as MDS roster cards and the Matchup Simulator.

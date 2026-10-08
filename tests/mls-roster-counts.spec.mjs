@@ -183,6 +183,13 @@ test.describe('Roster tab position counts', () => {
         await expect(row('Derrick Henry').locator('.inj-badge')).toHaveText('IR');
         await expect(rows(page).locator('.ir-slot-badge')).toHaveCount(2);
 
+        // A tap on the badge explains it (phones have no hover), like the SoS and rank-change chips.
+        await row('Justin Jefferson').locator('.ir-slot-badge').click();
+        await expect(page.locator('.toast-message').filter({ hasText: "In your IR slot on Sleeper. A player there can't start until you move him out of it." })).toBeVisible();
+        await row('George Kittle').locator('.ir-slot-badge').click();
+        await expect(page.locator('.toast-message').filter({ hasText: 'In your IR slot on Sleeper, and on NFL injured reserve.' })).toBeVisible();
+        await expect(row('George Kittle').locator('.ir-slot-badge')).toHaveAttribute('title', /and on NFL injured reserve/);
+
         // McBride comes off the taxi squad and Jefferson out of the IR slot; the Roster tab's
         // Sync button picks it up.
         taxi = [];

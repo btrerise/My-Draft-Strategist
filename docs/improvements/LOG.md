@@ -2528,3 +2528,25 @@ notes and his badge.
 - Related, same decision: the Waiver Wire's "your weakest" skips IR, Out and taxi players by status
   (`js/mls/scout/waivers.js`, `INACTIVE_STATUSES`; `js/mls/scout/bestAvailable.js`), not by the IR slot, and the
   Lineup tab's bench doesn't show the IR badge. Both could read `isReserve` in the same follow-up.
+
+### S9, round 3: the IR badge explains itself on tap (owner's request)
+
+**User-visible effect.** The Roster tab's IR badge works like the SoS badge and the rank-change chips: hovering shows
+what it means, and a tap or click shows the same text as a toast (phones have no hover). The text: "In your IR slot on
+Sleeper. A player there can't start until you move him out of it.", with ", and on NFL injured reserve" after
+"Sleeper" when that's true too. The badge looks exactly as before.
+
+**What changed and where.**
+- `js/mls/render/roster.js`: the badge is a `<button>` with `data-action="explainIrSlot"`, `data-tip`, `title` and
+  `aria-label`; `explainIrSlot` shows `data-tip` as a toast, the same few lines as `explainSoS` and
+  `explainRankMove`. `js/mls/main.js` registers the action.
+- `css/mls.css`: `button.ir-slot-badge` drops the button's own font and line height (as `button.sos-badge` does) and
+  gets the same focus ring.
+- Checked in the browser at both widths: the button badge and a plain `<span>` copy with the same classes have the
+  same size, position and computed styles (font, padding, border, colors, margin, alignment).
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.89.
+
+**Tests.** The taxi and IR test taps Jefferson's badge (slot only) and Kittle's (slot and NFL IR) and checks each
+toast, and Kittle's `title`.
+
+**Screenshots.** None changed (the screenshot league has no IR-slot players).
