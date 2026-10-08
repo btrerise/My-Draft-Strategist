@@ -253,3 +253,48 @@ test.describe('Lineup Strategist: the Waiver Wire with per-position uploads', ()
         await expectClean(page, state);
     });
 });
+
+// Phones: the Lineup tab's rank badge ("Pos: #5 (T3) | Flex: #13 (T3)") was one unbreakable piece, wider than the
+// space beside the projection and buttons, and the row cut it off ("Flex: #13 (T"). It now splits onto two lines at
+// the "|" when it doesn't fit (owner's choice A), each part kept whole, with no bar at a line's start or end.
+test.describe('Lineup Strategist: the Lineup tab\'s rank badge fits its row', () => {
+    test('nothing is cut off; one line on desktop, two parts on phones', async ({ page }, info) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
+        await showTab(page, 'lineup');
+        await callApp(page, 'optimizeLineup', true);
+        await expect(rankBadge(page, '#lineupTab', 'Derrick Henry')).toHaveText('Pos: #5 (T3) | Flex: #13 (T3)');
+        const rows = await page.locator('#lineupTab .lineup-slot .mls-player-row-info').evaluateAll(infos => infos.map(info => {
+            const badge = info.querySelector('.mls-rank-badge');
+            const team = info.querySelector('.mls-player-row-meta .badge');
+            const b = badge.getBoundingClientRect(), r = info.getBoundingClientRect();
+            const parts = [...badge.querySelectorAll('.mls-rank-part')].map(p => p.getBoundingClientRect());
+            const bars = [...badge.querySelectorAll('.mls-rank-bar')].map(bar => {
+                const x = bar.getBoundingClientRect();
+                // A bar is shown only between two parts on the same line.
+                return { visible: getComputedStyle(bar).visibility !== 'hidden' && x.width > 0 && x.left >= b.left, top: x.top };
+            });
+            return {
+                name: info.querySelector('.player-name-wrap').textContent.trim(), text: badge.textContent,
+                cutOff: b.right > r.right + 0.5 || badge.scrollWidth > badge.clientWidth + 1,
+                lines: parts.length ? new Set(parts.map(p => Math.round(p.top))).size : 1,
+                // The rank badge has a border the team badge doesn't; two lines would be about twice its height.
+                oneLineHeight: b.height < team.getBoundingClientRect().height * 1.6,
+                parts: parts.length, bars, partTops: parts.map(p => Math.round(p.top))
+            };
+        }));
+        for (const row of rows) expect(row.cutOff, `${row.name}: ${row.text}`).toBe(false);
+        const henry = rows.find(r => r.name.startsWith('Derrick Henry'));
+        expect(henry.parts).toBe(2);
+        if (info.project.name === 'desktop') {
+            for (const row of rows) expect(row.oneLineHeight, row.name).toBe(true);
+            expect(henry.bars[0].visible).toBe(true);
+        } else {
+            // Henry's two parts sit on two lines, and the bar between them isn't shown at either line's edge.
+            expect(henry.lines).toBe(2);
+            expect(henry.bars[0].visible).toBe(false);
+        }
+        await expectClean(page, state);
+    });
+});

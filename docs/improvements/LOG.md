@@ -2332,3 +2332,38 @@ per-position files; it only appeared when renumbering changed a number, which is
 **Checks run.** `npm run check`: check-precache OK, 284 unit tests pass. Playwright: 256 passed in a full run after
 the S3 fix, screenshots included (the first full run of the session again failed the same 10 screenshots, on every
 page; no baseline rewritten).
+
+### F6, round 3: the Lineup tab's rank badge fits on phones (owner's choice)
+
+**Why.** Asked how F6 looks from a user's side, I screenshotted the Roster and Lineup tabs, Auto-Find and Trade
+Finder at both widths. The numbers agree everywhere (A.J. Brown WR9, Kittle TE3, Henry RB5). One problem: on a phone
+the Lineup tab cut off the end of the rank badge ("Pos: #5 (T3) | Flex: #13 (T", the FLEX tier lost on every RB, WR
+and TE). Main does the same, slightly worse ("Flex: #15 ("): the badge was one piece that couldn't wrap, and the row
+hides what doesn't fit. I offered **A**, splitting the badge onto two lines at the "|" when it doesn't fit, or **B**,
+shorter phone wording ("RB5 · T3 | Flex 13 · T3"). The owner chose **A**.
+
+**User-visible effect.** On phones, a Lineup row with two numbers shows "Pos: #5 (T3)" above "Flex: #13 (T3)" (or
+"Overall:" with ROS only), so nothing is cut off; those rows are one line taller. One-number badges ("Pos: #1 (T3)",
+"Unranked") are unchanged. On a computer the badge stays on one line and looks as before: a desktop badge compared
+with main's differs in 2 anti-aliasing pixels of the bar. At 320px wide (the narrowest old phones) the halves can
+still be cut, as players' names already are there; that's the row's layout, not this badge.
+
+**What changed and where.**
+- `js/mls/render/lineup.js`: `rankBadgeParts(first, second)` wraps the two halves (`.mls-rank-part`, each kept whole)
+  with the bar as real text (`.mls-rank-bar`), so the badge's text is still "Pos: #5 (T3) | Flex: #13 (T3)" and the
+  specs reading it are unchanged.
+- `css/mls.css`: `.mls-rank-parts` is a wrapping inline-flex. Each part has a 0.908em gap on its left (the old " | "
+  text's width in this font) with the bar centred in it; the wrapper starts one gap to the left and clips that strip
+  (`clip-path`), so a part that wraps to the start of a line loses its bar while one beside another keeps it. The
+  badge allows wrapping only when it holds parts (`:has(.mls-rank-parts)`).
+- Roster tab unchanged: its badge fits at phone width. CHANGELOG line. `CACHE_NAME` stays v2.8.88.
+
+**Tests.** `tests/mls-display-ranks.spec.mjs`, "nothing is cut off; one line on desktop, two parts on phones": every
+Lineup badge ends inside its row; on desktop each is one line with the bar showing; on a phone Henry's halves sit on
+two lines with no bar. Before the change it failed at both widths (cut off on the phone).
+
+**Screenshots.** None re-taken; the screenshot league has no rankings, so its badges read "Unranked".
+
+**Checks run.** `npm run check`: check-precache OK, 284 unit tests pass; Playwright: the same 10 first-run screenshot
+failures on every page, then a full rerun passed all 258 with no baseline changed.
+

@@ -489,8 +489,15 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         if (!hasPos && !hasCross) return "Unranked";
         const posStr = hasPos ? `#${shown.posRank}${tierTag(shown.posTier)}` : "-";
         const crossStr = hasCross ? `#${cross.rank}${tierTag(cross.tier)}` : "-";
-        if (rankedByRos) return hasCross ? `Pos: ${posStr} | Overall: ${crossStr}` : `Pos: ${posStr}`;
-        return (['QB', 'K', 'DEF'].includes(p.pos) || !hasCross) ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${crossStr}`;
+        if (rankedByRos) return hasCross ? rankBadgeParts(`Pos: ${posStr}`, `Overall: ${crossStr}`) : `Pos: ${posStr}`;
+        return (['QB', 'K', 'DEF'].includes(p.pos) || !hasCross) ? `Pos: ${posStr}` : rankBadgeParts(`Pos: ${posStr}`, `Flex: ${crossStr}`);
+    }
+
+    // The two halves of a two-number badge, each kept whole, so on a phone the badge splits onto two lines at the
+    // "|" instead of the row cutting it off (owner's choice in improvements F6). The bar is real text, so the
+    // badge still reads "Pos: #5 (T3) | Flex: #13 (T3)"; .mls-rank-parts in css/mls.css hides it at a line's start.
+    function rankBadgeParts(first, second) {
+        return `<span class="mls-rank-parts"><span class="mls-rank-part">${first}</span><span class="mls-rank-part"><span class="mls-rank-bar"> | </span>${second}</span></span>`;
     }
 
     export function renderLineupUI() {
