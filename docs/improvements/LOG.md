@@ -2100,3 +2100,53 @@ failures, and all 40 renders are still pixel-identical to main's (the screenshot
 - Auto-Find's section header (All mode) still counts same-tier entries as "N upgrades", and Check a List still sorts
   them with the upgrades. Changing either is the verdict decision the owner kept separate.
 - The Guide doesn't explain tiers or "· 1 tier up". That's for S10's legend.
+
+### S8, round 4: one meaning of "upgrade" across the Waiver Wire (owner's request)
+
+**Owner's request.** "Make the 'upgrade' language consistent everywhere with what we decided this session." Round 3
+reworded the same-tier verdict, but two places still counted a same-tier free agent as an upgrade: Auto-Find's
+section count and Check a List's upgrades-first sort.
+
+**The rule now, everywhere in Lineup Strategist:** a free agent ranked ahead of your player is an **upgrade** only
+when he's in a better tier, when both are tiered; with either untiered, any better rank. Everyone ranked ahead is
+still listed, in rank order. The same tier reads "Ranked ahead of".
+
+**User-visible effect.**
+- **Auto-Find, Whole Roster:** each card's verb is decided by the rule, and the All view's section count counts only
+  upgrades: "RB · 1 upgrade", "RB · 1 upgrade · 2 same tier", "RB · no upgrades · 1 same tier". The count is green
+  only when there's an upgrade.
+- **Check a List, Whole Roster:** the verdict follows the rule, and only real upgrades sort ahead of other free agents.
+  A same-tier player now sorts by rank with the rest.
+- **The Scout tab's help tooltip** adds: "When your rankings have tiers, only a player in a better tier is an upgrade
+  ("Upgrade over"); one ranked ahead in the same tier reads "Ranked ahead of", as on the Dashboard."
+- The Dashboard's Best Available is unchanged: it already used this rule (`upgradeGap`).
+
+**What changed and where.**
+- `js/mls/scout/waivers.js`:
+  - `comparedTiers` works out which number a comparison shows and its two tiers, shared by `waiverCompareLine` and
+    `isTierUpgrade`, the rule above.
+  - `pastedRosterVerdict`'s `upgrade` and verb, and `renderRosterGroup`'s verbs and `countText`, use it.
+  - `waiverCompareLine` no longer rewrites the verb; callers pass the right one.
+  - Within one rankings list, tiers never get worse as ranks get better, so "ranked ahead, not an upgrade" is always
+    the same tier, and the count can say "same tier".
+- `lineup/index.html`: the Waiver Wire Assistant's tooltip sentence on Whole Roster. The tooltip is hidden until
+  opened, so screenshots don't change.
+- CHANGELOG line added. `CACHE_NAME` stays v2.8.87.
+
+**Tests.** `tests/mls-waiver-tiers.spec.mjs`:
+- "RB · 1 upgrade" for a tier jump, and "RB · no upgrades · 1 same tier" plus the "Ranked ahead of" card for a
+  same-tier one.
+- Check a List's order: Jayden Daniels (not ahead of Josh Allen, but ROS overall #10) lists before a same-tier Cook
+  (#15). With the old rule, Cook sorted first.
+- With "any better rank counts" put back in `pastedRosterVerdict`, the spec fails.
+
+**Left over.**
+- **Without tiers, the Dashboard still needs 3+ spots** (`UPGRADE_MIN_GAP`), while Auto-Find and Check a List count any
+  better rank. A 1–2 spot gap reads "Upgrade over" in Auto-Find and isn't flagged on the Dashboard. This session only
+  decided the tier rule; making them match is one line in `isTierUpgrade` if the owner wants it.
+- **The Guide tab's line on Whole Roster** ("checks whether he's better than your weakest player") doesn't mention
+  tiers. It's in the Guide screenshot, which this cloud environment can't re-take to match CI; S10 re-takes the Guide
+  screenshots and can add it.
+
+**Checks run.** `npm run check`: check-precache OK, 272 unit tests, 242 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders are pixel-identical to main's.

@@ -76,8 +76,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   · T4)" and its "Next weakest" list, and the two numbers under every verdict ("ROS Pos: Cook RB5 (T3), Henry RB8
   (T4)"). The verdict also says it in words: "Upgrade over Derrick Henry · 1 tier up" (in green), "· 1 tier down",
   and a free agent ranked ahead of your player in the same tier reads "Ranked ahead of Derrick Henry · same tier"
-  rather than "Upgrade over", the same rule the Dashboard's Best Available uses. He's still listed as before; only
-  the wording changes. Rankings without tiers show none.
+  rather than "Upgrade over". Rankings without tiers show none.
+- **"Upgrade" means a better tier everywhere.** When your rankings have tiers, Auto-Find and Check a List now call
+  a free agent an upgrade only when he's in a better tier than your player, as the Dashboard's Best Available
+  already did. Everyone ranked ahead is still listed, but only tier jumps are counted ("RB · 1 upgrade · 2 same
+  tier") and sorted first in Check a List. Without tiers, any better rank still counts.
 - **Tiers on every rank from a single rankings file.** With one file and one Tier column, the Waiver Wire
   Assistant and Top Available showed the tier only beside overall ranks, and the Lineup and Roster tabs dropped it
   from position ranks when the file had a Pos Rank column. Position and FLEX ranks now show the file's overall tier

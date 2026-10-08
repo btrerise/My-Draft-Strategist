@@ -17,6 +17,10 @@
 // on every number. storePositionTiers below stores sets shaped like per-position uploads (posRank and
 // posTier per position, which win over the overall tier) and moves James Cook (a free agent) ahead of
 // Derrick Henry (your weakest RB), so there's an upgrade to compare.
+//
+// Round 4 (owner's choice: the same "upgrade" everywhere): only a tier jump is an upgrade wherever the Waiver
+// Wire says so -- the verdict, Auto-Find's section count ("1 upgrade · 2 same tier") and Check a List's
+// upgrades-first sort -- like the Dashboard. Everyone ranked ahead is still listed.
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, WAIVER_RANKINGS_CSV } from './helpers.mjs';
 
@@ -165,6 +169,10 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
         await expect(cook.locator('.mls-scan-ranks')).toContainText('ROS Pos: RB5 (T3)');
         await expectTiersUnbroken(page);
 
+        // All: the RB section counts Cook's tier jump as an upgrade.
+        await runAutoFind(page, { basis: 'ros', pos: 'ALL', compare: 'roster' });
+        await expect(out(page).locator('.mls-waiver-section-title').filter({ hasText: /^RB/ })).toHaveText('RB · 1 upgrade');
+
         // FLEX by ROS compares Overall ranks, with the overall list's tiers.
         await runAutoFind(page, { basis: 'ros', pos: 'FLEX', compare: 'roster' });
         await expect(benchmark(page)).toContainText('Your weakest RB/WR/TE is Derrick Henry (ROS Overall #26 · T4).');
@@ -198,6 +206,22 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
         await expect(listCard(page, 'James Cook').locator('.mls-tier-gap')).toHaveClass(/\bis-same\b/);
         await expect(listCard(page, 'James Cook').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Cook RB5 (T2), Henry RB8 (T2)');
         await expect(listCard(page, 'Chase Brown')).toContainText("Doesn't pass Derrick Henry (your weakest RB) · 1 tier down");
+        // Auto-Find says the same, and doesn't count him.
+        await runAutoFind(page, { basis: 'ros', pos: 'RB', compare: 'roster' });
+        await expect(scanCard(page, 'James Cook').locator('.mls-scan-verdict')).toContainText('Ranked ahead of Derrick Henry · same tier');
+        await runAutoFind(page, { basis: 'ros', pos: 'ALL', compare: 'roster' });
+        await expect(out(page).locator('.mls-waiver-section-title').filter({ hasText: /^RB/ })).toHaveText('RB · no upgrades · 1 same tier');
+        // Check a List sorts upgrades first; a same-tier player isn't one. Jayden Daniels (QB5, behind Josh Allen)
+        // gets ROS overall #10, ahead of Cook's #15: by rank he now lists first, where Cook used to jump ahead.
+        await page.evaluate(() => {
+            const sets = JSON.parse(localStorage.getItem('mls_ranking_sets_ros'));
+            for (const set of sets) set.data.find(r => r.name === 'Jayden Daniels').rank = 10;
+            localStorage.setItem('mls_ranking_sets_ros', JSON.stringify(sets));
+        });
+        await page.reload();
+        await runCheckList(page, { basis: 'ros', pos: 'RB', compare: 'roster' }, ['James Cook', 'Jayden Daniels']);
+        await expect(out(page).locator('.scout-result-card .mls-item-name, .scout-result-card').first()).toContainText('Jayden Daniels');
+        await expect(listCard(page, 'James Cook')).toContainText('Ranked ahead of Derrick Henry');
 
         // Top Available names no compared player; its chip shows the same position tier the lines use.
         await callApp(page, 'setWaiverMode', 'top');
