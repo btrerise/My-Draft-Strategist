@@ -2273,6 +2273,46 @@ anything.
 screenshot comparisons failed on the first run (MDS, T-Score and MLS pages alike, the environment-only failures
 earlier entries describe); two later full runs passed all 252 with no baseline rewritten.
 
-**Left over.**
-- The Waiver Wire renumbers per-position uploads when a player's position is unknown (above). Using
-  `singleFileFallback` there too would fix it, but it changes the reference numbers this card kept out of scope.
+**Left over.** ~~The Waiver Wire renumbers per-position uploads when a player's position is unknown~~ (fixed in
+round 2, below).
+
+### F6, round 2: the Waiver Wire keeps per-position files' numbers (owner's request)
+
+**Owner's request.** After round 1 I described a Waiver Wire bug found while reading `buildRankDisplayIndex`. The
+owner asked for a test to confirm it, and a fix on this branch if needed.
+
+**The bug.** `buildRankDisplayIndex` treated a file as the single-file fallback when every player whose position it
+could look up had posRank equal to rank. Per-position uploads (one file per position) pass that test too: each file
+numbers its own players, and the parser sets rank from the first file a player is in. So it renumbered each position
+1..N from the positions it could look up. A player no source places (league, Sleeper's player map, market data),
+such as a name Sleeper doesn't match, dropped out, and everyone below him moved up a spot. The same happened to a
+horizontal Weekly sheet without a FLEX column.
+
+**Confirmed in the app first** (`tests/mls-display-ranks.spec.mjs`, "keeps the files' position ranks when a
+player's position is unknown"): per-position sets, untiered, with an unplaced RB at RB5, James Cook (free agent)
+RB4 and Derrick Henry (your RB) RB7. Before the fix, Auto-Find said "Your weakest RB is Derrick Henry (ROS RB6)",
+"ROS Pos: Cook RB4, Henry RB6", and the verdict was **"Ranked ahead of Derrick Henry"**: the gap shrank from 3 spots
+to 2, below the 3-spot upgrade rule. The Roster tab (round 1) already said "Pos: #7".
+
+**User-visible effect.** With per-position uploads, or a horizontal Weekly sheet without a FLEX column, the Waiver
+Wire Assistant (Top Available, Auto-Find, Check a List), the Dashboard's Best Available and S3's What changed show
+the numbers the files give. Verdicts follow them: Cook is "Upgrade over Derrick Henry" again. Single files are
+unchanged (still derived). For per-position files whose players' positions are all known, nothing changes: the
+renumbering handed the same numbers back. The "derived from the file's order" note no longer appears for
+per-position files; it only appeared when renumbering changed a number, which is now never.
+
+**What changed and where.**
+- `js/mls/scout/waiverScanner.js`: `singleFileFallback(rankings)` (moved here from `displayRanks.js`) tells the
+  fallback from the numbers alone: position ranks are derived only when every ranked player's posRank and flexRank
+  equal his rank. `buildRankDisplayIndex` uses it instead of its own test. The FLEX test (a QB/K/DEF carrying a
+  flexRank) is unchanged. Header comment updated.
+- `js/mls/rankings/displayRanks.js` imports `singleFileFallback`, so the Lineup and Roster tabs and the Waiver Wire
+  use one rule.
+- CHANGELOG line under Lineup Strategist. `CACHE_NAME` stays v2.8.88 (this branch's bump).
+
+**Tests.**
+- The spec above, which failed before the fix on the header, the verdict and its numbers; it also checks Top
+  Available's "RB4" and the Roster tab's "Pos: #7".
+- `tests/unit/waiverScanner.test.mjs`: per-position ranks with an unplaced player stay as stored;
+  `singleFileFallback` added to the export list. It fails on the old scanner. `tests/unit/displayRanks.test.mjs`
+  imports `singleFileFallback` from its new home.

@@ -16,25 +16,12 @@
 //   FLEX      -- every ranked player's FLEX rank equals his overall rank, QBs included: any single file, a
 //                Pos Rank column too (its FLEX rank is still the overall one).
 // Files with their own ranks (per-position uploads, a FLEX file, a horizontal Weekly sheet) fail both tests,
-// and a Pos Rank column fails the first, so those numbers show exactly as before. buildRankDisplayIndex alone
-// would also renumber per-position uploads (their posRank equals rank too), which only gives the same numbers
-// back when every player's position is known.
-import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
+// and a Pos Rank column fails the first, so those numbers show exactly as before. The test is
+// singleFileFallback in waiverScanner.js, the one buildRankDisplayIndex uses, so these tabs and the Waiver
+// Wire always agree on which files get derived numbers. Checked here first so files with their own ranks
+// never wait for Sleeper's player map.
+import { buildRankDisplayIndex, singleFileFallback } from '../scout/waiverScanner.js';
 import { getSleeperMetaByName, makeLeagueGetPos, sleeperMetaByNameIfLoaded } from '../scout/waivers.js';
-
-const isRanked = (v) => v !== undefined && v !== null && v !== 999;
-
-const rankedRows = (rankings) => (Array.isArray(rankings) ? rankings.filter(r => r && isRanked(r.rank)) : []);
-
-// Which of a file's numbers are the single-file fallback: { positions, flex }.
-export function singleFileFallback(rankings) {
-    const ranked = rankedRows(rankings);
-    if (ranked.length === 0) return { positions: false, flex: false };
-    return {
-        positions: ranked.every(r => r.posRank === r.rank && r.flexRank === r.rank),
-        flex: ranked.every(r => r.flexRank === r.rank)
-    };
-}
 
 // Renders waiting for Sleeper's player map, re-run once when it lands (once per page: after that it's in
 // memory). Until then free agents' positions come from the league and market data only.

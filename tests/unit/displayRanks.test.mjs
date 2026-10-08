@@ -25,7 +25,8 @@ export async function resolve(specifier, context, next) {
 `));
 
 const env = globalThis.__displayRanksEnv = { meta: null, metaCalls: 0, metaPromise: new Promise(() => {}) };
-const { singleFileFallback, leagueRankDisplayIndex, displayRanksFor } = await import('../../js/mls/rankings/displayRanks.js');
+const { leagueRankDisplayIndex, displayRanksFor } = await import('../../js/mls/rankings/displayRanks.js');
+const { singleFileFallback } = await import('../../js/mls/scout/waiverScanner.js');
 
 // [name, pos] in overall order: QB1 at #2, RB3 (Henry) at #5.
 const PLAYERS = [['Bijan', 'RB'], ['Allen', 'QB'], ['Gibbs', 'RB'], ['Chase', 'WR'], ['Henry', 'RB'], ['Bowers', 'TE'], ['Tucker', 'K']];
@@ -51,6 +52,12 @@ describe('singleFileFallback', () => {
     it('per-position uploads with a FLEX file, or a horizontal sheet with a FLEX column: neither', () => {
         const data = [row('Allen', { rank: 1, posRank: 1, flexRank: 999 }), row('Bijan', { rank: 1, posRank: 1, flexRank: 1 }), row('Henry', { rank: 4, posRank: 3, flexRank: 4 })];
         assert.deepEqual(singleFileFallback(data), { positions: false, flex: false });
+    });
+    it('a What changed week baseline saved without FLEX ranks is judged by its position ranks', () => {
+        const strip = (rows) => rows.map(({ flexRank, flexTier, ...r }) => r);
+        assert.deepEqual(singleFileFallback(strip(singleFile())), { positions: true, flex: false });
+        // Saved with them (since F6 round 2), per-position rows read as their own numbers.
+        assert.equal(singleFileFallback([row('Allen', { rank: 1, posRank: 1, flexRank: 999 }), row('Henry', { rank: 3, posRank: 3, flexRank: 999 })]).positions, false);
     });
     it('no rankings', () => {
         assert.deepEqual(singleFileFallback([]), { positions: false, flex: false });

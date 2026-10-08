@@ -13,7 +13,7 @@ describe('exports', () => {
     test('public surface is unchanged', () => {
         assert.deepEqual(Object.keys(scanner).sort(), [
             'FLEX_POSITIONS', 'UPGRADE_MIN_GAP', 'bestLineup', 'buildRankDisplayIndex', 'checkAgainstLineup',
-            'compareForScan', 'fillLineup', 'findFreeAgents', 'matchesPosFilter', 'slotAcceptsPos', 'upgradeGap'
+            'compareForScan', 'fillLineup', 'findFreeAgents', 'matchesPosFilter', 'singleFileFallback', 'slotAcceptsPos', 'upgradeGap'
         ]);
         assert.deepEqual(FLEX_POSITIONS, ['RB', 'WR', 'TE']);
     });
@@ -46,6 +46,21 @@ describe('buildRankDisplayIndex', () => {
         assert.deepEqual(idx.travkelce, { pos: 'TE', rank: 7, tier: 3, posRank: 1, posTier: 3, posDerived: true, flexRank: 4, flexTier: 3, flexDerived: true });
         // Unresolved position: kept as-is, never re-derived.
         assert.deepEqual(idx.mysteryman, { pos: 'UNK', rank: 8, tier: 4, posRank: 8, posTier: 4, posDerived: false, flexRank: null, flexTier: null, flexDerived: false });
+    });
+
+    test('per-position uploads keep their numbers when a player\'s position is unknown', () => {
+        // Each position's file numbers its own players (rank = posRank, no FLEX rank). An unplaced RB at RB2
+        // used to drop out of a renumbering that moved the RBs below him up a spot (follow-up to improvements F6).
+        const rankings = [
+            { cleanName: 'qb1', rank: 1, posRank: 1, flexRank: 999 },
+            { cleanName: 'rb1', rank: 1, posRank: 1, flexRank: 999 },
+            { cleanName: 'unplaced', rank: 2, posRank: 2, flexRank: 999 },
+            { cleanName: 'rb3', rank: 3, posRank: 3, flexRank: 999 }
+        ];
+        const pos = { qb1: 'QB', rb1: 'RB', rb3: 'RB' };
+        const idx = buildRankDisplayIndex(rankings, c => pos[c] || 'UNK');
+        assert.deepEqual([idx.rb3.posRank, idx.rb3.posDerived], [3, false]);
+        assert.deepEqual([idx.rb1.posRank, idx.qb1.posRank], [1, 1]);
     });
 
     test('real positional ranks are kept, gaps included (horizontal weekly sheet)', () => {

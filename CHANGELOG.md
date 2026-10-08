@@ -80,6 +80,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Trade Finder's Positional Rank basis works with a single rankings file.** It compared your overall rank with the
   market's position rank (Henry "RB #15" against the market's "RB #5"), so most of your list showed up as
   disconnects. It now uses the same position ranks as the Waiver Wire.
+- **The Waiver Wire Assistant keeps your files' position ranks with per-position uploads.** When your rankings
+  came as one file per position and the app couldn't match one player's name to a position, it renumbered that
+  position without him, so everyone below him read a spot too high ("RB6" for your RB7). That could also turn a
+  3-spot upgrade into "Ranked ahead of". It now shows the numbers your files give, as the Lineup and Roster tabs do.
+  Top Available and the Dashboard's Best Available read the same numbers.
 - **Your player's tier in the Waiver Wire Assistant.** When your rankings have tiers, the player a free agent is
   measured against now shows his, like the free agent does: Auto-Find's "Your weakest RB is Derrick Henry (ROS RB8
   · T4)" and its "Next weakest" list, and the two numbers under every verdict ("ROS Pos: Cook RB5 (T3), Henry RB8

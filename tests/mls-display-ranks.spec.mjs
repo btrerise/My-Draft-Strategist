@@ -178,3 +178,78 @@ test.describe('Lineup Strategist: position ranks on the Lineup and Roster tabs',
         await expectClean(page, state);
     });
 });
+
+// The Waiver Wire with per-position uploads (follow-up to F6, owner's request). Each position's file numbers its
+// own players, so rank equals posRank and there's no FLEX rank. buildRankDisplayIndex took that for a single
+// file's fallback and renumbered each position 1..N from the positions it could look up, so a player the app
+// can't place (a name Sleeper doesn't match) dropped out and everyone below him moved up a spot.
+const waiverOut = (page) => page.locator('#waiverOutput');
+const waiverCard = (page, name) => waiverOut(page).locator('.mls-scan-card').filter({ hasText: name });
+
+async function runAutoFindRoster(page, pos) {
+    await showTab(page, 'scout');
+    await page.locator('#waiverScanBasis').selectOption('ros');
+    await callApp(page, 'setWaiverPos', pos);
+    await callApp(page, 'setWaiverMode', 'auto');
+    await callApp(page, 'setWaiverCompare', 'roster');
+    await waiverOut(page).evaluate(el => { el.innerHTML = ''; });
+    await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+    await expect(waiverOut(page).locator('.mls-scan-summary')).toBeVisible();
+}
+
+// Both saved sets as per-position uploads store them, untiered, with the RB file in `rbOrder` (names; anything
+// not in the CSV is a player no position source knows). Other positions keep the CSV's order.
+async function storePerPositionFiles(page, rbOrder) {
+    await page.evaluate(({ POS, rbOrder }) => {
+        for (const key of ['mls_ranking_sets_ros', 'mls_ranking_sets_weekly']) {
+            const sets = JSON.parse(localStorage.getItem(key));
+            for (const set of sets) {
+                const rows = set.data.filter(r => POS[r.name] !== 'RB').sort((a, b) => a.rank - b.rank);
+                const seen = {};
+                for (const r of rows) seen[POS[r.name]] = r.posRank = r.rank = (seen[POS[r.name]] || 0) + 1;
+                const byName = Object.fromEntries(set.data.map(r => [r.name, r]));
+                const rbs = rbOrder.map((name, i) => Object.assign(
+                    byName[name] || { name, cleanName: 'zz-unplaced-' + i },
+                    { rank: i + 1, posRank: i + 1 }));
+                set.data = [...rows, ...rbs].map(r => Object.assign(r, { tier: null, posTier: null, flexRank: 999, flexTier: null }));
+            }
+            localStorage.setItem(key, JSON.stringify(sets));
+        }
+    }, { POS, rbOrder });
+    await page.reload();
+}
+
+test.describe('Lineup Strategist: the Waiver Wire with per-position uploads', () => {
+    test('keeps the files\' position ranks when a player\'s position is unknown', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
+        // James Cook (a free agent) RB4 and Derrick Henry (your only RB) RB7: three spots, an upgrade without
+        // tiers. "Unplaced Back" at RB5 is in no league, Sleeper or market data.
+        await storePerPositionFiles(page, ['Bijan Robinson', 'Jahmyr Gibbs', 'Saquon Barkley', 'James Cook',
+            'Unplaced Back', 'Christian McCaffrey', 'Derrick Henry', "De'Von Achane", 'Kyren Williams', 'Chase Brown']);
+
+        await runAutoFindRoster(page, 'RB');
+        await expect(waiverOut(page).locator('.mls-scan-benchmark')).toContainText('Your weakest RB is Derrick Henry (ROS RB7).');
+        await expect(waiverCard(page, 'James Cook').locator('.mls-scan-verdict')).toContainText('Upgrade over Derrick Henry');
+        await expect(waiverCard(page, 'James Cook').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Cook RB4, Henry RB7');
+        await callApp(page, 'setWaiverMode', 'top');
+        await expect(waiverOut(page).locator('.mls-ta-row').filter({ hasText: 'James Cook' }).locator('.mls-ta-pos')).toHaveText('RB4');
+
+        // The Roster tab shows the same number.
+        await showTab(page, 'roster');
+        await expect(rankBadge(page, '#rosterList', 'Derrick Henry')).toHaveText('Ovr: #7 | Pos: #7');
+        await expectClean(page, state);
+    });
+
+    test('What changed\'s week baseline keeps the FLEX rank, so it is judged like the upload', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
+        // [name, cleanName, rank, posRank, posTier, tier, flexRank]: Henry is #15 overall, FLEX rank 15 as stored.
+        const henry = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_ranking_sets_weekly'))[0]
+            .weekBaseline.rows.find(r => r[0] === 'Derrick Henry'));
+        expect(henry.slice(2)).toEqual([15, 15, 3, 3, 15]);
+        await expectClean(page, state);
+    });
+});

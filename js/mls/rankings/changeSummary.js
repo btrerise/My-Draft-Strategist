@@ -87,13 +87,17 @@ function currentStarters() {
 // A Weekly set keeps a small copy of this week's first upload (`weekBaseline`: when, and each
 // player's name and ranks; not the rest of the file), so updates later in the week are compared with
 // the week's start, not only with the upload just before (owner's choice, round 5). About 45 bytes a
-// player, one per Weekly set, replaced each new week.
+// player, one per Weekly set, replaced each new week. The FLEX rank (last, added in improvements F6
+// round 2) lets buildRankDisplayIndex tell a single file from per-position files, as it does for the
+// upload itself (singleFileFallback); a baseline saved before then has none and is judged by its
+// position ranks alone.
 function baselineRows(data) {
     return (Array.isArray(data) ? data : []).filter(r => r && r.name)
-        .map(r => [r.name, r.cleanName || '', r.rank ?? 999, r.posRank ?? 999, r.posTier ?? null, r.tier ?? null]);
+        .map(r => [r.name, r.cleanName || '', r.rank ?? 999, r.posRank ?? 999, r.posTier ?? null, r.tier ?? null, r.flexRank ?? 999]);
 }
 function rowsFromBaseline(rows) {
-    return (rows || []).map(([name, cleanName, rank, posRank, posTier, tier]) => ({ name, cleanName, rank, posRank, posTier, tier }));
+    return (rows || []).map(([name, cleanName, rank, posRank, posTier, tier, flexRank]) =>
+        (flexRank === undefined ? { name, cleanName, rank, posRank, posTier, tier } : { name, cleanName, rank, posRank, posTier, tier, flexRank }));
 }
 
 // Called by saveRankingsAsSet when it makes a new set: nothing was replaced, so any earlier card for

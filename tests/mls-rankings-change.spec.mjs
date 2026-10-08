@@ -212,10 +212,11 @@ test.describe('What changed after Replace Set', () => {
         // Only the moves are stored, on the set itself (no new key, not the old rankings).
         const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_ranking_sets_weekly'))[0]);
         expect(Object.keys(stored.lastChanges)).toEqual(['at', 'since', 'moves', 'added']);
-        // This week's baseline: Tuesday's 24 players, names and ranks only.
+        // This week's baseline: Tuesday's 24 players, names and ranks only (the FLEX rank last, since
+        // improvements F6 round 2).
         expect(stored.weekBaseline.at).toBe(FIXED_NOW.getTime());
         expect(stored.weekBaseline.rows).toHaveLength(24);
-        expect(stored.weekBaseline.rows[0]).toEqual(["Ja'Marr Chase", 'jamarrchase', 1, 1, 1, 1]);
+        expect(stored.weekBaseline.rows[0]).toEqual(["Ja'Marr Chase", 'jamarrchase', 1, 1, 1, 1, 1]);
         expect(stored.lastChanges.moves['garrettwilson']).toEqual({ d: 8, f: 'WR10', t: 'WR2' });
         expect(Object.keys(stored.lastChanges.added).sort()).toEqual(['chasebrown', 'jamescook', 'jaydendaniels']);
         expect(stored.data).toHaveLength(25);
