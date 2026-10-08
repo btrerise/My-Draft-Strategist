@@ -2395,6 +2395,12 @@ phone or widening the window puts a badge back on one line when it fits. Desktop
 wider than its wider half plus its own padding and border (it was 56px wider before this round), that widening the
 window to 1280px puts it on one line, and that narrowing it again splits it with the box fitted.
 
+**CI fix (PR #191).** The first CI run failed this test on the phone, at its last step: after narrowing the window
+back, it measured the box as soon as the halves wrapped, but the refit runs a frame later (the observer waits a frame
+on purpose), and CI's runner hadn't drawn that frame yet. Not reproducible here as-is (30/30), but delaying frames by
+200ms made the old check fail the same way (56px; 60px on CI) and the fixed one pass. The test now waits for the box to
+fit (`expect.poll`) instead of checking once; it still fails if the refit never happens. Test only, no app change.
+
 **Screenshots.** None re-taken; the screenshot league has no rankings.
 
 **Checks run.** `npm run check`: check-precache OK, 284 unit tests pass; Playwright: the same 10 first-run screenshot

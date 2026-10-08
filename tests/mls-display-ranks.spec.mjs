@@ -315,7 +315,8 @@ test.describe('Lineup Strategist: the Lineup tab\'s rank badge fits its row', ()
             await expect.poll(async () => (await fit()).lines).toBe(1);
             await page.setViewportSize({ width: 390, height: 844 });
             await expect.poll(async () => (await fit()).lines).toBe(2);
-            expect((await fit()).slack).toBeLessThanOrEqual(1);
+            // The refit runs a frame after the resize (fitRankBadges via the ResizeObserver), so wait for it.
+            await expect.poll(async () => (await fit()).slack).toBeLessThanOrEqual(1);
         }
         await expectClean(page, state);
     });
