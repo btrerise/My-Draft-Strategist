@@ -63,6 +63,7 @@ import { mdsFetch } from '../shared/net.js';
         // 1 = hardest, so imports are flipped to the app's 1 = easiest (js/mls/sosScale.js).
         sosUpdatedAt: localStorage.getItem(KEYS.mls.sosUpdated) || null,
         sosReversed: localStorage.getItem(KEYS.mls.sosReversed) === '1',
+        sosSource: readJSON(KEYS.mls.sosSource, null),
         lockedPlayersMap: readJSON(KEYS.mls.locksMap, {}),
         // Per-league, per-week list of player ids the person has explicitly told the auto-lock
         // feature (see optimizeLineup) to back off of -- the failsafe for when gameTimesByTeam

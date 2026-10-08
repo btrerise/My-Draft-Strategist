@@ -8,6 +8,7 @@ import { KEYS } from '../shared/storage/keys.js';
 import { flashButton } from '../shared/ui/flashButton.js';
 import { normalizeName } from '../shared/names.js';
 import { showToast } from '../shared/ui/toast.js';
+import { showConfirm } from '../shared/ui/confirm.js';
 import { parseSosValue } from '../shared/rankings/parse.js';
 import { escapeHtml } from '../shared/html.js';
 import { getFreshness } from '../shared/freshness.js';
@@ -46,20 +47,39 @@ import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './
         return Number.isFinite(d.getTime()) ? d.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' }) : '';
     }
 
-    // Saves the SoS map, with today's date unless the numbers are only being flipped (setSosReversed).
-    function saveSoS({ touch = true } = {}) {
+    // Saves the SoS map with today's date and where it came from (round 6), unless the numbers are only
+    // being flipped (setSosReversed: no source, so the date and source stay). source: { kind: 'file',
+    // name } for an SoS file, { kind: 'rankings', type: 'ros' | 'weekly', name } for a rankings upload's
+    // SoS column, { kind: 'grid' } for Save Manual SoS.
+    function saveSoS(source = null) {
         localStorage.setItem(KEYS.mls.sos, JSON.stringify(State.sosMap));
-        if (touch) {
+        if (source) {
             State.sosUpdatedAt = String(Date.now());
             localStorage.setItem(KEYS.mls.sosUpdated, State.sosUpdatedAt);
+            State.sosSource = source;
+            localStorage.setItem(KEYS.mls.sosSource, JSON.stringify(source));
         }
         generateSoSGrid();
+    }
+
+    // "from sos-week6.csv", "from your ROS rankings (rankings.csv)", "from the manual grid", or '' when
+    // it isn't known (SoS saved before round 6).
+    function sosSourceText() {
+        const src = State.sosSource;
+        if (!src || !src.kind) return '';
+        if (src.kind === 'grid') return 'from the manual grid';
+        const name = src.name ? escapeHtml(src.name) : '';
+        if (src.kind === 'rankings') {
+            const which = src.type === 'weekly' ? 'Weekly' : 'ROS';
+            return `from your ${which} rankings${name ? ` (${name})` : ''}`;
+        }
+        return name ? `from ${name}` : 'from an SoS file';
     }
 
     // Merges one upload's SoS ({ TEAM: { POS: value } }) into the map: flipped to 1 = easiest first
     // when your files rank 1 = hardest, and with a warning when the numbers look like 1-5 ratings.
     // Used by the SoS file upload below and by rankings uploads with an SoS column
-    // (rankings/uploadPreview.js). The caller saves (saveImportedSoS).
+    // (rankings/uploadPreview.js). The caller saves (saveImportedSoS, with where it came from).
     export function importSoSUpdates(updates) {
         if (looksLikeRatings(sosValues(updates))) {
             showToast(`These SoS numbers only go up to 5, so they look like 1-5 ratings, not 1-32 matchup ranks. The badges read them as ranks (${SOS_SCALE_TEXT}), so nearly every one will look easy. Check your file's SoS column.`, { duration: 10000 });
@@ -71,7 +91,7 @@ import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './
             });
         });
     }
-    export const saveImportedSoS = () => saveSoS();
+    export const saveImportedSoS = (source) => saveSoS(source);
 
     // The line under the SoS upload, shown once there's any SoS: how old it is (amber after a week),
     // which end is easy, a warning if the saved numbers look like ratings, and the switch for sources
@@ -82,7 +102,7 @@ import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './
         if (!hasSoS()) { el.hidden = true; el.innerHTML = ''; return; }
         const fresh = getFreshness(State.sosUpdatedAt, SOS_STALE_DAYS);
         const age = fresh
-            ? `<span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">SoS ${fresh.label.charAt(0).toLowerCase()}${fresh.label.slice(1)}${fresh.isStale ? ' - consider refreshing' : ''}</span>`
+            ? `<span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">SoS ${fresh.label.charAt(0).toLowerCase()}${fresh.label.slice(1)}${fresh.isStale ? ' - consider refreshing' : ''}</span>${sosSourceText() ? ` <span class="sos-status-source">${sosSourceText()}</span>` : ''}`
             : `<span class="sos-status-muted">Upload date unknown (saved before dates were kept)</span>`;
         const ratings = looksLikeRatings(sosValues(State.sosMap))
             ? `<div class="sos-status-warn freshness-stale">These numbers only go up to 5, so they look like 1-5 ratings rather than 1-32 ranks; the badges will read nearly every one as easy.</div>` : '';
@@ -95,18 +115,31 @@ import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './
     }
 
     // The switch: remembered, and it flips what's already saved (which is always 1 = easiest), so a
-    // file that turned out to be the other way round is fixed with one tap, no re-upload.
-    export function setSosReversed(on) {
+    // file that turned out to be the other way round is fixed with one tap, no re-upload. Round 6: when
+    // the manual grid was saved after the last upload, the saved numbers may be your own grid edits
+    // (always 1 = easiest), so it asks first. "Keep as is" (or Escape) still changes the switch for later
+    // uploads and leaves the saved numbers alone.
+    export async function setSosReversed(on) {
         on = !!on;
         if (on === State.sosReversed) return;
         State.sosReversed = on;
         localStorage.setItem(KEYS.mls.sosReversed, on ? '1' : '0');
-        Object.values(State.sosMap).forEach(posMap => {
-            Object.keys(posMap || {}).forEach(pos => { posMap[pos] = reverseSosValue(posMap[pos]); });
-        });
-        saveSoS({ touch: false });
-        showToast(on ? `SoS flipped: your files rank 1 = hardest, and the app now reads them as ${SOS_SCALE_TEXT}.` : `SoS flipped back: your files rank 1 = easiest.`);
-        refreshSoSViews();
+        let flipSaved = true;
+        if (State.sosSource && State.sosSource.kind === 'grid') {
+            flipSaved = await showConfirm(`You've edited the manual grid since your last upload, and the grid is always ${SOS_SCALE_TEXT}. Flip the SoS you have now too?\n\nEither way, SoS you upload from now on ${on ? 'is flipped' : "isn't flipped"}.`,
+                { title: 'Flip the SoS you have now?', confirmText: 'Flip saved SoS', cancelText: 'Keep as is' });
+        }
+        if (flipSaved) {
+            Object.values(State.sosMap).forEach(posMap => {
+                Object.keys(posMap || {}).forEach(pos => { posMap[pos] = reverseSosValue(posMap[pos]); });
+            });
+            saveSoS();
+            showToast(on ? `SoS flipped: your files rank 1 = hardest, and the app now reads them as ${SOS_SCALE_TEXT}.` : `SoS flipped back: your files rank 1 = easiest.`);
+            refreshSoSViews();
+        } else {
+            renderSoSStatus();
+            showToast(on ? `Saved SoS kept as is. SoS files you upload from now on are flipped to ${SOS_SCALE_TEXT}.` : `Saved SoS kept as is. SoS files you upload from now on are read as ${SOS_SCALE_TEXT}.`);
+        }
     }
 
     function refreshSoSViews() {
@@ -126,7 +159,7 @@ import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './
             State.sosMap[team].TE = getVal(`sos_${team}_TE`);
         });
         // The grid is always 1 = easiest (its note says so), so its numbers are saved as typed.
-        saveSoS();
+        saveSoS({ kind: 'grid' });
         
         if (btn) flashButton(btn, "SoS Saved");
         refreshSoSViews();
@@ -224,7 +257,7 @@ import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './
                     }
 
                     importSoSUpdates(updates);
-                    saveSoS();
+                    saveSoS({ kind: 'file', name: file.name });
                     // Redraw the badges on the open tab. Before improvements S7 an upload left the
                     // Roster tab's badges as they were until you switched tabs.
                     refreshSoSViews();

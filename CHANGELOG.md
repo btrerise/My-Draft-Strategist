@@ -80,10 +80,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   the badge for what the number means (1 = easiest, 32 = hardest). On phones it's a calendar icon and the number,
   so it stays short and doesn't read as another rank. Desktop still shows "SoS: 7".
 - **The SoS card says which end is easy, how old your SoS is, and can flip it.** Once SoS is loaded, the Roster
-  tab's SoS card shows "1 = easiest, 32 = hardest" and when it was last uploaded or saved ("SoS updated 3 days ago",
-  amber after a week); the badge's tap text ends with the date too. If your source ranks 1 = hardest, turn on "My SoS
-  files rank 1 = hardest": it flips what's saved now and every later SoS file, or SoS column in a ROS or Weekly
-  rankings file. An upload whose numbers only go up to 5 (ratings, not 1-32 ranks) gets a warning.
+  tab's SoS card shows "1 = easiest, 32 = hardest" and when and where it last came from ("SoS updated 3 days ago from
+  your ROS rankings (rankings.csv)", amber after a week); the badge's tap text ends with the date too. If your source
+  ranks 1 = hardest, turn on "My SoS files rank 1 = hardest": it flips what's saved now and every later SoS file, or
+  SoS column in a ROS or Weekly rankings file. If you've edited the manual grid since your last upload, it asks before
+  flipping what's saved. An upload whose numbers only go up to 5 (ratings, not 1-32 ranks) gets a warning.
 - **Cancelling a rankings upload no longer changes your SoS.** A rankings file with an SoS column used to update the
   SoS on screen even if you cancelled its preview; now it's saved only with the rankings. Uploading an SoS file on
   the Roster tab now updates the badges right away.

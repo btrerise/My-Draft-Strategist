@@ -60,7 +60,9 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         // skipped as notes. The preview still opens (what did parse is real data), but it lists
         // what was left out, so a set missing a whole position or tab isn't saved without anyone
         // noticing.
-        openRankingsPreview({ parsedData, hasNewSos, sosUpdates, isWeekly, successMsgId, fileInputIds, target: resolveRankingsTarget(type), skipped: diagnostics });
+        // Which files, for the SoS card's "SoS updated today from your ROS rankings (…)" (round 6).
+        const sosFileNames = filesWithContext.map(f => f.file && f.file.name).filter(Boolean).join(', ');
+        openRankingsPreview({ parsedData, hasNewSos, sosUpdates, sosFileNames, isWeekly, successMsgId, fileInputIds, target: resolveRankingsTarget(type), skipped: diagnostics });
     };
 
     // --- RANKINGS UPLOAD PREVIEW ---
@@ -75,8 +77,8 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
     // (createPreviewShell, js/shared/rankings/uploadPreview.js).
     const previewShell = createPreviewShell(() => document.getElementById('rankingsPreviewOverlay'), { onEscape: () => cancelRankingsPreview() });
 
-    function openRankingsPreview({ parsedData, hasNewSos, sosUpdates, isWeekly, successMsgId, fileInputIds, target, skipped = [] }) {
-        pendingRankingsUpload = { parsedData, hasNewSos, sosUpdates, isWeekly, successMsgId, fileInputIds, target };
+    function openRankingsPreview({ parsedData, hasNewSos, sosUpdates, sosFileNames, isWeekly, successMsgId, fileInputIds, target, skipped = [] }) {
+        pendingRankingsUpload = { parsedData, hasNewSos, sosUpdates, sosFileNames, isWeekly, successMsgId, fileInputIds, target };
 
         const rankType = isWeekly ? "Weekly" : "ROS";
         const sorted = [...parsedData].sort((a, b) => a.rank - b.rank);
@@ -232,7 +234,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
 
     export const confirmRankingsPreview = function() {
         if (!pendingRankingsUpload) return;
-        const { parsedData, hasNewSos, sosUpdates, isWeekly, successMsgId, fileInputIds } = pendingRankingsUpload;
+        const { parsedData, hasNewSos, sosUpdates, sosFileNames, isWeekly, successMsgId, fileInputIds } = pendingRankingsUpload;
         const type = isWeekly ? 'weekly' : 'ros';
 
         // Clear the file input(s) on save too, not just on cancel. Browsers only fire 'change'
@@ -254,7 +256,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
 
         if (hasNewSos) {
             importSoSUpdates(sosUpdates);
-            saveImportedSoS();
+            saveImportedSoS({ kind: 'rankings', type, name: sosFileNames });
         }
 
         const activeTabEl = document.querySelector('.tab-content.active');

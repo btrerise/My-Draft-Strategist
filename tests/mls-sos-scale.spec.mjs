@@ -1,8 +1,9 @@
 // Lineup Strategist's SoS card (Roster tab): which end is easy, how old the SoS is, and the
-// "My SoS files rank 1 = hardest" switch (improvements S7, round 5; js/mls/sos.js, js/mls/sosScale.js).
+// "My SoS files rank 1 = hardest" switch (improvements S7, rounds 5 and 6; js/mls/sos.js, js/mls/sosScale.js).
 // The app reads SoS as 1 = easiest, 32 = hardest. The switch flips what's saved and every later SoS
 // file, or SoS column in a ROS or Weekly rankings upload, to that scale. The card says when SoS was last
-// uploaded (amber after 7 days) and warns when the numbers look like 1-5 ratings.
+// uploaded (amber after 7 days) and from what, and warns when the numbers look like 1-5 ratings. When the
+// manual grid was saved after the last upload, the switch asks before flipping the saved numbers.
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, callApp, FIXED_NOW, RANKINGS_CSV } from './helpers.mjs';
 
@@ -37,7 +38,8 @@ test.describe('Lineup Strategist SoS scale and age', () => {
 
         await uploadSoS(page, ['Team,QB,RB,WR,TE', 'BUF,2,3,4,5', 'BAL,15,25,32,17', 'CIN,6,28,10,11'].join('\n'));
         await expect(status(page)).toBeVisible();
-        await expect(status(page)).toContainText('SoS updated today');
+        // Where it came from (round 6), as well as when.
+        await expect(status(page)).toContainText('SoS updated today from sos.csv');
         await expect(status(page)).toContainText('1 = easiest, 32 = hardest');
         await expect(status(page).locator('.freshness-ok')).toBeVisible();
         await expect(flip(page)).not.toBeChecked();
@@ -110,8 +112,29 @@ test.describe('Lineup Strategist SoS scale and age', () => {
         await expect(page.locator('.sos-grid-note')).toHaveText('Each team\'s matchup rank at each position: 1 = easiest, 32 = hardest.');
         await page.fill('#sos_BUF_QB', '20');
         await page.locator('[data-action="saveManualSoS"]').click();
-        await expect(status(page)).toContainText('SoS updated today');
+        await expect(status(page)).toContainText('SoS updated today from the manual grid');
         await expect(status(page).locator('.sos-status-warn')).toHaveCount(0);
+        expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_sos_source')))).toEqual({ kind: 'grid' });
+
+        // The grid was saved after the last upload, so the switch asks before flipping (round 6).
+        // "Keep as is" leaves the saved numbers alone but still changes the switch for later uploads.
+        const dialog = page.locator('#mds-confirm-overlay');
+        await flip(page).check();
+        await expect(dialog).toContainText("You've edited the manual grid since your last upload");
+        await dialog.locator('[data-confirm-action="cancel"]').click();
+        await expect(toast(page, 'Saved SoS kept as is')).toBeVisible();
+        let sos = await saved(page);
+        expect(sos.BUF.QB).toBe('20');
+        expect(await page.evaluate(() => localStorage.getItem('mls_sos_reversed'))).toBe('1');
+        await expect(flip(page)).toBeChecked();
+        // "Flip saved SoS" flips them; the date and source stay.
+        await flip(page).uncheck();
+        await dialog.locator('[data-confirm-action="ok"]').click();
+        await expect(toast(page, 'SoS flipped back')).toBeVisible();
+        sos = await saved(page);
+        expect(sos.BUF.QB).toBe('13');
+        expect(await page.evaluate(() => localStorage.getItem('mls_sos_reversed'))).toBe('0');
+        await expect(status(page)).toContainText('SoS updated today from the manual grid');
 
         await expectClean(page, state);
     });
@@ -144,7 +167,7 @@ test.describe('Lineup Strategist SoS scale and age', () => {
         const sos = await saved(page);
         expect(sos.CIN.WR).toBe('32');
         expect(sos.BAL.RB).toBe('18');
-        await expect(status(page)).toContainText('SoS updated today');
+        await expect(status(page)).toContainText('SoS updated today from your ROS rankings (rankings.csv)');
         await expect(flip(page)).toBeChecked();
         await expect(rosterBadge(page, 'Derrick Henry')).toHaveText('SoS: 18');
 

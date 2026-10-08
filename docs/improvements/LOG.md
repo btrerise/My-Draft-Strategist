@@ -1877,3 +1877,37 @@ only "(1-32)". Runbook card S10 re-takes the Guide screenshots anyway, so it now
 **Checks run.** `npm run check`: check-precache OK, 271 unit tests, 236 Playwright tests pass; the same 10
 environment-only screenshot failures, and all 40 renders pixel-identical to main's.
 
+### S7, round 6: where SoS came from, and the switch asks before flipping grid edits (owner's choice)
+
+**The question.** Reviewing round 5 as a user, I found a trap and a gap. The trap: everything saved is stored as
+1 = easiest, so with the switch on, grid edits (always 1 = easiest) got flipped when you later turned it off, a typed 5
+becoming 28, silently. The gap: SoS can come from an SoS file, a Weekly rankings file's Matchup column or a ROS rankings
+file's SoS column, the latest quietly overwriting the rest, and nothing said which one the badges showed. The owner
+chose to **fix both now**. (One switch for all sources stays as is: files from one site rank the same way.)
+
+**User-visible effect.**
+- **The status line names the source:** "SoS updated today from sos-week6.csv", "...from your ROS rankings
+  (rankings.csv)", "...from your Weekly rankings (...)" or "...from the manual grid". SoS saved before this round
+  shows no source.
+- **The switch asks first when the grid was saved after the last upload:** "You've edited the manual grid since your
+  last upload, and the grid is always 1 = easiest, 32 = hardest. Flip the SoS you have now too?" **Flip saved SoS**
+  flips as before; **Keep as is** (or Escape) leaves the saved numbers alone, and the switch still applies to later
+  uploads. Each says so in a toast. After an upload, the switch flips without asking, as in round 5.
+
+**What changed and where.**
+- `js/shared/storage/keys.js`: **a third new key**, `mls_sos_source` (`{ kind: 'file' | 'rankings' | 'grid', name?,
+  type? }`), read into `State.sosSource` (`js/mls/state.js`).
+- `js/mls/sos.js`: `saveSoS(source)` records the date and source together (a flip passes none, so both stay);
+  `sosSourceText` (file names escaped); `setSosReversed` is async and uses the site's `showConfirm` when the source is
+  the grid.
+- `js/mls/rankings/uploadPreview.js`: the upload's file names travel with the pending preview and are saved as the
+  source on Save.
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.86.
+
+**Tests.** `tests/mls-sos-scale.spec.mjs`: the source in the status line for an SoS file, the manual grid and a ROS
+rankings upload; the stored source; after a grid save, the switch's dialog, Keep as is (numbers unchanged, switch on,
+toast), then Flip saved SoS (numbers flipped, date and source kept).
+
+**Checks run.** `npm run check`: check-precache OK, 271 unit tests, 236 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders pixel-identical to main's.
+
