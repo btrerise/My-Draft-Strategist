@@ -256,7 +256,8 @@ test.describe('Lineup Strategist: the Waiver Wire with per-position uploads', ()
 
 // Phones: the Lineup tab's rank badge ("Pos: #5 (T3) | Flex: #13 (T3)") was one unbreakable piece, wider than the
 // space beside the projection and buttons, and the row cut it off ("Flex: #13 (T"). It now splits onto two lines at
-// the "|" when it doesn't fit (owner's choice A), each part kept whole, with no bar at a line's start or end.
+// the "|" when it doesn't fit (owner's choice A), each part kept whole, with no bar at a line's start or end, and
+// its box shrinks to the text (owner's go-ahead after a review as a user).
 test.describe('Lineup Strategist: the Lineup tab\'s rank badge fits its row', () => {
     test('nothing is cut off; one line on desktop, two parts on phones', async ({ page }, info) => {
         const state = await openApp(page, '/lineup/');
@@ -294,6 +295,27 @@ test.describe('Lineup Strategist: the Lineup tab\'s rank badge fits its row', ()
             // Henry's two parts sit on two lines, and the bar between them isn't shown at either line's edge.
             expect(henry.lines).toBe(2);
             expect(henry.bars[0].visible).toBe(false);
+        }
+
+        // A split badge's box hugs its text: no wider than its wider half plus the badge's own padding and border.
+        // Widening the window puts it back on one line; narrowing it splits it again.
+        const henryBadge = rankBadge(page, '#lineupTab', 'Derrick Henry');
+        const fit = () => henryBadge.evaluate(badge => {
+            const parts = [...badge.querySelectorAll('.mls-rank-part')].map(p => p.getBoundingClientRect());
+            const cs = getComputedStyle(badge);
+            const chrome = ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth'].reduce((sum, k) => sum + parseFloat(cs[k]), 0);
+            return {
+                lines: new Set(parts.map(p => Math.round(p.top))).size,
+                slack: badge.getBoundingClientRect().width - chrome - Math.max(...parts.map(p => p.width))
+            };
+        });
+        if (info.project.name === 'phone') {
+            expect((await fit()).slack).toBeLessThanOrEqual(1);
+            await page.setViewportSize({ width: 1280, height: 900 });
+            await expect.poll(async () => (await fit()).lines).toBe(1);
+            await page.setViewportSize({ width: 390, height: 844 });
+            await expect.poll(async () => (await fit()).lines).toBe(2);
+            expect((await fit()).slack).toBeLessThanOrEqual(1);
         }
         await expectClean(page, state);
     });

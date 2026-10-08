@@ -79,7 +79,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   ranks; its Flex number, which was also the overall rank, is fixed the same way. Who starts doesn't change.
 - **The Lineup tab's rank badge fits on phones.** "Pos: #5 (T3) | Flex: #13 (T3)" was wider than the space beside the
   projection and buttons, so the end was cut off ("Flex: #13 (T"). When it doesn't fit, it now shows on two lines,
-  "Pos: #5 (T3)" above "Flex: #13 (T3)". Where it fits, as on a computer, it looks as before.
+  "Pos: #5 (T3)" above "Flex: #13 (T3)", in a box just wide enough for them, often beside the team badge. Where it
+  fits, as on a computer, it looks as before.
 - **Trade Finder's Positional Rank basis works with a single rankings file.** It compared your overall rank with the
   market's position rank (Henry "RB #15" against the market's "RB #5"), so most of your list showed up as
   disconnects. It now uses the same position ranks as the Waiver Wire.

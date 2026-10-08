@@ -500,6 +500,35 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         return `<span class="mls-rank-parts"><span class="mls-rank-part">${first}</span><span class="mls-rank-part"><span class="mls-rank-bar"> | </span>${second}</span></span>`;
     }
 
+    // A split badge's box would stay as wide as the row allows (CSS can't shrink a wrapped box to its lines),
+    // leaving an empty block beside the text. This marks each badge whose halves landed on two lines
+    // `.is-stacked` (css/mls.css: one column, so the box fits its text). Every mark is cleared before any is
+    // measured, so a badge that has room again goes back on one line. Run after each render, and when the
+    // containers' width changes (rotation, a resize, the tab shown after being hidden: hidden, nothing stacks).
+    function fitRankBadges(roots) {
+        const wrappers = roots.flatMap(root => (root ? [...root.querySelectorAll('.mls-rank-parts')] : []));
+        wrappers.forEach(w => w.classList.remove('is-stacked'));
+        wrappers.filter(w => {
+            const [first, second] = w.children;
+            return first && second && second.offsetTop > first.offsetTop;
+        }).forEach(w => w.classList.add('is-stacked'));
+    }
+
+    // One observer for the page's lifetime; the two containers are fixed elements in lineup/index.html.
+    // Height changes (stacking itself, new rows) are ignored, and the refit waits a frame so it never resizes
+    // what the observer is reporting on while it reports.
+    let _rankBadgeObserver = null;
+    function watchRankBadgeWidths(roots) {
+        if (_rankBadgeObserver || typeof ResizeObserver === 'undefined') return;
+        const widths = new Map();
+        _rankBadgeObserver = new ResizeObserver(entries => {
+            const changed = entries.filter(e => widths.get(e.target) !== e.contentRect.width);
+            changed.forEach(e => widths.set(e.target, e.contentRect.width));
+            if (changed.length) requestAnimationFrame(() => fitRankBadges(roots));
+        });
+        roots.forEach(root => _rankBadgeObserver.observe(root));
+    }
+
     export function renderLineupUI() {
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
@@ -723,6 +752,8 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 </div>`; 
         }
         renderHTMLInto(benchContainer, benchHTML);
+        fitRankBadges([container, benchContainer]);
+        watchRankBadgeWidths([container, benchContainer]);
 
         // Auto-update the dashboard matrix in the background so status icons stay live
         if (typeof renderLeagueManager === 'function') renderLeagueManager();

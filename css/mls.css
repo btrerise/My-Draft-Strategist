@@ -243,6 +243,8 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 .mls-rank-part { position: relative; margin-left: 0.908em; white-space: nowrap; }
 .mls-rank-bar { position: absolute; right: 100%; width: 0.908em; text-align: center; white-space: normal; }
 .mls-rank-badge:has(.mls-rank-parts) { white-space: normal; }
+/* Split onto two lines: one column, so the box fits its text instead of the row's width (fitRankBadges). */
+.mls-rank-parts.is-stacked { flex-direction: column; }
 /* Optional tier shown beside a rank on player cards ("#12 (T3)") -- see tierTag in js/mls/constants.js. */
 .mls-tier { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
 .mls-rank-sep { opacity: 0.5; }

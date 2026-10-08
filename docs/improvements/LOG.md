@@ -2367,3 +2367,36 @@ two lines with no bar. Before the change it failed at both widths (cut off on th
 **Checks run.** `npm run check`: check-precache OK, 284 unit tests pass; Playwright: the same 10 first-run screenshot
 failures on every page, then a full rerun passed all 258 with no baseline changed.
 
+### F6, round 4: a split badge's box fits its text (owner's go-ahead)
+
+**Why.** In another review as a user (Roster, Lineup, Auto-Find and Trade Finder at both widths), everything read
+right except one thing: when a Lineup badge split onto two lines on a phone, its dark box stayed as wide as the row
+allowed, leaving an empty block beside the text. CSS sizes a box whose contents wrap to the space available, not to
+its longest line, so CSS alone can't fix it. I showed a mock-up with the box fitted to the text; the owner said go.
+
+**User-visible effect.** On phones, a split badge's box is just wide enough for its two lines. Narrower, most of them
+now fit beside the team badge (Chase, Jefferson, Bowers, Lamb in the fixture), so those rows are a line shorter than
+in round 3. A badge too wide for that spot (Henry's "Flex: #13 (T3)") takes the line below, as before. Rotating the
+phone or widening the window puts a badge back on one line when it fits. Desktop is unchanged (nothing splits there).
+
+**What changed and where.**
+- `js/mls/render/lineup.js`:
+  - `fitRankBadges(roots)` runs after each Lineup render. It clears `.is-stacked` from every badge, then marks the
+    ones whose two halves landed on different lines; clearing all before measuring any lets a badge with room go
+    back on one line.
+  - `watchRankBadgeWidths(roots)` sets up one `ResizeObserver` for the page's lifetime on the starters and bench
+    containers. It refits when their width changes: rotation, a resize, or the tab shown after being hidden (hidden,
+    nothing measures as split). Height changes are ignored, and the refit waits a frame so it never resizes what the
+    observer is reporting on while it reports.
+- `css/mls.css`: `.mls-rank-parts.is-stacked { flex-direction: column; }`, so the box fits its widest line.
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.88.
+
+**Tests.** `tests/mls-display-ranks.spec.mjs`, the fit test now also checks on a phone that Henry's split badge is no
+wider than its wider half plus its own padding and border (it was 56px wider before this round), that widening the
+window to 1280px puts it on one line, and that narrowing it again splits it with the box fitted.
+
+**Screenshots.** None re-taken; the screenshot league has no rankings.
+
+**Checks run.** `npm run check`: check-precache OK, 284 unit tests pass; Playwright: the same 10 first-run screenshot
+failures on every page, then a full rerun passed all 258 with no baseline changed.
+
