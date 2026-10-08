@@ -266,9 +266,13 @@ test.describe('Roster tab position counts', () => {
         await expect(slot("Ja'Marr Chase").locator('.ir-slot-badge')).toHaveText('IR');
         await expect(page.locator('#lineupTab .ir-slot-badge')).toHaveCount(3);
 
-        // A tap explains it here too.
+        // Starting him is the app's prompt to activate him (owner's decision, round 6): a line above the
+        // lineup says so, and his badge says what to do. Bench badges keep their wording.
+        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(1);
+        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveText("Ja'Marr Chase is in your IR slot on Sleeper. Move him to your active roster there before kickoff to start him.");
         await slot("Ja'Marr Chase").locator('.ir-slot-badge').click();
-        await expect(page.locator('.toast-message').filter({ hasText: "In your IR slot on Sleeper. A player there can't start until you move him out of it." })).toBeVisible();
+        await expect(page.locator('.toast-message').filter({ hasText: 'In your IR slot on Sleeper. Move him to your active roster there to start him.' })).toBeVisible();
+        await expect(bench.locator('.lineup-slot').filter({ hasText: 'Justin Jefferson' }).locator('.ir-slot-badge')).toHaveAttribute('title', "In your IR slot on Sleeper. A player there can't start until you move him out of it.");
         await expectClean(page, state);
     });
 
@@ -306,6 +310,8 @@ test.describe('Roster tab position counts', () => {
         await expect(benchRow('Justin Jefferson').locator('.slot-badge')).toHaveText('IR');
         await expect(benchRow('Trey McBride').locator('.slot-badge')).toHaveText('TX');
         await expect(benchRow(before[0]).locator('.slot-badge')).toHaveText('BN');
+        // Nobody in the IR slot is starting, so no activation line.
+        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(0);
 
         // Swap Jefferson into a WR slot: the WR he replaces joins the healthy bench, not the IR group.
         const wrStarter = page.locator('#lineupTab .lineup-slot').filter({ has: page.locator('.slot-badge.slot-WR') }).first();
@@ -313,6 +319,8 @@ test.describe('Roster tab position counts', () => {
         await benchRow('Justin Jefferson').locator('[data-action="initiateSwap"]').click();
         await wrStarter.locator('[data-action="initiateSwap"]').click();
         await expect(benchRow('Justin Jefferson')).toHaveCount(0);
+        // Now he's starting (a manual swap): the activation line names him.
+        await expect(page.locator('#lineupTab .lineup-ir-warning')).toContainText('Justin Jefferson is in your IR slot on Sleeper.');
         const after = await benchOrder();
         expect(after.indexOf(benched)).toBeGreaterThan(-1);
         expect(after.indexOf(benched)).toBeLessThan(after.indexOf('-- Injured Reserve --'));

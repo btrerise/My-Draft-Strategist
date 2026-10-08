@@ -8,7 +8,7 @@ import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } 
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
-import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupInjuryWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupInjuryWarningHTML, getLineupIrSlotWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
@@ -570,6 +570,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 
         html += getNextLockCountdownHTML(starters);
         html += getLineupInjuryWarningHTML(starters, league);
+        html += getLineupIrSlotWarningHTML(starters, league);
 
         if (validSleeperStarters.length > 0) {
             let sleeperSet = new Set(validSleeperStarters);
@@ -632,7 +633,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 let byeStr = byeWeek ? ` (${byeWeek})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
                 // IR-slot badge before the injury badge, as on the Roster tab (improvements S9).
-                let irSlotBadge = getIrSlotBadgeHTML(p);
+                let irSlotBadge = getIrSlotBadgeHTML(p, { starting: true });
                 let injBadge = getInjuryBadgeHTML(p);
                 let kickoffBadge = getGameInfoHTML(p.team);
 

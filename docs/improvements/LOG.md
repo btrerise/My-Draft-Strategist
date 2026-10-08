@@ -2520,7 +2520,8 @@ notes and his badge.
 **Screenshots.** None beyond round 1's two `mls-league-roster.png` (the screenshot league has no IR-slot players).
 
 **Left over (for later).**
-- **IR-slot players in the Lineup tab's starters** (owner: consider later). The optimizer still treats `isReserve`
+- ~~**IR-slot players in the Lineup tab's starters**~~ (decided in round 6: they stay eligible, as a prompt to activate
+  them). The optimizer still treats `isReserve`
   players as available. One who's Out or on NFL IR is never started anyway (his status), but one back to Questionable
   or healthy while still in your IR slot can be picked as a starter, though Sleeper won't start him until he's moved
   out. Fix: leave `isReserve` players out of the pool like taxi players (`js/mls/render/lineup.js`, `pool` /
@@ -2630,3 +2631,38 @@ Kittle, the "Taxi Squad" divider, McBride, with slot codes BN, IR and TX; swappi
 benched WR above the IR divider and leaves Kittle alone in the IR group. Fails before this round (no IR divider).
 
 **Screenshots.** None changed (the screenshot league has no IR-slot or taxi players).
+
+### S9, round 6: a healthy IR-slot starter is a prompt to activate him (owner's decision)
+
+**Why.** In a second review as a user, Chase (healthy, in the IR slot) was the optimal lineup's WR1, while his own IR
+badge said "A player there can't start until you move him out of it": the app contradicted itself. I suggested keeping
+IR-slot players out of the optimizer's pool, like taxi players.
+
+**Owner's decision.** Keep the logic. An optimal lineup says who should start; if that's a healthy player in the IR
+slot, the recommendation means "activate him", and Sleeper makes you do that before it lets you start him. The Waiver
+Wire's "your weakest" stays as it is for the same reason (a healthy IR-slot player is a real asset). Then, of two
+wording options, the owner chose **both**: an instruction on the starter row's badge **and** a line above the lineup.
+
+**User-visible effect.**
+- When the lineup starts a player who's in your Sleeper IR slot, a purple line above the lineup (the IR badge's colors,
+  in the injury warning's place and shape) says: "Ja'Marr Chase is in your IR slot on Sleeper. Move him to your active
+  roster there before kickoff to start him." With several: "A and B are in your IR slot on Sleeper. Move them to your
+  active roster there before kickoff to start them." It follows the injury warning's rules: not in Best Ball leagues,
+  and a player whose game has kicked off is left out. A manual swap that starts an IR-slot player shows it too.
+- On a starter row the IR badge's hover and tap text says what to do: "In your IR slot on Sleeper. Move him to your
+  active roster there to start him." Bench and Roster rows keep "A player there can't start until you move him out
+  of it."
+- Who starts doesn't change.
+
+**What changed and where.**
+- `js/mls/lineup/gameInfo.js`: `getLineupIrSlotWarningHTML(starters, league)` (new), and `getIrSlotBadgeHTML(p,
+  { starting })` for the starter wording. `js/mls/render/lineup.js` draws the line after the injury warning and
+  passes `{ starting: true }` on starter rows.
+- `css/mls.css`: `.lineup-injury-warning.lineup-ir-warning` (purple) and its icon kept full size when the text wraps.
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.89.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`: with Chase in the IR slot and starting, the line's exact text, his
+badge's new toast, and a bench badge's unchanged `title`; in the bench-order test, no line while no IR-slot player
+starts, then Jefferson named in it after he's swapped into a WR slot.
+
+**Screenshots.** None changed (the screenshot league has no IR-slot players).

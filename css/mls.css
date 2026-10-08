@@ -86,6 +86,14 @@
     padding: 0.5rem 0.75rem;
     margin-bottom: 0.75rem;
 }
+/* A starter in your Sleeper IR slot (improvements S9, round 6): a to-do rather than a danger, so the IR
+   badge's purple instead of red. */
+.lineup-injury-warning.lineup-ir-warning {
+    color: #e9d8fd;
+    background: rgba(159, 122, 234, 0.12);
+    border-color: rgba(159, 122, 234, 0.45);
+}
+.lineup-ir-warning svg { flex-shrink: 0; } /* full size when the text wraps */
 
 .sim-lookup-card {
     background: rgba(0, 0, 0, 0.15);
