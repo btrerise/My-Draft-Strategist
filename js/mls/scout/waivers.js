@@ -478,6 +478,10 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         return escapeHtml(parts.length > 1 ? parts[parts.length - 1] : (parts[0] || String(full || '')));
     }
 
+    // The tier that belongs to a display rank field (buildRankDisplayIndex): Overall's list tier, the
+    // FLEX list's, or the position list's. A derived rank has no tier of its own (null), so it shows none.
+    const DISPLAY_TIER_FIELD = { rank: 'tier', flexRank: 'flexTier', posRank: 'posTier' };
+
     // "Replaces Mike Evans (your FLEX) -- Wk Flex: Dobbins #58, Evans #20". Both numbers carry
     // the name they belong to: an earlier "#58 vs #20" left it to the reader to work out which
     // rank was whose, and the starter's number reads as the free agent's at a glance.
@@ -497,7 +501,10 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const crossName = crossKind === 'overall' ? 'Overall' : 'Flex';
         const faD = display[faPlayer.cleanName] || {};
         const oD = display[other.cleanName] || {};
-        const fmt = (v, pos) => (v === null || v === undefined) ? 'unranked' : (useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`);
+        // Each number carries the tier of the list it came from (improvements S8), like the card's rank
+        // row: Overall -> tier, Flex -> flexTier, position -> posTier. Untiered files add nothing.
+        const tierOf = (d) => useFlex ? d[DISPLAY_TIER_FIELD[crossField]] : d.posTier;
+        const fmt = (v, pos, tier) => (v === null || v === undefined) ? 'unranked' : `${useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`}${tierTag(tier)}`;
         const faVal = useFlex ? faD[crossField] : faD.posRank;
         const oVal = useFlex ? oD[crossField] : oD.posRank;
         const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotDisplayName(slotType)})</span>` : '';
@@ -505,8 +512,8 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         // label/name+rank pair is kept unbreakable -- at phone width this line otherwise wrapped
         // mid-phrase ("Wk" on one line, "Flex: Dobbins #58" on the next), which read as garbled.
         const nums = `<span class="mls-nowrap">${label} ${useFlex ? crossName : 'Pos'}:</span> `
-            + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos)}</span>, `
-            + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos)}</span>`;
+            + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos, tierOf(faD))}</span>, `
+            + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos, tierOf(oD))}</span>`;
         // His SoS badge beside his name (improvements S7), so both schedules sit side by side.
         return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}<span class="mls-verdict-nums">${nums}</span>`;
     }
@@ -747,8 +754,14 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                     const d = basisDisplay[p.cleanName] || {};
                     // Cross-position number: Weekly's FLEX rank, or ROS's Overall (see scanCross).
                     const crossOverall = ctx.scanCross === 'overall';
-                    const v = basisKind === 'flex' ? (crossOverall ? d.rank : d.flexRank) : d.posRank;
-                    return v ? `${basisLabel} ${basisKind === 'flex' ? `${crossOverall ? 'Overall' : 'Flex'} #${v}` : `${escapeHtml(p.pos)}${v}`}` : `unranked by ${basisName}`;
+                    const field = basisKind === 'flex' ? (crossOverall ? 'rank' : 'flexRank') : 'posRank';
+                    const v = d[field];
+                    if (!v) return `unranked by ${basisName}`;
+                    const text = `${basisLabel} ${basisKind === 'flex' ? `${crossOverall ? 'Overall' : 'Flex'} #${v}` : `${escapeHtml(p.pos)}${v}`}`;
+                    // His tier for that number (improvements S8), kept on one line with it. Without a
+                    // tier the text is exactly as before.
+                    const tier = tierTag(d[DISPLAY_TIER_FIELD[field]]);
+                    return tier ? `<span class="mls-nowrap">${text}${tier}</span>` : text;
                 };
                 const nextUp = mine.slice(Math.max(0, mine.length - 3), mine.length - 1).reverse()
                     .map(p => `${escapeHtml(p.name)} (${rankText(p)})`);

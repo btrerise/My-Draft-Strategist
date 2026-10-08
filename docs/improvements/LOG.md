@@ -1911,3 +1911,82 @@ toast), then Flip saved SoS (numbers flipped, date and source kept).
 **Checks run.** `npm run check`: check-precache OK, 271 unit tests, 236 Playwright tests pass; the same 10
 environment-only screenshot failures, and all 40 renders pixel-identical to main's.
 
+
+## S8 — Show the tier of the player free agents are compared against
+
+**User-visible effect.** When your rankings have tiers, the Waiver Wire Assistant (Scout tab) now shows the tier of
+the player a free agent is measured against, in the same "(T4)" form free agents' ranks already use:
+- **Auto-Find, Whole Roster:** the drop candidate, "Your weakest RB is Derrick Henry (ROS RB8 (T4))", and each name
+  in "Next weakest: George Kittle (ROS Overall #23 (T4)), …".
+- **The numbers line under every comparison verdict**, in Auto-Find and Check a List (Upgrade over, Doesn't pass,
+  Replaces, Would need to pass): both numbers get their tier, so the two sit side by side: "ROS Pos: Cook RB5 (T3),
+  Henry RB8 (T4)", "Wk Flex: Smith-Njigba #22 (T6), Lamb #5 (T2)".
+
+Each tier is the one for the number shown: position tier beside "RB8", the FLEX list's beside "Wk Flex #22", the
+overall list's beside "ROS Overall #23". What this means in practice:
+- **A single rankings file with a Tier column** (the common upload) has tiers for its overall list only. The app
+  already sets them aside for position ranks it derives, and for FLEX ranks when the file also ranks QBs. So with one
+  file, tiers show beside ROS Overall numbers (Whole Roster with FLEX, ROS Rank By) and not beside position or Wk Flex
+  numbers. That's how free agents' own rank rows and Top Available's chips already behave.
+- **Per-position files** (and a Weekly FLEX file) carry position and FLEX tiers, and those show everywhere.
+- **Rankings without tiers:** nothing changes. The markup is the same as before, with no added wrapper.
+
+Display only: no rank, order or upgrade verdict changed.
+
+**Owner's decisions (asked before building).**
+1. **Format:** the same "(T9)" tag free agents use (`tierTag`, js/mls/constants.js).
+2. **Which tier:** "the same settings used elsewhere for tiers". I read that as the Waiver Wire's existing rule for
+   free agents' tiers: the tier that belongs to the number shown, from the same display maps
+   (`buildRankDisplayIndex`: `posTier`, `flexTier`, `tier`). The other option was falling back to the overall tier
+   when there's no position tier, as S5's Dashboard upgrade check does (`posTier ?? tier`). That would have put an
+   overall-list tier beside a position rank, while the free agent's own chip showed none.
+3. **The free agent's number in the verdict line gets its tier too:** yes.
+4. **Dashboard Best Available lines:** no, for now. S5 chose chips without tiers there, so only the compared player
+   would have had one.
+5. **Verdict rule:** unchanged. Auto-Find and Check a List still count any better rank as an upgrade; only the
+   Dashboard uses S5's better-tier rule.
+
+**A correction to the card.** The card listed "the 'over …' text in js/mls/scout/topAvailable.js". Top Available
+rows don't name a compared player. "over Derrick Henry RB8" is the Dashboard's Best Available line
+(`js/mls/scout/bestAvailable.js`), which decision 4 left alone. Top Available is unchanged; the spec checks that its
+chip shows the same position tier as the verdict lines ("RB5 T3").
+
+**What changed and where.**
+- `js/mls/scout/waivers.js`:
+  - `DISPLAY_TIER_FIELD` maps a display rank field to its tier field (`rank` → `tier`, `flexRank` → `flexTier`,
+    `posRank` → `posTier`).
+  - `waiverCompareLine`: each number in `.mls-verdict-nums` carries `tierTag(...)` inside its existing
+    `.mls-nowrap` pair, so name, rank and tier never split on a phone.
+  - `renderRosterGroup`'s `rankText` (the drop candidate and Next weakest): appends the tier and, only when there is
+    one, wraps the rank and tier in `.mls-nowrap`. Without a tier the text is exactly as before.
+- `sw.js`: `CACHE_NAME` v2.8.86 → v2.8.87. No new files. CHANGELOG line under Lineup Strategist.
+
+**Tests.** `tests/mls-waiver-tiers.spec.mjs` (both widths):
+- **Tiered:** `rankings-waivers.csv` alone shows the overall tier beside ROS Overall ("George Kittle (ROS Overall #23
+  (T4))", Next weakest too) and none beside "ROS RB5". Then both saved sets are rewritten the way per-position
+  uploads store them (position ranks, `posTier` = ceil(posRank / 2), a Weekly FLEX list with `flexTier`), with James
+  Cook moved ahead of Derrick Henry. The spec checks:
+  - Auto-Find Whole Roster RB: the header "(ROS RB8 (T4))" and Cook's "ROS Pos: Cook RB5 (T3), Henry RB8 (T4)".
+  - FLEX: Overall ranks and tiers.
+  - Starting Lineup: "Wk Flex: Smith-Njigba #22 (T6), Lamb #5 (T2)" and "Wk Pos: LaPorta TE4 (T2), Bowers TE1 (T1)".
+  - Check a List: Upgrade over (Cook) and Doesn't pass (Chase Brown).
+  - Top Available: Cook's chip shows the same "RB5 T3".
+  - Every tier sits inside a `.mls-nowrap` that renders on one line.
+- **Untiered** (the same file without its Tier column): the same views show no `.mls-tier`, the header has no added
+  wrapper, and the verdict lines read as before ("Wk Pos: LaPorta TE4, Bowers TE1").
+- With the waivers.js change reverted, the tiered test fails and the untiered one passes, as intended.
+
+**Screenshots.** None re-taken. The screenshot league's rankings come from `rankings.csv`, and no screenshot shows an
+Auto-Find or Check a List result.
+
+**Checks run.** `npm run check`: check-precache OK, 271 unit tests pass, 240 Playwright tests pass (the new spec's 4
+included). The 10 screenshot comparisons that fail in this cloud session (`visual.spec.mjs`, the font environment
+noted in earlier entries) also fail on main: I rendered all 40 screenshots on main and on this branch here, and
+`npm run pxdiff` found them all pixel-identical. CI (the baseline environment) is the final word.
+
+**Left over.**
+- The Dashboard's "over Derrick Henry RB8" has no tier (decision 4). If it's added later, the free agents' chips
+  there should get tiers too, so the line reads alike.
+- With the single-file uploads most people use, position comparisons show no tier, because the file's Tier column
+  belongs to its overall list. Showing that tier beside a position rank was the alternative to decision 2.
+- S10 (the badge legend) should describe "(T4)" beside the compared player as the same tier tag.
