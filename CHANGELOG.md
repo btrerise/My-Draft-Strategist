@@ -78,7 +78,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   All, to show everyone. A position you have none of shows as 0 when your league starts one, and is left out when it
   doesn't (no K in a league without kickers). The counts follow every add, remove, sync and league switch.
 - **An IR badge for players in your Sleeper IR slot** on the Roster and Lineup tabs, styled like TAXI. Hover over it,
-  or tap it on a phone, for what it means. Sleeper syncs now record who's in your IR slot (until a league's next sync,
+  or tap it on a phone, for what it means. On the Lineup tab they sit at the bottom of the bench under an "Injured
+  Reserve" divider, above the taxi squad, as in Sleeper. Sleeper syncs now record who's in your IR slot (until a league's next sync,
   only NFL IR status counts).
 - **The Lineup and Roster tabs show real position ranks with a single rankings file.** With one overall list (a Pos
   column but no Pos Rank column, the most common upload), both tabs printed each player's overall rank as his

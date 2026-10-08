@@ -121,6 +121,16 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         return !!(SLOT_POSITIONS[slotType] && SLOT_POSITIONS[slotType].includes(pos));
     }
 
+    // The bench in the order fantasy apps show it: real bench depth, then players in your Sleeper IR
+    // slot (isReserve, improvements S9), then the taxi squad. A stable partition, so each group keeps
+    // its own order (best-ranked first after an optimize). Applied by optimizeLineup and after every
+    // swap: a swap drops the outgoing player into the other's bench spot, which could otherwise leave
+    // a healthy player inside the IR group.
+    const benchGroup = p => (p.isTaxi ? 2 : p.isReserve ? 1 : 0);
+    export function groupBench(bench) {
+        return (bench || []).slice().sort((a, b) => benchGroup(a) - benchGroup(b));
+    }
+
     export const initiateSwap = function(playerId) {
         if (State.swapSourceId === null) { State.swapSourceId = playerId; } 
         else if (State.swapSourceId === playerId) { State.swapSourceId = null; } 
@@ -157,6 +167,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             else if (p1StarterIdx !== -1 && p2BenchIdx !== -1) { starters[p1StarterIdx].player = p2Obj; bench[p2BenchIdx] = p1Obj; }
             else if (p1BenchIdx !== -1 && p2StarterIdx !== -1) { starters[p2StarterIdx].player = p1Obj; bench[p1BenchIdx] = p2Obj; }
             else if (p1BenchIdx !== -1 && p2BenchIdx !== -1) { bench[p1BenchIdx] = p2Obj; bench[p2BenchIdx] = p1Obj; }
+            bench = groupBench(bench);
 
             State.manualStartersMap[State.activeLeagueId] = starters;
             State.manualBenchMap[State.activeLeagueId] = bench;
@@ -416,6 +427,9 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // to how the bench itself is ranked.
         taxiPlayers.sort(benchOrder);
         pool.push(...taxiPlayers);
+        // Players in your IR slot who didn't start sit between the bench and the taxi squad, as in
+        // Sleeper (improvements S9). Who starts is unchanged: this only orders what's left.
+        pool = groupBench(pool);
 
         // Reassign which starters sit in the strict QB/RB/WR/TE slots vs SFLEX, FLEX, W/T and W/R,
         // purely by kickoff time -- who actually starts is already decided above by rank; this
@@ -685,7 +699,13 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             // off the data rather than a precomputed count so a bench with no taxi players
             // renders byte-for-byte as it did before this existed.
             let taxiDividerShown = false;
+            let irDividerShown = false;
             benchPool.forEach(p => {
+                // Same for the IR group above it (groupBench puts IR-slot players there).
+                if (p.isReserve && !p.isTaxi && !irDividerShown) {
+                    irDividerShown = true;
+                    benchHTML += `<div class="bench-taxi-divider bench-ir-divider"><span>Injured Reserve</span></div>`;
+                }
                 if (p.isTaxi && !taxiDividerShown) {
                     taxiDividerShown = true;
                     benchHTML += `<div class="bench-taxi-divider"><span>Taxi Squad</span></div>`;
@@ -716,7 +736,8 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 
                 // "TX" rather than "BN" in the slot column, so the distinction survives even
                 // where the badges row is dense -- same fixed 46px slot badge, no layout shift.
-                const slotCode = p.isTaxi ? 'TX' : 'BN';
+                // "IR" for a player in your Sleeper IR slot, for the same reason (improvements S9).
+                const slotCode = p.isTaxi ? 'TX' : p.isReserve ? 'IR' : 'BN';
 
                 // No swap control on a taxi row. The whole point of the flag is that this
                 // player can't be started, so offering the button would be an invitation to

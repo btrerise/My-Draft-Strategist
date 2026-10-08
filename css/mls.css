@@ -415,7 +415,8 @@ body.mls-hide-headshots .mls-headshot { display: none; }
    hue, because a taxi player is a quieter version of a bench player, not a different kind of
    alert -- the dashed border carries the whole distinction, reading as "parked, not in play"
    against every other slot badge's solid one. */
-.slot-badge.slot-TX { background-color: rgba(148, 163, 184, 0.06); color: var(--text-muted); border: 1px dashed var(--border); }
+/* IR (a player in your Sleeper IR slot, improvements S9) is parked the same way. */
+.slot-badge.slot-TX, .slot-badge.slot-IR { background-color: rgba(148, 163, 184, 0.06); color: var(--text-muted); border: 1px dashed var(--border); }
 
 /* Plain, unstyled position text -- deliberately NOT a badge, since a second colored pill here
    is exactly the duplication the slot-badge consolidation above was meant to remove. Shown on

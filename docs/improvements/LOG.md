@@ -2603,3 +2603,30 @@ screenshot league has no notes, filter or IR-slot players).
 **Left over.**
 - The Guide has no Roster-tab section, so the chips and the IR badge are explained only by the card's tooltip and the
   badge's own tap. S10 (the legend) should include both.
+
+### S9, round 5: IR-slot players at the bottom of the Lineup tab's bench (owner's request)
+
+**Why.** The owner asked for players with the IR badge to sit at the bottom of the bench, where fantasy apps show
+IR players.
+
+**User-visible effect.** The Lineup tab's bench reads like Sleeper's: the healthy bench (best first, as before), then
+an **Injured Reserve** divider with the players in your IR slot, then the **Taxi Squad**. IR rows say "IR" in the slot
+column (like "TX" for taxi, with the same dashed look) besides the IR badge, and keep their swap button. A swap keeps
+the groups: swapping an IR player into a starting slot sends the starter he replaces to the healthy bench, not into
+the IR group. Who starts doesn't change. A healthy IR-slot player can still be picked as a starter, the round 2
+leftover; if he is, his row stays with the starters and shows the IR badge.
+
+**What changed and where.**
+- `js/mls/render/lineup.js`: `groupBench(bench)`, a stable partition (bench, IR slot, taxi), applied at the end of
+  `optimizeLineup` and after every swap in `initiateSwap` (a swap drops the outgoing player into the other's bench
+  spot). The bench render adds the "Injured Reserve" divider (the taxi divider's style) and the "IR" slot code.
+- `css/mls.css`: `.slot-badge.slot-IR` shares `.slot-TX`'s rule.
+- Saved lineups from before round 2 have no IR-slot data on their bench copies; the next sync re-runs the optimizer
+  (it always does) and groups them. CHANGELOG line updated. `CACHE_NAME` stays v2.8.89.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`, new, both widths: with rankings loaded, Jefferson (Out) and Kittle (NFL IR)
+in the IR slot and McBride on taxi, the bench reads healthy players, the "Injured Reserve" divider, Jefferson and
+Kittle, the "Taxi Squad" divider, McBride, with slot codes BN, IR and TX; swapping Jefferson into a WR slot puts the
+benched WR above the IR divider and leaves Kittle alone in the IR group. Fails before this round (no IR divider).
+
+**Screenshots.** None changed (the screenshot league has no IR-slot or taxi players).

@@ -6,7 +6,7 @@
 // WR 2, TE 1, FLEX 1, K 1, DEF 1.
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, callApp, FIXED_NOW, FIXTURE_LEAGUE_ID } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, FIXED_NOW, FIXTURE_LEAGUE_ID } from './helpers.mjs';
 
 const strip = (page) => page.locator('#rosterPosCounts');
 const chip = (page, pos) => strip(page).locator(`[data-pos="${pos}"]`);
@@ -269,6 +269,54 @@ test.describe('Roster tab position counts', () => {
         // A tap explains it here too.
         await slot("Ja'Marr Chase").locator('.ir-slot-badge').click();
         await expect(page.locator('.toast-message').filter({ hasText: "In your IR slot on Sleeper. A player there can't start until you move him out of it." })).toBeVisible();
+        await expectClean(page, state);
+    });
+
+    test('the Lineup tab puts IR-slot players at the bottom of the bench, above the taxi squad', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        // Jefferson (Out) and Kittle (NFL IR) in your IR slot, McBride on taxi; rankings loaded so the
+        // bench has a real order.
+        const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
+        await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
+            const players = fixture('players-nfl.json');
+            players['6794'].injury_status = 'Out';
+            players['4217'].injury_status = 'IR';
+            return route.fulfill({ json: players });
+        });
+        await page.route(/sleeper\.app\/v1\/league\/\d+\/rosters$/, route => {
+            const rosters = fixture('league-rosters.json');
+            rosters[0].reserve = ['6794', '4217'];
+            rosters[0].taxi = ['7553'];
+            return route.fulfill({ json: rosters });
+        });
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'lineup');
+
+        // The bench top to bottom: player last names and the two dividers.
+        const benchOrder = () => page.locator('#benchContainer').evaluate(el => [...el.querySelectorAll('.lineup-slot, .bench-taxi-divider')]
+            .map(e => e.classList.contains('bench-taxi-divider') ? `-- ${e.textContent.trim()} --` : e.querySelector('.player-name-wrap').firstChild.textContent.replace(/\s*\(\d+\)\s*$/, '').trim()));
+        const before = await benchOrder();
+        const ir = before.indexOf('-- Injured Reserve --');
+        const taxi = before.indexOf('-- Taxi Squad --');
+        expect(ir).toBeGreaterThan(0); // healthy bench players first
+        expect(before.slice(ir + 1, taxi).sort()).toEqual(['George Kittle', 'Justin Jefferson']);
+        expect(before.slice(taxi + 1)).toEqual(['Trey McBride']);
+        const benchRow = (name) => page.locator('#benchContainer .lineup-slot').filter({ hasText: name });
+        await expect(benchRow('Justin Jefferson').locator('.slot-badge')).toHaveText('IR');
+        await expect(benchRow('Trey McBride').locator('.slot-badge')).toHaveText('TX');
+        await expect(benchRow(before[0]).locator('.slot-badge')).toHaveText('BN');
+
+        // Swap Jefferson into a WR slot: the WR he replaces joins the healthy bench, not the IR group.
+        const wrStarter = page.locator('#lineupTab .lineup-slot').filter({ has: page.locator('.slot-badge.slot-WR') }).first();
+        const benched = (await wrStarter.locator('.player-name-wrap').evaluate(e => e.firstChild.textContent)).replace(/\s*\(\d+\)\s*$/, '').trim();
+        await benchRow('Justin Jefferson').locator('[data-action="initiateSwap"]').click();
+        await wrStarter.locator('[data-action="initiateSwap"]').click();
+        await expect(benchRow('Justin Jefferson')).toHaveCount(0);
+        const after = await benchOrder();
+        expect(after.indexOf(benched)).toBeGreaterThan(-1);
+        expect(after.indexOf(benched)).toBeLessThan(after.indexOf('-- Injured Reserve --'));
+        expect(after.slice(after.indexOf('-- Injured Reserve --') + 1, after.indexOf('-- Taxi Squad --'))).toEqual(['George Kittle']);
         await expectClean(page, state);
     });
 });
