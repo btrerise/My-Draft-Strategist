@@ -2308,6 +2308,15 @@ per-position files; it only appeared when renumbering changed a number, which is
   flexRank) is unchanged. Header comment updated.
 - `js/mls/rankings/displayRanks.js` imports `singleFileFallback`, so the Lineup and Roster tabs and the Waiver Wire
   use one rule.
+- **What changed's Weekly baseline** (`js/mls/rankings/changeSummary.js`, S3): it keeps a compact copy of the week's
+  first upload, and those rows had no FLEX rank. With the new rule a single file's baseline stopped looking like a
+  single file, so its position ranks weren't derived and the comparison reported false moves (S3's spec caught it:
+  "Your players 11" instead of 7). Two changes:
+  - New baselines store the FLEX rank as a 7th element (`baselineRows` / `rowsFromBaseline`), so they're judged
+    exactly like the upload. A few bytes a player, in the existing `weekBaseline` field; no new key.
+  - A row with no FLEX rank field at all (a baseline saved before this) is judged by its position ranks alone, the
+    old rule. So an old baseline from per-position files is still renumbered until the next week's first upload
+    replaces it. That only matters with a player the app can't place, and for at most a week.
 - CHANGELOG line under Lineup Strategist. `CACHE_NAME` stays v2.8.88 (this branch's bump).
 
 **Tests.**
@@ -2315,4 +2324,11 @@ per-position files; it only appeared when renumbering changed a number, which is
   Available's "RB4" and the Roster tab's "Pos: #7".
 - `tests/unit/waiverScanner.test.mjs`: per-position ranks with an unplaced player stay as stored;
   `singleFileFallback` added to the export list. It fails on the old scanner. `tests/unit/displayRanks.test.mjs`
-  imports `singleFileFallback` from its new home.
+  imports `singleFileFallback` from its new home, and checks the baseline shapes: rows without FLEX ranks judged by
+  position ranks, per-position rows with them kept as stored.
+- `tests/mls-display-ranks.spec.mjs`: a new Weekly set's baseline row ends with the FLEX rank.
+- `tests/mls-rankings-change.spec.mjs` (S3): its pinned baseline row gains the FLEX rank, the intended change.
+
+**Checks run.** `npm run check`: check-precache OK, 284 unit tests pass. Playwright: 256 passed in a full run after
+the S3 fix, screenshots included (the first full run of the session again failed the same 10 screenshots, on every
+page; no baseline rewritten).
