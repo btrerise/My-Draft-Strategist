@@ -2,7 +2,7 @@
 // AUTO-FIND, incl. the Scan Pasted List controls, and autoFindWaiverUpgrades (which sat after
 // ALL-LEAGUES PLAYER SEARCH).
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
-import { buildRankDisplayIndex, checkAgainstLineup, compareForScan, findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
+import { buildRankDisplayIndex, checkAgainstLineup, compareForScan, findFreeAgents, FLEX_POSITIONS, matchesPosFilter, upgradeGap } from './waiverScanner.js';
 import { escapeHtml } from '../../shared/html.js';
 import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
@@ -512,14 +512,17 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         return { useFlex, crossField, faD, oD, faTier: tierOf(faD), oTier: tierOf(oD) };
     }
 
-    // What "upgrade" means across Lineup Strategist (improvements S8, round 4, owner's choice): for a
-    // free agent already ranked ahead of your player, a better tier when both are tiered; any better
-    // rank when either isn't. Same tier (or, with odd files, a worse one) reads "Ranked ahead of" and
-    // isn't counted. The Dashboard's Best Available uses the same tier rule (upgradeGap).
+    // What "upgrade" means across Lineup Strategist (improvements S8, rounds 4 and 5, owner's choices):
+    // the Dashboard's rule, upgradeGap (waiverScanner.js), on the numbers the line shows. For a free agent
+    // already ranked ahead of your player: a better tier when both are tiered, else at least
+    // UPGRADE_MIN_GAP (3) spots better; your unranked player loses to any ranked free agent. Anyone else
+    // ranked ahead reads "Ranked ahead of" and isn't counted.
     const isTiered = (t) => Number.isFinite(t) && t > 0;
     function isTierUpgrade(faPlayer, other, display, basis, crossKind) {
-        const { faTier, oTier } = comparedTiers(faPlayer, other, null, display, basis, crossKind);
-        return !(isTiered(faTier) && isTiered(oTier)) || faTier < oTier;
+        const { useFlex, crossField, faD, oD, faTier, oTier } = comparedTiers(faPlayer, other, null, display, basis, crossKind);
+        const field = useFlex ? crossField : 'posRank';
+        if (!oD[field]) return true;
+        return upgradeGap({ faRank: faD[field], faTier, benchRank: oD[field], benchTier: oTier }) !== null;
     }
 
     // "Replaces Mike Evans (your FLEX) -- Wk Flex: Dobbins #58, Evans #20". Both numbers carry
@@ -814,20 +817,24 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                     ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(' ')}</div>` : ''}
                     ${notCounted}
                 </div>`;
-                // Everyone ranked ahead is listed, in rank order; only a tier jump is called (and counted as)
-                // an upgrade (improvements S8, round 4). The rest read "Ranked ahead of".
-                let upgradeCount = 0;
+                // Everyone ranked ahead is listed, in rank order; only an upgrade by the Dashboard's rule is
+                // called (and counted as) one (improvements S8, rounds 4 and 5). The rest read "Ranked ahead
+                // of": the same tier, or (without tiers) 1-2 spots ahead.
+                let upgradeCount = 0, sameTier = 0, close = 0;
                 const cards = upgrades.map(fa => {
                     const row = ctx.evaluate(fa);
                     const isUpgrade = isTierUpgrade(row.player, bench, basisDisplay, basisKind, ctx.scanCross);
                     if (isUpgrade) upgradeCount++;
+                    else {
+                        const { faTier, oTier } = comparedTiers(row.player, bench, null, basisDisplay, basisKind, ctx.scanCross);
+                        if (isTiered(faTier) && isTiered(oTier)) sameTier++; else close++;
+                    }
                     const line = waiverCompareLine(row.player, bench, null, isUpgrade ? 'Upgrade over' : 'Ranked ahead of', basisDisplay, basisLabel, basisKind, ctx.scanCross);
                     return renderWaiverScanCard(ctx, row, line);
                 }).join('');
-                const aheadOnly = upgrades.length - upgradeCount;
-                const countText = upgradeCount
-                    ? `${upgradeCount} upgrade${upgradeCount === 1 ? '' : 's'}${aheadOnly ? ` · ${aheadOnly} same tier` : ''}`
-                    : aheadOnly ? `no upgrades · ${aheadOnly} same tier`
+                const rest = [sameTier && `${sameTier} same tier`, close && `${close} within 2 spots`].filter(Boolean);
+                const countText = upgradeCount || rest.length
+                    ? [upgradeCount ? `${upgradeCount} upgrade${upgradeCount === 1 ? '' : 's'}` : 'no upgrades', ...rest].join(' · ')
                     : (g.items.length === 0 ? 'none available' : 'no upgrades');
                 return { body: header + cards, count: upgradeCount, countText };
             };

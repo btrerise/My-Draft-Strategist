@@ -20,7 +20,8 @@
 //
 // Round 4 (owner's choice: the same "upgrade" everywhere): only a tier jump is an upgrade wherever the Waiver
 // Wire says so -- the verdict, Auto-Find's section count ("1 upgrade · 2 same tier") and Check a List's
-// upgrades-first sort -- like the Dashboard. Everyone ranked ahead is still listed.
+// upgrades-first sort -- like the Dashboard. Everyone ranked ahead is still listed. Round 5: without tiers,
+// the Dashboard's other half of the rule too: at least 3 spots better ("1 within 2 spots" otherwise).
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, WAIVER_RANKINGS_CSV } from './helpers.mjs';
 
@@ -38,6 +39,19 @@ const POSRANK_CSV = (() => {
     const [header, ...rows] = WAIVER_RANKINGS_CSV.trim().split('\n');
     return [header + ',Pos Rank', ...rows.map(l => { const pos = l.split(',')[2]; seen[pos] = (seen[pos] || 0) + 1; return `${l},${seen[pos]}`; })].join('\n');
 })();
+
+// Moves James Cook to ROS and Weekly overall rank `rank` in an untiered single file (position ranks are
+// derived from that order), then reloads.
+async function moveCook(page, rank) {
+    await page.evaluate((rank) => {
+        for (const key of ['mls_ranking_sets_ros', 'mls_ranking_sets_weekly']) {
+            const sets = JSON.parse(localStorage.getItem(key));
+            for (const set of sets) Object.assign(set.data.find(r => r.name === 'James Cook'), { rank, posRank: rank, flexRank: rank });
+            localStorage.setItem(key, JSON.stringify(sets));
+        }
+    }, rank);
+    await page.reload();
+}
 
 // The same file without its Tier column.
 const UNTIERED_CSV = WAIVER_RANKINGS_CSV.trim().split('\n').map(l => { const c = l.split(','); c.splice(4, 1); return c.join(','); }).join('\n');
@@ -270,6 +284,34 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
         await expect(listCard(page, 'Chase Brown').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Brown RB9, Henry RB5');
         await expect(out(page).locator('.mls-tier')).toHaveCount(0);
         await expect(out(page).locator('.mls-tier-gap')).toHaveCount(0);
+
+        await expectClean(page, state);
+    });
+
+    test('without tiers, an upgrade is at least 3 spots better, as on the Dashboard', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page, UNTIERED_CSV, 30);
+        const rbSection = () => out(page).locator('.mls-waiver-section-title').filter({ hasText: /^RB/ });
+
+        // Cook at #14: RB5, one spot ahead of Henry (RB6). Listed, but not an upgrade.
+        await moveCook(page, 14);
+        await runAutoFind(page, { basis: 'ros', pos: 'RB', compare: 'roster' });
+        await expect(scanCard(page, 'James Cook').locator('.mls-scan-verdict')).toContainText('Ranked ahead of Derrick Henry');
+        await expect(scanCard(page, 'James Cook').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Cook RB5, Henry RB6');
+        await runAutoFind(page, { basis: 'ros', pos: 'ALL', compare: 'roster' });
+        await expect(rbSection()).toHaveText('RB · no upgrades · 1 within 2 spots');
+        await runCheckList(page, { basis: 'ros', pos: 'RB', compare: 'roster' }, ['James Cook']);
+        await expect(listCard(page, 'James Cook')).toContainText('Ranked ahead of Derrick Henry (your weakest RB)');
+
+        // Cook at #3: RB2, four spots ahead of Henry. An upgrade.
+        await moveCook(page, 3);
+        await runAutoFind(page, { basis: 'ros', pos: 'ALL', compare: 'roster' });
+        await expect(rbSection()).toHaveText('RB · 1 upgrade');
+        await expect(scanCard(page, 'James Cook').locator('.mls-scan-verdict')).toContainText('Upgrade over Derrick Henry');
+        await expect(scanCard(page, 'James Cook').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Cook RB2, Henry RB6');
+        await runCheckList(page, { basis: 'ros', pos: 'RB', compare: 'roster' }, ['James Cook']);
+        await expect(listCard(page, 'James Cook')).toContainText('Upgrade over Derrick Henry (your weakest RB)');
 
         await expectClean(page, state);
     });

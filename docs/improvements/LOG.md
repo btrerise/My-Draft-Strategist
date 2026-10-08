@@ -2141,7 +2141,7 @@ still listed, in rank order. The same tier reads "Ranked ahead of".
 - With "any better rank counts" put back in `pastedRosterVerdict`, the spec fails.
 
 **Left over.**
-- **Without tiers, the Dashboard still needs 3+ spots** (`UPGRADE_MIN_GAP`), while Auto-Find and Check a List count any
+- ~~**Without tiers, the Dashboard still needs 3+ spots**~~ (done in round 5) (`UPGRADE_MIN_GAP`), while Auto-Find and Check a List count any
   better rank. A 1–2 spot gap reads "Upgrade over" in Auto-Find and isn't flagged on the Dashboard. This session only
   decided the tier rule; making them match is one line in `isTierUpgrade` if the owner wants it.
 - **The Guide tab's line on Whole Roster** ("checks whether he's better than your weakest player") doesn't mention
@@ -2149,4 +2149,36 @@ still listed, in rank order. The same tier reads "Ranked ahead of".
   screenshots and can add it.
 
 **Checks run.** `npm run check`: check-precache OK, 272 unit tests, 242 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders are pixel-identical to main's.
+
+### S8, round 5: without tiers, an upgrade is 3+ spots better, as on the Dashboard (owner's choice)
+
+**Owner's choice.** Round 4 left one difference: without tiers the Dashboard needs a free agent at least 3 spots
+better (`UPGRADE_MIN_GAP`), while Auto-Find and Check a List counted any better rank. The owner said to match them.
+
+**User-visible effect (rankings without tiers).**
+- **A free agent 1–2 spots ahead of your player** reads "Ranked ahead of Derrick Henry" in Auto-Find and Check a
+  List. He's still listed, but not counted as an upgrade or sorted first.
+- **3 or more spots ahead** reads "Upgrade over" as before.
+- **The All view's count names both groups:** "RB · no upgrades · 1 within 2 spots", or "RB · 1 upgrade · 2 same tier"
+  with tiers.
+- **Your unranked player** still loses to any ranked free agent, as on the Dashboard.
+- **The tooltip** now says: "An upgrade ("Upgrade over") must be in a better tier when your rankings have tiers, or at
+  least 3 spots better when they don't, as on the Dashboard; anyone else ranked ahead reads "Ranked ahead of"."
+
+**What changed and where.**
+- `js/mls/scout/waivers.js` `isTierUpgrade` now calls the Dashboard's own rule, `upgradeGap` (waiverScanner.js), on the
+  numbers the line shows (position, Flex or Overall), so the two can't drift apart.
+  - The 3 spots are counted in the number shown: position spots for a single position, Flex or Overall spots in
+    Auto-Find's FLEX view. The Dashboard compares per position.
+  - `renderRosterGroup`'s count splits the non-upgrades into "same tier" and "within 2 spots".
+- `lineup/index.html`: the tooltip sentence. CHANGELOG line updated. `CACHE_NAME` stays v2.8.87.
+
+**Tests.** `tests/mls-waiver-tiers.spec.mjs`, new test on an untiered file:
+- Cook moved to RB5, one spot ahead of Henry (RB6): "Ranked ahead of" in Auto-Find and Check a List, and "RB · no
+  upgrades · 1 within 2 spots".
+- Cook moved to RB2: "Upgrade over" and "RB · 1 upgrade".
+- With round 4's "any better rank without tiers" put back, the test fails.
+
+**Checks run.** `npm run check`: check-precache OK, 272 unit tests, 244 Playwright tests pass; the same 10
 environment-only screenshot failures, and all 40 renders are pixel-identical to main's.
