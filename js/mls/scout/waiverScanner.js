@@ -25,13 +25,15 @@ const rankOr999 = (v) => (isRanked(v) ? v : UNRANKED);
 // uploads, explicit Pos Rank column) the raw numbers are kept untouched.
 //
 // Detection:
-//   Positions  -- every ranked player in the whole file has posRank equal to their overall
-//                 rank. Checked file-wide, not per position: the parser's fallback only ever
-//                 happens for a whole single-file upload, while a genuine positional list can
-//                 match its overall rank for one group (QBs on a horizontal sheet) -- and
+//   Positions  -- singleFileFallback(...).positions: every ranked player in the whole file has
+//                 posRank AND flexRank equal to their overall rank, which only the single-file
+//                 fallback writes. Checked file-wide, not per position: a genuine positional list
+//                 can match its overall rank for one group (QBs on a horizontal sheet) -- and
 //                 re-deriving that group would compress any gaps (QB10/QB14 -> QB1/QB2).
-//                 Per-position uploads with no FLEX file also trip this, but each group there
-//                 is already 1..N, so re-ordering hands back the same numbers.
+//                 Per-position uploads have posRank equal to rank too, but no FLEX rank, so they
+//                 don't trip it. Before the follow-up to improvements F6 they did, and were
+//                 renumbered 1..N from the positions that could be looked up: a player whose
+//                 position wasn't known dropped out and everyone below him moved up a spot.
 //   FLEX group -- any non-FLEX player (QB/K/DEF) carries a flexRank. Only the single-file
 //                 fallback does that; a real FLEX column/file never includes them.
 //
@@ -40,6 +42,22 @@ const rankOr999 = (v) => (isRanked(v) ? v : UNRANKED);
 // "the overall tier beside position ranks everywhere"), so a single tiered file shows tiers on every
 // number. Its overall tier rises with its order, so it reads the same way down any position or the
 // FLEX group. Derived ranks are flagged so the UI can disclose them.
+// Which of a file's numbers are the parser's single-file fallback, told from the numbers alone
+// (no positions needed): { positions, flex }. positions: every ranked player's posRank and flexRank
+// equal his rank (a single file without a Pos Rank column). flex: every ranked player's flexRank
+// equals his rank, QBs included (any single file, a Pos Rank column too). Per-position uploads, a
+// FLEX file and horizontal sheets fail both. Shared with js/mls/rankings/displayRanks.js.
+// A row with no flexRank field at all (a What changed week baseline saved before improvements F6
+// round 2, js/mls/rankings/changeSummary.js) is judged by its posRank alone, the rule before then.
+export function singleFileFallback(rankings) {
+    const ranked = Array.isArray(rankings) ? rankings.filter(r => r && isRanked(r.rank)) : [];
+    if (ranked.length === 0) return { positions: false, flex: false };
+    return {
+        positions: ranked.every(r => r.posRank === r.rank && (r.flexRank === undefined || r.flexRank === r.rank)),
+        flex: ranked.every(r => r.flexRank === r.rank)
+    };
+}
+
 export function buildRankDisplayIndex(rankings, getPos) {
     const index = {};
     if (!Array.isArray(rankings) || rankings.length === 0) return index;
@@ -72,9 +90,7 @@ export function buildRankDisplayIndex(rankings, getPos) {
         };
     });
 
-    const positioned = withPos.filter(({ pos }) => pos && pos !== 'UNK').map(({ r }) => r);
-    const posFallback = positioned.length > 0 &&
-        positioned.every(r => !isRanked(r.posRank) || r.posRank === r.rank);
+    const posFallback = singleFileFallback(rankings).positions;
 
     if (posFallback) Object.values(byPos).forEach(group => {
         const ranked = group.filter(r => isRanked(r.posRank) || isRanked(r.rank));

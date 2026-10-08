@@ -12,6 +12,7 @@ import { getSoSBadgeHTML } from '../sos.js';
 import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
 import { refreshPowerRankings } from '../main.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
+import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 
     // --- RENDERERS ---
 
@@ -71,15 +72,22 @@ import { rankMoveChip } from '../rankings/moveChips.js';
         ensureHeadshotNameIndex(league.roster, loadRosterTab);
 
         const rosIndex = rankingIndex(State.rosRankings);
+        // Position ranks as the Waiver Wire shows them: a single file's are re-derived per position
+        // (improvements F6); null keeps a file's own. Built once per render.
+        const rosDisplay = leagueRankDisplayIndex(league, State.rosRankings, loadRosterTab);
         let displayRoster = league.roster.map(p => {
             let rObj = rosIndex.get(p.cleanName);
+            const shown = displayRanksFor(rosDisplay, p.cleanName, {
+                posRank: rObj ? rObj.posRank : 999,
+                // No position tier of its own: the file's overall tier stands in (improvements S8, round 3).
+                posTier: rObj ? (rObj.posTier ?? rObj.tier ?? null) : null
+            });
             return {
                 ...p, 
                 rosRank: rObj ? rObj.rank : 999,
-                posRank: rObj ? rObj.posRank : 999,
+                posRank: shown.posRank,
                 rosTier: rObj ? rObj.tier : null,
-                // No position tier of its own: the file's overall tier stands in (improvements S8, round 3).
-                posTier: rObj ? (rObj.posTier ?? rObj.tier ?? null) : null
+                posTier: shown.posTier
             };
         });
 

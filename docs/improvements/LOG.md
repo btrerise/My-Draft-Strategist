@@ -2193,3 +2193,216 @@ branch). The Waiver Wire Assistant corrects that with `buildRankDisplayIndex`, s
 Positional Rank basis (`marketDisconnect.js`) also reads the raw `posRank` and needs checking. Not fixed here (outside
 S8). The owner added it to the runbook as card F6 (Needs: S8), which keeps the fix display-only so the optimizer's
 inputs, and who starts, stay the same.
+
+## F6 — Lineup and Roster tabs show the overall rank as the position rank
+
+**User-visible effect.** With a single rankings file that has no Pos Rank column (one overall list with a Pos
+column, the most common upload), the Lineup and Roster tabs now show the same position and FLEX ranks as the
+Waiver Wire Assistant, instead of each player's overall rank:
+- **Roster tab:** Derrick Henry reads "Ovr: #15 (T3) | Pos: #5 (T3)" (was "Pos: #15 (T3)").
+- **Lineup tab, Weekly loaded:** "Pos: #5 (T3) | Flex: #13 (T3)" (was "Pos: #15 (T3) | Flex: #15 (T3)"). Flex counts
+  RB/WR/TE only, as the Waiver Wire's "Wk Flex" does (George Kittle "Flex: #19", as in S8's spec). QBs, kickers and
+  defenses show only "Pos:", as before ("Pos: #1 (T3)" for Josh Allen, was "#13").
+- **Lineup tab, ROS only:** "Pos: #5 (T3) | Overall: #15 (T3)". The second number is the Overall rank and stays it.
+- **A file with a Pos Rank column** keeps its position ranks. Its FLEX rank was also the overall rank (the parser
+  writes the overall rank to flexRank for every single file), so its Lineup "Flex:" number is now derived too, as the
+  Waiver Wire already showed it ("Flex: #13", was "#15"). The card didn't name this case; it's the same bug, and the
+  position numbers it asked to keep are kept.
+- **Trade Finder, Positional Rank basis:** with a single file it compared your overall rank with the market's
+  position rank, so most of your list looked like a disconnect ("RB #15" against the market's "RB #5"). It now uses
+  the same position ranks. In the spec, a market that agrees with the file except for Henry flags only Henry
+  ("Your Board: RB #5 (T3) · Ovr: #15 (T3)", "Market: RB #1"); on main it flagged 10 players at threshold 2.
+- Tiers are unchanged: a derived rank shows the file's overall tier, as S8 round 3 already did.
+- **Who starts doesn't change**, nor bench order, slot order or FLEX Kickoff Optimization.
+
+**What changed and where.**
+- `js/mls/rankings/displayRanks.js` (new, in `PRECACHE_ASSETS`):
+  - `singleFileFallback(rankings)` recognises the parser's fallback without positions: **positions** when every
+    ranked player's posRank and flexRank equal his rank (a single file, no Pos Rank column); **flex** when every
+    ranked player's flexRank equals his rank, QBs included (any single file).
+  - `leagueRankDisplayIndex(league, rankings, rerender)` builds `buildRankDisplayIndex` once per render, only when
+    one of those holds, with the Waiver Wire's positions (`makeLeagueGetPos`: the league's `globalPosMap`, then
+    Sleeper's player map, then market data) plus the roster's own `pos` for anyone those don't know.
+  - `displayRanksFor(index, cleanName, raw)` gives the numbers to show: derived where the index applies and knows
+    the player's position, otherwise the raw ones.
+- **Why the extra test rather than `buildRankDisplayIndex` alone:** per-position uploads also have posRank equal to
+  rank, so `buildRankDisplayIndex` renumbers them 1..N per group. That gives the same numbers back only when every
+  player's position is known; a name Sleeper can't match would shift everyone below him. The Waiver Wire has that
+  edge today (out of scope here, it's the reference); the Lineup and Roster tabs now show per-position, FLEX-file
+  and horizontal-sheet numbers exactly as stored.
+- **Sleeper's player map:** free agents' positions come from it (a free-agent RB ranked ahead of Henry counts toward
+  "RB5"). The renders can't wait for it, so `getSleeperMetaByName` (waivers.js) now keeps the resolved index
+  (`sleeperMetaByNameIfLoaded`), and a render that finds it missing re-runs once when it lands, the same
+  render-now, redraw-once pattern as the rookie badges and headshots. It's cached in IndexedDB and memory, so this
+  is the first render of a page load at most. Rankings with their own position ranks never ask for it.
+- `js/mls/render/roster.js` `loadRosterTab` and `js/mls/render/lineup.js` `renderLineupUI` / `lineupRankBadge`:
+  the rows read display ranks. The Lineup tab's index uses the rankings the optimizer used (Weekly when loaded, else
+  ROS); ROS's "Overall:" number stays the raw flexRank (the overall rank).
+- **The optimizer is untouched.** `optimizeLineup`'s `scoredRoster` and `compareFlexCandidates` read the raw
+  `posRank` / `flexRank`, and the saved lineup objects keep them. Display ranks are looked up at render time, never
+  stored, so no stored data or storage key changed.
+- `js/mls/scout/marketDisconnect.js`: the Positional Rank basis reads `displayRanksFor` (rank and tier). The Overall
+  basis is unchanged.
+- `sw.js`: `CACHE_NAME` v2.8.87 → v2.8.88. CHANGELOG: two lines under Lineup Strategist.
+
+**Checked, not changed.**
+- `posRankTag` (js/mls/constants.js, the Scout and All-Leagues cards' "Pos:" tag): with a single file posRank equals
+  rank and the tiers match, so it shows nothing; nothing wrong is on screen. Confirmed. Showing the derived rank
+  there would be new information, not a fix, so I left it.
+- Top Available, the Dashboard's Best Available, Auto-Find, Check a List and S3's What changed already use
+  `buildRankDisplayIndex`.
+- **The Waiver Wire's "derived from the file's order" note:** not added to the Lineup and Roster tabs. Their numbers
+  now match the Scout tab, which says it, and a note on two tabs opened every week would repeat it for most users.
+
+**Tests.**
+- `tests/mls-display-ranks.spec.mjs` (new, both widths), all four fail on main:
+  - Single file as ROS and Weekly: Roster and Lineup numbers for Henry, Allen, Kittle and A.J. Brown; the saved
+    starters and bench order equal the ones recorded on main before the fix (`STARTERS`, `BENCH`), and Henry's
+    saved raw ranks are still 15 / 15.
+  - ROS only: "Pos: #5 (T3) | Overall: #15 (T3)", same starters.
+  - Own position ranks: a Pos Rank column with RB numbers doubled (so renumbering would show) reads "Pos: #10";
+    sets rewritten as per-position uploads, also with gaps, read as stored ("Pos: #10", Allen "Pos: #2").
+  - Trade Finder, as above.
+- `tests/unit/displayRanks.test.mjs` (new): the fallback test on each file shape, Pos Rank column (positions kept,
+  FLEX derived), the roster-position stand-in, and one re-render while the Sleeper map loads.
+
+**Screenshots.** None re-taken; the screenshot league has no rankings, so these renders return before building
+anything.
+
+**Checks run.** `npm run check`: check-precache OK, 282 unit tests pass. Playwright: 242 passed and the 10
+screenshot comparisons failed on the first run (MDS, T-Score and MLS pages alike, the environment-only failures
+earlier entries describe); two later full runs passed all 252 with no baseline rewritten.
+
+**Left over.** ~~The Waiver Wire renumbers per-position uploads when a player's position is unknown~~ (fixed in
+round 2, below).
+
+### F6, round 2: the Waiver Wire keeps per-position files' numbers (owner's request)
+
+**Owner's request.** After round 1 I described a Waiver Wire bug found while reading `buildRankDisplayIndex`. The
+owner asked for a test to confirm it, and a fix on this branch if needed.
+
+**The bug.** `buildRankDisplayIndex` treated a file as the single-file fallback when every player whose position it
+could look up had posRank equal to rank. Per-position uploads (one file per position) pass that test too: each file
+numbers its own players, and the parser sets rank from the first file a player is in. So it renumbered each position
+1..N from the positions it could look up. A player no source places (league, Sleeper's player map, market data),
+such as a name Sleeper doesn't match, dropped out, and everyone below him moved up a spot. The same happened to a
+horizontal Weekly sheet without a FLEX column.
+
+**Confirmed in the app first** (`tests/mls-display-ranks.spec.mjs`, "keeps the files' position ranks when a
+player's position is unknown"): per-position sets, untiered, with an unplaced RB at RB5, James Cook (free agent)
+RB4 and Derrick Henry (your RB) RB7. Before the fix, Auto-Find said "Your weakest RB is Derrick Henry (ROS RB6)",
+"ROS Pos: Cook RB4, Henry RB6", and the verdict was **"Ranked ahead of Derrick Henry"**: the gap shrank from 3 spots
+to 2, below the 3-spot upgrade rule. The Roster tab (round 1) already said "Pos: #7".
+
+**User-visible effect.** With per-position uploads, or a horizontal Weekly sheet without a FLEX column, the Waiver
+Wire Assistant (Top Available, Auto-Find, Check a List), the Dashboard's Best Available and S3's What changed show
+the numbers the files give. Verdicts follow them: Cook is "Upgrade over Derrick Henry" again. Single files are
+unchanged (still derived). For per-position files whose players' positions are all known, nothing changes: the
+renumbering handed the same numbers back. The "derived from the file's order" note no longer appears for
+per-position files; it only appeared when renumbering changed a number, which is now never.
+
+**What changed and where.**
+- `js/mls/scout/waiverScanner.js`: `singleFileFallback(rankings)` (moved here from `displayRanks.js`) tells the
+  fallback from the numbers alone: position ranks are derived only when every ranked player's posRank and flexRank
+  equal his rank. `buildRankDisplayIndex` uses it instead of its own test. The FLEX test (a QB/K/DEF carrying a
+  flexRank) is unchanged. Header comment updated.
+- `js/mls/rankings/displayRanks.js` imports `singleFileFallback`, so the Lineup and Roster tabs and the Waiver Wire
+  use one rule.
+- **What changed's Weekly baseline** (`js/mls/rankings/changeSummary.js`, S3): it keeps a compact copy of the week's
+  first upload, and those rows had no FLEX rank. With the new rule a single file's baseline stopped looking like a
+  single file, so its position ranks weren't derived and the comparison reported false moves (S3's spec caught it:
+  "Your players 11" instead of 7). Two changes:
+  - New baselines store the FLEX rank as a 7th element (`baselineRows` / `rowsFromBaseline`), so they're judged
+    exactly like the upload. A few bytes a player, in the existing `weekBaseline` field; no new key.
+  - A row with no FLEX rank field at all (a baseline saved before this) is judged by its position ranks alone, the
+    old rule. So an old baseline from per-position files is still renumbered until the next week's first upload
+    replaces it. That only matters with a player the app can't place, and for at most a week.
+- CHANGELOG line under Lineup Strategist. `CACHE_NAME` stays v2.8.88 (this branch's bump).
+
+**Tests.**
+- The spec above, which failed before the fix on the header, the verdict and its numbers; it also checks Top
+  Available's "RB4" and the Roster tab's "Pos: #7".
+- `tests/unit/waiverScanner.test.mjs`: per-position ranks with an unplaced player stay as stored;
+  `singleFileFallback` added to the export list. It fails on the old scanner. `tests/unit/displayRanks.test.mjs`
+  imports `singleFileFallback` from its new home, and checks the baseline shapes: rows without FLEX ranks judged by
+  position ranks, per-position rows with them kept as stored.
+- `tests/mls-display-ranks.spec.mjs`: a new Weekly set's baseline row ends with the FLEX rank.
+- `tests/mls-rankings-change.spec.mjs` (S3): its pinned baseline row gains the FLEX rank, the intended change.
+
+**Checks run.** `npm run check`: check-precache OK, 284 unit tests pass. Playwright: 256 passed in a full run after
+the S3 fix, screenshots included (the first full run of the session again failed the same 10 screenshots, on every
+page; no baseline rewritten).
+
+### F6, round 3: the Lineup tab's rank badge fits on phones (owner's choice)
+
+**Why.** Asked how F6 looks from a user's side, I screenshotted the Roster and Lineup tabs, Auto-Find and Trade
+Finder at both widths. The numbers agree everywhere (A.J. Brown WR9, Kittle TE3, Henry RB5). One problem: on a phone
+the Lineup tab cut off the end of the rank badge ("Pos: #5 (T3) | Flex: #13 (T", the FLEX tier lost on every RB, WR
+and TE). Main does the same, slightly worse ("Flex: #15 ("): the badge was one piece that couldn't wrap, and the row
+hides what doesn't fit. I offered **A**, splitting the badge onto two lines at the "|" when it doesn't fit, or **B**,
+shorter phone wording ("RB5 · T3 | Flex 13 · T3"). The owner chose **A**.
+
+**User-visible effect.** On phones, a Lineup row with two numbers shows "Pos: #5 (T3)" above "Flex: #13 (T3)" (or
+"Overall:" with ROS only), so nothing is cut off; those rows are one line taller. One-number badges ("Pos: #1 (T3)",
+"Unranked") are unchanged. On a computer the badge stays on one line and looks as before: a desktop badge compared
+with main's differs in 2 anti-aliasing pixels of the bar. At 320px wide (the narrowest old phones) the halves can
+still be cut, as players' names already are there; that's the row's layout, not this badge.
+
+**What changed and where.**
+- `js/mls/render/lineup.js`: `rankBadgeParts(first, second)` wraps the two halves (`.mls-rank-part`, each kept whole)
+  with the bar as real text (`.mls-rank-bar`), so the badge's text is still "Pos: #5 (T3) | Flex: #13 (T3)" and the
+  specs reading it are unchanged.
+- `css/mls.css`: `.mls-rank-parts` is a wrapping inline-flex. Each part has a 0.908em gap on its left (the old " | "
+  text's width in this font) with the bar centred in it; the wrapper starts one gap to the left and clips that strip
+  (`clip-path`), so a part that wraps to the start of a line loses its bar while one beside another keeps it. The
+  badge allows wrapping only when it holds parts (`:has(.mls-rank-parts)`).
+- Roster tab unchanged: its badge fits at phone width. CHANGELOG line. `CACHE_NAME` stays v2.8.88.
+
+**Tests.** `tests/mls-display-ranks.spec.mjs`, "nothing is cut off; one line on desktop, two parts on phones": every
+Lineup badge ends inside its row; on desktop each is one line with the bar showing; on a phone Henry's halves sit on
+two lines with no bar. Before the change it failed at both widths (cut off on the phone).
+
+**Screenshots.** None re-taken; the screenshot league has no rankings, so its badges read "Unranked".
+
+**Checks run.** `npm run check`: check-precache OK, 284 unit tests pass; Playwright: the same 10 first-run screenshot
+failures on every page, then a full rerun passed all 258 with no baseline changed.
+
+### F6, round 4: a split badge's box fits its text (owner's go-ahead)
+
+**Why.** In another review as a user (Roster, Lineup, Auto-Find and Trade Finder at both widths), everything read
+right except one thing: when a Lineup badge split onto two lines on a phone, its dark box stayed as wide as the row
+allowed, leaving an empty block beside the text. CSS sizes a box whose contents wrap to the space available, not to
+its longest line, so CSS alone can't fix it. I showed a mock-up with the box fitted to the text; the owner said go.
+
+**User-visible effect.** On phones, a split badge's box is just wide enough for its two lines. Narrower, most of them
+now fit beside the team badge (Chase, Jefferson, Bowers, Lamb in the fixture), so those rows are a line shorter than
+in round 3. A badge too wide for that spot (Henry's "Flex: #13 (T3)") takes the line below, as before. Rotating the
+phone or widening the window puts a badge back on one line when it fits. Desktop is unchanged (nothing splits there).
+
+**What changed and where.**
+- `js/mls/render/lineup.js`:
+  - `fitRankBadges(roots)` runs after each Lineup render. It clears `.is-stacked` from every badge, then marks the
+    ones whose two halves landed on different lines; clearing all before measuring any lets a badge with room go
+    back on one line.
+  - `watchRankBadgeWidths(roots)` sets up one `ResizeObserver` for the page's lifetime on the starters and bench
+    containers. It refits when their width changes: rotation, a resize, or the tab shown after being hidden (hidden,
+    nothing measures as split). Height changes are ignored, and the refit waits a frame so it never resizes what the
+    observer is reporting on while it reports.
+- `css/mls.css`: `.mls-rank-parts.is-stacked { flex-direction: column; }`, so the box fits its widest line.
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.88.
+
+**Tests.** `tests/mls-display-ranks.spec.mjs`, the fit test now also checks on a phone that Henry's split badge is no
+wider than its wider half plus its own padding and border (it was 56px wider before this round), that widening the
+window to 1280px puts it on one line, and that narrowing it again splits it with the box fitted.
+
+**CI fix (PR #191).** The first CI run failed this test on the phone, at its last step: after narrowing the window
+back, it measured the box as soon as the halves wrapped, but the refit runs a frame later (the observer waits a frame
+on purpose), and CI's runner hadn't drawn that frame yet. Not reproducible here as-is (30/30), but delaying frames by
+200ms made the old check fail the same way (56px; 60px on CI) and the fixed one pass. The test now waits for the box to
+fit (`expect.poll`) instead of checking once; it still fails if the refit never happens. Test only, no app change.
+
+**Screenshots.** None re-taken; the screenshot league has no rankings.
+
+**Checks run.** `npm run check`: check-precache OK, 284 unit tests pass; Playwright: the same 10 first-run screenshot
+failures on every page, then a full rerun passed all 258 with no baseline changed.
+

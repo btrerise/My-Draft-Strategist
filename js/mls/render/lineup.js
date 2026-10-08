@@ -11,6 +11,7 @@ import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
 import { getByeBadgeHTML, getGameInfoHTML, getLineupInjuryWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
+import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
@@ -475,14 +476,57 @@ import { showConfirm } from '../../shared/ui/confirm.js';
     //             FLEX list; the parser stores Overall in flexRank for those files, so the
     //             number is right but "Flex" was the wrong name for it. Same wording as the
     //             waiver cards ("ROS Overall").
-    function lineupRankBadge(p, rankedByRos) {
-        const hasPos = p.posRank !== 999;
-        const hasCross = p.flexRank !== 999;
+    //
+    // Position and FLEX numbers come from `display` (js/mls/rankings/displayRanks.js, improvements F6): with
+    // a single file they're re-derived per group as the Waiver Wire shows them, where the player object
+    // holds the overall rank in both. The player object's own posRank / flexRank are the optimizer's inputs
+    // and stay as they are. ROS's second number is the Overall rank, so it stays the raw one.
+    function lineupRankBadge(p, rankedByRos, display) {
+        const shown = displayRanksFor(display, p.cleanName, p);
+        const cross = rankedByRos ? { rank: p.flexRank, tier: p.flexTier } : { rank: shown.flexRank, tier: shown.flexTier };
+        const hasPos = shown.posRank !== 999;
+        const hasCross = cross.rank !== 999;
         if (!hasPos && !hasCross) return "Unranked";
-        const posStr = hasPos ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
-        const crossStr = hasCross ? `#${p.flexRank}${tierTag(p.flexTier)}` : "-";
-        if (rankedByRos) return hasCross ? `Pos: ${posStr} | Overall: ${crossStr}` : `Pos: ${posStr}`;
-        return (['QB', 'K', 'DEF'].includes(p.pos) || !hasCross) ? `Pos: ${posStr}` : `Pos: ${posStr} | Flex: ${crossStr}`;
+        const posStr = hasPos ? `#${shown.posRank}${tierTag(shown.posTier)}` : "-";
+        const crossStr = hasCross ? `#${cross.rank}${tierTag(cross.tier)}` : "-";
+        if (rankedByRos) return hasCross ? rankBadgeParts(`Pos: ${posStr}`, `Overall: ${crossStr}`) : `Pos: ${posStr}`;
+        return (['QB', 'K', 'DEF'].includes(p.pos) || !hasCross) ? `Pos: ${posStr}` : rankBadgeParts(`Pos: ${posStr}`, `Flex: ${crossStr}`);
+    }
+
+    // The two halves of a two-number badge, each kept whole, so on a phone the badge splits onto two lines at the
+    // "|" instead of the row cutting it off (owner's choice in improvements F6). The bar is real text, so the
+    // badge still reads "Pos: #5 (T3) | Flex: #13 (T3)"; .mls-rank-parts in css/mls.css hides it at a line's start.
+    function rankBadgeParts(first, second) {
+        return `<span class="mls-rank-parts"><span class="mls-rank-part">${first}</span><span class="mls-rank-part"><span class="mls-rank-bar"> | </span>${second}</span></span>`;
+    }
+
+    // A split badge's box would stay as wide as the row allows (CSS can't shrink a wrapped box to its lines),
+    // leaving an empty block beside the text. This marks each badge whose halves landed on two lines
+    // `.is-stacked` (css/mls.css: one column, so the box fits its text). Every mark is cleared before any is
+    // measured, so a badge that has room again goes back on one line. Run after each render, and when the
+    // containers' width changes (rotation, a resize, the tab shown after being hidden: hidden, nothing stacks).
+    function fitRankBadges(roots) {
+        const wrappers = roots.flatMap(root => (root ? [...root.querySelectorAll('.mls-rank-parts')] : []));
+        wrappers.forEach(w => w.classList.remove('is-stacked'));
+        wrappers.filter(w => {
+            const [first, second] = w.children;
+            return first && second && second.offsetTop > first.offsetTop;
+        }).forEach(w => w.classList.add('is-stacked'));
+    }
+
+    // One observer for the page's lifetime; the two containers are fixed elements in lineup/index.html.
+    // Height changes (stacking itself, new rows) are ignored, and the refit waits a frame so it never resizes
+    // what the observer is reporting on while it reports.
+    let _rankBadgeObserver = null;
+    function watchRankBadgeWidths(roots) {
+        if (_rankBadgeObserver || typeof ResizeObserver === 'undefined') return;
+        const widths = new Map();
+        _rankBadgeObserver = new ResizeObserver(entries => {
+            const changed = entries.filter(e => widths.get(e.target) !== e.contentRect.width);
+            changed.forEach(e => widths.set(e.target, e.contentRect.width));
+            if (changed.length) requestAnimationFrame(() => fitRankBadges(roots));
+        });
+        roots.forEach(root => _rankBadgeObserver.observe(root));
     }
 
     export function renderLineupUI() {
@@ -503,6 +547,8 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // Mirrors optimizeLineup's activeDataSet choice, so the badges name the numbers the
         // lineup was actually built from.
         const rankedByRos = State.weeklyRankings.length === 0 && State.rosRankings.length > 0;
+        // Display position / FLEX ranks for those same rankings, built once per render (improvements F6).
+        const rankDisplay = leagueRankDisplayIndex(league, rankedByRos ? State.rosRankings : State.weeklyRankings, renderLineupUI);
 
         let html = "";
 
@@ -565,7 +611,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                     ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" aria-label="${escapeHtml(p.name)}'s game has started. Override lock" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" data-action="overrideAutoLock" data-id="${p.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
                     : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" data-action="toggleLock" data-id="${p.id}" aria-label="Lock ${escapeHtml(p.name)}" aria-pressed="${p.isLocked ? 'true' : 'false'}">${lockIcon}</button>`;
 
-                let rankBadge = lineupRankBadge(p, rankedByRos);
+                let rankBadge = lineupRankBadge(p, rankedByRos, rankDisplay);
 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 const byeWeek = getByeWeek(p.team, State.currentNflSeason);
@@ -643,7 +689,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                     benchHTML += `<div class="bench-taxi-divider"><span>Taxi Squad</span></div>`;
                 }
                 let lockClass = State.swapSourceId === p.id ? "swapping" : "";
-                let rankBadge = lineupRankBadge(p, rankedByRos);
+                let rankBadge = lineupRankBadge(p, rankedByRos, rankDisplay);
 
                 let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
                 const byeWeek = getByeWeek(p.team, State.currentNflSeason);
@@ -706,6 +752,8 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 </div>`; 
         }
         renderHTMLInto(benchContainer, benchHTML);
+        fitRankBadges([container, benchContainer]);
+        watchRankBadgeWidths([container, benchContainer]);
 
         // Auto-update the dashboard matrix in the background so status icons stay live
         if (typeof renderLeagueManager === 'function') renderLeagueManager();
