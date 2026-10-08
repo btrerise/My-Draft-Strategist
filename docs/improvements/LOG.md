@@ -2432,9 +2432,8 @@ is picked.
 - **Where:** its own strip directly above the list, not in the header.
 - **Starting slots:** counts only ("RB 6"), not "RB 6 / 2". So flex slots (FLEX, SFLEX, W/T, W/R) aren't shown at
   all; they only decide whether a zero position shows (above).
-- **Taxi and IR:** counted, with a note. IR is the player's NFL status, the same `inj === 'IR'` that puts the IR
-  badge on his row; the app doesn't record Sleeper's IR slot (the roster's `reserve` array), so a player stashed there
-  with another status (Out, PUP) isn't noted. PUP, NFI and suspensions aren't noted either.
+- **Taxi and IR:** counted, with a note. IR means in your Sleeper IR slot or on NFL IR (round 2 below; the first
+  push counted NFL IR status only). PUP, NFI and suspensions aren't noted unless the player is in the IR slot.
 - **Tap to filter:** yes, with an All chip; in memory, no new storage key.
 
 **What changed and where.**
@@ -2482,3 +2481,50 @@ desktop baselines here).
 - Commit CI's two `mls-league-roster.png` renders (above).
 - The Guide tab has no Roster-tab section, so the chips are explained only in the card's tooltip. S10 (the legend)
   should include them.
+
+### S9, round 2: Sleeper's IR slot (owner's request)
+
+**Why.** My summary said "IR" in the notes meant the NFL status only, because the app didn't record Sleeper's IR
+slot. The owner thought it did. It read the slot in one place only: the Global Injury Auditor
+(`js/mls/lineup/injuryAudit.js`) fetches rosters live and uses the `reserve` array so it doesn't say "Move to IR"
+for someone already there. League sync never stored it. I offered to record it at sync, count it in the note, add a
+row badge, and (separately) keep IR-slot players out of the Lineup tab's starters.
+
+**Owner's decisions.**
+- **Record the IR slot, and count "IR" as the IR slot or NFL IR**, each player once.
+- **An IR badge** on the Roster tab's rows for IR-slot players.
+- **Not now:** keeping IR-slot players out of the Lineup tab's starters. Noted below.
+
+**User-visible effect.**
+- A Sleeper sync records who's in your IR slot. The chips' "IR" note counts a player in that slot or on NFL IR:
+  Jefferson (Out, in the IR slot), Kittle (NFL IR, in the slot) and Henry (NFL IR, on the bench) each count once.
+- A player in your IR slot has an **IR** badge beside his name on the Roster tab, styled like TAXI (both are
+  roster-status markers). If he's also on NFL IR, that one badge says it, so the red injury "IR" is left off. With
+  any other status both show ("IR" then "OUT"). A bench player on NFL IR keeps the red injury "IR" only.
+- Leagues synced before this have no IR-slot data until their next sync; until then the note counts NFL IR only.
+  Manual and hand-off leagues have no IR slot, so NFL IR is all they count.
+
+**What changed and where.**
+- `js/mls/leagues/sync.js` (`processSleeperData`): each roster player gets `isReserve`, from your roster's `reserve`
+  array, beside `isTaxi`. A field on the stored roster, no new storage key.
+- `js/mls/render/roster.js`: the IR count reads `isReserve || inj === 'IR'`; the `.ir-slot-badge` row badge after
+  TAXI, with the duplicate injury "IR" dropped.
+- `css/base.css`: `.ir-slot-badge` shares `.taxi-badge`'s rule.
+- CHANGELOG line updated and one added. `CACHE_NAME` stays v2.8.89 (this branch's bump).
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`, the taxi and IR test: Sleeper stubs put Jefferson (Out) and Kittle
+(NFL IR) in the IR slot, Henry on NFL IR on the bench, McBride on taxi. Notes "RB 1 (1 IR)", "WR 7 (1 IR)",
+"TE 3 (1 IR · 1 taxi)"; badges as above; a re-sync with Jefferson out of the slot and McBride off taxi drops their
+notes and his badge.
+
+**Screenshots.** None beyond round 1's two `mls-league-roster.png` (the screenshot league has no IR-slot players).
+
+**Left over (for later).**
+- **IR-slot players in the Lineup tab's starters** (owner: consider later). The optimizer still treats `isReserve`
+  players as available. One who's Out or on NFL IR is never started anyway (his status), but one back to Questionable
+  or healthy while still in your IR slot can be picked as a starter, though Sleeper won't start him until he's moved
+  out. Fix: leave `isReserve` players out of the pool like taxi players (`js/mls/render/lineup.js`, `pool` /
+  `taxiPlayers`), with a divider or badge on the bench. Changes who starts, so it needs its own card.
+- Related, same decision: the Waiver Wire's "your weakest" skips IR, Out and taxi players by status
+  (`js/mls/scout/waivers.js`, `INACTIVE_STATUSES`; `js/mls/scout/bestAvailable.js`), not by the IR slot, and the
+  Lineup tab's bench doesn't show the IR badge. Both could read `isReserve` in the same follow-up.

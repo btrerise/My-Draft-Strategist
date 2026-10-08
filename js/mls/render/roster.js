@@ -26,7 +26,7 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
     // [{ pos, count, ir, taxi }] in QB, RB, WR, TE, K, DEF order, then any other position on the
     // roster. A standard position is left out only when you have none and no starting slot takes
     // it (a league without kickers shows no K); a QB still shows in a superflex league with no QB slot.
-    // IR is the player's NFL status (the list's IR badge); Sleeper's IR slot isn't recorded.
+    // IR counts a player in your Sleeper IR slot (isReserve, set at sync) or on NFL IR (inj), once.
     export function rosterPositionCounts(roster, reqs) {
         const slots = reqs || DEFAULT_REQS;
         const hasSlot = pos => Object.entries(SLOT_POSITIONS).some(([type, takes]) => (slots[type] || 0) > 0 && takes.includes(pos));
@@ -34,7 +34,7 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
         (roster || []).forEach(p => {
             const c = byPos.get(p.pos) || { pos: p.pos, count: 0, ir: 0, taxi: 0 };
             c.count++;
-            if (p.inj === 'IR') c.ir++;
+            if (p.isReserve || p.inj === 'IR') c.ir++;
             if (p.isTaxi) c.taxi++;
             byPos.set(p.pos, c);
         });
@@ -175,7 +175,10 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
             const byeWeek = getByeWeek(p.team, State.currentNflSeason);
             let byeStr = byeWeek ? ` (${byeWeek})` : "";
             let byeBadge = getByeBadgeHTML(p.team);
-            let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
+            // A player in your Sleeper IR slot gets an IR badge like TAXI (improvements S9). If he's
+            // also on NFL IR, that one badge says it, so the red injury "IR" is left off.
+            let irSlotBadge = p.isReserve ? `<span class="badge ir-slot-badge" title="In your IR slot on Sleeper">IR</span>` : "";
+            let injBadge = p.inj && !(p.isReserve && p.inj === 'IR') ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
             // Same "R" badge as MDS roster cards and the Matchup Simulator.
             let rookieBadge = isRookiePlayer(p, rookieIdx) ? `<span class="badge badge-rookie" title="Rookie" aria-label="Rookie">R</span>` : "";
@@ -188,7 +191,7 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
             // manual leagues never show it. Sits right after rookie: both are season-long
             // roster-status markers, so they stay fixed ahead of injury/bye.
             let taxiBadge = p.isTaxi ? `<span class="badge taxi-badge" title="Taxi squad">TAXI</span>` : "";
-            let statusBadges = [rookieBadge, taxiBadge, injBadge, byeBadge].filter(Boolean).join('');
+            let statusBadges = [rookieBadge, taxiBadge, irSlotBadge, injBadge, byeBadge].filter(Boolean).join('');
             
             html += `
             <div class="roster-item">

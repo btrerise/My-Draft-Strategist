@@ -596,6 +596,10 @@ import { showToast } from '../../shared/ui/toast.js';
             // by the Global Injury Auditor, neither of which is true of a taxi player. Empty
             // on leagues with no taxi squad configured, hence the fallback.
             const taxiIds = new Set((myTeam && myTeam.taxi) || []);
+            // Sleeper's IR slot (the roster's `reserve` array), kept like taxi so the Roster tab can
+            // count and badge IR-slot players (improvements S9). Also left in `players`; empty on
+            // leagues with no IR slots.
+            const reserveIds = new Set((myTeam && myTeam.reserve) || []);
             if (myTeam && myTeam.players) {
                 myTeam.players.forEach(id => {
                     let p = playerMap[id];
@@ -607,7 +611,8 @@ import { showToast } from '../../shared/ui/toast.js';
                             pos: fantasyPosition(p) || "FLEX",
                             team: p.team || "FA",
                             inj: getShortInjuryStatus(p),
-                            isTaxi: taxiIds.has(id)
+                            isTaxi: taxiIds.has(id),
+                            isReserve: reserveIds.has(id)
                         });
                     }
                 });

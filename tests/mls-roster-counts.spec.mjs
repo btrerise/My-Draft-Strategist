@@ -145,33 +145,54 @@ test.describe('Roster tab position counts', () => {
 
     test('taxi and IR players count, with a note, and a re-sync updates them', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
-        // Sleeper says Henry is on IR and McBride is on your taxi squad. Routes added after
-        // preparePage's stubs take precedence over them.
+        // Your roster on Sleeper: Henry is on NFL IR but on your bench; Jefferson is Out and in your
+        // IR slot; Kittle is on NFL IR and in your IR slot; McBride is on your taxi squad. Routes
+        // added after preparePage's stubs take precedence over them.
         const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
         let taxi = ['7553'];
+        let reserve = ['6794', '4217'];
         await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
             const players = fixture('players-nfl.json');
             players['3198'].injury_status = 'IR';
+            players['6794'].injury_status = 'Out';
+            players['4217'].injury_status = 'IR';
             return route.fulfill({ json: players });
         });
         await page.route(/sleeper\.app\/v1\/league\/\d+\/rosters$/, route => {
             const rosters = fixture('league-rosters.json');
             rosters[0].taxi = taxi;
+            rosters[0].reserve = reserve;
             return route.fulfill({ json: rosters });
         });
         await seedMls(page);
         await showTab(page, 'roster');
 
-        expect(await chipLabels(page)).toEqual(['All 14', 'QB 1', 'RB 1 (1 IR)', 'WR 7', 'TE 3 (1 taxi)', 'K 1', 'DEF 1']);
+        // IR counts the IR slot or NFL IR, each player once.
+        expect(await chipLabels(page)).toEqual(['All 14', 'QB 1', 'RB 1 (1 IR)', 'WR 7 (1 IR)', 'TE 3 (1 IR · 1 taxi)', 'K 1', 'DEF 1']);
         await expect(chip(page, 'RB').locator('.mls-poscount-note')).toHaveText('1 IR');
-        await expect(chip(page, 'TE').locator('.mls-poscount-note')).toHaveText('1 taxi');
+        await expect(chip(page, 'TE').locator('.mls-poscount-note')).toHaveText('1 IR · 1 taxi');
 
-        // McBride comes off the taxi squad; the Roster tab's Sync button picks it up.
+        // Row badges: the IR-slot badge (styled like TAXI) for Jefferson and Kittle; Jefferson keeps
+        // his OUT; Kittle's NFL IR isn't shown twice; Henry (bench) keeps the red injury IR only.
+        const row = (name) => rows(page).filter({ hasText: name });
+        await expect(row('Justin Jefferson').locator('.ir-slot-badge')).toHaveText('IR');
+        await expect(row('Justin Jefferson').locator('.inj-badge')).toHaveText('OUT');
+        await expect(row('George Kittle').locator('.ir-slot-badge')).toHaveText('IR');
+        await expect(row('George Kittle').locator('.inj-badge')).toHaveCount(0);
+        await expect(row('Derrick Henry').locator('.ir-slot-badge')).toHaveCount(0);
+        await expect(row('Derrick Henry').locator('.inj-badge')).toHaveText('IR');
+        await expect(rows(page).locator('.ir-slot-badge')).toHaveCount(2);
+
+        // McBride comes off the taxi squad and Jefferson out of the IR slot; the Roster tab's
+        // Sync button picks it up.
         taxi = [];
+        reserve = ['4217'];
         await page.locator('#rosterSyncBtn').click();
-        await expect(chip(page, 'TE')).toHaveAttribute('aria-label', 'TE 3');
-        await expect(chip(page, 'TE').locator('.mls-poscount-note')).toHaveCount(0);
-        expect(await chipLabels(page)).toEqual(['All 14', 'QB 1', 'RB 1 (1 IR)', 'WR 7', 'TE 3', 'K 1', 'DEF 1']);
+        await expect(chip(page, 'WR')).toHaveAttribute('aria-label', 'WR 7');
+        await expect(chip(page, 'WR').locator('.mls-poscount-note')).toHaveCount(0);
+        expect(await chipLabels(page)).toEqual(['All 14', 'QB 1', 'RB 1 (1 IR)', 'WR 7', 'TE 3 (1 IR)', 'K 1', 'DEF 1']);
+        await expect(row('Justin Jefferson').locator('.ir-slot-badge')).toHaveCount(0);
+        await expect(rows(page).locator('.ir-slot-badge')).toHaveCount(1);
         await expectClean(page, state);
     });
 });
