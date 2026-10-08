@@ -1810,3 +1810,70 @@ project and "SoS: 25" with the icon hidden on desktop, has the title, isn't comp
 **Checks run.** `npm run check`: check-precache OK, 267 unit tests, 230 Playwright tests pass; the same 10
 environment-only screenshot failures, and all 40 renders pixel-identical to main's.
 
+### S7, round 5: which end is easy, how old it is, and a "1 = hardest" switch (owner's choices)
+
+**The question.** Asked to review the badge again as a user, I listed: (1) nothing said which end of the scale is easy,
+and sources disagree (some rank by defense strength, 1 = toughest), so a reversed file would color everything
+backwards with no warning; the upload also accepted 1-5 ratings as if they were ranks; (2) SoS never showed its age,
+though a weekly grid is wrong a week later; (3) no K/DEF columns. The owner chose **1 and 2, plus a flip switch**, and
+said the switch must cover **SoS inside ROS rankings files** too. (3) stays a possible card.
+
+**User-visible effect.** On the Roster tab's SoS card, once SoS is loaded:
+- **A status line:** "SoS updated today · 1 = easiest, 32 = hardest". Amber with "- consider refreshing" after 7 days
+  (`getFreshness`, as the rankings cards do). SoS saved before this change reads "Upload date unknown (saved before
+  dates were kept)".
+- **"My SoS files rank 1 = hardest"** (a checkbox, remembered). Turning it on flips the SoS saved now (it's always
+  stored as 1 = easiest, so one tap fixes a file that turned out to be reversed, no re-upload) and every later SoS file,
+  and SoS column in a ROS or Weekly rankings upload. Turning it off flips back. The manual grid is always 1 = easiest
+  and is never flipped; its new note says so.
+- **A warning** when the numbers look like 1-5 ratings (at least 8 values, none above 5): a toast on upload and a line on
+  the card that stays until real ranks replace them.
+- **The badge's tap text** ends with the date: "..., as of Tue, 9/15".
+- **The rankings upload preview** says how a file's SoS column will be read: flipped (switch on) or "read as 1 = easiest,
+  32 = hardest" with a pointer to the switch.
+- The card's tooltip says which end is easy.
+
+**Two fixes found on the way.**
+- A rankings file with an SoS column merged its SoS into memory when the file was parsed, before the preview, so
+  Cancel still changed the badges until a reload (the saved copy was untouched). It's now merged on Save, with the flip.
+- Uploading an SoS file didn't redraw the open tab, so the Roster tab's badges kept the old values until you switched
+  tabs. It now redraws like Save Manual SoS.
+
+**Screenshots: why everything new shows only once SoS is loaded.** The SoS card is in the Roster tab's full-page
+screenshot, and this container can't render baselines that match CI's fonts (see S2, S6, F4). So the status line and
+the switch live in `#sosStatus`, hidden with no SoS (the screenshot league has none), the grid note is inside the
+collapsed "Edit Manual SoS Grid", and the scale is added to the card's tooltip, which is hidden and absolutely
+positioned. That's also when they matter. (A first render here made the Roster screenshot 12px taller: `.sos-status`'s `display: grid` beat the
+`hidden` attribute, leaving its margin. `.sos-status[hidden] { display: none; }` fixed it, and the spec checks it.) **Not changed for the same reason:** the Guide tab's SoS bullets still say
+only "(1-32)". Runbook card S10 re-takes the Guide screenshots anyway, so it now carries that line.
+
+**What changed and where.**
+- `js/mls/sosScale.js` (new, in `PRECACHE_ASSETS`): `SOS_SCALE_TEXT`, `reverseSosValue` (1-32 → 33 − n, decimals kept,
+  anything else unchanged), `looksLikeRatings`, `sosValues`. No imports, so it's unit-tested directly.
+- `js/mls/sos.js`: `importSoSUpdates` (flip, warn, merge), `saveImportedSoS` / `saveSoS` (saves the map and today's
+  date, then redraws the grid and the status), `renderSoSStatus` (called from `generateSoSGrid`, so every data change
+  and page load draws it), `setSosReversed`, the dated badge title. The SoS file upload collects its values and imports
+  them through `importSoSUpdates`.
+- `js/mls/rankings/uploadPreview.js`: the parsed SoS waits in `pendingRankingsUpload` and is imported on Save; the
+  preview note's text follows the switch.
+- `js/shared/storage/keys.js`: **two new keys**, `mls_sos_updated` (ms) and `mls_sos_reversed` ('1'/'0'). Both have the
+  `mls_` prefix, so Backup/Restore and Factory Reset include them. `js/mls/state.js` reads them.
+- `lineup/index.html`: `#sosStatus`, the grid note, the tooltip text. `js/mls/main.js`: the `setSosReversed` change
+  action. `css/mls.css`: `.sos-status*`, `.sos-flip*`, `.sos-grid-note`.
+- `sw.js`: `sosScale.js` added to `PRECACHE_ASSETS`. `CACHE_NAME` stays v2.8.86 (one bump per branch, above main's).
+- CHANGELOG: two lines.
+
+**Tests.**
+- `tests/unit/sosScale.test.mjs`: flipping (1↔32, 4.5→28.5, twice is the identity, junk unchanged), the ratings test
+  (8 values, a 6, blanks), `sosValues`.
+- `tests/mls-sos-scale.spec.mjs` (both widths): the card unchanged with no SoS; after an upload, "SoS updated today",
+  the scale, the switch off, the saved date and the badge's dated title; the switch flipping saved values, the grid and
+  a Roster badge without touching the date; an upload with the switch on flipped on the way in; the switch surviving a
+  reload and flipping back; 8 days old in amber; an unknown date; 1-5 ratings (toast and card note); Save Manual SoS
+  dating it and clearing the warning; a ROS rankings upload's SoS column flipped per the preview note, nothing merged on
+  Cancel, merged on Save; the other preview wording with the switch off.
+- `tests/mls-waiver-sos.spec.mjs`: tap texts now end with the date.
+
+**Checks run.** `npm run check`: check-precache OK, 271 unit tests, 236 Playwright tests pass; the same 10
+environment-only screenshot failures, and all 40 renders pixel-identical to main's.
+

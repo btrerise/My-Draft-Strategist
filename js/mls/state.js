@@ -59,6 +59,10 @@ import { mdsFetch } from '../shared/net.js';
         lineupSettings: readJSON(KEYS.mls.lineupSettings, { flexKickoffOptimization: true }),
         syncLogs: readJSON(KEYS.mls.syncLogs, []),
         sosMap: readJSON(KEYS.mls.sos, {}),
+        // When SoS was last uploaded or saved (improvements S7), and whether your SoS files rank
+        // 1 = hardest, so imports are flipped to the app's 1 = easiest (js/mls/sosScale.js).
+        sosUpdatedAt: localStorage.getItem(KEYS.mls.sosUpdated) || null,
+        sosReversed: localStorage.getItem(KEYS.mls.sosReversed) === '1',
         lockedPlayersMap: readJSON(KEYS.mls.locksMap, {}),
         // Per-league, per-week list of player ids the person has explicitly told the auto-lock
         // feature (see optimizeLineup) to back off of -- the failsafe for when gameTimesByTeam

@@ -1076,6 +1076,17 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     .sos-badge .sos-badge-icon { display: inline-block; }
 }
 
+/* The SoS card's status (renderSoSStatus in js/mls/sos.js): age, scale, the 1 = hardest switch. */
+.sos-status { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); display: grid; gap: 0.35rem; }
+.sos-status[hidden] { display: none; }
+.sos-status-scale { color: var(--text-main); white-space: nowrap; }
+.sos-status-muted { color: var(--text-muted); }
+.sos-status-warn { font-size: 0.8rem; }
+.sos-flip { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--text-main); cursor: pointer; }
+.sos-flip input { width: 16px; height: 16px; accent-color: var(--primary-green); margin: 0; }
+.sos-flip-hint { font-size: 0.78rem; line-height: 1.4; }
+.sos-grid-note { font-size: 0.8rem; color: var(--text-muted); margin: 0.5rem 0; }
+
 /* --- MLS SETUP TAB SPECIFIC STYLES --- */
 .league-req-subtitle {
     font-size: 0.85rem;

@@ -137,6 +137,7 @@ const PRECACHE_ASSETS = [
     '/js/mls/leagues/addPlayer.js',
     '/js/mls/leagues/importAll.js',
     '/js/mls/sos.js',
+    '/js/mls/sosScale.js',
     '/js/mls/trade/verdict.js',
     '/js/mls/scout/engine.js',
     '/js/mls/scout/waivers.js',

@@ -10,6 +10,8 @@ import { normalizeName } from '../shared/names.js';
 import { showToast } from '../shared/ui/toast.js';
 import { parseSosValue } from '../shared/rankings/parse.js';
 import { escapeHtml } from '../shared/html.js';
+import { getFreshness } from '../shared/freshness.js';
+import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './sosScale.js';
 
     // --- SOS ENGINE ---
     export function generateSoSGrid() {
@@ -30,6 +32,88 @@ import { escapeHtml } from '../shared/html.js';
             </tr>`;
         });
         tbody.innerHTML = html;
+        renderSoSStatus();
+    }
+
+    // --- SOS DIRECTION AND AGE (improvements S7, round 5) ---
+    const SOS_STALE_DAYS = 7;
+    const hasSoS = () => sosValues(State.sosMap).length > 0;
+
+    // "Tue, 9/15": the day SoS was last uploaded or saved, for the badge's tap text.
+    function sosAsOf() {
+        if (!State.sosUpdatedAt) return '';
+        const d = new Date(Number(State.sosUpdatedAt));
+        return Number.isFinite(d.getTime()) ? d.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' }) : '';
+    }
+
+    // Saves the SoS map, with today's date unless the numbers are only being flipped (setSosReversed).
+    function saveSoS({ touch = true } = {}) {
+        localStorage.setItem(KEYS.mls.sos, JSON.stringify(State.sosMap));
+        if (touch) {
+            State.sosUpdatedAt = String(Date.now());
+            localStorage.setItem(KEYS.mls.sosUpdated, State.sosUpdatedAt);
+        }
+        generateSoSGrid();
+    }
+
+    // Merges one upload's SoS ({ TEAM: { POS: value } }) into the map: flipped to 1 = easiest first
+    // when your files rank 1 = hardest, and with a warning when the numbers look like 1-5 ratings.
+    // Used by the SoS file upload below and by rankings uploads with an SoS column
+    // (rankings/uploadPreview.js). The caller saves (saveImportedSoS).
+    export function importSoSUpdates(updates) {
+        if (looksLikeRatings(sosValues(updates))) {
+            showToast(`These SoS numbers only go up to 5, so they look like 1-5 ratings, not 1-32 matchup ranks. The badges read them as ranks (${SOS_SCALE_TEXT}), so nearly every one will look easy. Check your file's SoS column.`, { duration: 10000 });
+        }
+        Object.entries(updates || {}).forEach(([team, posMap]) => {
+            if (!State.sosMap[team]) State.sosMap[team] = {};
+            Object.entries(posMap || {}).forEach(([pos, value]) => {
+                State.sosMap[team][pos] = State.sosReversed ? reverseSosValue(value) : value;
+            });
+        });
+    }
+    export const saveImportedSoS = () => saveSoS();
+
+    // The line under the SoS upload, shown once there's any SoS: how old it is (amber after a week),
+    // which end is easy, a warning if the saved numbers look like ratings, and the switch for sources
+    // that rank 1 = hardest. Hidden with no SoS, so the card looks as before until you load some.
+    function renderSoSStatus() {
+        const el = document.getElementById('sosStatus');
+        if (!el) return;
+        if (!hasSoS()) { el.hidden = true; el.innerHTML = ''; return; }
+        const fresh = getFreshness(State.sosUpdatedAt, SOS_STALE_DAYS);
+        const age = fresh
+            ? `<span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">SoS ${fresh.label.charAt(0).toLowerCase()}${fresh.label.slice(1)}${fresh.isStale ? ' - consider refreshing' : ''}</span>`
+            : `<span class="sos-status-muted">Upload date unknown (saved before dates were kept)</span>`;
+        const ratings = looksLikeRatings(sosValues(State.sosMap))
+            ? `<div class="sos-status-warn freshness-stale">These numbers only go up to 5, so they look like 1-5 ratings rather than 1-32 ranks; the badges will read nearly every one as easy.</div>` : '';
+        el.innerHTML = `
+            <div class="sos-status-line">${age} <span class="sos-status-sep" aria-hidden="true">&middot;</span> <span class="sos-status-scale">${SOS_SCALE_TEXT}</span></div>
+            ${ratings}
+            <label class="sos-flip"><input type="checkbox" id="sosReversedToggle" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}> My SoS files rank 1 = hardest</label>
+            <div class="sos-flip-hint">Turn this on if your source lists the toughest schedule as 1. It flips the SoS saved now and every SoS you upload later: SoS files, and SoS columns in ROS or Weekly rankings files.</div>`;
+        el.hidden = false;
+    }
+
+    // The switch: remembered, and it flips what's already saved (which is always 1 = easiest), so a
+    // file that turned out to be the other way round is fixed with one tap, no re-upload.
+    export function setSosReversed(on) {
+        on = !!on;
+        if (on === State.sosReversed) return;
+        State.sosReversed = on;
+        localStorage.setItem(KEYS.mls.sosReversed, on ? '1' : '0');
+        Object.values(State.sosMap).forEach(posMap => {
+            Object.keys(posMap || {}).forEach(pos => { posMap[pos] = reverseSosValue(posMap[pos]); });
+        });
+        saveSoS({ touch: false });
+        showToast(on ? `SoS flipped: your files rank 1 = hardest, and the app now reads them as ${SOS_SCALE_TEXT}.` : `SoS flipped back: your files rank 1 = easiest.`);
+        refreshSoSViews();
+    }
+
+    function refreshSoSViews() {
+        const activeTabEl = document.querySelector('.tab-content.active');
+        const activeTab = activeTabEl ? activeTabEl.id : '';
+        if (activeTab === 'lineupTab') optimizeLineup(true);
+        else if (activeTab === 'rosterTab') loadRosterTab();
     }
 
     export const saveManualSoS = function(btn) {
@@ -41,14 +125,11 @@ import { escapeHtml } from '../shared/html.js';
             State.sosMap[team].WR = getVal(`sos_${team}_WR`);
             State.sosMap[team].TE = getVal(`sos_${team}_TE`);
         });
-        localStorage.setItem(KEYS.mls.sos, JSON.stringify(State.sosMap));
+        // The grid is always 1 = easiest (its note says so), so its numbers are saved as typed.
+        saveSoS();
         
         if (btn) flashButton(btn, "SoS Saved");
-        
-        const activeTabEl = document.querySelector('.tab-content.active');
-        const activeTab = activeTabEl ? activeTabEl.id : '';
-        if (activeTab === 'lineupTab') optimizeLineup(true);
-        else if (activeTab === 'rosterTab') loadRosterTab();
+        refreshSoSViews();
     };
 
     const sosFileInput = document.getElementById('sosFileInput');
@@ -68,6 +149,9 @@ import { escapeHtml } from '../shared/html.js';
             Papa.parse(file, {
                 header: true, skipEmptyLines: true,
                 complete: async function(results) {
+                    // This file's SoS, merged into the map at the end by importSoSUpdates (which flips
+                    // it when your files rank 1 = hardest).
+                    const updates = {};
                     // Rows with no recognizable Team column (e.g. a plain "Player, ROS" export)
                     // get queued here instead of dropped -- resolved via a name lookup against
                     // Sleeper's player map once, below, rather than per-row.
@@ -80,14 +164,14 @@ import { escapeHtml } from '../shared/html.js';
                         team = TEAM_ALIASES[team] || team;
 
                         if (team && NFL_TEAMS.includes(team)) {
-                            if (!State.sosMap[team]) State.sosMap[team] = {};
+                            if (!updates[team]) updates[team] = {};
                             let isMatrix = Object.keys(row).some(k => ['qb','rb','wr','te'].includes(k.toLowerCase()));
                             
                             if (isMatrix) {
                                 for (let key in row) {
                                     let k = key.toLowerCase();
                                     if (['qb', 'rb', 'wr', 'te'].includes(k)) {
-                                        State.sosMap[team][k.toUpperCase()] = parseSosValue(row[key]);
+                                        updates[team][k.toUpperCase()] = parseSosValue(row[key]);
                                     }
                                 }
                             } else {
@@ -99,7 +183,7 @@ import { escapeHtml } from '../shared/html.js';
                                     let sosVal = parseSosValue(row[sosKey]);
                                     let posGroup = posStr.includes('QB') ? 'QB' : posStr.includes('RB') ? 'RB' : posStr.includes('WR') ? 'WR' : posStr.includes('TE') ? 'TE' : null;
 
-                                    if (posGroup && sosVal) State.sosMap[team][posGroup] = sosVal;
+                                    if (posGroup && sosVal) updates[team][posGroup] = sosVal;
                                 }
                             }
                             return;
@@ -129,8 +213,8 @@ import { escapeHtml } from '../shared/html.js';
                             rowsNeedingNameResolution.forEach(({ name, sosVal }) => {
                                 let match = teamPosByName[normalizeName(name)];
                                 if (match) {
-                                    if (!State.sosMap[match.team]) State.sosMap[match.team] = {};
-                                    State.sosMap[match.team][match.pos] = sosVal;
+                                    if (!updates[match.team]) updates[match.team] = {};
+                                    updates[match.team][match.pos] = sosVal;
                                 }
                             });
                         } catch (err) {
@@ -139,8 +223,11 @@ import { escapeHtml } from '../shared/html.js';
                         }
                     }
 
-                    localStorage.setItem(KEYS.mls.sos, JSON.stringify(State.sosMap));
-                    generateSoSGrid();
+                    importSoSUpdates(updates);
+                    saveSoS();
+                    // Redraw the badges on the open tab. Before improvements S7 an upload left the
+                    // Roster tab's badges as they were until you switched tabs.
+                    refreshSoSViews();
                     
                     showStatusFeedback(document.getElementById('sosSuccessMsg'), null, 3000);
                 },
@@ -186,7 +273,8 @@ import { escapeHtml } from '../shared/html.js';
         let bg = `hsl(${hue}, 80%, 15%)`;
         const cls = `badge sos-badge${compact ? ' sos-badge-compact' : ''}`;
         const style = `--sos-color:${color}; --sos-bg:${bg};`;
-        const tip = escapeHtml(`Strength of schedule: ${rank} of 32 for ${pos}s on ${team} (1 = easiest, 32 = hardest)`);
+        const asOf = sosAsOf();
+        const tip = escapeHtml(`Strength of schedule: ${rank} of 32 for ${pos}s on ${team} (${SOS_SCALE_TEXT})${asOf ? `, as of ${asOf}` : ''}`);
         return `<button type="button" class="${cls}" style="${style}" data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${SOS_CALENDAR_ICON}<span class="sos-badge-label">SoS: </span>${rank}</button>`;
     }
 

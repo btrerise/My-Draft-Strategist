@@ -66,6 +66,8 @@ export const KEYS = {
         ros: 'mls_ros',
         rosUpdated: 'mls_ros_updated',
         sos: 'mls_sos',
+        sosUpdated: 'mls_sos_updated', // when SoS was last uploaded or saved, ms (improvements S7)
+        sosReversed: 'mls_sos_reversed', // '1' when your SoS files rank 1 = hardest, flipped on import (improvements S7)
         weekly: 'mls_weekly',
         weeklyUpdated: 'mls_weekly_updated',
         autolockOverridesMap: 'mls_autolock_overrides_map',

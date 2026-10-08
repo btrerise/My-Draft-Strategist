@@ -5,7 +5,8 @@ import { parseRankingsFiles } from '../../shared/rankings/parse.js';
 import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG, tierTag } from '../constants.js';
 import { State } from '../state.js';
-import { generateSoSGrid } from '../sos.js';
+import { importSoSUpdates, saveImportedSoS } from '../sos.js';
+import { SOS_SCALE_TEXT } from '../sosScale.js';
 import { analyzeRankingsFile, derivedRanksWording } from '../scout/waivers.js';
 import { createPreviewShell, formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { setRankingsCardExpanded } from './engine.js';
@@ -22,11 +23,9 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: loadSheetJS, onProgress });
 
         // The parser module returns SoS data rather than writing to State directly (it has no
-        // access to State at all -- see js/shared/rankings/parse.js), so it's merged in here instead.
-        Object.entries(sosUpdates).forEach(([team, posMap]) => {
-            if (!State.sosMap[team]) State.sosMap[team] = {};
-            Object.assign(State.sosMap[team], posMap);
-        });
+        // access to State at all -- see js/shared/rankings/parse.js). It's merged in when the preview
+        // is confirmed (confirmRankingsPreview), flipped if your SoS files rank 1 = hardest. Until
+        // improvements S7 it was merged here, so a cancelled preview still changed the SoS on screen.
 
         const type = isWeekly ? 'weekly' : 'ros';
         const fileInputIds = filesWithContext.map(f =>
@@ -61,7 +60,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         // skipped as notes. The preview still opens (what did parse is real data), but it lists
         // what was left out, so a set missing a whole position or tab isn't saved without anyone
         // noticing.
-        openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target: resolveRankingsTarget(type), skipped: diagnostics });
+        openRankingsPreview({ parsedData, hasNewSos, sosUpdates, isWeekly, successMsgId, fileInputIds, target: resolveRankingsTarget(type), skipped: diagnostics });
     };
 
     // --- RANKINGS UPLOAD PREVIEW ---
@@ -76,8 +75,8 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
     // (createPreviewShell, js/shared/rankings/uploadPreview.js).
     const previewShell = createPreviewShell(() => document.getElementById('rankingsPreviewOverlay'), { onEscape: () => cancelRankingsPreview() });
 
-    function openRankingsPreview({ parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target, skipped = [] }) {
-        pendingRankingsUpload = { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds, target };
+    function openRankingsPreview({ parsedData, hasNewSos, sosUpdates, isWeekly, successMsgId, fileInputIds, target, skipped = [] }) {
+        pendingRankingsUpload = { parsedData, hasNewSos, sosUpdates, isWeekly, successMsgId, fileInputIds, target };
 
         const rankType = isWeekly ? "Weekly" : "ROS";
         const sorted = [...parsedData].sort((a, b) => a.rank - b.rank);
@@ -136,6 +135,10 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         const noteEl = document.getElementById('rankingsPreviewNote');
         if (noteEl) {
             noteEl.style.display = hasNewSos ? 'block' : 'none';
+            // Which way round it will be read (improvements S7): the SoS card's switch decides.
+            noteEl.textContent = State.sosReversed
+                ? `This file also includes Strength of Schedule data, which will be updated too. Its numbers will be flipped to ${SOS_SCALE_TEXT}, since your SoS setting on the Roster tab says your files rank 1 = hardest.`
+                : `This file also includes Strength of Schedule data, which will be updated too, read as ${SOS_SCALE_TEXT}. If your file ranks 1 = hardest, turn on "My SoS files rank 1 = hardest" on the Roster tab after saving.`;
         }
 
         // Unmatched-name check runs in the background (it needs Sleeper's player map) and fills
@@ -229,7 +232,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
 
     export const confirmRankingsPreview = function() {
         if (!pendingRankingsUpload) return;
-        const { parsedData, hasNewSos, isWeekly, successMsgId, fileInputIds } = pendingRankingsUpload;
+        const { parsedData, hasNewSos, sosUpdates, isWeekly, successMsgId, fileInputIds } = pendingRankingsUpload;
         const type = isWeekly ? 'weekly' : 'ros';
 
         // Clear the file input(s) on save too, not just on cancel. Browsers only fire 'change'
@@ -250,8 +253,8 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         setRankingsCardExpanded(RANKING_TYPE_CONFIG[type].cardId, false);
 
         if (hasNewSos) {
-            localStorage.setItem(KEYS.mls.sos, JSON.stringify(State.sosMap));
-            generateSoSGrid();
+            importSoSUpdates(sosUpdates);
+            saveImportedSoS();
         }
 
         const activeTabEl = document.querySelector('.tab-content.active');

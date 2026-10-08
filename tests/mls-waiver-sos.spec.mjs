@@ -81,7 +81,8 @@ test.describe('Lineup Strategist SoS badge in the Waiver Wire Assistant', () => 
         }
         const cook = cardBadge(page, 'James Cook');
         expect(await scanCard(page, 'James Cook').locator('.mls-player-badges-row > :last-child').getAttribute('class')).toMatch(/\bsos-badge\b/);
-        const cookTip = 'Strength of schedule: 3 of 32 for RBs on BUF (1 = easiest, 32 = hardest)';
+        // The date SoS was uploaded (round 5); the clock is fixed at Tue 9/15.
+        const cookTip = 'Strength of schedule: 3 of 32 for RBs on BUF (1 = easiest, 32 = hardest), as of Tue, 9/15';
         await expect(cook).toHaveAttribute('title', cookTip);
         await expect(cook).toHaveAttribute('aria-label', cookTip);
         await expect(cook).toHaveClass(/\bsos-badge-compact\b/);
@@ -135,7 +136,7 @@ test.describe('Lineup Strategist SoS badge in the Waiver Wire Assistant', () => 
         // its usual size (not compact), the calendar icon and number on phones, and a tap explains it.
         await showTab(page, 'roster');
         const rosterHenry = page.locator('#rosterList .roster-item').filter({ hasText: 'Derrick Henry' }).locator('.sos-badge');
-        const henryTip = 'Strength of schedule: 25 of 32 for RBs on BAL (1 = easiest, 32 = hardest)';
+        const henryTip = 'Strength of schedule: 25 of 32 for RBs on BAL (1 = easiest, 32 = hardest), as of Tue, 9/15';
         await expect(rosterHenry).toHaveText(isPhone ? '25' : 'SoS: 25', { useInnerText: true });
         await expect(rosterHenry).not.toHaveClass(/\bsos-badge-compact\b/);
         await expect(rosterHenry).toHaveAttribute('title', henryTip);
