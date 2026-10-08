@@ -35,8 +35,11 @@ const rankOr999 = (v) => (isRanked(v) ? v : UNRANKED);
 //   FLEX group -- any non-FLEX player (QB/K/DEF) carries a flexRank. Only the single-file
 //                 fallback does that; a real FLEX column/file never includes them.
 //
-// A derived rank drops its tier (the tier on a backfilled field describes the overall list,
-// not the position), and is flagged so the UI can disclose it.
+// Tiers: a rank with no tier of its own -- a derived one, or a Pos Rank column, which has no tier
+// column beside it -- shows the file's overall tier instead (improvements S8, round 3, owner's choice:
+// "the overall tier beside position ranks everywhere"), so a single tiered file shows tiers on every
+// number. Its overall tier rises with its order, so it reads the same way down any position or the
+// FLEX group. Derived ranks are flagged so the UI can disclose them.
 export function buildRankDisplayIndex(rankings, getPos) {
     const index = {};
     if (!Array.isArray(rankings) || rankings.length === 0) return index;
@@ -61,10 +64,10 @@ export function buildRankDisplayIndex(rankings, getPos) {
             rank: isRanked(r.rank) ? r.rank : null,
             tier: r.tier ?? null,
             posRank: isRanked(r.posRank) ? r.posRank : null,
-            posTier: r.posTier ?? null,
+            posTier: r.posTier ?? r.tier ?? null,
             posDerived: false,
             flexRank: (FLEX_POSITIONS.includes(pos) && isRanked(r.flexRank)) ? r.flexRank : null,
-            flexTier: FLEX_POSITIONS.includes(pos) ? (r.flexTier ?? null) : null,
+            flexTier: FLEX_POSITIONS.includes(pos) ? (r.flexTier ?? r.tier ?? null) : null,
             flexDerived: false
         };
     });
@@ -80,7 +83,7 @@ export function buildRankDisplayIndex(rankings, getPos) {
             const entry = index[r.cleanName];
             if (entry.posRank !== i + 1) {
                 entry.posRank = i + 1;
-                entry.posTier = null;
+                entry.posTier = r.tier ?? null;
                 entry.posDerived = true;
             }
         });
@@ -93,7 +96,7 @@ export function buildRankDisplayIndex(rankings, getPos) {
             .sort((a, b) => a.flexRank - b.flexRank);
         flexPlayers.forEach((r, i) => {
             const entry = index[r.cleanName];
-            entry.flexTier = null; // the backfilled tier describes the overall list either way
+            entry.flexTier = r.tier ?? null; // the overall list's tier (see Tiers above)
             if (entry.flexRank !== i + 1) {
                 entry.flexRank = i + 1;
                 entry.flexDerived = true;

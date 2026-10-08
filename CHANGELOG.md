@@ -74,11 +74,15 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Your player's tier in the Waiver Wire Assistant.** When your rankings have tiers, the player a free agent is
   measured against now shows his, like the free agent does: Auto-Find's "Your weakest RB is Derrick Henry (ROS RB8
   · T4)" and its "Next weakest" list, and the two numbers under every verdict ("ROS Pos: Cook RB5 (T3), Henry RB8
-  (T4)"). The verdict also says it in words: "Upgrade over Derrick Henry · 1 tier up" (in green), "· same tier" or
-  "· 1 tier down", so you can tell a tier jump from a same-tier shuffle at a glance. Each tier is the one for the
-  number shown: position, FLEX or overall. A single rankings file's Tier column is its overall list's, so it shows
-  beside Overall ranks; position tiers come from per-position files. It doesn't change what counts as an upgrade,
-  and rankings without tiers show none.
+  (T4)"). The verdict also says it in words: "Upgrade over Derrick Henry · 1 tier up" (in green), "· 1 tier down",
+  and a free agent ranked ahead of your player in the same tier reads "Ranked ahead of Derrick Henry · same tier"
+  rather than "Upgrade over", the same rule the Dashboard's Best Available uses. He's still listed as before; only
+  the wording changes. Rankings without tiers show none.
+- **Tiers on every rank from a single rankings file.** With one file and one Tier column, the Waiver Wire
+  Assistant and Top Available showed the tier only beside overall ranks, and the Lineup and Roster tabs dropped it
+  from position ranks when the file had a Pos Rank column. Position and FLEX ranks now show the file's overall tier
+  too, so a single tiered file shows tiers everywhere in Lineup Strategist. Files with their own position or FLEX
+  tiers (per-position uploads, a Weekly FLEX file) still show those.
 - **"Next weakest" keeps each name with his rank** on a phone, instead of leaving the rank at the start of the next
   line.
 - **Strength of schedule in the Waiver Wire Assistant.** When you've loaded SoS (the upload or the manual grid on

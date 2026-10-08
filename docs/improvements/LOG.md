@@ -2033,3 +2033,70 @@ now carries the answer, so I left it.
 
 **Checks run.** `npm run check`: check-precache OK, 271 unit tests, 240 Playwright tests pass; the same 10
 environment-only screenshot failures as round 1, and all 40 renders are still pixel-identical to main's.
+
+### S8, round 3: "Ranked ahead of" in the same tier, and the overall tier beside every rank (owner's choices)
+
+**Why.** In a second review as a user I raised two things:
+- **Auto-Find and the Dashboard could now visibly disagree.** A free agent ranked ahead of your player but in the
+  same tier read "Upgrade over Derrick Henry · same tier", while the Dashboard (S5's rule) said that league had no
+  upgrade.
+- **The common upload rarely showed tiers.** With a single rankings file (one Tier column, its overall list's), the
+  feature showed up only in ROS with FLEX.
+
+The owner chose to **reword the same-tier case** and to **show the overall tier beside position ranks everywhere**.
+
+**User-visible effect.**
+- **"Ranked ahead of Derrick Henry · same tier"** replaces "Upgrade over" when both players are in the same tier, in
+  Auto-Find's Whole Roster cards and Check a List's Whole Roster verdict. "Upgrade over" is kept for a tier jump.
+  Only the wording changes: the same players are listed, in the same order, Check a List still sorts them first, and
+  Auto-Find's section count still says "N upgrades" (left over, below).
+- **A rank with no tier of its own shows the file's overall tier,** everywhere in Lineup Strategist:
+  - **Waiver Wire Assistant and Top Available:** position and FLEX ranks derived from a single file, and ranks from a
+    Pos Rank column. A single tiered file now shows tiers on every number: "Your weakest RB/WR/TE is George Kittle
+    (Wk Flex #19 · T4)", "Wk Flex: Smith-Njigba #22 (T4), Lamb #5 (T1)", Top Available "RB8 T4", and the tier gap
+    in words with them.
+  - **Lineup and Roster tabs,** and the Scout and All-Leagues cards' "Pos:" tag (`posRankTag`): a Pos Rank column's
+    position ranks now show the overall tier ("Ovr: #15 (T3) | Pos: #5 (T3)"). A single file without a Pos Rank
+    column already showed it there.
+  - **Trade Finder:** the positional basis's tier falls back the same way.
+  - Files with their own position or FLEX tiers (per-position uploads, horizontal Weekly sheets, a FLEX file) keep
+    them; the overall tier only fills a gap.
+  - Draft Strategist is unchanged (it has its own tiers), and so is the Dashboard's Best Available (no tiers on its
+    chips, S5). Its upgrade check already used this fallback (`posTier ?? tier`), as does S3's What changed
+    (compare.js), so all three now read tiers the same way.
+
+**Why a single file's overall tier works beside a position rank.** The file's overall tier rises with its order, and
+derived position and FLEX ranks follow that same order, so within RBs (or within FLEX) a better rank never has a
+worse tier. It describes the whole list, so "T4" means the same thing for an RB and a WR.
+
+**What changed and where.**
+- `js/mls/scout/waiverScanner.js` `buildRankDisplayIndex`: `posTier` and `flexTier` fall back to `tier`, at the start
+  and after deriving. Before, a derived rank cleared its tier. The header comment says so.
+- `js/mls/scout/waivers.js` `waiverCompareLine`: "Upgrade over" becomes "Ranked ahead of" when both tiers are equal.
+- `js/mls/render/lineup.js`, `js/mls/render/roster.js`: `posTier` (and Lineup's `flexTier`) fall back to `tier`.
+- `js/mls/constants.js` `posRankTag`: the tier falls back too, and the "Pos:" part still hides when it would repeat the
+  overall rank and tier.
+- `js/mls/scout/marketDisconnect.js`: the positional `userTier` falls back.
+- The parser (`js/shared/rankings/parse.js`, shared with Draft Strategist) and stored data are unchanged; the fallback
+  is applied where Lineup Strategist displays ranks. CHANGELOG lines updated. `CACHE_NAME` stays v2.8.87.
+
+**Tests.**
+- `tests/unit/waiverScanner.test.mjs`: the derived-rank cases now expect the overall tier; a FLEX case with and without
+  an overall tier; a Pos Rank column case.
+- `tests/mls-waiver-tiers.spec.mjs`:
+  - A single file shows tiers on Wk Flex, position and Overall numbers, the "3 tiers down" and "1 tier down" verdicts,
+    and Top Available's "RB8 T4".
+  - The same-tier case reads "Ranked ahead of" and never "Upgrade over".
+  - A new test: a Pos Rank column shows "Pos: #5 (T3)" on the Roster and Lineup tabs, and the tier on Top Available.
+
+- `tests/mls-top-available.spec.mjs`: S1's check that James Cook's chip reads "RB8" now expects "RB8 T4", the intended
+  change.
+
+**Checks run.** `npm run check`: check-precache OK, 272 unit tests pass; Playwright as in round 2 apart from the
+Top Available line above, which I updated and re-ran (passes at both widths). The same 10 environment-only screenshot
+failures, and all 40 renders are still pixel-identical to main's (the screenshot league has no rankings).
+
+**Left over.**
+- Auto-Find's section header (All mode) still counts same-tier entries as "N upgrades", and Check a List still sorts
+  them with the upgrades. Changing either is the verdict decision the owner kept separate.
+- The Guide doesn't explain tiers or "· 1 tier up". That's for S10's legend.

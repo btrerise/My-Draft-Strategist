@@ -520,6 +520,11 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const fmt = (v, pos, tier) => (v === null || v === undefined) ? 'unranked' : `${useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`}${tierTag(tier)}`;
         const faVal = useFlex ? faD[crossField] : faD.posRank;
         const oVal = useFlex ? oD[crossField] : oD.posRank;
+        // Ranked ahead but in the same tier: not called an upgrade (improvements S8, round 3, owner's
+        // choice), matching the Dashboard's rule (upgradeGap). Wording only: he's still listed, in the
+        // same order, as before.
+        const faTier = tierOf(faD), oTier = tierOf(oD);
+        if (verb === 'Upgrade over' && Number.isFinite(faTier) && faTier > 0 && faTier === oTier) verb = 'Ranked ahead of';
         const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotDisplayName(slotType)})</span>` : '';
         // The two ranks go on their own line under the verdict (see .mls-verdict-nums), and each
         // label/name+rank pair is kept unbreakable -- at phone width this line otherwise wrapped
@@ -528,7 +533,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
             + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos, tierOf(faD))}</span>, `
             + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos, tierOf(oD))}</span>`;
         // His SoS badge beside his name (improvements S7), so both schedules sit side by side.
-        return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}${tierGapHTML(tierOf(faD), tierOf(oD))}<span class="mls-verdict-nums">${nums}</span>`;
+        return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}${tierGapHTML(faTier, oTier)}<span class="mls-verdict-nums">${nums}</span>`;
     }
 
     // Pill + one-line explanation for a lineup verdict. Returns a neutral pill when there's no

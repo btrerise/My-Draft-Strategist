@@ -78,7 +78,8 @@ import { rankMoveChip } from '../rankings/moveChips.js';
                 rosRank: rObj ? rObj.rank : 999,
                 posRank: rObj ? rObj.posRank : 999,
                 rosTier: rObj ? rObj.tier : null,
-                posTier: rObj ? rObj.posTier : null
+                // No position tier of its own: the file's overall tier stands in (improvements S8, round 3).
+                posTier: rObj ? (rObj.posTier ?? rObj.tier ?? null) : null
             };
         });
 

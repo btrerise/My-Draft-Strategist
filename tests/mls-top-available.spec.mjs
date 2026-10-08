@@ -48,7 +48,8 @@ test.describe('Lineup Strategist Top Available', () => {
         expect(await rowNames(page)).toEqual(['Jayden Daniels', 'James Cook', 'Chase Brown', 'Jaxon Smith-Njigba', 'Zay Flowers', 'Sam LaPorta']);
         const cook = group(page, 'RB').locator('.mls-ta-row').first();
         await expect(cook).toContainText('BUF');
-        await expect(cook.locator('.mls-ta-pos')).toHaveText('RB8');
+        // A single file's overall tier stands in for the position tier (improvements S8, round 3).
+        await expect(cook.locator('.mls-ta-pos')).toHaveText('RB8 T4');
         // Rank chips and box headings use the position badge colors.
         await expect(cook.locator('.mls-ta-pos')).toHaveClass(/\bpos-badge\b.*\bRB\b/);
         await expect(group(page, 'QB').locator('.mls-ta-title .pos-badge.QB')).toHaveText('QB');

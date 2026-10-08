@@ -278,7 +278,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             let manualLocked = lockSet.has(p.id);
             let overridden = isAutoLockOverridden(State.activeLeagueId, p.id);
             let autoLocked = !manualLocked && !overridden && hasKickedOff(p) && isSleeperStarter(p);
-            return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? rObj.posTier : null, flexTier: rObj ? rObj.flexTier : null, isLocked: manualLocked || autoLocked, autoLocked };
+            return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? (rObj.posTier ?? rObj.tier ?? null) : null, flexTier: rObj ? (rObj.flexTier ?? rObj.tier ?? null) : null, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
         // Sleeper projections for the FLEX fallback in compareFlexCandidates. Kept in a local
