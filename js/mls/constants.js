@@ -55,8 +55,9 @@ import { KEYS } from '../shared/storage/keys.js';
     // back to the overall rank) -- unless the tiers differ, in which case it still has something to say.
     export const posRankTag = (obj, colorClass) => {
         if (!obj || obj.posRank === undefined || obj.posRank === null || obj.posRank === 999) return '';
-        if (obj.posRank === obj.rank && (obj.posTier ?? null) === (obj.tier ?? null)) return '';
-        return ` <span class="mls-rank-sep">&middot;</span> Pos: <strong class="${colorClass}">#${obj.posRank}</strong>${tierTag(obj.posTier)}`;
+        if (obj.posRank === obj.rank && (obj.posTier ?? obj.tier ?? null) === (obj.tier ?? null)) return '';
+        // No position tier of its own: the file's overall tier stands in (improvements S8, round 3).
+        return ` <span class="mls-rank-sep">&middot;</span> Pos: <strong class="${colorClass}">#${obj.posRank}</strong>${tierTag(obj.posTier ?? obj.tier)}`;
     };
 
     // How long the Lineup tab's per-player projected/final points data (see refreshLineupStats)

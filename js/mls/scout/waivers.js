@@ -2,7 +2,7 @@
 // AUTO-FIND, incl. the Scan Pasted List controls, and autoFindWaiverUpgrades (which sat after
 // ALL-LEAGUES PLAYER SEARCH).
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
-import { buildRankDisplayIndex, checkAgainstLineup, compareForScan, findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
+import { buildRankDisplayIndex, checkAgainstLineup, compareForScan, findFreeAgents, FLEX_POSITIONS, matchesPosFilter, upgradeGap } from './waiverScanner.js';
 import { escapeHtml } from '../../shared/html.js';
 import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
@@ -464,9 +464,13 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
             return { line, upgrade: false };
         }
         const faRanks = ctx.scan.byName[player.cleanName] || {};
-        const upgrade = compareForScan({ pos: player.pos, rank: faRanks.rank, posRank: faRanks.posRank, flexRank: faRanks.flexRank }, bench, filter) < 0;
-        const line = waiverCompareLine(player, bench, `weakest ${groupLabel}`, upgrade ? 'Upgrade over' : "Doesn't pass",
-            ctx.scanDisplay, ctx.scan.label, filter === 'FLEX' ? 'flex' : 'pos', ctx.scanCross);
+        const ahead = compareForScan({ pos: player.pos, rank: faRanks.rank, posRank: faRanks.posRank, flexRank: faRanks.flexRank }, bench, filter) < 0;
+        const basis = filter === 'FLEX' ? 'flex' : 'pos';
+        // Upgrade means a better tier when both are tiered (improvements S8, round 4): see isTierUpgrade.
+        // It also decides Check a List's sort order (scout/engine.js puts upgrades first).
+        const upgrade = ahead && isTierUpgrade(player, bench, ctx.scanDisplay, basis, ctx.scanCross);
+        const line = waiverCompareLine(player, bench, `weakest ${groupLabel}`, upgrade ? 'Upgrade over' : ahead ? 'Ranked ahead of' : "Doesn't pass",
+            ctx.scanDisplay, ctx.scan.label, basis, ctx.scanCross);
         return { line, upgrade };
     }
 
@@ -476,6 +480,49 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
     function shortPlayerName(full) {
         const parts = String(full || '').trim().split(/\s+/).filter(t => !/^(jr|sr|ii|iii|iv|v)\.?$/i.test(t));
         return escapeHtml(parts.length > 1 ? parts[parts.length - 1] : (parts[0] || String(full || '')));
+    }
+
+    // The tier that belongs to a display rank field (buildRankDisplayIndex): Overall's list tier, the
+    // FLEX list's, or the position list's. A derived rank has no tier of its own (null), so it shows none.
+    const DISPLAY_TIER_FIELD = { rank: 'tier', flexRank: 'flexTier', posRank: 'posTier' };
+
+    // " · 1 tier up" / " · same tier" / " · 2 tiers down" after a verdict (improvements S8, round 2, owner's
+    // choice): the free agent's tier against his, from the same list as the numbers under it, said in
+    // words so a tier jump reads at a glance. Display only: the verdict itself doesn't change. "" unless
+    // both are tiered.
+    function tierGapHTML(faTier, otherTier) {
+        if (!isTiered(faTier) || !isTiered(otherTier)) return '';
+        const n = Math.abs(otherTier - faTier);
+        const text = n === 0 ? 'same tier' : `${n} tier${n === 1 ? '' : 's'} ${faTier < otherTier ? 'up' : 'down'}`;
+        const cls = n === 0 ? 'is-same' : faTier < otherTier ? 'is-up' : 'is-down';
+        return ` <span class="mls-tier-gap ${cls}" title="Tier ${faTier} against tier ${otherTier}"><span class="mls-rank-sep">&middot;</span> ${text}</span>`;
+    }
+
+    // Which number a comparison shows (and so which tiers it reads): Flex/Overall for a cross-position
+    // or flex-slot head-to-head, else position. See waiverCompareLine for basis and crossKind.
+    function comparedTiers(faPlayer, other, slotType, display, basis, crossKind) {
+        const bothFlex = FLEX_POSITIONS.includes(faPlayer.pos) && FLEX_POSITIONS.includes(other.pos);
+        const useFlex = basis === 'flex' ? bothFlex
+            : basis === 'pos' ? false
+            : bothFlex && (['FLEX', 'SFLEX', 'WRRB', 'WRTE'].includes(slotType) || faPlayer.pos !== other.pos);
+        const crossField = crossKind === 'overall' ? 'rank' : 'flexRank';
+        const faD = display[faPlayer.cleanName] || {};
+        const oD = display[other.cleanName] || {};
+        const tierOf = (d) => useFlex ? d[DISPLAY_TIER_FIELD[crossField]] : d.posTier;
+        return { useFlex, crossField, faD, oD, faTier: tierOf(faD), oTier: tierOf(oD) };
+    }
+
+    // What "upgrade" means across Lineup Strategist (improvements S8, rounds 4 and 5, owner's choices):
+    // the Dashboard's rule, upgradeGap (waiverScanner.js), on the numbers the line shows. For a free agent
+    // already ranked ahead of your player: a better tier when both are tiered, else at least
+    // UPGRADE_MIN_GAP (3) spots better; your unranked player loses to any ranked free agent. Anyone else
+    // ranked ahead reads "Ranked ahead of" and isn't counted.
+    const isTiered = (t) => Number.isFinite(t) && t > 0;
+    function isTierUpgrade(faPlayer, other, display, basis, crossKind) {
+        const { useFlex, crossField, faD, oD, faTier, oTier } = comparedTiers(faPlayer, other, null, display, basis, crossKind);
+        const field = useFlex ? crossField : 'posRank';
+        if (!oD[field]) return true;
+        return upgradeGap({ faRank: faD[field], faTier, benchRank: oD[field], benchTier: oTier }) !== null;
     }
 
     // "Replaces Mike Evans (your FLEX) -- Wk Flex: Dobbins #58, Evans #20". Both numbers carry
@@ -488,16 +535,13 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
     // files, which carry a FLEX list) or 'overall' (ROS files, which carry Overall instead).
     // Only the label and the number shown change; the verdict itself was already decided by
     // the caller, and ordering RB/WR/TE by Overall is the same order the FLEX comparison uses.
+    // The verb is the caller's: "Upgrade over" only for a tier jump (isTierUpgrade).
     function waiverCompareLine(faPlayer, other, slotType, verb, display, label, basis = 'auto', crossKind = 'flex') {
-        const bothFlex = FLEX_POSITIONS.includes(faPlayer.pos) && FLEX_POSITIONS.includes(other.pos);
-        const useFlex = basis === 'flex' ? bothFlex
-            : basis === 'pos' ? false
-            : bothFlex && (['FLEX', 'SFLEX', 'WRRB', 'WRTE'].includes(slotType) || faPlayer.pos !== other.pos);
-        const crossField = crossKind === 'overall' ? 'rank' : 'flexRank';
+        // Each number carries the tier of the list it came from (improvements S8), like the card's rank
+        // row: Overall -> tier, Flex -> flexTier, position -> posTier. Untiered files add nothing.
+        const { useFlex, crossField, faD, oD, faTier, oTier } = comparedTiers(faPlayer, other, slotType, display, basis, crossKind);
         const crossName = crossKind === 'overall' ? 'Overall' : 'Flex';
-        const faD = display[faPlayer.cleanName] || {};
-        const oD = display[other.cleanName] || {};
-        const fmt = (v, pos) => (v === null || v === undefined) ? 'unranked' : (useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`);
+        const fmt = (v, pos, tier) => (v === null || v === undefined) ? 'unranked' : `${useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`}${tierTag(tier)}`;
         const faVal = useFlex ? faD[crossField] : faD.posRank;
         const oVal = useFlex ? oD[crossField] : oD.posRank;
         const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotDisplayName(slotType)})</span>` : '';
@@ -505,10 +549,10 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         // label/name+rank pair is kept unbreakable -- at phone width this line otherwise wrapped
         // mid-phrase ("Wk" on one line, "Flex: Dobbins #58" on the next), which read as garbled.
         const nums = `<span class="mls-nowrap">${label} ${useFlex ? crossName : 'Pos'}:</span> `
-            + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos)}</span>, `
-            + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos)}</span>`;
+            + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos, faTier)}</span>, `
+            + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos, oTier)}</span>`;
         // His SoS badge beside his name (improvements S7), so both schedules sit side by side.
-        return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}<span class="mls-verdict-nums">${nums}</span>`;
+        return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}${tierGapHTML(faTier, oTier)}<span class="mls-verdict-nums">${nums}</span>`;
     }
 
     // Pill + one-line explanation for a lineup verdict. Returns a neutral pill when there's no
@@ -747,11 +791,22 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                     const d = basisDisplay[p.cleanName] || {};
                     // Cross-position number: Weekly's FLEX rank, or ROS's Overall (see scanCross).
                     const crossOverall = ctx.scanCross === 'overall';
-                    const v = basisKind === 'flex' ? (crossOverall ? d.rank : d.flexRank) : d.posRank;
-                    return v ? `${basisLabel} ${basisKind === 'flex' ? `${crossOverall ? 'Overall' : 'Flex'} #${v}` : `${escapeHtml(p.pos)}${v}`}` : `unranked by ${basisName}`;
+                    const field = basisKind === 'flex' ? (crossOverall ? 'rank' : 'flexRank') : 'posRank';
+                    const v = d[field];
+                    if (!v) return `unranked by ${basisName}`;
+                    const text = `${basisLabel} ${basisKind === 'flex' ? `${crossOverall ? 'Overall' : 'Flex'} #${v}` : `${escapeHtml(p.pos)}${v}`}`;
+                    // His tier for that number (improvements S8), kept on one line with it: "ROS RB8 · T4"
+                    // (round 2: no parentheses inside the line's own). Without a tier the text is as before.
+                    const tier = d[DISPLAY_TIER_FIELD[field]];
+                    return Number.isFinite(tier) && tier > 0
+                        ? `<span class="mls-nowrap">${text} <span class="mls-rank-sep">&middot;</span> <span class="mls-tier" title="Tier ${tier}">T${tier}</span></span>`
+                        : text;
                 };
-                const nextUp = mine.slice(Math.max(0, mine.length - 3), mine.length - 1).reverse()
-                    .map(p => `${escapeHtml(p.name)} (${rankText(p)})`);
+                // Each "name (rank)" is one piece that wraps whole (round 2), so a phone never leaves a
+                // name at the end of one line and his rank on the next. The comma rides with its piece.
+                const nextUpNames = mine.slice(Math.max(0, mine.length - 3), mine.length - 1).reverse();
+                const nextUp = nextUpNames.map((p, i) =>
+                    `<span class="mls-scan-next-item">${escapeHtml(p.name)} (${rankText(p)})${i < nextUpNames.length - 1 ? ',' : ''}</span>`);
                 const header = `
                 <div class="mls-scan-benchmark">
                     <div class="mls-scan-benchmark-title">Drop candidate (by ${basisName}):</div>
@@ -759,15 +814,29 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
                     ${upgrades.length ? `Available players ranked ahead of him:`
                         : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
                         : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}
-                    ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(', ')}</div>` : ''}
+                    ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(' ')}</div>` : ''}
                     ${notCounted}
                 </div>`;
+                // Everyone ranked ahead is listed, in rank order; only an upgrade by the Dashboard's rule is
+                // called (and counted as) one (improvements S8, rounds 4 and 5). The rest read "Ranked ahead
+                // of": the same tier, or (without tiers) 1-2 spots ahead.
+                let upgradeCount = 0, sameTier = 0, close = 0;
                 const cards = upgrades.map(fa => {
                     const row = ctx.evaluate(fa);
-                    const line = waiverCompareLine(row.player, bench, null, 'Upgrade over', basisDisplay, basisLabel, basisKind, ctx.scanCross);
+                    const isUpgrade = isTierUpgrade(row.player, bench, basisDisplay, basisKind, ctx.scanCross);
+                    if (isUpgrade) upgradeCount++;
+                    else {
+                        const { faTier, oTier } = comparedTiers(row.player, bench, null, basisDisplay, basisKind, ctx.scanCross);
+                        if (isTiered(faTier) && isTiered(oTier)) sameTier++; else close++;
+                    }
+                    const line = waiverCompareLine(row.player, bench, null, isUpgrade ? 'Upgrade over' : 'Ranked ahead of', basisDisplay, basisLabel, basisKind, ctx.scanCross);
                     return renderWaiverScanCard(ctx, row, line);
                 }).join('');
-                return { body: header + cards, count: upgrades.length, countText: upgrades.length ? `${upgrades.length} upgrade${upgrades.length === 1 ? '' : 's'}` : (g.items.length === 0 ? 'none available' : 'no upgrades') };
+                const rest = [sameTier && `${sameTier} same tier`, close && `${close} within 2 spots`].filter(Boolean);
+                const countText = upgradeCount || rest.length
+                    ? [upgradeCount ? `${upgradeCount} upgrade${upgradeCount === 1 ? '' : 's'}` : 'no upgrades', ...rest].join(' · ')
+                    : (g.items.length === 0 ? 'none available' : 'no upgrades');
+                return { body: header + cards, count: upgradeCount, countText };
             };
 
             // All mode keeps every position the rankings file actually ranks, even when none of

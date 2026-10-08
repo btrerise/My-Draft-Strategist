@@ -25,7 +25,8 @@ describe('buildRankDisplayIndex', () => {
         assert.deepEqual(buildRankDisplayIndex(null, () => 'QB'), {});
     });
 
-    test('single-file fallback (posRank = flexRank = rank) is re-derived per group', () => {
+    test('single-file fallback (posRank = flexRank = rank) is re-derived per group, with the overall tier', () => {
+        // Derived ranks show the file's overall tier (improvements S8, round 3, owner's choice).
         // What rankingsParser produces for a SINGLE upload with no Pos Rank column.
         const row = (cleanName, rank, tier) => ({ name: cleanName, cleanName, rank, posRank: rank, flexRank: rank, tier, posTier: tier, flexTier: tier });
         const rankings = [
@@ -37,12 +38,12 @@ describe('buildRankDisplayIndex', () => {
         const idx = buildRankDisplayIndex(rankings, c => pos[c] || 'UNK');
 
         assert.deepEqual(idx.joshallen, { pos: 'QB', rank: 1, tier: 1, posRank: 1, posTier: 1, posDerived: false, flexRank: null, flexTier: null, flexDerived: false });
-        assert.deepEqual(idx.lamarjackson, { pos: 'QB', rank: 5, tier: 2, posRank: 2, posTier: null, posDerived: true, flexRank: null, flexTier: null, flexDerived: false });
-        assert.deepEqual(idx.bijanrobinson, { pos: 'RB', rank: 2, tier: 1, posRank: 1, posTier: null, posDerived: true, flexRank: 1, flexTier: null, flexDerived: true });
-        assert.deepEqual(idx.jamarrchase, { pos: 'WR', rank: 3, tier: 1, posRank: 1, posTier: null, posDerived: true, flexRank: 2, flexTier: null, flexDerived: true });
-        assert.deepEqual(idx.justinjefferson, { pos: 'WR', rank: 4, tier: 2, posRank: 2, posTier: null, posDerived: true, flexRank: 3, flexTier: null, flexDerived: true });
-        assert.deepEqual(idx.justintucker, { pos: 'K', rank: 6, tier: 3, posRank: 1, posTier: null, posDerived: true, flexRank: null, flexTier: null, flexDerived: false });
-        assert.deepEqual(idx.travkelce, { pos: 'TE', rank: 7, tier: 3, posRank: 1, posTier: null, posDerived: true, flexRank: 4, flexTier: null, flexDerived: true });
+        assert.deepEqual(idx.lamarjackson, { pos: 'QB', rank: 5, tier: 2, posRank: 2, posTier: 2, posDerived: true, flexRank: null, flexTier: null, flexDerived: false });
+        assert.deepEqual(idx.bijanrobinson, { pos: 'RB', rank: 2, tier: 1, posRank: 1, posTier: 1, posDerived: true, flexRank: 1, flexTier: 1, flexDerived: true });
+        assert.deepEqual(idx.jamarrchase, { pos: 'WR', rank: 3, tier: 1, posRank: 1, posTier: 1, posDerived: true, flexRank: 2, flexTier: 1, flexDerived: true });
+        assert.deepEqual(idx.justinjefferson, { pos: 'WR', rank: 4, tier: 2, posRank: 2, posTier: 2, posDerived: true, flexRank: 3, flexTier: 2, flexDerived: true });
+        assert.deepEqual(idx.justintucker, { pos: 'K', rank: 6, tier: 3, posRank: 1, posTier: 3, posDerived: true, flexRank: null, flexTier: null, flexDerived: false });
+        assert.deepEqual(idx.travkelce, { pos: 'TE', rank: 7, tier: 3, posRank: 1, posTier: 3, posDerived: true, flexRank: 4, flexTier: 3, flexDerived: true });
         // Unresolved position: kept as-is, never re-derived.
         assert.deepEqual(idx.mysteryman, { pos: 'UNK', rank: 8, tier: 4, posRank: 8, posTier: 4, posDerived: false, flexRank: null, flexTier: null, flexDerived: false });
     });
@@ -80,14 +81,29 @@ describe('buildRankDisplayIndex', () => {
         assert.equal(idx.qb.flexRank, null);
     });
 
-    test('FLEX tier is cleared even when the derived flexRank happens to equal the raw one', () => {
+    test('a backfilled FLEX group takes the overall tier, even when the derived flexRank equals the raw one', () => {
         const rankings = [
             { cleanName: 'k', rank: 2, posRank: 7, flexRank: 2 },
-            { cleanName: 'rb', rank: 1, posRank: 1, flexRank: 1, flexTier: 1 }
+            { cleanName: 'rb', rank: 1, posRank: 1, flexRank: 1, flexTier: 1, tier: 2 },
+            { cleanName: 'wr', rank: 3, posRank: 2, flexRank: 3, flexTier: 2 }
         ];
-        const pos = { k: 'K', rb: 'RB' };
+        const pos = { k: 'K', rb: 'RB', wr: 'WR' };
         const idx = buildRankDisplayIndex(rankings, c => pos[c]);
-        assert.deepEqual([idx.rb.flexRank, idx.rb.flexTier, idx.rb.flexDerived], [1, null, false]);
+        assert.deepEqual([idx.rb.flexRank, idx.rb.flexTier, idx.rb.flexDerived], [1, 2, false]);
+        // No overall tier: no tier at all (the backfilled flexTier isn't the FLEX list's).
+        assert.deepEqual([idx.wr.flexRank, idx.wr.flexTier, idx.wr.flexDerived], [2, null, true]);
+    });
+
+    test('a position rank with no tier of its own (a Pos Rank column) shows the overall tier', () => {
+        // What the parser stores for a single file with a Pos Rank column: posTier null, tier = the list's.
+        const rankings = [
+            { cleanName: 'rb1', rank: 1, tier: 1, posRank: 1, posTier: null, flexRank: 999 },
+            { cleanName: 'rb2', rank: 4, tier: 2, posRank: 2, posTier: null, flexRank: 999 },
+            { cleanName: 'rb3', rank: 6, tier: 3, posRank: 3, posTier: 1, flexRank: 999 }
+        ];
+        const idx = buildRankDisplayIndex(rankings, () => 'RB');
+        assert.deepEqual([idx.rb1.posTier, idx.rb2.posTier, idx.rb3.posTier], [1, 2, 1]);
+        assert.deepEqual([idx.rb1.posDerived, idx.rb2.posDerived], [false, false]);
     });
 });
 

@@ -71,6 +71,24 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Your player's tier in the Waiver Wire Assistant.** When your rankings have tiers, the player a free agent is
+  measured against now shows his, like the free agent does: Auto-Find's "Your weakest RB is Derrick Henry (ROS RB8
+  · T4)" and its "Next weakest" list, and the two numbers under every verdict ("ROS Pos: Cook RB5 (T3), Henry RB8
+  (T4)"). The verdict also says it in words: "Upgrade over Derrick Henry · 1 tier up" (in green), "· 1 tier down",
+  and a free agent ranked ahead of your player in the same tier reads "Ranked ahead of Derrick Henry · same tier"
+  rather than "Upgrade over". Rankings without tiers show none.
+- **"Upgrade" means the same thing everywhere.** Auto-Find and Check a List now use the Dashboard's rule: when
+  your rankings have tiers, a free agent is an upgrade only when he's in a better tier than your player; without
+  tiers, only when he's at least 3 spots better. Everyone ranked ahead is still listed, but only upgrades are
+  counted ("RB · 1 upgrade · 2 same tier", "RB · no upgrades · 1 within 2 spots") and sorted first in Check a List.
+  The rest read "Ranked ahead of".
+- **Tiers on every rank from a single rankings file.** With one file and one Tier column, the Waiver Wire
+  Assistant and Top Available showed the tier only beside overall ranks, and the Lineup and Roster tabs dropped it
+  from position ranks when the file had a Pos Rank column. Position and FLEX ranks now show the file's overall tier
+  too, so a single tiered file shows tiers everywhere in Lineup Strategist. Files with their own position or FLEX
+  tiers (per-position uploads, a Weekly FLEX file) still show those.
+- **"Next weakest" keeps each name with his rank** on a phone, instead of leaving the rank at the start of the next
+  line.
 - **Strength of schedule in the Waiver Wire Assistant.** When you've loaded SoS (the upload or the manual grid on
   the Roster tab), the Scout tab's Auto-Find and Check a List cards show the same "SoS: 7" badge as the Roster tab,
   and so does the player each free agent is compared with ("Would need to pass Josh Allen SoS: 2", your weakest

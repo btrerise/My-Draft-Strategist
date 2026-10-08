@@ -332,7 +332,7 @@ import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
                     name: userObj.name,
                     cleanName: userObj.cleanName,
                     userRank: userRank,
-                    userTier: isPositional ? userObj.posTier : userObj.tier, // matches whichever rank userRank is
+                    userTier: isPositional ? (userObj.posTier ?? userObj.tier) : userObj.tier, // matches whichever rank userRank is (overall tier when there's no position tier, improvements S8 round 3)
                     // The "other" rank for the same player, so the card shows both: the overall rank
                     // when the headline number is positional, the position rank (see posRankTag) when
                     // it's overall.
