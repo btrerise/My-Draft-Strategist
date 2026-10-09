@@ -11,6 +11,7 @@ import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
 import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupInjuryWarningHTML, getLineupIrSlotWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
+import { rankBadgeParts, sleeperLineupBadgeMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { showToast } from '../../shared/ui/toast.js';
@@ -510,9 +511,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
     // The two halves of a two-number badge, each kept whole, so on a phone the badge splits onto two lines at the
     // "|" instead of the row cutting it off (owner's choice in improvements F6). The bar is real text, so the
     // badge still reads "Pos: #5 (T3) | Flex: #13 (T3)"; .mls-rank-parts in css/mls.css hides it at a line's start.
-    function rankBadgeParts(first, second) {
-        return `<span class="mls-rank-parts"><span class="mls-rank-part">${first}</span><span class="mls-rank-part"><span class="mls-rank-bar"> | </span>${second}</span></span>`;
-    }
+    // rankBadgeParts is in js/mls/badges.js since improvements S10, shared with the Guide's badge legend.
 
     // A split badge's box would stay as wide as the row allows (CSS can't shrink a wrapped box to its lines),
     // leaving an empty block beside the text. This marks each badge whose halves landed on two lines
@@ -639,7 +638,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 
                 let sleeperWarn = "";
                 if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
-                    sleeperWarn = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; font-size: 0.65rem; margin-left: 4px;">Bench in Sleeper</span>`;
+                    sleeperWarn = sleeperLineupBadgeMarkup(false);
                 }
                 // Text version of the padlock's state. Without it, manual vs auto lock differ
                 // only by icon tint (green vs blue) plus a title= tooltip that never shows on a
@@ -728,7 +727,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 
                 let sleeperWarn = "";
                 if (validSleeperStarters.length > 0 && validSleeperStarters.includes(p.id)) {
-                    sleeperWarn = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`;
+                    sleeperWarn = sleeperLineupBadgeMarkup(true);
                 }
                 let badgesRow = [irSlotBadge, injBadge, taxiBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
                 // Bench ("BN") never reveals real position the way a strict slot badge does, so

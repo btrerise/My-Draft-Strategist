@@ -37,6 +37,7 @@ import { isDraftPickName } from '../trade/valueCurve.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { runScout } from './engine.js';
+import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
 
     const POSITION_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
     const PER_GROUP = 5;   // All: top 5 at each position
@@ -156,12 +157,8 @@ import { runScout } from './engine.js';
         renderTopAvailable();
     }
 
-    // Feather trending-up.
-    const TREND_ICON = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>`;
-    // The icon alone (owner's choice: rows are tight on a phone); the count is in the tooltip and the label.
-    const trendBadgeHTML = (count) => `<span class="mls-ta-trend" role="img" title="${addsText(count)}" aria-label="Trending: ${addsText(count).toLowerCase()}">${TREND_ICON}</span>`;
-
-    const STARTS_ICON = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    // The icon alone (owner's choice: rows are tight on a phone); markup in js/mls/badges.js (S10).
+    const trendBadgeHTML = (count) => trendBadgeMarkup(addsText(count));
 
     // One compact row: #, name, team, position rank (tier), the rank-change chip after a set was
     // replaced (improvements S3, js/mls/rankings/moveChips.js), injury/bye, a Would Start flag, and the

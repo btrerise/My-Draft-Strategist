@@ -8,6 +8,7 @@ import { renderBoard } from './tracker.js';
 import { updateSetupGuidance } from './setupGuide.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
+import { renderBadgeLegend } from './legend.js';
 
     // --- UI HELPERS ---
     // Generic debounce: delays calling fn until `wait` ms have passed since the last call.
@@ -69,6 +70,8 @@ import { getTabFromHash } from '../shared/ui/tabHash.js';
     if (['tracker', 'team', 'board'].includes(tabId)) renderBoard();
     else updateSetupGuidance(); // the logo pulse depends on the tab (8A); renderBoard runs it on the others
     if (tabId === 'setup') refreshDraftDropdown();
+    // The Guide's badge legend is built the first time the Guide is shown (improvements S10).
+    if (tabId === 'guide') renderBadgeLegend();
     window.scrollTo(0, 0);
 
     // --- NEW: Push to browser history so the back button works ---

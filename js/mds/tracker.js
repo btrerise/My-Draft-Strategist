@@ -11,6 +11,7 @@ import { KEYS } from '../shared/storage/keys.js';
 import { normalizeName } from '../shared/names.js';
 import { tScoreData } from '../shared/data/tscore.js';
 import { updateSetupGuidance } from './setupGuide.js';
+import { STACK_BADGE_HTML, tierChipMarkup, tScoreBadgeMarkup, valueBadgeMarkup } from './badges.js';
 
     // Reads and parses the three call-out lists ONCE, for a caller that is about to style many
     // player cards. getCallOutStyle below used to do this itself on every single call -- and
@@ -96,15 +97,8 @@ import { updateSetupGuidance } from './setupGuide.js';
     // localStorage at all, so the "no side effects" claim above is now literally true.
     function buildPlayerCardHTML(p, currentOverallPick, showStacks, myQbs, myPassCatchers, draft, ctx) {
         let customStyle = getCallOutStyle(p.name, ctx.callOutLists);
-        let valueBadgeHTML = "";
         let diff = currentOverallPick - p.rank;
-        if (diff > 0) {
-            valueBadgeHTML = ` | <span class="badge badge-value">+${diff} Value</span>`;
-        } else if (diff < 0) {
-            valueBadgeHTML = ` | <span class="badge badge-reach">${diff} Reach</span>`;
-        } else {
-            valueBadgeHTML = ` | <span class="badge" style="background:#3a506b;">At Rank</span>`;
-        }
+        let valueBadgeHTML = ` | ${valueBadgeMarkup(diff)}`;
         
         if (['WR', 'RB'].includes(p.posGroup) && ctx.showTScore) {
             const normFunc = normalizeName;
@@ -112,19 +106,9 @@ import { updateSetupGuidance } from './setupGuide.js';
             const tInfo = getEffectiveTScoreData()[normName];
             
             if (tInfo) {
-                let tsColor = "#9ca3af";
-                let tsBg = "rgba(255,255,255,0.1)";
-                let tsBorder = "var(--border)";
-                
-                if (tInfo.c === 'label-elite') { tsColor = "#a855f7"; tsBg = "rgba(168, 85, 247, 0.15)"; tsBorder = "rgba(168, 85, 247, 0.3)"; }
-                else if (tInfo.c === 'label-high') { tsColor = "#3b82f6"; tsBg = "rgba(59, 130, 246, 0.15)"; tsBorder = "rgba(59, 130, 246, 0.3)"; }
-                else if (tInfo.c === 'label-strong') { tsColor = "#10b981"; tsBg = "rgba(16, 185, 129, 0.15)"; tsBorder = "rgba(16, 185, 129, 0.3)"; }
-                else if (tInfo.c === 'label-quality') { tsColor = "#f59e0b"; tsBg = "rgba(245, 158, 11, 0.15)"; tsBorder = "rgba(245, 158, 11, 0.3)"; }
-                else if (tInfo.c === 'label-boom') { tsColor = "#ef4444"; tsBg = "rgba(239, 68, 68, 0.15)"; tsBorder = "rgba(239, 68, 68, 0.3)"; }
-                
                 let tScoreHTML = ` | 
                     <div class="tooltip-container" style="display:inline-flex;">
-                        <span class="badge" style="background: ${tsBg}; color: ${tsColor}; border: 1px solid ${tsBorder}; font-weight: 700;">${tInfo.l}</span>
+                        ${tScoreBadgeMarkup(tInfo.c, tInfo.l)}
                         <span class="tooltip-text" style="width: max-content; white-space: nowrap;">T-Score: ${tInfo.s} | ${tInfo.l}</span>
                     </div>`;
                 
@@ -139,7 +123,7 @@ import { updateSetupGuidance } from './setupGuide.js';
             if (p.posGroup === 'QB' && myPassCatchers.includes(p.team)) isStack = true;
         }
 
-        let stackBadge = isStack ? `<span class="badge" style="background: var(--stack-color); color: white;">Stack</span>` : "";
+        let stackBadge = isStack ? STACK_BADGE_HTML : "";
         let rookieBadge = p.isRookie ? `<span class="badge badge-rookie">R</span>` : "";
         
         // NEW: Generate the injury badge using your existing CSS class
@@ -372,7 +356,7 @@ import { updateSetupGuidance } from './setupGuide.js';
             // none of them is individually "on".
             const isPicked = !isAllActive && State.activePosFilter.includes(pos);
             const tLabel = trackers[pos] ? `top available tier ${trackers[pos].tier}, ${trackers[pos].count} left` : 'none left';
-            trackerHTML += `<button type="button" class="badge pos-badge ${pos} pos-filter ${isActive}" data-action="setPosFilter" data-pos="${pos}" aria-pressed="${isPicked}" aria-label="Filter ${pos}, ${tLabel}"><span>${pos}</span><span style="font-size:0.65rem; opacity:0.9;">${tText}</span></button>`;
+            trackerHTML += tierChipMarkup(pos, tText, isActive, { pressed: isPicked, label: `Filter ${pos}, ${tLabel}` });
         });
         const tierTrackerEl = document.getElementById('tierTracker');
         if (tierTrackerEl) tierTrackerEl.innerHTML = trackerHTML;

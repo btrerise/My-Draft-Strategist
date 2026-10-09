@@ -2713,3 +2713,100 @@ no longer blocked). `docs/TESTING.md` now describes this route under "Accepting 
   61px tall on desktop rather than CI's 59px, for the same reason plus its fonts.
 - The strip itself, as CI draws it, at both widths: All 14, QB 1, RB 1, WR 7, TE 3, K 1, DEF 1, each in its position's
   color.
+
+## S10 — A legend for the badges and symbols
+
+**Owner's answers before building** (asked with a sketch; all four were my recommendations):
+1. **Where:** a section in each app's Guide tab, plus a "What do these mean?" link that opens the Guide at it, on the
+   Scout tab's Waiver Wire Assistant and on the Lineup and Roster tabs. Not a popover per card.
+2. **Which apps:** both. Draft Strategist's list is short, and the coverage test checks both.
+3. **Grouping:** by kind (positions and slots, ranks and tiers, changes and trends, availability and status, schedule),
+   each badge once. Not by screen.
+4. **Colors:** one line per color set (position colors, the flex blends, SoS 1/16/32, amber and red freshness, the
+   Power Rankings colors), not a line per color.
+
+**What users see.**
+- Lineup Strategist's Guide has a new step 13, **What the badges mean** (before Keyboard Shortcuts): 37 lines in five
+  groups, each a sample drawn as it looks on the rows and one sentence on what it means. The ones that explain
+  themselves on a tap (rank-change chips, the IR slot badge, SoS) say "Tap for more".
+- Draft Strategist's Guide has a new last step 12, the same for its 15 lines in three groups.
+- **"What do these mean?"** (an info icon and green text; on phones, **"Badges"**) opens the Guide scrolled to the
+  legend, with focus on its heading: in the Waiver Wire Assistant's and the Optimal Lineup's card headers, on a line
+  of its own above the Roster tab's position counts (in the header, a league name and its format plus the link
+  wrapped the title on a phone), and on a line of its own above Draft Strategist's Tracker chips (no card header
+  there).
+- The Guide's two SoS lines (step 3) now say 1 = easiest, 32 = hardest, and mention the SoS card's
+  "My SoS files rank 1 = hardest" switch (left over from S7 round 5).
+
+**How the samples stay real.** Each sample is drawn with the markup the rows use:
+- `js/mls/badges.js` and `js/mds/badges.js` (new, no app state) hold the markup of every badge that had a helper or
+  inline styles, and the rows now call them: SoS (`sosBadgeMarkup`, from `getSoSBadgeHTML`), rank-change chips
+  (`moveChipMarkup`, from `rankMoveChip`), the IR slot, injury, bye and kickoff badges, the Lineup tab's two warning
+  icons and the split rank badge's halves, the trending and Starts icons, Best Available's upgrade and dismiss icons,
+  the Roster tab's position-count chip, the Dashboard's league status icons and BB, Bench/Starting in Sleeper, the
+  verdict and ownership pills, the tier gap, the Trade Finder's Edge badge; in Draft Strategist the Value/Reach/At Rank
+  badge, T-Score labels, Stack, the Tracker's tier chip, the Team tab's slot labels and the bye-week banner. The markup
+  they return is the markup the rows built before (moved, not rewritten), and the screenshots of every tab without a
+  link are pixel-identical to main's.
+- Badges with no helper and no inline style (TAXI, R, LOCKED, EARLY, position badges...) use the same classes.
+- `{ sample: true }` gives a tappable badge as a `<span>` with no `data-action`, tip or title, and
+  `.badge-legend-sample` turns off pointer events: nothing in the legend can be tapped or tabbed to.
+- One CSS selector widened with no change on screen: the stalled LIVE pill's amber dot was keyed on `#liveIconWrap`,
+  now on `.is-stalled .pulse-dot`, so the legend's stalled pill uses the same rule (`css/mds.css`).
+- `js/mls/legend.js` and `js/mds/legend.js` build the list the first time the Guide tab is shown (`showTab` in
+  `js/mls/nav.js` and `js/mds/ui.js`), not at start-up: built eagerly, its hidden samples matched page-wide locators
+  in other specs (`.mls-move-chip`, the bye banner), which is also a hint that users' own find-in-page would trip on
+  them. The CSS for both is at the end of `css/base.css` (`.badge-legend-*`). No storage key.
+
+**Keeping it from drifting.** `tests/unit/badgeLegend.test.mjs` loads each legend module in Node and collects every
+badge class the app uses: classes in a `class="..."` with a badge-like class (badge, `*-badge`, `scout-status`, the
+chips...), the class strings passed to the pill and tier-gap helpers and status maps, and from the CSS the classes in a
+compound with a badge class (`.slot-badge.slot-FLEX`, `.pos-badge.K`) that the source spells or builds
+(`slot-${...}`). It fails naming any the legend lacks; `ALLOWED` lists the ones that aren't symbols (filter state,
+sizing, layout). Dropping the TAXI line made it fail on `taxi-badge`. The rule is in `CLAUDE.md` ("Rules that bite") and
+`docs/TESTING.md` (Conventions, "Badge legend"). `tests/badge-legend.spec.mjs` opens the Guide from each link (click,
+and Enter from the keyboard), checks the legend is in view with focus on its heading, and checks samples by their real
+classes (SoS 1 green, the rank-change chips, the injury badges, IR, SFLEX; Value, Reach, SFLX, the stalled LIVE pill),
+that nothing in it is interactive, the phone's calendar icon, and no overflow at phone width. The legend is static, so
+its empty state is the normal one: the specs open it with no league or rankings loaded.
+
+**Inventory: left out, and why.**
+- Plain-word labels that say what they are: the Trade Analyzer's Receiving/Giving tag, the Injury Auditor's location
+  badge, the manual-add log's "Last added", the simulator's "Final" next to points.
+- Controls rather than symbols: the Early Games team chips and their ✕, Draft Strategist's queue star and affinity
+  circle (Guide step 6 explains both), the Tracker's ALL/position filter buttons beyond the one tier-chip line.
+- Draft Strategist has no "early" badge (the card listed one; EARLY is Lineup Strategist's), and its bye is the text
+  "Bye: 7" on a card plus the Team tab's banner, which is in.
+- `slot-ROS`: styled in `css/mls.css`, but nothing builds a slot named ROS today (allowed in the test; possibly dead
+  CSS, a follow-up to check).
+
+**Follow-ups noted, not changed (out of scope).**
+- The Edge, Bench/Starting in Sleeper, BB and At Rank badges carry inline styles; now that they live in `badges.js`
+  they could become classes.
+- "Started" (kickoff) and "AUTO-LOCKED" on the same row say nearly the same thing.
+- The single-letter injury codes (Q, D) aren't explained anywhere on the rows; the legend now covers them, but a
+  title on the badge would help on desktop.
+
+**Screenshots.** This container can't render CI-matching baselines (F1, S9), so I rendered main and this branch here
+the same way and compared them with `npm run pxdiff`. The PNGs this change touches, each for the reason given (the
+rest are identical):
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the new legend step (taller) and the SoS wording.
+- `desktop/mds-empty-guide.png`, `phone/mds-empty-guide.png`: the new legend step.
+- `desktop/mls-league-scout.png`, `phone/mls-league-scout.png`: the Waiver Wire Assistant's link in its header.
+- `desktop/mls-league-lineup.png`, `phone/mls-league-lineup.png`: the Optimal Lineup's link in its header.
+- `desktop/mls-league-roster.png`, `phone/mls-league-roster.png`: the link's line above the position counts.
+- `desktop/mds-empty-tracker.png`, `phone/mds-empty-tracker.png`, `desktop/mds-draft-tracker.png`,
+  `phone/mds-draft-tracker.png`: the link's line above the Tracker chips.
+**The 14, re-taken from PR #193's CI.** Each is CI's own `-actual.png` from a `playwright-results` artifact
+(`gh run download`), and in every run each `-expected.png` was identical to the committed baseline. It took four runs,
+not one: `toHaveScreenshot` stops a test at its first failing shot, and each test in `visual.spec.mjs` shoots several
+tabs, so a run renders only the first changed PNG of each test (now in `docs/TESTING.md`). Each run failed on exactly
+the PNGs below and nothing else:
+- Run 37894644331: `{desktop,phone}/mds-empty-tracker.png`, `mds-draft-tracker.png`, `mls-league-roster.png`. Above
+  the new link line, identical; below it, the same content 19px lower (desktop `mds-draft-tracker`: page +18px), with
+  anti-aliasing differences only, from the sub-pixel offset (as in S9).
+- Run 37931976944: `{desktop,phone}/mds-empty-guide.png` (the legend step: desktop +1038px, phone +1680px; everything
+  above it identical) and `mls-league-lineup.png` (same size; only the Optimal Lineup header row differs).
+- Run 37932692082: `{desktop,phone}/mls-league-scout.png` (same size; only the Waiver Wire Assistant header row).
+- Run 37933514590: `{desktop,phone}/mls-league-guide.png`: the SoS wording in an earlier step and the new step 13 (desktop
+  +2104px, phone +3905px).

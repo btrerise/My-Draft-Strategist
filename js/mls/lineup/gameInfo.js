@@ -12,6 +12,7 @@ import { getByeWeek } from '../../shared/data/byes.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
 import { renderLineupUI, optimizeLineup } from '../main.js';
+import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -21,7 +22,7 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
     // (js/shared/data/byes.js) for Sleeper's current season, so neither shows until it's known.
     export function getByeBadgeHTML(team) {
         if (State.currentNflWeek == null || getByeWeek(team, State.currentNflSeason) !== State.currentNflWeek) return "";
-        return `<span class="badge bye-badge">BYE</span>`;
+        return BYE_BADGE_HTML;
     }
 
     // A player in your Sleeper IR slot (isReserve, set at sync; improvements S9): an "IR" badge styled
@@ -35,14 +36,14 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
         const tip = escapeHtml(opts.starting
             ? `${where} Move him to your active roster there to start him.`
             : `${where} A player there can't start until you move him out of it.`);
-        return `<button type="button" class="badge ir-slot-badge" data-action="explainIrSlot" data-tip="${tip}" title="${tip}" aria-label="${tip}">IR</button>`;
+        return irSlotBadgeMarkup(tip);
     }
 
     // The red injury badge ("Q", "OUT", "IR"...). Left off when it would read "IR" beside the IR-slot
     // badge above: that one badge already says it.
     export function getInjuryBadgeHTML(p) {
         if (!p || !p.inj || (p.isReserve && p.inj === 'IR')) return "";
-        return `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>`;
+        return injuryBadgeMarkup(p.inj);
     }
 
     // A tap or click on an IR-slot badge: what it means, as a toast.
@@ -75,11 +76,11 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
         if (!iso) return "";
         const kickoffMs = new Date(iso).getTime();
         if (isNaN(kickoffMs)) return "";
-        if (isGameFinal(team)) return `<span class="badge kickoff-badge kickoff-started">Final</span>`;
-        if (Date.now() >= kickoffMs) return `<span class="badge kickoff-badge kickoff-started">Started</span>`;
+        if (isGameFinal(team)) return kickoffBadgeMarkup('Final', true);
+        if (Date.now() >= kickoffMs) return kickoffBadgeMarkup('Started', true);
         const label = formatKickoffLabel(iso);
         if (!label) return "";
-        return `<span class="badge kickoff-badge">${label}</span>`;
+        return kickoffBadgeMarkup(label);
     }
 
     // True once a player's team has kicked off this week per State.gameTimesByTeam, false if
@@ -362,7 +363,7 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
             && !hasKickedOff(s.player));
         if (flagged.length === 0) return "";
 
-        const warnSvg = `<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+        const warnSvg = WARNING_ICON;
 
         if (flagged.length === 1) {
             const p = flagged[0].player;
@@ -388,7 +389,7 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
         if (isBestBallLeague(league)) return "";
         const flagged = starters.filter(s => s.player && s.player.isReserve && !hasKickedOff(s.player));
         if (flagged.length === 0) return "";
-        const infoSvg = `<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+        const infoSvg = INFO_ICON;
         const names = flagged.map(s => `<strong>${escapeHtml(s.player.name)}</strong>`);
         const who = names.length === 1 ? names[0]
             : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;

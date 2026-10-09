@@ -4,6 +4,7 @@ import { escapeHtml } from '../shared/html.js';
 import { State, getActiveDraft } from './state.js';
 import { headshotHTML } from './headshots.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { byeWarningMarkup, slotLabelMarkup } from './badges.js';
 
     // `playerById` is optional: renderBoard, the main caller, already has one built for its own
     // loop and passes it in. Without it this scanned the whole player pool once per rostered
@@ -39,7 +40,7 @@ import { KEYS } from '../shared/storage/keys.js';
                 return `
                 <div class="roster-slot">
                     <div class="roster-slot-label-row">
-                        ${textClass ? `<span class="roster-label ${textClass}"><span class="roster-label-text">${label}</span></span>` : `<span class="roster-label" style="color:${color}">${label}</span>`}
+                        ${slotLabelMarkup(label, color, textClass)}
                         ${imgHTML} <!-- Inject Image Here -->
                         <div>
                             <div style="font-weight: bold;">${escapeHtml(p.name)} ${rookieBadge}</div>
@@ -123,7 +124,7 @@ import { KEYS } from '../shared/storage/keys.js';
 
             let heavyByes = Object.keys(byeCounts).filter(bye => byeCounts[bye] >= 3);
             if (heavyByes.length > 0) {
-                bannerContainer.innerHTML = `<div class="bye-warning-banner"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span>WARNING: You have ${byeCounts[heavyByes[0]]} starting players on Bye in Week ${heavyByes[0]}!</span></div>`;
+                bannerContainer.innerHTML = byeWarningMarkup(byeCounts[heavyByes[0]], heavyByes[0]);
             } else {
                 bannerContainer.innerHTML = '';
             }

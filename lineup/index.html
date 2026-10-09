@@ -607,6 +607,9 @@
             Sync Sleeper Waivers & Trades
         </button>
         
+        <!-- Opens the Guide's badge legend (improvements S10; js/mls/legend.js). On its own line rather than in the
+             header, where a long league name and its format already fill a phone's width. -->
+        <div class="badge-legend-link-row"><button type="button" class="btn-bare badge-legend-link" data-action="openBadgeLegend" aria-label="What do these badges mean? Opens the Guide"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span class="badge-legend-link-long">What do these mean?</span><span class="badge-legend-link-short">Badges</span></button></div>
         <!-- How many players you have at each position, with an All chip; tapping a chip filters the list
              below to that position (improvements S9). Filled by loadRosterTab in js/mls/render/roster.js;
              hidden while the roster is empty. -->
@@ -778,9 +781,12 @@
     <section class="settings-card">
         <header class="card-header">
             <h3><span>Optimal Lineup</span></h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Generates your highest-projected starting lineup. Lock starters with <svg role="img" aria-label="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap ⇄ Swap to manually move players. Weekly Rankings and Early Games are above and below. Whoever starts is always picked by rank first; when FLEX Kickoff Optimization (below) is on, we then relabel slots so your SFLEX and FLEX spot(s) hold whichever starters kick off latest, giving you the most time to react before locking in. You can also use the League Command Center on the Dashboard to optimize all of your leagues at once!</span>
+            <div class="header-actions-inline">
+                <button type="button" class="btn-bare badge-legend-link" data-action="openBadgeLegend" aria-label="What do these badges mean? Opens the Guide"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span class="badge-legend-link-long">What do these mean?</span><span class="badge-legend-link-short">Badges</span></button>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Generates your highest-projected starting lineup. Lock starters with <svg role="img" aria-label="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap ⇄ Swap to manually move players. Weekly Rankings and Early Games are above and below. Whoever starts is always picked by rank first; when FLEX Kickoff Optimization (below) is on, we then relabel slots so your SFLEX and FLEX spot(s) hold whichever starters kick off latest, giving you the most time to react before locking in. You can also use the League Command Center on the Dashboard to optimize all of your leagues at once!</span>
+                </div>
             </div>
         </header>
         
@@ -950,6 +956,8 @@
                 <span>Waiver Wire Assistant</span>
             </h3>
             <div class="header-actions-inline">
+                <!-- Opens the Guide's badge legend (improvements S10; js/mls/legend.js). -->
+                <button type="button" class="btn-bare badge-legend-link" data-action="openBadgeLegend" aria-label="What do these badges mean? Opens the Guide"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span class="badge-legend-link-long">What do these mean?</span><span class="badge-legend-link-short">Badges</span></button>
                 <button class="btn btn-secondary mls-btn-sm" data-action="clearWaiverScout" data-waiver-modes="auto list">Clear</button>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
@@ -1293,12 +1301,12 @@
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">3</span> Uploading Custom Rankings & SoS</h4>
                 <p class="step-desc">Upload custom analyst rankings in either <strong class="text-main">.CSV</strong> or native <strong class="text-main">.XLSX Excel</strong> format. Choose the file, or drop it anywhere on the rankings card. Use <strong class="text-main">Upload Format</strong> to send one file with all positions, or separate files for each position that get combined into one list.</p>
-                <p class="step-desc mt-2">Upload Rest-of-Season (ROS) rankings on the <strong class="text-main">Roster</strong> tab, and Weekly Matchup rankings on the <strong class="text-main">Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Roster tab to instantly generate color-coded matchup gradients on player cards. <em class="text-muted">Note: If you upload a generic rankings CSV that contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.</em> If your file also has a <strong class="text-main">Tier</strong> column, each player's tier is shown next to their rank on player cards, like <span class="mls-tier">(T2)</span>.</p>
+                <p class="step-desc mt-2">Upload Rest-of-Season (ROS) rankings on the <strong class="text-main">Roster</strong> tab, and Weekly Matchup rankings on the <strong class="text-main">Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Roster tab to instantly generate color-coded matchup gradients on player cards: 1 = easiest, 32 = hardest. If your source ranks 1 = hardest, upload it and turn on "My SoS files rank 1 = hardest" on the SoS card. <em class="text-muted">Note: If you upload a generic rankings CSV that contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.</em> If your file also has a <strong class="text-main">Tier</strong> column, each player's tier is shown next to their rank on player cards, like <span class="mls-tier">(T2)</span>.</p>
                 <ul class="guide-list">
                     <li><strong class="text-main">Preview Before Saving:</strong> Every upload opens a preview first. It flags any names that didn't match a Sleeper player (those players stay unranked everywhere in the app, so rename them to match Sleeper if needed) and lets you pick which leagues should use the file.</li>
                     <li><strong class="text-main">Ranking Sets:</strong> Each upload is saved as a named set you can share across leagues. Pick a league's set with <strong class="text-main">Ranking Set for this League</strong>, or tap "Choose leagues&hellip;" to point several leagues at the same set.</li>
                     <li><strong class="text-main">Auto-Fetch ROS Rankings:</strong> No ROS file? Pull market consensus values from FantasyCalc instead, matched to your league type, QB format, scoring, and TE Premium. These settings are shared with the Scout tab's Trade Finder.</li>
-                    <li><strong class="text-main">Manual SoS:</strong> Under "Edit Manual SoS Grid", enter each team's matchup rank (1-32) for QB, RB, WR, and TE, then tap "Save Manual SoS".</li>
+                    <li><strong class="text-main">Manual SoS:</strong> Under "Edit Manual SoS Grid", enter each team's matchup rank (1-32: 1 = easiest, 32 = hardest) for QB, RB, WR, and TE, then tap "Save Manual SoS". With "My SoS files rank 1 = hardest" on, the grid uses that scale instead.</li>
                 </ul>
             </div>
 
@@ -1381,6 +1389,14 @@
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">12</span> Backup, Restore & Reset</h4>
                 <p class="step-desc">Your leagues, rankings, and settings are stored in this browser only. Under <strong class="text-main">Advanced Settings</strong> on the Dashboard, use <strong class="text-main">Export Backup</strong> to download everything as a file and <strong class="text-main">Import Backup</strong> to restore it on this or another device or browser. The <strong class="text-main">Danger Zone</strong> has a Factory Reset that erases all of your saved leagues, rankings, and settings, which is handy when starting a new season. My Draft Strategist data is not affected.</p>
+            </div>
+
+            <!-- Step 13: the badge legend (improvements S10). The list is built the first time the Guide is
+                 shown, by js/mls/legend.js from the app's own badge markup; "What do these mean?" links open it. -->
+            <div class="guide-step badge-legend" id="badgeLegend">
+                <h4 class="step-title" id="badgeLegendTitle" tabindex="-1"><span class="step-num blue-step">13</span> What the badges mean</h4>
+                <p class="step-desc">Every badge, chip and color the app puts on players and leagues, as it looks in the app, with what it means. The ones marked "Tap for more" explain themselves when you tap them there.</p>
+                <div id="badgeLegendList" class="badge-legend-body"></div>
             </div>
 
             <!-- Step 9: Shortcuts (Previously Step 8) -->

@@ -17,6 +17,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
+import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
     // One scanner, two lenses, picked with the "Compare Against" toggle:
@@ -500,7 +501,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
         const n = Math.abs(otherTier - faTier);
         const text = n === 0 ? 'same tier' : `${n} tier${n === 1 ? '' : 's'} ${faTier < otherTier ? 'up' : 'down'}`;
         const cls = n === 0 ? 'is-same' : faTier < otherTier ? 'is-up' : 'is-down';
-        return ` <span class="mls-tier-gap ${cls}" title="Tier ${faTier} against tier ${otherTier}"><span class="mls-rank-sep">&middot;</span> ${text}</span>`;
+        return ` ${tierGapMarkup(cls, text, `Tier ${faTier} against tier ${otherTier}`)}`;
     }
 
     // Which number a comparison shows (and so which tiers it reads): Flex/Overall for a cross-position
@@ -564,7 +565,7 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
     // verdict (no lineup yet) so the caller never has to special-case it.
     export function waiverVerdictParts(ctx, { player, verdict }) {
         if (!verdict) return { pill: '', line: '' };
-        const pill = (cls, text) => `<span class="scout-status ${cls}">${text}</span>`;
+        const pill = scoutPillMarkup;
         const onBye = !!getByeBadgeHTML(player.team);
         switch (verdict.status) {
             case 'starts':

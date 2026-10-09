@@ -584,6 +584,9 @@
         </div>
     </section>
 
+    <!-- Opens the Guide's badge legend (improvements S10; js/mds/legend.js). -->
+    <div class="badge-legend-link-row"><button type="button" class="btn-bare badge-legend-link" data-action="openBadgeLegend" aria-label="What do these badges mean? Opens the Guide"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span class="badge-legend-link-long">What do these mean?</span><span class="badge-legend-link-short">Badges</span></button></div>
+
     <!-- 5-Column Position Grid -->
     <div id="tierTracker" class="tier-grid"></div>
     
@@ -881,6 +884,14 @@
                     <li><strong class="text-main">A, Q, R, W, T:</strong> Instantly filter the Tracker by position (All, QB, RB, WR, TE).</li>
                     <li><strong class="text-main">1, 2, 3, 4, 5:</strong> Instantly switch tabs (Setup, Tracker, Team, Board, Guide).</li>
                 </ul>
+            </div>
+
+            <!-- Step 12: the badge legend (improvements S10). The list is built the first time the Guide is
+                 shown, by js/mds/legend.js from the app's own badge markup; "What do these mean?" on the Tracker opens it. -->
+            <div class="guide-step badge-legend" id="badgeLegend">
+                <h4 class="step-title" id="badgeLegendTitle" tabindex="-1"><span class="step-num blue-step">12</span> What the badges mean</h4>
+                <p class="step-desc">Every badge, label and color the app puts on players, slots and the board, as it looks in the app, with what it means.</p>
+                <div id="badgeLegendList" class="badge-legend-body"></div>
             </div>
         </div>
     </section>

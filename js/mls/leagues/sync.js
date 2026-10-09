@@ -23,6 +23,7 @@ import { flashButton } from '../../shared/ui/flashButton.js';
 import { normalizeName } from '../../shared/names.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showToast } from '../../shared/ui/toast.js';
+import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatusIconMarkup } from '../badges.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -78,8 +79,8 @@ import { showToast } from '../../shared/ui/toast.js';
             let wIsStale = !wFresh || wFresh.isStale;
 
             let rankIcon = wIsStale 
-                ? `<span class="status-icon status-warn tooltip-container"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Weekly Rankings Stale or Missing</span></span>`
-                : `<span class="status-icon status-good tooltip-container"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Weekly Rankings Fresh</span></span>`;
+                ? `<span class="status-icon status-warn tooltip-container">${STATUS_WARN_ICON}<span class="tooltip-text">Weekly Rankings Stale or Missing</span></span>`
+                : `<span class="status-icon status-good tooltip-container">${STATUS_CHECK_ICON}<span class="tooltip-text">Weekly Rankings Fresh</span></span>`;
 
             // --- Lineup Match Check ---
             let isBestBall = isBestBallLeague(l);
@@ -100,13 +101,13 @@ import { showToast } from '../../shared/ui/toast.js';
 
             let lineupIcon = '';
             if (isBestBall) {
-                lineupIcon = `<span class="badge tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); padding: 2px 6px;">BB<span class="tooltip-text">Best Ball (No Lineup Management)</span></span>`;
+                lineupIcon = bestBallBadgeMarkup('<span class="tooltip-text">Best Ball (No Lineup Management)</span>');
             } else if (!isSetup) {
-                lineupIcon = `<span class="status-icon tooltip-container" style="background: rgba(255,255,255,0.05); color: var(--text-muted);"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span class="tooltip-text">Not Optimized Yet</span></span>`;
+                lineupIcon = pendingStatusIconMarkup('<span class="tooltip-text">Not Optimized Yet</span>');
             } else if (isMatch) {
-                lineupIcon = `<span class="status-icon status-good tooltip-container"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
+                lineupIcon = `<span class="status-icon status-good tooltip-container">${STATUS_CHECK_ICON}<span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
             } else {
-                lineupIcon = `<span class="status-icon status-danger tooltip-container"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span class="tooltip-text">Action Required: Differs from Sleeper Lineup</span></span>`;
+                lineupIcon = `<span class="status-icon status-danger tooltip-container">${STATUS_WARN_ICON}<span class="tooltip-text">Action Required: Differs from Sleeper Lineup</span></span>`;
             }
 
             // --- Early Game Check ---

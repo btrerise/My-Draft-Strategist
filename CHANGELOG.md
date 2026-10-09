@@ -15,6 +15,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **What the badges mean, in the Guide.** A new last step in the Guide tab shows every badge, label and color the app
+  uses (positions and their colors, the Tracker's tier chips, the Team tab's flex labels, the Board's pick colors,
+  Value and Reach, T-Score labels, rookie, injury, Stack, the bye-week warning, the pick counter and the LIVE pill),
+  each as it looks in the app, with a sentence on what it means. "What do these mean?" above the Tracker's position
+  chips opens it.
 - **Export Team shows the flex slot labels again.** In the exported image, filled FLX, SFLX, W/T and W/R labels
   came out as solid color bars with no letters. They're now readable, in the same blended colors as on the Team tab.
 - **Flex slot labels on the Team tab run through all their colors.** The blend used to stretch over the label's
@@ -71,6 +76,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **What the badges mean, in the Guide.** A new step in the Guide tab lists every badge, chip, pill and color the app
+  shows, grouped by kind (positions and slots, ranks and tiers, changes and trends, availability and status,
+  schedule), each drawn as it looks on your rows, with a sentence on what it means and which ones explain themselves
+  when you tap them. "What do these mean?" ("Badges" on phones) on the Waiver Wire Assistant, the Optimal Lineup and
+  the Active Roster opens the Guide right at it.
+- **The Guide says which end of SoS is easy.** Its SoS lines now say 1 = easiest, 32 = hardest, and mention the SoS
+  card's "My SoS files rank 1 = hardest" switch.
 - **Position counts on the Roster tab.** A row of chips above your roster says how many players you have at each
   position ("All 14 · QB 1 · RB 1 · WR 7 · TE 3 · K 1 · DEF 1"), in the same colors as the list. Taxi and IR players
   count, with a note under the number ("1 IR", "1 taxi"); IR means in your Sleeper IR slot or on NFL injured reserve.
