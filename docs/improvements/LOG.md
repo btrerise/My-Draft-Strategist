@@ -2690,3 +2690,26 @@ before the change (the IR reminder was in the clone). `tests/export-flex.spec.mj
 **Runbook card for the other gap.** The same review found that the Dashboard's Optimize All only says the leagues were
 optimized: a starter in your IR slot (or an injured one) shows only on that league's Lineup tab. The owner asked for a
 runbook card rather than more S9 work: **S11, "Optimize All names the lineups that need you"**, added to the runbook.
+
+### S9: the Roster screenshots re-taken from CI
+
+**Re-taken PNGs** (the only screenshots this card changes):
+- `tests/baselines/linux/desktop/mls-league-roster.png`: the position-count strip above the roster list, 2872 → 2931px
+  tall.
+- `tests/baselines/linux/phone/mls-league-roster.png`: the same, 2674 → 2730px tall.
+
+**Where they come from.** Both are CI's own renders: the `mls-league-roster-actual.png` files from PR #192's first
+run (run 37862803285, `playwright-results` artifact), the run that failed only on these two comparisons. Unlike F1,
+this session downloaded the artifact itself with `gh run download` (the owner had opened access; the artifact host is
+no longer blocked). `docs/TESTING.md` now describes this route under "Accepting an intended visual change".
+
+**Checked before committing.**
+- Each run's `-expected.png` is identical to the baseline committed before this change, so CI compared against what
+  was in the repo.
+- Desktop: rows 0–1074 are identical (everything above the strip); the rest is the same content 59px lower (phone:
+  rows 0–1050, 56px lower). Below the strip, a few text and border rows differ by anti-aliasing only: the strip's
+  height isn't a whole number of pixels, so the rows under it are drawn at a slightly different sub-pixel offset. A
+  side-by-side of those bands shows the same rows (players, badges, buttons). This container's render made the strip
+  61px tall on desktop rather than CI's 59px, for the same reason plus its fonts.
+- The strip itself, as CI draws it, at both widths: All 14, QB 1, RB 1, WR 7, TE 3, K 1, DEF 1, each in its position's
+  color.
