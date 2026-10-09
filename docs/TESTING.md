@@ -133,7 +133,9 @@ way there and compare them with `npm run pxdiff` to find the PNGs your change to
 let the PR's CI fail on exactly those. Then take CI's renders from the run's `playwright-results` artifact:
 `gh run download <run-id> -R btrerise/My-Draft-Strategist -n playwright-results -D <new empty folder>` works from
 cloud sessions. Before committing an `-actual.png` as the baseline, check that its `-expected.png` is identical to the
-committed baseline, and that the new image differs only where your change is.
+committed baseline, and that the new image differs only where your change is. A test stops at its first failing
+screenshot (each test in `visual.spec.mjs` shoots several tabs), so a run only renders the first changed PNG of each
+test: commit those, push, and take the next ones from the next run, until it's green (S10 took four runs for 14).
 
 ### The opt-in tools
 
