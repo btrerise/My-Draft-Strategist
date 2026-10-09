@@ -6,6 +6,7 @@
 import { getSleeperMatchups } from '../../shared/api/sleeper.js';
 import { getWeeklyProjections } from '../../shared/api/sleeperStats.js';
 import { escapeHtml } from '../../shared/html.js';
+import { showToast } from '../../shared/ui/toast.js';
 import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
 import { refreshGameTimes, State } from '../state.js';
@@ -21,6 +22,33 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
     export function getByeBadgeHTML(team) {
         if (State.currentNflWeek == null || getByeWeek(team, State.currentNflSeason) !== State.currentNflWeek) return "";
         return `<span class="badge bye-badge">BYE</span>`;
+    }
+
+    // A player in your Sleeper IR slot (isReserve, set at sync; improvements S9): an "IR" badge styled
+    // like TAXI, on Roster and Lineup rows. A small button: hovering shows what it means (title), and a
+    // tap or click shows it as a toast (explainIrSlot), since phones have no hover.
+    // On a starter row (opts.starting) the text says what to do: the optimizer may start a healthy
+    // IR-slot player on purpose, as a prompt to activate him (owner's decision, S9 round 6).
+    export function getIrSlotBadgeHTML(p, opts = {}) {
+        if (!p || !p.isReserve) return "";
+        const where = `In your IR slot on Sleeper${p.inj === 'IR' ? ', and on NFL injured reserve' : ''}.`;
+        const tip = escapeHtml(opts.starting
+            ? `${where} Move him to your active roster there to start him.`
+            : `${where} A player there can't start until you move him out of it.`);
+        return `<button type="button" class="badge ir-slot-badge" data-action="explainIrSlot" data-tip="${tip}" title="${tip}" aria-label="${tip}">IR</button>`;
+    }
+
+    // The red injury badge ("Q", "OUT", "IR"...). Left off when it would read "IR" beside the IR-slot
+    // badge above: that one badge already says it.
+    export function getInjuryBadgeHTML(p) {
+        if (!p || !p.inj || (p.isReserve && p.inj === 'IR')) return "";
+        return `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>`;
+    }
+
+    // A tap or click on an IR-slot badge: what it means, as a toast.
+    export function explainIrSlot(badgeEl) {
+        const text = badgeEl && badgeEl.dataset ? badgeEl.dataset.tip : '';
+        if (text) showToast(text);
     }
 
     // Formats an ISO kickoff timestamp into a short label in the person's local timezone, e.g.
@@ -348,6 +376,28 @@ import { renderLineupUI, optimizeLineup } from '../main.js';
         return `<div class="lineup-injury-warning">
             ${warnSvg}
             <span><strong>${flagged.length} starters</strong> are Doubtful, Out, IR, or otherwise unlikely to play: ${namesHTML} - consider swapping them out.</span>
+        </div>`;
+    }
+
+    // The optimizer can start a healthy player who's in your Sleeper IR slot (isReserve): the owner
+    // kept that on purpose, as the app's prompt to activate him (improvements S9, round 6). Sleeper
+    // won't start him until he's moved to the active roster, so this line says so above the lineup,
+    // where it can't be missed. Same rules as the injury warning above: not in Best Ball, and not
+    // once his game has kicked off (nothing left to change). Manual leagues have no IR slot.
+    export function getLineupIrSlotWarningHTML(starters, league) {
+        if (isBestBallLeague(league)) return "";
+        const flagged = starters.filter(s => s.player && s.player.isReserve && !hasKickedOff(s.player));
+        if (flagged.length === 0) return "";
+        const infoSvg = `<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+        const names = flagged.map(s => `<strong>${escapeHtml(s.player.name)}</strong>`);
+        const who = names.length === 1 ? names[0]
+            : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+        const text = flagged.length === 1
+            ? `${who} is in your IR slot on Sleeper. Move him to your active roster there before kickoff to start him.`
+            : `${who} are in your IR slot on Sleeper. Move them to your active roster there before kickoff to start them.`;
+        return `<div class="lineup-injury-warning lineup-ir-warning">
+            ${infoSvg}
+            <span>${text}</span>
         </div>`;
     }
 

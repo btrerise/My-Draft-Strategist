@@ -1,18 +1,86 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Roster tab renderer (loadRosterTab), the first
 // function under RENDERERS.
 import { escapeHtml } from '../../shared/html.js';
-import { tierTag } from '../constants.js';
+import { tierTag, SLOT_POSITIONS } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
 import { State } from '../state.js';
 import { rankingIndex, getActiveLeague } from '../helpers.js';
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
-import { getByeBadgeHTML } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML } from '../lineup/gameInfo.js';
 import { renderManualAddLog } from '../leagues/addPlayer.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
 import { refreshPowerRankings } from '../main.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
+
+    // --- POSITION COUNTS (improvements S9) ---
+    // The strip of chips above the roster list: one per position with how many you roster, a
+    // note for taxi and IR players (they count), and an "All" chip. Tapping a chip filters the
+    // list to that position. The filter lives in memory only, per league: a reload or a league
+    // switch shows everyone again.
+    const POS_COUNT_ORDER = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+    const DEFAULT_REQS = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 }; // as render/lineup.js
+    let rosterPosFilter = { leagueId: null, pos: null };
+
+    // [{ pos, count, ir, taxi }] in QB, RB, WR, TE, K, DEF order, then any other position on the
+    // roster. A standard position is left out only when you have none and no starting slot takes
+    // it (a league without kickers shows no K); a QB still shows in a superflex league with no QB slot.
+    // IR counts a player in your Sleeper IR slot (isReserve, set at sync) or on NFL IR (inj), once.
+    export function rosterPositionCounts(roster, reqs) {
+        const slots = reqs || DEFAULT_REQS;
+        const hasSlot = pos => Object.entries(SLOT_POSITIONS).some(([type, takes]) => (slots[type] || 0) > 0 && takes.includes(pos));
+        const byPos = new Map();
+        (roster || []).forEach(p => {
+            const c = byPos.get(p.pos) || { pos: p.pos, count: 0, ir: 0, taxi: 0 };
+            c.count++;
+            if (p.isReserve || p.inj === 'IR') c.ir++;
+            if (p.isTaxi) c.taxi++;
+            byPos.set(p.pos, c);
+        });
+        const standard = POS_COUNT_ORDER
+            .filter(pos => byPos.has(pos) || hasSlot(pos))
+            .map(pos => byPos.get(pos) || { pos, count: 0, ir: 0, taxi: 0 });
+        const others = [...byPos.keys()].filter(pos => !POS_COUNT_ORDER.includes(pos)).sort().map(pos => byPos.get(pos));
+        return [...standard, ...others];
+    }
+
+    // A chip's tap: show only that position, or everyone again ('ALL', or the picked chip a second time).
+    // The redraw replaces the chips, so a chip that had focus (keyboard use) hands it to its new self;
+    // otherwise focus would fall back to the top of the page.
+    export function setRosterPosFilter(pos) {
+        const league = getActiveLeague();
+        const current = league && rosterPosFilter.leagueId === league.leagueId ? rosterPosFilter.pos : null;
+        rosterPosFilter = { leagueId: league ? league.leagueId : null, pos: (!pos || pos === 'ALL' || pos === current) ? null : pos };
+        const active = document.activeElement;
+        const hadFocus = !!(active && active.closest && active.closest('#rosterPosCounts'));
+        loadRosterTab();
+        if (hadFocus) {
+            const strip = document.getElementById('rosterPosCounts');
+            const again = strip && [...strip.querySelectorAll('button[data-pos]')].find(b => b.dataset.pos === (pos || 'ALL'));
+            if (again) again.focus();
+        }
+    }
+
+    function renderRosterPosCounts(el, counts, total, picked) {
+        // One note per line ("1 IR" over "1 taxi"), so a narrow chip never breaks a note in two.
+        const notesOf = c => [c.ir ? `${c.ir} IR` : '', c.taxi ? `${c.taxi} taxi` : ''].filter(Boolean);
+        const chip = (pos, label, count, notes, colorClass, extra = '') => {
+            const on = picked === pos || (pos === 'ALL' && !picked);
+            const lit = !picked || on;
+            const spoken = `${label} ${count}${notes.length ? ` (${notes.join(' · ')})` : ''}`;
+            return `<button type="button" class="badge ${colorClass} pos-filter mls-poscount${lit ? ' active-filter' : ''}" data-action="setRosterPos" data-pos="${escapeHtml(pos)}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${escapeHtml(spoken)}"${extra}>`
+                + `<span class="mls-poscount-name">${escapeHtml(label)}</span>`
+                + `<span class="mls-poscount-num">${count}</span>`
+                + (notes.length ? `<span class="mls-poscount-notes">${notes.map(n => `<span class="mls-poscount-note">${escapeHtml(n)}</span>`).join('')}</span>` : '')
+                + `</button>`;
+        };
+        el.innerHTML = chip('ALL', 'All', total, [], 'badge-all')
+            + counts.map(c => chip(c.pos, c.pos, c.count, notesOf(c),
+                POS_COUNT_ORDER.includes(c.pos) ? `pos-badge ${c.pos}` : '',
+                c.count === 0 ? ' disabled' : '')).join('');
+        el.hidden = false;
+    }
 
     // --- RENDERERS ---
 
@@ -43,8 +111,11 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
 
         const rosterListEl = document.getElementById('rosterList');
         if (!rosterListEl) return;
+        const posCountsEl = document.getElementById('rosterPosCounts');
 
         if (!league || !league.roster || league.roster.length === 0) {
+            if (posCountsEl) { posCountsEl.hidden = true; posCountsEl.innerHTML = ''; }
+            rosterPosFilter = { leagueId: league ? league.leagueId : null, pos: null };
             rosterListEl.innerHTML = `
             <div style="background: rgba(0,0,0,0.15); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem; text-align: left; color: var(--text-muted);">
                 <div style="font-weight: 600; color: var(--text-main); margin-bottom: 1rem; text-align: center;">Welcome to your Roster</div>
@@ -97,6 +168,15 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
             return (posOrder[a.pos] || 99) - (posOrder[b.pos] || 99);
         });
 
+        // Position counts over the whole roster; the picked chip (if any) narrows the list below.
+        // A filter from another league, or on a position you no longer have, shows everyone.
+        const posCounts = rosterPositionCounts(league.roster, league.reqs);
+        let picked = rosterPosFilter.leagueId === league.leagueId ? rosterPosFilter.pos : null;
+        if (picked && !posCounts.some(c => c.pos === picked && c.count > 0)) picked = null;
+        rosterPosFilter = { leagueId: league.leagueId, pos: picked };
+        if (posCountsEl) renderRosterPosCounts(posCountsEl, posCounts, league.roster.length, picked);
+        if (picked) displayRoster = displayRoster.filter(p => p.pos === picked);
+
         let html = "";
         displayRoster.forEach(p => {
             let ovrStr = p.rosRank !== 999 ? `#${p.rosRank}${tierTag(p.rosTier)}` : "-";
@@ -105,7 +185,10 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
             const byeWeek = getByeWeek(p.team, State.currentNflSeason);
             let byeStr = byeWeek ? ` (${byeWeek})` : "";
             let byeBadge = getByeBadgeHTML(p.team);
-            let injBadge = p.inj ? `<span class="badge inj-badge">${escapeHtml(p.inj)}</span>` : "";
+            // IR-slot badge (Sleeper IR slot) and the injury badge, shared with the Lineup tab
+            // (js/mls/lineup/gameInfo.js; improvements S9).
+            let irSlotBadge = getIrSlotBadgeHTML(p);
+            let injBadge = getInjuryBadgeHTML(p);
             let sosBadge = getSoSBadgeHTML(p.team, p.pos);
             // Same "R" badge as MDS roster cards and the Matchup Simulator.
             let rookieBadge = isRookiePlayer(p, rookieIdx) ? `<span class="badge badge-rookie" title="Rookie" aria-label="Rookie">R</span>` : "";
@@ -118,7 +201,7 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
             // manual leagues never show it. Sits right after rookie: both are season-long
             // roster-status markers, so they stay fixed ahead of injury/bye.
             let taxiBadge = p.isTaxi ? `<span class="badge taxi-badge" title="Taxi squad">TAXI</span>` : "";
-            let statusBadges = [rookieBadge, taxiBadge, injBadge, byeBadge].filter(Boolean).join('');
+            let statusBadges = [rookieBadge, taxiBadge, irSlotBadge, injBadge, byeBadge].filter(Boolean).join('');
             
             html += `
             <div class="roster-item">

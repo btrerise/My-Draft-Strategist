@@ -2406,3 +2406,310 @@ fit (`expect.poll`) instead of checking once; it still fails if the refit never 
 **Checks run.** `npm run check`: check-precache OK, 284 unit tests pass; Playwright: the same 10 first-run screenshot
 failures on every page, then a full rerun passed all 258 with no baseline changed.
 
+
+## S9 — Position counts on the Roster tab
+
+**User-visible effect.** Lineup Strategist's Roster tab has a row of chips directly above the player list, under
+the Power Rankings strip and the Sync button: **All 14 · QB 1 · RB 1 · WR 7 · TE 3 · K 1 · DEF 1** for the fixture
+league. Each chip stacks the position, the count and, when it applies, a small note: "1 IR", "1 taxi", or both
+("1 IR · 1 taxi"). They're colored like the list's position badges and look and light up like the Waiver Wire
+Assistant's position chips. Tapping a chip shows only that position (still in ROS order); the picked chip stays lit
+and the rest fade. Tapping it again, or All, shows everyone. The counts always cover the whole roster, whichever chip
+is picked.
+- A position you have none of shows as **0** when the league starts one (any slot that takes it, flex slots
+  included, so a QB shows in a superflex league with no QB slot). Those chips can't be tapped. It's left out when no
+  slot takes it: a league without kickers shows no K. Positions outside QB/RB/WR/TE/K/DEF (a roster player whose
+  Sleeper position the app doesn't map) get a plain chip after DEF.
+- The counts follow every roster change: add, remove (on the Roster tab), sync, league switch, and saving the
+  league's starting requirements (Setup tab), so a new K slot shows "K 0" right away.
+- Empty roster (or no league): no chips; the welcome box is unchanged. Manual and Draft Strategist hand-off leagues
+  count the same way (no taxi notes, since only a Sleeper sync sets `isTaxi`).
+- The filter lives in memory, per league: a reload or a league switch shows everyone. Removing the last player at
+  the picked position shows everyone too.
+- The Active Roster card's (i) tooltip says what the chips do.
+
+**Owner's decisions (asked before building).**
+- **Where:** its own strip directly above the list, not in the header.
+- **Starting slots:** counts only ("RB 6"), not "RB 6 / 2". So flex slots (FLEX, SFLEX, W/T, W/R) aren't shown at
+  all; they only decide whether a zero position shows (above).
+- **Taxi and IR:** counted, with a note. IR means in your Sleeper IR slot or on NFL IR (round 2 below; the first
+  push counted NFL IR status only). PUP, NFI and suspensions aren't noted unless the player is in the IR slot.
+- **Tap to filter:** yes, with an All chip; in memory, no new storage key.
+
+**What changed and where.**
+- `js/mls/render/roster.js`: `rosterPositionCounts(roster, reqs)` (the counts, exported), `setRosterPosFilter(pos)`
+  (the tap) and `renderRosterPosCounts`. `loadRosterTab` draws the strip and filters the list after sorting; the
+  empty-roster path hides the strip and clears the filter. Sort order and row layout unchanged.
+- `lineup/index.html`: `#rosterPosCounts` (a `role="group"`, hidden until filled) above `.roster-container-wrapper`;
+  the tooltip sentence.
+- `js/mls/main.js`: the `setRosterPos` action. Each chip is a `<button>` with `data-action`, `data-pos`,
+  `aria-pressed` (only the picked chip, or All) and an `aria-label` that reads like the card's example ("RB 1 (1 IR)").
+- `js/mls/leagues/sync.js`: `saveRequirements` re-renders the Roster tab (it already re-ran the lineup).
+- `css/mls.css`: `.mls-roster-poscounts` (one row, an equal column per chip) and `.mls-poscount-*`, with a phone size
+  like the Power Rankings strip's. The chips reuse `.pos-filter` from css/base.css.
+- Draft Strategist's Roster Limits row (Team tab) shows "count / limit" per position with an FLX column; with the
+  owner's "counts only" there's nothing to share beyond the position order and colors, which match. No shared code.
+- `sw.js`: `CACHE_NAME` v2.8.88 → v2.8.89. No new file, no new storage key. CHANGELOG line under Lineup Strategist.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs` (new, both widths):
+- The fixture league's counts; removing Derrick Henry on the Roster tab ("RB 0", not tappable, "All 13"); adding
+  James Cook from Setup's Add Player Manually ("RB 1").
+- Filtering: WR shows the 7 WRs with the counts unchanged; a second tap and All show everyone; the filter holds
+  through a remove; removing the last QB while QB is picked shows everyone.
+- League switch: a new manual league shows no chips and the welcome box; straight back to the Fixture League shows
+  everyone (this step failed before the empty-roster path cleared the filter); the manual league with K slots set to
+  0 and a QB and a DEF added shows no K chip; switching back resets a filter.
+- Taxi and IR: Sleeper stubs with Henry on IR and McBride on the taxi squad give "RB 1 (1 IR)" and "TE 3 (1 taxi)";
+  a re-sync after McBride leaves the taxi squad drops the TE note.
+
+**Screenshots.** `mls-league-roster.png` (desktop and phone) is the only screenshot this card changes: the chip row
+above the list (desktop 61px taller, phone 56px). **Not re-taken in this commit**, so CI's two Roster comparisons
+fail until it is. Same as F1: since 2026-10-03 this container renders text differently from CI (`56-prefer-inter.conf`,
+`12-unhinted-grayscale.conf`, Inter and other extra fonts). With both rules removed through a private fontconfig the
+text matches, but symbol glyphs such as the ✕ on every roster row still differ by tens to thousands of pixels per PNG,
+so a PNG re-taken here would fail on CI. What was checked here instead: main (`origin/main`) and this branch rendered
+in this container with `--update-snapshots=all`, compared with `npm run pxdiff`: only the two `mls-league-roster.png`
+differ, and the tooltip edit leaves them unchanged. The re-taken PNGs should be the `mls-league-roster-actual.png`
+files from this branch's first CI run (the `playwright-results` artifact), checked as F1's were: each
+`-expected.png` identical to the committed baseline, and the difference only from the chip row down.
+
+**Checks run.** `npm run check`: check-precache OK, 284 unit tests pass, Playwright 266 passed; the 10 screenshot
+tests failed, on every page, as they do for main in this container (main's own render differs from all 20 committed
+desktop baselines here).
+
+**Left over.**
+- Commit CI's two `mls-league-roster.png` renders (above).
+- The Guide tab has no Roster-tab section, so the chips are explained only in the card's tooltip. S10 (the legend)
+  should include them.
+
+### S9, round 2: Sleeper's IR slot (owner's request)
+
+**Why.** My summary said "IR" in the notes meant the NFL status only, because the app didn't record Sleeper's IR
+slot. The owner thought it did. It read the slot in one place only: the Global Injury Auditor
+(`js/mls/lineup/injuryAudit.js`) fetches rosters live and uses the `reserve` array so it doesn't say "Move to IR"
+for someone already there. League sync never stored it. I offered to record it at sync, count it in the note, add a
+row badge, and (separately) keep IR-slot players out of the Lineup tab's starters.
+
+**Owner's decisions.**
+- **Record the IR slot, and count "IR" as the IR slot or NFL IR**, each player once.
+- **An IR badge** on the Roster tab's rows for IR-slot players.
+- **Not now:** keeping IR-slot players out of the Lineup tab's starters. Noted below.
+
+**User-visible effect.**
+- A Sleeper sync records who's in your IR slot. The chips' "IR" note counts a player in that slot or on NFL IR:
+  Jefferson (Out, in the IR slot), Kittle (NFL IR, in the slot) and Henry (NFL IR, on the bench) each count once.
+- A player in your IR slot has an **IR** badge beside his name on the Roster tab, styled like TAXI (both are
+  roster-status markers). If he's also on NFL IR, that one badge says it, so the red injury "IR" is left off. With
+  any other status both show ("IR" then "OUT"). A bench player on NFL IR keeps the red injury "IR" only.
+- Leagues synced before this have no IR-slot data until their next sync; until then the note counts NFL IR only.
+  Manual and hand-off leagues have no IR slot, so NFL IR is all they count.
+
+**What changed and where.**
+- `js/mls/leagues/sync.js` (`processSleeperData`): each roster player gets `isReserve`, from your roster's `reserve`
+  array, beside `isTaxi`. A field on the stored roster, no new storage key.
+- `js/mls/render/roster.js`: the IR count reads `isReserve || inj === 'IR'`; the `.ir-slot-badge` row badge after
+  TAXI, with the duplicate injury "IR" dropped.
+- `css/base.css`: `.ir-slot-badge` shares `.taxi-badge`'s rule.
+- CHANGELOG line updated and one added. `CACHE_NAME` stays v2.8.89 (this branch's bump).
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`, the taxi and IR test: Sleeper stubs put Jefferson (Out) and Kittle
+(NFL IR) in the IR slot, Henry on NFL IR on the bench, McBride on taxi. Notes "RB 1 (1 IR)", "WR 7 (1 IR)",
+"TE 3 (1 IR · 1 taxi)"; badges as above; a re-sync with Jefferson out of the slot and McBride off taxi drops their
+notes and his badge.
+
+**Screenshots.** None beyond round 1's two `mls-league-roster.png` (the screenshot league has no IR-slot players).
+
+**Left over (for later).**
+- ~~**IR-slot players in the Lineup tab's starters**~~ (decided in round 6: they stay eligible, as a prompt to activate
+  them). The optimizer still treats `isReserve`
+  players as available. One who's Out or on NFL IR is never started anyway (his status), but one back to Questionable
+  or healthy while still in your IR slot can be picked as a starter, though Sleeper won't start him until he's moved
+  out. Fix: leave `isReserve` players out of the pool like taxi players (`js/mls/render/lineup.js`, `pool` /
+  `taxiPlayers`), with a divider or badge on the bench. Changes who starts, so it needs its own card.
+- Related, same decision: the Waiver Wire's "your weakest" skips IR, Out and taxi players by status
+  (`js/mls/scout/waivers.js`, `INACTIVE_STATUSES`; `js/mls/scout/bestAvailable.js`), not by the IR slot. It could
+  read `isReserve` in the same follow-up. (The Lineup tab's IR badge was added in round 4.)
+
+### S9, round 3: the IR badge explains itself on tap (owner's request)
+
+**User-visible effect.** The Roster tab's IR badge works like the SoS badge and the rank-change chips: hovering shows
+what it means, and a tap or click shows the same text as a toast (phones have no hover). The text: "In your IR slot on
+Sleeper. A player there can't start until you move him out of it.", with ", and on NFL injured reserve" after
+"Sleeper" when that's true too. The badge looks exactly as before.
+
+**What changed and where.**
+- `js/mls/render/roster.js`: the badge is a `<button>` with `data-action="explainIrSlot"`, `data-tip`, `title` and
+  `aria-label`; `explainIrSlot` shows `data-tip` as a toast, the same few lines as `explainSoS` and
+  `explainRankMove`. `js/mls/main.js` registers the action.
+- `css/mls.css`: `button.ir-slot-badge` drops the button's own font and line height (as `button.sos-badge` does) and
+  gets the same focus ring.
+- Checked in the browser at both widths: the button badge and a plain `<span>` copy with the same classes have the
+  same size, position and computed styles (font, padding, border, colors, margin, alignment).
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.89.
+
+**Tests.** The taxi and IR test taps Jefferson's badge (slot only) and Kittle's (slot and NFL IR) and checks each
+toast, and Kittle's `title`.
+
+**Screenshots.** None changed (the screenshot league has no IR-slot players).
+
+### S9, round 4: a review as a user; the IR badge on the Lineup tab (owner's choices)
+
+**Why.** Asked how the feature feels from a user's side, I used the Roster tab at both widths with rankings loaded
+and players on IR and taxi: reading the counts, filtering, removing, tapping the IR badge, and using the keyboard.
+It answers "how many RBs do I have?" at a glance, but three things were rough. The owner asked for all three fixes,
+plus the IR badge on the Lineup tab.
+
+**User-visible effect.**
+- **Filtered, the other counts stay readable.** With one position picked, the other chips fade to 60% with a little
+  color left (they were at the Waiver Wire's 35% and nearly gray, so "TE 3, 1 IR · 1 taxi" was hard to read). Hover
+  brings them up to 85%. The picked chip is unchanged.
+- **Notes sit one per line.** "1 IR" over "1 taxi", so a phone chip no longer breaks a note in two ("1 IR · 1" over
+  "taxi"). On a computer the notes are a little larger (0.68rem, was 0.6rem); phones keep 0.6rem. Screen readers
+  still hear "TE 3 (1 IR · 1 taxi)".
+- **Keyboard focus stays on the chip you chose.** Choosing a chip redraws the strip, and focus used to fall back to
+  the top of the page. Now the new copy of that chip gets focus, so Tab and Shift+Tab carry on from it. Mouse and
+  touch use look the same as before.
+- **The IR badge on the Lineup tab:** starter and bench rows show the same IR badge for players in your Sleeper IR
+  slot, before the injury badge (Jefferson: "IR" then "OUT"), with the same hover and tap explanation. A starter in
+  the IR slot shows it too, which makes the round 2 leftover visible: the optimizer can still start an IR-slot player
+  who is healthy again, and his row now says he's in the IR slot.
+
+**Left as it is (my review; the owner asked only for the three fixes).** Counts only, without slot numbers, is the owner's round 1 choice, and
+"too few" warnings were out of the card's scope; a 0 still shows for a position the league starts. The empty band
+under the chips on desktop is the list's existing frame.
+
+**What changed and where.**
+- `js/mls/lineup/gameInfo.js` (beside `getByeBadgeHTML`, already shared by the two tabs): `getIrSlotBadgeHTML(p)`,
+  `getInjuryBadgeHTML(p)` (drops the red "IR" when the IR-slot badge says it) and `explainIrSlot` (moved here from
+  roster.js). The Roster tab and both Lineup row types use them; `js/mls/main.js` imports the action from here.
+- `js/mls/render/lineup.js`: starter rows `[lock, IR slot, injury, bye, ...]`, bench rows `[IR slot, injury, TAXI,
+  bye, ...]`.
+- `js/mls/render/roster.js`: notes as one `.mls-poscount-note` per line inside `.mls-poscount-notes`;
+  `setRosterPosFilter` puts focus back on the chosen chip when one had it.
+- `css/mls.css`: `.mls-poscount-notes`, the note sizes, and the lighter fade
+  (`.mls-poscount.pos-filter:not(.active-filter)`). The Waiver Wire's chips are unchanged. `css/base.css`: comment
+  only.
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.89.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`, both widths, 12 tests:
+- New: with the keyboard, Enter or Space on a chip keeps focus on it (TE, TE again, Shift+Tab to WR, All). The
+  walk-through found focus on `<body>` before the fix.
+- New: the Lineup tab, with Jefferson (Out), Kittle (NFL IR) and Chase (healthy) in the IR slot: bench badges for
+  the first two (Jefferson keeps OUT, Kittle shows one IR), Chase starting with the badge, and its tap explanation.
+- Updated: the TE chip's notes are two lines, each one line high; an unpicked chip's opacity is 0.6, the picked one 1.
+
+**Screenshots.** None changed beyond round 1's two Roster PNGs: all 40 renders here match round 1's (the
+screenshot league has no notes, filter or IR-slot players).
+
+**Left over.**
+- The Guide has no Roster-tab section, so the chips and the IR badge are explained only by the card's tooltip and the
+  badge's own tap. S10 (the legend) should include both.
+
+### S9, round 5: IR-slot players at the bottom of the Lineup tab's bench (owner's request)
+
+**Why.** The owner asked for players with the IR badge to sit at the bottom of the bench, where fantasy apps show
+IR players.
+
+**User-visible effect.** The Lineup tab's bench reads like Sleeper's: the healthy bench (best first, as before), then
+an **Injured Reserve** divider with the players in your IR slot, then the **Taxi Squad**. IR rows say "IR" in the slot
+column (like "TX" for taxi, with the same dashed look) besides the IR badge, and keep their swap button. A swap keeps
+the groups: swapping an IR player into a starting slot sends the starter he replaces to the healthy bench, not into
+the IR group. Who starts doesn't change. A healthy IR-slot player can still be picked as a starter, the round 2
+leftover; if he is, his row stays with the starters and shows the IR badge.
+
+**What changed and where.**
+- `js/mls/render/lineup.js`: `groupBench(bench)`, a stable partition (bench, IR slot, taxi), applied at the end of
+  `optimizeLineup` and after every swap in `initiateSwap` (a swap drops the outgoing player into the other's bench
+  spot). The bench render adds the "Injured Reserve" divider (the taxi divider's style) and the "IR" slot code.
+- `css/mls.css`: `.slot-badge.slot-IR` shares `.slot-TX`'s rule.
+- Saved lineups from before round 2 have no IR-slot data on their bench copies; the next sync re-runs the optimizer
+  (it always does) and groups them. CHANGELOG line updated. `CACHE_NAME` stays v2.8.89.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`, new, both widths: with rankings loaded, Jefferson (Out) and Kittle (NFL IR)
+in the IR slot and McBride on taxi, the bench reads healthy players, the "Injured Reserve" divider, Jefferson and
+Kittle, the "Taxi Squad" divider, McBride, with slot codes BN, IR and TX; swapping Jefferson into a WR slot puts the
+benched WR above the IR divider and leaves Kittle alone in the IR group. Fails before this round (no IR divider).
+
+**Screenshots.** None changed (the screenshot league has no IR-slot or taxi players).
+
+### S9, round 6: a healthy IR-slot starter is a prompt to activate him (owner's decision)
+
+**Why.** In a second review as a user, Chase (healthy, in the IR slot) was the optimal lineup's WR1, while his own IR
+badge said "A player there can't start until you move him out of it": the app contradicted itself. I suggested keeping
+IR-slot players out of the optimizer's pool, like taxi players.
+
+**Owner's decision.** Keep the logic. An optimal lineup says who should start; if that's a healthy player in the IR
+slot, the recommendation means "activate him", and Sleeper makes you do that before it lets you start him. The Waiver
+Wire's "your weakest" stays as it is for the same reason (a healthy IR-slot player is a real asset). Then, of two
+wording options, the owner chose **both**: an instruction on the starter row's badge **and** a line above the lineup.
+
+**User-visible effect.**
+- When the lineup starts a player who's in your Sleeper IR slot, a purple line above the lineup (the IR badge's colors,
+  in the injury warning's place and shape) says: "Ja'Marr Chase is in your IR slot on Sleeper. Move him to your active
+  roster there before kickoff to start him." With several: "A and B are in your IR slot on Sleeper. Move them to your
+  active roster there before kickoff to start them." It follows the injury warning's rules: not in Best Ball leagues,
+  and a player whose game has kicked off is left out. A manual swap that starts an IR-slot player shows it too.
+- On a starter row the IR badge's hover and tap text says what to do: "In your IR slot on Sleeper. Move him to your
+  active roster there to start him." Bench and Roster rows keep "A player there can't start until you move him out
+  of it."
+- Who starts doesn't change.
+
+**What changed and where.**
+- `js/mls/lineup/gameInfo.js`: `getLineupIrSlotWarningHTML(starters, league)` (new), and `getIrSlotBadgeHTML(p,
+  { starting })` for the starter wording. `js/mls/render/lineup.js` draws the line after the injury warning and
+  passes `{ starting: true }` on starter rows.
+- `css/mls.css`: `.lineup-injury-warning.lineup-ir-warning` (purple) and its icon kept full size when the text wraps.
+- CHANGELOG line updated. `CACHE_NAME` stays v2.8.89.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`: with Chase in the IR slot and starting, the line's exact text, his
+badge's new toast, and a bench badge's unchanged `title`; in the bench-order test, no line while no IR-slot player
+starts, then Jefferson named in it after he's swapped into a WR slot.
+
+**Screenshots.** None changed (the screenshot league has no IR-slot players).
+
+### S9, round 7: the lineup image leaves out the warnings (owner's choice); a runbook card for Optimize All
+
+**Why.** In a third review as a user I exported the Lineup tab's PNG with an IR-slot player starting: the image's
+first line was the purple "move him to your active roster" reminder. The image is made for league chats, so a personal
+to-do went to league mates. The red injury warning ("X is Out ... consider swapping") had always done the same. The
+owner asked for both to come out of the image.
+
+**User-visible effect.** Export (the Lineup tab's PNG button) draws the lineup without the warnings above it: neither
+the red injured-starter warning nor the purple IR-slot reminder. The rows' badges (IR, OUT, Q...) stay in the image,
+and the page still shows both warnings.
+
+**What changed and where.** `js/mls/trade/export.js` (`exportLineup`'s `onclone`): removes every
+`.lineup-injury-warning` from the clone (the purple line carries that class too). CHANGELOG line. `CACHE_NAME` stays
+v2.8.89.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`, new, both widths: with Chase (healthy) in the IR slot and Allen
+Doubtful, both starting, an export's clone (html2canvas served from `tests/node_modules`, wrapped to record what
+`onclone` leaves) has no warnings, one IR badge and one injury badge; the page still shows both warnings. It failed
+before the change (the IR reminder was in the clone). `tests/export-flex.spec.mjs` is unchanged.
+
+**Runbook card for the other gap.** The same review found that the Dashboard's Optimize All only says the leagues were
+optimized: a starter in your IR slot (or an injured one) shows only on that league's Lineup tab. The owner asked for a
+runbook card rather than more S9 work: **S11, "Optimize All names the lineups that need you"**, added to the runbook.
+
+### S9: the Roster screenshots re-taken from CI
+
+**Re-taken PNGs** (the only screenshots this card changes):
+- `tests/baselines/linux/desktop/mls-league-roster.png`: the position-count strip above the roster list, 2872 → 2931px
+  tall.
+- `tests/baselines/linux/phone/mls-league-roster.png`: the same, 2674 → 2730px tall.
+
+**Where they come from.** Both are CI's own renders: the `mls-league-roster-actual.png` files from PR #192's first
+run (run 37862803285, `playwright-results` artifact), the run that failed only on these two comparisons. Unlike F1,
+this session downloaded the artifact itself with `gh run download` (the owner had opened access; the artifact host is
+no longer blocked). `docs/TESTING.md` now describes this route under "Accepting an intended visual change".
+
+**Checked before committing.**
+- Each run's `-expected.png` is identical to the baseline committed before this change, so CI compared against what
+  was in the repo.
+- Desktop: rows 0–1074 are identical (everything above the strip); the rest is the same content 59px lower (phone:
+  rows 0–1050, 56px lower). Below the strip, a few text and border rows differ by anti-aliasing only: the strip's
+  height isn't a whole number of pixels, so the rows under it are drawn at a slightly different sub-pixel offset. A
+  side-by-side of those bands shows the same rows (players, badges, buttons). This container's render made the strip
+  61px tall on desktop rather than CI's 59px, for the same reason plus its fonts.
+- The strip itself, as CI draws it, at both widths: All 14, QB 1, RB 1, WR 7, TE 3, K 1, DEF 1, each in its position's
+  color.

@@ -1028,7 +1028,8 @@ label.toggle-title,
    "roster status, informational" -- unlike inj/bye/early, nothing here needs acting on. The
    violet used by .slot-badge.slot-FLEX is a different, lighter shade, and the two can never
    collide on one row anyway (a taxi row's slot badge is always TX, never FLEX). */
-.taxi-badge { background: #281442; color: #e9d8fd; border: 1px solid #9f7aea; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
+/* .ir-slot-badge: the Sleeper IR-slot badge on Roster and Lineup rows (improvements S9), styled like TAXI. */
+.taxi-badge, .ir-slot-badge { background: #281442; color: #e9d8fd; border: 1px solid #9f7aea; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; margin-left: 4px; }
 
 /* Kickoff-time badge (see getKickoffBadgeHTML() in js/mls/lineup/gameInfo.js) -- neutral/informational blue, since
    unlike bye/inj/early this isn't a warning, just a fact the person can use to verify FLEX

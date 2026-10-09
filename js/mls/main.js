@@ -19,7 +19,7 @@ import { goToSetupStep, onload } from './init.js';
 import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
 import { addEarlyTeam, removeEarlyTeam } from './lineup/earlyGames.js';
-import { toggleLockCountdown } from './lineup/gameInfo.js';
+import { explainIrSlot, toggleLockCountdown } from './lineup/gameInfo.js';
 import { addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, moveLeague, saveRequirements, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
@@ -45,7 +45,7 @@ import './trade/valueCurve.js';
 import './trade/waiverValue.js';
 import { copyLineupAsText, exportLineup } from './trade/export.js';
 import './render/rookies.js';
-import { loadRosterTab } from './render/roster.js';
+import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { optimizeAllLineups, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
 import './shortcuts.js';
@@ -132,6 +132,10 @@ const clickActions = {
     // Roster tab (and render/roster.js), SoS
     syncActiveLeague() { syncActiveLeague(); },
     deletePlayer() { deletePlayer(this.dataset.id); },
+    // Position counts above the roster list (improvements S9): filter to a position, or All.
+    setRosterPos() { setRosterPosFilter(this.dataset.pos); },
+    // A Roster or Lineup row's IR badge (Sleeper IR slot, lineup/gameInfo.js): what it means, for phones.
+    explainIrSlot() { explainIrSlot(this); },
     saveManualSoS() { saveManualSoS(this); },
     // Setup tab: Advanced Settings card (5C)
     addManualPlayer() { addManualPlayer(); },

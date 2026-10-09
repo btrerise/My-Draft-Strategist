@@ -127,6 +127,14 @@ something looks:
    Anything else it lists means rendering has become unrepeatable again: that's a bug to fix, not drift to accept.
 3. Look at each changed PNG, then list them (and why) in your commit message or PR.
 
+**When your machine can't reproduce the baselines** (Claude Code cloud sessions since 2026-10-03, whose image adds
+fonts and font rules CI doesn't have; see docs/improvements/LOG.md, F1 and S9): render main and your branch the same
+way there and compare them with `npm run pxdiff` to find the PNGs your change touches. Push without re-taking them, and
+let the PR's CI fail on exactly those. Then take CI's renders from the run's `playwright-results` artifact:
+`gh run download <run-id> -R btrerise/My-Draft-Strategist -n playwright-results -D <new empty folder>` works from
+cloud sessions. Before committing an `-actual.png` as the baseline, check that its `-expected.png` is identical to the
+committed baseline, and that the new image differs only where your change is.
+
 ### The opt-in tools
 
 - **`npm run compare-css`** (`tests/tools/css-compare.tool.mjs`, 4D): renders the pages in several states from

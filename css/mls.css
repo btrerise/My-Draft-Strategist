@@ -86,6 +86,14 @@
     padding: 0.5rem 0.75rem;
     margin-bottom: 0.75rem;
 }
+/* A starter in your Sleeper IR slot (improvements S9, round 6): a to-do rather than a danger, so the IR
+   badge's purple instead of red. */
+.lineup-injury-warning.lineup-ir-warning {
+    color: #e9d8fd;
+    background: rgba(159, 122, 234, 0.12);
+    border-color: rgba(159, 122, 234, 0.45);
+}
+.lineup-ir-warning svg { flex-shrink: 0; } /* full size when the text wraps */
 
 .sim-lookup-card {
     background: rgba(0, 0, 0, 0.15);
@@ -415,7 +423,8 @@ body.mls-hide-headshots .mls-headshot { display: none; }
    hue, because a taxi player is a quieter version of a bench player, not a different kind of
    alert -- the dashed border carries the whole distinction, reading as "parked, not in play"
    against every other slot badge's solid one. */
-.slot-badge.slot-TX { background-color: rgba(148, 163, 184, 0.06); color: var(--text-muted); border: 1px dashed var(--border); }
+/* IR (a player in your Sleeper IR slot, improvements S9) is parked the same way. */
+.slot-badge.slot-TX, .slot-badge.slot-IR { background-color: rgba(148, 163, 184, 0.06); color: var(--text-muted); border: 1px dashed var(--border); }
 
 /* Plain, unstyled position text -- deliberately NOT a badge, since a second colored pill here
    is exactly the duplication the slot-badge consolidation above was meant to remove. Shown on
@@ -1866,6 +1875,33 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     .mls-roster-power-stats { gap: 3px; }
     .mls-roster-power-stat-name { font-size: 0.55rem; letter-spacing: 0; }
     .mls-roster-power-stat-rank { font-size: 0.95rem; }
+}
+
+/* Roster tab's position counts (js/mls/render/roster.js, improvements S9): one chip per position above the
+   list, colored and lit like the Waiver Wire Assistant's position chips (.pos-filter in css/base.css). Each
+   chip stacks the position, the count and a small taxi/IR note. One row, one equal column per chip. */
+.mls-roster-poscounts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0.4rem; margin-bottom: 0.9rem; }
+.mls-roster-poscounts[hidden] { display: none; }
+.mls-poscount.pos-filter { padding: 0.35rem 0.15rem; gap: 1px; justify-content: flex-start; }
+.mls-poscount-name { font-size: 0.68rem; letter-spacing: 0.03em; }
+.mls-poscount-num { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+.mls-poscount-notes { display: flex; flex-direction: column; align-items: center; }
+.mls-poscount-note { font-size: 0.68rem; font-weight: 600; text-align: center; line-height: 1.2; opacity: 0.85; }
+/* With one position picked, the others fade less than the Waiver Wire's chips (.pos-filter): their
+   counts are still worth reading. */
+.mls-poscount.pos-filter:not(.active-filter) { opacity: 0.6; filter: grayscale(35%); }
+.mls-poscount.pos-filter:not(.active-filter):hover { opacity: 0.85; filter: grayscale(15%); }
+/* A Roster row's IR badge (Sleeper IR slot, round 2) is a button so a tap explains it, like button.sos-badge:
+   drop the button's own font and line height so it looks like the TAXI badge beside it. */
+button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: pointer; }
+button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+/* None at a position the league starts (a 0): shown, not tappable. */
+.mls-poscount.pos-filter:disabled { cursor: default; transform: none; }
+@media (max-width: 520px) {
+    .mls-roster-poscounts { gap: 3px; }
+    .mls-poscount-name { font-size: 0.6rem; letter-spacing: 0; }
+    .mls-poscount-num { font-size: 0.95rem; }
+    .mls-poscount-note { font-size: 0.6rem; }
 }
 
 /* Scout tab's temporary "moved to the Roster tab" pointer -- see goToPowerRankings in js/mls/power/rosterCard.js

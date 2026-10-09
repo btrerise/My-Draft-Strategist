@@ -71,6 +71,19 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Position counts on the Roster tab.** A row of chips above your roster says how many players you have at each
+  position ("All 14 · QB 1 · RB 1 · WR 7 · TE 3 · K 1 · DEF 1"), in the same colors as the list. Taxi and IR players
+  count, with a note under the number ("1 IR", "1 taxi"); IR means in your Sleeper IR slot or on NFL injured reserve.
+  Tap a chip to show only that position; tap it again, or
+  All, to show everyone. A position you have none of shows as 0 when your league starts one, and is left out when it
+  doesn't (no K in a league without kickers). The counts follow every add, remove, sync and league switch.
+- **An IR badge for players in your Sleeper IR slot** on the Roster and Lineup tabs, styled like TAXI. Hover over it,
+  or tap it on a phone, for what it means. On the Lineup tab they sit at the bottom of the bench under an "Injured
+  Reserve" divider, above the taxi squad, as in Sleeper. If the optimal lineup starts a healthy player who's still in
+  your IR slot, a line above the lineup reminds you to move him to your active roster on Sleeper before kickoff.
+  Sleeper syncs now record who's in your IR slot (until a league's next sync, only NFL IR status counts).
+- **The Lineup tab's PNG export leaves out the warnings above the lineup** (an injured starter, or a starter in your IR
+  slot). They're reminders for you, not for the league chat the image goes to. The players' badges stay in the image.
 - **The Lineup and Roster tabs show real position ranks with a single rankings file.** With one overall list (a Pos
   column but no Pos Rank column, the most common upload), both tabs printed each player's overall rank as his
   position and FLEX rank: Derrick Henry, 15th overall and the 5th RB, read "Pos: #15", while the Waiver Wire
