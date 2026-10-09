@@ -2666,3 +2666,27 @@ badge's new toast, and a bench badge's unchanged `title`; in the bench-order tes
 starts, then Jefferson named in it after he's swapped into a WR slot.
 
 **Screenshots.** None changed (the screenshot league has no IR-slot players).
+
+### S9, round 7: the lineup image leaves out the warnings (owner's choice); a runbook card for Optimize All
+
+**Why.** In a third review as a user I exported the Lineup tab's PNG with an IR-slot player starting: the image's
+first line was the purple "move him to your active roster" reminder. The image is made for league chats, so a personal
+to-do went to league mates. The red injury warning ("X is Out ... consider swapping") had always done the same. The
+owner asked for both to come out of the image.
+
+**User-visible effect.** Export (the Lineup tab's PNG button) draws the lineup without the warnings above it: neither
+the red injured-starter warning nor the purple IR-slot reminder. The rows' badges (IR, OUT, Q...) stay in the image,
+and the page still shows both warnings.
+
+**What changed and where.** `js/mls/trade/export.js` (`exportLineup`'s `onclone`): removes every
+`.lineup-injury-warning` from the clone (the purple line carries that class too). CHANGELOG line. `CACHE_NAME` stays
+v2.8.89.
+
+**Tests.** `tests/mls-roster-counts.spec.mjs`, new, both widths: with Chase (healthy) in the IR slot and Allen
+Doubtful, both starting, an export's clone (html2canvas served from `tests/node_modules`, wrapped to record what
+`onclone` leaves) has no warnings, one IR badge and one injury badge; the page still shows both warnings. It failed
+before the change (the IR reminder was in the clone). `tests/export-flex.spec.mjs` is unchanged.
+
+**Runbook card for the other gap.** The same review found that the Dashboard's Optimize All only says the leagues were
+optimized: a starter in your IR slot (or an injured one) shows only on that league's Lineup tab. The owner asked for a
+runbook card rather than more S9 work: **S11, "Optimize All names the lineups that need you"**, added to the runbook.

@@ -327,4 +327,41 @@ test.describe('Roster tab position counts', () => {
         expect(after.slice(after.indexOf('-- Injured Reserve --') + 1, after.indexOf('-- Taxi Squad --'))).toEqual(['George Kittle']);
         await expectClean(page, state);
     });
+
+    test("the lineup PNG export leaves out the warnings above the lineup but keeps the rows' badges", async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        // html2canvas from tests/node_modules (helpers.mjs aborts the CDN), wrapped to record what the app's
+        // onclone leaves in the copy it draws.
+        const record = `;(() => { const original = window.html2canvas; window.html2canvas = (el, o = {}) => original(el, { ...o,
+            onclone: async (doc) => { if (o.onclone) await o.onclone(doc); const c = doc.getElementById('optimalLineupContainer');
+                window.__irExport = { warnings: c.querySelectorAll('.lineup-injury-warning').length, irBadges: c.querySelectorAll('.ir-slot-badge').length,
+                    injuryBadges: c.querySelectorAll('.inj-badge').length }; } }); })();`;
+        const html2canvas = readFileSync(new URL('./node_modules/html2canvas/dist/html2canvas.min.js', import.meta.url), 'utf8') + record;
+        await page.route(/^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/html2canvas\/1\.4\.1\/html2canvas\.min\.js$/,
+            (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: html2canvas }));
+        const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
+        await page.route(/sleeper\.app\/v1\/league\/\d+\/rosters$/, route => {
+            const rosters = fixture('league-rosters.json');
+            rosters[0].reserve = ['4866']; // Chase: healthy, in the IR slot, starting
+            return route.fulfill({ json: rosters });
+        });
+        await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
+            const players = fixture('players-nfl.json');
+            players['4984'].injury_status = 'Doubtful'; // Allen, your only QB: starts, with the red warning
+            return route.fulfill({ json: players });
+        });
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'lineup');
+        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(1);
+        await expect(page.locator('#lineupTab .lineup-injury-warning:not(.lineup-ir-warning)')).toContainText('Josh Allen');
+
+        const download = page.waitForEvent('download');
+        await page.locator('#exportBtn').click();
+        await download;
+        expect(await page.evaluate(() => window.__irExport)).toEqual({ warnings: 0, irBadges: 1, injuryBadges: 1 });
+        // Only the image changes: the page still shows both warnings.
+        await expect(page.locator('#lineupTab .lineup-injury-warning')).toHaveCount(2);
+        await expectClean(page, state);
+    });
 });
