@@ -16,6 +16,7 @@ import { normalizeName } from '../../shared/names.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
+import { edgeBadgeMarkup } from '../badges.js';
 // --- MARKET DISCONNECT ENGINE ---
     const marketFileEl = document.getElementById('marketFileInput');
     if (marketFileEl) {
@@ -396,7 +397,7 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
                         </div>
                     </div>
                     <div class="mls-text-right">
-                        <span class="badge" style="background:var(--target-bg); color:var(--primary-green); border:1px solid var(--target-border);">+${item.delta} Edge</span>
+                        ${edgeBadgeMarkup(item.delta, true)}
                         <div class="mls-item-subtext">${ownerStr}</div>
                     </div>
                 </div>`;
@@ -419,7 +420,7 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
                         </div>
                     </div>
                     <div class="mls-text-right">
-                        <span class="badge" style="background:var(--avoid-bg); color:#fca5a5; border:1px solid var(--avoid-border);">${item.delta} Edge</span>
+                        ${edgeBadgeMarkup(item.delta, false)}
                         <div class="mls-item-subtext"><strong class="mls-stat-red">On your roster (Sell High!)</strong></div>
                     </div>
                 </div>`;

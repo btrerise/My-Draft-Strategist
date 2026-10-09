@@ -82,9 +82,9 @@ import { freeAgentPlayer, getSleeperMetaByName, lineupCheckDeps, makeLeagueGetPo
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { showTab, switchActiveLeague } from '../main.js';
+import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
 
     const PER_LEAGUE = 3;
-    const DISMISS_ICON = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 
     // --- Dismissed players: { leagueId: { week: '2026:2', players: [cleanName] } } ---
     // The week is the NFL season and week from Sleeper (State.currentNflWeek). A league's list is
@@ -121,7 +121,6 @@ import { showTab, switchActiveLeague } from '../main.js';
     }
     const CARD_ID = 'dashboardBestAvailable';
 
-    const UPGRADE_ICON = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
     const EXTERNAL_ICON = `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
     const CHEVRON_ICON = `<svg aria-hidden="true" class="mls-ba-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 

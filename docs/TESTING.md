@@ -178,6 +178,14 @@ committed baseline, and that the new image differs only where your change is.
   follows the theme and renders the same on every OS. Plain text symbols already used as glyphs (✕ on close buttons, ★)
   are fine; emoji (🔥, 🎉, 🔴) are not. `tests/unit/noEmoji.test.mjs` scans every served file (pages, `js/`, `css/`,
   `functions/`, comments included) for characters that render as emoji and fails naming the file and line.
+- **Badge legend** (improvements S10): each app's Guide tab has "What the badges mean", built by `js/mls/legend.js`
+  and `js/mds/legend.js`. A new badge, chip, pill or symbol gets a line there in the same change. Draw its sample
+  with the same markup the rows use: if the badge has a helper or inline styles, put its markup in the app's
+  `badges.js` (`js/mls/badges.js`, `js/mds/badges.js`, no app state) and call it from both, so a later style change
+  shows in the legend too. Samples aren't interactive (`{ sample: true }` gives a `<span>` with no `data-action`).
+  `tests/unit/badgeLegend.test.mjs` collects the badge classes each app uses (class attributes with a badge-like
+  class, the pill helpers' classes, and CSS compounds such as `.slot-badge.slot-FLEX`) and fails naming any the
+  legend's HTML lacks; a class that isn't a symbol of its own (layout, sizing, filter state) goes in its `ALLOWED`.
 - **User-visible changes** (8A): add a plain-language line under the app's **Unreleased** section in
   `CHANGELOG.md`. Bumping an app's footer version (the `APP VERSION` comment in `index.html` or
   `lineup/index.html`) turns those lines into that version's entry.

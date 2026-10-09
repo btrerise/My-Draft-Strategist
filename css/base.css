@@ -2139,3 +2139,37 @@ button.pos-filter {
 .flex-blend, .pos-filter.flex-blend:hover { background: var(--blend-fill) padding-box, var(--flex-blend) border-box; }
 .sflex-blend, .pos-filter.sflex-blend:hover { background: var(--blend-fill) padding-box, var(--sflex-blend) border-box; }
 .wt-blend, .pos-filter.wt-blend:hover { background: var(--blend-fill) padding-box, var(--wt-blend) border-box; }
+
+/* --- BADGE LEGEND (improvements S10) ---
+   "What the badges mean", the Guide tab's legend in both apps (js/mls/legend.js, js/mds/legend.js), and the
+   "What do these mean?" links that open it. Each line is a sample drawn with the app's own badge markup and
+   classes, then a sentence. Samples aren't interactive (pointer-events: none), and their badges drop the
+   left margin they carry beside a name, since the gap spaces them here. On phones a line stacks: samples,
+   then the sentence. */
+.badge-legend { scroll-margin-top: 5rem; }
+.badge-legend-body { margin: 0.75rem 0 0 2.2rem; }
+.badge-legend-group + .badge-legend-group { margin-top: 1.25rem; }
+.badge-legend-group-title { margin: 0 0 0.25rem; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-main); }
+.badge-legend-list { margin: 0; }
+.badge-legend-row { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 0.4rem 1rem; align-items: start; padding: 0.55rem 0; border-top: 1px solid var(--border); }
+.badge-legend-row:first-child { border-top: 0; }
+.badge-legend-sample { margin: 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; pointer-events: none; }
+.badge-legend-sample .badge { margin-left: 0; }
+.badge-legend-sample .lineup-injury-warning, .badge-legend-sample .bye-warning-banner, .badge-legend-sample .tier-divider { margin: 0; }
+.badge-legend-text { margin: 0; min-width: 0; font-size: 0.85rem; line-height: 1.55; color: var(--text-muted); overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+    .badge-legend-body { margin-left: 0; }
+    .badge-legend-row { grid-template-columns: minmax(0, 1fr); }
+}
+.badge-legend-link { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--primary-green); white-space: nowrap; cursor: pointer; }
+.badge-legend-link:hover { text-decoration: underline; }
+.badge-legend-link:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; border-radius: 4px; }
+/* On phones the link reads "Badges", so the card titles beside it keep their line. */
+.badge-legend-link-short { display: none; }
+@media (max-width: 480px) {
+    .badge-legend-link-long { display: none; }
+    .badge-legend-link-short { display: inline; }
+}
+/* A link on a line of its own: above Draft Strategist's Tracker chips (no card header there) and Lineup Strategist's
+   Roster position counts (its header is full on a phone with a long league name). */
+.badge-legend-link-row { display: flex; justify-content: flex-end; margin: -0.25rem 0 0.5rem; }

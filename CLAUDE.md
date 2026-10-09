@@ -45,6 +45,8 @@ all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.md`).
 - No inline `on*=` handlers: use `data-action` and `delegate()`.
 - Icons are inline SVG (`aria-hidden="true"`, `stroke="currentColor"`), never emoji, in anything users see (owner's rule).
 - User-visible change → a line under the app's "Unreleased" in `CHANGELOG.md`.
+- New badge, chip, pill or symbol → a line in that app's Guide legend (`js/mls/legend.js` or `js/mds/legend.js`) in the
+  same change, drawn with the same markup (`tests/unit/badgeLegend.test.mjs` fails on a badge class it doesn't list).
 - Keep the public URLs (`/`, `/lineup/`, `/t-score/`) and `sw.js` at the root.
 - **Refactor chunk 6C is pending** (not before 2026-10-17): don't rename or remove storage keys, and don't edit
   `js/shared/storage/keyMigration.js` or its tests.

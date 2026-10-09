@@ -5,6 +5,7 @@ import { refreshLeagueDropdown } from './leagues/sync.js';
 import { loadRosterTab, onScoutTabShown, optimizeLineup } from './main.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
+import { renderBadgeLegend } from './legend.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at
@@ -123,6 +124,8 @@ import { getTabFromHash } from '../shared/ui/tabHash.js';
         if (tabId === 'roster') loadRosterTab();
         if (tabId === 'setup') refreshLeagueDropdown();
         if (tabId === 'scout') onScoutTabShown();
+        // The Guide's badge legend is built the first time the Guide is shown (improvements S10).
+        if (tabId === 'guide') renderBadgeLegend();
         window.scrollTo(0, 0);
 
         if (typeof updatePulsePrompts === 'function') updatePulsePrompts();

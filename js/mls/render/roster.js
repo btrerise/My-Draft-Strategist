@@ -12,6 +12,7 @@ import { getSoSBadgeHTML } from '../sos.js';
 import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
 import { refreshPowerRankings } from '../main.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
+import { posCountChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 
     // --- POSITION COUNTS (improvements S9) ---
@@ -67,13 +68,7 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
         const notesOf = c => [c.ir ? `${c.ir} IR` : '', c.taxi ? `${c.taxi} taxi` : ''].filter(Boolean);
         const chip = (pos, label, count, notes, colorClass, extra = '') => {
             const on = picked === pos || (pos === 'ALL' && !picked);
-            const lit = !picked || on;
-            const spoken = `${label} ${count}${notes.length ? ` (${notes.join(' · ')})` : ''}`;
-            return `<button type="button" class="badge ${colorClass} pos-filter mls-poscount${lit ? ' active-filter' : ''}" data-action="setRosterPos" data-pos="${escapeHtml(pos)}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${escapeHtml(spoken)}"${extra}>`
-                + `<span class="mls-poscount-name">${escapeHtml(label)}</span>`
-                + `<span class="mls-poscount-num">${count}</span>`
-                + (notes.length ? `<span class="mls-poscount-notes">${notes.map(n => `<span class="mls-poscount-note">${escapeHtml(n)}</span>`).join('')}</span>` : '')
-                + `</button>`;
+            return posCountChipMarkup(pos, label, count, notes, colorClass, { lit: !picked || on, on, extra });
         };
         el.innerHTML = chip('ALL', 'All', total, [], 'badge-all')
             + counts.map(c => chip(c.pos, c.pos, c.count, notesOf(c),

@@ -13,6 +13,7 @@ import { parseSosValue } from '../shared/rankings/parse.js';
 import { escapeHtml } from '../shared/html.js';
 import { getFreshness } from '../shared/freshness.js';
 import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './sosScale.js';
+import { sosBadgeMarkup } from './badges.js';
 
     // --- SOS ENGINE ---
     export function generateSoSGrid() {
@@ -287,8 +288,7 @@ import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './
     // instead of "SoS: " (css/mls.css swaps .sos-badge-label for .sos-badge-icon), so it stays short
     // and can't be read as another rank. Owner's choice in S7, round 4: one look across the site.
     // opts.compact: the Waiver Wire Assistant's cards, padded like the injury and bye badges beside it.
-    // Feather calendar.
-    const SOS_CALENDAR_ICON = `<svg class="sos-badge-icon" aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
+    // The markup (and the calendar icon) is sosBadgeMarkup in js/mls/badges.js, shared with the Guide's legend (S10).
 
     export function getSoSBadgeHTML(team, pos, { compact = false } = {}) {
         if (!team || team === "FA" || !pos) return "";
@@ -301,14 +301,9 @@ import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './
         let rank = parseInt(rankStr);
         if (isNaN(rank) || rank < 1 || rank > 32) return "";
         
-        let hue = Math.max(0, 120 - ((rank - 1) * 3.87));
-        let color = `hsl(${hue}, 80%, 65%)`;
-        let bg = `hsl(${hue}, 80%, 15%)`;
-        const cls = `badge sos-badge${compact ? ' sos-badge-compact' : ''}`;
-        const style = `--sos-color:${color}; --sos-bg:${bg};`;
         const asOf = sosAsOf();
         const tip = escapeHtml(`Strength of schedule: ${rank} of 32 for ${pos}s on ${team} (${SOS_SCALE_TEXT})${asOf ? `, as of ${asOf}` : ''}`);
-        return `<button type="button" class="${cls}" style="${style}" data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${SOS_CALENDAR_ICON}<span class="sos-badge-label">SoS: </span>${rank}</button>`;
+        return sosBadgeMarkup(rank, tip, { compact });
     }
 
     // A tap or click on an SoS badge: what the number means, as a toast.

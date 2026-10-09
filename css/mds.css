@@ -671,8 +671,9 @@
 }
 
 /* The dot stops pulsing when stalled: the pulse is what sells "picks are arriving", and
-   that's exactly the claim we can no longer make. */
-#liveIconWrap.is-stalled .pulse-dot {
+   that's exactly the claim we can no longer make. Keyed on the class, not #liveIconWrap, so the Guide's
+   badge legend (improvements S10) draws the stalled pill from the same rule. */
+.is-stalled .pulse-dot {
     background-color: #f59e0b;
     animation: none;
     box-shadow: none;
