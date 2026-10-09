@@ -155,8 +155,11 @@ describe('the IR slot: its rules and the roster size', () => {
         const roster = [starter, kittle, henryOut, doubtful, pl('Already In', 'WR', { isReserve: true, inj: 'IR' })];
         const issues = lineupIssues([s('QB1', starter)], ctx({ irRules: RULES, roster }));
         assert.equal(issues.irSlotsOpen, 1);
-        assert.deepEqual(texts(issues), ['Move George Kittle to IR to free a roster spot (1 IR slot open)',
-            'Move Derrick Henry to IR to free a roster spot (1 IR slot open)']);
+        assert.deepEqual(texts(issues), ['Move George Kittle to IR to free a spot (1 IR slot open)',
+            'Move Derrick Henry to IR to free a spot (1 IR slot open)']);
+        // A tip, not a job before kickoff: shown, not counted.
+        assert.equal(needsYou(items(issues)), false);
+        assert.ok(items(issues).every(i => i.note && i.kind === 'ir'));
         // No open slot: no moves. Unknown rules (manual leagues, old syncs): none either.
         assert.deepEqual(texts(lineupIssues([s('QB1', starter)], ctx({ irRules: { ...RULES, slots: 1 }, roster }))), []);
         assert.deepEqual(texts(lineupIssues([s('QB1', starter)], ctx({ roster }))), []);
@@ -168,7 +171,8 @@ describe('the IR slot: its rules and the roster size', () => {
         const pup = pl('Pup Guy', 'RB', { isReserve: true, inj: 'PUP' });
         const issues = lineupIssues([s('QB1', pl('QB', 'QB'))], ctx({ irRules: RULES, roster: [healthy, questionable, doubtful, out, pup] }));
         assert.deepEqual(issues.irStuck, [healthy, questionable, doubtful]);
-        assert.equal(texts(issues)[0], "Activate George Kittle from IR: he's no longer eligible there, and Sleeper blocks adds and drops until you do");
+        assert.equal(texts(issues)[0], 'Activate George Kittle from IR: no longer eligible, and it blocks your adds and drops');
+        assert.equal(needsYou(items(issues)), true);
         assert.equal(items(issues)[0].kind, 'ir');
     });
 
@@ -176,9 +180,9 @@ describe('the IR slot: its rules and the roster size', () => {
         const roster = [chase, pl('A', 'QB'), pl('B', 'RB')];
         const starters = [s('WR1', chase), s('QB1', roster[1])];
         assert.deepEqual(texts(lineupIssues(starters, ctx({ irRules: RULES, roster, rosterSize: 2 }))),
-            ["Activate Ja'Marr Chase from IR on Sleeper before kickoff (roster full: drop someone first)"]);
+            ["Activate Ja'Marr Chase from IR on Sleeper (roster full: drop someone first)"]);
         assert.deepEqual(texts(lineupIssues(starters, ctx({ irRules: RULES, roster, rosterSize: 3 }))),
-            ["Activate Ja'Marr Chase from IR on Sleeper before kickoff"]);
+            ["Activate Ja'Marr Chase from IR on Sleeper"]);
     });
 });
 

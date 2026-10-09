@@ -9,6 +9,7 @@ import { escapeHtml } from '../../shared/html.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
+import { KEYS } from '../../shared/storage/keys.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
 import { renderLineupUI, optimizeLineup } from '../main.js';
@@ -369,10 +370,9 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
             return `<li class="lineup-needs-item is-${i.kind}">${escapeHtml(i.text)}${button}</li>`;
         }).join('');
 
-        const counted = items.filter(i => !i.muted).length;
-        const keptCount = items.length - counted;
+        const counted = items.filter(i => !i.muted && !i.note).length;
         const title = counted > 0 ? 'This lineup needs you'
-            : keptCount > 0 ? `Nothing needs you · ${keptCount} starter${keptCount === 1 ? '' : 's'} you kept` : '';
+            : items.length > 0 ? 'Nothing needs you before kickoff' : 'Set this lineup on Sleeper';
         // Re-renders are frequent (every swap and lock); keep the fold as the person left it.
         const wasOpen = !!document.querySelector('#optimalLineupContainer .lineup-needs-sleeper[open]');
         const n = sleeper ? sleeper.start.length + sleeper.bench.length : 0;
@@ -382,11 +382,24 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
                 <p class="lineup-needs-sleeper-text">${sleeperChangesHTML(sleeper)}</p>
                 <p class="lineup-needs-note">As of your last sync: set it on Sleeper, then sync to clear this.</p>
             </details>`;
-        return `<div class="lineup-needs-box${counted > 0 ? ' has-problems' : ''}">
-            ${title ? `<div class="lineup-needs-title">${counted > 0 ? WARNING_ICON : INFO_ICON}<span>${title}</span></div>` : ''}
-            ${items.length ? `<ul class="lineup-needs-list">${itemHTML}</ul>` : ''}
-            ${fold}
+        // Collapsible, and remembered (owner's choice, S11 round 6): someone who won't follow a tip can fold the box
+        // to its title line, which still counts what's open ("This lineup needs you · 3"), so a new problem shows.
+        const collapsed = !!State.lineupNeedsCollapsed;
+        const countText = counted > 0 ? ` · ${counted}` : '';
+        return `<div class="lineup-needs-box${counted > 0 ? ' has-problems' : ''}${collapsed ? ' is-collapsed' : ''}">
+            <button type="button" class="btn-bare lineup-needs-title" data-action="toggleLineupNeeds" aria-expanded="${collapsed ? 'false' : 'true'}">${counted > 0 ? WARNING_ICON : INFO_ICON}<span>${title}${collapsed ? countText : ''}</span>${FOLD_CHEVRON}</button>
+            ${collapsed ? '' : `${items.length ? `<ul class="lineup-needs-list">${itemHTML}</ul>` : ''}${fold}`}
         </div>`;
+    }
+
+    // The box's title line: fold it to that line, or open it again. Remembered across visits (KEYS.mls.lineupNeedsCollapsed).
+    export function toggleLineupNeeds() {
+        State.lineupNeedsCollapsed = !State.lineupNeedsCollapsed;
+        try {
+            if (State.lineupNeedsCollapsed) localStorage.setItem(KEYS.mls.lineupNeedsCollapsed, '1');
+            else localStorage.removeItem(KEYS.mls.lineupNeedsCollapsed);
+        } catch (e) { /* storage blocked: it still folds for this visit */ }
+        renderLineupUI();
     }
 
     // The "What changed?" card's fold chevron (js/mls/rankings/changeSummary.js), for the Sleeper fold here and on

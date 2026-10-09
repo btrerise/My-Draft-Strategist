@@ -75,7 +75,10 @@
    box above the lineup in place of the red injured-starter warning, the purple IR-slot line and the amber "differs
    from Sleeper" line. Neutral, like the Dashboard's box; each item takes its color (.mls-needs-item below). */
 .lineup-needs-box { border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.85rem; }
-.lineup-needs-title { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text-main); }
+.lineup-needs-title { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; font-weight: 600; color: var(--text-main); cursor: pointer; }
+.lineup-needs-title > span { flex: 1; min-width: 0; }
+.lineup-needs-title > .mls-change-chevron { flex-shrink: 0; color: var(--text-muted); transform: none; transition: transform 0.15s; }
+.lineup-needs-box.is-collapsed .lineup-needs-title > .mls-change-chevron { transform: rotate(-90deg); }
 .lineup-needs-title > svg { flex-shrink: 0; color: var(--text-muted); }
 .lineup-needs-box.has-problems .lineup-needs-title > svg { color: #f59e0b; }
 .lineup-needs-list { list-style: none; margin: 0.35rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
@@ -1579,7 +1582,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-needs-title { flex: 1; min-width: 0; }
 .mls-needs-close { flex-shrink: 0; }
 .mls-needs-list { list-style: none; margin: 0; padding: 0; }
-.mls-needs-line { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; }
+.mls-needs-line { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.5rem 0; }
 .mls-needs-line + .mls-needs-line { border-top: 1px solid var(--border); }
 .mls-needs-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
 .mls-needs-head-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.1rem 0.5rem; }
@@ -1594,6 +1597,12 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-needs-sep { color: var(--text-muted); opacity: 0.7; }
 .mls-needs-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; }
 .mls-needs-actions .btn { white-space: nowrap; }
+/* Phones: the buttons go in a row under the league's items, so the items get the full width and the buttons sit
+   with the league they're for rather than beside whichever item lines up with them (owner's request, S11 round 6). */
+@media (max-width: 600px) {
+    .mls-needs-line { flex-direction: column; align-items: stretch; gap: 0.4rem; }
+    .mls-needs-actions { flex-direction: row; flex-wrap: wrap; }
+}
 .mls-needs-sleeper { margin-top: 0.4rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
 .mls-needs-note { margin: 0.4rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
 .mls-needs-line.is-kept-only .mls-needs-league { color: var(--text-muted); }

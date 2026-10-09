@@ -36,7 +36,7 @@ const lineupBox = (page) => page.locator('#optimalLineupContainer .lineup-needs-
 const lineupItems = (page) => lineupBox(page).locator('.lineup-needs-item').evaluateAll(ls => ls.map(l => l.textContent.replace(/ /g, ' ').trim()));
 
 const LAMAR_LINE = `${SECOND_LEAGUE_NAME}: Lamar Jackson is Doubtful: start Jalen Hurts instead?`;
-const CHASE_ITEM = "Activate Ja'Marr Chase from IR on Sleeper before kickoff";
+const CHASE_ITEM = "Activate Ja'Marr Chase from IR on Sleeper";
 const CHASE_LINE = `Fixture League: ${CHASE_ITEM}`;
 
 // opts: chaseInIrSlot / lamarDoubtful (the two issues), reserve (the Fixture League's IR slot, overriding
@@ -164,12 +164,12 @@ test.describe('Lineups that need you', () => {
         await page.selectOption('#headerLeagueSelect', SECOND_LEAGUE_ID);
         await showTab(page, 'lineup');
         await page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Lamar Jackson"]').click();
-        await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveText('Nothing needs you · 1 starter you kept');
+        await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveText('Nothing needs you before kickoff');
         await expect(lineupBox(page).locator('.lineup-needs-item.is-kept')).toHaveText('Lamar Jackson is Doubtful (you locked him in)');
         await expect(lineupBox(page).getByRole('button', { name: /Swap in/ })).toHaveCount(0);
 
         await showTab(page, 'setup');
-        await expect(box(page).locator('.mls-needs-title')).toHaveText('Nothing needs you · 1 lineup with starters you kept');
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('Nothing needs you before kickoff · 1 league with notes');
         await expect(line(page, SECOND_LEAGUE_NAME).locator('.mls-needs-item.is-kept')).toHaveCount(1);
         await expect(line(page, SECOND_LEAGUE_NAME).getByRole('button')).toHaveCount(0);
         await optimizeAll(page, 'Successfully optimized 2 lineups!');
@@ -185,10 +185,12 @@ test.describe('Lineups that need you', () => {
             irSettings: { reserve_slots: 3, reserve_allow_out: 1, reserve_allow_doubtful: 0 }, benchSpots: 3 });
         await seedTwoLeagues(page);
         expect(await lineSummaries(page)).toEqual([
-            "Fixture League: Activate Ja'Marr Chase from IR on Sleeper before kickoff (roster full: drop someone first) · "
-            + "Activate George Kittle from IR: he's no longer eligible there, and Sleeper blocks adds and drops until you do (roster full: drop someone first) · "
-            + 'Move Trey McBride to IR to free a roster spot',
+            "Fixture League: Activate Ja'Marr Chase from IR on Sleeper (roster full: drop someone first) · "
+            + 'Activate George Kittle from IR: no longer eligible, and it blocks your adds and drops (roster full: drop someone first) · '
+            + 'Move Trey McBride to IR to free a spot',
         ]);
+        // The IR move is a note: it doesn't count, so the Fixture League counts for its activations alone.
+        await expect(line(page, 'Fixture League').locator('.mls-needs-item.is-ir')).toHaveCount(3);
         await expectClean(page, state);
     });
 
@@ -276,7 +278,7 @@ test.describe('Lineups that need you', () => {
         await showTab(page, 'lineup');
         await swap(page, 'Brock Bowers', 'George Kittle');
         await showTab(page, 'setup');
-        expect(await lineSummaries(page)).toEqual(['Fixture League: Activate George Kittle from IR on Sleeper before kickoff', LAMAR_LINE]);
+        expect(await lineSummaries(page)).toEqual(['Fixture League: Activate George Kittle from IR on Sleeper', LAMAR_LINE]);
 
         // Closed again, the next run brings it back.
         await box(page).getByRole('button', { name: 'Close this list' }).click();
@@ -286,7 +288,7 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 
-    test('Sync All (or Check Sleeper now) says how many need you and shows the box', async ({ page }) => {
+    test('Sync All (or the box\'s "Sync All again") says how many need you and shows the box', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await routeLeagues(page);
         await seedTwoLeagues(page);
@@ -297,7 +299,7 @@ test.describe('Lineups that need you', () => {
         await expect(page.locator('#syncAllBtn')).toBeEnabled();
         expect(await lineSummaries(page)).toEqual([CHASE_LINE, LAMAR_LINE]);
 
-        await box(page).getByRole('button', { name: 'Check Sleeper now' }).click();
+        await box(page).getByRole('button', { name: 'Sync All again' }).click();
         await expect(page.locator('.toast-message').filter({ hasText: 'Successfully synced 2 leagues!' })).toBeVisible();
         await expect(page.locator('#syncAllBtn')).toBeEnabled();
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
@@ -341,6 +343,28 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 
+    test("the Lineup tab's box folds to its title line, with the count, and stays folded", async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page);
+        await seedTwoLeagues(page);
+        await openLineup(page, 'Fixture League').click();
+        const title = lineupBox(page).locator('.lineup-needs-title');
+        await expect(title).toHaveAttribute('aria-expanded', 'true');
+        await title.click();
+        await expect(title).toHaveAttribute('aria-expanded', 'false');
+        await expect(title).toHaveText('This lineup needs you · 1');
+        await expect(lineupBox(page).locator('.lineup-needs-item')).toHaveCount(0);
+
+        // Remembered across a reload, and in every league.
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await showTab(page, 'lineup');
+        await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveAttribute('aria-expanded', 'false');
+        await lineupBox(page).locator('.lineup-needs-title').click();
+        await expect(lineupBox(page).locator('.lineup-needs-item')).toHaveCount(1);
+        await expectClean(page, state);
+    });
+
     test('a clean run: no box and the usual message', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false });
@@ -373,7 +397,7 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 
-    test('at 375px wide each league is one line, names whole, nothing past the edge', async ({ page }) => {
+    test('at 375px wide each league is one block, names whole, its buttons under its items, nothing past the edge', async ({ page }) => {
         await page.setViewportSize({ width: 375, height: 812 });
         const state = await openApp(page, '/lineup/');
         await routeLeagues(page);
@@ -384,14 +408,15 @@ test.describe('Lineups that need you', () => {
         const boxRect = await box(page).boundingBox();
         for (const league of ['Fixture League', SECOND_LEAGUE_NAME]) {
             const l = line(page, league);
-            // The league's name in full (no ellipsis), and its button inside the box, on the same line.
+            // The league's name in full (no ellipsis); its buttons in a row under its items, inside the box.
             const name = l.locator('.mls-needs-league');
             await expect(name).toHaveText(league);
             expect(await name.evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true);
             const btn = await openLineup(page, league).boundingBox();
             const main = await l.locator('.mls-needs-main').boundingBox();
             expect(btn.x + btn.width).toBeLessThanOrEqual(boxRect.x + boxRect.width);
-            expect(btn.y).toBeLessThan(main.y + main.height);
+            expect(btn.y).toBeGreaterThanOrEqual(main.y + main.height - 1);
+            expect(btn.x).toBeGreaterThanOrEqual(boxRect.x);
         }
         // The Lineup tab's box fits too (that tab's button row above it is wider than 375px already).
         await openLineup(page, SECOND_LEAGUE_NAME).click();

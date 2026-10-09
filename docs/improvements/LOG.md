@@ -3215,3 +3215,69 @@ rankings change), though the lock itself is kept and applied then. Fix: persist 
 
 **Screenshots.** No change beyond round 4's six: `mls-league-guide.png` (both widths) already changes, and now also
 carries the lock wording.
+
+### S11, round 6: the padlock after a reload, Dashboard buttons on phones, IR moves as notes, shorter items, a foldable Lineup box (owner's choices)
+
+**Why.** A review as a user after round 5 found five things, and the owner added a sixth (the Lineup tab box should
+be collapsible or dismissible):
+1. After a reload the padlock read unlocked while the box said "you locked him in" (the pre-existing bug noted in
+   round 5).
+2. On phones the Dashboard's buttons sat beside whichever item lined up with them.
+3. An IR move alone made a league count as "needs you before kickoff".
+4. Two items ran four lines on a phone.
+5. "Check Sleeper now" sat under the Sync All button and did the same thing.
+
+**Owner's decisions.**
+- 1–4: fix them, with IR moves counted like kept starters (shown, not counted).
+- 5: name it **"Sync All again"**, so it's clear why it's there twice.
+- The box: I recommended **collapsible** (folded, it still shows its count, so a new problem can't hide), remembered
+  like the Best Available card. The owner offered either, so this is my call; it's easy to switch to a dismiss.
+
+**User-visible effect.**
+- **Locks survive a reload:** a lock saves the lineup as well as the lock list, so the padlock and LOCKED badge show
+  after a reload.
+- **Dashboard, phones (≤600px):** each league's buttons go in a row under its items, and the items get the full
+  width. On desktop the buttons stay on the right, now aligned to the top of the league.
+- **IR moves are notes:** "Move Trey McBride to IR to free a spot" is still listed (purple) but doesn't count. With
+  only notes and kept starters:
+  - Dashboard: "Nothing needs you before kickoff · 1 league with notes".
+  - Lineup tab: "Nothing needs you before kickoff".
+- **Shorter items:**
+  - "Activate Ja'Marr Chase from IR on Sleeper" (was "… on Sleeper before kickoff"; the title already says "before
+    kickoff").
+  - "Activate George Kittle from IR: no longer eligible, and it blocks your adds and drops" (was "…: he's no longer
+    eligible there, and Sleeper blocks adds and drops until you do").
+- **The footer link** reads "**Sync All again** to get the latest injury news and your current Sleeper lineups for
+  every league."
+- **The Lineup tab's box folds:**
+  - Its title line is a button with a chevron. Tap it to fold the box to that line, which then shows the count
+    ("This lineup needs you · 3").
+  - Folded is remembered across visits and leagues, until you tap it again.
+  - With only the Sleeper fold, the title reads "Set this lineup on Sleeper".
+
+**What changed and where.**
+- `js/mls/render/lineup.js` (`setPlayerLockState`): writes `manualStartersMap` / `manualBenchMap` with the lock list.
+- `js/mls/lineup/issues.js`: `note` on IR moves; `needsYou` skips notes; the shorter texts.
+- `js/mls/lineup/gameInfo.js`: the title button, `toggleLineupNeeds`, the titles.
+- `js/mls/render/dashboard.js`: the titles and the footer link.
+- `css/mls.css`: the title button and chevron; the phone layout of `.mls-needs-line`.
+- **New key `mls_lineup_needs_collapsed`** (`KEYS.mls.lineupNeedsCollapsed`, '1' while folded), read into
+  `State.lineupNeedsCollapsed`.
+- `js/mls/main.js`: the `toggleLineupNeeds` action.
+- `lineup/index.html`: the Guide's mention of the link.
+- CHANGELOG updated. `CACHE_NAME` stays v2.8.91.
+
+**Tests.**
+- The padlock: the weekly-locks spec now checks the LOCKED badge after a same-week reload. It failed before the fix,
+  the bug shown on main in round 5.
+- The fold: a new test in `tests/mls-lineup-needs.spec.mjs` (fold, count, kept across a reload, unfold).
+- Notes don't count: the IR-rules test and the unit tests.
+- Phones: the 375px test now checks each league's button sits under its items and inside the box.
+- `tests/mls-keyboard.spec.mjs`: Tab reaches the box's title, then Find RB, then Unlock All.
+- Unit tests and the S9 test updated for the new texts.
+
+**Screenshots.** The same six PNGs as round 4 (now with these changes): `mls-league-setup`, `mls-league-lineup` and
+`mls-league-guide`, both widths. Main and this branch rendered here differ in exactly those.
+
+**Runbook card added for the owner's #2 (round 4): S12**, a phone Dashboard with one card per league. See the
+runbook.

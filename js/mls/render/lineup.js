@@ -49,6 +49,11 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         });
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = bench;
+        // Saved with the lock list, so a reload shows the padlock and LOCKED badge as you left them (it used to
+        // save the list only: after a reload the row read unlocked until the next recompute, while the "lineups need
+        // you" boxes, which read the list, said "you locked him in"; improvements S11 round 6).
+        localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+        localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
         return playerName;
     }
 

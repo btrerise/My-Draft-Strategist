@@ -86,8 +86,8 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             const items = lineupIssueItems(issues);
             return { league: l, issues, items, needs: needsYou(items) };
         }).filter(n => n.items.length > 0);
-        // Leagues that need you, soonest kickoff first (no known kickoff: only byes, empty slots or IR moves, after
-        // them, in league order); then leagues with only starters you kept.
+        // Leagues that need you, soonest kickoff first (no known kickoff: only byes or empty slots, after them, in
+        // league order); then leagues with only notes (starters you kept, IR moves).
         const when = (n) => (!n.needs ? 2 : Number.isFinite(n.issues.firstKickoffMs) ? 0 : 1);
         const ms = (n) => (Number.isFinite(n.issues.firstKickoffMs) ? n.issues.firstKickoffMs : 0);
         lines.sort((a, b) => (when(a) - when(b)) || (when(a) === 0 ? ms(a) - ms(b) : 0));
@@ -157,7 +157,7 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         const p = needs.needCount, sl = needs.sleeper.length;
         const keptOnly = needs.lines.length - p;
         const title = p > 0 ? `${p} lineup${p === 1 ? ' needs' : 's need'} you before kickoff`
-            : keptOnly > 0 ? `Nothing needs you · ${keptOnly} lineup${keptOnly === 1 ? '' : 's'} with starters you kept`
+            : keptOnly > 0 ? `Nothing needs you before kickoff · ${keptOnly} league${keptOnly === 1 ? '' : 's'} with notes`
             : `${sl} lineup${sl === 1 ? '' : 's'} to set on Sleeper`;
         const sleeperFold = sl === 0 ? '' : `
             <details class="mls-change-fold mls-needs-sleeper"${wasOpen ? ' open' : ''}>
@@ -173,7 +173,7 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             </div>
             ${needs.lines.length > 0 ? `<ul class="mls-needs-list">${needs.lines.map(problemLineHTML).join('')}</ul>` : ''}
             ${sleeperFold}
-            <p class="mls-needs-check"><button type="button" class="btn-bare mls-needs-check-link" data-action="checkSleeperNow">Check Sleeper now</button> gets the latest injury news and your current Sleeper lineups for every league.</p>`;
+            <p class="mls-needs-check"><button type="button" class="btn-bare mls-needs-check-link" data-action="checkSleeperNow">Sync All again</button> to get the latest injury news and your current Sleeper lineups for every league.</p>`;
         box.classList.toggle('has-problems', p > 0);
         box.hidden = false;
     }
@@ -203,7 +203,8 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         if (card && card.scrollIntoView) card.scrollIntoView({ block: 'start' });
     }
 
-    // "Check Sleeper now": Sync All, which gets the latest injury news (a fresh player map), your Sleeper lineups and
+    // "Sync All again" (the box's footer link; named so it's clear it's the button above, owner's choice S11 round 6):
+    // Sync All, which gets the latest injury news (a fresh player map), your Sleeper lineups and
     // rosters, and looks up your manual leagues' players by name (S11 round 4: it replaces the Global Injury Auditor).
     export function checkSleeperNow() {
         const btn = document.getElementById('syncAllBtn');

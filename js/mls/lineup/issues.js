@@ -134,18 +134,19 @@ export const statusPhrase = (inj) => STATUS_PHRASES[inj] || `is ${inj}`;
 // "RB", "RB, WR or TE": who can take a slot, for "no healthy RB on your bench".
 const slotWho = (slotType) => joinAnd(SLOT_POSITIONS[slotType] || [slotType], 'or');
 
-// What to do, one item per thing: [{ kind, text, muted?, swap?: { out, in }, find?: chip }]. kind is for the
-// item's color: 'ir' (the IR badge's purple: activations and moves), 'injured' (red), 'bye', 'empty', 'kept'
-// (muted, not counted). text is plain (the caller escapes it: player names are Sleeper's); names use no-break
+// What to do, one item per thing: [{ kind, text, muted?, note?, swap?: { out, in }, find?: chip }]. kind is for
+// the item's color: 'ir' (the IR badge's purple: activations and moves), 'injured' (red), 'bye', 'empty', 'kept'
+// (muted). Neither a muted item (a starter you kept) nor a note (an IR move: a tip, not a job before kickoff;
+// owner's choice, S11 round 6) counts toward "needs you". text is plain (the caller escapes it: player names are Sleeper's); names use no-break
 // spaces, so a phone wraps between words but never inside a name. Order: activations (Sleeper won't start him
 // until you do it), injuries, byes, empty slots, IR moves, then what you kept.
 export function lineupIssueItems(issues) {
     const name = (p) => String((p && p.name) || 'Unknown player').replace(/ /g, ' ');
     const full = issues.rosterFull ? ' (roster full: drop someone first)' : '';
     const items = [];
-    issues.irSlot.forEach(p => items.push({ kind: 'ir', text: `Activate ${name(p)} from IR on Sleeper before kickoff${full}` }));
+    issues.irSlot.forEach(p => items.push({ kind: 'ir', text: `Activate ${name(p)} from IR on Sleeper${full}` }));
     issues.irStuck.forEach(p => items.push({ kind: 'ir',
-        text: `Activate ${name(p)} from IR: he's no longer eligible there, and Sleeper blocks adds and drops until you do${full}` }));
+        text: `Activate ${name(p)} from IR: no longer eligible, and it blocks your adds and drops${full}` }));
     const startOrPickup = (p, what) => {
         const q = swapFor(issues, p);
         if (q) return { text: `${name(p)} ${what}: start ${name(q)} instead?`, swap: { out: p, in: q } };
@@ -162,13 +163,13 @@ export function lineupIssueItems(issues) {
         text: `${n > 1 ? `${n} ` : ''}${slotDisplayName(t)} ${n > 1 ? 'slots are' : 'slot is'} empty` }));
     const more = issues.moveToIr.length > issues.irSlotsOpen
         ? ` (${issues.irSlotsOpen} IR slot${issues.irSlotsOpen === 1 ? '' : 's'} open)` : '';
-    issues.moveToIr.forEach(p => items.push({ kind: 'ir', text: `Move ${name(p)} to IR to free a roster spot${more}` }));
+    issues.moveToIr.forEach(p => items.push({ kind: 'ir', note: true, text: `Move ${name(p)} to IR to free a spot${more}` }));
     issues.kept.forEach(k => items.push({ kind: 'kept', muted: true, text: `${name(k.player)} ${k.what} (you locked him in)` }));
     return items;
 }
 
-// Something to do (not only starters you kept).
-export const needsYou = (items) => items.some(i => !i.muted);
+// Something to do before kickoff (not only starters you kept, or IR moves).
+export const needsYou = (items) => items.some(i => !i.muted && !i.note);
 
 // Which buttons a league's Dashboard line gets (owner's choice): Open lineup when its Lineup tab can act on it
 // (a suggested swap, or a starter to activate), and a Find button per position nobody on the bench can fill.

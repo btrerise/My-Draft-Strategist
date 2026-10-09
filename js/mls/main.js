@@ -20,7 +20,7 @@ import { goToSetupStep, onload } from './init.js';
 import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
 import { addEarlyTeam, removeEarlyTeam } from './lineup/earlyGames.js';
-import { explainIrSlot, toggleLockCountdown } from './lineup/gameInfo.js';
+import { explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
 import { addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, moveLeague, saveRequirements, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
@@ -162,6 +162,7 @@ const clickActions = {
     toggleLock() { toggleLock(this.dataset.id); },
     initiateSwap() { initiateSwap(this.dataset.id); },
     swapInSuggested() { swapInSuggested(this.dataset.out, this.dataset.in); },
+    toggleLineupNeeds() { toggleLineupNeeds(); },
     removeEarlyTeam() { removeEarlyTeam(this.dataset.team); },
     // The Global Injury Auditor's place on the Lineup tab now points to the Dashboard's list (improvements S11).
     goToLineupNeeds() { goToLineupNeeds(); },

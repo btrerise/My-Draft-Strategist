@@ -127,6 +127,9 @@ import { mdsFetch } from '../shared/net.js';
         // improvements S11): the leagues it listed then, as a Set of keys. It stays hidden for the session
         // until a league it didn't list needs you; null (shown) after Optimize All or Sync All.
         lineupNeedsDismissed: null,
+        // Whether the Lineup tab's "This lineup needs you" box is folded to its title line (lineup/gameInfo.js,
+        // improvements S11 round 6). Remembered, like the Best Available card's.
+        lineupNeedsCollapsed: localStorage.getItem(KEYS.mls.lineupNeedsCollapsed) === '1',
         // Not persisted -- leagueId ->{ week, points, fetchedAt, finalKey }: this roster's
         // players_points from Sleeper's matchups endpoint. finalKey records which teams' games
         // were final when it was fetched, so a game finishing afterwards forces a refetch.

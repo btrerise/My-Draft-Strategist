@@ -269,7 +269,7 @@ test.describe('Roster tab position counts', () => {
         // Starting him is the app's prompt to activate him (owner's decision, round 6): the box above the
         // lineup says so (improvements S11, round 4), and his badge says what to do. Bench badges keep their wording.
         await expect(page.locator('#lineupTab .lineup-needs-item.is-ir')).toHaveCount(1);
-        await expect(page.locator('#lineupTab .lineup-needs-item.is-ir')).toHaveText("Activate Ja'Marr\u00a0Chase from IR on Sleeper before kickoff");
+        await expect(page.locator('#lineupTab .lineup-needs-item.is-ir')).toHaveText("Activate Ja'Marr\u00a0Chase from IR on Sleeper");
         await slot("Ja'Marr Chase").locator('.ir-slot-badge').click();
         await expect(page.locator('.toast-message').filter({ hasText: 'In your IR slot on Sleeper. Move him to your active roster there to start him.' })).toBeVisible();
         await expect(bench.locator('.lineup-slot').filter({ hasText: 'Justin Jefferson' }).locator('.ir-slot-badge')).toHaveAttribute('title', "In your IR slot on Sleeper. A player there can't start until you move him out of it.");

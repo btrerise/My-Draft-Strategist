@@ -45,6 +45,10 @@ test.describe('Locks last one NFL week', () => {
         await page.reload();
         await page.waitForLoadState('networkidle');
         expect(lockCount((await stored(page)).locks)).toBe(1);
+        // The padlock and LOCKED badge survive the reload (the lock saves the lineup too since round 6; before,
+        // the row read unlocked until the next recompute).
+        await showTab(page, 'lineup');
+        await expect(lockBadges(page)).toHaveCount(1);
 
         await page.evaluate(() => localStorage.removeItem('mls_locks_week'));
         await page.reload();
