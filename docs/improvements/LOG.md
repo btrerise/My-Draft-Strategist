@@ -2797,4 +2797,8 @@ rest are identical):
 - `desktop/mls-league-roster.png`, `phone/mls-league-roster.png`: the link's line above the position counts.
 - `desktop/mds-empty-tracker.png`, `phone/mds-empty-tracker.png`, `desktop/mds-draft-tracker.png`,
   `phone/mds-draft-tracker.png`: the link's line above the Tracker chips.
-They're re-taken from CI's own renders of this branch (the entry below says which run), as in S9.
+**Left over: these 14 aren't re-taken yet.** CI runs only on pull requests and pushes to main, and the owner hadn't
+asked for a PR, so there was no CI render of this branch to take them from. When the PR is opened, its first run should
+fail on exactly these 14 comparisons and nothing else. Then take each `-actual.png` from that run's
+`playwright-results` artifact (`gh run download <run-id> -R btrerise/My-Draft-Strategist -n playwright-results -D <new
+empty folder>`), check its `-expected.png` matches the committed baseline, and commit them, as in S9.
