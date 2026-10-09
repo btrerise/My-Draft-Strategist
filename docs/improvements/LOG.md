@@ -2797,8 +2797,16 @@ rest are identical):
 - `desktop/mls-league-roster.png`, `phone/mls-league-roster.png`: the link's line above the position counts.
 - `desktop/mds-empty-tracker.png`, `phone/mds-empty-tracker.png`, `desktop/mds-draft-tracker.png`,
   `phone/mds-draft-tracker.png`: the link's line above the Tracker chips.
-**Left over: these 14 aren't re-taken yet.** CI runs only on pull requests and pushes to main, and the owner hadn't
-asked for a PR, so there was no CI render of this branch to take them from. When the PR is opened, its first run should
-fail on exactly these 14 comparisons and nothing else. Then take each `-actual.png` from that run's
-`playwright-results` artifact (`gh run download <run-id> -R btrerise/My-Draft-Strategist -n playwright-results -D <new
-empty folder>`), check its `-expected.png` matches the committed baseline, and commit them, as in S9.
+**The 14, re-taken from PR #193's CI.** Each is CI's own `-actual.png` from a `playwright-results` artifact
+(`gh run download`), and in every run each `-expected.png` was identical to the committed baseline. It took four runs,
+not one: `toHaveScreenshot` stops a test at its first failing shot, and each test in `visual.spec.mjs` shoots several
+tabs, so a run renders only the first changed PNG of each test (now in `docs/TESTING.md`). Each run failed on exactly
+the PNGs below and nothing else:
+- Run 37894644331: `{desktop,phone}/mds-empty-tracker.png`, `mds-draft-tracker.png`, `mls-league-roster.png`. Above
+  the new link line, identical; below it, the same content 19px lower (desktop `mds-draft-tracker`: page +18px), with
+  anti-aliasing differences only, from the sub-pixel offset (as in S9).
+- Run 37931976944: `{desktop,phone}/mds-empty-guide.png` (the legend step: desktop +1038px, phone +1680px; everything
+  above it identical) and `mls-league-lineup.png` (same size; only the Optimal Lineup header row differs).
+- Run 37932692082: `{desktop,phone}/mls-league-scout.png` (same size; only the Waiver Wire Assistant header row).
+- Run 37933514590: `{desktop,phone}/mls-league-guide.png`: the SoS wording in an earlier step and the new step 13 (desktop
+  +2104px, phone +3905px).
