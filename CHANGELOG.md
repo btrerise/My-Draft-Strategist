@@ -77,18 +77,27 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **The Dashboard names the lineups that need you.** A box under Sync All and Optimize All lists each league whose
-  lineup needs something before kickoff, soonest kickoff first, with the time (amber within a day): a starter in your
-  Sleeper IR slot ("Activate Ja'Marr Chase from IR"), an injured starter ("Justin Jefferson is Doubtful: start Puka
-  Nacua instead?" when a healthy bench player can take his place), a starter on bye, or an empty starting slot. Each
-  line has the button that fixes it: Open lineup for a swap or an activation, or Find RB (any position) to open Top
-  Available when nobody on your bench can fill the slot. A drop-down below lists the leagues whose lineup differs
-  from the one on Sleeper, with who to start and bench there. The box follows your lineups: fix one and it drops off.
-  The ✕ hides it until another league needs you or you run Optimize All or Sync All again, and both now say how many
-  lineups need you. The League Command Center's (i) explains it.
-- **The Lineup tab offers the swap for an injured starter.** When a healthy bench player can take a Doubtful or
-  injured starter's place, the red warning names him and has a Swap in button that makes the swap in one tap. A
-  starter who's injured and also in your IR slot now gets only the red warning, not the purple "move him to your
-  active roster" line too.
+  lineup needs something before kickoff, soonest kickoff first, with the time (amber within a day). It covers:
+  - a starter in your Sleeper IR slot ("Activate Ja'Marr Chase from IR on Sleeper before kickoff");
+  - an injured or bye starter ("Justin Jefferson is Doubtful: start Puka Nacua instead?", or "Derrick Henry is Out:
+    no healthy RB on your bench");
+  - an empty starting slot;
+  - an injured bench player your league's IR slot takes, while a slot is open ("Move Trey McBride to IR");
+  - an IR-slot player who isn't eligible there any more (Sleeper blocks adds and drops until he's out).
+
+  Activations say when your roster is full. Each league has the buttons that fix it: Open lineup, or Find RB (any
+  position) for Top Available. A starter you locked in is shown greyed out and not counted. A drop-down lists the
+  leagues whose lineup differs from the one on Sleeper, with who to start and bench there; injured ones are marked.
+  The box follows your lineups: fix one and it drops off. The ✕ hides it until another league needs you or you run
+  Optimize All or Sync All again, and both say how many lineups need you.
+- **One box above the Lineup tab's lineup.** "This lineup needs you" lists the same items for the league you have
+  open, one per line, with Swap in and Find buttons. It replaces the red injury warning, the purple IR-slot line and
+  the amber "Differs from Sleeper lineup" line. Statuses are spelled out ("Doubtful", not "D"), and a starter who's
+  injured and in your IR slot is named once, as injured.
+- **Sync All checks injuries everywhere; the Global Injury Auditor is gone.** Sync All (or "Check Sleeper now" in
+  the box) gets the latest injury news for every league. It also looks up your manual leagues' players by name, so
+  their lineups bench Out players too. The Auditor's card on the Lineup tab now points to the Dashboard. The League
+  Command Center's (i) explains the box.
 
 - **What the badges mean, in the Guide.** A new step in the Guide tab lists every badge, chip, pill and color the app
   shows, grouped by kind (positions and slots, ranks and tiers, changes and trends, availability and status,

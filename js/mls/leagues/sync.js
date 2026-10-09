@@ -598,7 +598,7 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
             // Sleeper lists taxi-squad players in their own array but ALSO leaves them in
             // `players`, so without this they'd be indistinguishable from real bench depth --
             // eligible to be slotted as starters by the optimizer and counted as active bench
-            // by the Global Injury Auditor, neither of which is true of a taxi player. Empty
+            // by the "lineups need you" box's IR moves, neither of which is true of a taxi player. Empty
             // on leagues with no taxi squad configured, hence the fallback.
             const taxiIds = new Set((myTeam && myTeam.taxi) || []);
             // Sleeper's IR slot (the roster's `reserve` array), kept like taxi so the Roster tab can

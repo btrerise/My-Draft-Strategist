@@ -3036,3 +3036,143 @@ unavailable (`isUnavailableThisWeek`). The reason: the user's rankings should al
 doesn't expect a player to play ranks him lower, or leaves him unranked. The round 3 suggestion ("start Puka Nacua
 instead?" and the Lineup tab's Swap in button) stays as the way to act on it, so the choice is the user's. Don't
 change who starts for Doubtful players without asking the owner.
+
+### S11, round 4: one box on the Lineup tab, the IR slot's rules, kept starters muted, the Auditor folded in (owner's choices)
+
+**Why.** A second review as a user found:
+- two cross-league injury checks (the box and the Global Injury Auditor);
+- a stack of four lines above the Lineup tab's lineup;
+- the Lineup tab saying "consider swapping" with nobody to swap in, and "is D" where the Dashboard said "is
+  Doubtful";
+- a Doubtful player you chose to start nagging every visit;
+- "Activate from IR" not knowing the roster was full.
+
+**Owner's decisions.**
+1. **Fold the Auditor into Sync All:** fresh injury news, manual leagues looked up by name. A "Check Sleeper now" link
+   with one line saying what it does, and a pointer card where the Auditor was (like the Power Rankings one on the
+   Scout tab).
+2. **Don't merge the box into the Command Center table.** On phones that trades a vertical problem for a horizontal
+   one. A card-per-league Dashboard on phones would be its own runbook card. For now: separate, with the tooltips
+   pointing to each other.
+3. **Tooltip updates:** the Command Center's (i) and its Lineup column now point to the box.
+4. **One box on the Lineup tab**, as sketched.
+5. **The Lineup tab's Find button** for a starter nobody can replace.
+6. **Statuses spelled out on both tabs.**
+7. **Starters you locked in: shown muted, not counted.**
+8. **The IR slot's rules**, after checking they can be read (they can: Sleeper's league settings have `reserve_slots`
+   and `reserve_allow_out` / `_doubtful` / `_sus` / `_cov` / `_na` / `_dnr`, confirmed on live leagues).
+   `roster_positions` gives the roster size. The owner picked all three uses:
+   - the roster-full hint on activations;
+   - "Move X to IR";
+   - an IR-slot player who's no longer eligible there.
+
+**User-visible effect.**
+- **Lineup tab:** one box, "This lineup needs you", replaces the red injury warning, the purple IR-slot line and the
+  amber "Differs from Sleeper lineup" line. The green "Matches your active Sleeper lineup" line stays.
+  - One item per line, in the Dashboard's colors: activations purple, injuries red, the rest muted.
+  - Buttons: "Swap in Puka Nacua" (the ordinary swap) and "Find RB" (that league's Top Available, at RB).
+  - With only kept starters: "Nothing needs you · 1 starter you kept".
+  - A fold: "Differs from your Sleeper lineup: 3 changes" → "Start Ja'Marr Chase · Bench Puka Nacua, Garrett Wilson".
+  - The PNG export leaves the whole box out. The Guide's legend shows one sample of the box instead of the two lines.
+- **Items** (both tabs, one per thing):
+  - "Activate Ja'Marr Chase from IR on Sleeper before kickoff", plus " (roster full: drop someone first)" when the
+    active roster has no open spot.
+  - "Activate George Kittle from IR: he's no longer eligible there, and Sleeper blocks adds and drops until you do",
+    for a bench player in the IR slot who's healthy, Questionable, or has a status this league's IR doesn't take.
+  - "Justin Jefferson is Doubtful: start Puka Nacua instead?" (swap) or "Derrick Henry is Out: no healthy RB on your
+    bench" (Find). A flex slot says every position it takes ("no healthy RB, WR or TE").
+  - "Tee Higgins is on bye: …", the same way.
+  - "RB slot is empty" (Find), and "2 FLEX slots are empty".
+  - "Move Trey McBride to IR to free a roster spot", for a bench player whose status this league's IR takes, while a
+    slot is open. When more qualify than slots are open, each says "(1 IR slot open)".
+  - "Lamar Jackson is Doubtful (you locked him in)": muted and not counted. A lock, or a swap (which locks).
+    Activations are never muted.
+  - Statuses are spelled out ("is Doubtful", "is Out", "is on IR", "is suspended"…).
+  - Injured wins over the IR activation: one item, never both.
+- **Dashboard:**
+  - The same items, now one per line under each league (a league with six read as a run-on sentence).
+  - The Sleeper drop-down marks injured players ("Bench George Kittle (Out)"): the Auditor's "injured starter in your
+    Sleeper lineup".
+  - A footer line: "**Check Sleeper now** gets the latest injury news and your current Sleeper lineups for every
+    league."
+  - With only kept starters the title reads "Nothing needs you · 1 lineup with starters you kept". Those leagues go
+    last.
+- **Sync All:**
+  - It gets a fresh player map every time (`forceRefresh`, as the Auditor did).
+  - It also runs with only manual leagues.
+  - It looks up each manual or hand-off league's players by name (team or position when several share a name; a team
+    defense by its code) and records their status.
+  - It re-optimizes those leagues (locks kept), so an Out player there is benched when someone can replace him.
+  - The toast adds "Checked injuries in N manual leagues."
+  - Its button's title: "Syncs rosters, injury news and lineups across all your leagues".
+- **Global Injury Auditor removed.** Its Lineup tab card is now a one-line pointer: "The Global Injury Auditor is now
+  part of the Dashboard's list of lineups that need you… [Go to the Dashboard →]". Guide step 7 is now "Lineups that
+  need you". The Command Center's (i) describes the box, the drop-down and Sync All's injury check. Its Lineup column
+  says "Differs from your Sleeper lineup: the changes are in the list above".
+- **Not changed:** who the optimizer starts (Doubtful stays eligible, the owner's decision after round 3).
+
+**What changed and where.**
+- `js/mls/lineup/issues.js`:
+  - `lineupIssues` adds `kept`, `irStuck`, `moveToIr`, `irSlotsOpen`, `rosterFull` and `noSwap`.
+  - `lineupIssueItems` returns one item per thing (`kind`, `text`, `muted`, `swap`, `find`).
+  - New: `irEligible`, `needsYou`, `findChips`.
+- `js/mls/lineup/gameInfo.js`:
+  - `getLineupNeedsHTML` replaces `getLineupInjuryWarningHTML` and `getLineupIrSlotWarningHTML`.
+  - New: `getSleeperLineupChanges` / `sleeperChangesHTML` (shared with the Dashboard) and `FOLD_CHEVRON`.
+  - `getLineupIssues` passes locks (`State.lockedPlayersMap`), `irRules`, `rosterSize` and the roster.
+- `js/mls/render/lineup.js`: the box in place of the three lines.
+- `js/mls/render/dashboard.js`: the box on the new items, stacked; `checkSleeperNow`, `goToLineupNeeds`; Sync All's
+  manual-league step, `forceRefresh` and toast.
+- `js/mls/leagues/sync.js`: `irRules` and `rosterSize` on the stored league (no new storage key); the matrix's
+  tooltip.
+- `js/mls/leagues/manualInjuries.js` (new, in `PRECACHE_ASSETS`): the by-name lookup, moved from the Auditor.
+- `js/mls/lineup/injuryAudit.js`: deleted (removed from `PRECACHE_ASSETS`).
+- `js/mls/main.js`: actions `checkSleeperNow` and `goToLineupNeeds`; `runGlobalInjuryAudit` removed.
+- `js/mls/legend.js` and `css/base.css`: one legend sample.
+- `js/mls/trade/export.js`: removes `.lineup-needs-box`.
+- `lineup/index.html`: the pointer card, Guide step 7, Sync All's title, the Command Center's (i).
+- `css/mls.css`: `.lineup-needs-*` replaces `.lineup-injury-warning` / `.lineup-ir-warning`; stacked items; kept and
+  check-link styles.
+- CHANGELOG lines rewritten. `CACHE_NAME` stays v2.8.91.
+- Leagues synced before this round have no IR rules or roster size until their next sync, so they get no IR moves,
+  no "no longer eligible" items and no roster-full hint until then. Manual leagues never get them.
+
+**Tests.**
+- `tests/unit/lineupIssues.test.mjs` (23): adds kept starters, `irEligible`, IR moves with open slots and their count,
+  no-longer-eligible IR players (healthy, Q, a refused status; PUP left alone), the roster-full hint, item order, the
+  flex "who".
+- `tests/mls-lineup-needs.spec.mjs` (12, both widths):
+  - the Lineup tab's box and its Swap in;
+  - a locked starter muted on both tabs;
+  - the IR rules (league settings routed, one bench spot fewer so the roster is full);
+  - Find RB from the Lineup tab too;
+  - the Sleeper fold on both tabs, with "(Out)";
+  - Check Sleeper now;
+  - a manual league's Henry found Out by name at Sync All;
+  - the Auditor's pointer.
+
+  The fixture league now trades A.J. Brown for Bijan, so it still fits its 14 spots.
+- `tests/mls-roster-counts.spec.mjs`:
+  - the S9 IR tests read the box: Chase's activation item;
+  - Jefferson swapped in is Out, so he's muted, not activated;
+  - the PNG export drops the box (3 items with the empty RB slot).
+- `tests/mls-keyboard.spec.mjs`: Tab from the lineup reaches the box's Find RB before Unlock All.
+
+**Screenshots: six change, to be re-taken from the PR's CI run** (they supersede round 3's three). Rendered here,
+main and this branch differ in exactly these:
+- `{desktop,phone}/mls-league-setup.png`: the Dashboard box ("1 lineup needs you before kickoff · Fixture League · RB
+  slot is empty · Find RB", and the Check Sleeper now line).
+- `{desktop,phone}/mls-league-lineup.png`: "This lineup needs you · RB slot is empty [Find RB]" above the lineup; the
+  Auditor's card replaced by the one-line pointer (the page is shorter).
+- `{desktop,phone}/mls-league-guide.png`: Guide step 7's new text and the legend's one box sample.
+
+**Left over.**
+- A season-long lock counts as "you kept him": a stud you locked in August who's Out now shows muted. The lock list
+  is ids only, so the box can't tell when the lock was set. If that bites, a lock could be ignored once the status
+  changes after it (needs storing the status at lock time, a new key).
+- PUP and NFI in the IR slot: no move suggested and no "no longer eligible", since it's unclear which Sleeper flag
+  covers them.
+- Runbook card idea: a phone Dashboard with one card per league (status icons, to-dos and buttons together) in place
+  of the table plus the box (owner's #2).
+- The Lineup tab's button row (Optimize / Copy / PNG) is already wider than 375px on the desktop project's layout;
+  not this card's.

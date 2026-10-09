@@ -1587,6 +1587,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-needs-when { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
 .mls-needs-when.is-soon { color: #f59e0b; font-weight: 600; }
 .mls-needs-items { font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
+.mls-needs-items.is-stacked { display: flex; flex-direction: column; gap: 0.15rem; }
 .mls-needs-item.is-injured, .lineup-needs-item.is-injured { color: #fca5a5; }
 .mls-needs-item.is-ir, .lineup-needs-item.is-ir { color: #d6bcfa; }
 .mls-needs-item.is-kept, .lineup-needs-item.is-kept { opacity: 0.7; font-style: italic; }

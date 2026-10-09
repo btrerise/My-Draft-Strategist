@@ -46,6 +46,10 @@ test.describe('Lineup Strategist keyboard', () => {
         await expect(page.locator('.toast-message').filter({ hasText: 'Josh Allen is locked' })).toBeVisible();
         await expect(lineup.locator('.mls-lock-badge')).toHaveCount(1);
         expect(await focusedIsBody(page)).toBe(true);
+        // The first stop is the "This lineup needs you" box above it (improvements S11): the fixture's empty RB
+        // slot has a Find RB button. Then Unlock All.
+        await page.keyboard.press('Tab');
+        await expect(page.locator(':focus')).toHaveText('Find RB');
         await page.keyboard.press('Tab');
         await expect(page.locator(':focus')).toHaveText('Unlock All (1)');
 

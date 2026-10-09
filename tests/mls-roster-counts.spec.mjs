@@ -266,10 +266,10 @@ test.describe('Roster tab position counts', () => {
         await expect(slot("Ja'Marr Chase").locator('.ir-slot-badge')).toHaveText('IR');
         await expect(page.locator('#lineupTab .ir-slot-badge')).toHaveCount(3);
 
-        // Starting him is the app's prompt to activate him (owner's decision, round 6): a line above the
-        // lineup says so, and his badge says what to do. Bench badges keep their wording.
-        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(1);
-        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveText("Ja'Marr Chase is in your IR slot on Sleeper. Move him to your active roster there before kickoff to start him.");
+        // Starting him is the app's prompt to activate him (owner's decision, round 6): the box above the
+        // lineup says so (improvements S11, round 4), and his badge says what to do. Bench badges keep their wording.
+        await expect(page.locator('#lineupTab .lineup-needs-item.is-ir')).toHaveCount(1);
+        await expect(page.locator('#lineupTab .lineup-needs-item.is-ir')).toHaveText("Activate Ja'Marr\u00a0Chase from IR on Sleeper before kickoff");
         await slot("Ja'Marr Chase").locator('.ir-slot-badge').click();
         await expect(page.locator('.toast-message').filter({ hasText: 'In your IR slot on Sleeper. Move him to your active roster there to start him.' })).toBeVisible();
         await expect(bench.locator('.lineup-slot').filter({ hasText: 'Justin Jefferson' }).locator('.ir-slot-badge')).toHaveAttribute('title', "In your IR slot on Sleeper. A player there can't start until you move him out of it.");
@@ -311,7 +311,7 @@ test.describe('Roster tab position counts', () => {
         await expect(benchRow('Trey McBride').locator('.slot-badge')).toHaveText('TX');
         await expect(benchRow(before[0]).locator('.slot-badge')).toHaveText('BN');
         // Nobody in the IR slot is starting, so no activation line.
-        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(0);
+        await expect(page.locator('#lineupTab .lineup-needs-item.is-ir')).toHaveCount(0);
 
         // Swap Jefferson into a WR slot: the WR he replaces joins the healthy bench, not the IR group.
         const wrStarter = page.locator('#lineupTab .lineup-slot').filter({ has: page.locator('.slot-badge.slot-WR') }).first();
@@ -319,11 +319,10 @@ test.describe('Roster tab position counts', () => {
         await benchRow('Justin Jefferson').locator('[data-action="initiateSwap"]').click();
         await wrStarter.locator('[data-action="initiateSwap"]').click();
         await expect(benchRow('Justin Jefferson')).toHaveCount(0);
-        // Now he's starting (a manual swap). He's Out as well as in the IR slot, so the red injury warning names
-        // him and the purple activation line doesn't: no "move him to your active roster" for a player who's out
-        // (improvements S11, round 3).
-        await expect(page.locator('#lineupTab .lineup-injury-warning:not(.lineup-ir-warning)')).toContainText('Justin Jefferson is OUT');
-        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(0);
+        // Now he's starting (a manual swap, which locks him in). He's Out as well as in the IR slot, so the box
+        // names him as injured, muted as your choice, and never as one to activate (improvements S11, rounds 3-4).
+        await expect(page.locator('#lineupTab .lineup-needs-item.is-kept')).toHaveText('Justin\u00a0Jefferson is Out (you locked him in)');
+        await expect(page.locator('#lineupTab .lineup-needs-item.is-ir')).toHaveCount(0);
         const after = await benchOrder();
         expect(after.indexOf(benched)).toBeGreaterThan(-1);
         expect(after.indexOf(benched)).toBeLessThan(after.indexOf('-- Injured Reserve --'));
@@ -331,13 +330,13 @@ test.describe('Roster tab position counts', () => {
         await expectClean(page, state);
     });
 
-    test("the lineup PNG export leaves out the warnings above the lineup but keeps the rows' badges", async ({ page }) => {
+    test("the lineup PNG export leaves out the box above the lineup but keeps the rows' badges", async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         // html2canvas from tests/node_modules (helpers.mjs aborts the CDN), wrapped to record what the app's
         // onclone leaves in the copy it draws.
         const record = `;(() => { const original = window.html2canvas; window.html2canvas = (el, o = {}) => original(el, { ...o,
             onclone: async (doc) => { if (o.onclone) await o.onclone(doc); const c = doc.getElementById('optimalLineupContainer');
-                window.__irExport = { warnings: c.querySelectorAll('.lineup-injury-warning').length, irBadges: c.querySelectorAll('.ir-slot-badge').length,
+                window.__irExport = { warnings: c.querySelectorAll('.lineup-needs-box').length, irBadges: c.querySelectorAll('.ir-slot-badge').length,
                     injuryBadges: c.querySelectorAll('.inj-badge').length }; } }); })();`;
         const html2canvas = readFileSync(new URL('./node_modules/html2canvas/dist/html2canvas.min.js', import.meta.url), 'utf8') + record;
         await page.route(/^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/html2canvas\/1\.4\.1\/html2canvas\.min\.js$/,
@@ -356,15 +355,15 @@ test.describe('Roster tab position counts', () => {
         await seedMls(page);
         await loadMlsRankings(page);
         await showTab(page, 'lineup');
-        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(1);
-        await expect(page.locator('#lineupTab .lineup-injury-warning:not(.lineup-ir-warning)')).toContainText('Josh Allen');
+        await expect(page.locator('#lineupTab .lineup-needs-item.is-ir')).toHaveCount(1);
+        await expect(page.locator('#lineupTab .lineup-needs-item.is-injured')).toContainText('Josh\u00a0Allen is Doubtful');
 
         const download = page.waitForEvent('download');
         await page.locator('#exportBtn').click();
         await download;
         expect(await page.evaluate(() => window.__irExport)).toEqual({ warnings: 0, irBadges: 1, injuryBadges: 1 });
-        // Only the image changes: the page still shows both warnings.
-        await expect(page.locator('#lineupTab .lineup-injury-warning')).toHaveCount(2);
+        // Only the image changes: the page still shows the box with both items (and the fixture's empty RB slot).
+        await expect(page.locator('#lineupTab .lineup-needs-box .lineup-needs-item')).toHaveCount(3);
         await expectClean(page, state);
     });
 });

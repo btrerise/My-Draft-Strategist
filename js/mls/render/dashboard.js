@@ -109,7 +109,8 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         const ms = n.needs ? n.issues.firstKickoffMs : NaN;
         const when = Number.isFinite(ms) ? formatKickoffLabel(new Date(ms).toISOString()) : '';
         const soon = Number.isFinite(ms) && ms - Date.now() < DAY_MS;
-        const items = n.items.map(i => `<span class="mls-needs-item is-${i.kind}">${escapeHtml(i.text)}</span>`).join('<span class="mls-needs-sep"> · </span>');
+        // One item per line, as on the Lineup tab: a league with several reads as a list, not a run-on sentence.
+        const items = n.items.map(i => `<span class="mls-needs-item is-${i.kind}">${escapeHtml(i.text)}</span>`).join('');
         const buttons = [];
         if (needsLineupButton(n.issues)) buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button>`);
         findChips(n.items).forEach(chip => {
@@ -120,7 +121,7 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             <li class="mls-needs-line${n.needs ? '' : ' is-kept-only'}">
                 <div class="mls-needs-main">
                     <span class="mls-needs-head-line"><span class="mls-needs-league">${name}</span>${when ? ` <span class="mls-needs-when${soon ? ' is-soon' : ''}">${nb(when)}</span>` : ''}</span>
-                    <span class="mls-needs-items">${items}</span>
+                    <span class="mls-needs-items is-stacked">${items}</span>
                 </div>
                 ${buttons.length ? `<div class="mls-needs-actions">${buttons.join('')}</div>` : ''}
             </li>`;
