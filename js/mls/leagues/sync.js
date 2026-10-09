@@ -11,6 +11,7 @@ import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, HARD_OUT_STATUSES, isBestBallLeague } from '../helpers.js';
 import { updatePulsePrompts } from '../init.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
+import { sleeperLineupChanges } from '../lineup/issues.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
@@ -95,9 +96,9 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
             let isSetup = optStarterIds.length > 0;
             
             if (isSetup && sleeperStarters.length > 0) {
-                let sleeperSet = new Set(sleeperStarters);
-                let optSet = new Set(optStarterIds);
-                isMatch = sleeperSet.size === optSet.size && [...sleeperSet].every(id => optSet.has(id));
+                // The same comparison as the "lineups need you" box's Sleeper drop-down (improvements S11).
+                const changes = sleeperLineupChanges(optStarterIds, sleeperStarters);
+                isMatch = changes.start.length === 0 && changes.bench.length === 0;
             } else if (isSetup && l.leagueId.startsWith('manual_')) {
                 isMatch = true; 
             }

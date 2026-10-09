@@ -192,6 +192,14 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         renderLineupUI();
     };
 
+    // "Swap in CeeDee Lamb" in the injured-starter warning (gameInfo.js, improvements S11): the ordinary
+    // two-tap swap in one go, so it locks him in and can be undone like any swap.
+    export function swapInSuggested(outId, inId) {
+        State.swapSourceId = null;
+        initiateSwap(inId);
+        initiateSwap(outId);
+    }
+
     // opts.batch marks a call made as one iteration of a multi-league run (optimizeAllLineups).
     // In batch mode this function computes and stores the lineup in State exactly as normal,
     // but performs neither of its two localStorage writes nor its render -- the batch caller
@@ -568,7 +576,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         ensureHeadshotNameIndex(league && league.roster, renderLineupUI);
 
         html += getNextLockCountdownHTML(starters);
-        html += getLineupInjuryWarningHTML(starters, league);
+        html += getLineupInjuryWarningHTML(starters, league, benchPool);
         html += getLineupIrSlotWarningHTML(starters, league);
 
         if (validSleeperStarters.length > 0) {

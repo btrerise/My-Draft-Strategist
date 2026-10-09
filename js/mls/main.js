@@ -47,8 +47,8 @@ import './trade/waiverValue.js';
 import { copyLineupAsText, exportLineup } from './trade/export.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
-import { initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, toggleLock, unlockAllPlayers } from './render/lineup.js';
-import { dismissLineupNeeds, openLeagueLineup, optimizeAllLineups, renderLineupNeeds, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
+import { initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
+import { dismissLineupNeeds, findLeaguePlayers, openLeagueLineup, optimizeAllLineups, renderLineupNeeds, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
@@ -108,6 +108,7 @@ const clickActions = {
     optimizeAllLineups() { optimizeAllLineups(this); },
     // The "lineups need you" box under those two buttons (improvements S11).
     openLeagueLineup() { openLeagueLineup(this.dataset.leagueId); },
+    findLeaguePlayers() { findLeaguePlayers(this.dataset.leagueId, this.dataset.pos); },
     dismissLineupNeeds() { dismissLineupNeeds(); },
     addAndSyncLeague() { addAndSyncLeague(this); },
     createManualLeague() { createManualLeague(); },
@@ -160,6 +161,7 @@ const clickActions = {
     overrideAutoLock() { overrideAutoLock(this.dataset.id); },
     toggleLock() { toggleLock(this.dataset.id); },
     initiateSwap() { initiateSwap(this.dataset.id); },
+    swapInSuggested() { swapInSuggested(this.dataset.out, this.dataset.in); },
     removeEarlyTeam() { removeEarlyTeam(this.dataset.team); },
     runGlobalInjuryAudit() { runGlobalInjuryAudit(this); },
     // Lineup tab: Monte Carlo card (5C)

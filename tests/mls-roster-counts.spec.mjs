@@ -319,8 +319,11 @@ test.describe('Roster tab position counts', () => {
         await benchRow('Justin Jefferson').locator('[data-action="initiateSwap"]').click();
         await wrStarter.locator('[data-action="initiateSwap"]').click();
         await expect(benchRow('Justin Jefferson')).toHaveCount(0);
-        // Now he's starting (a manual swap): the activation line names him.
-        await expect(page.locator('#lineupTab .lineup-ir-warning')).toContainText('Justin Jefferson is in your IR slot on Sleeper.');
+        // Now he's starting (a manual swap). He's Out as well as in the IR slot, so the red injury warning names
+        // him and the purple activation line doesn't: no "move him to your active roster" for a player who's out
+        // (improvements S11, round 3).
+        await expect(page.locator('#lineupTab .lineup-injury-warning:not(.lineup-ir-warning)')).toContainText('Justin Jefferson is OUT');
+        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(0);
         const after = await benchOrder();
         expect(after.indexOf(benched)).toBeGreaterThan(-1);
         expect(after.indexOf(benched)).toBeLessThan(after.indexOf('-- Injured Reserve --'));

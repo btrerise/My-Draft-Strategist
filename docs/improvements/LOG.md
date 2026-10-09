@@ -2916,3 +2916,117 @@ lineup. The Command Center's (i) didn't mention the box either. The owner asked 
 
 **Screenshots.** None changed: the (i) text is hidden until hovered. As in round 1, main and this branch rendered here
 the same way are pixel-identical.
+
+### S11, round 3: a review as a user; swaps, pickups, urgency, the Sleeper drop-down, always on (owner's choices)
+
+**Why.** I tried the box as a user (two leagues: a healthy Chase in the IR slot, Henry Out with no RB depth,
+Jefferson Doubtful with healthy WRs on the bench) and reported what felt off:
+- The optimizer starts a Doubtful player over a healthy bench player by rank (only Out, IR, suspended, PUP, NFI and
+  byes count as unavailable in `isUnavailableThisWeek`), then warns about him.
+- "Open lineup" can't fix an Out or bye starter with no backup, or an empty slot: those need a pickup.
+- The Command Center's red Lineup triangles ("differs from your Sleeper lineup") look like the box but mean
+  something else.
+- The box was tied to a run.
+- "Successfully optimized" appeared next to "2 lineups need you".
+- No urgency.
+- "Activate X from IR · X is Out" was a mixed signal.
+- IR activation was red in the box, purple on the Lineup tab.
+
+**Owner's decisions.**
+- **Suggest, don't decide:** "Jefferson is Doubtful: start CeeDee Lamb instead?" on the Dashboard, and on the Lineup
+  tab the red warning names him **with a Swap button**. Who the optimizer starts doesn't change.
+- **Buttons per line:** Open lineup when a swap or an activation fixes it, Find <pos> when nobody on the bench can,
+  and both when a line needs both.
+- **One list for the Sleeper mismatches:** the owner's idea, a drop-down at the bottom of the box, like the "What
+  changed?" card's folds: the urgent items on top, the details a tap away.
+- **Always on**, ✕ for the session. The toast says how many need you. Urgency (each line's first kickoff, soonest
+  league first, amber within a day). Injured wins over the IR activation, on both tabs. Neutral box, each item in
+  its Lineup tab color.
+
+**User-visible effect.**
+- **Always on.** The box shows whenever a lineup needs you, on any visit, not only after a run. It's drawn from the
+  lineups as they are now on every Dashboard render, so a fixed league drops off and an empty box hides. ✕ hides it
+  for the session until a league it didn't list needs you (or the next Optimize All or Sync All, which bring it
+  back).
+- **Lines:** "Fixture League  Tue 9:00 PM" (the earliest kickoff among the starters it names, amber within 24 hours;
+  leagues with none known, only byes or empty slots, go last in league order), then the items. Activations are
+  purple, injuries red, byes and empty slots muted.
+- **Swaps:** for an injured or bye starter, the best healthy bench player who can take his slot. Same position first
+  (best position rank), then anyone else the slot takes (best FLEX rank). Never someone injured, on bye, already
+  kicked off, in the IR slot or on taxi, and each bench player only once. "Justin Jefferson is Doubtful: start Puka
+  Nacua instead?" (Lamb was already starting at FLEX.)
+- **Buttons:** Open lineup when a line has an activation or a swap. **Find RB** (or the slot's position: FLEX for
+  FLEX, W/T and W/R, "Find players" for SFLEX) when an injured or bye starter has no swap, or a slot is empty. Find
+  opens that league's Top Available on the Scout tab at that position (as the Best Available card's View does;
+  manual leagues get Top Available's own note).
+- **Sleeper drop-down:** "N leagues differ from your Sleeper lineup", folded, with a note "As of your last sync: set
+  these on Sleeper, then sync to clear them." One line per league: "Start Ja'Marr Chase · Bench Garrett Wilson" and
+  Open lineup. It keeps its open state across re-renders. With nothing urgent, the title reads "1 lineup to set on
+  Sleeper". The table's Lineup column now uses the same comparison (`sleeperLineupChanges`), so the two agree.
+- **Toasts:** Optimize All says "Optimized 5 lineups · 2 need you (listed under the buttons)" when any do, and the
+  old "Successfully optimized 5 lineups!" when none do. Sync All adds "2 lineups need you (listed under the
+  buttons)." A failed run keeps its error toast.
+- **Lineup tab:**
+  - With one injured starter and a healthy bench option, the red warning reads "Justin Jefferson is D and currently
+    in your starting lineup. Start Puka Nacua instead? [Swap in Puka Nacua]".
+  - With several, the old sentence is followed by a button per swap ("Puka Nacua for Justin Jefferson").
+  - The button runs the ordinary swap (it locks him in, and can be undone).
+  - Without a swap, the wording is unchanged.
+  - An IR-slot starter who's also injured gets only the red line now, not the purple one too.
+  - The warning's icon keeps its full size when the text wraps (it was squeezed to a dot).
+
+**What changed and where.**
+- `js/mls/lineup/issues.js`:
+  - `lineupIssues(starters, ctx, bench)` adds `swaps`, `find` (Top Available chips) and `firstKickoffMs`.
+  - Injured wins over the IR slot, and injured over bye.
+  - `lineupIssueItems` returns `{ kind, text }`.
+  - New: `needsLineupButton`, `swapFor`, `findChipFor` and `sleeperLineupChanges`.
+- `js/mls/lineup/gameInfo.js`:
+  - `getLineupIssues(starters, league, bench)` adds kickoff times.
+  - `getLineupInjuryWarningHTML` takes the bench and adds the suggestion and its button.
+  - `formatKickoffLabel` is exported.
+- `js/mls/render/lineup.js`: passes the bench; `swapInSuggested(outId, inId)` (two `initiateSwap` calls).
+- `js/mls/render/dashboard.js`:
+  - The box is rebuilt: always on, `State.lineupNeedsDismissed` (in memory; replaces round 2's `lineupNeedsOpen`).
+  - Lines, buttons, the Sleeper fold, the toasts.
+  - `findLeaguePlayers`.
+- `js/mls/leagues/sync.js`: the matrix uses `sleeperLineupChanges`.
+- `js/mls/main.js`: the `swapInSuggested` and `findLeaguePlayers` actions.
+- `css/mls.css`: the neutral box, item colors, the time, the button column, the swap button, and
+  `.lineup-injury-warning > svg` kept full size (was `.lineup-ir-warning` only).
+- CHANGELOG lines rewritten. `CACHE_NAME` stays v2.8.91.
+
+**Tests.**
+- `tests/unit/lineupIssues.test.mjs` (22 tests): swaps (position first, skipping the unavailable, flex slots, each
+  bench player once, byes), pickups and their chips, injured over IR and bye, kickoff, the button rule and the
+  Sleeper comparison.
+- `tests/mls-lineup-needs.spec.mjs` (9, both widths), with the second league's QBs now Lamar (Doubtful, starting)
+  and Hurts:
+  - shown without a run, with the new toast;
+  - Open lineup, then the Lineup tab's Swap in Jalen Hurts;
+  - each fixed league dropping off until the box hides;
+  - soonest first and amber (kickoffs set in `State`);
+  - an empty RB slot's Find RB opening Top Available on RB;
+  - the Sleeper drop-down (contents, kept open, Open lineup);
+  - ✕ staying closed until a new league needs you, and the next run;
+  - Sync All's toast, a clean run, a failed run, 375px.
+- `tests/mls-roster-counts.spec.mjs`: in the bench-order test, Jefferson (Out, IR slot) swapped in now gets the red
+  warning, not the purple one (the owner's injured-wins rule).
+
+**Screenshots: three change, to be re-taken from the PR's CI run.** This container can't render CI-matching
+baselines. Rendered here, main and this branch differ in exactly these PNGs (`npm run pxdiff`):
+- `desktop/mls-league-setup.png` and `phone/mls-league-setup.png`: the box, now always on. The screenshot league's
+  roster has one RB for two RB slots, so it reads "1 lineup needs you before kickoff · Fixture League · RB slot is
+  empty · Find RB" (+133px).
+- `desktop/mls-league-guide.png`: the legend's sample of the red warning, whose icon is now full size (it was
+  squeezed, as on the Lineup tab).
+
+No PR is open yet, so CI hasn't run. Push, let the PR's first run fail on these, and commit CI's renders
+("Accepting an intended visual change" in `docs/TESTING.md`).
+
+**Left over.**
+- A Doubtful player you've chosen to start keeps his league listed until kickoff. ✕ covers the session; a per-item
+  "keep him" was offered and not asked for.
+- The Sleeper drop-down is only as fresh as the last sync (said in its note).
+- Whether the optimizer itself should prefer a healthy player over a Doubtful one (it changes who starts) is the
+  owner's call for its own card. This round only suggests the swap.

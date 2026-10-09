@@ -13,7 +13,7 @@ import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
 import { renderLineupUI, optimizeLineup } from '../main.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
-import { lineupIssues } from './issues.js';
+import { lineupIssues, swapFor } from './issues.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -59,7 +59,7 @@ import { lineupIssues } from './issues.js';
     // Formats an ISO kickoff timestamp into a short label in the person's local timezone, e.g.
     // "Sun 1:05 PM". Returns "" for anything unparseable so callers can treat it the same as
     // "no data" rather than rendering a broken badge.
-    function formatKickoffLabel(iso) {
+    export function formatKickoffLabel(iso) {
         if (!iso) return "";
         const d = new Date(iso);
         if (isNaN(d.getTime())) return "";
@@ -361,25 +361,41 @@ import { lineupIssues } from './issues.js';
     // injury badge and a "Started"/"Final" kickoff badge. Repeating it would be noise.
     //
     // Which starters it names comes from getLineupIssues below, the rule the Dashboard's list after
-    // Optimize All shares (improvements S11).
-    export function getLineupInjuryWarningHTML(starters, league) {
-        const flagged = getLineupIssues(starters, league).injured;
+    // Optimize All shares (improvements S11). When a healthy bench player can take his slot, the warning
+    // names him and offers a one-tap swap ("Start CeeDee Lamb instead? [Swap in CeeDee Lamb]"): the
+    // optimizer may start a Doubtful player over him by rank, so it's a suggestion, and the choice stays
+    // yours (owner's decision, S11 round 3). The button runs the ordinary swap, which locks him in.
+    export function getLineupInjuryWarningHTML(starters, league, bench = []) {
+        const issues = getLineupIssues(starters, league, bench);
+        const flagged = issues.injured;
         if (flagged.length === 0) return "";
 
         const warnSvg = WARNING_ICON;
+        const swapButton = (p, label) => {
+            const q = swapFor(issues, p);
+            return q ? `<button type="button" class="btn btn-secondary mls-btn-sm lineup-swap-suggest" data-action="swapInSuggested" data-out="${escapeHtml(p.id)}" data-in="${escapeHtml(q.id)}">${label(q)}</button>` : '';
+        };
 
         if (flagged.length === 1) {
             const p = flagged[0];
-            return `<div class="lineup-injury-warning">
+            const q = swapFor(issues, p);
+            if (!q) {
+                return `<div class="lineup-injury-warning">
                 ${warnSvg}
                 <span><strong>${escapeHtml(p.name)}</strong> is <strong>${escapeHtml(p.inj)}</strong> and currently in your starting lineup - consider swapping in a bench player.</span>
+            </div>`;
+            }
+            return `<div class="lineup-injury-warning">
+                ${warnSvg}
+                <span><strong>${escapeHtml(p.name)}</strong> is <strong>${escapeHtml(p.inj)}</strong> and currently in your starting lineup. Start <strong>${escapeHtml(q.name)}</strong> instead? ${swapButton(p, x => `Swap in ${escapeHtml(x.name)}`)}</span>
             </div>`;
         }
 
         const namesHTML = flagged.map(p => `${escapeHtml(p.name)} (${escapeHtml(p.inj)})`).join(', ');
+        const buttons = flagged.map(p => swapButton(p, x => `${escapeHtml(x.name)} for ${escapeHtml(p.name)}`)).join(' ');
         return `<div class="lineup-injury-warning">
             ${warnSvg}
-            <span><strong>${flagged.length} starters</strong> are Doubtful, Out, IR, or otherwise unlikely to play: ${namesHTML} - consider swapping them out.</span>
+            <span><strong>${flagged.length} starters</strong> are Doubtful, Out, IR, or otherwise unlikely to play: ${namesHTML} - consider swapping them out.${buttons ? ` <span class="lineup-swap-suggests">${buttons}</span>` : ''}</span>
         </div>`;
     }
 
@@ -405,17 +421,21 @@ import { lineupIssues } from './issues.js';
     }
 
     // What on a lineup needs you before kickoff: injured starters, starters in your Sleeper IR slot,
-    // starters on bye and empty starting slots (js/mls/lineup/issues.js, improvements S11). The two
-    // warnings above read the first two; the Dashboard's list after Optimize All and Sync All reads all
-    // four, for every league, from State.manualStartersMap. Nothing in Best Ball; a player whose game has
-    // kicked off is left out (nothing left to change).
-    export function getLineupIssues(starters, league) {
+    // starters on bye and empty starting slots, with swaps from the bench where one fits
+    // (js/mls/lineup/issues.js, improvements S11). The two warnings above read the first two; the
+    // Dashboard's box reads it all, for every league, from State.manualStartersMap / manualBenchMap.
+    // Nothing in Best Ball; a player whose game has kicked off is left out (nothing left to change).
+    export function getLineupIssues(starters, league, bench = []) {
         return lineupIssues(starters, {
             bestBall: isBestBallLeague(league),
             outStatuses: SIM_EXCLUDE_STATUSES,
             kickedOff: hasKickedOff,
             onBye: p => isOnByeThisWeek(p.team),
-        });
+            kickoffMs: p => {
+                const iso = p && p.team ? State.gameTimesByTeam[p.team] : null;
+                return iso ? new Date(iso).getTime() : NaN;
+            },
+        }, bench);
     }
 
     // Sleeper's own snapshot of who's actually starting, as of the last sync -- the ground

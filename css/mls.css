@@ -93,7 +93,7 @@
     background: rgba(159, 122, 234, 0.12);
     border-color: rgba(159, 122, 234, 0.45);
 }
-.lineup-ir-warning svg { flex-shrink: 0; } /* full size when the text wraps */
+.lineup-injury-warning > svg { flex-shrink: 0; } /* full size when the text wraps (both lines) */
 
 .sim-lookup-card {
     background: rgba(0, 0, 0, 0.15);
@@ -1577,21 +1577,34 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 #bestAvailableSummary { white-space: normal; }
 
 /* Lineups that need you (Dashboard, under Optimize All / Sync All; js/mls/render/dashboard.js, improvements S11):
-   one line per league, what to do and an Open lineup button. The red of the Lineup tab's injury warning. */
-.mls-needs-box { margin-bottom: 1rem; border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; background: rgba(239, 68, 68, 0.08); padding: 0.5rem 0.75rem; }
+   one line per league, what to do, its first kickoff and the buttons that fix it; then a drop-down of the leagues
+   whose lineup differs from Sleeper. A neutral box: each item takes the Lineup tab's color for it (the injury
+   warning's red, the IR badge's purple), so an activation reads the same in both places. */
+.mls-needs-box { margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.5rem 0.75rem; }
 .mls-needs-box[hidden] { display: none; }
-.mls-needs-head { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: #fca5a5; }
-.mls-needs-head > svg { flex-shrink: 0; }
+.mls-needs-head { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
+.mls-needs-head > svg { flex-shrink: 0; color: var(--text-muted); }
+.mls-needs-box.has-problems .mls-needs-head > svg { color: #f59e0b; }
 .mls-needs-title { flex: 1; min-width: 0; }
 .mls-needs-close { flex-shrink: 0; }
 .mls-needs-list { list-style: none; margin: 0; padding: 0; }
 .mls-needs-line { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; }
 .mls-needs-line + .mls-needs-line { border-top: 1px solid var(--border); }
 .mls-needs-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.mls-needs-head-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.1rem 0.5rem; }
 .mls-needs-league { font-weight: 600; color: var(--text-main); font-size: 0.9rem; overflow-wrap: anywhere; }
+.mls-needs-when { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+.mls-needs-when.is-soon { color: #f59e0b; font-weight: 600; }
 .mls-needs-items { font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
+.mls-needs-item.is-injured { color: #fca5a5; }
+.mls-needs-item.is-ir { color: #d6bcfa; }
 .mls-needs-sep { color: var(--text-muted); opacity: 0.7; }
-.mls-needs-open { flex-shrink: 0; white-space: nowrap; }
+.mls-needs-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; }
+.mls-needs-actions .btn { white-space: nowrap; }
+.mls-needs-sleeper { margin-top: 0.4rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
+.mls-needs-note { margin: 0.4rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
+/* The Lineup tab's injured-starter warning: a one-tap swap for the healthy bench player it suggests. */
+.lineup-swap-suggest { margin: 0.35rem 0.25rem 0; font-size: 0.75rem; padding: 3px 10px; }
 
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
    One card per player, with a per-league ownership row beneath the header. Markup comes from

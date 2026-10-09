@@ -76,14 +76,19 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **Optimize All names the lineups that need you.** After Optimize All Lineups or Sync All Leagues, a box under the
-  two buttons lists each league whose lineup needs something from you before kickoff, with what to do ("Activate
-  Ja'Marr Chase from IR · Josh Allen is Doubtful") and an Open lineup button that takes you to that league's Lineup
-  tab. It counts starters who are Doubtful, Out, on IR or otherwise unlikely to play, starters still in your Sleeper
-  IR slot (the same ones the Lineup tab warns about), starters on bye and empty starting slots. A league drops off as
-  soon as you fix its lineup, and the box closes once nothing is left (or when you close it) until the next run. When
-  every lineup is ready, nothing changes: no box, and the same message as before. The League Command Center's (i)
-  explains the box.
+- **The Dashboard names the lineups that need you.** A box under Sync All and Optimize All lists each league whose
+  lineup needs something before kickoff, soonest kickoff first, with the time (amber within a day): a starter in your
+  Sleeper IR slot ("Activate Ja'Marr Chase from IR"), an injured starter ("Justin Jefferson is Doubtful: start Puka
+  Nacua instead?" when a healthy bench player can take his place), a starter on bye, or an empty starting slot. Each
+  line has the button that fixes it: Open lineup for a swap or an activation, or Find RB (any position) to open Top
+  Available when nobody on your bench can fill the slot. A drop-down below lists the leagues whose lineup differs
+  from the one on Sleeper, with who to start and bench there. The box follows your lineups: fix one and it drops off.
+  The ✕ hides it until another league needs you or you run Optimize All or Sync All again, and both now say how many
+  lineups need you. The League Command Center's (i) explains it.
+- **The Lineup tab offers the swap for an injured starter.** When a healthy bench player can take a Doubtful or
+  injured starter's place, the red warning names him and has a Swap in button that makes the swap in one tap. A
+  starter who's injured and also in your IR slot now gets only the red warning, not the purple "move him to your
+  active roster" line too.
 
 - **What the badges mean, in the Guide.** A new step in the Guide tab lists every badge, chip, pill and color the app
   shows, grouped by kind (positions and slots, ranks and tiers, changes and trends, availability and status,
