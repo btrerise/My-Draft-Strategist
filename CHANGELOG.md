@@ -102,7 +102,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   rebuilt).
 - **Sync All checks injuries everywhere; the Global Injury Auditor is gone.** Sync All (or "Sync All again" in
   the box) gets the latest injury news for every league. It also looks up your manual leagues' players by name, so
-  their lineups bench Out players too. The Auditor's card on the Lineup tab now points to the Dashboard. The League
+  their lineups bench Out players too. A name Sleeper doesn't know shows as a note ("No injury news for Zack Nobody:
+  name not found on Sleeper"). Sync All's message is now one short line ("Synced 2 leagues · 1 with roster changes ·
+  2 lineups need you"). The Auditor's card on the Lineup tab now points to the Dashboard. The League
   Command Center's (i) explains the box.
 
 - **What the badges mean, in the Guide.** A new step in the Guide tab lists every badge, chip, pill and color the app

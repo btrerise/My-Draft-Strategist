@@ -124,7 +124,7 @@ test.describe('Lineups that need you', () => {
         // Both are Lineup tab jobs (an activation, a swap): Open lineup, no Find.
         await expect(box(page).locator('.mls-needs-find')).toHaveCount(0);
 
-        await optimizeAll(page, 'Optimized 2 lineups · 2 need you (listed under the buttons)');
+        await optimizeAll(page, 'Optimized 2 lineups · 2 need you');
         expect(await lineSummaries(page)).toEqual([CHASE_LINE, LAMAR_LINE]);
 
         // The second league: its Lineup tab, one box with the same item, spelled out, and a one-tap swap.
@@ -283,7 +283,7 @@ test.describe('Lineups that need you', () => {
         // Closed again, the next run brings it back.
         await box(page).getByRole('button', { name: 'Close this list' }).click();
         await expect(box(page)).toBeHidden();
-        await optimizeAll(page, 'Optimized 2 lineups · 2 need you (listed under the buttons)');
+        await optimizeAll(page, 'Optimized 2 lineups · 2 need you');
         await expect(box(page)).toBeVisible();
         await expectClean(page, state);
     });
@@ -295,12 +295,13 @@ test.describe('Lineups that need you', () => {
         await box(page).getByRole('button', { name: 'Close this list' }).click();
 
         await page.click('#syncAllBtn');
-        await expect(page.locator('.toast-message').filter({ hasText: 'Successfully synced 2 leagues!' })).toContainText('2 lineups need you (listed under the buttons).');
+        // One short line (phones): what was synced, then how many need you.
+        await expect(page.locator('.toast-message').filter({ hasText: 'Synced 2 leagues · 2 lineups need you' })).toBeVisible();
         await expect(page.locator('#syncAllBtn')).toBeEnabled();
         expect(await lineSummaries(page)).toEqual([CHASE_LINE, LAMAR_LINE]);
 
         await box(page).getByRole('button', { name: 'Sync All again' }).click();
-        await expect(page.locator('.toast-message').filter({ hasText: 'Successfully synced 2 leagues!' })).toBeVisible();
+        await expect(page.locator('.toast-message').filter({ hasText: 'Synced 2 leagues · 2 lineups need you' })).toBeVisible();
         await expect(page.locator('#syncAllBtn')).toBeEnabled();
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
         await expectClean(page, state);
@@ -320,10 +321,12 @@ test.describe('Lineups that need you', () => {
         await page.getByRole('button', { name: 'Create Manual' }).click();
         await expect(page.locator('#headerLeagueSelect option:checked')).toHaveText('Bench League');
         await page.locator('summary', { hasText: 'Add Player Manually' }).click();
-        await page.fill('#manualName', 'Derrick Henry');
-        await page.selectOption('#manualPos', 'RB');
-        await page.fill('#manualTeam', 'BAL');
-        await page.getByRole('button', { name: 'Add Player to Active Roster' }).click();
+        for (const [name, pos, team] of [['Derrick Henry', 'RB', 'BAL'], ['Zack Nobody', 'WR', 'FA']]) {
+            await page.fill('#manualName', name);
+            await page.selectOption('#manualPos', pos);
+            await page.fill('#manualTeam', team);
+            await page.getByRole('button', { name: 'Add Player to Active Roster' }).click();
+        }
         await showTab(page, 'lineup');
         await showTab(page, 'setup');
         await expect(line(page, 'Bench League')).not.toContainText('Derrick');
@@ -331,9 +334,11 @@ test.describe('Lineups that need you', () => {
         // Henry's ruled Out; Sync All finds it by name.
         henryOut = true;
         await page.click('#syncAllBtn');
-        await expect(page.locator('.toast-message').filter({ hasText: 'Successfully synced 1 league!' })).toContainText('Checked injuries in 1 manual league.');
+        await expect(page.locator('.toast-message').filter({ hasText: 'Synced 1 league + 1 manual · 1 with roster changes · 2 lineups need you' })).toBeVisible();
         await expect(page.locator('#syncAllBtn')).toBeEnabled();
         await expect(line(page, 'Bench League').locator('.mls-needs-item.is-injured')).toHaveText('Derrick Henry is Out: no healthy RB on your bench');
+        // A name Sleeper doesn't know: a note that its injuries aren't checked (the Auditor's "unmatched").
+        await expect(line(page, 'Bench League').locator('.mls-needs-item.is-unmatched')).toHaveText('No injury news for Zack\u00a0Nobody: name not found on Sleeper');
 
         // The Lineup tab's pointer where the Global Injury Auditor was.
         await showTab(page, 'lineup');

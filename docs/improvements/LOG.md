@@ -3281,3 +3281,42 @@ be collapsible or dismissible):
 
 **Runbook card added for the owner's #2 (round 4): S12**, a phone Dashboard with one card per league. See the
 runbook.
+
+### S11, round 7: unmatched manual names, a one-line Sync All message, then the PR (owner's choices)
+
+**Why.** In the last review as a user:
+- Since the Auditor's removal, a manual-league player whose name Sleeper doesn't know gets no injury check, and
+  nothing says so. The Auditor reported "N unmatched". The owner noted the Add Player autocomplete makes it rarer, but
+  wanted a fallback.
+- Sync All's message had grown to four parts on four lines, too long on a phone.
+
+**User-visible effect.**
+- After Sync All, a manual league with a name Sleeper doesn't know shows a note in both boxes: "No injury news for
+  Zack Nobody: name not found on Sleeper" (several: "Zack Nobody and Kenneth Walker: names …"). It's greyed out like a
+  kept starter and not counted. It goes once the player is removed or matches at the next Sync All.
+- Sync All's message is one line:
+  - "Synced 2 leagues + 1 manual · 1 with roster changes · 2 lineups need you";
+  - with only manual leagues: "Checked injuries in 1 manual league · …";
+  - with nothing else to say, still "Successfully synced 2 leagues!";
+  - a failed league keeps its own sentence, with the rest on a second line.
+
+  The Sync Logs still open by themselves, and the box lists the lineups.
+- Optimize All: "Optimized 5 lineups · 2 need you" (no "(listed under the buttons)").
+
+**What changed and where.**
+- `js/mls/leagues/manualInjuries.js`: `refreshManualInjuries` records `injuryUnmatched` (names) on each manual league.
+  It's a field on the stored league, not a new key.
+- `js/mls/lineup/gameInfo.js`: `getLineupIssues` passes the names still on the roster.
+- `js/mls/lineup/issues.js`: an `unmatched` note item.
+- `js/mls/render/dashboard.js`: the summary built from parts.
+- `css/mls.css`: the note's muted style.
+- CHANGELOG updated.
+
+**Tests.**
+- The manual-league test adds "Zack Nobody" and checks the note.
+- The Sync All tests check the one-line message.
+- `tests/mls-busy-spinner.spec.mjs` matches "Synced 2 leagues": the fixture's empty RB slot adds "2 lineups need
+  you".
+- A unit test for the note.
+
+**Screenshots.** Unchanged from round 6's six. The PR's CI renders them (next).

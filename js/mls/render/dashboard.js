@@ -192,7 +192,7 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         return collectLineupNeeds().needCount;
     }
 
-    const needYouText = (n) => `${n} need${n === 1 ? 's' : ''} you (listed under the buttons)`;
+    const needYouText = (n) => `${n} need${n === 1 ? 's' : ''} you`;
 
     // The Lineup tab's pointer where the Global Injury Auditor was: the Dashboard, at the Command Center (the box
     // sits under its buttons).
@@ -429,18 +429,27 @@ export const syncAllLeagues = async function(btn) {
                 // that worked: a miss here is a roster you'd go on to set a lineup off, so it
                 // gets named rather than quietly dropped from the count.
                 const failedCount = failedLeagueNames.length;
-                const manualText = `Checked injuries in ${manualChecked.length} manual league${manualChecked.length === 1 ? '' : 's'}.`;
-                let summaryMsg = sleeperLeagues.length === 0 ? manualText
-                    : failedCount > 0
-                    ? `Synced ${successCount} of ${sleeperLeagues.length}. Couldn't reach: ${formatNameList(failedLeagueNames)} — try Sync All again.`
-                    : `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
-                if (sleeperLeagues.length > 0 && manualChecked.length > 0) summaryMsg += `\n\n${manualText}`;
-                if (newLogs.length > 0) {
-                    summaryMsg += `\n\nChanges found in ${newLogs.length} league${newLogs.length === 1 ? '' : 's'}. Check the Sync Logs!`;
-                }
-                // Each synced league was re-optimized: say how many lineups need you (the box under the buttons).
+                // One short line, since phones wrap a long toast onto many lines (owner's request, S11 round 7):
+                // "Synced 2 leagues + 1 manual · 1 with roster changes · 2 lineups need you". The details are on
+                // screen already: the Sync Logs open by themselves, and the box under the buttons lists the lineups.
+                // A sync with nothing else to say keeps its old wording; a failed league keeps its own sentence.
+                const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
                 const needYou = collectLineupNeeds().needCount;
-                if (needYou > 0) summaryMsg += `\n\n${needYou} lineup${needYou === 1 ? '' : 's'} ${needYouText(needYou).replace(/^\d+ /, '')}.`;
+                const extras = [];
+                if (newLogs.length > 0) extras.push(`${newLogs.length} with roster changes`);
+                if (needYou > 0) extras.push(`${plural(needYou, 'lineup')} need${needYou === 1 ? 's' : ''} you`);
+                const manualPart = manualChecked.length > 0 ? ` + ${manualChecked.length} manual` : '';
+                let summaryMsg;
+                if (sleeperLeagues.length === 0) {
+                    summaryMsg = [`Checked injuries in ${plural(manualChecked.length, 'manual league')}`, ...extras].join(' · ');
+                } else if (failedCount > 0) {
+                    summaryMsg = `Synced ${successCount} of ${sleeperLeagues.length}. Couldn't reach: ${formatNameList(failedLeagueNames)} — try Sync All again.`;
+                    if (extras.length) summaryMsg += `\n\n${extras.join(' · ')}`;
+                } else if (extras.length === 0 && !manualPart) {
+                    summaryMsg = `Successfully synced ${plural(successCount, 'league')}!`;
+                } else {
+                    summaryMsg = [`Synced ${plural(successCount, 'league')}${manualPart}`, ...extras].join(' · ');
+                }
                 // force: toasts are still suppressed here (the finally below is what clears the
                 // flag) and this summary is the whole point of having suppressed them.
                 // A partial sync is shown as an error so it doesn't read like an all-clear --

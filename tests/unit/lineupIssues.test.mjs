@@ -213,6 +213,15 @@ describe('lineupIssueItems wording', () => {
     });
 });
 
+describe('manual leagues: names Sleeper does not know', () => {
+    test('one note, not counted', () => {
+        const list = items(lineupIssues([s('QB1', pl('A', 'QB'))], ctx({ unmatched: ['Zack Nobody', 'Kenneth Walker'] })));
+        assert.deepEqual(list.map(i => [i.kind, i.note, i.text.replace(/\u00a0/g, ' ')]),
+            [['unmatched', true, 'No injury news for Zack Nobody and Kenneth Walker: names not found on Sleeper']]);
+        assert.equal(needsYou(list), false);
+    });
+});
+
 describe('sleeperLineupChanges', () => {
     test('who to start and bench on Sleeper; none when they match', () => {
         assert.deepEqual(sleeperLineupChanges(['1', '2', '3'], ['3', '2', '4']), { start: ['1'], bench: ['4'] });

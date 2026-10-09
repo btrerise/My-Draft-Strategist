@@ -39,6 +39,7 @@ export function irEligible(inj, irRules) {
 //   kept(p)       true when you locked him in (a lock, or a swap, which locks): your call, so he's shown muted.
 //   irRules       the league's IR slot ({ slots, allow }, from Sleeper) or null (manual leagues, old syncs).
 //   rosterSize    starting + bench spots (Sleeper's roster_positions), or null.
+//   unmatched     names on a manual league's roster Sleeper doesn't know, so their injuries aren't checked.
 // Returns:
 //   injured, bye   starters (not kept), in lineup order; one injured isn't also listed on bye.
 //   kept           [{ player, what }]: injured or bye starters you locked in ("is Doubtful", "is on bye").
@@ -115,6 +116,7 @@ export function lineupIssues(starters, ctx, bench = []) {
             });
         }
     }
+    issues.unmatched = ctx.unmatched || [];
     if (Number.isFinite(ctx.rosterSize) && ctx.rosterSize > 0) {
         issues.rosterFull = roster.filter(p => !p.isReserve && !p.isTaxi).length >= ctx.rosterSize;
     }
@@ -165,6 +167,10 @@ export function lineupIssueItems(issues) {
         ? ` (${issues.irSlotsOpen} IR slot${issues.irSlotsOpen === 1 ? '' : 's'} open)` : '';
     issues.moveToIr.forEach(p => items.push({ kind: 'ir', note: true, text: `Move ${name(p)} to IR to free a spot${more}` }));
     issues.kept.forEach(k => items.push({ kind: 'kept', muted: true, text: `${name(k.player)} ${k.what} (you locked him in)` }));
+    // A note, not a job: a manual league's player Sleeper doesn't know (S11 round 7).
+    const unmatched = issues.unmatched || [];
+    if (unmatched.length) items.push({ kind: 'unmatched', note: true,
+        text: `No injury news for ${joinAnd(unmatched.map(n => String(n).replace(/ /g, '\u00a0')))}: ${unmatched.length === 1 ? 'name' : 'names'} not found on Sleeper` });
     return items;
 }
 

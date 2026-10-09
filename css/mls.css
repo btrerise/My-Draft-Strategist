@@ -1593,7 +1593,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-needs-items.is-stacked { display: flex; flex-direction: column; gap: 0.15rem; }
 .mls-needs-item.is-injured, .lineup-needs-item.is-injured { color: #fca5a5; }
 .mls-needs-item.is-ir, .lineup-needs-item.is-ir { color: #d6bcfa; }
-.mls-needs-item.is-kept, .lineup-needs-item.is-kept { opacity: 0.7; font-style: italic; }
+.mls-needs-item.is-kept, .lineup-needs-item.is-kept, .mls-needs-item.is-unmatched, .lineup-needs-item.is-unmatched { opacity: 0.7; font-style: italic; }
 .mls-needs-sep { color: var(--text-muted); opacity: 0.7; }
 .mls-needs-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; }
 .mls-needs-actions .btn { white-space: nowrap; }

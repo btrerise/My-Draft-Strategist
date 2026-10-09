@@ -55,12 +55,17 @@ function resolveManualPlayer(p, candidateIndex) {
 
 // Sets each manual or hand-off league's roster players' injury status (inj, the short code the rest of the app
 // reads) from Sleeper's player map. A team defense is matched by its team code. A name that can't be matched
-// keeps its status. Returns the leagues it checked (Best Ball and empty ones skipped).
+// keeps its status and is listed in the league's injuryUnmatched. Returns the leagues it checked (Best Ball and
+// empty ones skipped).
 export function refreshManualInjuries(leagues, playerMap) {
     const checked = (leagues || []).filter(l => isManualLeague(l) && !isBestBallLeague(l) && (l.roster || []).length > 0);
     if (checked.length === 0 || !playerMap) return [];
     const candidateIndex = buildCleanNameCandidateIndex(playerMap);
     checked.forEach(l => {
+        // Names Sleeper doesn't know (a typo the Add Player autocomplete didn't catch): kept on the league so the
+        // "lineups need you" boxes can say their injuries aren't checked, in place of the Auditor's "N unmatched"
+        // (S11 round 7). A team defense that can't be resolved has no injury to miss, so it isn't listed.
+        const unmatched = [];
         l.roster.forEach(rp => {
             let match = null;
             if (rp.pos === 'DEF') {
@@ -68,9 +73,11 @@ export function refreshManualInjuries(leagues, playerMap) {
                 if (def && def.position === 'DEF') match = def;
             } else {
                 match = resolveManualPlayer(rp, candidateIndex);
+                if (!match && rp.name) unmatched.push(rp.name);
             }
             if (match) rp.inj = getShortInjuryStatus(match);
         });
+        l.injuryUnmatched = unmatched;
     });
     return checked;
 }

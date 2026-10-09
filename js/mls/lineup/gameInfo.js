@@ -456,6 +456,9 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
             irRules: league ? league.irRules || null : null,
             rosterSize: league ? league.rosterSize : null,
             roster: league ? league.roster || [] : [],
+            // Manual leagues' names Sync All couldn't match, still on the roster (lineup/issues.js).
+            unmatched: league && league.injuryUnmatched
+                ? league.injuryUnmatched.filter(n => (league.roster || []).some(p => p.name === n)) : [],
         }, bench);
     }
 
