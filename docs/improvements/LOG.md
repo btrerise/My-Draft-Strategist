@@ -3028,5 +3028,11 @@ No PR is open yet, so CI hasn't run. Push, let the PR's first run fail on these,
 - A Doubtful player you've chosen to start keeps his league listed until kickoff. ✕ covers the session; a per-item
   "keep him" was offered and not asked for.
 - The Sleeper drop-down is only as fresh as the last sync (said in its note).
-- Whether the optimizer itself should prefer a healthy player over a Doubtful one (it changes who starts) is the
-  owner's call for its own card. This round only suggests the swap.
+- ~~Whether the optimizer should prefer a healthy player over a Doubtful one~~: decided, see below.
+
+**Owner's decision after round 3: Doubtful players stay eligible to start.** The optimizer keeps treating Doubtful
+(and Did Not Report) as available, ranked like anyone else. Only Out, IR, suspended, PUP, NFI and byes count as
+unavailable (`isUnavailableThisWeek`). The reason: the user's rankings should already account for it. An analyst who
+doesn't expect a player to play ranks him lower, or leaves him unranked. The round 3 suggestion ("start Puka Nacua
+instead?" and the Lineup tab's Swap in button) stays as the way to act on it, so the choice is the user's. Don't
+change who starts for Doubtful players without asking the owner.
