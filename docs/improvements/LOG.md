@@ -3176,3 +3176,42 @@ main and this branch differ in exactly these:
   of the table plus the box (owner's #2).
 - The Lineup tab's button row (Optimize / Copy / PNG) is already wider than 375px on the desktop project's layout;
   not this card's.
+
+### S11, round 5: manual locks clear each NFL week (owner's decision)
+
+**Why.** Round 4 shows an injured starter you locked as your call, muted and not counted. But the lock list was
+season-long and holds only ids, so a star locked in August who's Out now would be muted too. I offered to record the
+status at lock time. The owner chose something simpler: **clear all locks at the start of each NFL week.**
+
+**User-visible effect.**
+- A lock (the padlock, or a swap, which locks) lasts until Sleeper's NFL state reports a new week. On the first load
+  in a new week, every league's manual locks are cleared, the saved lineups' LOCKED badges with them, and a toast
+  says "New NFL week: cleared 3 locks from last week." Game-time auto-locks and their overrides are separate and
+  unchanged.
+- The first load after this ships only records the week. The app can't tell when the locks it finds were set, and
+  clearing ones set this morning would be worse than keeping old ones until the next week starts (a few days).
+- Wording: Unlock All's title, the Optimal Lineup's (i), the Guide's lock line and the legend's LOCKED line say locks
+  last for the week.
+
+**What changed and where.**
+- `js/shared/storage/keys.js`: **new key `mls_locks_week`** (`KEYS.mls.locksWeek`): the week, "2026-5", that the
+  locks were last checked in. It's written only once there's a lock to track: at the first lock, or on load when
+  locks exist and no week is recorded. A browser with no locks never gets it, so the pre-6B backup restore test
+  still sees only its own keys.
+- `js/mls/render/lineup.js`: `clearLocksForNewWeek(season, week)`; `setPlayerLockState` records the week at the first
+  lock. `js/mls/state.js`: `refreshCurrentNflWeek` calls it once Sleeper's week is known, before the tabs redraw.
+  `js/mls/main.js` re-exports it.
+- `lineup/index.html`, `js/mls/legend.js`: wording. CHANGELOG line. `CACHE_NAME` stays v2.8.91.
+
+**Tests.** `tests/mls-weekly-locks.spec.mjs` (new, both widths):
+- a lock with week 1 recorded clears on a week-2 load, with the toast, and the padlock shows unlocked;
+- the same week keeps it;
+- the first time (no week recorded) keeps it and records week 2.
+
+**Found, not fixed (pre-existing, also on main).** Locking a player saves the lock list but not the saved lineup, so
+after a reload the LOCKED badge and padlock show unlocked until the lineup is next recomputed (a sync, Optimize, a
+rankings change), though the lock itself is kept and applied then. Fix: persist `manualStartersMap` /
+`manualBenchMap` in `setPlayerLockState` (js/mls/render/lineup.js). A one-line follow-up; not this card's.
+
+**Screenshots.** No change beyond round 4's six: `mls-league-guide.png` (both widths) already changes, and now also
+carries the lock wording.

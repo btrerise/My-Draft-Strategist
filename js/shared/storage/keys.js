@@ -59,6 +59,8 @@ export const KEYS = {
         earlyTeams: 'mls_early_teams',
         leagues: 'mls_leagues',
         locksMap: 'mls_locks_map',
+        // The NFL week ("2026-5") the locks above were last checked in; a new week clears them (improvements S11).
+        locksWeek: 'mls_locks_week',
         manualBench: 'mls_manual_bench',
         manualStarters: 'mls_manual_starters',
         market: 'mls_market',

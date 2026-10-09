@@ -6,7 +6,7 @@ import { getNflState } from '../shared/api/sleeper.js';
 // readJSON is js/boot.js's window.readJSON (boot.js is a plain script, so it can't be imported).
 import { ESPN_TEAM_ALIASES } from './constants.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
-import { loadRosterTab, renderBestAvailable, renderLineupUI, optimizeLineup } from './main.js';
+import { clearLocksForNewWeek, loadRosterTab, renderBestAvailable, renderLineupUI, optimizeLineup } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { showToast } from '../shared/ui/toast.js';
 import { mdsFetch } from '../shared/net.js';
@@ -68,8 +68,8 @@ import { mdsFetch } from '../shared/net.js';
         // Per-league, per-week list of player ids the person has explicitly told the auto-lock
         // feature (see optimizeLineup) to back off of -- the failsafe for when gameTimesByTeam
         // or Sleeper's synced starters turn out to be wrong about a specific player. Deliberately
-        // NOT part of lockedPlayersMap: that list is a season-long, user-curated set of "always
-        // start this player" decisions, while this is a narrow, week-scoped correction for one
+        // NOT part of lockedPlayersMap: that list is a user-curated set of "start this player"
+        // decisions (cleared each NFL week since improvements S11), while this is a narrow correction for one
         // player's auto-detected state. Shape: { [leagueId]: { week: N, ids: [...] } } -- the
         // week is stored alongside the ids so a stale override from a prior week (which would no
         // longer make sense once gameTimesByTeam has moved on) is ignored rather than silently
@@ -236,6 +236,8 @@ export function applyLineupSettingsToUI() {
                 if (data && typeof data.week === 'number') {
                     State.currentNflWeek = data.week;
                     State.currentNflSeason = data.league_season || data.season || null;
+                    // A new NFL week clears last week's manual locks (improvements S11, round 5).
+                    clearLocksForNewWeek(State.currentNflSeason, State.currentNflWeek);
                     // The Roster or Lineup tab may already be showing (opened from the URL hash, or
                     // synced before this answered), drawn without bye weeks: redraw it the way
                     // showTab does, so its BYE badges, "(##)" byes and the optimizer's bye

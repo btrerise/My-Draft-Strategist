@@ -94,6 +94,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   open, one per line, with Swap in and Find buttons. It replaces the red injury warning, the purple IR-slot line and
   the amber "Differs from Sleeper lineup" line. Statuses are spelled out ("Doubtful", not "D"), and a starter who's
   injured and in your IR slot is named once, as injured.
+- **Locks last one week.** A lock (or a swap, which locks) now means "start him this week": when a new NFL week
+  starts, last week's manual locks clear in every league, with a message saying how many. Game-time locks are
+  unchanged.
 - **Sync All checks injuries everywhere; the Global Injury Auditor is gone.** Sync All (or "Check Sleeper now" in
   the box) gets the latest injury news for every league. It also looks up your manual leagues' players by name, so
   their lineups bench Out players too. The Auditor's card on the Lineup tab now points to the Dashboard. The League

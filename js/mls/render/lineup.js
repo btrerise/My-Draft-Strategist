@@ -19,7 +19,8 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 
 
     // Core lock/unlock mechanics shared by toggleLock (the manual lock icon) and the
-    // keep-swaps-sticky logic in initiateSwap below. Updates both the season-long lock list
+    // keep-swaps-sticky logic in initiateSwap below. Updates both the lock list (this NFL week's; see
+    // clearLocksForNewWeek)
     // AND each player object's isLocked flag directly in the starters/bench arrays, since
     // renderLineupUI reads that flag off the object rather than re-checking the list. Returns
     // the player's name (for callers that want to reference it, e.g. in a toast).
@@ -31,6 +32,11 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         else if (!isLocked && idx !== -1) locks.splice(idx, 1);
         State.lockedPlayersMap[State.activeLeagueId] = locks;
         localStorage.setItem(KEYS.mls.locksMap, JSON.stringify(State.lockedPlayersMap));
+        // The first lock in a browser records this NFL week, so a new week clears it (clearLocksForNewWeek).
+        const stamp = locksWeekStamp(State.currentNflSeason, State.currentNflWeek);
+        if (isLocked && stamp) {
+            try { if (localStorage.getItem(KEYS.mls.locksWeek) === null) localStorage.setItem(KEYS.mls.locksWeek, stamp); } catch (e) { /* storage blocked: the lock still works this visit */ }
+        }
 
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
         let bench = State.manualBenchMap[State.activeLeagueId] || [];
@@ -44,6 +50,43 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = bench;
         return playerName;
+    }
+
+    // Manual locks last one NFL week (owner's decision, improvements S11 round 5). A lock (or a swap, which
+    // locks) says "start him this week": the "lineups need you" boxes show an injured starter you locked as
+    // your call, muted, and a lock left over from August would hide a star who's Out now. So when Sleeper's
+    // NFL state reports a week other than the one recorded (KEYS.mls.locksWeek), every league's manual locks
+    // are cleared, the saved lineups' lock flags with them (game-time auto-locks are separate and stay), and a
+    // toast says so. The first time (no week recorded yet) only records it: the app can't know when the locks
+    // it finds were set, and clearing ones you set this morning would be worse than keeping old ones a few days.
+    //
+    // The week is recorded only once there's a lock to track (here, or when you set one: setPlayerLockState), so
+    // a browser with no locks never gets the key.
+    const locksWeekStamp = (season, week) => (week == null ? null : `${season || ''}-${week}`);
+    const lockCount = () => Object.values(State.lockedPlayersMap || {}).reduce((n, ids) => n + (ids || []).length, 0);
+
+    export function clearLocksForNewWeek(season, week) {
+        const stamp = locksWeekStamp(season, week);
+        if (!stamp) return 0;
+        let previous = null;
+        try { previous = localStorage.getItem(KEYS.mls.locksWeek); } catch (e) { return 0; }
+        if (previous === stamp) return 0;
+        const cleared = lockCount();
+        if (previous === null) {
+            if (cleared > 0) localStorage.setItem(KEYS.mls.locksWeek, stamp);
+            return 0;
+        }
+        localStorage.setItem(KEYS.mls.locksWeek, stamp);
+        if (cleared === 0) return 0;
+        State.lockedPlayersMap = {};
+        localStorage.setItem(KEYS.mls.locksMap, JSON.stringify(State.lockedPlayersMap));
+        const unflag = (p) => { if (p && p.isLocked && !p.autoLocked) p.isLocked = false; };
+        Object.values(State.manualStartersMap || {}).forEach(starters => (starters || []).forEach(s => unflag(s && s.player)));
+        Object.values(State.manualBenchMap || {}).forEach(bench => (bench || []).forEach(unflag));
+        localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+        localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
+        showToast(`New NFL week: cleared ${cleared} lock${cleared === 1 ? '' : 's'} from last week.`);
+        return cleared;
     }
 
     export const toggleLock = function(playerId) {
@@ -594,7 +637,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // Only shown when there's actually something to clear -- avoids a dead/no-op button
         // taking up space on the common case where nobody has manually locked anyone.
         if (locksList.length > 0) {
-            html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" data-action="unlockAllPlayers" title="Clears season-long manual locks in this league only - does not affect players auto-locked because their game already started">Unlock All (${locksList.length})</button></div>`;
+            html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" data-action="unlockAllPlayers" title="Clears your manual locks in this league only - does not affect players auto-locked because their game already started. Locks also clear on their own when a new NFL week starts.">Unlock All (${locksList.length})</button></div>`;
         }
 
         // While a swap is pending, the source player's row gets an amber highlight (see

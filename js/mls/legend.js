@@ -81,7 +81,7 @@ const GROUPS = [
         [kickoffBadgeMarkup('Sun 1:00 PM') + kickoffBadgeMarkup('Started', true) + kickoffBadgeMarkup('Final', true),
             'When his game kicks off, then whether it has started or finished.'],
         [`<span class="badge mls-lock-badge">LOCKED</span><span class="badge mls-autolock-badge">AUTO-LOCKED</span>`,
-            'LOCKED: you locked him in that spot. AUTO-LOCKED: his game has started, so the optimizer leaves him where he is.'],
+            'LOCKED: you locked him in that spot, for this NFL week. AUTO-LOCKED: his game has started, so the optimizer leaves him where he is.'],
         [`<span class="badge early-badge">EARLY</span>`,
             'He plays before the main Sunday games (a team you added under Early Games), so set him first.'],
         [`<span class="badge taxi-badge">TAXI</span>`, 'On your taxi squad. He can\'t start.'],
