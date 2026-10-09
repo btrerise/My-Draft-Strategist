@@ -2880,7 +2880,39 @@ branch the same way, and `npm run pxdiff` found all 40 PNGs pixel-identical.
 - The fixture league's roster has one RB for two RB slots, so its lineup always has an empty RB slot. Any spec that
   runs Optimize All or Sync All on the plain fixture now gets the box ("RB slot is empty"). No existing spec asserts
   against it.
-- The box is a snapshot: fixing a lineup (a swap on its Lineup tab) doesn't remove its line until the next run. This
-  is what was agreed ("stays until the next run"). Recomputing on each Dashboard render would be a small follow-up if
-  wanted.
-- The Command Center's (i) tooltip doesn't mention the box.
+- ~~The box is a snapshot~~ and ~~the Command Center's (i) doesn't mention it~~: both done in round 2.
+
+### S11, round 2: fixed leagues drop off, and the (i) explains the box (owner's request)
+
+**Why.** The first version drew the box once, at the end of the run, so a league stayed listed after you fixed its
+lineup. The Command Center's (i) didn't mention the box either. The owner asked for both.
+
+**User-visible effect.**
+- The box follows your lineups. Fix one (swap the injured or IR-slot starter out, fill the empty slot) and its line
+  is gone the next time you see the Dashboard, and the count in the title follows ("1 lineup needs you before
+  kickoff"). A starter whose game kicks off drops off the same way, as on the Lineup tab.
+- Once no league is left, the box closes, and it stays closed until the next Optimize All or Sync All, even if a
+  lineup changes back (a new problem doesn't reopen it on its own). ✕ closes it the same way.
+- The League Command Center's (i) now ends: "Afterwards, and after 'Sync All Leagues', any lineup that needs you before
+  kickoff (a starter who's injured, in your Sleeper IR slot or on bye, or an empty starting slot) is listed under these
+  buttons with a button to open it. A league drops off once you've fixed it."
+
+**What changed and where.**
+- `js/mls/render/dashboard.js`: the box keeps no list, only whether it's open (`State.lineupNeedsOpen`, in memory;
+  replaces round 1's `State.lineupNeeds`). `renderLineupNeeds` recomputes the lines from `State.manualStartersMap`
+  each time it draws, and closes the box when none are left. A successful run opens it, the next run's start and ✕
+  close it.
+- `js/mls/leagues/sync.js` (`renderLeagueManager`): calls `renderLineupNeeds` beside `renderBestAvailable`, so the box
+  redraws whenever the Dashboard does: after every lineup render (swap, lock, re-optimize), every sync, and when the
+  Dashboard is shown. Exported through `js/mls/main.js` (the import pattern `renderBestAvailable` uses).
+- `lineup/index.html`: the (i) text. CHANGELOG line updated. `CACHE_NAME` stays v2.8.91 (this branch's bump).
+
+**Tests.** `tests/mls-lineup-needs.spec.mjs`, two new, both widths:
+- Fixing the Fixture League (Garrett Wilson swapped in for Chase) leaves only the second league, under "1 lineup
+  needs you before kickoff".
+- With Chase the only issue, fixing him closes the box. Swapping him back by hand doesn't reopen it. The next Optimize
+  All lists him again.
+- The first test also checks the (i) text.
+
+**Screenshots.** None changed: the (i) text is hidden until hovered. As in round 1, main and this branch rendered here
+the same way are pixel-identical.

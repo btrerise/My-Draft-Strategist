@@ -59,6 +59,17 @@ async function seedTwoLeagues(page) {
     await showTab(page, 'setup');
 }
 
+// On the Lineup tab: swaps Chase (starting) with a bench player, or back with opts.back.
+async function swapChase(page, other, { back = false } = {}) {
+    const starter = (name) => page.locator('#optimalLineupContainer .lineup-slot').filter({ hasText: name });
+    const bench = (name) => page.locator('#benchContainer .lineup-slot').filter({ hasText: name });
+    const [out, inn] = back ? [other, "Ja'Marr Chase"] : ["Ja'Marr Chase", other];
+    await bench(inn).locator('[data-action="initiateSwap"]').click();
+    await starter(out).locator('[data-action="initiateSwap"]').click();
+    await expect(starter(inn)).toHaveCount(1);
+    await expect(bench(out)).toHaveCount(1);
+}
+
 async function optimizeAll(page, count = 2) {
     await page.click('#optimizeAllBtn');
     await expect(page.locator('.toast-message').filter({ hasText: `Successfully optimized ${count} lineups!` })).toBeVisible();
@@ -71,6 +82,8 @@ test.describe('Lineups that need you, after Optimize All and Sync All', () => {
         await routeLeagues(page);
         await seedTwoLeagues(page);
         await expect(box(page)).toBeHidden();
+        // The Command Center's (i) says what the box is.
+        await expect(page.locator('#dashboardCommandCenter .card-header .tooltip-text')).toContainText('is listed under these buttons with a button to open it. A league drops off once you\'ve fixed it.');
 
         await optimizeAll(page);
         await expect(box(page)).toBeVisible();
@@ -118,6 +131,47 @@ test.describe('Lineups that need you, after Optimize All and Sync All', () => {
             `${SECOND_LEAGUE_NAME}: Lamar Jackson is Doubtful`,
         ]);
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
+        await expectClean(page, state);
+    });
+
+    test('a league fixed since the run drops off, and the count follows', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page);
+        await seedTwoLeagues(page);
+        await optimizeAll(page);
+        await expect(box(page).locator('.mls-needs-line')).toHaveCount(2);
+
+        // Fix the Fixture League: Garrett Wilson (bench) starts in Chase's place.
+        await line(page, 'Fixture League').getByRole('button', { name: "Open Fixture League's lineup" }).click();
+        await swapChase(page, 'Garrett Wilson');
+        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(0);
+        await showTab(page, 'setup');
+        expect(await lineSummaries(page)).toEqual([`${SECOND_LEAGUE_NAME}: Lamar Jackson is Doubtful`]);
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you before kickoff');
+        await expectClean(page, state);
+    });
+
+    test('the box closes once nothing is left, and stays closed until the next run', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { lamarDoubtful: false });
+        await seedTwoLeagues(page);
+        await optimizeAll(page);
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Activate Ja'Marr Chase from IR"]);
+
+        await line(page, 'Fixture League').getByRole('button', { name: "Open Fixture League's lineup" }).click();
+        await swapChase(page, 'Garrett Wilson');
+        await showTab(page, 'setup');
+        await expect(box(page)).toBeHidden();
+
+        // Chase back in by hand: the box doesn't reopen on its own...
+        await showTab(page, 'lineup');
+        await swapChase(page, 'Garrett Wilson', { back: true });
+        await expect(page.locator('#lineupTab .lineup-ir-warning')).toHaveCount(1);
+        await showTab(page, 'setup');
+        await expect(box(page)).toBeHidden();
+        // ...the next run does (the swap locked Chase in, so the optimizer keeps him).
+        await optimizeAll(page);
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Activate Ja'Marr Chase from IR"]);
         await expectClean(page, state);
     });
 

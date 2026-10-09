@@ -80,8 +80,10 @@ What changed for users in each version of the two apps, in plain language. Newes
   two buttons lists each league whose lineup needs something from you before kickoff, with what to do ("Activate
   Ja'Marr Chase from IR · Josh Allen is Doubtful") and an Open lineup button that takes you to that league's Lineup
   tab. It counts starters who are Doubtful, Out, on IR or otherwise unlikely to play, starters still in your Sleeper
-  IR slot (the same ones the Lineup tab warns about), starters on bye and empty starting slots. It stays until the
-  next run or until you close it. When every lineup is ready, nothing changes: no box, and the same message as before.
+  IR slot (the same ones the Lineup tab warns about), starters on bye and empty starting slots. A league drops off as
+  soon as you fix its lineup, and the box closes once nothing is left (or when you close it) until the next run. When
+  every lineup is ready, nothing changes: no box, and the same message as before. The League Command Center's (i)
+  explains the box.
 
 - **What the badges mean, in the Guide.** A new step in the Guide tab lists every badge, chip, pill and color the app
   shows, grouped by kind (positions and slots, ranks and tiers, changes and trends, availability and status,

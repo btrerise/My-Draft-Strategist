@@ -14,7 +14,7 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderBestAvailable } from '../main.js';
+import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderBestAvailable, renderLineupNeeds } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { applyMarketSettingsToUI } from '../settings.js';
@@ -59,6 +59,9 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
 
         // The card under this one (scout/bestAvailable.js); it draws only while the Dashboard is shown.
         renderBestAvailable();
+        // The "lineups need you" box under Optimize All (render/dashboard.js, improvements S11), from the
+        // lineups as they are now: a league fixed since the run drops off.
+        renderLineupNeeds();
 
         if (State.leagues.length === 0) {
             cmdCenter.style.display = 'none';
