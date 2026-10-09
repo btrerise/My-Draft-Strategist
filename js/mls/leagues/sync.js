@@ -11,10 +11,11 @@ import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, HARD_OUT_STATUSES, isBestBallLeague } from '../helpers.js';
 import { updatePulsePrompts } from '../init.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
+import { sleeperLineupChanges } from '../lineup/issues.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderBestAvailable } from '../main.js';
+import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderBestAvailable, renderLineupNeeds } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { applyMarketSettingsToUI } from '../settings.js';
@@ -59,6 +60,9 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
 
         // The card under this one (scout/bestAvailable.js); it draws only while the Dashboard is shown.
         renderBestAvailable();
+        // The "lineups need you" box under Optimize All (render/dashboard.js, improvements S11), from the
+        // lineups as they are now: a league fixed since the run drops off.
+        renderLineupNeeds();
 
         if (State.leagues.length === 0) {
             cmdCenter.style.display = 'none';
@@ -92,9 +96,9 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
             let isSetup = optStarterIds.length > 0;
             
             if (isSetup && sleeperStarters.length > 0) {
-                let sleeperSet = new Set(sleeperStarters);
-                let optSet = new Set(optStarterIds);
-                isMatch = sleeperSet.size === optSet.size && [...sleeperSet].every(id => optSet.has(id));
+                // The same comparison as the "lineups need you" box's Sleeper drop-down (improvements S11).
+                const changes = sleeperLineupChanges(optStarterIds, sleeperStarters);
+                isMatch = changes.start.length === 0 && changes.bench.length === 0;
             } else if (isSetup && l.leagueId.startsWith('manual_')) {
                 isMatch = true; 
             }
@@ -107,7 +111,7 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
             } else if (isMatch) {
                 lineupIcon = `<span class="status-icon status-good tooltip-container">${STATUS_CHECK_ICON}<span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
             } else {
-                lineupIcon = `<span class="status-icon status-danger tooltip-container">${STATUS_WARN_ICON}<span class="tooltip-text">Action Required: Differs from Sleeper Lineup</span></span>`;
+                lineupIcon = `<span class="status-icon status-danger tooltip-container">${STATUS_WARN_ICON}<span class="tooltip-text">Differs from your Sleeper lineup: the changes are in the list above</span></span>`;
             }
 
             // --- Early Game Check ---
@@ -594,7 +598,7 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
             // Sleeper lists taxi-squad players in their own array but ALSO leaves them in
             // `players`, so without this they'd be indistinguishable from real bench depth --
             // eligible to be slotted as starters by the optimizer and counted as active bench
-            // by the Global Injury Auditor, neither of which is true of a taxi player. Empty
+            // by the "lineups need you" box's IR moves, neither of which is true of a taxi player. Empty
             // on leagues with no taxi squad configured, hence the fallback.
             const taxiIds = new Set((myTeam && myTeam.taxi) || []);
             // Sleeper's IR slot (the roster's `reserve` array), kept like taxi so the Roster tab can
@@ -629,8 +633,22 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
                 ? (leagueData.settings.type === 2 ? 'dynasty' : (leagueData.settings.type === 1 ? 'keeper' : 'redraft'))
                 : 'redraft';
 
+            // Your IR slot's rules and the active roster's size (improvements S11, round 4), for the "lineups
+            // need you" box: whether an activation needs an open spot, and who can go to (or must leave) IR.
+            // reserve_slots and the reserve_allow_* flags are in every Sleeper league's settings; null when a
+            // response lacks them, and the box then says nothing about IR rules. NFL Injured Reserve is always
+            // allowed. roster_positions lists every starting and bench spot (not IR or taxi).
+            const ls = leagueData.settings || {};
+            const irRules = typeof ls.reserve_slots === 'number' ? {
+                slots: ls.reserve_slots,
+                allow: { OUT: !!ls.reserve_allow_out, D: !!ls.reserve_allow_doubtful, SUS: !!ls.reserve_allow_sus,
+                    DNR: !!ls.reserve_allow_dnr, COV: !!ls.reserve_allow_cov, NA: !!ls.reserve_allow_na },
+            } : null;
+            const rosterSize = Array.isArray(leagueData.roster_positions) ? leagueData.roster_positions.length : null;
+
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge, leagueType: leagueType,
+                irRules, rosterSize,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
                 // Needed by the Matchup Simulator: rosterId identifies "us" within this

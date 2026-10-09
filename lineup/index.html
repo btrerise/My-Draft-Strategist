@@ -226,12 +226,12 @@
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">At-a-glance status of all your synced leagues. Click 'Optimize All Lineups' to update every roster instantly based on your latest uploaded weekly rankings.</span>
+                <span class="tooltip-text">At-a-glance status of all your synced leagues. Click 'Optimize All Lineups' to update every roster instantly based on your latest uploaded weekly rankings. 'Sync All Leagues' also gets the latest injury news for every league. Any lineup that needs you before kickoff (an injured, bye or IR-slot starter, an empty slot, an IR move) is listed under these buttons, soonest kickoff first, with what to do; a league drops off once you've fixed it. The drop-down under that list shows each lineup that differs from the one on Sleeper, the same leagues the Lineup column marks.</span>
             </div>
         </header>
         
         <div class="button-row-dual mb-3">
-            <button id="syncAllBtn" class="btn btn-blue" data-action="syncAllLeagues" title="Syncs waivers and trades across all your Sleeper leagues">
+            <button id="syncAllBtn" class="btn btn-blue" data-action="syncAllLeagues" title="Syncs rosters, injury news and lineups across all your leagues">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
                 Sync All Leagues
             </button>
@@ -240,6 +240,9 @@
                 Optimize All Lineups
             </button>
         </div>
+        <!-- Lineups that need you (js/mls/render/dashboard.js, improvements S11): filled after Optimize All
+             and Sync All when a league has an injured, IR-slot or bye starter or an empty slot. -->
+        <div id="lineupNeedsBox" class="mls-needs-box" role="status" hidden></div>
 
         <div class="table-responsive custom-scrollbar" style="max-height: 400px; overflow-y: auto;">
             <table class="sos-grid" style="width: 100%; text-align: left; position: relative;">
@@ -785,7 +788,7 @@
                 <button type="button" class="btn-bare badge-legend-link" data-action="openBadgeLegend" aria-label="What do these badges mean? Opens the Guide"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span class="badge-legend-link-long">What do these mean?</span><span class="badge-legend-link-short">Badges</span></button>
                 <div class="tooltip-container">
                     <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">Generates your highest-projected starting lineup. Lock starters with <svg role="img" aria-label="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap ⇄ Swap to manually move players. Weekly Rankings and Early Games are above and below. Whoever starts is always picked by rank first; when FLEX Kickoff Optimization (below) is on, we then relabel slots so your SFLEX and FLEX spot(s) hold whichever starters kick off latest, giving you the most time to react before locking in. You can also use the League Command Center on the Dashboard to optimize all of your leagues at once!</span>
+                    <span class="tooltip-text">Generates your highest-projected starting lineup. Lock starters with <svg role="img" aria-label="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap ⇄ Swap to manually move players (locks and swaps last until the next NFL week). Weekly Rankings and Early Games are above and below. Whoever starts is always picked by rank first; when FLEX Kickoff Optimization (below) is on, we then relabel slots so your SFLEX and FLEX spot(s) hold whichever starters kick off latest, giving you the most time to react before locking in. You can also use the League Command Center on the Dashboard to optimize all of your leagues at once!</span>
                 </div>
             </div>
         </header>
@@ -914,23 +917,15 @@
         </div>
     </section>
 
-    <!-- GLOBAL INJURY AUDITOR -->
-    <section class="settings-card danger-card">
-        <header class="card-header">
-            <h3><span class="text-danger">Global Injury Auditor</span></h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Scans all your leagues to find 'Out' or 'IR' players left in starting lineups or taking up active bench spots. Best Ball leagues are skipped (no lineup to set, no IR slot), as are players whose games have already kicked off, since their roster spots are locked.</span>
-            </div>
-        </header>
-        <div class="info-banner mb-4" style="display: flex; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
-            <div class="cluster cluster-sm">
-                <div class="info-banner-icon" aria-hidden="true" style="background: #ef4444; color: white;">i</div>
-                <div><strong>How this works:</strong> Sleeper-synced leagues are checked against your real Sleeper roster. Manually added leagues are checked against Sleeper's injury database by player name, using the lineup set here in the optimizer. Best Ball leagues are skipped.</div>
-            </div>
-        </div>
-        <button class="btn btn-danger" data-action="runGlobalInjuryAudit">Run Global Audit</button>
-        <div id="injuryAuditOutput" class="scout-output-container" aria-live="polite"></div>
+    <!-- GLOBAL INJURY AUDITOR: folded into the Dashboard's "lineups need you" box (improvements S11, round 4).
+         Sync All ("Sync All again" in the box) gets the injury news; the box lists injured starters, IR moves and your
+         Sleeper lineup's differences. This one-line pointer catches people who still look for it here, like the
+         Power Rankings pointer on the Scout tab. -->
+    <section class="settings-card mls-moved-pointer" id="injuryAuditPointer">
+        <p class="card-desc mls-moved-pointer-text">
+            The <strong>Global Injury Auditor</strong> is now part of the Dashboard's list of lineups that need you: injured starters and IR moves in every league, updated by Sync All.
+            <button type="button" class="mls-moved-pointer-link btn-bare" data-action="goToLineupNeeds">Go to the Dashboard &rarr;</button>
+        </p>
     </section>
 </div>
         
@@ -1321,7 +1316,7 @@
                 <h4 class="step-title"><span class="step-num blue-step">5</span> Lineup Optimizer & Early Games</h4>
                 <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with <svg role="img" aria-label="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. Select teams playing in early windows (TNF, London) under <strong class="text-main">Early Games</strong> to flag them with an <span class="badge early-badge">EARLY</span> badge across your lineup before roster locks. Each starter and bench player also shows their opponent and Sleeper's projection for the week (labeled <strong class="text-main">proj</strong>); once that player's game is final, their actual score takes its place with the projection shown beneath it. The optimizer runs on your rankings; the one place it uses Sleeper's projection is a FLEX decision between players who have no FLEX rank in your file, since position ranks don't compare across positions (TE24 isn't really ahead of WR45). Projections and scores update when you open or interact with the tab, not live during games.</p>
                 <ul class="guide-list">
-                    <li><strong class="text-main">Automatic Game-Time Locks:</strong> Once a player's game kicks off, the optimizer locks him in place so he's never moved or benched after the fact. If a lock is wrong, you can override it for that player. "Unlock All" clears your manual locks for the league, but leaves game-time locks alone.</li>
+                    <li><strong class="text-main">Automatic Game-Time Locks:</strong> Once a player's game kicks off, the optimizer locks him in place so he's never moved or benched after the fact. If a lock is wrong, you can override it for that player. "Unlock All" clears your manual locks for the league, but leaves game-time locks alone. Manual locks (and swaps, which lock) last for the week: they clear on their own when a new NFL week starts.</li>
                     <li><strong class="text-main">FLEX Kickoff Optimization:</strong> On by default. Who starts is always decided by rank first. Then your starters are arranged so SFLEX holds the latest kickoff it can (a QB or an RB/WR/TE), then FLEX, then W/T and W/R, giving you the most time to make a late swap. Turn it off if you'd rather these slots simply follow rank order.</li>
                     <li><strong class="text-main">Bench Priorities:</strong> Lists your bench from best to worst for this week, with taxi-squad players at the bottom.</li>
                     <li><strong class="text-main">Undo / Redo:</strong> Press Ctrl+Z (Cmd+Z on Mac) to undo your last lineup edit, and Ctrl+Y or Ctrl+Shift+Z to redo it.</li>
@@ -1351,8 +1346,8 @@
 
             <!-- Step 7 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">7</span> Global Injury Auditor</h4>
-                <p class="step-desc">At the bottom of the <strong class="text-main">Lineup</strong> tab, tap "Run Global Audit" to scan all of your leagues at once for players listed as Out or on IR who are still in a starting lineup or taking up an active bench spot. Best Ball leagues are skipped (there's no lineup to set), as are players whose game has already kicked off.</p>
+                <h4 class="step-title"><span class="step-num blue-step">7</span> Lineups that need you</h4>
+                <p class="step-desc">On the <strong class="text-main">Dashboard</strong>, a box under Sync All and Optimize All lists every league whose lineup needs you before kickoff: a starter who's injured, on bye or still in your Sleeper IR slot, an empty starting slot, an injured bench player you could move to IR, or an IR-slot player who has to come out. Each line says what to do and when the first game kicks off, with a button to swap in a healthy bench player or find a free agent. A drop-down lists the leagues whose lineup on Sleeper differs from yours. <strong class="text-main">Sync All</strong> ("Sync All again" in the box) gets the latest injury news for every league, manual ones included. The Lineup tab shows the same items for the league you have open.</p>
             </div>
 
             <!-- Step 8 -->

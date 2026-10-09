@@ -2810,3 +2810,529 @@ the PNGs below and nothing else:
 - Run 37932692082: `{desktop,phone}/mls-league-scout.png` (same size; only the Waiver Wire Assistant header row).
 - Run 37933514590: `{desktop,phone}/mls-league-guide.png`: the SoS wording in an earlier step and the new step 13 (desktop
   +2104px, phone +3905px).
+
+## S11 — Optimize All names the lineups that need you
+
+**User-visible effect.** After **Optimize All Lineups** or **Sync All Leagues** on the Dashboard, a box appears under
+the two buttons when any lineup needs something from you before kickoff: "2 lineups need you before kickoff", then one
+line per league with its name, what to do and an **Open lineup** button:
+- Fixture League · "Activate Ja'Marr Chase from IR · Josh Allen is Doubtful · RB slot is empty" · Open lineup
+- Activations come first, then injured starters (statuses spelled out: Doubtful, Out, on IR, on PUP, suspended, on
+  NFI, hasn't reported), starters on bye ("Tee Higgins is on bye") and empty starting slots ("TE slot is empty",
+  "2 FLEX and W/T slots are empty").
+- Open lineup makes that league active and shows its Lineup tab, where the matching red or purple warning is above
+  the lineup (bye starters show their BYE badge, and empty slots show as "[ Empty Slot ]" rows).
+- The box stays until the next Optimize All or Sync All, or until you close it with ✕. It's kept in memory only, so a
+  reload clears it.
+- Clean run: no box, and the toast is unchanged ("Successfully optimized N lineups!" / "Successfully synced N
+  leagues!"). Failed run: the same error toast as before, and no box (the previous run's box goes as the run starts).
+- Phones: one league per line, with the button at the right and the to-do wrapping under the league's name. Player
+  names never break across lines (no-break spaces), long league names wrap between words, and nothing runs past
+  the edge at 375px.
+- Best Ball leagues are never listed. Manual and hand-off leagues have no IR slot, so they can only show injured, bye
+  or empty-slot items. After Sync All, manual leagues and leagues it couldn't reach are listed from their last lineup.
+
+**Owner's decisions (asked before building).**
+- **Where:** a small dismissible box under the Dashboard's Optimize All button, one line per league, staying until the
+  next run (not a longer toast, not a Command Center column).
+- **What counts:** injured and IR-slot starters, as on the Lineup tab, **plus empty starting slots and starters on
+  bye**. The Lineup tab has no warning for either of those two, and its two warnings stay exactly as they were, so
+  only the Dashboard lists them.
+- **Sync All:** yes, the same list after it syncs, covering every league (not only the ones it synced).
+
+**What changed and where.**
+- `js/mls/lineup/issues.js` (new, pure, in `PRECACHE_ASSETS`): `lineupIssues(starters, ctx)` returns
+  `{ injured, irSlot, bye, empty }` with the warnings' old filters (`SIM_EXCLUDE_STATUSES`, `isReserve`, left out once
+  his game has kicked off, nothing in Best Ball). A player already listed as injured isn't also listed on bye. A player
+  who is both injured and in the IR slot is in both lists, as the Lineup tab shows both lines.
+  `lineupIssueItems(issues)` gives the Dashboard's wording.
+- `js/mls/lineup/gameInfo.js`: `getLineupIssues(starters, league)` supplies State (statuses, `hasKickedOff`, this
+  week's byes) to `lineupIssues`. `getLineupInjuryWarningHTML` and `getLineupIrSlotWarningHTML` now take their players
+  from it; their markup and wording are unchanged. `getByeBadgeHTML` shares the new `isOnByeThisWeek`.
+- `js/mls/render/dashboard.js`: `collectLineupNeeds` reads every non-Best-Ball league's lineup from
+  `State.manualStartersMap` after the run, without switching leagues. `renderLineupNeeds` draws the box (names
+  escaped). `openLeagueLineup` (`switchActiveLeague`, then `showTab('lineup')`) and `dismissLineupNeeds`, both via
+  `data-action` in `js/mls/main.js`. `optimizeAllLineups` and `syncAllLeagues` clear the list as they start and fill
+  it only on success. For Sync All, that's after the finally's re-optimize of your league.
+- `js/mls/state.js`: `State.lineupNeeds` (in memory, no storage key). `lineup/index.html`: `#lineupNeedsBox` after the
+  button row. `css/mls.css`: `.mls-needs-*`, in the red of the Lineup tab's injury warning.
+- Not a badge, chip or pill, so no legend line (`badgeLegend.test.mjs` passes). CHANGELOG line under Lineup
+  Strategist. `CACHE_NAME` v2.8.91.
+
+**Tests.**
+- `tests/mls-lineup-needs.spec.mjs` (new, both widths) uses two leagues from the one fixture: "Fixture League" with
+  Chase (healthy, starting) in the IR slot, and a second league, renamed, whose only QB is Lamar Jackson (Doubtful).
+  Both rosters get a second RB, since the fixture roster has one RB for two RB slots.
+  - Optimize All lists "Fixture League: Activate Ja'Marr Chase from IR" and "…: Lamar Jackson is Doubtful". Each
+    Open lineup shows that league's Lineup tab with the matching warning, and ✕ hides the box.
+  - Sync All shows the same list.
+  - A clean run shows no box and the usual toast.
+  - A failed run (the lineups' save throws) shows its error toast and clears the previous box.
+  - At 375px: no page overflow, each league name whole, each button inside the box and on its league's line.
+- `tests/unit/lineupIssues.test.mjs` (new): each list, kickoff, Best Ball, the injured-and-IR and injured-and-bye
+  overlaps, and the wording (every status, several activations, empty-slot counts with W/T).
+
+**Screenshots.** None changed: the box appears only after Optimize All or Sync All, and `visual.spec.mjs` runs
+neither. This container can't render CI-matching baselines (F1, S9). Here, `visual.spec.mjs` rendered main and this
+branch the same way, and `npm run pxdiff` found all 40 PNGs pixel-identical.
+
+**Left over / noticed.**
+- The fixture league's roster has one RB for two RB slots, so its lineup always has an empty RB slot. Any spec that
+  runs Optimize All or Sync All on the plain fixture now gets the box ("RB slot is empty"). No existing spec asserts
+  against it.
+- ~~The box is a snapshot~~ and ~~the Command Center's (i) doesn't mention it~~: both done in round 2.
+
+### S11, round 2: fixed leagues drop off, and the (i) explains the box (owner's request)
+
+**Why.** The first version drew the box once, at the end of the run, so a league stayed listed after you fixed its
+lineup. The Command Center's (i) didn't mention the box either. The owner asked for both.
+
+**User-visible effect.**
+- The box follows your lineups. Fix one (swap the injured or IR-slot starter out, fill the empty slot) and its line
+  is gone the next time you see the Dashboard, and the count in the title follows ("1 lineup needs you before
+  kickoff"). A starter whose game kicks off drops off the same way, as on the Lineup tab.
+- Once no league is left, the box closes, and it stays closed until the next Optimize All or Sync All, even if a
+  lineup changes back (a new problem doesn't reopen it on its own). ✕ closes it the same way.
+- The League Command Center's (i) now ends: "Afterwards, and after 'Sync All Leagues', any lineup that needs you before
+  kickoff (a starter who's injured, in your Sleeper IR slot or on bye, or an empty starting slot) is listed under these
+  buttons with a button to open it. A league drops off once you've fixed it."
+
+**What changed and where.**
+- `js/mls/render/dashboard.js`: the box keeps no list, only whether it's open (`State.lineupNeedsOpen`, in memory;
+  replaces round 1's `State.lineupNeeds`). `renderLineupNeeds` recomputes the lines from `State.manualStartersMap`
+  each time it draws, and closes the box when none are left. A successful run opens it, the next run's start and ✕
+  close it.
+- `js/mls/leagues/sync.js` (`renderLeagueManager`): calls `renderLineupNeeds` beside `renderBestAvailable`, so the box
+  redraws whenever the Dashboard does: after every lineup render (swap, lock, re-optimize), every sync, and when the
+  Dashboard is shown. Exported through `js/mls/main.js` (the import pattern `renderBestAvailable` uses).
+- `lineup/index.html`: the (i) text. CHANGELOG line updated. `CACHE_NAME` stays v2.8.91 (this branch's bump).
+
+**Tests.** `tests/mls-lineup-needs.spec.mjs`, two new, both widths:
+- Fixing the Fixture League (Garrett Wilson swapped in for Chase) leaves only the second league, under "1 lineup
+  needs you before kickoff".
+- With Chase the only issue, fixing him closes the box. Swapping him back by hand doesn't reopen it. The next Optimize
+  All lists him again.
+- The first test also checks the (i) text.
+
+**Screenshots.** None changed: the (i) text is hidden until hovered. As in round 1, main and this branch rendered here
+the same way are pixel-identical.
+
+### S11, round 3: a review as a user; swaps, pickups, urgency, the Sleeper drop-down, always on (owner's choices)
+
+**Why.** I tried the box as a user (two leagues: a healthy Chase in the IR slot, Henry Out with no RB depth,
+Jefferson Doubtful with healthy WRs on the bench) and reported what felt off:
+- The optimizer starts a Doubtful player over a healthy bench player by rank (only Out, IR, suspended, PUP, NFI and
+  byes count as unavailable in `isUnavailableThisWeek`), then warns about him.
+- "Open lineup" can't fix an Out or bye starter with no backup, or an empty slot: those need a pickup.
+- The Command Center's red Lineup triangles ("differs from your Sleeper lineup") look like the box but mean
+  something else.
+- The box was tied to a run.
+- "Successfully optimized" appeared next to "2 lineups need you".
+- No urgency.
+- "Activate X from IR · X is Out" was a mixed signal.
+- IR activation was red in the box, purple on the Lineup tab.
+
+**Owner's decisions.**
+- **Suggest, don't decide:** "Jefferson is Doubtful: start CeeDee Lamb instead?" on the Dashboard, and on the Lineup
+  tab the red warning names him **with a Swap button**. Who the optimizer starts doesn't change.
+- **Buttons per line:** Open lineup when a swap or an activation fixes it, Find <pos> when nobody on the bench can,
+  and both when a line needs both.
+- **One list for the Sleeper mismatches:** the owner's idea, a drop-down at the bottom of the box, like the "What
+  changed?" card's folds: the urgent items on top, the details a tap away.
+- **Always on**, ✕ for the session. The toast says how many need you. Urgency (each line's first kickoff, soonest
+  league first, amber within a day). Injured wins over the IR activation, on both tabs. Neutral box, each item in
+  its Lineup tab color.
+
+**User-visible effect.**
+- **Always on.** The box shows whenever a lineup needs you, on any visit, not only after a run. It's drawn from the
+  lineups as they are now on every Dashboard render, so a fixed league drops off and an empty box hides. ✕ hides it
+  for the session until a league it didn't list needs you (or the next Optimize All or Sync All, which bring it
+  back).
+- **Lines:** "Fixture League  Tue 9:00 PM" (the earliest kickoff among the starters it names, amber within 24 hours;
+  leagues with none known, only byes or empty slots, go last in league order), then the items. Activations are
+  purple, injuries red, byes and empty slots muted.
+- **Swaps:** for an injured or bye starter, the best healthy bench player who can take his slot. Same position first
+  (best position rank), then anyone else the slot takes (best FLEX rank). Never someone injured, on bye, already
+  kicked off, in the IR slot or on taxi, and each bench player only once. "Justin Jefferson is Doubtful: start Puka
+  Nacua instead?" (Lamb was already starting at FLEX.)
+- **Buttons:** Open lineup when a line has an activation or a swap. **Find RB** (or the slot's position: FLEX for
+  FLEX, W/T and W/R, "Find players" for SFLEX) when an injured or bye starter has no swap, or a slot is empty. Find
+  opens that league's Top Available on the Scout tab at that position (as the Best Available card's View does;
+  manual leagues get Top Available's own note).
+- **Sleeper drop-down:** "N leagues differ from your Sleeper lineup", folded, with a note "As of your last sync: set
+  these on Sleeper, then sync to clear them." One line per league: "Start Ja'Marr Chase · Bench Garrett Wilson" and
+  Open lineup. It keeps its open state across re-renders. With nothing urgent, the title reads "1 lineup to set on
+  Sleeper". The table's Lineup column now uses the same comparison (`sleeperLineupChanges`), so the two agree.
+- **Toasts:** Optimize All says "Optimized 5 lineups · 2 need you (listed under the buttons)" when any do, and the
+  old "Successfully optimized 5 lineups!" when none do. Sync All adds "2 lineups need you (listed under the
+  buttons)." A failed run keeps its error toast.
+- **Lineup tab:**
+  - With one injured starter and a healthy bench option, the red warning reads "Justin Jefferson is D and currently
+    in your starting lineup. Start Puka Nacua instead? [Swap in Puka Nacua]".
+  - With several, the old sentence is followed by a button per swap ("Puka Nacua for Justin Jefferson").
+  - The button runs the ordinary swap (it locks him in, and can be undone).
+  - Without a swap, the wording is unchanged.
+  - An IR-slot starter who's also injured gets only the red line now, not the purple one too.
+  - The warning's icon keeps its full size when the text wraps (it was squeezed to a dot).
+
+**What changed and where.**
+- `js/mls/lineup/issues.js`:
+  - `lineupIssues(starters, ctx, bench)` adds `swaps`, `find` (Top Available chips) and `firstKickoffMs`.
+  - Injured wins over the IR slot, and injured over bye.
+  - `lineupIssueItems` returns `{ kind, text }`.
+  - New: `needsLineupButton`, `swapFor`, `findChipFor` and `sleeperLineupChanges`.
+- `js/mls/lineup/gameInfo.js`:
+  - `getLineupIssues(starters, league, bench)` adds kickoff times.
+  - `getLineupInjuryWarningHTML` takes the bench and adds the suggestion and its button.
+  - `formatKickoffLabel` is exported.
+- `js/mls/render/lineup.js`: passes the bench; `swapInSuggested(outId, inId)` (two `initiateSwap` calls).
+- `js/mls/render/dashboard.js`:
+  - The box is rebuilt: always on, `State.lineupNeedsDismissed` (in memory; replaces round 2's `lineupNeedsOpen`).
+  - Lines, buttons, the Sleeper fold, the toasts.
+  - `findLeaguePlayers`.
+- `js/mls/leagues/sync.js`: the matrix uses `sleeperLineupChanges`.
+- `js/mls/main.js`: the `swapInSuggested` and `findLeaguePlayers` actions.
+- `css/mls.css`: the neutral box, item colors, the time, the button column, the swap button, and
+  `.lineup-injury-warning > svg` kept full size (was `.lineup-ir-warning` only).
+- CHANGELOG lines rewritten. `CACHE_NAME` stays v2.8.91.
+
+**Tests.**
+- `tests/unit/lineupIssues.test.mjs` (22 tests): swaps (position first, skipping the unavailable, flex slots, each
+  bench player once, byes), pickups and their chips, injured over IR and bye, kickoff, the button rule and the
+  Sleeper comparison.
+- `tests/mls-lineup-needs.spec.mjs` (9, both widths), with the second league's QBs now Lamar (Doubtful, starting)
+  and Hurts:
+  - shown without a run, with the new toast;
+  - Open lineup, then the Lineup tab's Swap in Jalen Hurts;
+  - each fixed league dropping off until the box hides;
+  - soonest first and amber (kickoffs set in `State`);
+  - an empty RB slot's Find RB opening Top Available on RB;
+  - the Sleeper drop-down (contents, kept open, Open lineup);
+  - ✕ staying closed until a new league needs you, and the next run;
+  - Sync All's toast, a clean run, a failed run, 375px.
+- `tests/mls-roster-counts.spec.mjs`: in the bench-order test, Jefferson (Out, IR slot) swapped in now gets the red
+  warning, not the purple one (the owner's injured-wins rule).
+
+**Screenshots: three change, to be re-taken from the PR's CI run.** This container can't render CI-matching
+baselines. Rendered here, main and this branch differ in exactly these PNGs (`npm run pxdiff`):
+- `desktop/mls-league-setup.png` and `phone/mls-league-setup.png`: the box, now always on. The screenshot league's
+  roster has one RB for two RB slots, so it reads "1 lineup needs you before kickoff · Fixture League · RB slot is
+  empty · Find RB" (+133px).
+- `desktop/mls-league-guide.png`: the legend's sample of the red warning, whose icon is now full size (it was
+  squeezed, as on the Lineup tab).
+
+No PR is open yet, so CI hasn't run. Push, let the PR's first run fail on these, and commit CI's renders
+("Accepting an intended visual change" in `docs/TESTING.md`).
+
+**Left over.**
+- A Doubtful player you've chosen to start keeps his league listed until kickoff. ✕ covers the session; a per-item
+  "keep him" was offered and not asked for.
+- The Sleeper drop-down is only as fresh as the last sync (said in its note).
+- ~~Whether the optimizer should prefer a healthy player over a Doubtful one~~: decided, see below.
+
+**Owner's decision after round 3: Doubtful players stay eligible to start.** The optimizer keeps treating Doubtful
+(and Did Not Report) as available, ranked like anyone else. Only Out, IR, suspended, PUP, NFI and byes count as
+unavailable (`isUnavailableThisWeek`). The reason: the user's rankings should already account for it. An analyst who
+doesn't expect a player to play ranks him lower, or leaves him unranked. The round 3 suggestion ("start Puka Nacua
+instead?" and the Lineup tab's Swap in button) stays as the way to act on it, so the choice is the user's. Don't
+change who starts for Doubtful players without asking the owner.
+
+### S11, round 4: one box on the Lineup tab, the IR slot's rules, kept starters muted, the Auditor folded in (owner's choices)
+
+**Why.** A second review as a user found:
+- two cross-league injury checks (the box and the Global Injury Auditor);
+- a stack of four lines above the Lineup tab's lineup;
+- the Lineup tab saying "consider swapping" with nobody to swap in, and "is D" where the Dashboard said "is
+  Doubtful";
+- a Doubtful player you chose to start nagging every visit;
+- "Activate from IR" not knowing the roster was full.
+
+**Owner's decisions.**
+1. **Fold the Auditor into Sync All:** fresh injury news, manual leagues looked up by name. A "Check Sleeper now" link
+   with one line saying what it does, and a pointer card where the Auditor was (like the Power Rankings one on the
+   Scout tab).
+2. **Don't merge the box into the Command Center table.** On phones that trades a vertical problem for a horizontal
+   one. A card-per-league Dashboard on phones would be its own runbook card. For now: separate, with the tooltips
+   pointing to each other.
+3. **Tooltip updates:** the Command Center's (i) and its Lineup column now point to the box.
+4. **One box on the Lineup tab**, as sketched.
+5. **The Lineup tab's Find button** for a starter nobody can replace.
+6. **Statuses spelled out on both tabs.**
+7. **Starters you locked in: shown muted, not counted.**
+8. **The IR slot's rules**, after checking they can be read (they can: Sleeper's league settings have `reserve_slots`
+   and `reserve_allow_out` / `_doubtful` / `_sus` / `_cov` / `_na` / `_dnr`, confirmed on live leagues).
+   `roster_positions` gives the roster size. The owner picked all three uses:
+   - the roster-full hint on activations;
+   - "Move X to IR";
+   - an IR-slot player who's no longer eligible there.
+
+**User-visible effect.**
+- **Lineup tab:** one box, "This lineup needs you", replaces the red injury warning, the purple IR-slot line and the
+  amber "Differs from Sleeper lineup" line. The green "Matches your active Sleeper lineup" line stays.
+  - One item per line, in the Dashboard's colors: activations purple, injuries red, the rest muted.
+  - Buttons: "Swap in Puka Nacua" (the ordinary swap) and "Find RB" (that league's Top Available, at RB).
+  - With only kept starters: "Nothing needs you · 1 starter you kept".
+  - A fold: "Differs from your Sleeper lineup: 3 changes" → "Start Ja'Marr Chase · Bench Puka Nacua, Garrett Wilson".
+  - The PNG export leaves the whole box out. The Guide's legend shows one sample of the box instead of the two lines.
+- **Items** (both tabs, one per thing):
+  - "Activate Ja'Marr Chase from IR on Sleeper before kickoff", plus " (roster full: drop someone first)" when the
+    active roster has no open spot.
+  - "Activate George Kittle from IR: he's no longer eligible there, and Sleeper blocks adds and drops until you do",
+    for a bench player in the IR slot who's healthy, Questionable, or has a status this league's IR doesn't take.
+  - "Justin Jefferson is Doubtful: start Puka Nacua instead?" (swap) or "Derrick Henry is Out: no healthy RB on your
+    bench" (Find). A flex slot says every position it takes ("no healthy RB, WR or TE").
+  - "Tee Higgins is on bye: …", the same way.
+  - "RB slot is empty" (Find), and "2 FLEX slots are empty".
+  - "Move Trey McBride to IR to free a roster spot", for a bench player whose status this league's IR takes, while a
+    slot is open. When more qualify than slots are open, each says "(1 IR slot open)".
+  - "Lamar Jackson is Doubtful (you locked him in)": muted and not counted. A lock, or a swap (which locks).
+    Activations are never muted.
+  - Statuses are spelled out ("is Doubtful", "is Out", "is on IR", "is suspended"…).
+  - Injured wins over the IR activation: one item, never both.
+- **Dashboard:**
+  - The same items, now one per line under each league (a league with six read as a run-on sentence).
+  - The Sleeper drop-down marks injured players ("Bench George Kittle (Out)"): the Auditor's "injured starter in your
+    Sleeper lineup".
+  - A footer line: "**Check Sleeper now** gets the latest injury news and your current Sleeper lineups for every
+    league."
+  - With only kept starters the title reads "Nothing needs you · 1 lineup with starters you kept". Those leagues go
+    last.
+- **Sync All:**
+  - It gets a fresh player map every time (`forceRefresh`, as the Auditor did).
+  - It also runs with only manual leagues.
+  - It looks up each manual or hand-off league's players by name (team or position when several share a name; a team
+    defense by its code) and records their status.
+  - It re-optimizes those leagues (locks kept), so an Out player there is benched when someone can replace him.
+  - The toast adds "Checked injuries in N manual leagues."
+  - Its button's title: "Syncs rosters, injury news and lineups across all your leagues".
+- **Global Injury Auditor removed.** Its Lineup tab card is now a one-line pointer: "The Global Injury Auditor is now
+  part of the Dashboard's list of lineups that need you… [Go to the Dashboard →]". Guide step 7 is now "Lineups that
+  need you". The Command Center's (i) describes the box, the drop-down and Sync All's injury check. Its Lineup column
+  says "Differs from your Sleeper lineup: the changes are in the list above".
+- **Not changed:** who the optimizer starts (Doubtful stays eligible, the owner's decision after round 3).
+
+**What changed and where.**
+- `js/mls/lineup/issues.js`:
+  - `lineupIssues` adds `kept`, `irStuck`, `moveToIr`, `irSlotsOpen`, `rosterFull` and `noSwap`.
+  - `lineupIssueItems` returns one item per thing (`kind`, `text`, `muted`, `swap`, `find`).
+  - New: `irEligible`, `needsYou`, `findChips`.
+- `js/mls/lineup/gameInfo.js`:
+  - `getLineupNeedsHTML` replaces `getLineupInjuryWarningHTML` and `getLineupIrSlotWarningHTML`.
+  - New: `getSleeperLineupChanges` / `sleeperChangesHTML` (shared with the Dashboard) and `FOLD_CHEVRON`.
+  - `getLineupIssues` passes locks (`State.lockedPlayersMap`), `irRules`, `rosterSize` and the roster.
+- `js/mls/render/lineup.js`: the box in place of the three lines.
+- `js/mls/render/dashboard.js`: the box on the new items, stacked; `checkSleeperNow`, `goToLineupNeeds`; Sync All's
+  manual-league step, `forceRefresh` and toast.
+- `js/mls/leagues/sync.js`: `irRules` and `rosterSize` on the stored league (no new storage key); the matrix's
+  tooltip.
+- `js/mls/leagues/manualInjuries.js` (new, in `PRECACHE_ASSETS`): the by-name lookup, moved from the Auditor.
+- `js/mls/lineup/injuryAudit.js`: deleted (removed from `PRECACHE_ASSETS`).
+- `js/mls/main.js`: actions `checkSleeperNow` and `goToLineupNeeds`; `runGlobalInjuryAudit` removed.
+- `js/mls/legend.js` and `css/base.css`: one legend sample.
+- `js/mls/trade/export.js`: removes `.lineup-needs-box`.
+- `lineup/index.html`: the pointer card, Guide step 7, Sync All's title, the Command Center's (i).
+- `css/mls.css`: `.lineup-needs-*` replaces `.lineup-injury-warning` / `.lineup-ir-warning`; stacked items; kept and
+  check-link styles.
+- CHANGELOG lines rewritten. `CACHE_NAME` stays v2.8.91.
+- Leagues synced before this round have no IR rules or roster size until their next sync, so they get no IR moves,
+  no "no longer eligible" items and no roster-full hint until then. Manual leagues never get them.
+
+**Tests.**
+- `tests/unit/lineupIssues.test.mjs` (23): adds kept starters, `irEligible`, IR moves with open slots and their count,
+  no-longer-eligible IR players (healthy, Q, a refused status; PUP left alone), the roster-full hint, item order, the
+  flex "who".
+- `tests/mls-lineup-needs.spec.mjs` (12, both widths):
+  - the Lineup tab's box and its Swap in;
+  - a locked starter muted on both tabs;
+  - the IR rules (league settings routed, one bench spot fewer so the roster is full);
+  - Find RB from the Lineup tab too;
+  - the Sleeper fold on both tabs, with "(Out)";
+  - Check Sleeper now;
+  - a manual league's Henry found Out by name at Sync All;
+  - the Auditor's pointer.
+
+  The fixture league now trades A.J. Brown for Bijan, so it still fits its 14 spots.
+- `tests/mls-roster-counts.spec.mjs`:
+  - the S9 IR tests read the box: Chase's activation item;
+  - Jefferson swapped in is Out, so he's muted, not activated;
+  - the PNG export drops the box (3 items with the empty RB slot).
+- `tests/mls-keyboard.spec.mjs`: Tab from the lineup reaches the box's Find RB before Unlock All.
+
+**Screenshots: six change, to be re-taken from the PR's CI run** (they supersede round 3's three). Rendered here,
+main and this branch differ in exactly these:
+- `{desktop,phone}/mls-league-setup.png`: the Dashboard box ("1 lineup needs you before kickoff · Fixture League · RB
+  slot is empty · Find RB", and the Check Sleeper now line).
+- `{desktop,phone}/mls-league-lineup.png`: "This lineup needs you · RB slot is empty [Find RB]" above the lineup; the
+  Auditor's card replaced by the one-line pointer (the page is shorter).
+- `{desktop,phone}/mls-league-guide.png`: Guide step 7's new text and the legend's one box sample.
+
+**Left over.**
+- A season-long lock counts as "you kept him": a stud you locked in August who's Out now shows muted. The lock list
+  is ids only, so the box can't tell when the lock was set. If that bites, a lock could be ignored once the status
+  changes after it (needs storing the status at lock time, a new key).
+- PUP and NFI in the IR slot: no move suggested and no "no longer eligible", since it's unclear which Sleeper flag
+  covers them.
+- Runbook card idea: a phone Dashboard with one card per league (status icons, to-dos and buttons together) in place
+  of the table plus the box (owner's #2).
+- The Lineup tab's button row (Optimize / Copy / PNG) is already wider than 375px on the desktop project's layout;
+  not this card's.
+
+### S11, round 5: manual locks clear each NFL week (owner's decision)
+
+**Why.** Round 4 shows an injured starter you locked as your call, muted and not counted. But the lock list was
+season-long and holds only ids, so a star locked in August who's Out now would be muted too. I offered to record the
+status at lock time. The owner chose something simpler: **clear all locks at the start of each NFL week.**
+
+**User-visible effect.**
+- A lock (the padlock, or a swap, which locks) lasts until Sleeper's NFL state reports a new week. On the first load
+  in a new week, every league's manual locks are cleared, the saved lineups' LOCKED badges with them, and a toast
+  says "New NFL week: cleared 3 locks from last week." Game-time auto-locks and their overrides are separate and
+  unchanged.
+- The first load after this ships only records the week. The app can't tell when the locks it finds were set, and
+  clearing ones set this morning would be worse than keeping old ones until the next week starts (a few days).
+- Wording: Unlock All's title, the Optimal Lineup's (i), the Guide's lock line and the legend's LOCKED line say locks
+  last for the week.
+
+**What changed and where.**
+- `js/shared/storage/keys.js`: **new key `mls_locks_week`** (`KEYS.mls.locksWeek`): the week, "2026-5", that the
+  locks were last checked in. It's written only once there's a lock to track: at the first lock, or on load when
+  locks exist and no week is recorded. A browser with no locks never gets it, so the pre-6B backup restore test
+  still sees only its own keys.
+- `js/mls/render/lineup.js`: `clearLocksForNewWeek(season, week)`; `setPlayerLockState` records the week at the first
+  lock. `js/mls/state.js`: `refreshCurrentNflWeek` calls it once Sleeper's week is known, before the tabs redraw.
+  `js/mls/main.js` re-exports it.
+- `lineup/index.html`, `js/mls/legend.js`: wording. CHANGELOG line. `CACHE_NAME` stays v2.8.91.
+
+**Tests.** `tests/mls-weekly-locks.spec.mjs` (new, both widths):
+- a lock with week 1 recorded clears on a week-2 load, with the toast, and the padlock shows unlocked;
+- the same week keeps it;
+- the first time (no week recorded) keeps it and records week 2.
+
+**Found, not fixed (pre-existing, also on main).** Locking a player saves the lock list but not the saved lineup, so
+after a reload the LOCKED badge and padlock show unlocked until the lineup is next recomputed (a sync, Optimize, a
+rankings change), though the lock itself is kept and applied then. Fix: persist `manualStartersMap` /
+`manualBenchMap` in `setPlayerLockState` (js/mls/render/lineup.js). A one-line follow-up; not this card's.
+
+**Screenshots.** No change beyond round 4's six: `mls-league-guide.png` (both widths) already changes, and now also
+carries the lock wording.
+
+### S11, round 6: the padlock after a reload, Dashboard buttons on phones, IR moves as notes, shorter items, a foldable Lineup box (owner's choices)
+
+**Why.** A review as a user after round 5 found five things, and the owner added a sixth (the Lineup tab box should
+be collapsible or dismissible):
+1. After a reload the padlock read unlocked while the box said "you locked him in" (the pre-existing bug noted in
+   round 5).
+2. On phones the Dashboard's buttons sat beside whichever item lined up with them.
+3. An IR move alone made a league count as "needs you before kickoff".
+4. Two items ran four lines on a phone.
+5. "Check Sleeper now" sat under the Sync All button and did the same thing.
+
+**Owner's decisions.**
+- 1–4: fix them, with IR moves counted like kept starters (shown, not counted).
+- 5: name it **"Sync All again"**, so it's clear why it's there twice.
+- The box: I recommended **collapsible** (folded, it still shows its count, so a new problem can't hide), remembered
+  like the Best Available card. The owner offered either, so this is my call; it's easy to switch to a dismiss.
+
+**User-visible effect.**
+- **Locks survive a reload:** a lock saves the lineup as well as the lock list, so the padlock and LOCKED badge show
+  after a reload.
+- **Dashboard, phones (≤600px):** each league's buttons go in a row under its items, and the items get the full
+  width. On desktop the buttons stay on the right, now aligned to the top of the league.
+- **IR moves are notes:** "Move Trey McBride to IR to free a spot" is still listed (purple) but doesn't count. With
+  only notes and kept starters:
+  - Dashboard: "Nothing needs you before kickoff · 1 league with notes".
+  - Lineup tab: "Nothing needs you before kickoff".
+- **Shorter items:**
+  - "Activate Ja'Marr Chase from IR on Sleeper" (was "… on Sleeper before kickoff"; the title already says "before
+    kickoff").
+  - "Activate George Kittle from IR: no longer eligible, and it blocks your adds and drops" (was "…: he's no longer
+    eligible there, and Sleeper blocks adds and drops until you do").
+- **The footer link** reads "**Sync All again** to get the latest injury news and your current Sleeper lineups for
+  every league."
+- **The Lineup tab's box folds:**
+  - Its title line is a button with a chevron. Tap it to fold the box to that line, which then shows the count
+    ("This lineup needs you · 3").
+  - Folded is remembered across visits and leagues, until you tap it again.
+  - With only the Sleeper fold, the title reads "Set this lineup on Sleeper".
+
+**What changed and where.**
+- `js/mls/render/lineup.js` (`setPlayerLockState`): writes `manualStartersMap` / `manualBenchMap` with the lock list.
+- `js/mls/lineup/issues.js`: `note` on IR moves; `needsYou` skips notes; the shorter texts.
+- `js/mls/lineup/gameInfo.js`: the title button, `toggleLineupNeeds`, the titles.
+- `js/mls/render/dashboard.js`: the titles and the footer link.
+- `css/mls.css`: the title button and chevron; the phone layout of `.mls-needs-line`.
+- **New key `mls_lineup_needs_collapsed`** (`KEYS.mls.lineupNeedsCollapsed`, '1' while folded), read into
+  `State.lineupNeedsCollapsed`.
+- `js/mls/main.js`: the `toggleLineupNeeds` action.
+- `lineup/index.html`: the Guide's mention of the link.
+- CHANGELOG updated. `CACHE_NAME` stays v2.8.91.
+
+**Tests.**
+- The padlock: the weekly-locks spec now checks the LOCKED badge after a same-week reload. It failed before the fix,
+  the bug shown on main in round 5.
+- The fold: a new test in `tests/mls-lineup-needs.spec.mjs` (fold, count, kept across a reload, unfold).
+- Notes don't count: the IR-rules test and the unit tests.
+- Phones: the 375px test now checks each league's button sits under its items and inside the box.
+- `tests/mls-keyboard.spec.mjs`: Tab reaches the box's title, then Find RB, then Unlock All.
+- Unit tests and the S9 test updated for the new texts.
+
+**Screenshots.** The same six PNGs as round 4 (now with these changes): `mls-league-setup`, `mls-league-lineup` and
+`mls-league-guide`, both widths. Main and this branch rendered here differ in exactly those.
+
+**Runbook card added for the owner's #2 (round 4): S12**, a phone Dashboard with one card per league. See the
+runbook.
+
+### S11, round 7: unmatched manual names, a one-line Sync All message, then the PR (owner's choices)
+
+**Why.** In the last review as a user:
+- Since the Auditor's removal, a manual-league player whose name Sleeper doesn't know gets no injury check, and
+  nothing says so. The Auditor reported "N unmatched". The owner noted the Add Player autocomplete makes it rarer, but
+  wanted a fallback.
+- Sync All's message had grown to four parts on four lines, too long on a phone.
+
+**User-visible effect.**
+- After Sync All, a manual league with a name Sleeper doesn't know shows a note in both boxes: "No injury news for
+  Zack Nobody: name not found on Sleeper" (several: "Zack Nobody and Kenneth Walker: names …"). It's greyed out like a
+  kept starter and not counted. It goes once the player is removed or matches at the next Sync All.
+- Sync All's message is one line:
+  - "Synced 2 leagues + 1 manual · 1 with roster changes · 2 lineups need you";
+  - with only manual leagues: "Checked injuries in 1 manual league · …";
+  - with nothing else to say, still "Successfully synced 2 leagues!";
+  - a failed league keeps its own sentence, with the rest on a second line.
+
+  The Sync Logs still open by themselves, and the box lists the lineups.
+- Optimize All: "Optimized 5 lineups · 2 need you" (no "(listed under the buttons)").
+
+**What changed and where.**
+- `js/mls/leagues/manualInjuries.js`: `refreshManualInjuries` records `injuryUnmatched` (names) on each manual league.
+  It's a field on the stored league, not a new key.
+- `js/mls/lineup/gameInfo.js`: `getLineupIssues` passes the names still on the roster.
+- `js/mls/lineup/issues.js`: an `unmatched` note item.
+- `js/mls/render/dashboard.js`: the summary built from parts.
+- `css/mls.css`: the note's muted style.
+- CHANGELOG updated.
+
+**Tests.**
+- The manual-league test adds "Zack Nobody" and checks the note.
+- The Sync All tests check the one-line message.
+- `tests/mls-busy-spinner.spec.mjs` matches "Synced 2 leagues": the fixture's empty RB slot adds "2 lineups need
+  you".
+- A unit test for the note.
+
+**Screenshots.** Unchanged from round 6's six. The PR's CI renders them (next).
+
+### S11: the six screenshots re-taken from CI (PR #194)
+
+Each is CI's own `-actual.png` from the `playwright-results` artifact (`gh run download`). In every run, each
+`-expected.png` was identical to the committed baseline, and each run failed on exactly the PNGs below and nothing
+else (318 other tests passed). It took three runs: a test stops at its first failing shot.
+- Run 37995181627: `{desktop,phone}/mls-league-setup.png`. Identical above the new "lineups need you" box ("1 lineup
+  needs you before kickoff · Fixture League · RB slot is empty · Find RB", the "Sync All again" line). Below it, the
+  same content is 154px (desktop) / 195px (phone) lower, with anti-aliasing differences and the fixed bottom nav
+  drawn over different content.
+- Run 37996021538: `{desktop,phone}/mls-league-lineup.png`. The "This lineup needs you" box above the lineup (RB slot
+  is empty, Find RB). The Global Injury Auditor card is now the one-line pointer, so the page is shorter (desktop
+  3112 → 2976px, phone 3026 → 2886px).
+- Run 37996843439: `{desktop,phone}/mls-league-guide.png`. The lock line ("Manual locks (and swaps, which lock) last
+  for the week…"), step 7 "Lineups that need you" and the legend's box sample (desktop 6229 → 6350px, phone
+  12707 → 12930px).

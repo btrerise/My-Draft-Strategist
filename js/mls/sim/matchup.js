@@ -303,7 +303,7 @@ export const runMatchupSim = async function() {
         runMatchupSimulation(team1Players, team2Players, { lineupDiffersFromSleeper, benchInsights, waiverInsights, waiverInsightsStatus, currentWeek });
     } catch (err) {
         console.error('Matchup simulation failed:', err);
-        // Same three-way split as runGlobalInjuryAudit's catch, for the same reasons:
+        // A three-way split (the Global Injury Auditor, removed in improvements S11, used the same one):
         //   * Connection -- any of the Sleeper calls above (matchups, weekly stats, the ~5MB
         //     player map) failed or timed out. Retrying is the fix.
         //   * SyntaxError / isSleeperResponseError -- a Sleeper outage or rate-limit page:

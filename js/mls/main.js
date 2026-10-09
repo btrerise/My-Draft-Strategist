@@ -20,7 +20,7 @@ import { goToSetupStep, onload } from './init.js';
 import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
 import { addEarlyTeam, removeEarlyTeam } from './lineup/earlyGames.js';
-import { explainIrSlot, toggleLockCountdown } from './lineup/gameInfo.js';
+import { explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
 import { addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, moveLeague, saveRequirements, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
@@ -47,15 +47,14 @@ import './trade/waiverValue.js';
 import { copyLineupAsText, exportLineup } from './trade/export.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
-import { initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, toggleLock, unlockAllPlayers } from './render/lineup.js';
-import { optimizeAllLineups, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
+import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
+import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderLineupNeeds, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
 import { getPowerLeagueKind } from './power/directionLabels.js';
 import { goToPowerRankings, refreshPowerRankings, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
-import { runGlobalInjuryAudit } from './lineup/injuryAudit.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
 import { delegate } from '../shared/ui/delegate.js';
@@ -67,7 +66,7 @@ import { dismissBannerAndReveal, dismissBanner } from '../shared/ui/banners.js';
 // state.js would then read State in its TDZ, and the headshot/SoS/market load-time code would run
 // out of mls.js order. main.js is the entry module, so it is always mid-evaluation while the
 // others evaluate, and importing from it never triggers an evaluation.
-export { checkForDraftStrategistHandoff, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLineupUI, renderSyncLogs, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
+export { checkForDraftStrategistHandoff, clearLocksForNewWeek, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLineupNeeds, renderLineupUI, renderSyncLogs, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
 export { confirmRankingsPreview, createManualLeague, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
@@ -106,6 +105,11 @@ const clickActions = {
     dismissDraftStrategistHandoff() { dismissDraftStrategistHandoff(); },
     syncAllLeagues() { syncAllLeagues(this); },
     optimizeAllLineups() { optimizeAllLineups(this); },
+    // The "lineups need you" box under those two buttons (improvements S11).
+    openLeagueLineup() { openLeagueLineup(this.dataset.leagueId); },
+    findLeaguePlayers() { findLeaguePlayers(this.dataset.leagueId, this.dataset.pos); },
+    checkSleeperNow() { checkSleeperNow(); },
+    dismissLineupNeeds() { dismissLineupNeeds(); },
     addAndSyncLeague() { addAndSyncLeague(this); },
     createManualLeague() { createManualLeague(); },
     importAllSleeperLeagues() { importAllSleeperLeagues(this); },
@@ -157,8 +161,11 @@ const clickActions = {
     overrideAutoLock() { overrideAutoLock(this.dataset.id); },
     toggleLock() { toggleLock(this.dataset.id); },
     initiateSwap() { initiateSwap(this.dataset.id); },
+    swapInSuggested() { swapInSuggested(this.dataset.out, this.dataset.in); },
+    toggleLineupNeeds() { toggleLineupNeeds(); },
     removeEarlyTeam() { removeEarlyTeam(this.dataset.team); },
-    runGlobalInjuryAudit() { runGlobalInjuryAudit(this); },
+    // The Global Injury Auditor's place on the Lineup tab now points to the Dashboard's list (improvements S11).
+    goToLineupNeeds() { goToLineupNeeds(); },
     // Lineup tab: Monte Carlo card (5C)
     runMatchupSim() { runMatchupSim(); },
     // Scout tab (and scout/waivers.js, scout/allLeaguesSearch.js) (5C). The Sleeper sync banner

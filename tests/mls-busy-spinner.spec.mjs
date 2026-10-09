@@ -53,7 +53,8 @@ test.describe('Counting spinners', () => {
         expect(sameButton, 'a re-render during the loop did not replace the Sync All button').toBe(true);
 
         releaseSecond();
-        await expect(page.locator('.toast-message').filter({ hasText: 'Successfully synced 2 leagues!' })).toBeVisible();
+        // "Synced 2 leagues · …": the fixture lineup's empty RB slot adds "2 lineups need you" (improvements S11).
+        await expect(page.locator('.toast-message').filter({ hasText: 'Synced 2 leagues' })).toBeVisible();
 
         // Restored as before: label back, spinner gone, clickable.
         await expect(btn).toContainText('Sync All Leagues');

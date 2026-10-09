@@ -13,7 +13,7 @@
 // tests/unit/badgeLegend.test.mjs fails when a badge class used in js/mls or lineup/index.html isn't in
 // the HTML this builds. Imports only modules with no app state, so that test can load it in Node.
 import {
-    BYE_BADGE_HTML, DISMISS_ICON, INFO_ICON, STARTS_ICON, STATUS_CHECK_ICON, STATUS_WARN_ICON, UPGRADE_ICON,
+    BYE_BADGE_HTML, DISMISS_ICON, STARTS_ICON, STATUS_CHECK_ICON, STATUS_WARN_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup,
     moveChipMarkup, pendingStatusIconMarkup, posCountChipMarkup, rankBadgeParts, scoutPillMarkup,
     sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup
@@ -81,7 +81,7 @@ const GROUPS = [
         [kickoffBadgeMarkup('Sun 1:00 PM') + kickoffBadgeMarkup('Started', true) + kickoffBadgeMarkup('Final', true),
             'When his game kicks off, then whether it has started or finished.'],
         [`<span class="badge mls-lock-badge">LOCKED</span><span class="badge mls-autolock-badge">AUTO-LOCKED</span>`,
-            'LOCKED: you locked him in that spot. AUTO-LOCKED: his game has started, so the optimizer leaves him where he is.'],
+            'LOCKED: you locked him in that spot, for this NFL week. AUTO-LOCKED: his game has started, so the optimizer leaves him where he is.'],
         [`<span class="badge early-badge">EARLY</span>`,
             'He plays before the main Sunday games (a team you added under Early Games), so set him first.'],
         [`<span class="badge taxi-badge">TAXI</span>`, 'On your taxi squad. He can\'t start.'],
@@ -90,10 +90,8 @@ const GROUPS = [
         [`<span class="badge badge-rookie">R</span>`, 'A rookie.'],
         [sleeperLineupBadgeMarkup(false) + sleeperLineupBadgeMarkup(true),
             'Your lineup on Sleeper differs from this one for him. Change it on Sleeper to match.'],
-        [`<div class="lineup-injury-warning">${WARNING_ICON}<span><strong>Player</strong> is <strong>OUT</strong> and in your lineup.</span></div>`,
-            'Above your lineup: a starter is doubtful, out or on IR. Swap in a bench player.'],
-        [`<div class="lineup-injury-warning lineup-ir-warning">${INFO_ICON}<span><strong>Player</strong> is in your IR slot on Sleeper.</span></div>`,
-            'Above your lineup: a starter is in your Sleeper IR slot. Move him to your active roster there before kickoff.'],
+        [`<div class="lineup-needs-box has-problems"><div class="lineup-needs-title">${WARNING_ICON}<span>This lineup needs you</span></div><ul class="lineup-needs-list"><li class="lineup-needs-item is-injured">Player is Out: start Other Player instead?</li><li class="lineup-needs-item is-ir">Activate Player from IR on Sleeper before kickoff</li></ul></div>`,
+            'Above your lineup: what it needs from you before kickoff, in red for an injury and purple for your IR slot, with a button to swap or find a player. The Dashboard lists the same for every league.'],
         [pill('mls-verdict-start', 'Would Start'),
             'In Auto-Find and Check a List: he\'d make your lineup this week. The line under it names who he\'d replace.'],
         [pill('mls-verdict-bench', 'Bench') + pill('mls-verdict-bench', 'Locked') + pill('mls-verdict-bench', 'No Slot'),

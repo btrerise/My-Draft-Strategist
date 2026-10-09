@@ -59,6 +59,8 @@ export const KEYS = {
         earlyTeams: 'mls_early_teams',
         leagues: 'mls_leagues',
         locksMap: 'mls_locks_map',
+        // The NFL week ("2026-5") the locks above were last checked in; a new week clears them (improvements S11).
+        locksWeek: 'mls_locks_week',
         manualBench: 'mls_manual_bench',
         manualStarters: 'mls_manual_starters',
         market: 'mls_market',
@@ -72,6 +74,7 @@ export const KEYS = {
         weekly: 'mls_weekly',
         weeklyUpdated: 'mls_weekly_updated',
         autolockOverridesMap: 'mls_autolock_overrides_map',
+        lineupNeedsCollapsed: 'mls_lineup_needs_collapsed', // '1' while the Lineup tab's "This lineup needs you" box is folded (improvements S11)
         bestAvailableCollapsed: 'mls_best_available_collapsed', // '1' while the Dashboard's Best Available card is collapsed (improvements S5)
         bestAvailableDismissed: 'mls_best_available_dismissed', // players dismissed from the Best Available card, per league, this NFL week (improvements S5)
         hasOptimized: 'mls_has_optimized',

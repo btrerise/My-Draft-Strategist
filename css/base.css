@@ -2155,7 +2155,7 @@ button.pos-filter {
 .badge-legend-row:first-child { border-top: 0; }
 .badge-legend-sample { margin: 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; pointer-events: none; }
 .badge-legend-sample .badge { margin-left: 0; }
-.badge-legend-sample .lineup-injury-warning, .badge-legend-sample .bye-warning-banner, .badge-legend-sample .tier-divider { margin: 0; }
+.badge-legend-sample .lineup-needs-box, .badge-legend-sample .bye-warning-banner, .badge-legend-sample .tier-divider { margin: 0; }
 .badge-legend-text { margin: 0; min-width: 0; font-size: 0.85rem; line-height: 1.55; color: var(--text-muted); overflow-wrap: anywhere; }
 @media (max-width: 600px) {
     .badge-legend-body { margin-left: 0; }
