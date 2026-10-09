@@ -8,7 +8,7 @@ import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } 
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
-import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupInjuryWarningHTML, getLineupIrSlotWarningHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { rankBadgeParts, sleeperLineupBadgeMarkup } from '../badges.js';
@@ -576,8 +576,10 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         ensureHeadshotNameIndex(league && league.roster, renderLineupUI);
 
         html += getNextLockCountdownHTML(starters);
-        html += getLineupInjuryWarningHTML(starters, league, benchPool);
-        html += getLineupIrSlotWarningHTML(starters, league);
+        // What this lineup needs from you, in one box: injured, bye and IR-slot starters, empty slots, IR moves,
+        // and the differences from your Sleeper lineup (improvements S11, round 4; it replaces the red and purple
+        // warnings and the amber "Differs from Sleeper lineup" line). The green line below stays for a match.
+        html += getLineupNeedsHTML(starters, league, benchPool);
 
         if (validSleeperStarters.length > 0) {
             let sleeperSet = new Set(validSleeperStarters);
@@ -586,8 +588,6 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             
             if (isMatch) {
                 html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-green); display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Matches your active Sleeper lineup</div>`;
-            } else {
-                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: #f59e0b; display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Action Required: Differs from Sleeper lineup</div>`;
             }
         }
 

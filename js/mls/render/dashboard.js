@@ -10,10 +10,11 @@ import { loadRosterTab } from './roster.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { setToastsSuppressed, showToast } from '../../shared/ui/toast.js';
 import { optimizeLineup } from './lineup.js';
-import { formatKickoffLabel, getLineupIssues } from '../lineup/gameInfo.js';
-import { lineupIssueItems, needsLineupButton, sleeperLineupChanges } from '../lineup/issues.js';
+import { FOLD_CHEVRON, formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, sleeperChangesHTML } from '../lineup/gameInfo.js';
+import { findChips, lineupIssueItems, needsLineupButton, needsYou } from '../lineup/issues.js';
 import { updateWaiverScanSetting } from '../scout/waivers.js';
-import { WARNING_ICON } from '../badges.js';
+import { isManualLeague, refreshManualInjuries } from '../leagues/manualInjuries.js';
+import { INFO_ICON, WARNING_ICON } from '../badges.js';
 import { showTab, updateDrawerActiveState } from '../nav.js';
 
 
@@ -76,69 +77,63 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
     // session (State.lineupNeedsDismissed, in memory) until a league it didn't list needs you, or the next
     // Optimize All or Sync All.
     const DAY_MS = 24 * 60 * 60 * 1000;
-    // The "What changed?" card's fold chevron (js/mls/rankings/changeSummary.js), for the Sleeper drop-down.
-    const FOLD_CHEVRON = `<svg class="mls-change-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 
     function collectLineupNeeds() {
         const leagues = (State.leagues || []).filter(l => !isBestBallLeague(l));
-        const problems = leagues.map(l => {
-            const issues = getLineupIssues(State.manualStartersMap[l.leagueId] || [], l, State.manualBenchMap[l.leagueId] || []);
-            return { league: l, issues, items: lineupIssueItems(issues) };
+        const lines = leagues.map(l => {
+            const starters = State.manualStartersMap[l.leagueId] || [];
+            const issues = getLineupIssues(starters, l, State.manualBenchMap[l.leagueId] || []);
+            const items = lineupIssueItems(issues);
+            return { league: l, issues, items, needs: needsYou(items) };
         }).filter(n => n.items.length > 0);
-        // Soonest kickoff first; a line with no known kickoff (only byes or empty slots) after them, in league order.
-        const when = (n) => (Number.isFinite(n.issues.firstKickoffMs) ? n.issues.firstKickoffMs : Infinity);
-        problems.sort((a, b) => (when(a) === when(b) ? 0 : when(a) < when(b) ? -1 : 1));
+        // Leagues that need you, soonest kickoff first (no known kickoff: only byes, empty slots or IR moves, after
+        // them, in league order); then leagues with only starters you kept.
+        const when = (n) => (!n.needs ? 2 : Number.isFinite(n.issues.firstKickoffMs) ? 0 : 1);
+        const ms = (n) => (Number.isFinite(n.issues.firstKickoffMs) ? n.issues.firstKickoffMs : 0);
+        lines.sort((a, b) => (when(a) - when(b)) || (when(a) === 0 ? ms(a) - ms(b) : 0));
 
         const sleeper = leagues.map(l => {
-            const starters = (State.manualStartersMap[l.leagueId] || []).filter(s => s.player);
-            const sleeperIds = (l.sleeperStarters || []).filter(id => id && id !== "0");
-            if (starters.length === 0 || sleeperIds.length === 0) return null;
-            const changes = sleeperLineupChanges(starters.map(s => s.player.id), sleeperIds);
-            if (changes.start.length === 0 && changes.bench.length === 0) return null;
-            const nameOf = (id) => ((starters.find(s => s.player.id === id) || {}).player || (l.roster || []).find(p => p.id === id) || {}).name || 'Unknown player';
-            return { league: l, start: changes.start.map(nameOf), bench: changes.bench.map(nameOf) };
+            const changes = getSleeperLineupChanges(l, State.manualStartersMap[l.leagueId] || []);
+            return changes ? { league: l, changes } : null;
         }).filter(Boolean);
-        return { problems, sleeper };
+        return { lines, sleeper, needCount: lines.filter(n => n.needs).length };
     }
 
-    const needKeys = (needs) => [...needs.problems.map(n => `p:${n.league.leagueId}`), ...needs.sleeper.map(n => `s:${n.league.leagueId}`)];
+    const needKeys = (needs) => [...needs.lines.filter(n => n.needs).map(n => `p:${n.league.leagueId}`), ...needs.sleeper.map(n => `s:${n.league.leagueId}`)];
 
     const nb = (text) => escapeHtml(text).replace(/ /g, '&nbsp;');
 
     function problemLineHTML(n) {
         const id = escapeHtml(n.league.leagueId);
         const name = escapeHtml(n.league.name || 'Unnamed league');
-        const ms = n.issues.firstKickoffMs;
+        const ms = n.needs ? n.issues.firstKickoffMs : NaN;
         const when = Number.isFinite(ms) ? formatKickoffLabel(new Date(ms).toISOString()) : '';
         const soon = Number.isFinite(ms) && ms - Date.now() < DAY_MS;
         const items = n.items.map(i => `<span class="mls-needs-item is-${i.kind}">${escapeHtml(i.text)}</span>`).join('<span class="mls-needs-sep"> · </span>');
         const buttons = [];
         if (needsLineupButton(n.issues)) buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button>`);
-        n.issues.find.forEach(chip => {
+        findChips(n.items).forEach(chip => {
             const label = chip === 'ALL' ? 'Find players' : `Find ${chip}`;
             buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-find" data-action="findLeaguePlayers" data-league-id="${id}" data-pos="${escapeHtml(chip)}" aria-label="${label} in ${name}">${label}</button>`);
         });
         return `
-            <li class="mls-needs-line">
+            <li class="mls-needs-line${n.needs ? '' : ' is-kept-only'}">
                 <div class="mls-needs-main">
                     <span class="mls-needs-head-line"><span class="mls-needs-league">${name}</span>${when ? ` <span class="mls-needs-when${soon ? ' is-soon' : ''}">${nb(when)}</span>` : ''}</span>
                     <span class="mls-needs-items">${items}</span>
                 </div>
-                <div class="mls-needs-actions">${buttons.join('')}</div>
+                ${buttons.length ? `<div class="mls-needs-actions">${buttons.join('')}</div>` : ''}
             </li>`;
     }
 
     function sleeperLineHTML(n) {
         const id = escapeHtml(n.league.leagueId);
         const name = escapeHtml(n.league.name || 'Unnamed league');
-        const parts = [];
-        if (n.start.length) parts.push(`Start ${n.start.map(nb).join(', ')}`);
-        if (n.bench.length) parts.push(`Bench ${n.bench.map(nb).join(', ')}`);
         return `
             <li class="mls-needs-line">
                 <div class="mls-needs-main">
                     <span class="mls-needs-league">${name}</span>
-                    <span class="mls-needs-items">${parts.join('<span class="mls-needs-sep"> · </span>')}</span>
+                    <span class="mls-needs-items">${sleeperChangesHTML(n.changes)}</span>
                 </div>
                 <div class="mls-needs-actions"><button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button></div>
             </li>`;
@@ -150,16 +145,18 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         const needs = collectLineupNeeds();
         const keys = needKeys(needs);
         const dismissed = State.lineupNeedsDismissed;
-        if (keys.length === 0 || (dismissed && keys.every(k => dismissed.has(k)))) {
+        const shown = needs.lines.length > 0 || needs.sleeper.length > 0;
+        if (!shown || (dismissed && keys.every(k => dismissed.has(k)))) {
             box.hidden = true;
             box.innerHTML = '';
             return;
         }
         // Re-renders are frequent (every lineup render); keep the drop-down as the person left it.
         const wasOpen = !!box.querySelector('.mls-needs-sleeper[open]');
-        const p = needs.problems.length, sl = needs.sleeper.length;
-        const title = p > 0
-            ? `${p} lineup${p === 1 ? ' needs' : 's need'} you before kickoff`
+        const p = needs.needCount, sl = needs.sleeper.length;
+        const keptOnly = needs.lines.length - p;
+        const title = p > 0 ? `${p} lineup${p === 1 ? ' needs' : 's need'} you before kickoff`
+            : keptOnly > 0 ? `Nothing needs you · ${keptOnly} lineup${keptOnly === 1 ? '' : 's'} with starters you kept`
             : `${sl} lineup${sl === 1 ? '' : 's'} to set on Sleeper`;
         const sleeperFold = sl === 0 ? '' : `
             <details class="mls-change-fold mls-needs-sleeper"${wasOpen ? ' open' : ''}>
@@ -169,12 +166,13 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             </details>`;
         box.innerHTML = `
             <div class="mls-needs-head">
-                ${WARNING_ICON}
+                ${p > 0 ? WARNING_ICON : INFO_ICON}
                 <span class="mls-needs-title">${title}</span>
                 <button type="button" class="close-banner-btn close-banner-btn-sm mls-needs-close" data-action="dismissLineupNeeds" aria-label="Close this list">✕</button>
             </div>
-            ${p > 0 ? `<ul class="mls-needs-list">${needs.problems.map(problemLineHTML).join('')}</ul>` : ''}
-            ${sleeperFold}`;
+            ${needs.lines.length > 0 ? `<ul class="mls-needs-list">${needs.lines.map(problemLineHTML).join('')}</ul>` : ''}
+            ${sleeperFold}
+            <p class="mls-needs-check"><button type="button" class="btn-bare mls-needs-check-link" data-action="checkSleeperNow">Check Sleeper now</button> gets the latest injury news and your current Sleeper lineups for every league.</p>`;
         box.classList.toggle('has-problems', p > 0);
         box.hidden = false;
     }
@@ -190,10 +188,26 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
     function showLineupNeedsAfterRun() {
         State.lineupNeedsDismissed = null;
         renderLineupNeeds();
-        return collectLineupNeeds().problems.length;
+        return collectLineupNeeds().needCount;
     }
 
     const needYouText = (n) => `${n} need${n === 1 ? 's' : ''} you (listed under the buttons)`;
+
+    // The Lineup tab's pointer where the Global Injury Auditor was: the Dashboard, at the Command Center (the box
+    // sits under its buttons).
+    export function goToLineupNeeds() {
+        showTab('setup');
+        updateDrawerActiveState('setup');
+        const card = document.getElementById('dashboardCommandCenter');
+        if (card && card.scrollIntoView) card.scrollIntoView({ block: 'start' });
+    }
+
+    // "Check Sleeper now": Sync All, which gets the latest injury news (a fresh player map), your Sleeper lineups and
+    // rosters, and looks up your manual leagues' players by name (S11 round 4: it replaces the Global Injury Auditor).
+    export function checkSleeperNow() {
+        const btn = document.getElementById('syncAllBtn');
+        if (btn && !btn.disabled) syncAllLeagues(btn);
+    }
 
     // "Open lineup": that league, on its Lineup tab, where the matching warning sits above the lineup.
     export function openLeagueLineup(leagueId) {
@@ -302,10 +316,13 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
 export const syncAllLeagues = async function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
         
-        // Filter out manual leagues — only sync Sleeper connections
+        // Sleeper connections are re-synced. Manual and hand-off leagues have nothing to sync, but their
+        // players' injury statuses are looked up by name and their lineups re-optimized (improvements S11,
+        // round 4, in place of the Global Injury Auditor).
         const sleeperLeagues = State.leagues.filter(l => l.leagueId && !l.leagueId.startsWith('manual_') && l.username && l.username !== "Manual");
-        
-        if (sleeperLeagues.length === 0) {
+        const manualLeagues = State.leagues.filter(l => isManualLeague(l) && !isBestBallLeague(l) && (l.roster || []).length > 0);
+
+        if (sleeperLeagues.length === 0 && manualLeagues.length === 0) {
             showToast("No Sleeper-synced leagues to refresh.", { isError: true });
             return;
         }
@@ -330,7 +347,9 @@ export const syncAllLeagues = async function(btn) {
             const originalActiveId = State.activeLeagueId;
             try {
                 // Preload the heavy player map ONCE to save massive API bandwidth
-                const playerMap = await getSleeperPlayerMap();
+                // forceRefresh: Sync All is also the "check Sleeper now" for injuries (it replaced the
+                // Global Injury Auditor, which did the same), so it wants today's statuses, not the cached map.
+                const playerMap = await getSleeperPlayerMap({ forceRefresh: true });
                 const preloaded = { playerMap }; 
 
                 let successCount = 0;
@@ -380,6 +399,20 @@ export const syncAllLeagues = async function(btn) {
                     }
                 }
 
+                // Manual and hand-off leagues: today's injury statuses by name, then a fresh lineup (locks kept),
+                // the way Optimize All builds one, so an Out player there is benched where someone can replace
+                // him and the "lineups need you" boxes name the rest. Their lineups are written below.
+                const manualChecked = refreshManualInjuries(manualLeagues, playerMap);
+                manualChecked.forEach(l => {
+                    State.activeLeagueId = l.leagueId;
+                    hydrateRankingsForLeague(l);
+                    optimizeLineup(true, false, { batch: true });
+                });
+                if (manualChecked.length > 0) {
+                    localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+                    localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
+                }
+
                 // Single write after the loop instead of one localStorage.setItem per league. The
                 // active league is put back first so the one saved is yours, not the last synced.
                 if (originalActiveId && State.leagues.some(x => x.leagueId === originalActiveId)) State.activeLeagueId = originalActiveId;
@@ -394,14 +427,17 @@ export const syncAllLeagues = async function(btn) {
                 // that worked: a miss here is a roster you'd go on to set a lineup off, so it
                 // gets named rather than quietly dropped from the count.
                 const failedCount = failedLeagueNames.length;
-                let summaryMsg = failedCount > 0
+                const manualText = `Checked injuries in ${manualChecked.length} manual league${manualChecked.length === 1 ? '' : 's'}.`;
+                let summaryMsg = sleeperLeagues.length === 0 ? manualText
+                    : failedCount > 0
                     ? `Synced ${successCount} of ${sleeperLeagues.length}. Couldn't reach: ${formatNameList(failedLeagueNames)} — try Sync All again.`
                     : `Successfully synced ${successCount} league${successCount === 1 ? '' : 's'}!`;
+                if (sleeperLeagues.length > 0 && manualChecked.length > 0) summaryMsg += `\n\n${manualText}`;
                 if (newLogs.length > 0) {
                     summaryMsg += `\n\nChanges found in ${newLogs.length} league${newLogs.length === 1 ? '' : 's'}. Check the Sync Logs!`;
                 }
                 // Each synced league was re-optimized: say how many lineups need you (the box under the buttons).
-                const needYou = collectLineupNeeds().problems.length;
+                const needYou = collectLineupNeeds().needCount;
                 if (needYou > 0) summaryMsg += `\n\n${needYou} lineup${needYou === 1 ? '' : 's'} ${needYouText(needYou).replace(/^\d+ /, '')}.`;
                 // force: toasts are still suppressed here (the finally below is what clears the
                 // flag) and this summary is the whole point of having suppressed them.

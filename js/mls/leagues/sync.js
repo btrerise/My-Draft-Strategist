@@ -111,7 +111,7 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
             } else if (isMatch) {
                 lineupIcon = `<span class="status-icon status-good tooltip-container">${STATUS_CHECK_ICON}<span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
             } else {
-                lineupIcon = `<span class="status-icon status-danger tooltip-container">${STATUS_WARN_ICON}<span class="tooltip-text">Action Required: Differs from Sleeper Lineup</span></span>`;
+                lineupIcon = `<span class="status-icon status-danger tooltip-container">${STATUS_WARN_ICON}<span class="tooltip-text">Differs from your Sleeper lineup: the changes are in the list above</span></span>`;
             }
 
             // --- Early Game Check ---
@@ -633,8 +633,22 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
                 ? (leagueData.settings.type === 2 ? 'dynasty' : (leagueData.settings.type === 1 ? 'keeper' : 'redraft'))
                 : 'redraft';
 
+            // Your IR slot's rules and the active roster's size (improvements S11, round 4), for the "lineups
+            // need you" box: whether an activation needs an open spot, and who can go to (or must leave) IR.
+            // reserve_slots and the reserve_allow_* flags are in every Sleeper league's settings; null when a
+            // response lacks them, and the box then says nothing about IR rules. NFL Injured Reserve is always
+            // allowed. roster_positions lists every starting and bench spot (not IR or taxi).
+            const ls = leagueData.settings || {};
+            const irRules = typeof ls.reserve_slots === 'number' ? {
+                slots: ls.reserve_slots,
+                allow: { OUT: !!ls.reserve_allow_out, D: !!ls.reserve_allow_doubtful, SUS: !!ls.reserve_allow_sus,
+                    DNR: !!ls.reserve_allow_dnr, COV: !!ls.reserve_allow_cov, NA: !!ls.reserve_allow_na },
+            } : null;
+            const rosterSize = Array.isArray(leagueData.roster_positions) ? leagueData.roster_positions.length : null;
+
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge, leagueType: leagueType,
+                irRules, rosterSize,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
                 // Needed by the Matchup Simulator: rosterId identifies "us" within this

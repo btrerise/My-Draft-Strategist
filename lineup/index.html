@@ -226,12 +226,12 @@
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">At-a-glance status of all your synced leagues. Click 'Optimize All Lineups' to update every roster instantly based on your latest uploaded weekly rankings. Afterwards, and after 'Sync All Leagues', any lineup that needs you before kickoff (a starter who's injured, in your Sleeper IR slot or on bye, or an empty starting slot) is listed under these buttons with a button to open it. A league drops off once you've fixed it.</span>
+                <span class="tooltip-text">At-a-glance status of all your synced leagues. Click 'Optimize All Lineups' to update every roster instantly based on your latest uploaded weekly rankings. 'Sync All Leagues' also gets the latest injury news for every league. Any lineup that needs you before kickoff (an injured, bye or IR-slot starter, an empty slot, an IR move) is listed under these buttons, soonest kickoff first, with what to do; a league drops off once you've fixed it. The drop-down under that list shows each lineup that differs from the one on Sleeper, the same leagues the Lineup column marks.</span>
             </div>
         </header>
         
         <div class="button-row-dual mb-3">
-            <button id="syncAllBtn" class="btn btn-blue" data-action="syncAllLeagues" title="Syncs waivers and trades across all your Sleeper leagues">
+            <button id="syncAllBtn" class="btn btn-blue" data-action="syncAllLeagues" title="Syncs rosters, injury news and lineups across all your leagues">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
                 Sync All Leagues
             </button>
@@ -917,23 +917,15 @@
         </div>
     </section>
 
-    <!-- GLOBAL INJURY AUDITOR -->
-    <section class="settings-card danger-card">
-        <header class="card-header">
-            <h3><span class="text-danger">Global Injury Auditor</span></h3>
-            <div class="tooltip-container">
-                <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Scans all your leagues to find 'Out' or 'IR' players left in starting lineups or taking up active bench spots. Best Ball leagues are skipped (no lineup to set, no IR slot), as are players whose games have already kicked off, since their roster spots are locked.</span>
-            </div>
-        </header>
-        <div class="info-banner mb-4" style="display: flex; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
-            <div class="cluster cluster-sm">
-                <div class="info-banner-icon" aria-hidden="true" style="background: #ef4444; color: white;">i</div>
-                <div><strong>How this works:</strong> Sleeper-synced leagues are checked against your real Sleeper roster. Manually added leagues are checked against Sleeper's injury database by player name, using the lineup set here in the optimizer. Best Ball leagues are skipped.</div>
-            </div>
-        </div>
-        <button class="btn btn-danger" data-action="runGlobalInjuryAudit">Run Global Audit</button>
-        <div id="injuryAuditOutput" class="scout-output-container" aria-live="polite"></div>
+    <!-- GLOBAL INJURY AUDITOR: folded into the Dashboard's "lineups need you" box (improvements S11, round 4).
+         Sync All ("Check Sleeper now") gets the injury news; the box lists injured starters, IR moves and your
+         Sleeper lineup's differences. This one-line pointer catches people who still look for it here, like the
+         Power Rankings pointer on the Scout tab. -->
+    <section class="settings-card mls-moved-pointer" id="injuryAuditPointer">
+        <p class="card-desc mls-moved-pointer-text">
+            The <strong>Global Injury Auditor</strong> is now part of the Dashboard's list of lineups that need you: injured starters and IR moves in every league, updated by Sync All.
+            <button type="button" class="mls-moved-pointer-link btn-bare" data-action="goToLineupNeeds">Go to the Dashboard &rarr;</button>
+        </p>
     </section>
 </div>
         
@@ -1354,8 +1346,8 @@
 
             <!-- Step 7 -->
             <div class="guide-step">
-                <h4 class="step-title"><span class="step-num blue-step">7</span> Global Injury Auditor</h4>
-                <p class="step-desc">At the bottom of the <strong class="text-main">Lineup</strong> tab, tap "Run Global Audit" to scan all of your leagues at once for players listed as Out or on IR who are still in a starting lineup or taking up an active bench spot. Best Ball leagues are skipped (there's no lineup to set), as are players whose game has already kicked off.</p>
+                <h4 class="step-title"><span class="step-num blue-step">7</span> Lineups that need you</h4>
+                <p class="step-desc">On the <strong class="text-main">Dashboard</strong>, a box under Sync All and Optimize All lists every league whose lineup needs you before kickoff: a starter who's injured, on bye or still in your Sleeper IR slot, an empty starting slot, an injured bench player you could move to IR, or an IR-slot player who has to come out. Each line says what to do and when the first game kicks off, with a button to swap in a healthy bench player or find a free agent. A drop-down lists the leagues whose lineup on Sleeper differs from yours. <strong class="text-main">Sync All</strong> ("Check Sleeper now" in the box) gets the latest injury news for every league, manual ones included. The Lineup tab shows the same items for the league you have open.</p>
             </div>
 
             <!-- Step 8 -->

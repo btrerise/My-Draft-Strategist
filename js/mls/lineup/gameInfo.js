@@ -13,7 +13,7 @@ import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
 import { renderLineupUI, optimizeLineup } from '../main.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
-import { lineupIssues, swapFor } from './issues.js';
+import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -339,92 +339,96 @@ import { lineupIssues, swapFor } from './issues.js';
         </div>`;
     }
 
-    // Flags any CURRENT STARTER carrying one of the statuses SIM_EXCLUDE_STATUSES treats as a
-    // real chance of not taking the field (Doubtful, Out, IR, PUP, Suspended, NFI, Did Not
-    // Report). The Monte Carlo simulator already quietly excludes these players from its own
-    // math, but "quietly" is the problem for someone who hasn't run a simulation recently --
-    // a starter slot burned on someone who isn't playing is a mistake worth surfacing directly
-    // on the Lineup tab itself, not just implied by a simulator result elsewhere. Recommends a
-    // swap rather than picking one FOR the user -- that's exactly what the swap UI immediately
-    // below this banner is for.
+    // --- WHAT THIS LINEUP NEEDS FROM YOU (improvements S11) ---
+    // One box above the Lineup tab's lineup, in place of three lines it replaces (owner's choice, S11 round 4):
+    // the red injured-starter warning (a starter who's Doubtful, Out, IR... is worth saying so), the purple IR-slot
+    // reminder (S9 round 6: the optimizer may start a healthy IR-slot player on purpose, as the prompt to activate
+    // him) and the amber "Differs from Sleeper lineup" line. Its items are the Dashboard box's, from the same rule
+    // (getLineupIssues / lineupIssueItems), with the same colors and buttons: "Justin Jefferson is Doubtful: start
+    // Puka Nacua instead? [Swap in Puka Nacua]", "Derrick Henry is Out: no healthy RB on your bench [Find RB]",
+    // "Activate Ja'Marr Chase from IR on Sleeper before kickoff". A starter you locked in shows muted. The Sleeper
+    // differences fold up at the bottom.
     //
-    // Suppressed entirely in Best Ball, for the same reason the Global Injury Auditor skips
-    // those leagues: there's no lineup to set there, so "consider swapping in a bench player"
-    // is advice the format doesn't let anyone act on. The lineup shown for a Best Ball league
-    // is this tool's own projection of what will auto-start, not a decision the person makes.
-    //
-    // A starter whose game has already kicked off is dropped from the warning too, for the
-    // reason the Global Injury Auditor excludes them: the roster spot is locked on essentially
-    // every platform, so there's no swap left to make. Unlike the auditor, nothing is said
-    // about the omission -- that tool summarizes leagues the person isn't looking at, whereas
-    // here the player's own row is a few pixels below this banner already carrying both their
-    // injury badge and a "Started"/"Final" kickoff badge. Repeating it would be noise.
-    //
-    // Which starters it names comes from getLineupIssues below, the rule the Dashboard's list after
-    // Optimize All shares (improvements S11). When a healthy bench player can take his slot, the warning
-    // names him and offers a one-tap swap ("Start CeeDee Lamb instead? [Swap in CeeDee Lamb]"): the
-    // optimizer may start a Doubtful player over him by rank, so it's a suggestion, and the choice stays
-    // yours (owner's decision, S11 round 3). The button runs the ordinary swap, which locks him in.
-    export function getLineupInjuryWarningHTML(starters, league, bench = []) {
-        const issues = getLineupIssues(starters, league, bench);
-        const flagged = issues.injured;
-        if (flagged.length === 0) return "";
+    // Unchanged from the warnings it replaces: nothing in Best Ball (no lineup to set), and nothing about a player
+    // whose game has kicked off (his spot is locked; his row says Started or Final). The lineup PNG leaves the
+    // whole box out (js/mls/trade/export.js): it's for you, not the league chat (S9 round 7).
+    export function getLineupNeedsHTML(starters, league, bench = []) {
+        const items = lineupIssueItems(getLineupIssues(starters, league, bench));
+        const sleeper = getSleeperLineupChanges(league, starters);
+        if (items.length === 0 && !sleeper) return "";
 
-        const warnSvg = WARNING_ICON;
-        const swapButton = (p, label) => {
-            const q = swapFor(issues, p);
-            return q ? `<button type="button" class="btn btn-secondary mls-btn-sm lineup-swap-suggest" data-action="swapInSuggested" data-out="${escapeHtml(p.id)}" data-in="${escapeHtml(q.id)}">${label(q)}</button>` : '';
-        };
-
-        if (flagged.length === 1) {
-            const p = flagged[0];
-            const q = swapFor(issues, p);
-            if (!q) {
-                return `<div class="lineup-injury-warning">
-                ${warnSvg}
-                <span><strong>${escapeHtml(p.name)}</strong> is <strong>${escapeHtml(p.inj)}</strong> and currently in your starting lineup - consider swapping in a bench player.</span>
-            </div>`;
+        const leagueId = escapeHtml(league ? league.leagueId : '');
+        const itemHTML = items.map(i => {
+            let button = '';
+            if (i.swap) {
+                button = ` <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="swapInSuggested" data-out="${escapeHtml(i.swap.out.id)}" data-in="${escapeHtml(i.swap.in.id)}">Swap in ${escapeHtml(i.swap.in.name)}</button>`;
+            } else if (i.find) {
+                const label = i.find === 'ALL' ? 'Find players' : `Find ${i.find}`;
+                button = ` <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="findLeaguePlayers" data-league-id="${leagueId}" data-pos="${escapeHtml(i.find)}">${label}</button>`;
             }
-            return `<div class="lineup-injury-warning">
-                ${warnSvg}
-                <span><strong>${escapeHtml(p.name)}</strong> is <strong>${escapeHtml(p.inj)}</strong> and currently in your starting lineup. Start <strong>${escapeHtml(q.name)}</strong> instead? ${swapButton(p, x => `Swap in ${escapeHtml(x.name)}`)}</span>
-            </div>`;
-        }
+            return `<li class="lineup-needs-item is-${i.kind}">${escapeHtml(i.text)}${button}</li>`;
+        }).join('');
 
-        const namesHTML = flagged.map(p => `${escapeHtml(p.name)} (${escapeHtml(p.inj)})`).join(', ');
-        const buttons = flagged.map(p => swapButton(p, x => `${escapeHtml(x.name)} for ${escapeHtml(p.name)}`)).join(' ');
-        return `<div class="lineup-injury-warning">
-            ${warnSvg}
-            <span><strong>${flagged.length} starters</strong> are Doubtful, Out, IR, or otherwise unlikely to play: ${namesHTML} - consider swapping them out.${buttons ? ` <span class="lineup-swap-suggests">${buttons}</span>` : ''}</span>
+        const counted = items.filter(i => !i.muted).length;
+        const keptCount = items.length - counted;
+        const title = counted > 0 ? 'This lineup needs you'
+            : keptCount > 0 ? `Nothing needs you · ${keptCount} starter${keptCount === 1 ? '' : 's'} you kept` : '';
+        // Re-renders are frequent (every swap and lock); keep the fold as the person left it.
+        const wasOpen = !!document.querySelector('#optimalLineupContainer .lineup-needs-sleeper[open]');
+        const n = sleeper ? sleeper.start.length + sleeper.bench.length : 0;
+        const fold = !sleeper ? '' : `
+            <details class="mls-change-fold lineup-needs-sleeper"${wasOpen ? ' open' : ''}>
+                <summary>${FOLD_CHEVRON}<span>Differs from your Sleeper lineup: ${n} change${n === 1 ? '' : 's'}</span></summary>
+                <p class="lineup-needs-sleeper-text">${sleeperChangesHTML(sleeper)}</p>
+                <p class="lineup-needs-note">As of your last sync: set it on Sleeper, then sync to clear this.</p>
+            </details>`;
+        return `<div class="lineup-needs-box${counted > 0 ? ' has-problems' : ''}">
+            ${title ? `<div class="lineup-needs-title">${counted > 0 ? WARNING_ICON : INFO_ICON}<span>${title}</span></div>` : ''}
+            ${items.length ? `<ul class="lineup-needs-list">${itemHTML}</ul>` : ''}
+            ${fold}
         </div>`;
     }
 
-    // The optimizer can start a healthy player who's in your Sleeper IR slot (isReserve): the owner
-    // kept that on purpose, as the app's prompt to activate him (improvements S9, round 6). Sleeper
-    // won't start him until he's moved to the active roster, so this line says so above the lineup,
-    // where it can't be missed. Same rules as the injury warning above: not in Best Ball, and not
-    // once his game has kicked off (nothing left to change). Manual leagues have no IR slot.
-    export function getLineupIrSlotWarningHTML(starters, league) {
-        const flagged = getLineupIssues(starters, league).irSlot;
-        if (flagged.length === 0) return "";
-        const infoSvg = INFO_ICON;
-        const names = flagged.map(p => `<strong>${escapeHtml(p.name)}</strong>`);
-        const who = names.length === 1 ? names[0]
-            : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-        const text = flagged.length === 1
-            ? `${who} is in your IR slot on Sleeper. Move him to your active roster there before kickoff to start him.`
-            : `${who} are in your IR slot on Sleeper. Move them to your active roster there before kickoff to start them.`;
-        return `<div class="lineup-injury-warning lineup-ir-warning">
-            ${infoSvg}
-            <span>${text}</span>
-        </div>`;
+    // The "What changed?" card's fold chevron (js/mls/rankings/changeSummary.js), for the Sleeper fold here and on
+    // the Dashboard.
+    export const FOLD_CHEVRON = `<svg class="mls-change-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+
+    // Your lineup here against the one on Sleeper as of the last sync: { start: [names], bench: [names] }, or null
+    // when they match or there's nothing to compare (Best Ball, manual leagues, no lineup yet). A benched name
+    // carries his status when he's unlikely to play ("Derrick Henry (Out)"): the Global Injury Auditor's "injured
+    // starter in your Sleeper lineup", which this replaces (S11 round 4). Shared with the Dashboard box; the
+    // Command Center's Lineup column uses the same comparison (sleeperLineupChanges), so they agree.
+    export function getSleeperLineupChanges(league, starters) {
+        const sleeperIds = getValidSleeperStarterIds(league);
+        const optimized = (starters || []).filter(s => s && s.player);
+        if (sleeperIds.length === 0 || optimized.length === 0) return null;
+        const changes = sleeperLineupChanges(optimized.map(s => s.player.id), sleeperIds);
+        if (changes.start.length === 0 && changes.bench.length === 0) return null;
+        const playerOf = (id) => (optimized.find(s => s.player.id === id) || {}).player || ((league && league.roster) || []).find(p => p.id === id) || null;
+        const label = (id) => {
+            const p = playerOf(id);
+            if (!p) return 'Unknown player';
+            const hurt = SIM_EXCLUDE_STATUSES.includes(p.inj) ? ` (${statusPhrase(p.inj).replace(/^is /, '')})` : '';
+            return `${p.name}${hurt}`;
+        };
+        return { start: changes.start.map(label), bench: changes.bench.map(label) };
     }
 
-    // What on a lineup needs you before kickoff: injured starters, starters in your Sleeper IR slot,
-    // starters on bye and empty starting slots, with swaps from the bench where one fits
-    // (js/mls/lineup/issues.js, improvements S11). The two warnings above read the first two; the
-    // Dashboard's box reads it all, for every league, from State.manualStartersMap / manualBenchMap.
-    // Nothing in Best Ball; a player whose game has kicked off is left out (nothing left to change).
+    // "Start Ja'Marr Chase · Bench Garrett Wilson, Derrick Henry (Out)", names kept whole.
+    export function sleeperChangesHTML(changes) {
+        const names = (list) => list.map(n => escapeHtml(n).replace(/ /g, '&nbsp;')).join(', ');
+        const parts = [];
+        if (changes.start.length) parts.push(`Start ${names(changes.start)}`);
+        if (changes.bench.length) parts.push(`Bench ${names(changes.bench)}`);
+        return parts.join('<span class="mls-needs-sep"> · </span>');
+    }
+
+    // Whether you locked him in this league: a lock, or a swap (which locks). Your call, so the boxes show him muted.
+    const isKeptStarter = (league, p) => !!(league && p && (State.lockedPlayersMap[league.leagueId] || []).includes(p.id));
+
+    // What on a lineup needs you before kickoff (js/mls/lineup/issues.js, improvements S11), with the State-backed
+    // parts filled in: statuses, kickoffs, this week's byes, your locks, and the league's IR rules and roster size
+    // (recorded at a Sleeper sync since round 4). The Lineup tab's box above and the Dashboard's box both read it.
     export function getLineupIssues(starters, league, bench = []) {
         return lineupIssues(starters, {
             bestBall: isBestBallLeague(league),
@@ -435,6 +439,10 @@ import { lineupIssues, swapFor } from './issues.js';
                 const iso = p && p.team ? State.gameTimesByTeam[p.team] : null;
                 return iso ? new Date(iso).getTime() : NaN;
             },
+            kept: p => isKeptStarter(league, p),
+            irRules: league ? league.irRules || null : null,
+            rosterSize: league ? league.rosterSize : null,
+            roster: league ? league.roster || [] : [],
         }, bench);
     }
 

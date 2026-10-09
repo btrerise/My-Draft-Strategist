@@ -109,10 +109,10 @@ function splitBlendedBorders(root) {
                     // league chats is the safer default. The initials circles stay, so the
                     // rows keep the same shape as on screen.
                     clonedContainer.querySelectorAll('.mls-headshot-img').forEach(img => img.remove());
-                    // The warnings above the lineup (an injured starter's "consider swapping", and the IR-slot
-                    // starter's "move him to your active roster", improvements S9) are to-dos for you, not for
-                    // the league chat this image gets posted in (owner's decision). The rows' badges stay.
-                    clonedContainer.querySelectorAll('.lineup-injury-warning').forEach(el => el.remove());
+                    // The box above the lineup ("This lineup needs you": injured and IR-slot starters, swaps,
+                    // the Sleeper differences; improvements S9 round 7, S11 round 4) is a to-do list for you, not
+                    // for the league chat this image gets posted in (owner's decision). The rows' badges stay.
+                    clonedContainer.querySelectorAll('.lineup-needs-box').forEach(el => el.remove());
                     splitBlendedBorders(clonedContainer);
                     clonedContainer.style.width = '480px';
                     clonedContainer.style.maxWidth = '100%';

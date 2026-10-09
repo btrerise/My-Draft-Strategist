@@ -48,14 +48,13 @@ import { copyLineupAsText, exportLineup } from './trade/export.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
-import { dismissLineupNeeds, findLeaguePlayers, openLeagueLineup, optimizeAllLineups, renderLineupNeeds, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
+import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderLineupNeeds, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
 import { getPowerLeagueKind } from './power/directionLabels.js';
 import { goToPowerRankings, refreshPowerRankings, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
-import { runGlobalInjuryAudit } from './lineup/injuryAudit.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
 import { delegate } from '../shared/ui/delegate.js';
@@ -109,6 +108,7 @@ const clickActions = {
     // The "lineups need you" box under those two buttons (improvements S11).
     openLeagueLineup() { openLeagueLineup(this.dataset.leagueId); },
     findLeaguePlayers() { findLeaguePlayers(this.dataset.leagueId, this.dataset.pos); },
+    checkSleeperNow() { checkSleeperNow(); },
     dismissLineupNeeds() { dismissLineupNeeds(); },
     addAndSyncLeague() { addAndSyncLeague(this); },
     createManualLeague() { createManualLeague(); },
@@ -163,7 +163,8 @@ const clickActions = {
     initiateSwap() { initiateSwap(this.dataset.id); },
     swapInSuggested() { swapInSuggested(this.dataset.out, this.dataset.in); },
     removeEarlyTeam() { removeEarlyTeam(this.dataset.team); },
-    runGlobalInjuryAudit() { runGlobalInjuryAudit(this); },
+    // The Global Injury Auditor's place on the Lineup tab now points to the Dashboard's list (improvements S11).
+    goToLineupNeeds() { goToLineupNeeds(); },
     // Lineup tab: Monte Carlo card (5C)
     runMatchupSim() { runMatchupSim(); },
     // Scout tab (and scout/waivers.js, scout/allLeaguesSearch.js) (5C). The Sleeper sync banner
