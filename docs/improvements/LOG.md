@@ -3320,3 +3320,19 @@ runbook.
 - A unit test for the note.
 
 **Screenshots.** Unchanged from round 6's six. The PR's CI renders them (next).
+
+### S11: the six screenshots re-taken from CI (PR #194)
+
+Each is CI's own `-actual.png` from the `playwright-results` artifact (`gh run download`). In every run, each
+`-expected.png` was identical to the committed baseline, and each run failed on exactly the PNGs below and nothing
+else (318 other tests passed). It took three runs: a test stops at its first failing shot.
+- Run 37995181627: `{desktop,phone}/mls-league-setup.png`. Identical above the new "lineups need you" box ("1 lineup
+  needs you before kickoff · Fixture League · RB slot is empty · Find RB", the "Sync All again" line). Below it, the
+  same content is 154px (desktop) / 195px (phone) lower, with anti-aliasing differences and the fixed bottom nav
+  drawn over different content.
+- Run 37996021538: `{desktop,phone}/mls-league-lineup.png`. The "This lineup needs you" box above the lineup (RB slot
+  is empty, Find RB). The Global Injury Auditor card is now the one-line pointer, so the page is shorter (desktop
+  3112 → 2976px, phone 3026 → 2886px).
+- Run 37996843439: `{desktop,phone}/mls-league-guide.png`. The lock line ("Manual locks (and swaps, which lock) last
+  for the week…"), step 7 "Lineups that need you" and the legend's box sample (desktop 6229 → 6350px, phone
+  12707 → 12930px).
