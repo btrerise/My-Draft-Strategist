@@ -13,6 +13,7 @@ import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
 import { renderLineupUI, optimizeLineup } from '../main.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
+import { lineupIssues } from './issues.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -21,8 +22,11 @@ import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadge
     // raw week number for season-long planning either way. Both come from the shared bye table
     // (js/shared/data/byes.js) for Sleeper's current season, so neither shows until it's known.
     export function getByeBadgeHTML(team) {
-        if (State.currentNflWeek == null || getByeWeek(team, State.currentNflSeason) !== State.currentNflWeek) return "";
-        return BYE_BADGE_HTML;
+        return isOnByeThisWeek(team) ? BYE_BADGE_HTML : "";
+    }
+
+    function isOnByeThisWeek(team) {
+        return State.currentNflWeek != null && getByeWeek(team, State.currentNflSeason) === State.currentNflWeek;
     }
 
     // A player in your Sleeper IR slot (isReserve, set at sync; improvements S9): an "IR" badge styled
@@ -355,25 +359,24 @@ import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadge
     // about the omission -- that tool summarizes leagues the person isn't looking at, whereas
     // here the player's own row is a few pixels below this banner already carrying both their
     // injury badge and a "Started"/"Final" kickoff badge. Repeating it would be noise.
+    //
+    // Which starters it names comes from getLineupIssues below, the rule the Dashboard's list after
+    // Optimize All shares (improvements S11).
     export function getLineupInjuryWarningHTML(starters, league) {
-        if (isBestBallLeague(league)) return "";
-
-        const flagged = starters.filter(s => s.player
-            && SIM_EXCLUDE_STATUSES.includes(s.player.inj)
-            && !hasKickedOff(s.player));
+        const flagged = getLineupIssues(starters, league).injured;
         if (flagged.length === 0) return "";
 
         const warnSvg = WARNING_ICON;
 
         if (flagged.length === 1) {
-            const p = flagged[0].player;
+            const p = flagged[0];
             return `<div class="lineup-injury-warning">
                 ${warnSvg}
                 <span><strong>${escapeHtml(p.name)}</strong> is <strong>${escapeHtml(p.inj)}</strong> and currently in your starting lineup - consider swapping in a bench player.</span>
             </div>`;
         }
 
-        const namesHTML = flagged.map(s => `${escapeHtml(s.player.name)} (${escapeHtml(s.player.inj)})`).join(', ');
+        const namesHTML = flagged.map(p => `${escapeHtml(p.name)} (${escapeHtml(p.inj)})`).join(', ');
         return `<div class="lineup-injury-warning">
             ${warnSvg}
             <span><strong>${flagged.length} starters</strong> are Doubtful, Out, IR, or otherwise unlikely to play: ${namesHTML} - consider swapping them out.</span>
@@ -386,11 +389,10 @@ import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadge
     // where it can't be missed. Same rules as the injury warning above: not in Best Ball, and not
     // once his game has kicked off (nothing left to change). Manual leagues have no IR slot.
     export function getLineupIrSlotWarningHTML(starters, league) {
-        if (isBestBallLeague(league)) return "";
-        const flagged = starters.filter(s => s.player && s.player.isReserve && !hasKickedOff(s.player));
+        const flagged = getLineupIssues(starters, league).irSlot;
         if (flagged.length === 0) return "";
         const infoSvg = INFO_ICON;
-        const names = flagged.map(s => `<strong>${escapeHtml(s.player.name)}</strong>`);
+        const names = flagged.map(p => `<strong>${escapeHtml(p.name)}</strong>`);
         const who = names.length === 1 ? names[0]
             : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
         const text = flagged.length === 1
@@ -400,6 +402,20 @@ import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadge
             ${infoSvg}
             <span>${text}</span>
         </div>`;
+    }
+
+    // What on a lineup needs you before kickoff: injured starters, starters in your Sleeper IR slot,
+    // starters on bye and empty starting slots (js/mls/lineup/issues.js, improvements S11). The two
+    // warnings above read the first two; the Dashboard's list after Optimize All and Sync All reads all
+    // four, for every league, from State.manualStartersMap. Nothing in Best Ball; a player whose game has
+    // kicked off is left out (nothing left to change).
+    export function getLineupIssues(starters, league) {
+        return lineupIssues(starters, {
+            bestBall: isBestBallLeague(league),
+            outStatuses: SIM_EXCLUDE_STATUSES,
+            kickedOff: hasKickedOff,
+            onBye: p => isOnByeThisWeek(p.team),
+        });
     }
 
     // Sleeper's own snapshot of who's actually starting, as of the last sync -- the ground

@@ -76,6 +76,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Optimize All names the lineups that need you.** After Optimize All Lineups or Sync All Leagues, a box under the
+  two buttons lists each league whose lineup needs something from you before kickoff, with what to do ("Activate
+  Ja'Marr Chase from IR · Josh Allen is Doubtful") and an Open lineup button that takes you to that league's Lineup
+  tab. It counts starters who are Doubtful, Out, on IR or otherwise unlikely to play, starters still in your Sleeper
+  IR slot (the same ones the Lineup tab warns about), starters on bye and empty starting slots. It stays until the
+  next run or until you close it. When every lineup is ready, nothing changes: no box, and the same message as before.
+
 - **What the badges mean, in the Guide.** A new step in the Guide tab lists every badge, chip, pill and color the app
   shows, grouped by kind (positions and slots, ranks and tiers, changes and trends, availability and status,
   schedule), each drawn as it looks on your rows, with a sentence on what it means and which ones explain themselves

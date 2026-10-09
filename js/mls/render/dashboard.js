@@ -1,5 +1,6 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Dashboard (Setup tab) part of RENDERERS. The
 // sync-log accordion (renderSyncLogs) and the Optimize All / Sync All buttons.
+// Improvements S11 added the "lineups need you" box both buttons fill (renderLineupNeeds).
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
@@ -9,6 +10,10 @@ import { loadRosterTab } from './roster.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { setToastsSuppressed, showToast } from '../../shared/ui/toast.js';
 import { optimizeLineup } from './lineup.js';
+import { getLineupIssues } from '../lineup/gameInfo.js';
+import { lineupIssueItems } from '../lineup/issues.js';
+import { WARNING_ICON } from '../badges.js';
+import { showTab, updateDrawerActiveState } from '../nav.js';
 
 
     export const renderSyncLogs = function() {
@@ -55,8 +60,77 @@ import { optimizeLineup } from './lineup.js';
         content.innerHTML = html;
     };
 
+    // --- LINEUPS THAT NEED YOU (improvements S11) ---
+    // After Optimize All or Sync All, every league whose lineup has an injured starter, a starter in your
+    // Sleeper IR slot, a starter on bye or an empty starting slot, with what to do and a button that opens
+    // its Lineup tab. A toast is gone before you can act on several leagues, so this stays (in memory
+    // only) until the next run or its close button. The rule is getLineupIssues, the one the Lineup tab's
+    // warnings use, read from each league's lineup in State.manualStartersMap without switching leagues.
+    // Manual and hand-off leagues have no IR slot (only a Sleeper sync sets isReserve).
+    function collectLineupNeeds() {
+        return (State.leagues || [])
+            .filter(l => !isBestBallLeague(l))
+            .map(l => ({
+                leagueId: l.leagueId,
+                name: l.name || 'Unnamed league',
+                items: lineupIssueItems(getLineupIssues(State.manualStartersMap[l.leagueId] || [], l)),
+            }))
+            .filter(n => n.items.length > 0);
+    }
+
+    function setLineupNeeds(needs) {
+        State.lineupNeeds = needs && needs.length ? needs : null;
+        renderLineupNeeds();
+    }
+
+    function renderLineupNeeds() {
+        const box = document.getElementById('lineupNeedsBox');
+        if (!box) return;
+        const needs = State.lineupNeeds || [];
+        if (needs.length === 0) {
+            box.hidden = true;
+            box.innerHTML = '';
+            return;
+        }
+        // League and player names are set on Sleeper: escaped like any other outside text.
+        const lines = needs.map(n => `
+            <li class="mls-needs-line">
+                <div class="mls-needs-main">
+                    <span class="mls-needs-league">${escapeHtml(n.name)}</span>
+                    <span class="mls-needs-items">${n.items.map(i => `<span class="mls-needs-item">${escapeHtml(i)}</span>`).join('<span class="mls-needs-sep"> · </span>')}</span>
+                </div>
+                <button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${escapeHtml(n.leagueId)}" aria-label="Open ${escapeHtml(n.name)}'s lineup">Open lineup</button>
+            </li>`).join('');
+        box.innerHTML = `
+            <div class="mls-needs-head">
+                ${WARNING_ICON}
+                <span class="mls-needs-title">${needs.length} lineup${needs.length === 1 ? ' needs' : 's need'} you before kickoff</span>
+                <button type="button" class="close-banner-btn close-banner-btn-sm mls-needs-close" data-action="dismissLineupNeeds" aria-label="Close this list">✕</button>
+            </div>
+            <ul class="mls-needs-list">${lines}</ul>`;
+        box.hidden = false;
+    }
+
+    export function dismissLineupNeeds() {
+        setLineupNeeds(null);
+    }
+
+    // "Open lineup": that league, on its Lineup tab, where the matching warning sits above the lineup.
+    // A league deleted since the run just drops off the list.
+    export function openLeagueLineup(leagueId) {
+        if (!(State.leagues || []).some(l => l.leagueId === leagueId)) {
+            setLineupNeeds((State.lineupNeeds || []).filter(n => n.leagueId !== leagueId));
+            return;
+        }
+        if (leagueId !== State.activeLeagueId) switchActiveLeague(leagueId);
+        showTab('lineup');
+        updateDrawerActiveState('lineup');
+    }
+
     export const optimizeAllLineups = function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
+        // The last run's list goes as this one starts: a failed run shows none.
+        setLineupNeeds(null);
         const origText = btn.innerHTML;
         btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Optimizing All…`;
         btn.disabled = true;
@@ -133,6 +207,7 @@ import { optimizeLineup } from './lineup.js';
             } else {
                 let managedLeaguesCount = State.leagues.filter(l => !isBestBallLeague(l)).length;
                 showToast(`Successfully optimized ${managedLeaguesCount} lineups!`);
+                setLineupNeeds(collectLineupNeeds());
             }
         }, 50);
     };
@@ -148,6 +223,7 @@ export const syncAllLeagues = async function(btn) {
             return;
         }
 
+        setLineupNeeds(null);
         const origText = btn.innerHTML;
         // The spinner and the text beside it are built once. The loop below changes only the span's
         // text for "Syncing 2/5…": rewriting the button's whole innerHTML made a new spinner element
@@ -166,6 +242,8 @@ export const syncAllLeagues = async function(btn) {
             // and the app reopened on that league next visit. Put back in the finally below,
             // the same way optimizeAllLineups restores it.
             const originalActiveId = State.activeLeagueId;
+            // Set once the run's writes are done; the "lineups need you" list shows only then.
+            let synced = false;
             try {
                 // Preload the heavy player map ONCE to save massive API bandwidth
                 const playerMap = await getSleeperPlayerMap();
@@ -255,7 +333,7 @@ export const syncAllLeagues = async function(btn) {
                 // UX: Automatically open the accordion if there were changes so they don't have to hunt for them
                 const accordion = document.getElementById('syncLogAccordion');
                 if (accordion) accordion.open = newLogs.length > 0;
-                
+                synced = true;
             } catch (err) {
                 console.error("Sync All Error:", err);
                 // A storage-quota failure on the writes above is the common case and has a
@@ -283,6 +361,10 @@ export const syncAllLeagues = async function(btn) {
                 if (typeof renderLeagueManager === 'function') renderLeagueManager();
                 if (typeof loadRosterTab === 'function') loadRosterTab();
                 optimizeLineup(false);
+
+                // Every league's lineup is final now (each synced league was re-optimized, yours last),
+                // so the list reads them. Leagues it couldn't reach, and manual ones, keep their last lineup.
+                if (synced) setLineupNeeds(collectLineupNeeds());
             }
         }, 50);
     };

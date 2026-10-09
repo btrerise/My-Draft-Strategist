@@ -123,6 +123,10 @@ import { mdsFetch } from '../shared/net.js';
         // posRank-only FLEX pick. Starts empty on page load: a saved lineup from an earlier
         // visit is left as-is, same as any other saved lineup.
         projectionlessLineups: new Set(),
+        // Not persisted -- the Dashboard's "lineups need you" list from the last Optimize All or Sync All
+        // (render/dashboard.js, improvements S11): [{ leagueId, name, items }], or null when there's none.
+        // Kept until the next run or the box's close button.
+        lineupNeeds: null,
         // Not persisted -- leagueId ->{ week, points, fetchedAt, finalKey }: this roster's
         // players_points from Sleeper's matchups endpoint. finalKey records which teams' games
         // were final when it was fetched, so a game finishing afterwards forces a refetch.

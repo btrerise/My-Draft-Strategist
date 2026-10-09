@@ -48,7 +48,7 @@ import { copyLineupAsText, exportLineup } from './trade/export.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, toggleLock, unlockAllPlayers } from './render/lineup.js';
-import { optimizeAllLineups, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
+import { dismissLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
@@ -106,6 +106,9 @@ const clickActions = {
     dismissDraftStrategistHandoff() { dismissDraftStrategistHandoff(); },
     syncAllLeagues() { syncAllLeagues(this); },
     optimizeAllLineups() { optimizeAllLineups(this); },
+    // The "lineups need you" box under those two buttons (improvements S11).
+    openLeagueLineup() { openLeagueLineup(this.dataset.leagueId); },
+    dismissLineupNeeds() { dismissLineupNeeds(); },
     addAndSyncLeague() { addAndSyncLeague(this); },
     createManualLeague() { createManualLeague(); },
     importAllSleeperLeagues() { importAllSleeperLeagues(this); },

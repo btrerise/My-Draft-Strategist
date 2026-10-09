@@ -2810,3 +2810,77 @@ the PNGs below and nothing else:
 - Run 37932692082: `{desktop,phone}/mls-league-scout.png` (same size; only the Waiver Wire Assistant header row).
 - Run 37933514590: `{desktop,phone}/mls-league-guide.png`: the SoS wording in an earlier step and the new step 13 (desktop
   +2104px, phone +3905px).
+
+## S11 — Optimize All names the lineups that need you
+
+**User-visible effect.** After **Optimize All Lineups** or **Sync All Leagues** on the Dashboard, a box appears under
+the two buttons when any lineup needs something from you before kickoff: "2 lineups need you before kickoff", then one
+line per league with its name, what to do and an **Open lineup** button:
+- Fixture League · "Activate Ja'Marr Chase from IR · Josh Allen is Doubtful · RB slot is empty" · Open lineup
+- Activations come first, then injured starters (statuses spelled out: Doubtful, Out, on IR, on PUP, suspended, on
+  NFI, hasn't reported), starters on bye ("Tee Higgins is on bye") and empty starting slots ("TE slot is empty",
+  "2 FLEX and W/T slots are empty").
+- Open lineup makes that league active and shows its Lineup tab, where the matching red or purple warning is above
+  the lineup (bye starters show their BYE badge, and empty slots show as "[ Empty Slot ]" rows).
+- The box stays until the next Optimize All or Sync All, or until you close it with ✕. It's kept in memory only, so a
+  reload clears it.
+- Clean run: no box, and the toast is unchanged ("Successfully optimized N lineups!" / "Successfully synced N
+  leagues!"). Failed run: the same error toast as before, and no box (the previous run's box goes as the run starts).
+- Phones: one league per line, with the button at the right and the to-do wrapping under the league's name. Player
+  names never break across lines (no-break spaces), long league names wrap between words, and nothing runs past
+  the edge at 375px.
+- Best Ball leagues are never listed. Manual and hand-off leagues have no IR slot, so they can only show injured, bye
+  or empty-slot items. After Sync All, manual leagues and leagues it couldn't reach are listed from their last lineup.
+
+**Owner's decisions (asked before building).**
+- **Where:** a small dismissible box under the Dashboard's Optimize All button, one line per league, staying until the
+  next run (not a longer toast, not a Command Center column).
+- **What counts:** injured and IR-slot starters, as on the Lineup tab, **plus empty starting slots and starters on
+  bye**. The Lineup tab has no warning for either of those two, and its two warnings stay exactly as they were, so
+  only the Dashboard lists them.
+- **Sync All:** yes, the same list after it syncs, covering every league (not only the ones it synced).
+
+**What changed and where.**
+- `js/mls/lineup/issues.js` (new, pure, in `PRECACHE_ASSETS`): `lineupIssues(starters, ctx)` returns
+  `{ injured, irSlot, bye, empty }` with the warnings' old filters (`SIM_EXCLUDE_STATUSES`, `isReserve`, left out once
+  his game has kicked off, nothing in Best Ball). A player already listed as injured isn't also listed on bye. A player
+  who is both injured and in the IR slot is in both lists, as the Lineup tab shows both lines.
+  `lineupIssueItems(issues)` gives the Dashboard's wording.
+- `js/mls/lineup/gameInfo.js`: `getLineupIssues(starters, league)` supplies State (statuses, `hasKickedOff`, this
+  week's byes) to `lineupIssues`. `getLineupInjuryWarningHTML` and `getLineupIrSlotWarningHTML` now take their players
+  from it; their markup and wording are unchanged. `getByeBadgeHTML` shares the new `isOnByeThisWeek`.
+- `js/mls/render/dashboard.js`: `collectLineupNeeds` reads every non-Best-Ball league's lineup from
+  `State.manualStartersMap` after the run, without switching leagues. `renderLineupNeeds` draws the box (names
+  escaped). `openLeagueLineup` (`switchActiveLeague`, then `showTab('lineup')`) and `dismissLineupNeeds`, both via
+  `data-action` in `js/mls/main.js`. `optimizeAllLineups` and `syncAllLeagues` clear the list as they start and fill
+  it only on success. For Sync All, that's after the finally's re-optimize of your league.
+- `js/mls/state.js`: `State.lineupNeeds` (in memory, no storage key). `lineup/index.html`: `#lineupNeedsBox` after the
+  button row. `css/mls.css`: `.mls-needs-*`, in the red of the Lineup tab's injury warning.
+- Not a badge, chip or pill, so no legend line (`badgeLegend.test.mjs` passes). CHANGELOG line under Lineup
+  Strategist. `CACHE_NAME` v2.8.91.
+
+**Tests.**
+- `tests/mls-lineup-needs.spec.mjs` (new, both widths) uses two leagues from the one fixture: "Fixture League" with
+  Chase (healthy, starting) in the IR slot, and a second league, renamed, whose only QB is Lamar Jackson (Doubtful).
+  Both rosters get a second RB, since the fixture roster has one RB for two RB slots.
+  - Optimize All lists "Fixture League: Activate Ja'Marr Chase from IR" and "…: Lamar Jackson is Doubtful". Each
+    Open lineup shows that league's Lineup tab with the matching warning, and ✕ hides the box.
+  - Sync All shows the same list.
+  - A clean run shows no box and the usual toast.
+  - A failed run (the lineups' save throws) shows its error toast and clears the previous box.
+  - At 375px: no page overflow, each league name whole, each button inside the box and on its league's line.
+- `tests/unit/lineupIssues.test.mjs` (new): each list, kickoff, Best Ball, the injured-and-IR and injured-and-bye
+  overlaps, and the wording (every status, several activations, empty-slot counts with W/T).
+
+**Screenshots.** None changed: the box appears only after Optimize All or Sync All, and `visual.spec.mjs` runs
+neither. This container can't render CI-matching baselines (F1, S9). Here, `visual.spec.mjs` rendered main and this
+branch the same way, and `npm run pxdiff` found all 40 PNGs pixel-identical.
+
+**Left over / noticed.**
+- The fixture league's roster has one RB for two RB slots, so its lineup always has an empty RB slot. Any spec that
+  runs Optimize All or Sync All on the plain fixture now gets the box ("RB slot is empty"). No existing spec asserts
+  against it.
+- The box is a snapshot: fixing a lineup (a swap on its Lineup tab) doesn't remove its line until the next run. This
+  is what was agreed ("stays until the next run"). Recomputing on each Dashboard render would be a small follow-up if
+  wanted.
+- The Command Center's (i) tooltip doesn't mention the box.

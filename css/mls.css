@@ -1576,6 +1576,23 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 /* The header's summary line wraps rather than cutting off, unlike the rankings cards' set name. */
 #bestAvailableSummary { white-space: normal; }
 
+/* Lineups that need you (Dashboard, under Optimize All / Sync All; js/mls/render/dashboard.js, improvements S11):
+   one line per league, what to do and an Open lineup button. The red of the Lineup tab's injury warning. */
+.mls-needs-box { margin-bottom: 1rem; border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; background: rgba(239, 68, 68, 0.08); padding: 0.5rem 0.75rem; }
+.mls-needs-box[hidden] { display: none; }
+.mls-needs-head { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: #fca5a5; }
+.mls-needs-head > svg { flex-shrink: 0; }
+.mls-needs-title { flex: 1; min-width: 0; }
+.mls-needs-close { flex-shrink: 0; }
+.mls-needs-list { list-style: none; margin: 0; padding: 0; }
+.mls-needs-line { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; }
+.mls-needs-line + .mls-needs-line { border-top: 1px solid var(--border); }
+.mls-needs-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.mls-needs-league { font-weight: 600; color: var(--text-main); font-size: 0.9rem; overflow-wrap: anywhere; }
+.mls-needs-items { font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
+.mls-needs-sep { color: var(--text-muted); opacity: 0.7; }
+.mls-needs-open { flex-shrink: 0; white-space: nowrap; }
+
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
    One card per player, with a per-league ownership row beneath the header. Markup comes from
    runAllLeaguesSearch in js/mls/scout/allLeaguesSearch.js. The card is deliberately its own box rather than a
