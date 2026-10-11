@@ -4,7 +4,7 @@
 // are in the league cards (render/leagueCards.js) and the box is a one-line strip.
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { escapeHtml } from '../../shared/html.js';
-import { State } from '../state.js';
+import { refreshGameTimes, State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
 import { formatNameList, hydrateRankingsForLeague, processSleeperData, renderLeagueManager, switchActiveLeague } from '../leagues/sync.js';
 import { loadRosterTab } from './roster.js';
@@ -105,7 +105,9 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             }
             byLeague.set(l.leagueId, entry);
         });
-        return { lines, sleeper, needCount: lines.filter(n => n.needs).length, byLeague };
+        // Leagues that need you: a to-do that counts, or a player in your Sleeper lineup who's injured or on bye.
+        const needCount = [...byLeague.values()].filter(e => (e.line && e.line.needs) || (e.sleeper && e.sleeper.changes.urgent)).length;
+        return { lines, sleeper, needCount, byLeague };
     }
 
     const needKeys = (needs) => [...needs.lines.filter(n => n.needs).map(n => `p:${n.league.leagueId}`), ...needs.sleeper.map(n => `s:${n.league.leagueId}`)];
@@ -127,15 +129,18 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         const league = (n || sl).league;
         const id = escapeHtml(league.leagueId);
         const name = escapeHtml(league.name || 'Unnamed league');
-        const needs = !!(n && n.needs);
-        const ms = needs ? n.issues.firstKickoffMs : NaN;
+        const urgentSleeper = !!(sl && sl.changes.urgent);
+        const needs = !!(n && n.needs) || urgentSleeper;
+        const ms = n && n.needs ? n.issues.firstKickoffMs : NaN;
         const when = Number.isFinite(ms) ? formatKickoffLabel(new Date(ms).toISOString()) : '';
         const soon = Number.isFinite(ms) && ms - Date.now() < DAY_MS;
         const label = needs ? 'Needs you' : sl ? 'Set on Sleeper' : 'Notes';
         // One item per line, as on the Lineup tab: a league with several reads as a list, not a run-on sentence.
         const items = (n ? n.items : []).map(i => `<span class="mls-needs-item is-${i.kind}">${escapeHtml(i.text)}</span>`);
         // "On Sleeper:" only beside other items; alone, the label already says "Set on Sleeper".
-        if (sl) items.push(`<span class="mls-needs-item is-sleeper" title="As of your last sync: set it on Sleeper, then Sync All to clear this.">${items.length ? 'On Sleeper: ' : ''}${sleeperChangesHTML(sl.changes)}</span>`);
+        // "On Sleeper:" unless the label already says "Set on Sleeper". An injured or bye player starting there is
+        // urgent (S12 round 6): the item takes the injury color.
+        if (sl) items.push(`<span class="mls-needs-item is-sleeper${urgentSleeper ? ' is-urgent' : ''}" title="As of your last sync: set it on Sleeper, then Sync All to clear this.">${label !== 'Set on Sleeper' ? 'On Sleeper: ' : ''}${sleeperChangesHTML(sl.changes)}</span>`);
         const buttons = [];
         if ((n && needsLineupButton(n.issues)) || sl) buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button>`);
         (n ? findChips(n.items) : []).forEach(chip => {
@@ -164,7 +169,7 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             return;
         }
         const p = needs.needCount, sl = needs.sleeper.length;
-        const keptOnly = needs.lines.length - p;
+        const keptOnly = needs.lines.filter(n => !n.needs).length;
         const title = p > 0 ? `${p} lineup${p === 1 ? ' needs' : 's need'} you before kickoff`
             : keptOnly > 0 ? `Nothing needs you before kickoff · ${keptOnly} league${keptOnly === 1 ? '' : 's'} with notes`
             : `${sl} lineup${sl === 1 ? '' : 's'} to set on Sleeper`;
@@ -251,8 +256,10 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
 
         // Brief timeout ensures the UI button state updates before locking the main thread
         setTimeout(async () => {
-            // This week's projections first: they decide FLEX picks between positions (S12 round 5).
-            await ensureLineupProjections();
+            // This week's projections first: they decide FLEX picks between positions (S12 round 5). And the kickoff
+            // times (round 6): a starter whose game has started is auto-locked only once the app knows it has, so an
+            // Optimize All before ESPN answered benched Thursday's players your updated rankings no longer list.
+            await Promise.all([ensureLineupProjections(), refreshGameTimes()]);
             const originalActiveId = State.activeLeagueId;
             let failed = false;
             // The league the loop is working on. The loop stops at the first league that throws,
@@ -322,8 +329,12 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             } else {
                 let managedLeaguesCount = State.leagues.filter(l => !isBestBallLeague(l)).length;
                 const needYou = showLineupNeedsAfterRun();
-                showToast(needYou > 0
-                    ? `Optimized ${managedLeaguesCount} lineups · ${needYouText(needYou)}`
+                // And how many to set on Sleeper (S12 round 6): "Successfully optimized 14 lineups!" read oddly over
+                // 14 lineups still to set there.
+                const toSet = collectLineupNeeds().sleeper.length;
+                const extras = [needYou > 0 ? needYouText(needYou) : '', toSet > 0 ? `${toSet} to set on Sleeper` : ''].filter(Boolean);
+                showToast(extras.length
+                    ? `Optimized ${managedLeaguesCount} lineups · ${extras.join(' · ')}`
                     : `Successfully optimized ${managedLeaguesCount} lineups!`);
             }
         }, 50);
@@ -393,7 +404,7 @@ export const syncAllLeagues = async function(btn) {
                 // forceRefresh: Sync All is also the "check Sleeper now" for injuries (it replaced the
                 // Global Injury Auditor, which did the same), so it wants today's statuses, not the cached map.
                 // This week's projections too, so every league re-optimized below can use them (S12 round 5).
-                const [playerMap] = await Promise.all([getSleeperPlayerMap({ forceRefresh: true }), ensureLineupProjections()]);
+                const [playerMap] = await Promise.all([getSleeperPlayerMap({ forceRefresh: true }), ensureLineupProjections(), refreshGameTimes()]);
                 const preloaded = { playerMap }; 
 
                 let successCount = 0;
@@ -476,10 +487,12 @@ export const syncAllLeagues = async function(btn) {
                 // screen already: the Sync Logs open by themselves, and the box under the buttons lists the lineups.
                 // A sync with nothing else to say keeps its old wording; a failed league keeps its own sentence.
                 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-                const needYou = collectLineupNeeds().needCount;
+                const after = collectLineupNeeds();
+                const needYou = after.needCount;
                 const extras = [];
                 if (newLogs.length > 0) extras.push(`${newLogs.length} with roster changes`);
                 if (needYou > 0) extras.push(`${plural(needYou, 'lineup')} need${needYou === 1 ? 's' : ''} you`);
+                if (after.sleeper.length > 0) extras.push(`${after.sleeper.length} to set on Sleeper`);
                 const manualPart = manualChecked.length > 0 ? ` + ${manualChecked.length} manual` : '';
                 let summaryMsg;
                 if (sleeperLeagues.length === 0) {

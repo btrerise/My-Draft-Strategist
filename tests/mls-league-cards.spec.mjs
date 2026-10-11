@@ -127,6 +127,12 @@ test.describe('League Command Center: one card per league', () => {
             // Best available in each (both synced, both ranked).
             await expect(card(page, 'Fixture League').locator('.mls-ba-fold')).toHaveCount(1);
             await expect(card(page, SECOND).locator('.mls-ba-fold')).toHaveCount(1);
+            // In a card open for its to-dos, a best available with no upgrade isn't shown (round 6); with one, it is.
+            const baShown = await cards(page).evaluateAll(cs => cs.map(c => {
+                const f = c.querySelector('.mls-ba-fold');
+                return { todo: !!c.querySelector('.mls-lc-todo'), upgrade: f.classList.contains('has-upgrade'), shown: f.getClientRects().length > 0 };
+            }));
+            baShown.forEach(b => expect(b.shown).toBe(!b.todo || b.upgrade));
 
             // Nothing past the edge, names whole, every button inside its card.
             expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

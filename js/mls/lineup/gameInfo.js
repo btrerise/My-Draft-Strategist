@@ -442,10 +442,11 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     // the Dashboard.
     export const FOLD_CHEVRON = `<svg class="mls-change-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 
-    // Your lineup here against the one on Sleeper as of the last sync: { start: [names], bench: [names] }, or null
-    // when they match or there's nothing to compare (Best Ball, manual leagues, no lineup yet). A benched name
-    // carries his status when he's unlikely to play ("Derrick Henry (Out)"): the Global Injury Auditor's "injured
-    // starter in your Sleeper lineup", which this replaces (S11 round 4). Shared with the Dashboard's league cards,
+    // Your lineup here against the one on Sleeper as of the last sync: { start: [names], bench: [names], benchNotes,
+    // urgent }, or null when they match or there's nothing to compare (Best Ball, manual leagues, no lineup yet). A
+    // benched player's note says why he can't help: his status when he's unlikely to play ("Out"), or "on bye"; shown
+    // as "Derrick Henry (Out)". That's the Global Injury Auditor's "injured starter in your Sleeper lineup", which this
+    // replaces (S11 round 4), and any note makes the change urgent (S12 round 6). Shared with the Dashboard's league cards,
     // whose Lineup chip is red exactly when this returns changes (render/leagueCards.js, improvements S12).
     export function getSleeperLineupChanges(league, starters) {
         const sleeperIds = getValidSleeperStarterIds(league);
@@ -454,21 +455,27 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         const changes = sleeperLineupChanges(optimized.map(s => s.player.id), sleeperIds);
         if (changes.start.length === 0 && changes.bench.length === 0) return null;
         const playerOf = (id) => (optimized.find(s => s.player.id === id) || {}).player || ((league && league.roster) || []).find(p => p.id === id) || null;
-        const label = (id) => {
+        const name = (id) => { const p = playerOf(id); return p ? p.name : 'Unknown player'; };
+        // Why a benched player shouldn't be starting on Sleeper: his status when he's unlikely to play ("Out"), or "on
+        // bye" (S12 round 6). Either makes the change urgent: you'd get zero from him.
+        const note = (id) => {
             const p = playerOf(id);
-            if (!p) return 'Unknown player';
-            const hurt = SIM_EXCLUDE_STATUSES.includes(p.inj) ? ` (${statusPhrase(p.inj).replace(/^is /, '')})` : '';
-            return `${p.name}${hurt}`;
+            if (!p) return '';
+            if (SIM_EXCLUDE_STATUSES.includes(p.inj)) return statusPhrase(p.inj).replace(/^is /, '');
+            return isOnByeThisWeek(p.team) ? 'on bye' : '';
         };
-        return { start: changes.start.map(label), bench: changes.bench.map(label) };
+        const benchNotes = changes.bench.map(note);
+        return { start: changes.start.map(name), bench: changes.bench.map(name), benchNotes, urgent: benchNotes.some(Boolean) };
     }
 
     // "Start Ja'Marr Chase · Bench Garrett Wilson, Derrick Henry (Out)", names kept whole.
     export function sleeperChangesHTML(changes) {
-        const names = (list) => list.map(n => escapeHtml(n).replace(/ /g, '&nbsp;')).join(', ');
+        const nb = (t) => escapeHtml(t).replace(/ /g, '&nbsp;');
+        const notes = changes.benchNotes || [];
+        const names = (list, withNotes) => list.map((n, i) => nb(n) + (withNotes && notes[i] ? `&nbsp;<span class="mls-needs-hurt">(${nb(notes[i])})</span>` : '')).join(', ');
         const parts = [];
-        if (changes.start.length) parts.push(`Start ${names(changes.start)}`);
-        if (changes.bench.length) parts.push(`Bench ${names(changes.bench)}`);
+        if (changes.start.length) parts.push(`Start ${names(changes.start, false)}`);
+        if (changes.bench.length) parts.push(`Bench ${names(changes.bench, true)}`);
         return parts.join('<span class="mls-needs-sep"> · </span>');
     }
 

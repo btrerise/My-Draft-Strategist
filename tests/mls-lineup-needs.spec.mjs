@@ -244,18 +244,16 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 
-    test('what to set on Sleeper: an item of the card\'s to-dos, a drop-down on the Lineup tab, injured starters marked', async ({ page }) => {
+    test('what to set on Sleeper: an item of the card\'s to-dos, routine unless an injured player is starting there', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
-        // On Sleeper the Fixture League starts Garrett Wilson and George Kittle (Out) where this lineup starts
-        // Ja'Marr Chase and Brock Bowers.
-        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, injuries: { [KITTLE]: 'Out' },
+        // On Sleeper the Fixture League starts Garrett Wilson and George Kittle where this lineup starts Ja'Marr Chase
+        // and Brock Bowers. Everyone's healthy.
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false,
             sleeperStarters: [ALLEN, HENRY, BIJAN, '6794', '6786', KITTLE, '7523', '17', 'BAL'] });
         await seedTwoLeagues(page);
-        await expect(box(page)).toBeVisible();
         await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup to set on Sleeper');
-        // In the Fixture League's card, listed with its to-dos (S12 round 4; a fold before), counted, and its Lineup
-        // chip is red; the other league has none.
-        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Out), Garrett Wilson"]);
+        // In the Fixture League's card, listed with its to-dos (S12 round 4; a fold before); the other league has none.
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
         const fixtureLine = line(page, 'Fixture League');
         await expect(fixtureLine.locator('.mls-needs-label')).toHaveText('Set on Sleeper');
         // Routine, so neutral: "1 to set", no amber border (S12 round 5).
@@ -264,10 +262,34 @@ test.describe('Lineups that need you', () => {
         await expect(card(page, 'Fixture League')).not.toHaveClass(/\bneeds-you\b/);
         await expect(box(page).locator('.mls-needs-check')).toHaveText('Set the lineup on Sleeper, then Sync All again to clear it.');
         await expect(card(page, 'Fixture League').locator('.mls-lc-chip.is-danger .mls-lc-chip-label')).toHaveText('Lineup');
+        // Optimize All's message says so (S12 round 6; it said "Successfully optimized 2 lineups!").
+        await optimizeAll(page, 'Optimized 2 lineups · 1 to set on Sleeper');
         // Open lineup opens the league, whose box has the changes in a drop-down.
         await fixtureLine.getByRole('button', { name: "Open Fixture League's lineup" }).click();
         await expect(page.locator('#lineupTab')).toHaveClass(/\bactive\b/);
         await expect(lineupBox(page).locator('.lineup-needs-sleeper summary')).toHaveText('Differs from your Sleeper lineup: 4 changes');
+        await expectClean(page, state);
+    });
+
+    // S12 round 6 (found in a review as a user): the app benches an Out starter, but he's still in your Sleeper lineup.
+    // That's the Global Injury Auditor's case, so it needs you: amber, counted, "(Out)" marked. Round 5 had made it
+    // look routine.
+    test('an injured player still starting on Sleeper needs you', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, injuries: { [KITTLE]: 'Out' },
+            sleeperStarters: [ALLEN, HENRY, BIJAN, '6794', '6786', KITTLE, '7523', '17', 'BAL'] });
+        await seedTwoLeagues(page);
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you before kickoff · 1 to set on Sleeper');
+        expect(await lineSummaries(page)).toEqual(["Fixture League: On Sleeper: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Out), Garrett Wilson"]);
+        const fixtureLine = line(page, 'Fixture League');
+        await expect(fixtureLine.locator('.mls-needs-label')).toHaveText('Needs you');
+        await expect(fixtureLine.locator('.mls-needs-hurt')).toHaveText('(Out)');
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to do');
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveCount(0);
+        await expect(card(page, 'Fixture League')).toHaveClass(/\bneeds-you\b/);
+        await optimizeAll(page, 'Optimized 2 lineups · 1 needs you · 1 to set on Sleeper');
+        // The Lineup tab's drop-down marks him too.
+        await fixtureLine.getByRole('button', { name: "Open Fixture League's lineup" }).click();
         await expect(lineupBox(page).locator('.lineup-needs-sleeper-text')).toContainText('George Kittle (Out)');
         await expectClean(page, state);
     });

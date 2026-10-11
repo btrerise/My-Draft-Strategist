@@ -3697,3 +3697,61 @@ read every card.
 failures are `visual.spec.mjs`'s 10 screenshots, which this container can't render to CI's baselines. Screenshots: the
 same six PNGs as before differ from main; the fixture's Dashboard has no Sleeper changes, so round 5 adds nothing
 there.
+
+### S12, round 6: injured players still starting on Sleeper, kickoff times for Optimize All, the toast, a shorter card (owner's go-ahead after my third review as a user)
+
+**Why.** In the review I marked D'Andre Swift (How I Met Your Punter) Out in a copy of the backup and tapped Optimize
+All.
+1. **The urgent case looked routine (my round-5 regression).** The optimizer benched Swift, but he was still in the
+   Sleeper lineup, and the card read "Set on Sleeper · Bench D'Andre Swift (Out)" as a neutral "1 to set". That's the
+   old Global Injury Auditor's case.
+2. **The toast contradicted the page:** "Successfully optimized 14 lineups!" over 14 lineups to set on Sleeper.
+3. **A "Best available · Wk5 · No upgrade" row** in every card open for its to-dos.
+
+**The owner's point on CeeDee Lamb and Dak Prescott** ("they played TNF; my updated rankings take them out; they
+should be auto-locked"). That was the disconnect, and it came from this container: ESPN's scoreboard is blocked here,
+so my review runs had no kickoff times, nothing was auto-locked, and the optimizer benched the unranked Lamb and Dak.
+- In the backup every one of them is in the league's last-synced Sleeper lineup. Re-run with Dallas's and Tampa Bay's
+  kickoffs on Thursday, they're all locked in, and three leagues drop off the list.
+- In the owner's browser the kickoff times load at startup, but in the background, and Optimize All didn't wait for
+  them. A tap before ESPN answered, or after it failed, would have benched them the same way. Fixed below.
+
+**What changed.**
+1. **Injured or bye players starting on Sleeper.**
+   - `getSleeperLineupChanges` (js/mls/lineup/gameInfo.js) now returns `bench` as names, with `benchNotes` (his
+     status when he's unlikely to play, or "on bye"; byes weren't noted before) and `urgent`.
+   - `sleeperChangesHTML` shows a note as "(Out)" in the injury red (`.mls-needs-hurt`).
+   - An urgent change makes the card need you: amber border, "1 to do" (not "1 to set"), the "Needs you" label and
+     "On Sleeper: …" in the item. It counts in `collectLineupNeeds().needCount`, so the strip reads "1 lineup needs
+     you before kickoff · 10 to set on Sleeper" and the toasts count it.
+2. **Kickoff times and the toasts.**
+   - Optimize All awaits `refreshGameTimes()` along with the projections; Sync All loads it with the player map. It's
+     cached for the week, and a hang is cut at 12 seconds (`mdsFetch`).
+   - Optimize All's toast adds "N to set on Sleeper" ("Optimized 14 lineups · 1 needs you · 10 to set on Sleeper";
+     unchanged when there's nothing to say). Sync All's adds the same.
+3. **No empty best available row.** In a card with to-dos, a best available that's folded by default (no upgrade) is
+   hidden by CSS. A card with nothing else still shows it, so opening a quiet card still shows its best available.
+
+On the backup (Swift Out; Dallas and Tampa Bay kicked off Thursday) after Optimize All: one amber card, 10 "1 to set",
+and the toast "Optimized 14 lineups · 1 needs you · 10 to set on Sleeper". The phone page went from about 5,700px to
+4,400px.
+
+**Tests** (#1 and the kickoff wait shown failing on the old code first).
+- `tests/mls-lineup-needs.spec.mjs`: the Sleeper test splits in two.
+  - Routine changes stay neutral ("1 to set"), with the toast "Optimized 2 lineups · 1 to set on Sleeper".
+  - An Out player starting on Sleeper needs you: the title, the "Needs you" label, "(Out)" marked, "1 to do", the
+    amber border, and the toast "Optimized 2 lineups · 1 needs you · 1 to set on Sleeper".
+- `tests/mls-flex-choice.spec.mjs`: ESPN down while the app starts and back by the tap. Lamb, in your Sleeper lineup
+  and missing from the rankings, stays locked in. On the old code he's benched.
+- `tests/mls-league-cards.spec.mjs`: best available is shown in a to-do card only with an upgrade.
+
+**Left over.**
+- A per-card "Sync this league" to clear a card after setting it on Sleeper (raised in round 5). The owner agreed to
+  leave it for its own card.
+- The kickoff times still load in the background at startup for everything else (the Lineup tab re-renders when they
+  arrive, the Dashboard on its next render).
+
+**Checks.** `npm run check`: precache OK, 328 unit tests pass, 336 Playwright tests pass; the 10 failures are only
+visual.spec, which can't match the CI renderer in this container. Rendered here, main against this branch: the same six
+MLS screenshots differ as in the earlier rounds (`{desktop,phone}/mls-empty-setup`, `mls-league-setup`,
+`mls-league-guide`), all intended. Every other one is identical. They're re-taken from the PR's CI run.

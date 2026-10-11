@@ -135,8 +135,10 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
         // Amber (the border, "N to do") only for what needs you before kickoff. Sleeper changes alone are routine (most
         // leagues have some after an Optimize All), so they read "1 to set", in neutral text (owner's choice, round 5:
         // amber on 13 of 14 cards drowned out the injuries).
-        const needsYou = !!(line && line.needs);
-        const count = line ? needsYouCount(line.items) : 0;
+        // Except a player still starting on Sleeper who's injured or on bye (round 6): that needs you.
+        const urgentSleeper = !!(sleeper && sleeper.changes.urgent);
+        const needsYou = !!(line && line.needs) || urgentSleeper;
+        const count = (line ? needsYouCount(line.items) : 0) + (urgentSleeper ? 1 : 0);
         // The sync age only when it's worth a look (old, unknown or failed), not "Synced today" on every card.
         const syncNote = st.sync && st.sync.cls !== 'freshness-ok' ? `<span class="${st.sync.cls}">${st.sync.text}</span>` : '';
         const meta = [st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', syncNote]
@@ -160,7 +162,7 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
                 </div>
                 <div class="mls-lc-status">
                     ${statusChipsHTML(st)}
-                    <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to do</span>` : ''}${sleeper ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
+                    <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to do</span>` : ''}${sleeper && !urgentSleeper ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
                 </div>
                 <div class="mls-lc-body"${collapsed ? ' hidden' : ''}>
                     ${todo ? `<div class="mls-lc-todo">${todo}</div>` : ''}

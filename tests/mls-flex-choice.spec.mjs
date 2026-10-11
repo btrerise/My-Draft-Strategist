@@ -150,4 +150,28 @@ test.describe('Lineup Optimizer: FLEX without FLEX ranks', () => {
         state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !/503|projections/i.test(e)));
         await expectClean(page, state);
     });
+
+    // S12 round 6 (the owner's TNF case: CeeDee Lamb and Dak Prescott played Thursday, and the updated rankings leave
+    // them out). A starter whose game has kicked off is auto-locked only once the app knows the kickoff time (ESPN's
+    // scoreboard, fetched at startup, in the background). Optimize All now fetches it when it's missing and waits, so a
+    // startup fetch that failed or hadn't answered yet doesn't bench him.
+    test('Optimize All waits for kickoff times: a Thursday starter missing from the rankings stays locked in', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        // ESPN doesn't answer while the app starts (a slow or failed request), only by the time you tap Optimize All.
+        let espnUp = false;
+        await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, async route => {
+            if (!espnUp) return route.fulfill({ status: 503, body: '' });
+            return route.fulfill({ json: { events: [{ date: '2026-09-11T00:15:00Z', status: { type: { state: 'post' } }, competitions: [{
+                competitors: [{ team: { abbreviation: 'DAL' }, homeAway: 'home' }, { team: { abbreviation: 'NYG' }, homeAway: 'away' }] }] }] } });
+        });
+        // Lamb (DAL) is in your Sleeper lineup at FLEX, and the Weekly rankings no longer list him.
+        await setup(page, { ranks: RANKS.filter(([name]) => name !== 'CeeDee Lamb'), dashboard: true,
+            sleeperStarters: ['4984', '3198', '4866', '6794', '11604', '6786', '9493', '17', 'BAL'] });
+        espnUp = true;
+        await page.click('#optimizeAllBtn');
+        await expect(page.locator('#optimizeAllBtn')).toBeEnabled({ timeout: 10000 });
+        // Locked in (a locked player takes the first slot that accepts him, here a WR slot).
+        expect((await starters(page)).some(s => s.endsWith(':CeeDee Lamb'))).toBe(true);
+        await expectClean(page, state);
+    });
 });
