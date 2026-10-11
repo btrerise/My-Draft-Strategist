@@ -3840,7 +3840,7 @@ the Thursday players weren't locked; in the owner's browser they are.)
 shows the overall tier…" failed with "Execution context was destroyed" in `showTab` right after `seedMls` /
 `loadMlsRankings` (the page was still navigating). It passed 6 of 6 alone, and this round doesn't touch that spec or
 the code it runs. If CI hits it, the fix is the one mls-display-ranks got in round 4: wait for `networkidle` before
-the first `showTab`.
+the first `showTab`. (Superseded: the real cause and fix are under "S12, pull request" below.)
 
 **Checks.** `npm run check`: precache OK, 328 unit tests, 342 Playwright tests pass; the 10 failures are only
 visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 7's
@@ -3890,3 +3890,24 @@ Addison (Out)", a bench player), in the same red as a to-do's "Bench Will Shiple
 green; red stays for what needs acting on. Test: `tests/mls-lineup-needs.spec.mjs`, "Sync All's roster changes show on
 each league's card", now checks the newly out name is the line's muted color, not the injury red (fails on round 9). Checks: precache OK, 328 unit and 344 Playwright tests pass (only visual.spec fails here, as
 always); screenshots pixel-identical to round 9.
+
+### S12, pull request (btrerise/My-Draft-Strategist#195): screenshots from CI, and the waiver-tiers flake's real cause
+
+**Screenshots.** As planned, CI's first runs failed only on the six intended MLS PNGs (each test stops at its first
+failing shot, so two runs). Each was taken from the run's `playwright-results` artifact after checking its
+`-expected.png` was identical to the committed baseline and the change was S12's: `{desktop,phone}/mls-empty-setup` and
+`mls-league-setup` (run 38169361425; the cards replace the table, box and Best Available card), and
+`{desktop,phone}/mls-league-guide` (run 38169904585; Guide step 2's new text, everything below shifted). Phone heights
+differ from this container's renders by a few lines of wrapping (CI's font is narrower); the content is the same.
+
+**The flake was this branch's, and wasn't a navigation.** The second run also failed `mls-waiver-tiers.spec.mjs` "a Pos
+Rank column shows the overall tier…" on phone, the "Execution context was destroyed" seen once locally in round 8.
+- Reproduced: about 1 in 20 here (2 of 50, 4 of 50, 5 of 40); main 0 of 50. Bisected: round 1 0 of 60, round 2 1 of 60,
+  every later round failing.
+- No navigation: no load, unload, reload or form submit, only `#scout`'s `history.pushState`. Playwright's protocol log
+  shows the browser's answer to the `page.evaluate`: `"Promise was collected"`. Chrome's garbage collector dropped the
+  promise the evaluate was waiting on, and Playwright words that as a destroyed context. `callApp` (tests/helpers.mjs)
+  awaited `import('/js/mls/main.js')` with nothing in the page holding that promise; round 2 made tab switches
+  allocate more, so a collection inside that window became likely.
+- Fix (tests only): `callApp` keeps each entry's `import()` promise on `window.__callAppImports`, so the chain stays
+  reachable. 200 runs after it (60 + 60 phone, 80 on 4 workers): no failures.

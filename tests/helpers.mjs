@@ -117,10 +117,15 @@ export const TSCORE_TABS = ['researchTab', 'top50Tab', 'valuesTab', 'avoidsTab',
  * runs exactly the function the app's buttons run. Since refactor 5D tests don't need app functions on
  * window, so `npm run compare-css` with a COMPARE_REF from before 5D no longer works.
  */
+// The import() promise is kept on window (improvements S12): with nothing in the page holding it, Chrome's garbage
+// collector could drop it while this evaluate was still waiting on it, and Playwright reported that ("Promise was
+// collected" from the browser) as "Execution context was destroyed, most likely because of a navigation". S12's
+// heavier tab switches made that a 1-in-20 failure in mls-waiver-tiers.spec.mjs; on main it hadn't shown.
 export async function callApp(page, name, ...args) {
     return page.evaluate(async ([fn, fnArgs]) => {
         const entry = location.pathname.startsWith('/lineup') ? '/js/mls/main.js' : '/js/mds/main.js';
-        const f = (await import(entry))[fn];
+        const imports = (window.__callAppImports ||= {});
+        const f = (await (imports[entry] ||= import(entry)))[fn];
         return f(...fnArgs);
     }, [name, args]);
 }
