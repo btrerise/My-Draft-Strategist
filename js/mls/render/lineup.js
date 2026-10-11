@@ -8,8 +8,8 @@ import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } 
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
-import { bestBy, pickFlexStarter } from '../lineup/flexChoice.js';
-import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
+import { pickForSlot } from '../lineup/flexChoice.js';
+import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, kickoffFreeze, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { rankBadgeParts, sleeperLineupBadgeMarkup } from '../badges.js';
@@ -320,22 +320,15 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // last-synced starting lineup (the ground truth for what actually happened in real
         // life, and the only signal available the very first time this is run in a given week)
         // and this app's own previous optimizer output (a fallback for when Sleeper starter
-        // data is missing entirely -- see isSleeperStarter below for exactly when each source
-        // applies). A bench player whose game has already passed is NOT auto-locked --
-        // they were never started, so there's nothing to preserve.
-        let sleeperStarterIds = getValidSleeperStarterIds(league);
-        let prevStarters = State.manualStartersMap[State.activeLeagueId] || [];
-        let prevStartingIds = new Set(prevStarters.filter(s => s.player).map(s => s.player.id));
-
-        // Sleeper's synced starting lineup is the ground truth for "did this player actually
-        // start in real life." prevStartingIds (this app's own prior pick) only steps in when
-        // we have no Sleeper starter data at all -- it must NOT be OR'd in alongside real
-        // Sleeper data, or a player this app recommended starting (but who Sleeper shows on
-        // the bench) gets wrongly auto-locked into the lineup the moment their game kicks off.
-        let isSleeperStarter = p => sleeperStarterIds.length > 0
-            ? sleeperStarterIds.includes(p.id)
-            : prevStartingIds.has(p.id);
-
+        // data is missing entirely). Sleeper's synced starting lineup is the ground truth for "did
+        // this player actually start in real life"; the app's own prior pick only steps in when
+        // there's no Sleeper starter data at all -- it must NOT be OR'd in alongside real Sleeper
+        // data, or a player this app recommended starting (but who Sleeper shows on the bench)
+        // gets wrongly auto-locked into the lineup the moment their game kicks off. That rule is
+        // kickoffFreeze (lineup/gameInfo.js), shared with the waiver checks since improvements S12.
+        // A bench player whose game has already passed is NOT auto-locked, and since S12 round 3
+        // he's held out of the starter pool too: Sleeper won't let you start him now, so the
+        // optimizer mustn't (before, a well-ranked one could be "started" after his game).
         // Indexed once per run rather than scanned per roster player. Matters most under
         // Optimize All, which runs this whole function once per league.
         const rankIdx = rankingIndex(activeDataSet);
@@ -343,11 +336,14 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // once per roster player, so a Set costs nothing and keeps the loop body uniform.
         const lockSet = new Set(locks);
 
+        // Bench players whose game has kicked off (kickoffFreeze 'out'): kept out of the starter pool below.
+        const benchedAtKickoff = new Set();
         let scoredRoster = league.roster.map(p => {
             let rObj = rankIdx.get(p.cleanName);
             let manualLocked = lockSet.has(p.id);
-            let overridden = isAutoLockOverridden(State.activeLeagueId, p.id);
-            let autoLocked = !manualLocked && !overridden && hasKickedOff(p) && isSleeperStarter(p);
+            const freeze = manualLocked ? null : kickoffFreeze(league, p);
+            let autoLocked = freeze === 'in';
+            if (freeze === 'out') benchedAtKickoff.add(p.id);
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? (rObj.posTier ?? rObj.tier ?? null) : null, flexTier: rObj ? (rObj.flexTier ?? rObj.tier ?? null) : null, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
@@ -366,8 +362,6 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // at one position the better position rank; projections only between positions (a TE24 isn't better than a
         // WR45, it's just a shallower list) or between unranked players.
         const projOf = (p) => (projById.has(p.id) ? projById.get(p.id) : null);
-        const pickFlex = (list) => pickFlexStarter(list, projOf);
-        const pickByPosRank = (list) => bestBy(list, (a, b) => a.posRank - b.posRank);
 
         // Taxi-squad players are held out of the starter pool entirely rather than merely
         // deprioritized the way isUnavailableThisWeek handles byes and hard-out statuses.
@@ -377,69 +371,40 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // all. A healthy, well-ranked rookie sitting on taxi is exactly the case that fallback
         // would otherwise promote into the lineup. They rejoin the bench pool after slotting.
         let taxiPlayers = scoredRoster.filter(p => p.isTaxi);
-        let pool = scoredRoster.filter(p => !p.isTaxi);
+        const playedOnBench = scoredRoster.filter(p => !p.isTaxi && benchedAtKickoff.has(p.id));
+        let pool = scoredRoster.filter(p => !p.isTaxi && !benchedAtKickoff.has(p.id));
         let starters = [];
 
-        // Finds the index in `pool` of the player `choose` picks among those matching `matchFn` (pickFlex or
-        // pickByPosRank). Prefers players who are actually available this week per isUnavailableThisWeek(); only
-        // falls back to an unavailable player if NO eligible one exists at all, so a slot is never silently left
-        // empty just because the best-ranked option happens to be on bye.
-        const findBestStarterIndex = (matchFn, choose) => {
-            let candidates = pool.filter(p => matchFn(p) && !isUnavailableThisWeek(p));
-            // Fallback pass: nobody eligible is available at this position. Allow a bye/hard-out
-            // player rather than leaving the slot empty -- they'll show up with a clear BYE or
-            // injury badge in the UI instead of just vanishing from the lineup.
-            if (candidates.length === 0) candidates = pool.filter(matchFn);
-            const best = choose(candidates);
-            return best ? pool.indexOf(best) : -1;
+        // Who fills each slot: pickForSlot (lineup/flexChoice.js), the rule the waiver checks and the "start X
+        // instead?" suggestions share (improvements S12). Strict slots by position rank; W/R, W/T and FLEX by
+        // pickFlexStarter; SFLEX a ranked QB, else a ranked RB/WR/TE, else anyone by projection (it used to stay
+        // empty when nobody left was ranked). Prefers players who are actually available this week per
+        // isUnavailableThisWeek(); only falls back to an unavailable player if NO eligible one exists at all, so a
+        // slot is never silently left empty just because the best option happens to be on bye -- they'll show up
+        // with a clear BYE or injury badge instead of just vanishing from the lineup. (Before round 3, SFLEX's QB
+        // step ran that fallback on its own, so an Out QB beat a healthy ranked WR there.)
+        const fillSlot = (slotLabel, slotType) => {
+            const takes = SLOT_POSITIONS[slotType] || [slotType];
+            const isFlexType = takes.length > 1;
+            let lockedIndex = pool.findIndex(p => p.isLocked && takes.includes(p.pos));
+            if (lockedIndex !== -1) {
+                const lockedPlayer = pool.splice(lockedIndex, 1)[0];
+                starters.push({ slot: slotLabel, player: lockedPlayer, usedFlex: slotType === 'SFLEX' ? lockedPlayer.pos !== 'QB' : isFlexType });
+                return;
+            }
+            let candidates = pool.filter(p => takes.includes(p.pos) && !isUnavailableThisWeek(p));
+            let best = pickForSlot(slotType, candidates, projOf);
+            if (!best) best = pickForSlot(slotType, pool, projOf);
+            if (!best) { starters.push({ slot: slotLabel, player: null, usedFlex: isFlexType && slotType !== 'SFLEX' }); return; }
+            pool.splice(pool.indexOf(best), 1);
+            starters.push({ slot: slotLabel, player: best, usedFlex: slotType === 'SFLEX' ? best.pos !== 'QB' && best.flexRank !== 999 : isFlexType });
         };
 
-        const fillSlot = (slotLabel, posFilter, useFlexRank) => {
-            let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
-            if (lockedIndex !== -1) { starters.push({ slot: slotLabel, player: pool.splice(lockedIndex, 1)[0], usedFlex: useFlexRank }); return; }
-
-            let bestIndex = findBestStarterIndex(p => posFilter(p.pos), useFlexRank ? pickFlex : pickByPosRank);
-            if (bestIndex !== -1) starters.push({ slot: slotLabel, player: pool.splice(bestIndex, 1)[0], usedFlex: useFlexRank });
-            else starters.push({ slot: slotLabel, player: null, usedFlex: useFlexRank });
-        };
-
-        for (let i = 0; i < (reqs.QB || 0); i++) fillSlot(`QB${i+1}`, pos => pos === 'QB', false);
-        for (let i = 0; i < (reqs.RB || 0); i++) fillSlot(`RB${i+1}`, pos => pos === 'RB', false);
-        for (let i = 0; i < (reqs.WR || 0); i++) fillSlot(`WR${i+1}`, pos => pos === 'WR', false);
-        for (let i = 0; i < (reqs.TE || 0); i++) fillSlot(`TE${i+1}`, pos => pos === 'TE', false);
         // Sleeper's restricted flex slots (W/R, W/T) before FLEX: most restrictive first, so FLEX
         // gets the best player the narrower slots couldn't take (a W/T can't use a spare RB).
-        for (let i = 0; i < (reqs.WRRB || 0); i++) fillSlot(`WRRB${i+1}`, pos => SLOT_POSITIONS.WRRB.includes(pos), true);
-        for (let i = 0; i < (reqs.WRTE || 0); i++) fillSlot(`WRTE${i+1}`, pos => SLOT_POSITIONS.WRTE.includes(pos), true);
-        for (let i = 0; i < (reqs.FLEX || 0); i++) fillSlot(`FLEX${i+1}`, pos => ['RB', 'WR', 'TE'].includes(pos), true);
-        
-        for (let i = 0; i < reqs.SFLEX; i++) {
-            let slotLabel = `SFLEX${i+1}`;
-            let lockedIndex = pool.findIndex(p => p.isLocked && ['QB', 'RB', 'WR', 'TE'].includes(p.pos));
-            if (lockedIndex !== -1) {
-                let lockedPlayer = pool.splice(lockedIndex, 1)[0];
-                // Read pos off the player we just removed, not off pool[lockedIndex] -- after
-                // splice() that index now holds a different (or no) element, since everything
-                // after the removed slot shifts down by one.
-                starters.push({ slot: slotLabel, player: lockedPlayer, usedFlex: lockedPlayer.pos !== 'QB' });
-                continue;
-            }
-
-            let bestQBIdx = findBestStarterIndex(p => p.pos === 'QB' && p.posRank !== 999, pickByPosRank);
-            if (bestQBIdx !== -1) {
-                starters.push({ slot: slotLabel, player: pool.splice(bestQBIdx, 1)[0], usedFlex: false });
-            } else {
-                // A ranked RB/WR/TE by the FLEX rule: a FLEX rank first, then the best-ranked at each position by
-                // projection (pickFlexStarter).
-                let bestFlexIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && (p.flexRank !== 999 || p.posRank !== 999), pickFlex);
-                if (bestFlexIdx !== -1) {
-                    const player = pool.splice(bestFlexIdx, 1)[0];
-                    starters.push({ slot: slotLabel, player, usedFlex: player.flexRank !== 999 });
-                } else starters.push({ slot: slotLabel, player: null, usedFlex: false });
-            }
-        }
-        for (let i = 0; i < (reqs.K || 0); i++) fillSlot(`K${i+1}`, pos => pos === 'K', false);
-        for (let i = 0; i < (reqs.DEF || 0); i++) fillSlot(`DEF${i+1}`, pos => pos === 'DEF', false);
+        ['QB', 'RB', 'WR', 'TE', 'WRRB', 'WRTE', 'FLEX', 'SFLEX', 'K', 'DEF'].forEach(slotType => {
+            for (let i = 0; i < (reqs[slotType] || 0); i++) fillSlot(`${slotType}${i+1}`, slotType);
+        });
 
         const benchOrder = (a, b) => {
             if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
@@ -447,6 +412,8 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             if (a.flexRank === 999 && b.flexRank !== 999) return 1;
             return a.posRank - b.posRank;
         };
+        // Bench players whose game has passed rejoin the bench, ordered with it.
+        pool.push(...playedOnBench);
         pool.sort(benchOrder);
 
         // Taxi players land beneath the entire real bench regardless of how well they're

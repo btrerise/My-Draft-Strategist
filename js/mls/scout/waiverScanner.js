@@ -5,7 +5,7 @@
 // DOM, localStorage, or js/mls/state.js's State. The caller injects everything league-specific
 // (position lookup, lock/availability checks) as plain callbacks, so this whole file runs
 // under Node for validation without a browser.
-import { bestBy, pickFlexStarter } from '../lineup/flexChoice.js';
+import { pickForSlot } from '../lineup/flexChoice.js';
 
 export const FLEX_POSITIONS = ['RB', 'WR', 'TE'];
 // WRRB / WRTE: Sleeper's W/R and W/T slots (improvements S1), filled before FLEX like optimizeLineup does.
@@ -195,9 +195,9 @@ export function upgradeGap({ faRank, faTier = null, benchRank, benchTier = null,
 
 // --- LINEUP SIMULATION ---
 // Fills a set of starter slots from a candidate pool using the exact same rules as
-// optimizeLineup in js/mls/render/lineup.js (strict slots by posRank, FLEX-type slots by pickFlexStarter
-// (js/mls/lineup/flexChoice.js: FLEX rank, then the best-ranked at each position by projection), SFLEX by
-// QB posRank -> a ranked RB/WR/TE by the same FLEX rule, locked players placed first, unavailable
+// optimizeLineup in js/mls/render/lineup.js (pickForSlot, js/mls/lineup/flexChoice.js: strict slots by posRank,
+// FLEX-type slots by FLEX rank, then the best-ranked at each position by projection; SFLEX a ranked QB, a ranked
+// RB/WR/TE, then anyone by projection), locked players placed first, unavailable
 // players only as a last resort so no slot is left empty). If the two ever drift apart, this
 // tool would claim a free agent "starts" when the optimizer wouldn't actually start him --
 // so any change to optimizeLineup's fillSlot/SFLEX logic belongs here too.
@@ -219,17 +219,12 @@ export function fillLineup(slotTypes, candidates) {
     const pool = candidates.slice();
     const starters = [];
 
-    // The player `choose` picks among those matching `matchFn`, preferring available ones (as optimizeLineup's
-    // findBestStarterIndex does); his index in the pool, or -1.
-    const findBest = (matchFn, choose) => {
-        let candidates = pool.filter(p => matchFn(p) && !p.unavailable);
-        if (candidates.length === 0) candidates = pool.filter(matchFn);
-        const best = choose(candidates);
+    // pickForSlot (js/mls/lineup/flexChoice.js), preferring available players, as optimizeLineup's fillSlot does.
+    const projOf = (p) => (p.proj == null ? null : p.proj);
+    const pick = (slotType) => {
+        const best = pickForSlot(slotType, pool.filter(p => !p.unavailable), projOf) || pickForSlot(slotType, pool, projOf);
         return best ? pool.indexOf(best) : -1;
     };
-
-    const byPosRank = (list) => bestBy(list, (a, b) => a.posRank - b.posRank);
-    const byFlex = (list) => pickFlexStarter(list, p => (p.proj == null ? null : p.proj));
 
     const take = (slotType, idx) => starters.push({ slotType, player: idx === -1 ? null : pool.splice(idx, 1)[0] });
 
@@ -238,21 +233,8 @@ export function fillLineup(slotTypes, candidates) {
 
     SLOT_ORDER.forEach(slotType => {
         for (let i = 0; i < (counts[slotType] || 0); i++) {
-            if (slotType === 'SFLEX') {
-                const lockedIdx = pool.findIndex(p => p.isLocked && ['QB', ...FLEX_POSITIONS].includes(p.pos));
-                if (lockedIdx !== -1) { take(slotType, lockedIdx); continue; }
-                let idx = findBest(p => p.pos === 'QB' && p.posRank !== UNRANKED, byPosRank);
-                if (idx === -1) idx = findBest(p => FLEX_POSITIONS.includes(p.pos) && (p.flexRank !== UNRANKED || p.posRank !== UNRANKED), byFlex);
-                take(slotType, idx);
-                continue;
-            }
-            const accepts = slotType === 'FLEX' ? (p => FLEX_POSITIONS.includes(p.pos))
-                : RESTRICTED_FLEX[slotType] ? (p => RESTRICTED_FLEX[slotType].includes(p.pos))
-                : (p => p.pos === slotType);
-            const isFlexType = slotType === 'FLEX' || !!RESTRICTED_FLEX[slotType];
-            const lockedIdx = pool.findIndex(p => p.isLocked && accepts(p));
-            if (lockedIdx !== -1) { take(slotType, lockedIdx); continue; }
-            take(slotType, findBest(accepts, isFlexType ? byFlex : byPosRank));
+            const lockedIdx = pool.findIndex(p => p.isLocked && slotAcceptsPos(slotType, p.pos));
+            take(slotType, lockedIdx !== -1 ? lockedIdx : pick(slotType));
         }
     });
 
@@ -267,11 +249,12 @@ export function fillLineup(slotTypes, candidates) {
 // locked and unavailable players are handled as fillLineup does.
 // reqs: { QB: 1, RB: 2, ... }; roster: [{ id, cleanName, isTaxi, ... }];
 // deps: { getPos(cleanName), rankOf(player) -> { posRank, flexRank }, isLocked(player), isUnavailable(player),
-//         projOf(player) -> Sleeper's projection or null (optional) }
-export function bestLineup(reqs, roster, { getPos, rankOf, isLocked, isUnavailable, projOf = () => null }) {
+//         projOf(player) -> Sleeper's projection or null (optional),
+//         cannotStart(player) -> true for a bench player whose game has kicked off (optional; left out, as taxi players are) }
+export function bestLineup(reqs, roster, { getPos, rankOf, isLocked, isUnavailable, projOf = () => null, cannotStart = () => false }) {
     const slotTypes = [];
     Object.entries(reqs || {}).forEach(([slotType, n]) => { for (let i = 0; i < (n || 0); i++) slotTypes.push(slotType); });
-    const candidates = (roster || []).filter(p => p && !p.isTaxi).map(p => {
+    const candidates = (roster || []).filter(p => p && !p.isTaxi && !cannotStart(p)).map(p => {
         const rk = rankOf(p) || {};
         const pos = getPos(p.cleanName);
         // The returned player carries the position the lineup was filled with, so a later
@@ -310,7 +293,8 @@ export function slotAcceptsPos(slotType, pos) {
 // rankOf(player) -> { posRank, flexRank } from the check rankings (999 when unranked)
 // isLocked(player), isUnavailable(player) -> booleans
 // projOf(player) -> Sleeper's projection or null (optional; the FLEX rule's tiebreak between positions)
-export function checkAgainstLineup(fa, currentStarters, { rankOf, isLocked, isUnavailable, projOf = () => null }) {
+// cannotStart(player) -> true once a player who wasn't starting has kicked off (optional; counted as unavailable)
+export function checkAgainstLineup(fa, currentStarters, { rankOf, isLocked, isUnavailable, projOf = () => null, cannotStart = () => false }) {
     const slotTypes = currentStarters.map(s => s.slotType);
     if (!slotTypes.some(t => slotAcceptsPos(t, fa.pos))) return { status: 'noSlot' };
 
@@ -319,7 +303,7 @@ export function checkAgainstLineup(fa, currentStarters, { rankOf, isLocked, isUn
         return {
             id: p.id, pos: p.pos, ref: p,
             posRank: rankOr999(rk.posRank), flexRank: rankOr999(rk.flexRank),
-            isLocked: !!isLocked(p), unavailable: !!isUnavailable(p), proj: projOf(p),
+            isLocked: !!isLocked(p), unavailable: !!isUnavailable(p) || !!cannotStart(p), proj: projOf(p),
             ...extra
         };
     };

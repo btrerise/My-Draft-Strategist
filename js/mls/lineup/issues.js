@@ -3,6 +3,7 @@
 // disagree. Pure: no State, no DOM, so tests/unit/lineupIssues.test.mjs runs it in Node. gameInfo.js's
 // getLineupIssues supplies the State-backed parts (statuses, kickoffs, byes, locks, the league's IR rules).
 import { SLOT_POSITIONS, slotDisplayName } from '../constants.js';
+import { pickForSlot } from './flexChoice.js';
 
 const slotTypeOf = (slot) => String(slot || '').replace(/[0-9]/g, '');
 const accepts = (slotType, pos) => !!(SLOT_POSITIONS[slotType] && SLOT_POSITIONS[slotType].includes(pos));
@@ -40,6 +41,7 @@ export function irEligible(inj, irRules) {
 //   irRules       the league's IR slot ({ slots, allow }, from Sleeper) or null (manual leagues, old syncs).
 //   rosterSize    starting + bench spots (Sleeper's roster_positions), or null.
 //   unmatched     names on a manual league's roster Sleeper doesn't know, so their injuries aren't checked.
+//   projOf(p)     Sleeper's projection for him this week, or null (the slot rule's tiebreak between positions).
 // Returns:
 //   injured, bye   starters (not kept), in lineup order; one injured isn't also listed on bye.
 //   kept           [{ player, what }]: injured or bye starters you locked in ("is Doubtful", "is on bye").
@@ -51,8 +53,8 @@ export function irEligible(inj, irRules) {
 //   irSlotsOpen    open IR slots (0 when unknown).
 //   rosterFull     no open active spot, so an activation needs a drop first (false when unknown).
 //   empty          slot types ('TE', 'FLEX'...) of empty starting slots.
-//   swaps          [{ out, in }]: for an injured or bye starter, the best healthy bench player who can take his
-//                  slot (owner's choice: suggest, don't decide). Each bench player once.
+//   swaps          [{ out, in }]: for an injured or bye starter, the healthy bench player the optimizer would put in
+//                  his slot (pickForSlot; owner's choice: suggest, don't decide). Each bench player once.
 //   noSwap         [{ player, slotType }]: injured or bye starters nobody on the bench can replace.
 //   firstKickoffMs the earliest kickoff among the injured and IR-slot starters (NaN when none is known).
 export function lineupIssues(starters, ctx, bench = []) {
@@ -67,13 +69,15 @@ export function lineupIssues(starters, ctx, bench = []) {
         const ms = ctx.kickoffMs ? ctx.kickoffMs(p) : NaN;
         if (Number.isFinite(ms) && !(issues.firstKickoffMs <= ms)) issues.firstKickoffMs = ms;
     };
-    // His position first, best position rank; then anyone else the slot takes, best FLEX rank.
+    // Who the optimizer would put in that slot from the healthy bench: pickForSlot (lineup/flexChoice.js; owner's
+    // choice, S12 round 3: the suggestion follows the same rule as the lineup, projections included). Before, it took
+    // his own position first, then the best FLEX rank.
+    const rank = (v) => (Number.isFinite(v) ? v : 999);
     const replacementFor = (p, slotType) => {
-        const rank = (v) => (Number.isFinite(v) ? v : 999);
-        const pool = (bench || []).filter(q => canStepIn(q) && !used.has(q.id) && accepts(slotType, q.pos));
-        pool.sort((a, b) => ((a.pos === p.pos ? 0 : 1) - (b.pos === p.pos ? 0 : 1))
-            || (a.pos === p.pos ? rank(a.posRank) - rank(b.posRank) : rank(a.flexRank) - rank(b.flexRank) || rank(a.posRank) - rank(b.posRank)));
-        return pool[0] || null;
+        const pool = (bench || []).filter(q => canStepIn(q) && !used.has(q.id) && accepts(slotType, q.pos))
+            .map(q => ({ ...q, posRank: rank(q.posRank), flexRank: rank(q.flexRank), ref: q }));
+        const best = pickForSlot(slotType, pool, (q) => (ctx.projOf ? ctx.projOf(q.ref) : null));
+        return best ? best.ref : null;
     };
     const swapOrPickup = (p, slotType) => {
         const q = replacementFor(p, slotType);

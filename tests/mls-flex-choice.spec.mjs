@@ -29,11 +29,18 @@ const RANKS = [
 // Sleeper ids: projected points this week.
 const PROJ = { 6786: 2, 9493: 3, 7547: 9, 5859: 30, 7553: 6, 4217: 20, 7523: 15 };
 
-async function setup(page) {
-    await page.route(/sleeper\.app\/v1\/league\/\d+$/, route => route.fulfill({ json: {
-        ...fixture('league.json'),
-        roster_positions: ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN'],
-    } }));
+const FLEX_SLOTS = ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN'];
+
+// opts: positions (Sleeper's roster_positions), ranks, sleeperStarters (your lineup on Sleeper, ids).
+async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStarters } = {}) {
+    await page.route(/sleeper\.app\/v1\/league\/\d+$/, route => route.fulfill({ json: { ...fixture('league.json'), roster_positions: positions } }));
+    if (sleeperStarters) {
+        await page.route(/sleeper\.app\/v1\/league\/\d+\/rosters$/, route => {
+            const rosters = fixture('league-rosters.json');
+            rosters[0].starters = sleeperStarters;
+            return route.fulfill({ json: rosters });
+        });
+    }
     await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/2$/, route => {
         const proj = fixture('projections-2026-2.json');
         Object.entries(PROJ).forEach(([id, pts]) => { proj[id] = { ...proj[id], pts_ppr: pts, pts_half_ppr: pts, pts_std: pts }; });
@@ -48,7 +55,7 @@ async function setup(page) {
         const league = leagues.find(l => l.leagueId === leagueId);
         Object.assign(league, { weeklyRankingSetId: null, weeklyRankings: data, weeklyRankingsUpdatedAt: Date.now() });
         localStorage.setItem('mls_leagues', JSON.stringify(leagues));
-    }, { ranks: RANKS, leagueId: FIXTURE_LEAGUE_ID });
+    }, { ranks, leagueId: FIXTURE_LEAGUE_ID });
     await page.reload();
     await page.waitForLoadState('networkidle');
     // The Lineup tab loads the projections; once they're in, a fresh optimize (the Optimize Lineup button).
@@ -57,8 +64,10 @@ async function setup(page) {
         const { lineupProjectionsLoaded } = await import('/js/mls/lineup/gameInfo.js');
         return lineupProjectionsLoaded();
     })).toBe(true);
-    await page.locator('#lineupTab [data-action="optimizeLineup"]').click();
+    await optimize(page);
 }
+
+const optimize = (page) => page.locator('#lineupTab [data-action="optimizeLineup"]').click();
 
 const starters = (page) => page.evaluate(async (leagueId) => {
     const { State } = await import('/js/mls/state.js');
@@ -74,6 +83,31 @@ test.describe('Lineup Optimizer: FLEX without FLEX ranks', () => {
         expect(flex).toEqual(['CeeDee Lamb', 'Trey McBride']);
         // The strict slots are unchanged.
         expect(lineup.filter(s => !s.startsWith('FLEX:'))).toEqual(expect.arrayContaining(['RB:Derrick Henry', "WR:Ja'Marr Chase", 'WR:Justin Jefferson', 'TE:Brock Bowers']));
+        await expectClean(page, state);
+    });
+
+    // S12 round 3. SFLEX with nobody ranked left used to stay empty ("[ Empty Slot ]"); it now takes the higher
+    // projection, like FLEX. And a bench player whose game has kicked off can't be started any more (Sleeper locks
+    // him on the bench): the optimizer leaves him there, as it already kept a started starter in his slot.
+    test('SFLEX with nobody ranked left: the higher projection; a benched player whose game has started stays benched', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        const ranked = RANKS.filter(([name]) => ['Josh Allen', 'Derrick Henry', "Ja'Marr Chase", 'Justin Jefferson', 'Brock Bowers'].includes(name));
+        // On Sleeper: Allen, Henry, Chase, Jefferson, Bowers, Lamb (SFLEX), Tucker, the Ravens.
+        await setup(page, {
+            positions: ['QB', 'RB', 'WR', 'WR', 'TE', 'SUPER_FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN'],
+            ranks: ranked, sleeperStarters: ['4984', '3198', '4866', '6794', '11604', '6786', '17', 'BAL'],
+        });
+        expect((await starters(page)).filter(s => s.startsWith('SFLEX:'))).toEqual(['SFLEX:A.J. Brown']);
+
+        // A.J. Brown's game (PHI) has kicked off and he isn't in your Sleeper lineup: the next projection, Kittle.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.gameTimesByTeam = { ...State.gameTimesByTeam, PHI: '2026-09-15T12:00:00Z' };
+        });
+        await optimize(page);
+        const lineup = await starters(page);
+        expect(lineup.filter(s => s.startsWith('SFLEX:'))).toEqual(['SFLEX:George Kittle']);
+        expect(lineup).not.toContain('WR:A.J. Brown');
         await expectClean(page, state);
     });
 });

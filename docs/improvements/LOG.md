@@ -3506,3 +3506,58 @@ and around again, unfolding each.
   "Execution context was destroyed": its setup reloads the page and the next `callApp` can land mid-reload. It passed
   12 of 12 on repeat (`--repeat-each=6`); it doesn't touch the Dashboard. A follow-up could wait for the load after
   that reload.
+
+### S12, round 3: one slot rule everywhere, SFLEX, and players whose game has started (owner's requests)
+
+**Asked:** make the S11 "start X instead?" suggestions consistent with round 2's rule; have SFLEX use projections
+too; and explain why the Dashboard said "Mike Washington over Zay Flowers" in "How I Met Your Punter" while Auto-Find
+(FLEX) said he'd replace George Kittle (backup and Sleeper username supplied).
+
+**The mismatch, traced** (backup, plus Sleeper's week 5 matchup for the league: Chris Godwin, TB, already had 5.5
+points from Thursday). Auto-Find checks your saved lineup. Best Available builds a fresh best lineup from the whole
+roster (S5 round 7), and its deps (`lineupCheckDeps`) counted every player whose game had kicked off as locked in,
+bench players too. So the benched, unranked Godwin was locked into a WR slot. That pushed Nabers to W/T and Flowers to
+FLEX, and left Kittle out of the lineup it compared against. With Washington added, Flowers was the one left out.
+Rerun on the backup with the fix, both say Kittle. The optimizer itself only auto-locks a kicked-off *starter*, but it
+let a kicked-off bench player be picked to start, which Sleeper won't allow.
+
+**What changed.**
+- **One rule for a player whose game has kicked off:** `kickoffFreeze(league, p)` in `js/mls/lineup/gameInfo.js`
+  returns 'in' if he started (Sleeper's last-synced lineup; with none, the saved lineup, as the auto-lock always read
+  it), 'out' if he didn't, and null before kickoff or when you overrode the auto-lock.
+  - The optimizer auto-locks 'in' (as before) and now holds 'out' players out of the starter pool; they rejoin the
+    bench.
+  - `lineupCheckDeps` uses it: `isLocked` only for 'in', and a new `cannotStart` for 'out'. `bestLineup` leaves those
+    players out, as it does taxi players; `checkAgainstLineup` counts them unavailable.
+- **One slot rule:** `pickForSlot(slotType, candidates, projOf)` in `js/mls/lineup/flexChoice.js`:
+  - strict slots by position rank;
+  - W/R, W/T and FLEX by `pickFlexStarter`;
+  - SFLEX: a ranked QB first, then a ranked RB/WR/TE by `pickFlexStarter`, then **anyone it takes by projection**.
+  `optimizeLineup` (its fillSlot and the SFLEX loop are now one fillSlot over the slot order) and `fillLineup` both
+  call it, with the available players first and everyone as the fallback.
+  - **SFLEX bug 1:** with nobody ranked left, SFLEX stayed empty. Now it takes the higher projection.
+  - **SFLEX bug 2,** found while doing this: the QB step ran the "unavailable as a last resort" fallback on its own, so
+    an Out ranked QB beat a healthy ranked RB/WR/TE. Now availability applies to the slot as a whole.
+  - The owner kept "a ranked QB first" in SFLEX (F1's scope note). Projections don't decide QB against FLEX while a
+    QB is ranked; say if they should.
+- **"Start X instead?"** (`lineupIssues` in `js/mls/lineup/issues.js`): the swap is `pickForSlot` over the healthy
+  bench players the slot takes, with projections (`projOf` in ctx, from `getLineupIssues`). It used to take his own
+  position first, then the best FLEX rank. In a FLEX slot that's now whoever the optimizer would start: an injured WR's
+  FLEX spot can go to a better-ranked RB. Strict slots still take only their position.
+- `js/mls/scout/waivers.js`: `lineupCheckDeps` as above (its own `hasKickedOff` / override check moved into
+  `kickoffFreeze`).
+
+**Tests** (each bug shown on the old code first).
+- `tests/unit/flexChoice.test.mjs`: SFLEX with nobody ranked (empty before), a healthy ranked WR over an Out ranked QB
+  (the QB before), and `pickForSlot` per slot type.
+- `tests/unit/lineupIssues.test.mjs`: the swap in a FLEX slot by the FLEX rule (before: "his position first"); no
+  FLEX ranks (leaders by projection, rank within a position, ranked over unranked); SFLEX.
+- `tests/unit/waiverScanner.test.mjs`: the old "a QB with no rank never fills SFLEX" is now "SFLEX takes him" (the
+  owner's change).
+- `tests/mls-flex-choice.spec.mjs`: SFLEX with nobody ranked left takes A.J. Brown (30 projected; empty before). Then,
+  with his game (PHI) kicked off and him not in your Sleeper lineup, it takes Kittle instead.
+- `tests/mls-best-available.spec.mjs`: a benched Puka Nacua whose game has started doesn't change "over CeeDee Lamb
+  WR4" (before: the line changed, as in the owner's league).
+
+**Left over.** Screenshots: unchanged from round 2's six. The fixture lineups have no unranked SFLEX and no kicked-off
+games.

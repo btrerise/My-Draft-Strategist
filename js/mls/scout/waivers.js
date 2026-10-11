@@ -7,11 +7,11 @@ import { escapeHtml } from '../../shared/html.js';
 import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';
-import { getByeBadgeHTML, getGameInfoHTML, getLineupProjection, hasKickedOff } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getGameInfoHTML, getLineupProjection, hasKickedOff, kickoffFreeze } from '../lineup/gameInfo.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { runScout } from './engine.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
-import { isAutoLockOverridden, optimizeLineup } from '../main.js';
+import { optimizeLineup } from '../main.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
@@ -268,10 +268,15 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
     export function lineupCheckDeps(leagueId, byName) {
         const locks = State.lockedPlayersMap[leagueId] || [];
         const league = (State.leagues || []).find(l => l.leagueId === leagueId) || null;
+        // Once his game has kicked off, a player stays where he is on Sleeper (kickoffFreeze, the optimizer's rule):
+        // locked in if he started, unable to start if he didn't. Before S12 round 3 every kicked-off player counted as
+        // locked in, bench players too, so the Dashboard's fresh best lineup put a benched Thursday player in it.
+        const freeze = (p) => (locks.includes(p.id) ? null : kickoffFreeze(league, p));
         return {
             rankOf: (p) => byName[p.cleanName] || null,
-            isLocked: (p) => locks.includes(p.id) || (hasKickedOff(p) && !isAutoLockOverridden(leagueId, p.id)),
+            isLocked: (p) => locks.includes(p.id) || freeze(p) === 'in',
             isUnavailable: (p) => isUnavailableThisWeek(p),
+            cannotStart: (p) => freeze(p) === 'out',
             // Sleeper's projection, the FLEX rule's tiebreak between positions, as the optimizer uses it (S12).
             projOf: (p) => getLineupProjection(p.id, league)
         };

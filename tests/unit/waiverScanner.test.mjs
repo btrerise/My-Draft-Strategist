@@ -239,12 +239,13 @@ describe('fillLineup', () => {
         assert.deepEqual(ids(fillLineup(['FLEX'], [c('a', 'RB', 1, 999), c('b', 'WR', 50, 30)])), [['FLEX', 'b']]);
         assert.deepEqual(ids(fillLineup(['FLEX'], [c('a', 'RB', 9), c('b', 'TE', 4)])), [['FLEX', 'b']]);
     });
-    test('SFLEX: ranked QB, then FLEX by flexRank, then FLEX by posRank', () => {
+    test('SFLEX: ranked QB, then FLEX by flexRank, then FLEX by posRank, then anyone', () => {
         assert.deepEqual(ids(fillLineup(['SFLEX'], [c('rb', 'RB', 1, 1), c('qb', 'QB', 30)])), [['SFLEX', 'qb']]);
         assert.deepEqual(ids(fillLineup(['SFLEX'], [c('rb', 'RB', 1, 999), c('wr', 'WR', 9, 40), c('qb', 'QB', 999)])), [['SFLEX', 'wr']]);
         assert.deepEqual(ids(fillLineup(['SFLEX'], [c('rb', 'RB', 7), c('te', 'TE', 3), c('qb', 'QB', 999)])), [['SFLEX', 'te']]);
-        // A QB with no rank at all never fills SFLEX.
-        assert.deepEqual(ids(fillLineup(['SFLEX'], [c('qb', 'QB', 999)])), [['SFLEX', null]]);
+        // With nobody ranked, SFLEX still takes someone, by projection (owner's choice, improvements S12 round 3; it
+        // used to stay empty).
+        assert.deepEqual(ids(fillLineup(['SFLEX'], [c('qb', 'QB', 999)])), [['SFLEX', 'qb']]);
         // A locked QB or FLEX player wins outright.
         assert.deepEqual(ids(fillLineup(['SFLEX'], [c('qb', 'QB', 1), c('te', 'TE', 30, 999, { isLocked: true })])), [['SFLEX', 'te']]);
     });

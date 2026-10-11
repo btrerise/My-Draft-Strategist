@@ -81,7 +81,16 @@ What changed for users in each version of the two apps, in plain language. Newes
   start your WR55 over your WR53 because he projected higher, or an unranked player over ranked ones. Now a FLEX rank
   still comes first. Then a ranked player beats an unranked one, and at one position the better rank wins.
   Projections only decide between positions (a TE24 isn't necessarily better than a WR50), or between unranked
-  players. The Waiver Wire Assistant and the Dashboard's best available judge "would he start?" the same way.
+  players. The Waiver Wire Assistant, the Dashboard's best available and the "start X instead?" suggestions judge
+  the same way.
+- **SFLEX is never left empty** when you have someone who can play there: with nobody ranked left, it takes the
+  higher projection, as FLEX does. A healthy ranked RB, WR or TE now also beats an injured ranked QB there.
+- **A benched player whose game has started stays benched.** Once his game kicks off, Sleeper won't let you start
+  him, so the optimizer no longer does. The Dashboard's best available also no longer counts him as one of your
+  starters. That made it compare a free agent with the wrong player ("over Zay Flowers" where Auto-Find rightly said
+  he'd replace George Kittle).
+- **"Start X instead?" follows the lineup's rule.** For an injured or bye starter, the suggestion is whoever the
+  optimizer would put in that slot from your healthy bench (projections included), not "his own position first".
 - **One card per league on the Dashboard.** The League Command Center now lists your leagues as cards, one per league,
   in your order (▲ ▼ move them, ✕ removes one, tap the name to switch to it). Each card holds everything about that
   league: whether its Weekly rankings are fresh and whether its lineup matches Sleeper (chips with a word on them; tap

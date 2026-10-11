@@ -40,6 +40,11 @@ const withCookAndHenry = (cook, henry) => WAIVER_RANKINGS_CSV
     .replace('26,James Cook,RB,BUF,4,7', cook);
 const UPGRADE_CSV = withCookAndHenry('15,James Cook,RB,BUF,3,7', '26,Derrick Henry,RB,BAL,4,7');
 const SAME_TIER_CSV = withCookAndHenry('15,James Cook,RB,BUF,3,7', '26,Derrick Henry,RB,BAL,3,7');
+// Jaxon Smith-Njigba (a free agent) up to 4th, tier 1; CeeDee Lamb (yours) tier 2 (S12 round 3's kickoff test).
+const JSN_CSV = WAIVER_RANKINGS_CSV
+    .replace('4,Jahmyr Gibbs,RB,DET,1,8', '4,Jaxon Smith-Njigba,WR,SEA,1,8')
+    .replace('27,Jaxon Smith-Njigba,WR,SEA,4,8', '27,Jahmyr Gibbs,RB,DET,4,8')
+    .replace('5,CeeDee Lamb,WR,DAL,1,10', '5,CeeDee Lamb,WR,DAL,2,10');
 const NO_WILSON_CSV = WAIVER_RANKINGS_CSV.replace('21,Garrett Wilson,WR,NYJ,4,9\n', '');
 const LEAGUE_JSON = readFileSync(new URL('./fixtures/sleeper/league.json', import.meta.url), 'utf8');
 const PLAYERS_JSON = readFileSync(new URL('./fixtures/sleeper/players-nfl.json', import.meta.url), 'utf8');
@@ -331,6 +336,29 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
 
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
+        await expectClean(page, state);
+    });
+
+    // S12 round 3 (the owner's "How I Met Your Punter": the Dashboard said "Mike Washington over Zay Flowers" where
+    // Auto-Find said "replaces George Kittle"). The card builds your best lineup from the whole roster, and it counted
+    // every player whose game had kicked off as locked in, bench players too (Chris Godwin, Thursday). A player whose
+    // game has started stays where he is on Sleeper: in the lineup if he started, out of it if he didn't.
+    test('Weekly: a benched player whose game has started is not put in your lineup', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await oneRbSlot(page);
+        await seedMls(page);
+        // Jaxon Smith-Njigba (a free agent) WR3, tier 1, ahead of CeeDee Lamb (your FLEX) WR4, tier 2.
+        await loadMlsRankings(page, JSN_CSV, 30);
+        await showTab(page, 'setup');
+        await expect(line(page, 'Fixture League').locator('.mls-ba-over')).toHaveText(['over CeeDee Lamb WR4']);
+        // Puka Nacua (LAR, on your bench) has played. He can't move into your lineup now, so the answer stands.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.gameTimesByTeam = { ...State.gameTimesByTeam, LAR: '2026-09-15T12:00:00Z' };
+        });
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        await expect(line(page, 'Fixture League').locator('.mls-ba-over')).toHaveText(['over CeeDee Lamb WR4']);
         await expectClean(page, state);
     });
 });

@@ -4,7 +4,7 @@
 // the Waiver Wire's copy of the optimizer, which uses it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bestBy, pickFlexStarter } from '../../js/mls/lineup/flexChoice.js';
+import { bestBy, pickFlexStarter, pickForSlot } from '../../js/mls/lineup/flexChoice.js';
 import { fillLineup } from '../../js/mls/scout/waiverScanner.js';
 
 const P = (name, pos, posRank = 999, flexRank = 999, proj = null) => ({ name, pos, posRank, flexRank, proj });
@@ -65,4 +65,32 @@ test('fillLineup (the Waiver Wire copy) fills FLEX by the same rule, using each 
     // SFLEX after a QB-less pool: a ranked RB/WR/TE by the same rule, never the unranked TE.
     const sflex = fillLineup(['SFLEX'], [c('pitts', 'TE', 999, 30), c('bourne', 'WR', 55, 8.6), c('burks', 'WR', 53, 3.5)]);
     assert.equal(sflex.starters[0].player.id, 'burks');
+});
+
+// S12 round 3: SFLEX with nobody ranked used to stay empty; an injured ranked QB used to beat a healthy ranked WR
+// (the fallback pass ran inside the QB step). Both through fillLineup, as the waiver tools run it.
+test('fillLineup SFLEX: nobody ranked, the higher projection, never an empty slot', () => {
+    const c = (id, pos, proj) => ({ id, pos, posRank: 999, flexRank: 999, isLocked: false, unavailable: false, proj });
+    const { starters } = fillLineup(['SFLEX'], [c('rb', 'RB', 6), c('te', 'TE', 9), c('qb', 'QB', 15)]);
+    assert.equal(starters[0].player && starters[0].player.id, 'qb');
+});
+
+test('fillLineup SFLEX: a healthy ranked RB/WR/TE before an unavailable ranked QB', () => {
+    const c = (id, pos, posRank, flexRank, unavailable) => ({ id, pos, posRank, flexRank, isLocked: false, unavailable, proj: null });
+    const { starters } = fillLineup(['SFLEX'], [c('qbOut', 'QB', 5, 999, true), c('wr', 'WR', 30, 70, false)]);
+    assert.equal(starters[0].player.id, 'wr');
+    // With nobody healthy, the unavailable QB rather than an empty slot.
+    assert.equal(fillLineup(['SFLEX'], [c('qbOut', 'QB', 5, 999, true)]).starters[0].player.id, 'qbOut');
+});
+
+test('pickForSlot: strict slots by position rank, flex slots by the FLEX rule, SFLEX QB first', () => {
+    const P2 = (name, pos, posRank, flexRank = 999, proj = null) => ({ name, pos, posRank, flexRank, proj });
+    const list = [P2('wr9', 'WR', 9, 999, 30), P2('wr4', 'WR', 4, 999, 1), P2('te2', 'TE', 2, 999, 8), P2('qb12', 'QB', 12, 999, 2)];
+    const name = (slot) => (pickForSlot(slot, list, projOf) || {}).name;
+    assert.equal(name('WR'), 'wr4');
+    assert.equal(name('TE'), 'te2');
+    assert.equal(name('RB'), undefined);
+    assert.equal(name('FLEX'), 'te2');   // leaders wr4 (1) and te2 (8): projection
+    assert.equal(name('WRRB'), 'wr4');
+    assert.equal(name('SFLEX'), 'qb12'); // a ranked QB first
 });

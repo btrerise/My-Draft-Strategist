@@ -12,7 +12,7 @@ import { getByeWeek } from '../../shared/data/byes.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
-import { renderLineupUI, optimizeLineup } from '../main.js';
+import { isAutoLockOverridden, renderLineupUI, optimizeLineup } from '../main.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
 
@@ -97,6 +97,21 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         if (!iso) return false;
         const ms = new Date(iso).getTime();
         return !isNaN(ms) && Date.now() >= ms;
+    }
+
+    // Where a player whose game has kicked off is stuck for the rest of the week (improvements S12 round 3): 'in' if he
+    // started (Sleeper's last-synced lineup; with none, this app's saved lineup, as optimizeLineup's auto-lock reads
+    // it), 'out' if he didn't, null before kickoff or when you overrode his auto-lock. One rule for the optimizer (which
+    // keeps an 'in' player in his slot and an 'out' one on the bench) and the waiver checks (lineupCheckDeps,
+    // scout/waivers.js). Before round 3 the Dashboard's Best Available counted every kicked-off player as locked in,
+    // bench players too, so a benched Thursday player took a starting spot in the lineup it compared against.
+    export function kickoffFreeze(league, p) {
+        if (!league || !p || !hasKickedOff(p) || isAutoLockOverridden(league.leagueId, p.id)) return null;
+        const sleeperIds = getValidSleeperStarterIds(league);
+        const started = sleeperIds.length > 0
+            ? sleeperIds.includes(p.id)
+            : (State.manualStartersMap[league.leagueId] || []).some(s => s && s.player && s.player.id === p.id);
+        return started ? 'in' : 'out';
     }
 
     // True only when ESPN says the team's game is over -- unlike hasKickedOff, which is just
@@ -453,6 +468,7 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
                 return iso ? new Date(iso).getTime() : NaN;
             },
             kept: p => isKeptStarter(league, p),
+            projOf: p => getLineupProjection(p.id, league),
             irRules: league ? league.irRules || null : null,
             rosterSize: league ? league.rosterSize : null,
             roster: league ? league.roster || [] : [],

@@ -1,7 +1,8 @@
-// --- WHO STARTS IN A SLOT THAT TAKES SEVERAL POSITIONS (FLEX, W/T, W/R, SFLEX's RB/WR/TE) ---
-// One rule for the Lineup Optimizer (render/lineup.js, optimizeLineup) and its copy for the Waiver Wire Assistant
-// and the Dashboard's Best Available (scout/waiverScanner.js, fillLineup), so the two can't disagree. Pure: no
-// State, no DOM; tests/unit/flexChoice.test.mjs runs it in Node.
+// --- WHO STARTS IN A SLOT ---
+// One rule for the Lineup Optimizer (render/lineup.js, optimizeLineup), its copy for the Waiver Wire Assistant and
+// the Dashboard's Best Available (scout/waiverScanner.js, fillLineup), and the "start X instead?" suggestions
+// (lineup/issues.js, S11), so none of them can disagree: pickForSlot, below. Pure: no State, no DOM;
+// tests/unit/flexChoice.test.mjs runs it in Node.
 //
 // The owner's rule (improvements S12, after "Fantasy Leftovers" started Kendrick Bourne WR55 over Treylon Burks
 // WR53 because Bourne projected higher, and an unranked Kyle Pitts over ranked WRs): FLEX rank, then any rank, then
@@ -15,6 +16,8 @@
 // Between projections, a projected player beats one Sleeper doesn't project (or projections aren't loaded); with no
 // projection to tell them apart, the better position rank. Ties keep list order: the first one wins.
 // Before S12 every pair without FLEX ranks went to projections, same position or not, ranked or not.
+
+import { SLOT_POSITIONS } from '../constants.js';
 
 const UNRANKED = 999;
 const isRanked = (r) => typeof r === 'number' && r !== UNRANKED && Number.isFinite(r);
@@ -53,4 +56,25 @@ export function pickFlexStarter(candidates, projOf = () => null) {
         if (pa === null && pb !== null) return 1;
         return (a.posRank ?? UNRANKED) - (b.posRank ?? UNRANKED);
     });
+}
+
+// The player who starts in one slot, among `candidates` (any positions; the slot's own are picked out here), or null.
+//   Strict slots (QB, RB, WR, TE, K, DEF): the best position rank.
+//   FLEX, W/T, W/R: pickFlexStarter.
+//   SFLEX: a ranked QB first (the best position rank), else a ranked RB/WR/TE by pickFlexStarter, else anyone it
+//     takes by projection (everyone left is unranked then). Before S12 round 3 SFLEX stayed empty rather than start
+//     an unranked player.
+// Availability (byes, injuries) is the caller's: it passes the available candidates first.
+export function pickForSlot(slotType, candidates, projOf = () => null) {
+    const takes = SLOT_POSITIONS[slotType] || [slotType];
+    const list = (candidates || []).filter(p => takes.includes(p.pos));
+    const byPosRank = (a, b) => a.posRank - b.posRank;
+    if (slotType === 'SFLEX') {
+        const qb = bestBy(list.filter(p => p.pos === 'QB' && isRanked(p.posRank)), byPosRank);
+        if (qb) return qb;
+        const flex = pickFlexStarter(list.filter(p => p.pos !== 'QB' && (isRanked(p.flexRank) || isRanked(p.posRank))), projOf);
+        return flex || pickFlexStarter(list, projOf);
+    }
+    if (takes.length > 1) return pickFlexStarter(list, projOf);
+    return bestBy(list, byPosRank);
 }
