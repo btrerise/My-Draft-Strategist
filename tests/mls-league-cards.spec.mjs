@@ -291,15 +291,33 @@ test.describe('League Command Center: one card per league', () => {
         const state = await openApp(page, '/lineup/');
         await routeLeagues(page);
         await seedTwoLeagues(page);
-        const todo = await card(page, SECOND).locator('.mls-lc-todo').boundingBox();
-        const ba = await card(page, SECOND).locator('.mls-lc-ba').boundingBox();
-        expect(ba.x).toBeGreaterThan(todo.x + todo.width - 1);
-        expect(Math.abs(ba.y - todo.y)).toBeLessThan(2);
+        const todo = () => card(page, SECOND).locator('.mls-lc-todo').boundingBox();
+        const ba = () => card(page, SECOND).locator('.mls-lc-ba').boundingBox();
+        // To-dos and no upgrade (its best available left out, round 6): the to-dos take the whole row, so "Open lineup"
+        // sits at the card's right edge, not in the middle (round 7: the empty section still took half the row).
+        await expect(card(page, SECOND).locator('.mls-ba-fold')).toHaveAttribute('data-default', 'false');
+        const body = await card(page, SECOND).locator('.mls-lc-body').boundingBox();
+        expect((await todo()).width).toBeGreaterThan(body.width - 2);
+        const open = await card(page, SECOND).locator('.mls-needs-open').boundingBox();
+        expect(open.x + open.width).toBeGreaterThan(body.x + body.width - 20);
+        // With an upgrade (Zay Flowers, a free agent, made its WR1): side by side.
+        await page.evaluate(async (leagueId) => {
+            const { State } = await import('/js/mls/state.js');
+            const { renderLeagueCards } = await import('/js/mls/main.js');
+            const { getLeagueRankings } = await import('/js/mls/leagues/sync.js');
+            const league = State.leagues.find(l => l.leagueId === leagueId);
+            const data = getLeagueRankings(league, 'weekly').data;
+            const chase = data.find(r => r.name === "Ja'Marr Chase");
+            const flowers = { ...chase, name: 'Zay Flowers', cleanName: 'zayflowers', tier: null, posTier: null, flexTier: null };
+            Object.assign(league, { weeklyRankingSetId: null, weeklyRankings: [flowers, ...data], weeklyRankingsUpdatedAt: Date.now() });
+            renderLeagueCards();
+        }, SECOND_LEAGUE_ID);
+        await expect(card(page, SECOND).locator('.mls-ba-fold.has-upgrade')).toBeVisible();
+        expect((await ba()).x).toBeGreaterThan((await todo()).x + (await todo()).width - 1);
+        expect(Math.abs((await ba()).y - (await todo()).y)).toBeLessThan(2);
         // And they stack on a phone.
         await page.setViewportSize({ width: 375, height: 812 });
-        const todoPhone = await card(page, SECOND).locator('.mls-lc-todo').boundingBox();
-        const baPhone = await card(page, SECOND).locator('.mls-lc-ba').boundingBox();
-        expect(baPhone.y).toBeGreaterThanOrEqual(todoPhone.y + todoPhone.height - 1);
+        expect((await ba()).y).toBeGreaterThanOrEqual((await todo()).y + (await todo()).height - 1);
         await expectClean(page, state);
     });
 });

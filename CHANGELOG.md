@@ -91,8 +91,9 @@ Nothing yet.
   the Lineup tab, so optimizing from the Dashboard right after opening the app chose FLEX players between positions
   by rank alone. Both now load them first, and if they arrive late, every league optimized without them is redone,
   not just the one you have open. They also wait for the kickoff times, so a player who already played (Thursday
-  night) stays locked in even when your updated rankings leave him out. Optimize All's message also says how many
-  lineups to set on Sleeper ("Optimized 14 lineups · 1 needs you · 10 to set on Sleeper").
+  night) stays locked in even when your updated rankings leave him out. The Dashboard's best available waits for
+  both too, so its first answer no longer changes after a tap that changed nothing else. Optimize All's message also
+  says how many lineups to set on Sleeper ("Optimized 14 lineups · 1 needs you · 10 to set on Sleeper").
 - **SFLEX is never left empty** when you have someone who can play there: with nobody ranked left, it takes the
   higher projection, as FLEX does. A healthy ranked RB, WR or TE now also beats an injured ranked QB there.
 - **A benched player whose game has started stays benched.** Once his game kicks off, Sleeper won't let you start

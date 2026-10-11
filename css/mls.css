@@ -1632,8 +1632,10 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-lc-todo, .mls-lc-ba { flex: 1 1 320px; min-width: 0; }
 .mls-lc-ba:empty { display: none; }
 /* In a card that's open for its to-dos, a best available with no upgrade (folded by default) is left out: a row per
-   card that said nothing (round 6). A card with nothing else keeps it, so opening a quiet card still shows it. */
-.mls-lc-todo + .mls-lc-ba .mls-ba-fold[data-default="false"] { display: none; }
+   card that said nothing (round 6). A card with nothing else keeps it, so opening a quiet card still shows it. The
+   whole section goes, not just its fold: an empty section still took half the row on desktop, which left the to-dos'
+   "Open lineup" in the middle of the card (round 7). */
+.mls-lc-todo + .mls-lc-ba:has(> .mls-ba-fold[data-default="false"]) { display: none; }
 /* Phones: the status row starts at the card's edge, under the chevron, so the chips get the full width. */
 @media (max-width: 600px) {
     .mls-lc-card { padding: 0.5rem 0.55rem 0.55rem; }

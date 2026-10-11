@@ -81,7 +81,7 @@
 // Rankings change on the Lineup and Roster tabs, so coming back to the Dashboard picks them up.
 import { escapeHtml } from '../../shared/html.js';
 import { KEYS } from '../../shared/storage/keys.js';
-import { State } from '../state.js';
+import { refreshGameTimes, State } from '../state.js';
 import { getLeagueRankings } from '../leagues/sync.js';
 import { bestLineup, buildRankDisplayIndex, checkAgainstLineup, findFreeAgents, FLEX_POSITIONS, upgradeGap } from './waiverScanner.js';
 import { freeAgentPlayer, getSleeperMetaByName, lineupCheckDeps, makeLeagueGetPos, rosterBenchmark, updateWaiverScanSetting } from './waivers.js';
@@ -89,7 +89,7 @@ import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { applyDefaultFolds, showTab, switchActiveLeague } from '../main.js';
 import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
-import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
+import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
 
     const PER_LEAGUE = 3;
 
@@ -354,11 +354,12 @@ import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
         const synced = leagues.filter(isFullyMappedLeague);
         let meta = {};
         if (synced.length > 0) {
-            try {
-                meta = await getSleeperMetaByName();
-            } catch (e) {
-                console.warn('Best available: Sleeper player map unavailable, falling back to league/market positions.', e);
-            }
+            // This week's projections and kickoff times too (S12 round 7): the weakest starter is picked with the
+            // optimizer's rules, which need both. They used to load only with the Lineup tab, Optimize All or Sync All,
+            // so the Dashboard's first answer could change after a tap that changed nothing else.
+            const [metaResult] = await Promise.allSettled([getSleeperMetaByName(), ensureLineupProjections(), refreshGameTimes()]);
+            if (metaResult.status === 'fulfilled') meta = metaResult.value;
+            else console.warn('Best available: Sleeper player map unavailable, falling back to league/market positions.', metaResult.reason);
         }
         if (gen !== renderGen) return;
 

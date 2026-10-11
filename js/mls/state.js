@@ -272,17 +272,21 @@ export function applyLineupSettingsToUI() {
     // caller that specifically needs kickoff data to be current -- like runMatchupSim's
     // actual-score check below -- can await it; existing fire-and-forget callers are
     // unaffected since they simply don't await the return value.
+    // Calls made while a fetch for the same week is on its way share it (Optimize All, Sync All and the Dashboard's
+    // best available all wait for it now; S12).
+    let gameTimesInFlight = null;
     export function refreshGameTimes() {
         const week = State.currentNflWeek;
         if (week == null) return Promise.resolve();
         if (State.gameTimesFetchedForWeek === week && Object.keys(State.gameTimesByTeam).length > 0 && !gameStatusMayBeStale()) return Promise.resolve();
+        if (gameTimesInFlight && gameTimesInFlight.week === week) return gameTimesInFlight.promise;
 
         State.gameTimesFetchedAt = Date.now();
         // mdsFetch rather than a bare fetch: a stalled ESPN request would otherwise leave this
         // promise pending forever, which matters beyond the fire-and-forget callers -- runMatchupSim
         // awaits this one before deciding whether to use a player's live score, so a hang here
         // would stall the whole simulation rather than just skip a kickoff badge.
-        return mdsFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
+        const promise = mdsFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
             .then(res => res.ok ? res.json() : null)
             .then(data => {
                 if (!data || !Array.isArray(data.events)) return;
@@ -321,5 +325,8 @@ export function applyLineupSettingsToUI() {
                     optimizeLineup(false);
                 }
             })
-            .catch(() => { /* leave State.gameTimesByTeam as {}; see comment above */ });
+            .catch(() => { /* leave State.gameTimesByTeam as {}; see comment above */ })
+            .finally(() => { if (gameTimesInFlight && gameTimesInFlight.promise === promise) gameTimesInFlight = null; });
+        gameTimesInFlight = { week, promise };
+        return promise;
     }

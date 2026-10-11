@@ -148,19 +148,28 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     // This week's Sleeper projections, loaded if they aren't yet (improvements S12 round 5). They used to load only
     // with the Lineup tab (refreshLineupStats), so Optimize All or Sync All from the Dashboard right after opening the
     // app chose between positions by position rank alone, and only the active league was redone when they arrived.
-    // Both now wait for this first. Resolves true when they're loaded; never throws (a failed fetch just leaves the
-    // position-rank fallback, as before).
-    export async function ensureLineupProjections() {
-        if (lineupProjectionsLoaded()) return true;
+    // Both now wait for this first, and so does the Dashboard's best available (round 7). Resolves true when they're
+    // loaded; never throws (a failed fetch just leaves the position-rank fallback, as before). Calls made while a fetch
+    // for the same week is on its way share it (the Dashboard redraws often).
+    let projectionsInFlight = null;
+    export function ensureLineupProjections() {
+        if (lineupProjectionsLoaded()) return Promise.resolve(true);
         const week = State.currentNflWeek;
-        if (!State.currentNflSeason || week == null) return false;
-        try {
-            const data = await getWeeklyProjections(State.currentNflSeason, week);
-            if (data) State.lineupProjections = { week, data, fetchedAt: Date.now() };
-        } catch (e) {
-            console.warn('Projections unavailable; FLEX picks between positions fall back to position rank.', e);
-        }
-        return lineupProjectionsLoaded();
+        if (!State.currentNflSeason || week == null) return Promise.resolve(false);
+        if (projectionsInFlight && projectionsInFlight.week === week) return projectionsInFlight.promise;
+        const promise = (async () => {
+            try {
+                const data = await getWeeklyProjections(State.currentNflSeason, week);
+                if (data) State.lineupProjections = { week, data, fetchedAt: Date.now() };
+            } catch (e) {
+                console.warn('Projections unavailable; FLEX picks between positions fall back to position rank.', e);
+            } finally {
+                if (projectionsInFlight && projectionsInFlight.promise === promise) projectionsInFlight = null;
+            }
+            return lineupProjectionsLoaded();
+        })();
+        projectionsInFlight = { week, promise };
+        return promise;
     }
 
     // Sleeper's projected points for this player this week in the league's scoring format, or

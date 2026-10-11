@@ -33,8 +33,9 @@ const FLEX_SLOTS = ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', 'K', 'DEF', 'B
 
 // opts: positions (Sleeper's roster_positions), ranks, sleeperStarters (your lineup on Sleeper, ids), extraProj (extra
 // projections, by id), dashboard (stay on the Dashboard: no Lineup tab visit, no optimize), second (also a copy of the
-// league, "Second League", written into storage: same roster and rankings).
-async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStarters, extraProj = {}, dashboard = false, second = false } = {}) {
+// league, "Second League", written into storage: same roster and rankings), projUp (a function: while it returns
+// false, Sleeper's projections answer 503; the Dashboard's best available loads them as soon as it's drawn).
+async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStarters, extraProj = {}, dashboard = false, second = false, projUp = () => true } = {}) {
     await page.route(/sleeper\.app\/v1\/league\/\d+$/, route => route.fulfill({ json: { ...fixture('league.json'), roster_positions: positions } }));
     if (sleeperStarters) {
         await page.route(/sleeper\.app\/v1\/league\/\d+\/rosters$/, route => {
@@ -44,6 +45,7 @@ async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStart
         });
     }
     await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/2$/, route => {
+        if (!projUp()) return route.fulfill({ status: 503, body: '' });
         const proj = fixture('projections-2026-2.json');
         Object.entries({ ...PROJ, ...extraProj }).forEach(([id, pts]) => { proj[id] = { ...proj[id], pts_ppr: pts, pts_half_ppr: pts, pts_std: pts }; });
         return route.fulfill({ json: proj });
@@ -118,14 +120,36 @@ test.describe('Lineup Optimizer: FLEX without FLEX ranks', () => {
     // S12 round 5. Projections used to load only with the Lineup tab, so Optimize All from the Dashboard right after
     // opening the app picked between positions by position rank alone. It now loads them first. One FLEX slot:
     // CeeDee Lamb (WR3) projects 10, Trey McBride (TE2) 6; by projection Lamb, by position rank McBride.
+    // (Since round 7 the Dashboard's best available loads them too, so here Sleeper doesn't answer until the tap.)
     test('Optimize All from the Dashboard loads projections first', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
+        let projUp = false;
         await setup(page, { positions: ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN'],
-            extraProj: { 6786: 10 }, dashboard: true });
+            extraProj: { 6786: 10 }, dashboard: true, projUp: () => projUp });
         expect(await page.evaluate(async () => (await import('/js/mls/lineup/gameInfo.js')).lineupProjectionsLoaded())).toBe(false);
+        projUp = true;
         await page.click('#optimizeAllBtn');
         await expect(page.locator('#optimizeAllBtn')).toBeEnabled();
         expect((await starters(page)).filter(s => s.startsWith('FLEX:'))).toEqual(['FLEX:CeeDee Lamb']);
+        state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !/503|projections/i.test(e)));
+        await expectClean(page, state);
+    });
+
+    // S12 round 7 (found reviewing as a user): the Dashboard's best available picked the weakest starter without
+    // projections until something else loaded them (the Lineup tab, Optimize All, Sync All), so its first answer could
+    // change after a tap that changed nothing else. It now loads them itself. One FLEX slot; Zay Flowers, a free agent,
+    // is WR1; then Ja'Marr Chase WR2, Justin Jefferson WR3 (projects 15), CeeDee Lamb WR4 (10); Trey McBride TE2 (6).
+    // With projections Lamb starts at FLEX, and with Flowers in, Jefferson would move there: Flowers is 3 spots over
+    // Lamb. By position rank alone McBride starts at FLEX, and Flowers would push out Jefferson, only 2 spots: no upgrade.
+    test('the Dashboard\'s best available uses projections from its first draw', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        const ranks = [...RANKS.filter(([, pos]) => pos !== 'WR'), ['Zay Flowers', 'WR', 1], ["Ja'Marr Chase", 'WR', 2],
+            ['Justin Jefferson', 'WR', 3], ['CeeDee Lamb', 'WR', 4], ['Puka Nacua', 'WR', 5], ['Amon-Ra St. Brown', 'WR', 6], ['A.J. Brown', 'WR', 7]];
+        await setup(page, { positions: ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN'],
+            ranks, extraProj: { 6786: 10, 6794: 15 }, dashboard: true });
+        const section = page.locator(`.mls-lc-ba[data-league-id="${FIXTURE_LEAGUE_ID}"]`);
+        await expect(section).toContainText('Zay Flowers');
+        await expect(section).toContainText('over CeeDee Lamb');
         await expectClean(page, state);
     });
 
@@ -135,8 +159,7 @@ test.describe('Lineup Optimizer: FLEX without FLEX ranks', () => {
         const state = await openApp(page, '/lineup/');
         let block = true;
         await setup(page, { positions: ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN'],
-            extraProj: { 6786: 10 }, dashboard: true, second: true });
-        await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/2$/, route => (block ? route.fulfill({ status: 503, body: '' }) : route.fallback()));
+            extraProj: { 6786: 10 }, dashboard: true, second: true, projUp: () => !block });
         await page.click('#optimizeAllBtn');
         await expect(page.locator('#optimizeAllBtn')).toBeEnabled();
         expect((await starters(page, '1000000000000000002')).filter(s => s.startsWith('FLEX:'))).toEqual(['FLEX:Trey McBride']);

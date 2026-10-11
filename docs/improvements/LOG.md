@@ -3755,3 +3755,45 @@ and the toast "Optimized 14 lineups · 1 needs you · 10 to set on Sleeper". The
 visual.spec, which can't match the CI renderer in this container. Rendered here, main against this branch: the same six
 MLS screenshots differ as in the earlier rounds (`{desktop,phone}/mls-empty-setup`, `mls-league-setup`,
 `mls-league-guide`), all intended. Every other one is identical. They're re-taken from the PR's CI run.
+
+### S12, round 7: best available waits for projections and kickoff times; "Open lineup" back at the right edge (owner's go-ahead after my fourth review as a user)
+
+**Why.** In the review (the owner's latest backup, phone, Sunday 10:30 ET with Dallas and Tampa Bay played Thursday):
+1. **Best available changed its answer for no visible reason.** Apex said "2 options for one spot: each over Kimani
+   Vidal" on opening the Dashboard and "Darius Cooper over Jaylin Noel" after Optimize All, which changed no lineup;
+   Slow Mock did the same. The projections only loaded with the Lineup tab, Optimize All or Sync All, so best
+   available picked the weakest FLEX starter by rank alone until then (confirmed: `lineupProjectionsLoaded()` false
+   before the tap). The kickoff times, which decide who's frozen in place, weren't awaited either.
+2. **On desktop, a to-do card's "Open lineup" sat in the middle of the row.** My round 6 rule hid best available's
+   fold in a to-do card with no upgrade, but its section kept its half of the row.
+
+**The owner's decisions.** Build 1, and the button fix. Keep the red "Lineup" chip ("the icon is small... since a large
+part of the app is setting lineups, the quick visual scan is nice") and the "Rankings" chip on every card. The per-card
+"Sync this league" goes into the runbook as a card to revisit: **S13, "Sync one league from its card"** (Later, Asks
+you whether it's wanted at all), with S12's decisions added to the runbook's "Your answers so far".
+
+**What changed.**
+1. `renderBestAvailable` (js/mls/scout/bestAvailable.js) awaits `ensureLineupProjections()` and `refreshGameTimes()`
+   with the Sleeper player map (`Promise.allSettled`, so a failure of either just leaves today's fallback). The cards
+   draw at once as before; their best available sections fill in when these arrive.
+   - Both now share a fetch already on its way for the same week (`ensureLineupProjections` in
+     js/mls/lineup/gameInfo.js, `refreshGameTimes` in js/mls/state.js), since the Dashboard redraws often and the
+     startup fetch of the kickoff times can still be pending.
+2. css/mls.css: in a to-do card, a best available section with no upgrade is hidden as a whole
+   (`.mls-lc-todo + .mls-lc-ba:has(> .mls-ba-fold[data-default="false"])`), so the to-dos take the row.
+
+**Tests** (both shown failing on the old code first).
+- `tests/mls-flex-choice.spec.mjs`: "the Dashboard's best available uses projections from its first draw". Zay
+  Flowers (free agent, WR1) is an upgrade over CeeDee Lamb only with projections (Lamb at FLEX over Trey McBride).
+  On the old code: "No upgrade". The two Optimize All projection tests now keep Sleeper's projections at 503 until
+  the tap (a `projUp` option on `setup`), since the Dashboard loads them itself now.
+- `tests/mls-league-cards.spec.mjs`, "on a wide screen…": a to-do card with no upgrade has its to-dos across the
+  whole row and "Open lineup" at the card's right edge (old code: half the row). The side-by-side check now uses a
+  card that does have an upgrade; before, it was measuring the empty section.
+
+On the owner's backup the Dashboard's best available now reads the same before and after Optimize All (Apex: "Darius
+Cooper over Jaylin Noel" from the first draw).
+
+**Checks.** `npm run check`: precache OK, 328 unit tests, 338 Playwright tests pass; the 10 failures are only
+visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 6's,
+so main against this branch differs in the same six MLS screenshots as before, all intended.
