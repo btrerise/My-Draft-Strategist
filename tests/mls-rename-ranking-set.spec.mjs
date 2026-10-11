@@ -192,6 +192,7 @@ test.describe('Rename', () => {
         await expect(page.locator(t.del)).toBeHidden();
         await page.fill('#rosNewSetName', 'Second ROS');
         await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_CSV) });
+        await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
         await expect(page.locator('#rankingsPreviewOverlay')).toContainText('24 players parsed');
         await callApp(page, 'confirmRankingsPreview');
         await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();

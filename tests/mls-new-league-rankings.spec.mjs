@@ -17,6 +17,7 @@ const storedLeague = (page, match) => page.evaluate((m) => {
 
 async function uploadRos(page) {
     await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_CSV) });
+    await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
     await expect(page.locator('#rankingsPreviewOverlay')).toContainText('24 players parsed');
     await callApp(page, 'confirmRankingsPreview');
     await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();

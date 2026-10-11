@@ -149,6 +149,7 @@ test.describe('Lineup Strategist SoS scale and age', () => {
 
         const upload = async () => {
             await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_WITH_SOS) });
+            await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
             await expect(page.locator('#rankingsPreviewOverlay')).toContainText('24 players parsed');
         };
 

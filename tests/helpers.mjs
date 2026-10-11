@@ -117,16 +117,21 @@ export const TSCORE_TABS = ['researchTab', 'top50Tab', 'valuesTab', 'avoidsTab',
  * runs exactly the function the app's buttons run. Since refactor 5D tests don't need app functions on
  * window, so `npm run compare-css` with a COMPARE_REF from before 5D no longer works.
  */
-// The import() promise is kept on window (improvements S12): with nothing in the page holding it, Chrome's garbage
-// collector could drop it while this evaluate was still waiting on it, and Playwright reported that ("Promise was
-// collected" from the browser) as "Execution context was destroyed, most likely because of a navigation". S12's
-// heavier tab switches made that a 1-in-20 failure in mls-waiver-tiers.spec.mjs; on main it hadn't shown.
+// Two calls (improvements S12). The first only imports the module and keeps it on window. The second calls the
+// function synchronously, so the evaluate isn't waiting on a promise while the app does its work. With one async
+// call, Chrome's garbage collector could drop the promise Playwright was waiting on during a heavy tab switch, and
+// Playwright reported that (the browser said "Promise was collected") as "Execution context was destroyed, most
+// likely because of a navigation". S12's heavier tab switches made that fail mls-waiver-tiers.spec.mjs about 1 run
+// in 20; on main it hadn't shown. A function that returns a promise is still awaited, as before.
 export async function callApp(page, name, ...args) {
-    return page.evaluate(async ([fn, fnArgs]) => {
+    await page.evaluate(async () => {
         const entry = location.pathname.startsWith('/lineup') ? '/js/mls/main.js' : '/js/mds/main.js';
-        const imports = (window.__callAppImports ||= {});
-        const f = (await (imports[entry] ||= import(entry)))[fn];
-        return f(...fnArgs);
+        const modules = (window.__callAppModules ||= {});
+        if (!modules[entry]) modules[entry] = await import(entry);
+    });
+    return page.evaluate(([fn, fnArgs]) => {
+        const entry = location.pathname.startsWith('/lineup') ? '/js/mls/main.js' : '/js/mds/main.js';
+        return window.__callAppModules[entry][fn](...fnArgs);
     }, [name, args]);
 }
 
@@ -192,9 +197,13 @@ export async function showTScoreTab(page, tab) {
  * MLS: uploads a rankings CSV as both ROS and Weekly rankings through the real file inputs and the
  * preview's Save (added in 3C's mls-scout.spec.mjs; shared since 3G).
  */
+// Waits for the preview to be open, not just for its text: after one upload's preview closes, its "24 players parsed"
+// stays in the hidden overlay, so the next upload's wait passed before its own parse had finished, and Save then did
+// nothing (improvements S12: mls-sos-scale.spec.mjs failed this way about 1 in 80).
 export async function loadMlsRankings(page, csv = RANKINGS_CSV, count = 24) {
     for (const inputId of ['rosFileInput', 'weeklyFileInput']) {
         await page.setInputFiles('#' + inputId, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+        await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
         await expect(page.locator('#rankingsPreviewOverlay')).toContainText(`${count} players parsed`);
         await callApp(page, 'confirmRankingsPreview');
         await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();

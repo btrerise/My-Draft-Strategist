@@ -71,6 +71,7 @@ const MANUAL_NOTE = "No best available here: in a manual league the app only kno
 
 async function upload(page, inputId, csv, count) {
     await page.setInputFiles('#' + inputId, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
     await expect(page.locator('#rankingsPreviewOverlay')).toContainText(`${count} players parsed`);
     await callApp(page, 'confirmRankingsPreview');
     await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();

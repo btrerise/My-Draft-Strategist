@@ -3909,5 +3909,19 @@ Rank column shows the overall tier…" on phone, the "Execution context was dest
   promise the evaluate was waiting on, and Playwright words that as a destroyed context. `callApp` (tests/helpers.mjs)
   awaited `import('/js/mls/main.js')` with nothing in the page holding that promise; round 2 made tab switches
   allocate more, so a collection inside that window became likely.
-- Fix (tests only): `callApp` keeps each entry's `import()` promise on `window.__callAppImports`, so the chain stays
-  reachable. 200 runs after it (60 + 60 phone, 80 on 4 workers): no failures.
+- First fix (tests only): `callApp` kept its `import()` promise on `window`. 200 runs of that test passed, but the next
+  full run failed another test in the same spec the same way, and the whole spec under load still failed 2 in 120.
+  So the promise collected wasn't (only) the import's: it was the evaluate's own, pending while the tab switch ran.
+- Fix: `callApp` (tests/helpers.mjs) makes two calls. The first imports the module and keeps it on
+  `window.__callAppModules`; the second calls the function synchronously, so no evaluate is waiting on a promise while
+  the app works (a function that returns a promise is still awaited). The whole spec under load: 360 of 360.
+
+**And a second race, in the tests' uploads.** CI's third run (38173606583) failed `mls-sos-scale.spec.mjs` "an SoS
+column in a ROS rankings upload follows the switch…" on desktop: the saved SoS was empty. Here 1 in 80; main 0 in 120.
+After one upload's preview closes, its "24 players parsed" stays in the hidden overlay, so the next upload's
+`toContainText` passed at once, Save ran before the new preview existed and did nothing (the failure's snapshot shows
+the upload button still disabled, its parse running). S12 makes the page busier during a parse, which widened it.
+Fix: every wait for "players parsed" (`loadMlsRankings` in tests/helpers.mjs and six specs) first waits for the overlay
+to be visible. 160 of 160 after.
+
+Full check after both: precache OK, 328 unit and 344 Playwright tests pass (only visual.spec fails here).

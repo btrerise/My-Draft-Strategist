@@ -34,6 +34,7 @@ test.describe('Lineup Strategist keyboard', () => {
         await seedMls(page);
         for (const inputId of ['rosFileInput', 'weeklyFileInput']) {
             await page.setInputFiles('#' + inputId, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_CSV) });
+            await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
             await expect(page.locator('#rankingsPreviewOverlay')).toContainText('24 players parsed');
             await callApp(page, 'confirmRankingsPreview');
             await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();

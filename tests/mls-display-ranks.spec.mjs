@@ -48,6 +48,7 @@ async function savedLineup(page) {
 // Uploads a CSV as one kind of rankings only ('ros' or 'weekly').
 async function uploadOne(page, kind, csv, count) {
     await page.setInputFiles(`#${kind}FileInput`, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
     await expect(page.locator('#rankingsPreviewOverlay')).toContainText(`${count} players parsed`);
     await callApp(page, 'confirmRankingsPreview');
     await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
