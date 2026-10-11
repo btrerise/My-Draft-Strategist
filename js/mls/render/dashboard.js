@@ -11,7 +11,7 @@ import { loadRosterTab } from './roster.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { setToastsSuppressed, showToast } from '../../shared/ui/toast.js';
 import { optimizeLineup } from './lineup.js';
-import { FOLD_CHEVRON, formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, sleeperChangesHTML } from '../lineup/gameInfo.js';
+import { formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, sleeperChangesHTML } from '../lineup/gameInfo.js';
 import { findChips, lineupIssueItems, needsLineupButton, needsYou } from '../lineup/issues.js';
 import { updateWaiverScanSetting } from '../scout/waivers.js';
 import { isManualLeague, refreshManualInjuries } from '../leagues/manualInjuries.js';
@@ -118,48 +118,38 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
 
     const nb = (text) => escapeHtml(text).replace(/ /g, '&nbsp;');
 
-    // A league card's to-dos (S12; the box's line before): "Needs you · Sun 1:00 PM" (amber within a day), one
-    // item per line, and the buttons. "Notes" when nothing counts (starters you kept, IR moves).
-    export function leagueNeedsHTML(n) {
-        const id = escapeHtml(n.league.leagueId);
-        const name = escapeHtml(n.league.name || 'Unnamed league');
-        const ms = n.needs ? n.issues.firstKickoffMs : NaN;
+    // A league card's to-dos (S12; the box's line before): "Needs you · Sun 1:00 PM" (amber within a day), one item per
+    // line, then its Sleeper changes as one more item ("On Sleeper: Start X · Bench Y"; owner's choice, S12 round 4:
+    // inline, not folded, since setting Sleeper is often the whole job), and one row of buttons. "Set on Sleeper" when
+    // the Sleeper changes are all there is; "Notes" when nothing counts (starters you kept, IR moves).
+    // n: the league's collectLineupNeeds line, or null; sl: its Sleeper changes, or null.
+    export function leagueTodoHTML(n, sl) {
+        const league = (n || sl).league;
+        const id = escapeHtml(league.leagueId);
+        const name = escapeHtml(league.name || 'Unnamed league');
+        const needs = !!(n && n.needs);
+        const ms = needs ? n.issues.firstKickoffMs : NaN;
         const when = Number.isFinite(ms) ? formatKickoffLabel(new Date(ms).toISOString()) : '';
         const soon = Number.isFinite(ms) && ms - Date.now() < DAY_MS;
+        const label = needs ? 'Needs you' : sl ? 'Set on Sleeper' : 'Notes';
         // One item per line, as on the Lineup tab: a league with several reads as a list, not a run-on sentence.
-        const items = n.items.map(i => `<span class="mls-needs-item is-${i.kind}">${escapeHtml(i.text)}</span>`).join('');
+        const items = (n ? n.items : []).map(i => `<span class="mls-needs-item is-${i.kind}">${escapeHtml(i.text)}</span>`);
+        // "On Sleeper:" only beside other items; alone, the label already says "Set on Sleeper".
+        if (sl) items.push(`<span class="mls-needs-item is-sleeper" title="As of your last sync: set it on Sleeper, then Sync All to clear this.">${items.length ? 'On Sleeper: ' : ''}${sleeperChangesHTML(sl.changes)}</span>`);
         const buttons = [];
-        if (needsLineupButton(n.issues)) buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button>`);
-        findChips(n.items).forEach(chip => {
+        if ((n && needsLineupButton(n.issues)) || sl) buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button>`);
+        (n ? findChips(n.items) : []).forEach(chip => {
             const label = chip === 'ALL' ? 'Find players' : `Find ${chip}`;
             buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-find" data-action="findLeaguePlayers" data-league-id="${id}" data-pos="${escapeHtml(chip)}" aria-label="${label} in ${name}">${label}</button>`);
         });
         return `
-            <div class="mls-needs-line${n.needs ? '' : ' is-kept-only'}">
+            <div class="mls-needs-line${needs || sl ? '' : ' is-kept-only'}">
                 <div class="mls-needs-main">
-                    <span class="mls-needs-head-line"><span class="mls-needs-label">${n.needs ? 'Needs you' : 'Notes'}</span>${when ? ` <span class="mls-needs-when${soon ? ' is-soon' : ''}">${nb(when)}</span>` : ''}</span>
-                    <span class="mls-needs-items is-stacked">${items}</span>
+                    <span class="mls-needs-head-line"><span class="mls-needs-label">${label}</span>${when ? ` <span class="mls-needs-when${soon ? ' is-soon' : ''}">${nb(when)}</span>` : ''}</span>
+                    <span class="mls-needs-items is-stacked">${items.join('')}</span>
                 </div>
                 ${buttons.length ? `<div class="mls-needs-actions">${buttons.join('')}</div>` : ''}
             </div>`;
-    }
-
-    // A league card's Sleeper changes, folded (the box's drop-down before S12). open: kept across re-renders.
-    export function leagueSleeperFoldHTML(n, open) {
-        const id = escapeHtml(n.league.leagueId);
-        const name = escapeHtml(n.league.name || 'Unnamed league');
-        const count = n.changes.start.length + n.changes.bench.length;
-        return `
-            <details class="mls-change-fold mls-needs-sleeper" data-league-id="${id}"${open ? ' open' : ''}>
-                <summary>${FOLD_CHEVRON}<span>Differs from your Sleeper lineup: ${count} change${count === 1 ? '' : 's'}</span></summary>
-                <div class="mls-needs-line">
-                    <div class="mls-needs-main">
-                        <span class="mls-needs-items">${sleeperChangesHTML(n.changes)}</span>
-                        <p class="mls-needs-note">As of your last sync: set it on Sleeper, then sync to clear this.</p>
-                    </div>
-                    <div class="mls-needs-actions"><button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button></div>
-                </div>
-            </details>`;
     }
 
     // The strip under the buttons: how many lineups need you, ✕, and "Sync All again". The to-dos themselves are

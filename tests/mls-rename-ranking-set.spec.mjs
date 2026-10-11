@@ -118,7 +118,7 @@ for (const [type, t] of Object.entries(TYPES)) {
                 await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
                 await showTab(page, 'setup');
                 const line = page.locator('#leagueCards > .mls-lc-card').filter({ hasText: 'Fixture League' }).locator('.mls-lc-ba');
-                await expect(line.locator('.mls-ba-source')).toHaveText(`Weekly · ${ODD_NAME}`);
+                await expect(line.locator('.mls-ba-source')).toHaveText(ODD_NAME);
             }
 
             sets = await storedSets(page, t.storage);

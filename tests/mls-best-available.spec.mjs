@@ -55,7 +55,10 @@ const summary = (page) => page.locator('#bestAvailableSummary');
 const leagueCard = (page, name) => page.locator('#leagueCards > .mls-lc-card').filter({ has: page.locator('.mls-lc-name', { hasText: name }) });
 const line = (page, name) => leagueCard(page, name).locator('.mls-lc-ba');
 const fold = (page, name) => line(page, name).locator('details.mls-ba-fold');
+// A card with nothing to do starts folded (S12 round 4): open the card first, then its best available.
 const openFold = async (page, name) => {
+    const cardFold = leagueCard(page, name).locator('[data-action="toggleLeagueCard"]');
+    if ((await cardFold.getAttribute('aria-expanded')) === 'false') await cardFold.click();
     if (!(await fold(page, name).evaluate(d => d.open))) await fold(page, name).locator('summary').click();
     await expect(fold(page, name)).toHaveAttribute('open', '');
 };
@@ -135,8 +138,9 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         expect(await names(page, 'Fixture League')).toEqual(['James Cook', 'Jaxon Smith-Njigba', 'Chase Brown']);
         await expect(line(page, 'Fixture League').locator('.mls-ta-pos')).toHaveText(['RB8', 'WR11', 'RB9']);
         await expect(line(page, 'Fixture League').locator('.is-upgrade')).toHaveCount(0);
-        // Synced today: the card's header says so, not in amber. Every line links to the league in Sleeper.
-        await expect(leagueCard(page, 'Fixture League').locator('.mls-lc-meta .freshness-ok')).toHaveText('Synced today');
+        // Synced today: nothing to say (S12 round 4 shows the sync only when it's old or failed). Every line links to
+        // the league in Sleeper.
+        await expect(leagueCard(page, 'Fixture League').locator('.mls-lc-meta')).toHaveText('Redraft 1QB PPR');
         await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('href', `https://sleeper.com/leagues/${FIXTURE_LEAGUE_ID}`);
         await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('target', '_blank');
         // Desktop only: on phones the link would open the Sleeper app's home, not the league.
@@ -221,7 +225,7 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
 
         const fixture = line(page, 'Fixture League');
         const second = line(page, 'Second League');
-        await expect(fixture.locator('.mls-ba-source')).toHaveText('Weekly · 9/15/2026');
+        await expect(fixture.locator('.mls-ba-source')).toHaveText('9/15/2026');
         await expect(leagueCard(page, 'Fixture League').locator('.mls-lc-meta .freshness-stale')).toHaveCount(0);
         // The upgrade is marked inside the list (no name twice): Cook, then the best of the rest.
         expect(await names(page, 'Fixture League')).toEqual(['James Cook', 'Jaxon Smith-Njigba', 'Chase Brown']);
@@ -230,7 +234,8 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(fixture.locator('.is-upgrade .mls-ba-name')).toHaveText(['James Cook']);
         await expect(fixture.locator('.mls-ba-over')).toHaveText(['over Derrick Henry RB8']);
         // Two upgrades, biggest first, then the best of the rest; an injury badge; an old sync is flagged in the header.
-        await expect(second.locator('.mls-ba-source')).toHaveText('Weekly');
+        // A legacy upload has no set name, and the switch already says Weekly (S12 round 4).
+        await expect(second.locator('.mls-ba-source')).toHaveText('');
         await expect(leagueCard(page, 'Second League').locator('.mls-lc-meta .freshness-stale')).toHaveText('Synced 4 days ago');
         expect(await names(page, 'Second League')).toEqual(['Zay Flowers', 'Sam LaPorta', 'James Cook']);
         await expect(second.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['WR3', 'TE1', 'RB8']);
@@ -276,7 +281,7 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(second.locator('.mls-ba-source')).toHaveText('Weekly (no ROS set)');
         await expect(fold(page, 'Fixture League').locator('.mls-ba-flag')).toHaveText('No upgrade');
         await openFold(page, 'Fixture League');
-        await expect(fixture.locator('.mls-ba-source')).toHaveText('ROS · 9/15/2026');
+        await expect(fixture.locator('.mls-ba-source')).toHaveText('9/15/2026');
         await expect(fixture.locator('.is-upgrade')).toHaveCount(0);
         await expect(fixture.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['RB8', 'WR11', 'RB9']);
 
@@ -359,6 +364,31 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await showTab(page, 'lineup');
         await showTab(page, 'setup');
         await expect(line(page, 'Fixture League').locator('.mls-ba-over')).toHaveText(['over CeeDee Lamb WR4']);
+        await expectClean(page, state);
+    });
+
+    // S12 round 4: free agents who'd each push out the same player are options for one spot, not separate upgrades.
+    // No tiers, overall = FLEX rank. Your FLEX is Puka Nacua (20th); James Cook (3rd, RB) and Sam LaPorta (4th, TE)
+    // would each start and leave Nacua out. (Jaxon Smith-Njigba, 8th, would too, but WR3 over WR4 is one spot, under
+    // the 3 S5's rule asks for without tiers, so he's listed without the up arrow.)
+    test('upgrades that would all replace the same player count once, said once', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await oneRbSlot(page);
+        await seedMls(page);
+        const rows = ["Ja'Marr Chase,WR", 'Justin Jefferson,WR', 'James Cook,RB', 'Sam LaPorta,TE', 'Derrick Henry,RB', 'Brock Bowers,TE',
+            'Josh Allen,QB', 'Jaxon Smith-Njigba,WR', 'Puka Nacua,WR', 'CeeDee Lamb,WR', 'Amon-Ra St. Brown,WR', 'A.J. Brown,WR',
+            'Trey McBride,TE', 'Garrett Wilson,WR', 'George Kittle,TE'];
+        // Nacua 20th, the rest in order.
+        const ranks = [1, 2, 3, 4, 5, 6, 7, 8, 20, 21, 22, 23, 24, 25, 26];
+        const csv = 'Rank,Player,Pos\n' + rows.map((r, i) => `${ranks[i]},${r}`).join('\n') + '\n';
+        await loadMlsRankings(page, csv, rows.length);
+        await showTab(page, 'setup');
+        await expect(summary(page)).toHaveText('Upgrades in 1 of 1 league');
+        await expect(upgradeCount(page, 'Fixture League')).toHaveText('1 upgrade');
+        const fixture = line(page, 'Fixture League');
+        await expect(fixture.locator('.mls-ba-shared')).toHaveText('2 options for one spot: each over Puka Nacua WR4');
+        await expect(fixture.locator('.is-upgrade .mls-ba-name')).toHaveText(['James Cook', 'Sam LaPorta']);
+        await expect(fixture.locator('.mls-ba-over')).toHaveCount(0);
         await expectClean(page, state);
     });
 });

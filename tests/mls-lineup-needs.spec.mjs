@@ -244,7 +244,7 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 
-    test('the leagues that differ from Sleeper, in a drop-down on both tabs, with injured starters marked', async ({ page }) => {
+    test('what to set on Sleeper: an item of the card\'s to-dos, a drop-down on the Lineup tab, injured starters marked', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         // On Sleeper the Fixture League starts Garrett Wilson and George Kittle (Out) where this lineup starts
         // Ja'Marr Chase and Brock Bowers.
@@ -252,26 +252,20 @@ test.describe('Lineups that need you', () => {
             sleeperStarters: [ALLEN, HENRY, BIJAN, '6794', '6786', KITTLE, '7523', '17', 'BAL'] });
         await seedTwoLeagues(page);
         await expect(box(page)).toBeVisible();
-        await expect(problemLines(page)).toHaveCount(0);
         await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup to set on Sleeper');
-        // In the Fixture League's card, folded, and its Lineup chip is red; the other league has none.
-        await expect(page.locator('#leagueCards .mls-needs-sleeper')).toHaveCount(1);
-        const fold = card(page, 'Fixture League').locator('.mls-needs-sleeper');
+        // In the Fixture League's card, listed with its to-dos (S12 round 4; a fold before), counted, and its Lineup
+        // chip is red; the other league has none.
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Out), Garrett Wilson"]);
+        const fixtureLine = line(page, 'Fixture League');
+        await expect(fixtureLine.locator('.mls-needs-label')).toHaveText('Set on Sleeper');
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to do');
+        await expect(card(page, 'Fixture League')).toHaveClass(/\bneeds-you\b/);
         await expect(card(page, 'Fixture League').locator('.mls-lc-chip.is-danger .mls-lc-chip-label')).toHaveText('Lineup');
-        await expect(fold.locator('summary')).toHaveText('Differs from your Sleeper lineup: 4 changes');
-        await expect(fold).not.toHaveAttribute('open', '');
-        await fold.locator('summary').click();
-        const sleeperLine = fold.locator('.mls-needs-line');
-        await expect(sleeperLine).toHaveCount(1);
-        await expect(sleeperLine.locator('.mls-needs-items')).toHaveText("Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Out), Garrett Wilson");
-        // Stays open across a re-render, and opens the league, whose box has the same fold.
-        await showTab(page, 'lineup');
-        await showTab(page, 'setup');
-        await expect(fold).toHaveAttribute('open', '');
-        await sleeperLine.getByRole('button', { name: "Open Fixture League's lineup" }).click();
+        // Open lineup opens the league, whose box has the changes in a drop-down.
+        await fixtureLine.getByRole('button', { name: "Open Fixture League's lineup" }).click();
         await expect(page.locator('#lineupTab')).toHaveClass(/\bactive\b/);
         await expect(lineupBox(page).locator('.lineup-needs-sleeper summary')).toHaveText('Differs from your Sleeper lineup: 4 changes');
-        await expect(lineupBox(page).locator('.lineup-needs-sleeper-text')).toContainText('George Kittle (Out)');
+        await expect(lineupBox(page).locator('.lineup-needs-sleeper-text')).toContainText('George Kittle (Out)');
         await expectClean(page, state);
     });
 

@@ -3,7 +3,8 @@
 // you" box and the Best Available card). Each card has its header (fold chevron, the name that switches to the
 // league, format and sync age, ▲ ▼ ✕), its status chips (Weekly rankings, the lineup against Sleeper; the tooltip
 // opens on a tap), "N to do" and "N upgrades", its to-dos with their buttons, its Sleeper changes (folded) and its
-// best available. Every card folds to its header, remembered per league (mls_league_cards_collapsed); Fold all /
+// best available. Every card folds to its header, remembered per league (mls_league_cards_collapsed), and one with
+// nothing to do starts folded (round 4); ▲ ▼ ✕ show in Reorder mode (round 4). Fold all /
 // Unfold all does every card.
 //
 // Two leagues from the one Sleeper fixture (the stub answers any league id), as in mls-lineup-needs.spec.mjs:
@@ -106,18 +107,19 @@ test.describe('League Command Center: one card per league', () => {
             // league has no Sleeper lineup to compare yet (amber).
             expect(await chipTones(page, 'Fixture League')).toEqual(['Rankings:good', 'Lineup:danger']);
             expect(await chipTones(page, SECOND)).toEqual(['Rankings:good', 'Lineup:warn']);
-            await expect(card(page, 'Fixture League').locator('.mls-lc-meta')).toHaveText('Redraft 1QB PPR · Synced today');
-            await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to do');
+            await expect(card(page, 'Fixture League').locator('.mls-lc-meta')).toHaveText('Redraft 1QB PPR');
+            // The Fixture League: its activation, and its Sleeper changes (one item each).
+            await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('2 to do');
             await expect(card(page, SECOND).locator('.mls-lc-count-todo')).toHaveText('1 to do');
             // The active league (the second, synced last) has the green edge.
             await expect(card(page, SECOND)).toHaveClass(/\bis-active\b/);
             await expect(card(page, SECOND).locator('.mls-lc-name-btn')).toHaveAttribute('aria-current', 'true');
 
-            // To-dos and their buttons, and the Sleeper changes in their fold.
-            await expect(todoItems(page, 'Fixture League')).toHaveText(["Activate Ja'Marr Chase from IR on Sleeper"]);
+            // To-dos and their buttons; the Sleeper changes are one more item (round 4: not a fold), under one Open lineup.
+            await expect(todoItems(page, 'Fixture League')).toHaveText(["Activate Ja'Marr Chase from IR on Sleeper", /^On Sleeper: Start .+ · Bench .+$/]);
+            await expect(card(page, 'Fixture League').locator('.mls-needs-open')).toHaveCount(1);
             await expect(todoItems(page, SECOND)).toHaveText(['Lamar Jackson is Doubtful: start Jalen Hurts instead?']);
-            await expect(card(page, 'Fixture League').locator('.mls-needs-sleeper summary')).toHaveText(/^Differs from your Sleeper lineup: \d changes$/);
-            await expect(card(page, SECOND).locator('.mls-needs-sleeper')).toHaveCount(0);
+            await expect(card(page, SECOND).locator('.mls-needs-item.is-sleeper')).toHaveCount(0);
             // Best available in each (both synced, both ranked).
             await expect(card(page, 'Fixture League').locator('.mls-ba-fold')).toHaveCount(1);
             await expect(card(page, SECOND).locator('.mls-ba-fold')).toHaveCount(1);
@@ -163,6 +165,13 @@ test.describe('League Command Center: one card per league', () => {
         await routeLeagues(page);
         await seedTwoLeagues(page);
         await expect(cardNames(page)).toHaveText(['Fixture League', SECOND]);
+        // ▲ ▼ ✕ only in Reorder mode (round 4).
+        await expect(page.locator('#leagueCards .mls-lc-controls')).toHaveCount(0);
+        const reorder = page.locator('#reorderLeagueCards');
+        await expect(reorder).toHaveText('Reorder');
+        await reorder.click();
+        await expect(reorder).toHaveText('Done');
+        await expect(reorder).toHaveAttribute('aria-pressed', 'true');
         await expect(card(page, 'Fixture League').getByRole('button', { name: 'Move Fixture League up' })).toBeDisabled();
 
         // ▲ moves the second league to the top; focus stays on that league (its name, since ▲ is now disabled).
@@ -173,6 +182,9 @@ test.describe('League Command Center: one card per league', () => {
         // ▼ moves it back.
         await card(page, SECOND).getByRole('button', { name: `Move ${SECOND} down` }).click();
         await expect(cardNames(page)).toHaveText(['Fixture League', SECOND]);
+        // Done hides them again.
+        await reorder.click();
+        await expect(page.locator('#leagueCards .mls-lc-controls')).toHaveCount(0);
 
         // The name makes that league the active one.
         await card(page, 'Fixture League').locator('.mls-lc-name-btn').click();
@@ -193,7 +205,7 @@ test.describe('League Command Center: one card per league', () => {
         await showTab(page, 'setup');
         await expect(body(page, 'Fixture League')).toBeHidden();
         await expect(body(page, SECOND)).toBeVisible();
-        expect(await page.evaluate(() => localStorage.getItem('mls_league_cards_collapsed'))).toBe(JSON.stringify([FIXTURE_LEAGUE_ID]));
+        expect(await page.evaluate(() => JSON.parse(localStorage.getItem('mls_league_cards_collapsed')))).toEqual({ folded: [FIXTURE_LEAGUE_ID], open: [] });
         // A redraw (another tab and back) keeps it folded.
         await showTab(page, 'lineup');
         await showTab(page, 'setup');
@@ -209,7 +221,7 @@ test.describe('League Command Center: one card per league', () => {
         await expect(body(page, 'Fixture League')).toBeVisible();
         await expect(body(page, SECOND)).toBeVisible();
         await expect(foldAll(page)).toHaveText('Fold all');
-        expect(await page.evaluate(() => localStorage.getItem('mls_league_cards_collapsed'))).toBeNull();
+        expect(await page.evaluate(() => JSON.parse(localStorage.getItem('mls_league_cards_collapsed')))).toEqual({ folded: [], open: [FIXTURE_LEAGUE_ID, SECOND_LEAGUE_ID] });
 
         // A manual league: not optimized yet (grey), no rankings (amber), and no best available, with the reason.
         await page.locator('#newLeagueName').evaluate(el => { el.value = 'Bench League'; });
@@ -218,8 +230,16 @@ test.describe('League Command Center: one card per league', () => {
         expect(await chipTones(page, 'Bench League')).toEqual(['Rankings:warn', 'Lineup:pending']);
         await expect(card(page, 'Bench League').locator('.mls-lc-meta')).toHaveCount(0);
         await expect(card(page, 'Bench League').locator('.mls-lc-ba')).toHaveText("No best available here: in a manual league the app only knows your own roster, not who's on the waiver wire.");
+        // Nothing to do there, and you haven't opened it: it starts folded (round 4). Opening it is remembered.
+        await expect(body(page, 'Bench League')).toBeHidden();
+        await foldBtn(page, 'Bench League').click();
+        await expect(body(page, 'Bench League')).toBeVisible();
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        await expect(body(page, 'Bench League')).toBeVisible();
 
-        // ✕ asks first, naming the league; Remove League deletes it and its card.
+        // ✕ (in Reorder mode) asks first, naming the league; Remove League deletes it and its card.
+        await reorder.click();
         await card(page, SECOND).getByRole('button', { name: `Remove ${SECOND}` }).click();
         await expect(page.getByRole('dialog')).toContainText(`This removes "${SECOND}"`);
         await page.getByRole('button', { name: 'Remove League' }).click();

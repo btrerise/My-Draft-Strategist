@@ -11,12 +11,20 @@
 // - its status: a chip each for Weekly rankings (fresh in the last 6 days) and the lineup against Sleeper, with
 //   the table's tooltips (they open on a tap, js/shared/ui/tooltips.js), EARLY or BB, and counts that stay
 //   readable with the card folded ("2 to do", "1 upgrade");
-// - its to-dos and their buttons (render/dashboard.js, leagueNeedsHTML: S11's items) and its Sleeper changes,
-//   folded (leagueSleeperFoldHTML);
+// - its to-dos and their buttons (render/dashboard.js, leagueTodoHTML: S11's items, and its Sleeper changes);
 // - its Best Available line (scout/bestAvailable.js fills .mls-lc-ba after its async render).
 // Every card folds to its header, even with to-dos (owner's choice, so you can move through many leagues
 // quickly), and that's remembered per league (KEYS.mls.leagueCardsCollapsed). "Fold all" / "Unfold all" above
 // the cards does every league at once.
+//
+// Round 4 (the owner's go-ahead after my review as a user, with 21 leagues the list ran about six phone screens):
+// - A card with nothing to do (no to-dos, no Sleeper changes, no upgrade) starts folded; your own fold or unfold of
+//   a card wins and is remembered (KEYS.mls.leagueCardsCollapsed now holds { folded: [ids], open: [ids] }; the
+//   round-1 array is read as folded).
+// - The Sleeper changes are an item of the to-dos, not a fold, and count toward "N to do" and the amber border.
+// - ▲ ▼ ✕ show only in Reorder mode (the toolbar's Reorder / Done, in memory), so names get the width and there's
+//   no red ✕ on every card.
+// - The sync age shows only when it's old or failed.
 //
 // One source for each fact: the to-dos and Sleeper changes come from collectLineupNeeds (dashboard.js), computed
 // once per render for the strip and the cards; the status is leagueStatus below (what the table computed).
@@ -29,27 +37,33 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getValidSleeperStarterIds } from '../lineup/gameInfo.js';
 import { needsYouCount } from '../lineup/issues.js';
 import { bestBallBadgeMarkup, leagueStatusChipMarkup } from '../badges.js';
-import { collectLineupNeeds, leagueNeedsHTML, leagueSleeperFoldHTML, lineupNeedsHidden, renderLineupNeeds } from './dashboard.js';
+import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, renderLineupNeeds } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
 
     const CHEVRON = `<svg class="mls-lc-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
     const isOffSleeper = (l) => /^(manual|handoff)_/.test(l.leagueId);
 
-    // --- Folded cards: [leagueId], remembered ---
-    function readCollapsed() {
+    // --- Folded cards: your own choices, remembered: { folded: [leagueId], open: [leagueId] } ---
+    // A card you haven't folded or unfolded yourself follows the default: folded when it has nothing to do.
+    function readFolds() {
         try {
-            const v = JSON.parse(localStorage.getItem(KEYS.mls.leagueCardsCollapsed) || '[]');
-            return new Set(Array.isArray(v) ? v : []);
-        } catch (e) { return new Set(); }
+            const v = JSON.parse(localStorage.getItem(KEYS.mls.leagueCardsCollapsed) || 'null');
+            if (Array.isArray(v)) return { folded: new Set(v), open: new Set() }; // round 1's format
+            return { folded: new Set((v && v.folded) || []), open: new Set((v && v.open) || []) };
+        } catch (e) { return { folded: new Set(), open: new Set() }; }
     }
-    function writeCollapsed(set) {
+    function writeFolds(folds) {
         // Only leagues that still exist, so a deleted league's id doesn't linger.
-        const ids = [...set].filter(id => (State.leagues || []).some(l => l.leagueId === id));
+        const keep = (set) => [...set].filter(id => (State.leagues || []).some(l => l.leagueId === id));
+        const folded = keep(folds.folded), open = keep(folds.open);
         try {
-            if (ids.length) localStorage.setItem(KEYS.mls.leagueCardsCollapsed, JSON.stringify(ids));
+            if (folded.length || open.length) localStorage.setItem(KEYS.mls.leagueCardsCollapsed, JSON.stringify({ folded, open }));
             else localStorage.removeItem(KEYS.mls.leagueCardsCollapsed);
         } catch (e) { /* storage blocked: it still folds for this visit */ }
     }
+
+    // Reorder mode (the toolbar's Reorder / Done): ▲ ▼ ✕ on each card. In memory: it starts off on every visit.
+    let reordering = false;
 
     // A league's status, as the Command Center's table worked it out before S12 (its Rankings and Lineup columns,
     // the EARLY badge, the format and the sync age). sleeper: the league's Sleeper changes from
@@ -112,18 +126,19 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
         const name = escapeHtml(l.name || 'Unnamed league');
         const active = l.leagueId === State.activeLeagueId;
         const st = leagueStatus(l, entry.sleeper ? entry.sleeper.changes : null);
-        const collapsed = ctx.collapsed.has(l.leagueId);
+        // Your own choice; the default (folded when there's nothing to do) is applied by applyDefaultFolds.
+        const collapsed = ctx.folds.folded.has(l.leagueId);
         const showNeeds = !ctx.hidden;
-        const line = showNeeds ? entry.line : null;
-        const needsYou = !!(line && line.needs);
-        const count = line ? needsYouCount(line.items) : 0;
-        const meta = [st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', st.sync ? `<span class="${st.sync.cls}">${st.sync.text}</span>` : '']
+        const line = showNeeds ? entry.line || null : null;
+        const sleeper = showNeeds ? entry.sleeper || null : null;
+        const needsYou = !!((line && line.needs) || sleeper);
+        const count = (line ? needsYouCount(line.items) : 0) + (sleeper ? 1 : 0);
+        // The sync age only when it's worth a look (old, unknown or failed), not "Synced today" on every card.
+        const syncNote = st.sync && st.sync.cls !== 'freshness-ok' ? `<span class="${st.sync.cls}">${st.sync.text}</span>` : '';
+        const meta = [st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', syncNote]
             .filter(Boolean).join('<span class="mls-lc-sep"> · </span>');
 
-        const todo = [
-            line ? leagueNeedsHTML(line) : '',
-            showNeeds && entry.sleeper ? leagueSleeperFoldHTML(entry.sleeper, ctx.openSleeper.has(l.leagueId)) : ''
-        ].join('');
+        const todo = line || sleeper ? leagueTodoHTML(line, sleeper) : '';
         const n = State.leagues.length;
         return `
             <li class="mls-lc-card${active ? ' is-active' : ''}${needsYou ? ' needs-you' : ''}${collapsed ? ' is-collapsed' : ''}" data-league-id="${id}">
@@ -133,11 +148,11 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
                         <strong class="mls-lc-name">${name}</strong>
                         ${meta ? `<span class="mls-lc-meta">${meta}</span>` : ''}
                     </button>
-                    <div class="mls-lc-controls">
+                    ${reordering ? `<div class="mls-lc-controls">
                         <button type="button" class="btn-sm btn-secondary mls-league-move-btn" data-focus-key="up:${id}" data-action="moveLeague" data-index="${index}" data-direction="-1" ${index === 0 ? 'disabled' : ''} aria-label="Move ${name} up">▲</button>
                         <button type="button" class="btn-sm btn-secondary mls-league-move-btn" data-focus-key="down:${id}" data-action="moveLeague" data-index="${index}" data-direction="1" ${index === n - 1 ? 'disabled' : ''} aria-label="Move ${name} down">▼</button>
                         <button type="button" class="btn-sm btn-danger mls-lc-delete" data-focus-key="del:${id}" data-action="deleteLeagueManager" data-league-id="${id}" aria-label="Remove ${name}">✕</button>
-                    </div>
+                    </div>` : ''}
                 </div>
                 <div class="mls-lc-status">
                     ${statusChipsHTML(st)}
@@ -167,11 +182,10 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
         }
         cmdCenter.style.display = 'block';
 
-        // Kept from the cards being replaced: which Sleeper folds are open, and each Best Available section and
-        // its upgrade count (redrawn by renderBestAvailable after its async part, which reads its fold's state
-        // from here), so a redraw doesn't flash or fold them.
-        const ctx = { collapsed: readCollapsed(), hidden: lineupNeedsHidden(needs), openSleeper: new Set(), ba: new Map(), upgrades: new Map() };
-        list.querySelectorAll('.mls-needs-sleeper[open]').forEach(d => ctx.openSleeper.add(d.dataset.leagueId));
+        // Kept from the cards being replaced: each Best Available section and its upgrade count (redrawn by
+        // renderBestAvailable after its async part, which reads its fold's state from here), so a redraw doesn't
+        // flash or fold them.
+        const ctx = { folds: readFolds(), hidden: lineupNeedsHidden(needs), ba: new Map(), upgrades: new Map() };
         list.querySelectorAll('.mls-lc-ba').forEach(s => ctx.ba.set(s.dataset.leagueId, s.innerHTML));
         list.querySelectorAll('.mls-lc-count-upgrades').forEach(s => ctx.upgrades.set(s.dataset.leagueId, s.innerHTML));
 
@@ -186,17 +200,48 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
             const target = (same && !same.disabled) ? same : list.querySelector(`[data-focus-key="${CSS.escape('row:' + leagueId)}"]`);
             if (target) target.focus();
         }
-        renderFoldAllButton();
+        applyDefaultFolds();
+        renderToolbarButtons();
         // Each card's Best Available section and the toolbar's switch and summary (only while the Dashboard is shown).
         renderBestAvailable();
     }
 
-    function renderFoldAllButton() {
+    // Cards you haven't folded or unfolded yourself: folded when there's nothing to do (no to-dos, no Sleeper changes,
+    // no upgrade, no rankings to upload), open otherwise. Run after each draw, and by renderBestAvailable once it knows the upgrades.
+    export function applyDefaultFolds() {
+        const folds = readFolds();
+        document.querySelectorAll('#leagueCards .mls-lc-card').forEach(card => {
+            const id = card.dataset.leagueId;
+            if (folds.folded.has(id) || folds.open.has(id)) return;
+            // Best available counts when its section opens by default: an upgrade, or rankings still to upload
+            // while no league has any.
+            const quiet = !card.querySelector('.mls-lc-todo') && !card.querySelector('.mls-ba-fold[data-default="true"]');
+            setCardCollapsed(card, quiet);
+        });
+        renderToolbarButtons();
+    }
+
+    function renderToolbarButtons() {
         const btn = document.getElementById('foldAllLeagueCards');
-        if (!btn) return;
-        const anyOpen = !!document.querySelector('#leagueCards .mls-lc-card:not(.is-collapsed)');
-        btn.textContent = anyOpen ? 'Fold all' : 'Unfold all';
-        btn.setAttribute('aria-label', anyOpen ? 'Fold every league card' : 'Unfold every league card');
+        if (btn) {
+            const anyOpen = !!document.querySelector('#leagueCards .mls-lc-card:not(.is-collapsed)');
+            btn.textContent = anyOpen ? 'Fold all' : 'Unfold all';
+            btn.setAttribute('aria-label', anyOpen ? 'Fold every league card' : 'Unfold every league card');
+        }
+        const re = document.getElementById('reorderLeagueCards');
+        if (re) {
+            re.textContent = reordering ? 'Done' : 'Reorder';
+            re.setAttribute('aria-pressed', reordering ? 'true' : 'false');
+            re.setAttribute('aria-label', reordering ? 'Done reordering' : 'Reorder or remove leagues');
+        }
+    }
+
+    // The toolbar's Reorder / Done: shows or hides ▲ ▼ ✕ on every card.
+    export function toggleLeagueReorder() {
+        reordering = !reordering;
+        renderLeagueCards();
+        const re = document.getElementById('reorderLeagueCards');
+        if (re) re.focus();
     }
 
     function setCardCollapsed(card, collapsed) {
@@ -217,15 +262,16 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
         if (!card) return;
         const collapsed = !card.classList.contains('is-collapsed');
         setCardCollapsed(card, collapsed);
-        const set = readCollapsed();
-        if (collapsed) set.add(leagueId); else set.delete(leagueId);
-        writeCollapsed(set);
-        renderFoldAllButton();
+        const folds = readFolds();
+        if (collapsed) { folds.folded.add(leagueId); folds.open.delete(leagueId); }
+        else { folds.open.add(leagueId); folds.folded.delete(leagueId); }
+        writeFolds(folds);
+        renderToolbarButtons();
     }
 
     // The strip's "Show" / "Show next" (owner's request, S12): scrolls to the next card with to-dos or Sleeper changes,
-    // in league order, wrapping around. A folded card unfolds (remembered, as its chevron would), and a card whose
-    // only item is its Sleeper changes opens that fold. Focus moves to the league's name, without a second scroll.
+    // in league order, wrapping around. A folded card unfolds (remembered, as its chevron would). Focus moves to the
+    // league's name, without a second scroll.
     let lastJumpId = null;
     export function jumpToLeagueNeeds() {
         const targets = [...document.querySelectorAll('#leagueCards .mls-lc-card')].filter(c => c.querySelector('.mls-lc-todo'));
@@ -234,8 +280,6 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
         const card = targets[(prev + 1) % targets.length];
         lastJumpId = card.dataset.leagueId;
         if (card.classList.contains('is-collapsed')) toggleLeagueCard(lastJumpId);
-        const sleeperFold = card.querySelector('.mls-needs-sleeper');
-        if (sleeperFold && !card.querySelector('.mls-lc-todo > .mls-needs-line')) sleeperFold.open = true;
         card.scrollIntoView({ block: 'start', behavior: 'smooth' });
         const name = card.querySelector('.mls-lc-name-btn');
         if (name) name.focus({ preventScroll: true });
@@ -246,6 +290,7 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
         const cards = [...document.querySelectorAll('#leagueCards .mls-lc-card')];
         const collapse = cards.some(c => !c.classList.contains('is-collapsed'));
         cards.forEach(c => setCardCollapsed(c, collapse));
-        writeCollapsed(collapse ? new Set(cards.map(c => c.dataset.leagueId)) : new Set());
-        renderFoldAllButton();
+        const ids = new Set(cards.map(c => c.dataset.leagueId));
+        writeFolds(collapse ? { folded: ids, open: new Set() } : { folded: new Set(), open: ids });
+        renderToolbarButtons();
     }

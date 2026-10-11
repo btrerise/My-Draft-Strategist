@@ -87,7 +87,7 @@ import { bestLineup, buildRankDisplayIndex, checkAgainstLineup, findFreeAgents, 
 import { freeAgentPlayer, getSleeperMetaByName, lineupCheckDeps, makeLeagueGetPos, rosterBenchmark, updateWaiverScanSetting } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
-import { showTab, switchActiveLeague } from '../main.js';
+import { applyDefaultFolds, showTab, switchActiveLeague } from '../main.js';
 import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
 import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
 
@@ -156,10 +156,13 @@ import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
 
     // "Weekly · 9/15/2026" for a set with its default name ("Weekly Rankings – 9/15/2026"),
     // "Weekly · Dynasty PPR" for a named one, "Weekly" for a legacy upload.
+    // Since S12 round 4 the type is left out when it's the switch's own ("Weekly" on every line was noise; the
+    // toolbar says it): just the set's name ("Wk5", "9/15/2026"), or nothing for a legacy upload. A fallback still
+    // names its type: "Weekly · Wk5 (no ROS set)".
     function sourceLabel(basis) {
-        const name = (basis.setName || '').replace(/^(Weekly|ROS) Rankings\s*[–-]\s*/i, '').trim();
-        const label = name ? `${basis.name} · ${escapeHtml(name)}` : basis.name;
-        return basis.fallback ? `${label} (no ${NAMES[chosenBasis()]} set)` : label;
+        const name = escapeHtml((basis.setName || '').replace(/^(Weekly|ROS) Rankings\s*[–-]\s*/i, '').trim());
+        if (!basis.fallback) return name;
+        return `${name ? `${basis.name} · ${name}` : basis.name} (no ${NAMES[chosenBasis()]} set)`;
     }
 
     const rankText = (pos, posRank) => posRank ? `${escapeHtml(pos)}${posRank}` : `${escapeHtml(pos)}, unranked`;
@@ -260,14 +263,22 @@ import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
             ...freeAgents.filter(fa => !flagged.has(fa.cleanName)).map(fa => ({ fa, upgrade: null }))
         ].slice(0, PER_LEAGUE);
 
-        return { league, basis, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null, upgradeCount: upgrades.length, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
+        // Upgrades over the same player (or the same empty spot) are options for one spot, not separate moves (S12
+        // round 4): they count once, and the line says so instead of repeating "over Kenny Gainwell" on each.
+        upgrades.forEach(u => { u.target = u.emptySlot ? 'empty' : u.bench.cleanName; });
+        const shownTargets = {};
+        players.forEach(p => { if (p.upgrade) shownTargets[p.upgrade.target] = (shownTargets[p.upgrade.target] || 0) + 1; });
+        return { league, basis, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null,
+            upgradeCount: new Set(upgrades.map(u => u.target)).size, shownTargets, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
     }
+
+    const overText = (u) => (u.emptySlot ? 'fills an empty lineup spot'
+        : `over ${escapeHtml(u.bench.name)} ${u.benchRank ? rankText(u.benchPos, u.benchRank) : '(unranked)'}`);
 
     function playerHTML(a, { fa, upgrade }) {
         const inj = a.inj(fa.cleanName);
-        const over = upgrade
-            ? `<span class="mls-ba-over">${upgrade.emptySlot ? 'fills an empty lineup spot'
-                : `over ${escapeHtml(upgrade.bench.name)} ${upgrade.benchRank ? rankText(upgrade.benchPos, upgrade.benchRank) : '(unranked)'}`}</span>` : '';
+        // A shared target is said once, above the list (sharedNotes).
+        const over = upgrade && a.shownTargets[upgrade.target] === 1 ? `<span class="mls-ba-over">${overText(upgrade)}</span>` : '';
         const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
         return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${dismiss}${over}</li>`;
     }
@@ -292,7 +303,11 @@ import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
             source = sourceLabel(basis);
             if (!upgrade) flag = `<span class="mls-ba-flag">No upgrade</span>`;
             if (a.players.length > 0) {
-                body = `<ol class="mls-ba-players">${a.players.map(p => playerHTML(a, p)).join('')}</ol>`;
+                const notes = Object.entries(a.shownTargets).filter(([, n]) => n > 1).map(([target, n]) => {
+                    const u = a.players.find(p => p.upgrade && p.upgrade.target === target).upgrade;
+                    return `<div class="mls-ba-shared">${n} options for one spot: ${u.emptySlot ? 'each fills an empty lineup spot' : `each ${overText(u)}`}</div>`;
+                }).join('');
+                body = `${notes}<ol class="mls-ba-players">${a.players.map(p => playerHTML(a, p)).join('')}</ol>`;
             } else if (a.dismissedCount > 0) {
                 body = `<div class="mls-ba-empty">Every other ranked RB, WR and TE is rostered in this league.</div>`;
             } else {
@@ -372,6 +387,8 @@ import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
             }
             if (count) count.textContent = a && a.upgradeCount ? plural(a.upgradeCount, 'upgrade') : '';
         });
+        // Now the upgrades are known: cards with nothing to do fold (the ones you haven't folded or opened yourself).
+        applyDefaultFolds();
     }
 
     // × on a player: hide him from this league's line for the rest of the NFL week.

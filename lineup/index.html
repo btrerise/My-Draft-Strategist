@@ -226,7 +226,7 @@
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">One card per league, in your order (move them with the arrows). Tap a league's name to make it the active league. Each card shows whether its Weekly rankings are fresh and whether its lineup matches the one on Sleeper (tap a chip for more), what its lineup needs from you before kickoff (an injured, bye or IR-slot starter, an empty slot, an IR move) with the buttons that fix it, how it differs from your Sleeper lineup, and its best available players. The chevron folds a card to its header; that's remembered. 'Optimize All Lineups' updates every lineup from your latest Weekly rankings. 'Sync All Leagues' also gets the latest injury news for every league. Best available: for each Sleeper-synced league, the three best-ranked RBs, WRs and TEs nobody has rostered, by that league's own Weekly or ROS rankings (the switch is the same Rank By the Scout tab's Waiver Wire Assistant uses), from the last sync. An upgrade is a ranked free agent who beats one of your players at his position: on Weekly, a starter in your best lineup this week; on ROS, your weakest rostered player. He must be in a better tier when your rankings have tiers (otherwise at least 3 spots better). On a computer, Sleeper opens the league's page on sleeper.com. View opens that league's full Top Available list on the Scout tab.</span>
+                <span class="tooltip-text">One card per league, in your order (Reorder shows the arrows to move them and ✕ to remove one). Tap a league's name to make it the active league. Each card shows whether its Weekly rankings are fresh and whether its lineup matches the one on Sleeper (tap a chip for more), what its lineup needs from you before kickoff (an injured, bye or IR-slot starter, an empty slot, an IR move) with the buttons that fix it, how it differs from your Sleeper lineup, and its best available players. The chevron folds a card to its header; that's remembered, and a card with nothing to do starts folded. 'Optimize All Lineups' updates every lineup from your latest Weekly rankings. 'Sync All Leagues' also gets the latest injury news for every league. Best available: for each Sleeper-synced league, the three best-ranked RBs, WRs and TEs nobody has rostered, by that league's own Weekly or ROS rankings (the switch is the same Rank By the Scout tab's Waiver Wire Assistant uses), from the last sync. An upgrade is a ranked free agent who beats one of your players at his position: on Weekly, a starter in your best lineup this week; on ROS, your weakest rostered player. He must be in a better tier when your rankings have tiers (otherwise at least 3 spots better). On a computer, Sleeper opens the league's page on sleeper.com. View opens that league's full Top Available list on the Scout tab.</span>
             </div>
         </header>
         
@@ -252,7 +252,10 @@
                 <div id="bestAvailableBasis" class="mls-segmented mls-ba-basis" role="group" aria-label="Rank best available by"></div>
                 <span id="bestAvailableSummary" class="mls-lc-toolbar-summary"></span>
             </div>
-            <button type="button" id="foldAllLeagueCards" class="btn-bare mls-lc-fold-all" data-action="foldAllLeagueCards">Fold all</button>
+            <div class="mls-lc-toolbar-buttons">
+                <button type="button" id="reorderLeagueCards" class="btn-bare mls-lc-fold-all" data-action="toggleLeagueReorder" aria-pressed="false">Reorder</button>
+                <button type="button" id="foldAllLeagueCards" class="btn-bare mls-lc-fold-all" data-action="foldAllLeagueCards">Fold all</button>
+            </div>
         </div>
         <ul id="leagueCards" class="mls-lc-list"></ul>
         <!-- RECENT SYNC LOGS -->
@@ -410,7 +413,7 @@
          Bug-fix-only or behind-the-scenes deploys leave it alone.
          Also bump CACHE_NAME in /sw.js on EVERY deploy - that's a separate number (cache
          busting, not a user-facing version), and it's required even when this one stays put. -->
-    <div class="app-version">My Lineup Strategist v2.14.0</div>
+    <div class="app-version">My Lineup Strategist v2.15.0</div>
 </div>
 
         <!-- ROSTER TAB -->
@@ -1258,7 +1261,7 @@
             <!-- Step 2 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">2</span> League Command Center & Requirements</h4>
-                <p class="step-desc">The <strong class="text-main">League Command Center</strong> on the Dashboard has one card per league, in your order (move them with the arrows; the chevron folds a card to its header). Each card shows whether its Weekly rankings are fresh, whether its lineup matches the one on Sleeper (tap a chip for more), what it needs from you before kickoff, and its best available free agents. Tap a league's name to make it the active league.</p>
+                <p class="step-desc">The <strong class="text-main">League Command Center</strong> on the Dashboard has one card per league, in your order (Reorder moves or removes them; the chevron folds a card to its header, and a card with nothing to do starts folded). Each card shows whether its Weekly rankings are fresh, whether its lineup matches the one on Sleeper (tap a chip for more), what it needs from you before kickoff, and its best available free agents. Tap a league's name to make it the active league.</p>
                 <ul class="guide-list">
                     <li><strong class="text-main">Sync All Leagues:</strong> Refreshes rosters, waivers, and trades for all of your Sleeper leagues at once (manual leagues are skipped).</li>
                     <li><strong class="text-main">Optimize All Lineups:</strong> Re-runs the Lineup Optimizer for every league using your latest Weekly rankings.</li>

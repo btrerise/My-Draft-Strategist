@@ -3561,3 +3561,85 @@ let a kicked-off bench player be picked to start, which Sleeper won't allow.
 
 **Left over.** Screenshots: unchanged from round 2's six. The fixture lineups have no unranked SFLEX and no kicked-off
 games.
+
+### S12, round 4: a quieter Command Center, and Lineup Strategist v2.15.0 (owner's go-ahead after my review as a user)
+
+**Why.** I loaded the owner's backup (21 leagues) into the app at 390px and 1280px and reviewed it as a user. Liked:
+one place per league, chips with words, counts that survive folding, Show next, desktop's side by side, Best Ball
+leagues still getting upgrades, and lines that now agree with Auto-Find. Disliked, worst first:
+1. Length: about 5,100px on a phone (six screens); about 10 cards had nothing to do and still took a full card.
+2. The Sunday job ("9 lineups to set on Sleeper") sat behind a fold in each card, and those cards got no "to do"
+   count or border.
+3. ▲ ▼ ✕ on every card (63 buttons, 21 red ✕s) for once-a-season actions, squeezing names.
+4. "Synced today" ×21 and "Weekly · Wk5" on every best available line.
+5. "3 upgrades" in Slow Mock Draft that were three options for one spot (all "over Kenny Gainwell").
+6. On desktop the left column was mostly empty when the only to-do was the folded Sleeper line.
+
+**Owner's decisions.**
+- Build 1–5 as proposed.
+- On #4: keep the rankings set's own name ("Wk5" is the name the owner gave that upload); drop only the repeated
+  "Weekly".
+- Bump the visible version: Lineup Strategist **v2.15.0**. The changelog's Unreleased list, everything since v2.14.0
+  (S1 through S12), becomes v2.15.0 — 2026-10-11.
+
+**User-visible effect.**
+- **Quiet cards fold.** A card with nothing to do starts folded to its header: no to-dos, no Sleeper changes, no
+  upgrade, no rankings to upload while no league has any. Your own fold or unfold of a card wins and is remembered;
+  Fold all / Unfold all set every card. "Show" unfolds the card it goes to, remembered as an unfold.
+- **Sleeper changes inline.** They're one more item in the card's to-dos, in amber: "Start Terry McLaurin · Bench
+  Jacory Croskey-Merritt" under the label "Set on Sleeper" when that's all there is, or "On Sleeper: Start …" beside
+  other items. One Open lineup button serves both. They count toward "N to do" and the amber border. This also fixes
+  #6: on desktop the left column holds the line.
+- **Reorder mode.** ▲ ▼ ✕ show only after tapping **Reorder** in the toolbar (it reads **Done** while on; in memory,
+  so it starts off on every visit).
+- **Less repetition.**
+  - The header shows the sync only when it's old, unknown or failed.
+  - Best available shows the set's name alone ("Wk5", "9/15/2026"), or nothing for a legacy upload. A fallback still
+    says "Weekly · Wk5 (no ROS set)".
+- **Shared targets.** Upgrades that would replace the same player (or fill the same empty spot) count once ("1
+  upgrade"), and the line says "2 options for one spot: each over Puka Nacua WR4" above the players instead of
+  repeating it on each.
+- **Footer:** "My Lineup Strategist v2.15.0".
+
+Checked again on the backup: Legends of the Pocket Dynasty, Late Round Lame Legends, May the Receptions Be With You
+and LRD Cucks start folded; the 9 Sleeper leagues show their changes inline. The page is no shorter on this Sunday
+morning, because those 9 lines are now visible rather than folded; on a quiet day it is.
+
+**What changed and where.**
+- `js/mls/render/leagueCards.js`:
+  - `readFolds` / `writeFolds`: `KEYS.mls.leagueCardsCollapsed` now holds `{ folded, open }` (round 1's array, which
+    the owner's live data has, is read as folded).
+  - `applyDefaultFolds`, run after each draw and by `renderBestAvailable` once upgrades are known (through main.js).
+  - Reorder mode (`toggleLeagueReorder`); the sync note rule.
+- `js/mls/render/dashboard.js`: `leagueTodoHTML(line, sleeper)` replaces `leagueNeedsHTML` and
+  `leagueSleeperFoldHTML`.
+- `js/mls/scout/bestAvailable.js`: `sourceLabel` without the type; `target` on each upgrade, `upgradeCount` by
+  distinct target, the `.mls-ba-shared` note.
+- `lineup/index.html`: the Reorder button; the (i) and Guide step 2 mention Reorder and folding; the footer version.
+- `css/mls.css`: the toolbar buttons, the Sleeper item, the shared note. `js/mls/main.js`: the
+  `toggleLeagueReorder` action, the `applyDefaultFolds` re-export.
+- CHANGELOG: the v2.15.0 heading, the cards line rewritten for what ships, and the S11 line's drop-down sentence.
+
+**Tests.**
+- `mls-league-cards.spec.mjs`: Reorder mode around ▲▼ and ✕; the Sleeper changes as a to-do item ("2 to do", one Open
+  lineup); the `{ folded, open }` key; a quiet manual league starting folded, and opening it remembered.
+- `mls-lineup-needs.spec.mjs`: the Sleeper test reads the card's to-do item.
+- `mls-best-available.spec.mjs`:
+  - the source labels;
+  - no "Synced today";
+  - `openFold` opens a folded card first;
+  - new: two upgrades over the same player counted once and said once (a third free agent, WR3 over WR4, isn't an
+    upgrade under S5's 3-spot rule).
+- `mls-rename-ranking-set.spec.mjs`: the source label is the set's name.
+
+**Noticed, not changed.** A lineup saved before an optimizer change isn't recomputed until its rankings change or
+you optimize. So after this deploys, the owner's saved Fantasy Leftovers lineup (from before round 2's FLEX fix)
+still says "Start Kendrick Bourne, Kyle Pitts" on Sleeper until Optimize All runs. Tapping Optimize All Lineups once
+after the deploy fixes every league. An automatic one-time re-optimize (a rules version in the lineup stamp) is
+possible; I've offered it.
+
+**Screenshots (round 4).** Rendered here, main and this branch still differ in exactly the six PNGs listed in round 1.
+They now also show the Reorder button, no "Synced today", and v2.15.0 in the footer (`mls-empty-setup`,
+`mls-league-setup`); `mls-league-guide` has Guide step 2's new text. All six are to be re-taken from the PR's CI run.
+Checks: 328 passed; the 10 that fail are `visual.spec.mjs`'s screenshots, which this container can't render to CI's
+baselines (as on main).
