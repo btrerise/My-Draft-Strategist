@@ -118,7 +118,7 @@ import { mdsFetch } from '../shared/net.js';
         lineupProjections: { week: null, data: null, fetchedAt: 0 },
         // Not persisted -- leagueIds whose lineup optimizeLineup computed this session before
         // lineupProjections had loaded, i.e. without the FLEX projection fallback (see
-        // compareFlexCandidates). refreshLineupStats re-optimizes such a league once projections
+        // pickFlexStarter). refreshLineupStats re-optimizes such a league once projections
         // arrive, so a lineup built from a sync that beat the projections fetch doesn't keep a
         // posRank-only FLEX pick. Starts empty on page load: a saved lineup from an earlier
         // visit is left as-is, same as any other saved lineup.

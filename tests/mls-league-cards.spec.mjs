@@ -228,6 +228,34 @@ test.describe('League Command Center: one card per league', () => {
         await expectClean(page, state);
     });
 
+    test('"Show" scrolls to each league that needs you, unfolding it; "Show next" steps through them', async ({ page }) => {
+        await page.setViewportSize({ width: 375, height: 812 });
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page);
+        await seedTwoLeagues(page);
+        const jump = page.locator('#lineupNeedsBox [data-action="jumpToLeagueNeeds"]');
+        await expect(jump).toHaveText('Show next');
+        // Both folded first: each jump unfolds its card.
+        await foldAll(page).click();
+        // Just under the sticky header (html's scroll-padding-top, 5rem).
+        const nearTop = (league) => expect.poll(() => card(page, league).evaluate(c => Math.round(c.getBoundingClientRect().top)))
+            .toBeLessThan(120);
+        await jump.click();
+        await nearTop('Fixture League');
+        await expect(body(page, 'Fixture League')).toBeVisible();
+        await expect(page.locator(':focus')).toHaveAttribute('data-focus-key', `row:${FIXTURE_LEAGUE_ID}`);
+        await expect(body(page, SECOND)).toBeHidden();
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await jump.click();
+        await nearTop(SECOND);
+        await expect(body(page, SECOND)).toBeVisible();
+        // And around again.
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await jump.click();
+        await nearTop('Fixture League');
+        await expectClean(page, state);
+    });
+
     test('on a wide screen the to-dos and best available sit side by side', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 900 });
         const state = await openApp(page, '/lineup/');

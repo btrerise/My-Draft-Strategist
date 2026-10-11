@@ -209,7 +209,7 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         if (!league || !league.leagueId || week == null) return;
 
         // This league's lineup was optimized before projections loaded, so its FLEX picks
-        // couldn't use the projection fallback (see compareFlexCandidates). Now that they're
+        // couldn't use the projection fallback (see pickFlexStarter, lineup/flexChoice.js). Now that they're
         // here, recompute once -- same full recompute a Sleeper sync does, so locks and
         // manual swaps (which lock) are preserved. optimizeLineup clears the flag and
         // re-renders, which calls back in here with nothing left to redo.

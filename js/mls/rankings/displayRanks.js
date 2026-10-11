@@ -6,7 +6,7 @@
 // once per render with the Waiver Wire's positions (makeLeagueGetPos: the league's synced positions, then
 // Sleeper's player map, then market data), plus the roster's own `pos` for anyone those don't know.
 //
-// Display only. optimizeLineup and compareFlexCandidates keep reading the raw posRank / flexRank on the
+// Display only. optimizeLineup and pickFlexStarter (lineup/flexChoice.js) keep reading the raw posRank / flexRank on the
 // player objects; the derived numbers keep the file's order within each group, so they never disagree.
 //
 // Only where the file took that fallback, recognised without positions (the parser writes these numbers

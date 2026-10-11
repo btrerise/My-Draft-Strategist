@@ -49,7 +49,7 @@ import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
-import { foldAllLeagueCards, renderLeagueCards, toggleLeagueCard } from './render/leagueCards.js';
+import { foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard } from './render/leagueCards.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
@@ -121,6 +121,7 @@ const clickActions = {
     deleteLeagueManager() { deleteLeagueManager(this.dataset.leagueId); },
     toggleLeagueCard() { toggleLeagueCard(this.dataset.leagueId); },
     foldAllLeagueCards() { foldAllLeagueCards(); },
+    jumpToLeagueNeeds() { jumpToLeagueNeeds(); },
     // Best available in your leagues (scout/bestAvailable.js, improvements S5; a section of each league card since S12)
     viewLeagueTopAvailable() { viewLeagueTopAvailable(this.dataset.leagueId); },
     bestAvailableUpload() { bestAvailableUpload(this.dataset.leagueId); },

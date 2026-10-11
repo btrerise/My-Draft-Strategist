@@ -79,6 +79,8 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
     // for the session (State.lineupNeedsDismissed, in memory) until a league it didn't list needs you, or the next
     // Optimize All or Sync All.
     const DAY_MS = 24 * 60 * 60 * 1000;
+    // Feather arrow-down, after the strip's "Show".
+    const JUMP_ICON = `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`;
 
     // { lines, sleeper, needCount, byLeague }: lines and sleeper in league order; byLeague maps a league id to its
     // { line, sleeper } (either may be missing). The league cards and the strip both read this; nothing else
@@ -178,10 +180,14 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             : `${sl} lineup${sl === 1 ? '' : 's'} to set on Sleeper`;
         // With to-dos as well, the Sleeper count is a second part of the title.
         const sleeperPart = p + keptOnly > 0 && sl > 0 ? `<span class="mls-needs-title-more"> · ${sl} to set on Sleeper</span>` : '';
+        // "Show" scrolls to the league's card (owner's request, S12); with several, "Show next" steps through them.
+        const leagues = new Set([...needs.lines, ...needs.sleeper].map(n => n.league.leagueId)).size;
+        const jump = `<button type="button" class="btn-bare mls-needs-jump" data-action="jumpToLeagueNeeds" aria-label="${leagues === 1 ? 'Show the league that needs you' : 'Show the next league that needs you'}">${leagues === 1 ? 'Show' : 'Show next'}${JUMP_ICON}</button>`;
         box.innerHTML = `
             <div class="mls-needs-head">
                 ${p > 0 ? WARNING_ICON : INFO_ICON}
                 <span class="mls-needs-title">${title}${sleeperPart}</span>
+                ${jump}
                 <button type="button" class="close-banner-btn close-banner-btn-sm mls-needs-close" data-action="dismissLineupNeeds" aria-label="Hide the to-dos">✕</button>
             </div>
             <p class="mls-needs-check"><button type="button" class="btn-bare mls-needs-check-link" data-action="checkSleeperNow">Sync All again</button> to get the latest injury news and your current Sleeper lineups for every league.</p>`;

@@ -7,7 +7,7 @@ import { escapeHtml } from '../../shared/html.js';
 import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';
-import { getByeBadgeHTML, getGameInfoHTML, hasKickedOff } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getGameInfoHTML, getLineupProjection, hasKickedOff } from '../lineup/gameInfo.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { runScout } from './engine.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
@@ -267,10 +267,13 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
     // this week's byes and hard-outs. Shared with the Dashboard's Best Available card.
     export function lineupCheckDeps(leagueId, byName) {
         const locks = State.lockedPlayersMap[leagueId] || [];
+        const league = (State.leagues || []).find(l => l.leagueId === leagueId) || null;
         return {
             rankOf: (p) => byName[p.cleanName] || null,
             isLocked: (p) => locks.includes(p.id) || (hasKickedOff(p) && !isAutoLockOverridden(leagueId, p.id)),
-            isUnavailable: (p) => isUnavailableThisWeek(p)
+            isUnavailable: (p) => isUnavailableThisWeek(p),
+            // Sleeper's projection, the FLEX rule's tiebreak between positions, as the optimizer uses it (S12).
+            projOf: (p) => getLineupProjection(p.id, league)
         };
     }
 

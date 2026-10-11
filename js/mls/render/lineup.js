@@ -8,6 +8,7 @@ import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } 
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
+import { bestBy, pickFlexStarter } from '../lineup/flexChoice.js';
 import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
@@ -350,7 +351,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? (rObj.posTier ?? rObj.tier ?? null) : null, flexTier: rObj ? (rObj.flexTier ?? rObj.tier ?? null) : null, isLocked: manualLocked || autoLocked, autoLocked };
         });
 
-        // Sleeper projections for the FLEX fallback in compareFlexCandidates. Kept in a local
+        // Sleeper projections for the FLEX rule's cross-position step (pickFlexStarter). Kept in a local
         // Map rather than spread onto each player object, because those objects are what gets
         // saved as the lineup -- a projection baked in there would go stale while the saved
         // lineup lives on.
@@ -360,26 +361,13 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         if (projectionsReady) State.projectionlessLineups.delete(State.activeLeagueId);
         else State.projectionlessLineups.add(State.activeLeagueId);
 
-        // Head-to-head for a FLEX-type slot (RB/WR/TE competing across positions). Tiers, in order:
-        //   1. Both have a FLEX rank -> lower FLEX rank wins. Your rankings always come first.
-        //   2. Only one has a FLEX rank -> that one wins.
-        //   3. Neither has a FLEX rank -> higher Sleeper projection wins. Position ranks aren't
-        //      comparable across positions (TE24 isn't better than WR45, it's just a shallower
-        //      list), which is what used to push low-end TEs over depth RB/WRs here.
-        //   4. Projection missing for one or both (not loaded yet, or Sleeper doesn't project
-        //      him) -> a projected player beats an unprojected one; otherwise posRank as before.
-        // Each tier is a strict ordering, so the comparator stays consistent (transitive).
-        const compareFlexCandidates = (a, b) => {
-            if (a.flexRank !== 999 && b.flexRank !== 999) return a.flexRank - b.flexRank;
-            if (a.flexRank !== 999 && b.flexRank === 999) return -1;
-            if (a.flexRank === 999 && b.flexRank !== 999) return 1;
-            const aProj = projById.has(a.id) ? projById.get(a.id) : null;
-            const bProj = projById.has(b.id) ? projById.get(b.id) : null;
-            if (aProj !== null && bProj !== null && aProj !== bProj) return bProj - aProj;
-            if (aProj !== null && bProj === null) return -1;
-            if (aProj === null && bProj !== null) return 1;
-            return a.posRank - b.posRank;
-        };
+        // Who starts in a FLEX-type slot (RB/WR/TE competing across positions): pickFlexStarter
+        // (lineup/flexChoice.js, improvements S12): FLEX rank first; then a ranked player over an unranked one, and
+        // at one position the better position rank; projections only between positions (a TE24 isn't better than a
+        // WR45, it's just a shallower list) or between unranked players.
+        const projOf = (p) => (projById.has(p.id) ? projById.get(p.id) : null);
+        const pickFlex = (list) => pickFlexStarter(list, projOf);
+        const pickByPosRank = (list) => bestBy(list, (a, b) => a.posRank - b.posRank);
 
         // Taxi-squad players are held out of the starter pool entirely rather than merely
         // deprioritized the way isUnavailableThisWeek handles byes and hard-out statuses.
@@ -392,37 +380,25 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         let pool = scoredRoster.filter(p => !p.isTaxi);
         let starters = [];
 
-        // Finds the best index in `pool` matching `matchFn`, using `compareFn` to rank
-        // candidates against each other (same contract as Array.prototype.sort's comparator:
-        // negative means `a` ranks ahead of `b`). Prefers players who are actually available
-        // this week per isUnavailableThisWeek(); only falls back to an unavailable player if
-        // NO eligible one exists at all, so a slot is never silently left empty just because
-        // the best-ranked option happens to be on bye.
-        const findBestStarterIndex = (matchFn, compareFn) => {
-            let bestIdx = -1;
-            pool.forEach((p, idx) => {
-                if (!matchFn(p) || isUnavailableThisWeek(p)) return;
-                if (bestIdx === -1 || compareFn(p, pool[bestIdx]) < 0) bestIdx = idx;
-            });
-            if (bestIdx !== -1) return bestIdx;
-
+        // Finds the index in `pool` of the player `choose` picks among those matching `matchFn` (pickFlex or
+        // pickByPosRank). Prefers players who are actually available this week per isUnavailableThisWeek(); only
+        // falls back to an unavailable player if NO eligible one exists at all, so a slot is never silently left
+        // empty just because the best-ranked option happens to be on bye.
+        const findBestStarterIndex = (matchFn, choose) => {
+            let candidates = pool.filter(p => matchFn(p) && !isUnavailableThisWeek(p));
             // Fallback pass: nobody eligible is available at this position. Allow a bye/hard-out
             // player rather than leaving the slot empty -- they'll show up with a clear BYE or
             // injury badge in the UI instead of just vanishing from the lineup.
-            pool.forEach((p, idx) => {
-                if (!matchFn(p)) return;
-                if (bestIdx === -1 || compareFn(p, pool[bestIdx]) < 0) bestIdx = idx;
-            });
-            return bestIdx;
+            if (candidates.length === 0) candidates = pool.filter(matchFn);
+            const best = choose(candidates);
+            return best ? pool.indexOf(best) : -1;
         };
 
         const fillSlot = (slotLabel, posFilter, useFlexRank) => {
             let lockedIndex = pool.findIndex(p => p.isLocked && posFilter(p.pos));
             if (lockedIndex !== -1) { starters.push({ slot: slotLabel, player: pool.splice(lockedIndex, 1)[0], usedFlex: useFlexRank }); return; }
 
-            const compareFn = useFlexRank ? compareFlexCandidates : (a, b) => a.posRank - b.posRank;
-
-            let bestIndex = findBestStarterIndex(p => posFilter(p.pos), compareFn);
+            let bestIndex = findBestStarterIndex(p => posFilter(p.pos), useFlexRank ? pickFlex : pickByPosRank);
             if (bestIndex !== -1) starters.push({ slot: slotLabel, player: pool.splice(bestIndex, 1)[0], usedFlex: useFlexRank });
             else starters.push({ slot: slotLabel, player: null, usedFlex: useFlexRank });
         };
@@ -449,20 +425,17 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                 continue;
             }
 
-            let bestQBIdx = findBestStarterIndex(p => p.pos === 'QB' && p.posRank !== 999, (a, b) => a.posRank - b.posRank);
+            let bestQBIdx = findBestStarterIndex(p => p.pos === 'QB' && p.posRank !== 999, pickByPosRank);
             if (bestQBIdx !== -1) {
                 starters.push({ slot: slotLabel, player: pool.splice(bestQBIdx, 1)[0], usedFlex: false });
             } else {
-                let bestFlexIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && p.flexRank !== 999, (a, b) => a.flexRank - b.flexRank);
+                // A ranked RB/WR/TE by the FLEX rule: a FLEX rank first, then the best-ranked at each position by
+                // projection (pickFlexStarter).
+                let bestFlexIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && (p.flexRank !== 999 || p.posRank !== 999), pickFlex);
                 if (bestFlexIdx !== -1) {
-                    starters.push({ slot: slotLabel, player: pool.splice(bestFlexIdx, 1)[0], usedFlex: true });
-                } else {
-                    // No one left has a FLEX rank, so compareFlexCandidates falls through to its
-                    // projection tier -- same cross-position reasoning as the FLEX slots.
-                    let bestPosIdx = findBestStarterIndex(p => ['RB', 'WR', 'TE'].includes(p.pos) && p.posRank !== 999, compareFlexCandidates);
-                    if (bestPosIdx !== -1) starters.push({ slot: slotLabel, player: pool.splice(bestPosIdx, 1)[0], usedFlex: false });
-                    else starters.push({ slot: slotLabel, player: null, usedFlex: false });
-                }
+                    const player = pool.splice(bestFlexIdx, 1)[0];
+                    starters.push({ slot: slotLabel, player, usedFlex: player.flexRank !== 999 });
+                } else starters.push({ slot: slotLabel, player: null, usedFlex: false });
             }
         }
         for (let i = 0; i < (reqs.K || 0); i++) fillSlot(`K${i+1}`, pos => pos === 'K', false);

@@ -76,6 +76,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **FLEX picks follow your rankings when there's no FLEX rank.** With Weekly rankings by position (separate
+  QB/RB/WR/TE files, no FLEX list), the optimizer filled FLEX and SFLEX by Sleeper's projections alone. So it could
+  start your WR55 over your WR53 because he projected higher, or an unranked player over ranked ones. Now a FLEX rank
+  still comes first. Then a ranked player beats an unranked one, and at one position the better rank wins.
+  Projections only decide between positions (a TE24 isn't necessarily better than a WR50), or between unranked
+  players. The Waiver Wire Assistant and the Dashboard's best available judge "would he start?" the same way.
 - **One card per league on the Dashboard.** The League Command Center now lists your leagues as cards, one per league,
   in your order (▲ ▼ move them, ✕ removes one, tap the name to switch to it). Each card holds everything about that
   league: whether its Weekly rankings are fresh and whether its lineup matches Sleeper (chips with a word on them; tap
@@ -84,7 +90,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   the separate "lineups need you" box and the Best Available card, so each league shows once, and on a phone nothing
   is squeezed: names are whole and nothing runs past the edge. Tap a card's chevron to fold it to its header (it still
   says "2 to do" or "1 upgrade"); that's remembered, and "Fold all" does every card. A line under Sync All and Optimize
-  All counts the lineups that need you; its ✕ hides the to-dos until another league needs you. On a wide screen each
+  All counts the lineups that need you: its "Show" scrolls to that league's card ("Show next" steps through several),
+  and its ✕ hides the to-dos until another league needs you. On a wide screen each
   card puts its to-dos and best available side by side. A league with no Sleeper lineup on record yet shows an amber
   Lineup chip ("No Sleeper lineup to compare yet") instead of the red "differs" icon.
 - **The Dashboard names the lineups that need you.** Each league's card lists what its lineup needs before kickoff,

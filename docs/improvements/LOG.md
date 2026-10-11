@@ -3447,3 +3447,62 @@ an intended visual change" in `docs/TESTING.md`).
   that need me" filter was not asked for.
 - The Best Available card's old collapse key (`mls_best_available_collapsed`) is unread; remove it with the other
   key work after 6C if wanted.
+
+### S12, round 2: FLEX picks without FLEX ranks (a bug), and "Show" on the strip (owner's requests)
+
+**The bug** (found by the owner in "Fantasy Leftovers", with a backup; likely older than S12, fixed here because the
+cards are about lineups that need setting). The league's Weekly rankings were per-position files, so nobody had a
+FLEX rank. For FLEX slots, `compareFlexCandidates` (js/mls/render/lineup.js) then compared any two players by Sleeper
+projection, same position or not, ranked or not. So the lineup started Kendrick Bourne (WR55, 8.6 projected) over
+Treylon Burks (WR53, 3.5), and an unranked Kyle Pitts (7.7) in a FLEX slot (relabeled to SFLEX by kickoff) over ranked
+WRs. Traced from the backup: FLEX 2 and 3 went to Bourne and Pitts by projection; Gadsden (TE24) took SFLEX.
+
+**The owner's rule:** FLEX rank, then any rank, then projected points; projections decide between different positions
+(a TE24 isn't necessarily better than a WR50).
+
+**The fix.**
+- `js/mls/lineup/flexChoice.js` (new, pure, in `PRECACHE_ASSETS`): `pickFlexStarter(candidates, projOf)`.
+  1. Anyone with a FLEX rank: the best FLEX rank (as before).
+  2. Else, among ranked players: the best-ranked left at each position (so WR53 always before WR55, whatever they
+     project), then the higher projection among those leaders. A projected player beats an unprojected one; with no
+     projection, the better position rank.
+  3. Else (nobody ranked): the higher projection.
+
+  Also `bestBy`. The order is a strict lexicographic one, so the pick doesn't depend on roster order (the old pairwise
+  mix of rank and projection could have formed a cycle).
+- `optimizeLineup` uses it for W/R, W/T, FLEX and SFLEX's RB/WR/TE step (a QB with a position rank still comes first in
+  SFLEX, and SFLEX still never takes an unranked RB/WR/TE). Strict slots are unchanged.
+- `fillLineup` (js/mls/scout/waiverScanner.js), the copy Auto-Find, Check a List and the Dashboard's Best Available use
+  for "would he start?", uses the same function. It never used projections before, and now takes each candidate's
+  `proj` from a new optional `projOf` dep (`lineupCheckDeps` in waivers.js passes `getLineupProjection`). So the
+  optimizer and the waiver tools agree again.
+- With the backup's league (projections from the owner's screenshot, run through `fillLineup`), the rule gives: FLEX
+  Luther Burden (the one FLEX rank left), Oronde Gadsden (TE24, 7.0, over Burks WR53, 3.5) and Burks, then SFLEX
+  Kendrick Bourne (WR55, next at WR). Burks now starts before Bourne, and Pitts (unranked) sits.
+
+**Tests** (rule 4: the spec first, failing on the old code). `tests/mls-flex-choice.spec.mjs`: the fixture league
+with two FLEX slots, position-only Weekly ranks and routed projections. Before the fix FLEX went to A.J. Brown (WR6,
+30 projected) and George Kittle (unranked, 20); after it, Trey McBride (TE2, 6) and CeeDee Lamb (WR3, 2).
+`tests/unit/flexChoice.test.mjs` (9): FLEX rank first, Burks over Bourne, ranked over unranked, leaders by projection,
+the projection fallbacks, order independence, and `fillLineup`'s FLEX and SFLEX.
+
+**"Show" on the strip** (the owner asked how hard a link to the league needing attention would be; it's small, so it's
+built). Next to "1 lineup to set on Sleeper" (or "2 lineups need you…"), a **Show** link with a down arrow scrolls to
+that league's card. With several leagues it reads **Show next** and steps through them in league order, wrapping
+around. A folded card unfolds (remembered, as its chevron would). A card whose only item is its Sleeper changes opens
+that fold. Focus moves to the league's name. `jumpToLeagueNeeds` in render/leagueCards.js; the page's own
+`scroll-padding-top` keeps the card clear of the sticky header. Spec: both cards folded, Show next goes to each in turn
+and around again, unfolding each.
+
+**Left over / noticed.**
+- The Lineup tab's "Bench Priorities" order still sorts by FLEX rank, then position rank across positions. That's
+  display only, and who starts is unchanged by it.
+- The S11 swap suggestions ("start X instead?") pick the same position by rank first, then anyone by FLEX rank; no
+  projections. Not changed.
+- SFLEX leaves its slot empty rather than start an unranked RB/WR/TE (FLEX starts one). Pre-existing; not changed.
+- `CACHE_NAME` stays v2.8.92 (this branch's bump). The six screenshots listed above still change; the strip in
+  `mls-league-setup` now also has "Show".
+- Seen once in the full run: `mls-display-ranks.spec.mjs` ("keeps the files' position ranks…", desktop) failed with
+  "Execution context was destroyed": its setup reloads the page and the next `callApp` can land mid-reload. It passed
+  12 of 12 on repeat (`--repeat-each=6`); it doesn't touch the Dashboard. A follow-up could wait for the load after
+  that reload.

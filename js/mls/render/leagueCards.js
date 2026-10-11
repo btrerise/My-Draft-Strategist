@@ -223,6 +223,24 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
         renderFoldAllButton();
     }
 
+    // The strip's "Show" / "Show next" (owner's request, S12): scrolls to the next card with to-dos or Sleeper changes,
+    // in league order, wrapping around. A folded card unfolds (remembered, as its chevron would), and a card whose
+    // only item is its Sleeper changes opens that fold. Focus moves to the league's name, without a second scroll.
+    let lastJumpId = null;
+    export function jumpToLeagueNeeds() {
+        const targets = [...document.querySelectorAll('#leagueCards .mls-lc-card')].filter(c => c.querySelector('.mls-lc-todo'));
+        if (targets.length === 0) return;
+        const prev = targets.findIndex(c => c.dataset.leagueId === lastJumpId);
+        const card = targets[(prev + 1) % targets.length];
+        lastJumpId = card.dataset.leagueId;
+        if (card.classList.contains('is-collapsed')) toggleLeagueCard(lastJumpId);
+        const sleeperFold = card.querySelector('.mls-needs-sleeper');
+        if (sleeperFold && !card.querySelector('.mls-lc-todo > .mls-needs-line')) sleeperFold.open = true;
+        card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        const name = card.querySelector('.mls-lc-name-btn');
+        if (name) name.focus({ preventScroll: true });
+    }
+
     // "Fold all" while any card is open, "Unfold all" when none is.
     export function foldAllLeagueCards() {
         const cards = [...document.querySelectorAll('#leagueCards .mls-lc-card')];
