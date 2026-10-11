@@ -3643,3 +3643,57 @@ They now also show the Reorder button, no "Synced today", and v2.15.0 in the foo
 `mls-league-setup`); `mls-league-guide` has Guide step 2's new text. All six are to be re-taken from the PR's CI run.
 Checks: 328 passed; the 10 that fail are `visual.spec.mjs`'s screenshots, which this container can't render to CI's
 baselines (as on main).
+
+### S12, round 5: projections for Optimize All, amber only for real problems, the strip's next step (owner's go-ahead after my second review as a user)
+
+**Why.** I loaded the owner's newest backup, tapped Optimize All on the Dashboard (as they would after the deploy) and
+read every card.
+- **The good:** the Sleeper lines read as instructions; quiet Best Ball leagues fold; names get the full width; "2
+  options for one spot" reads right. I also checked that Fantasy Leftovers starting Bourne and Pitts is correct for
+  the new Wk5 set: Bourne is WR43 with a FLEX rank (91) and Pitts is TE25.
+- **Found:**
+  1. **Optimize All from the Dashboard ran without projections.** They loaded only with the Lineup tab. All 14 lineup
+     leagues were marked projection-less, and when projections arrived only the active one was redone. Since round 2,
+     projections decide FLEX picks between positions when there's no FLEX rank.
+  2. **Amber everywhere:** 13 of 14 cards were amber with "1 to do", nearly all just Sleeper differences.
+  3. **The strip's second line** ("Sync All again to get the latest injury news…") wasn't the next step.
+- The owner said build 1–3.
+
+**What changed.**
+1. **Projections first.**
+   - `ensureLineupProjections()` (js/mls/lineup/gameInfo.js) loads this week's Sleeper projections if they aren't in
+     yet. It never throws: a failure leaves the position-rank fallback.
+   - Optimize All awaits it before its loop. Sync All loads it alongside the player map.
+   - `reoptimizeProjectionlessLeagues()` (js/mls/render/dashboard.js, re-exported by main.js) quietly re-optimizes
+     every league in `State.projectionlessLineups` other than the active one. Locks are kept, as in Optimize All's
+     loop, and the active league is restored with `switchActiveLeague`. `refreshLineupStats` calls it once projections
+     are loaded; the active league keeps its existing redo there.
+   - This touches Optimize All and Sync All, which the card had out of scope; the owner approved it.
+2. **Amber only for what needs you before kickoff.**
+   - A card's amber border and "N to do" count only its S11 items.
+   - Sleeper changes show "1 to set" in muted text (`.mls-lc-count-sleeper`). The item itself is in the main text
+     color, and a Sleeper-only card's "Set on Sleeper" label is muted.
+   - On the backup after Optimize All: 0 of 21 cards amber (nothing needed them before kickoff) and 13 reading
+     "1 to set".
+3. **The strip's next step.** With lineups to set it reads "Set the lineups on Sleeper, then Sync All again to clear
+   them." ("Set the lineup … clear it." for one). Otherwise it keeps "Sync All again to get the latest injury news…".
+
+**Tests** (#1 shown failing on the old code first).
+- `tests/mls-flex-choice.spec.mjs`:
+  - "Optimize All from the Dashboard loads projections first": one FLEX slot, Lamb projected 10 against McBride TE2.
+    McBride on the old code, Lamb now.
+  - "projections that arrive late redo every league optimized without them": a second league, projections answering
+    503 during Optimize All, then a Lineup tab visit. With the new hook off, the other league stays on McBride.
+  - The `proj` option of `setup` was renamed `extraProj`; it shadowed the route's own variable.
+- `tests/mls-league-cards.spec.mjs`: "1 to do" plus "1 to set", and the strip's line.
+- `tests/mls-lineup-needs.spec.mjs`: the Sleeper-only card is neutral ("1 to set", no amber border), and the strip's
+  line.
+- CHANGELOG (v2.15.0): a line for the projections, and the cards line's counts and strip.
+- `tests/mls-display-ranks.spec.mjs`: its per-position helper now waits for the reload to settle (`networkidle`, as
+  the other specs do). The "Execution context was destroyed" flake noted in round 2 failed on both widths in this
+  round's full run. With the wait, the spec passed 84 of 84 (`--repeat-each=6`).
+
+**Checks.** 330 passed in the full run. Apart from the two `mls-display-ranks` failures (fixed above), the only
+failures are `visual.spec.mjs`'s 10 screenshots, which this container can't render to CI's baselines. Screenshots: the
+same six PNGs as before differ from main; the fixture's Dashboard has no Sleeper changes, so round 5 adds nothing
+there.

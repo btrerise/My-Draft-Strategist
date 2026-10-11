@@ -12,7 +12,7 @@ import { getByeWeek } from '../../shared/data/byes.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
-import { isAutoLockOverridden, renderLineupUI, optimizeLineup } from '../main.js';
+import { isAutoLockOverridden, renderLineupUI, optimizeLineup, reoptimizeProjectionlessLeagues } from '../main.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
 
@@ -143,6 +143,24 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     export function lineupProjectionsLoaded() {
         const proj = State.lineupProjections;
         return State.currentNflWeek != null && proj.week === State.currentNflWeek && !!proj.data;
+    }
+
+    // This week's Sleeper projections, loaded if they aren't yet (improvements S12 round 5). They used to load only
+    // with the Lineup tab (refreshLineupStats), so Optimize All or Sync All from the Dashboard right after opening the
+    // app chose between positions by position rank alone, and only the active league was redone when they arrived.
+    // Both now wait for this first. Resolves true when they're loaded; never throws (a failed fetch just leaves the
+    // position-rank fallback, as before).
+    export async function ensureLineupProjections() {
+        if (lineupProjectionsLoaded()) return true;
+        const week = State.currentNflWeek;
+        if (!State.currentNflSeason || week == null) return false;
+        try {
+            const data = await getWeeklyProjections(State.currentNflSeason, week);
+            if (data) State.lineupProjections = { week, data, fetchedAt: Date.now() };
+        } catch (e) {
+            console.warn('Projections unavailable; FLEX picks between positions fall back to position rank.', e);
+        }
+        return lineupProjectionsLoaded();
     }
 
     // Sleeper's projected points for this player this week in the league's scoring format, or
@@ -280,6 +298,9 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
             } finally {
                 State.lineupStatsRefreshing = false;
             }
+
+            // The other leagues optimized before projections loaded get them now too (S12 round 5).
+            if (lineupProjectionsLoaded()) reoptimizeProjectionlessLeagues();
 
             const activeTab = document.querySelector('.tab-content.active');
             if (changed && activeTab && activeTab.id === 'lineupTab') {

@@ -11,7 +11,7 @@ import { loadRosterTab } from './roster.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { setToastsSuppressed, showToast } from '../../shared/ui/toast.js';
 import { optimizeLineup } from './lineup.js';
-import { formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, sleeperChangesHTML } from '../lineup/gameInfo.js';
+import { ensureLineupProjections, formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, sleeperChangesHTML } from '../lineup/gameInfo.js';
 import { findChips, lineupIssueItems, needsLineupButton, needsYou } from '../lineup/issues.js';
 import { updateWaiverScanSetting } from '../scout/waivers.js';
 import { isManualLeague, refreshManualInjuries } from '../leagues/manualInjuries.js';
@@ -173,6 +173,11 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         // "Show" scrolls to the league's card (owner's request, S12); with several, "Show next" steps through them.
         const leagues = new Set([...needs.lines, ...needs.sleeper].map(n => n.league.leagueId)).size;
         const jump = `<button type="button" class="btn-bare mls-needs-jump" data-action="jumpToLeagueNeeds" aria-label="${leagues === 1 ? 'Show the league that needs you' : 'Show the next league that needs you'}">${leagues === 1 ? 'Show' : 'Show next'}${JUMP_ICON}</button>`;
+        // The next step (owner's choice, round 5): with lineups to set, that's setting them on Sleeper, then syncing.
+        const syncLink = `<button type="button" class="btn-bare mls-needs-check-link" data-action="checkSleeperNow">Sync All again</button>`;
+        const checkLine = `<p class="mls-needs-check">${sl > 0
+            ? `Set ${sl === 1 ? 'the lineup' : 'the lineups'} on Sleeper, then ${syncLink} to clear ${sl === 1 ? 'it' : 'them'}.`
+            : `${syncLink} to get the latest injury news and your current Sleeper lineups for every league.`}</p>`;
         box.innerHTML = `
             <div class="mls-needs-head">
                 ${p > 0 ? WARNING_ICON : INFO_ICON}
@@ -180,7 +185,7 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
                 ${jump}
                 <button type="button" class="close-banner-btn close-banner-btn-sm mls-needs-close" data-action="dismissLineupNeeds" aria-label="Hide the to-dos">✕</button>
             </div>
-            <p class="mls-needs-check"><button type="button" class="btn-bare mls-needs-check-link" data-action="checkSleeperNow">Sync All again</button> to get the latest injury news and your current Sleeper lineups for every league.</p>`;
+            ${checkLine}`;
         box.classList.toggle('has-problems', p > 0);
         box.hidden = false;
     }
@@ -245,7 +250,9 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         btn.style.opacity = '0.8';
 
         // Brief timeout ensures the UI button state updates before locking the main thread
-        setTimeout(() => {
+        setTimeout(async () => {
+            // This week's projections first: they decide FLEX picks between positions (S12 round 5).
+            await ensureLineupProjections();
             const originalActiveId = State.activeLeagueId;
             let failed = false;
             // The league the loop is working on. The loop stops at the first league that throws,
@@ -322,6 +329,33 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         }, 50);
     };
 
+// Leagues whose lineup was optimized before this week's projections loaded (State.projectionlessLineups), other than the
+// active one, re-optimized once they're here (S12 round 5; refreshLineupStats calls this when it loads them). Before,
+// only the active league was redone, so the Dashboard's to-dos and Sleeper changes for the rest stayed on position
+// rank alone until each Lineup tab was opened. Quiet (no toast), locks kept, like Optimize All's loop.
+export function reoptimizeProjectionlessLeagues() {
+    const originalActiveId = State.activeLeagueId;
+    const leagues = (State.leagues || []).filter(l => l.leagueId !== originalActiveId && State.projectionlessLineups.has(l.leagueId));
+    if (leagues.length === 0) return;
+    setToastsSuppressed(true);
+    try {
+        leagues.forEach(l => {
+            State.projectionlessLineups.delete(l.leagueId);
+            if (isBestBallLeague(l)) return;
+            State.activeLeagueId = l.leagueId;
+            hydrateRankingsForLeague(l);
+            optimizeLineup(true, false, { batch: true });
+        });
+        localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+        localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
+    } catch (err) {
+        console.warn('Re-optimizing with projections did not finish; Optimize All redoes every league.', err);
+    } finally {
+        setToastsSuppressed(false);
+        if (State.leagues.some(x => x.leagueId === originalActiveId)) switchActiveLeague(originalActiveId);
+    }
+}
+
 export const syncAllLeagues = async function(btn) {
         if (!State.leagues || State.leagues.length === 0) return;
         
@@ -358,7 +392,8 @@ export const syncAllLeagues = async function(btn) {
                 // Preload the heavy player map ONCE to save massive API bandwidth
                 // forceRefresh: Sync All is also the "check Sleeper now" for injuries (it replaced the
                 // Global Injury Auditor, which did the same), so it wants today's statuses, not the cached map.
-                const playerMap = await getSleeperPlayerMap({ forceRefresh: true });
+                // This week's projections too, so every league re-optimized below can use them (S12 round 5).
+                const [playerMap] = await Promise.all([getSleeperPlayerMap({ forceRefresh: true }), ensureLineupProjections()]);
                 const preloaded = { playerMap }; 
 
                 let successCount = 0;

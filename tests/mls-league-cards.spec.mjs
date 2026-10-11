@@ -108,8 +108,12 @@ test.describe('League Command Center: one card per league', () => {
             expect(await chipTones(page, 'Fixture League')).toEqual(['Rankings:good', 'Lineup:danger']);
             expect(await chipTones(page, SECOND)).toEqual(['Rankings:good', 'Lineup:warn']);
             await expect(card(page, 'Fixture League').locator('.mls-lc-meta')).toHaveText('Redraft 1QB PPR');
-            // The Fixture League: its activation, and its Sleeper changes (one item each).
-            await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('2 to do');
+            // The Fixture League: its activation ("1 to do", amber) and its Sleeper changes ("1 to set", neutral; round 5).
+            await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to do');
+            await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
+            await expect(card(page, SECOND).locator('.mls-lc-count-sleeper')).toHaveCount(0);
+            // The strip's next step: set the lineup on Sleeper, then sync.
+            await expect(page.locator('#lineupNeedsBox .mls-needs-check')).toHaveText('Set the lineup on Sleeper, then Sync All again to clear it.');
             await expect(card(page, SECOND).locator('.mls-lc-count-todo')).toHaveText('1 to do');
             // The active league (the second, synced last) has the green edge.
             await expect(card(page, SECOND)).toHaveClass(/\bis-active\b/);

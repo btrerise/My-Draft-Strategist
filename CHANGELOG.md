@@ -87,6 +87,10 @@ Nothing yet.
   Projections only decide between positions (a TE24 isn't necessarily better than a WR50), or between unranked
   players. The Waiver Wire Assistant, the Dashboard's best available and the "start X instead?" suggestions judge
   the same way.
+- **Optimize All and Sync All use this week's projections.** They used to load only with the Lineup tab, so
+  optimizing from the Dashboard right after opening the app chose FLEX players between positions by rank alone. Both
+  now load them first. And if they arrive late, every league optimized without them is redone, not just the one you
+  have open.
 - **SFLEX is never left empty** when you have someone who can play there: with nobody ranked left, it takes the
   higher projection, as FLEX does. A healthy ranked RB, WR or TE now also beats an injured ranked QB there.
 - **A benched player whose game has started stays benched.** Once his game kicks off, Sleeper won't let you start
@@ -104,9 +108,11 @@ Nothing yet.
   so each league shows once, and on a phone nothing is squeezed: names are whole and nothing runs past the edge.
   - A card with nothing to do (no to-dos, no Sleeper changes, no upgrade) starts folded to its header. Tap a card's
     chevron to fold or open it; that's remembered, and "Fold all" does every card. A folded card still says "2 to do"
-    or "1 upgrade".
-  - A line under Sync All and Optimize All counts the lineups that need you: its "Show" scrolls to that league's card
-    ("Show next" steps through several), and its ✕ hides the to-dos until another league needs you.
+    (in amber, for what needs you before kickoff: only those cards get the amber border), "1 to set" (lineup changes
+    to make on Sleeper) or "1 upgrade".
+  - A line under Sync All and Optimize All counts the lineups that need you and says the next step ("Set the lineups
+    on Sleeper, then Sync All again to clear them"): its "Show" scrolls to that league's card ("Show next" steps
+    through several), and its ✕ hides the to-dos until another league needs you.
   - The last sync shows only when it's old or failed. Best available names your rankings set ("Wk5") without
     repeating "Weekly". Free agents who'd all replace the same player count as one upgrade, and the line says so ("3
     options for one spot: each over Kenny Gainwell").

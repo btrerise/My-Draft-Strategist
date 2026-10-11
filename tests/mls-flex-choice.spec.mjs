@@ -31,8 +31,10 @@ const PROJ = { 6786: 2, 9493: 3, 7547: 9, 5859: 30, 7553: 6, 4217: 20, 7523: 15 
 
 const FLEX_SLOTS = ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN'];
 
-// opts: positions (Sleeper's roster_positions), ranks, sleeperStarters (your lineup on Sleeper, ids).
-async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStarters } = {}) {
+// opts: positions (Sleeper's roster_positions), ranks, sleeperStarters (your lineup on Sleeper, ids), extraProj (extra
+// projections, by id), dashboard (stay on the Dashboard: no Lineup tab visit, no optimize), second (also a copy of the
+// league, "Second League", written into storage: same roster and rankings).
+async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStarters, extraProj = {}, dashboard = false, second = false } = {}) {
     await page.route(/sleeper\.app\/v1\/league\/\d+$/, route => route.fulfill({ json: { ...fixture('league.json'), roster_positions: positions } }));
     if (sleeperStarters) {
         await page.route(/sleeper\.app\/v1\/league\/\d+\/rosters$/, route => {
@@ -43,21 +45,23 @@ async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStart
     }
     await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/2$/, route => {
         const proj = fixture('projections-2026-2.json');
-        Object.entries(PROJ).forEach(([id, pts]) => { proj[id] = { ...proj[id], pts_ppr: pts, pts_half_ppr: pts, pts_std: pts }; });
+        Object.entries({ ...PROJ, ...extraProj }).forEach(([id, pts]) => { proj[id] = { ...proj[id], pts_ppr: pts, pts_half_ppr: pts, pts_std: pts }; });
         return route.fulfill({ json: proj });
     });
     await seedMls(page);
     // Weekly rankings by position only, no FLEX rank (as per-position uploads store them), on the league itself.
-    await page.evaluate(async ({ ranks, leagueId }) => {
+    await page.evaluate(async ({ ranks, leagueId, second }) => {
         const { normalizeName } = await import('/js/shared/names.js');
         const data = ranks.map(([name, , posRank]) => ({ name, cleanName: normalizeName(name), rank: posRank, posRank, flexRank: 999 }));
         const leagues = JSON.parse(localStorage.getItem('mls_leagues'));
         const league = leagues.find(l => l.leagueId === leagueId);
         Object.assign(league, { weeklyRankingSetId: null, weeklyRankings: data, weeklyRankingsUpdatedAt: Date.now() });
+        if (second) leagues.push({ ...league, leagueId: '1000000000000000002', name: 'Second League' });
         localStorage.setItem('mls_leagues', JSON.stringify(leagues));
-    }, { ranks, leagueId: FIXTURE_LEAGUE_ID });
+    }, { ranks, leagueId: FIXTURE_LEAGUE_ID, second });
     await page.reload();
     await page.waitForLoadState('networkidle');
+    if (dashboard) { await showTab(page, 'setup'); return; }
     // The Lineup tab loads the projections; once they're in, a fresh optimize (the Optimize Lineup button).
     await showTab(page, 'lineup');
     await expect.poll(() => page.evaluate(async () => {
@@ -69,10 +73,10 @@ async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStart
 
 const optimize = (page) => page.locator('#lineupTab [data-action="optimizeLineup"]').click();
 
-const starters = (page) => page.evaluate(async (leagueId) => {
+const starters = (page, leagueId = FIXTURE_LEAGUE_ID) => page.evaluate(async (leagueId) => {
     const { State } = await import('/js/mls/state.js');
     return State.manualStartersMap[leagueId].map(s => `${s.slot.replace(/\d+$/, '')}:${s.player ? s.player.name : '-'}`);
-}, FIXTURE_LEAGUE_ID);
+}, leagueId);
 
 test.describe('Lineup Optimizer: FLEX without FLEX ranks', () => {
     test('rank decides within a position, projections between positions, ranked before unranked', async ({ page }) => {
@@ -108,6 +112,42 @@ test.describe('Lineup Optimizer: FLEX without FLEX ranks', () => {
         const lineup = await starters(page);
         expect(lineup.filter(s => s.startsWith('SFLEX:'))).toEqual(['SFLEX:George Kittle']);
         expect(lineup).not.toContain('WR:A.J. Brown');
+        await expectClean(page, state);
+    });
+
+    // S12 round 5. Projections used to load only with the Lineup tab, so Optimize All from the Dashboard right after
+    // opening the app picked between positions by position rank alone. It now loads them first. One FLEX slot:
+    // CeeDee Lamb (WR3) projects 10, Trey McBride (TE2) 6; by projection Lamb, by position rank McBride.
+    test('Optimize All from the Dashboard loads projections first', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await setup(page, { positions: ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN'],
+            extraProj: { 6786: 10 }, dashboard: true });
+        expect(await page.evaluate(async () => (await import('/js/mls/lineup/gameInfo.js')).lineupProjectionsLoaded())).toBe(false);
+        await page.click('#optimizeAllBtn');
+        await expect(page.locator('#optimizeAllBtn')).toBeEnabled();
+        expect((await starters(page)).filter(s => s.startsWith('FLEX:'))).toEqual(['FLEX:CeeDee Lamb']);
+        await expectClean(page, state);
+    });
+
+    // And when projections arrive later (Sleeper didn't answer during Optimize All), every league optimized without
+    // them is redone, not just the one you have open.
+    test('projections that arrive late redo every league optimized without them', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        let block = true;
+        await setup(page, { positions: ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN'],
+            extraProj: { 6786: 10 }, dashboard: true, second: true });
+        await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/2$/, route => (block ? route.fulfill({ status: 503, body: '' }) : route.fallback()));
+        await page.click('#optimizeAllBtn');
+        await expect(page.locator('#optimizeAllBtn')).toBeEnabled();
+        expect((await starters(page, '1000000000000000002')).filter(s => s.startsWith('FLEX:'))).toEqual(['FLEX:Trey McBride']);
+
+        block = false;
+        await showTab(page, 'lineup');
+        await expect.poll(async () => (await starters(page, '1000000000000000002')).filter(s => s.startsWith('FLEX:'))).toEqual(['FLEX:CeeDee Lamb']);
+        await expect.poll(async () => (await starters(page)).filter(s => s.startsWith('FLEX:'))).toEqual(['FLEX:CeeDee Lamb']);
+        // The league you had open is still the active one.
+        await expect(page.locator('#headerLeagueSelect')).toHaveValue(FIXTURE_LEAGUE_ID);
+        state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !/503|projections/i.test(e)));
         await expectClean(page, state);
     });
 });

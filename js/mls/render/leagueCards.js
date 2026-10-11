@@ -21,7 +21,8 @@
 // - A card with nothing to do (no to-dos, no Sleeper changes, no upgrade) starts folded; your own fold or unfold of
 //   a card wins and is remembered (KEYS.mls.leagueCardsCollapsed now holds { folded: [ids], open: [ids] }; the
 //   round-1 array is read as folded).
-// - The Sleeper changes are an item of the to-dos, not a fold, and count toward "N to do" and the amber border.
+// - The Sleeper changes are an item of the to-dos, not a fold. Round 5: they count as "1 to set", in neutral text,
+//   not toward "N to do" or the amber border, which are for what needs you before kickoff.
 // - ▲ ▼ ✕ show only in Reorder mode (the toolbar's Reorder / Done, in memory), so names get the width and there's
 //   no red ✕ on every card.
 // - The sync age shows only when it's old or failed.
@@ -131,8 +132,11 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
         const showNeeds = !ctx.hidden;
         const line = showNeeds ? entry.line || null : null;
         const sleeper = showNeeds ? entry.sleeper || null : null;
-        const needsYou = !!((line && line.needs) || sleeper);
-        const count = (line ? needsYouCount(line.items) : 0) + (sleeper ? 1 : 0);
+        // Amber (the border, "N to do") only for what needs you before kickoff. Sleeper changes alone are routine (most
+        // leagues have some after an Optimize All), so they read "1 to set", in neutral text (owner's choice, round 5:
+        // amber on 13 of 14 cards drowned out the injuries).
+        const needsYou = !!(line && line.needs);
+        const count = line ? needsYouCount(line.items) : 0;
         // The sync age only when it's worth a look (old, unknown or failed), not "Synced today" on every card.
         const syncNote = st.sync && st.sync.cls !== 'freshness-ok' ? `<span class="${st.sync.cls}">${st.sync.text}</span>` : '';
         const meta = [st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', syncNote]
@@ -156,7 +160,7 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
                 </div>
                 <div class="mls-lc-status">
                     ${statusChipsHTML(st)}
-                    <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to do</span>` : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
+                    <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to do</span>` : ''}${sleeper ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
                 </div>
                 <div class="mls-lc-body"${collapsed ? ' hidden' : ''}>
                     ${todo ? `<div class="mls-lc-todo">${todo}</div>` : ''}

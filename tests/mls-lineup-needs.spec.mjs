@@ -258,8 +258,11 @@ test.describe('Lineups that need you', () => {
         expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Out), Garrett Wilson"]);
         const fixtureLine = line(page, 'Fixture League');
         await expect(fixtureLine.locator('.mls-needs-label')).toHaveText('Set on Sleeper');
-        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to do');
-        await expect(card(page, 'Fixture League')).toHaveClass(/\bneeds-you\b/);
+        // Routine, so neutral: "1 to set", no amber border (S12 round 5).
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveCount(0);
+        await expect(card(page, 'Fixture League')).not.toHaveClass(/\bneeds-you\b/);
+        await expect(box(page).locator('.mls-needs-check')).toHaveText('Set the lineup on Sleeper, then Sync All again to clear it.');
         await expect(card(page, 'Fixture League').locator('.mls-lc-chip.is-danger .mls-lc-chip-label')).toHaveText('Lineup');
         // Open lineup opens the league, whose box has the changes in a drop-down.
         await fixtureLine.getByRole('button', { name: "Open Fixture League's lineup" }).click();
