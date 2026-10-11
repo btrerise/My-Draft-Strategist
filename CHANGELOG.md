@@ -113,8 +113,11 @@ Nothing yet.
     chevron to fold or open it; that's remembered, and "Fold all" does every card. A folded card still says "2 to do"
     (in amber, for what needs you before kickoff: only those cards get the amber border), "1 to set" (lineup changes
     to make on Sleeper) or "1 upgrade". A player who's injured or on bye but still in your Sleeper lineup needs you:
-    "Bench D'Andre Swift (Out)" is amber and counted, not a routine "1 to set". In a card open for its to-dos, best
+    "Bench D'Andre Swift (Out)" is amber and counted, not a routine "1 to set". A routine change says why when it isn't
+    just a lower rank: "Bench Ashton Jeanty (Q · not in Wk5)", in muted text. In a card open for its to-dos, best
     available shows only when it has an upgrade.
+  - After Sync All, each league's card says what changed on its roster ("Synced: + Mike Washington · − Chris
+    Godwin"), folded too, until you leave the page. The Sync Logs under the cards keep them as before.
   - A line under Sync All and Optimize All counts the lineups that need you and says the next step ("Set the lineups
     on Sleeper, then Sync All again to clear them"): its "Show" scrolls to that league's card ("Show next" steps
     through several), and its ✕ hides the to-dos until another league needs you.

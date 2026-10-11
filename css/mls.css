@@ -1568,6 +1568,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-needs-item.is-ir, .lineup-needs-item.is-ir { color: #d6bcfa; }
 .mls-needs-item.is-sleeper { color: var(--text-main); }
 .mls-needs-hurt { color: #fca5a5; font-weight: 600; }
+.mls-needs-why { color: var(--text-muted); }
 .mls-needs-item.is-kept, .lineup-needs-item.is-kept, .mls-needs-item.is-unmatched, .lineup-needs-item.is-unmatched { opacity: 0.7; font-style: italic; }
 .mls-needs-sep { color: var(--text-muted); opacity: 0.7; }
 .mls-needs-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; }
@@ -1627,6 +1628,12 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-lc-count-sleeper { color: var(--text-muted); font-weight: 500; }
 .mls-lc-count-upgrades { color: var(--primary-green); }
 .mls-lc-count-upgrades:empty { display: none; }
+/* This visit's Sync All roster changes (round 8), in the Sync Logs' colors. */
+.mls-lc-synced { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
+.mls-lc-synced-label { font-weight: 600; }
+.mls-lc-synced-add { color: #86efac; }
+.mls-lc-synced-drop { color: #9ca3af; }
+.mls-lc-synced-out { color: #fca5a5; }
 .mls-lc-body { display: flex; flex-wrap: wrap; gap: 0 1.5rem; margin-top: 0.45rem; border-top: 1px solid var(--border); }
 .mls-lc-body[hidden] { display: none; }
 .mls-lc-todo, .mls-lc-ba { flex: 1 1 320px; min-width: 0; }
@@ -1639,7 +1646,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 /* Phones: the status row starts at the card's edge, under the chevron, so the chips get the full width. */
 @media (max-width: 600px) {
     .mls-lc-card { padding: 0.5rem 0.55rem 0.55rem; }
-    .mls-lc-status { margin-left: 0; }
+    .mls-lc-status, .mls-lc-synced { margin-left: 0; }
 }
 
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---

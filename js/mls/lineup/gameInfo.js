@@ -12,7 +12,8 @@ import { getByeWeek } from '../../shared/data/byes.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
-import { isAutoLockOverridden, renderLineupUI, optimizeLineup, reoptimizeProjectionlessLeagues } from '../main.js';
+import { getLeagueRankings, isAutoLockOverridden, renderLineupUI, optimizeLineup, reoptimizeProjectionlessLeagues } from '../main.js';
+import { normalizeName } from '../../shared/names.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
 
@@ -455,7 +456,9 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     // urgent }, or null when they match or there's nothing to compare (Best Ball, manual leagues, no lineup yet). A
     // benched player's note says why he can't help: his status when he's unlikely to play ("Out"), or "on bye"; shown
     // as "Derrick Henry (Out)". That's the Global Injury Auditor's "injured starter in your Sleeper lineup", which this
-    // replaces (S11 round 4), and any note makes the change urgent (S12 round 6). Shared with the Dashboard's league cards,
+    // replaces (S11 round 4), and any note makes the change urgent (S12 round 6). A routine bench change gets a muted
+    // reason when the rankings alone don't explain it (round 8): "Ashton Jeanty (Q · not in Wk5)". Shared with the
+    // Dashboard's league cards,
     // whose Lineup chip is red exactly when this returns changes (render/leagueCards.js, improvements S12).
     export function getSleeperLineupChanges(league, starters) {
         const sleeperIds = getValidSleeperStarterIds(league);
@@ -474,14 +477,34 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
             return isOnByeThisWeek(p.team) ? 'on bye' : '';
         };
         const benchNotes = changes.bench.map(note);
-        return { start: changes.start.map(name), bench: changes.bench.map(name), benchNotes, urgent: benchNotes.some(Boolean) };
+        // Otherwise, why the optimizer benched someone you're starting, when it isn't just a lower rank: a status that
+        // still lets him play ("Q"), or his absence from the rankings it used ("not in Wk5"; Weekly, else ROS, as the
+        // optimizer picks). A star benched with no reason given made you check everything else (round 8).
+        const weekly = getLeagueRankings(league, 'weekly');
+        const used = weekly || getLeagueRankings(league, 'ros');
+        const rankedNames = used ? new Set(used.data.map(r => r.cleanName)) : null;
+        // A short name you gave the set ("Wk5"); a long one (the default "Weekly Rankings – 9/15/2026") would crowd the line.
+        const setLabel = used && used.setName && used.setName.length <= 16 ? used.setName : `your ${weekly ? 'Weekly' : 'ROS'} rankings`;
+        const why = (id) => {
+            const p = playerOf(id);
+            if (!p) return '';
+            const parts = [];
+            if (p.inj) parts.push(p.inj);
+            if (rankedNames && !rankedNames.has(p.cleanName || normalizeName(p.name))) parts.push(`not in ${setLabel}`);
+            return parts.join(' · ');
+        };
+        const benchWhy = changes.bench.map((id, i) => (benchNotes[i] ? '' : why(id)));
+        return { start: changes.start.map(name), bench: changes.bench.map(name), benchNotes, benchWhy, urgent: benchNotes.some(Boolean) };
     }
 
-    // "Start Ja'Marr Chase · Bench Garrett Wilson, Derrick Henry (Out)", names kept whole.
+    // "Start Ja'Marr Chase · Bench Garrett Wilson, Derrick Henry (Out)", names kept whole; a routine reason is muted.
     export function sleeperChangesHTML(changes) {
         const nb = (t) => escapeHtml(t).replace(/ /g, '&nbsp;');
         const notes = changes.benchNotes || [];
-        const names = (list, withNotes) => list.map((n, i) => nb(n) + (withNotes && notes[i] ? `&nbsp;<span class="mls-needs-hurt">(${nb(notes[i])})</span>` : '')).join(', ');
+        const whys = changes.benchWhy || [];
+        const noteHTML = (i) => notes[i] ? `&nbsp;<span class="mls-needs-hurt">(${nb(notes[i])})</span>`
+            : whys[i] ? `&nbsp;<span class="mls-needs-why">(${nb(whys[i])})</span>` : '';
+        const names = (list, withNotes) => list.map((n, i) => nb(n) + (withNotes ? noteHTML(i) : '')).join(', ');
         const parts = [];
         if (changes.start.length) parts.push(`Start ${names(changes.start, false)}`);
         if (changes.bench.length) parts.push(`Bench ${names(changes.bench, true)}`);

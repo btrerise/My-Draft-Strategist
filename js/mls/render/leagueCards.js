@@ -38,7 +38,7 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getValidSleeperStarterIds } from '../lineup/gameInfo.js';
 import { needsYouCount } from '../lineup/issues.js';
 import { bestBallBadgeMarkup, leagueStatusChipMarkup } from '../badges.js';
-import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, renderLineupNeeds } from './dashboard.js';
+import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
 
     const CHEVRON = `<svg class="mls-lc-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
@@ -145,6 +145,8 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
             .filter(Boolean).join('<span class="mls-lc-sep"> · </span>');
 
         const todo = line || sleeper ? leagueTodoHTML(line, sleeper) : '';
+        // What this visit's Sync All changed on the roster, under the status row so a folded card shows it too.
+        const synced = syncChangesFor(l.leagueId);
         const n = State.leagues.length;
         return `
             <li class="mls-lc-card${active ? ' is-active' : ''}${needsYou ? ' needs-you' : ''}${collapsed ? ' is-collapsed' : ''}" data-league-id="${id}">
@@ -164,6 +166,7 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
                     ${statusChipsHTML(st)}
                     <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to do</span>` : ''}${sleeper && !urgentSleeper ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
                 </div>
+                ${synced ? `<p class="mls-lc-synced"><span class="mls-lc-synced-label">Synced:</span> ${syncChangesHTML(synced)}</p>` : ''}
                 <div class="mls-lc-body"${collapsed ? ' hidden' : ''}>
                     ${todo ? `<div class="mls-lc-todo">${todo}</div>` : ''}
                     <div class="mls-lc-ba" data-league-id="${id}">${ctx.ba.get(l.leagueId) || ''}</div>

@@ -294,6 +294,91 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 
+    // S12 round 8 (found in a review as a user: "Bench Ashton Jeanty" with no reason made you check everything). A routine
+    // bench change says why when the rankings alone don't: a status that still lets him play, or his absence from the
+    // rankings the optimizer used. Muted, and still routine.
+    test('a routine bench change says why when it is not just a lower rank', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, injuries: { [KITTLE]: 'Questionable' },
+            sleeperStarters: [ALLEN, HENRY, BIJAN, '6794', '6786', KITTLE, '7523', '17', 'BAL'] });
+        await seedTwoLeagues(page);
+        // Garrett Wilson isn't in the Fixture League's rankings any more (like a player your analyst leaves out).
+        await page.evaluate(async (leagueId) => {
+            const { State } = await import('/js/mls/state.js');
+            const { getLeagueRankings, renderLeagueCards } = await import('/js/mls/main.js');
+            const league = State.leagues.find(l => l.leagueId === leagueId);
+            getLeagueRankings(league, 'weekly').data.splice(0, Infinity, ...getLeagueRankings(league, 'weekly').data.filter(r => r.cleanName !== 'garrettwilson'));
+            renderLeagueCards();
+        }, FIXTURE_LEAGUE_ID);
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Q), Garrett Wilson (not in your Weekly rankings)"]);
+        const fixtureLine = line(page, 'Fixture League');
+        await expect(fixtureLine.locator('.mls-needs-why')).toHaveText(['(Q)', '(not in your Weekly rankings)']);
+        // Still routine: neutral "1 to set", no amber.
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
+        await expect(card(page, 'Fixture League')).not.toHaveClass(/\bneeds-you\b/);
+        // A set with a short name you gave it is named ("Wk5", as best available names it).
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            const { renderLeagueCards } = await import('/js/mls/main.js');
+            State.rankingSets.weekly.forEach(set => { set.name = 'Wk5'; });
+            renderLeagueCards();
+        });
+        await expect(fixtureLine.locator('.mls-needs-why').last()).toHaveText('(not in Wk5)');
+        // The Lineup tab's drop-down says the same.
+        await fixtureLine.getByRole('button', { name: "Open Fixture League's lineup" }).click();
+        await expect(lineupBox(page).locator('.lineup-needs-sleeper-text')).toContainText('George Kittle (Q), Garrett Wilson (not in Wk5)');
+        await expectClean(page, state);
+    });
+
+    // S12 round 8 (found in a review as a user): Sync All's "3 with roster changes" pointed at the Sync Logs, which sit
+    // under every card (thousands of pixels down on a phone). Each league's card now says what changed, folded too, for
+    // the rest of the visit.
+    test("Sync All's roster changes show on each league's card", async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false });
+        let pickedUp = false;
+        // Later in the week: Derrick Henry is ruled out, and you picked up Zay Flowers and dropped Garrett Wilson in
+        // the Fixture League.
+        await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
+            if (!pickedUp) return route.fallback();
+            const players = fixture('players-nfl.json');
+            players[HENRY].injury_status = 'Out';
+            return route.fulfill({ json: players });
+        });
+        await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), async route => {
+            if (!pickedUp) return route.fallback();
+            const rosters = fixture('league-rosters.json');
+            move(rosters[1], rosters[0], BIJAN); move(rosters[0], rosters[1], '5859');
+            rosters[0].reserve = [];
+            rosters[0].players = [...rosters[0].players.filter(id => id !== '7523'), '9997'];
+            return route.fulfill({ json: rosters });
+        });
+        await seedTwoLeagues(page);
+        await expect(cards(page).locator('.mls-lc-synced')).toHaveCount(0);
+        pickedUp = true;
+        await page.click('#syncAllBtn');
+        await expect(page.locator('.toast-message').filter({ hasText: '2 with roster changes' })).toBeVisible();
+        await expect(page.locator('#syncAllBtn')).toBeEnabled();
+        const synced = card(page, 'Fixture League').locator('.mls-lc-synced');
+        await expect(synced).toHaveText('Synced: +\u00a0Zay\u00a0Flowers · \u2212\u00a0Garrett\u00a0Wilson · Derrick\u00a0Henry\u00a0(Out)');
+        await expect(synced.locator('.mls-lc-synced-out')).toHaveText('Derrick\u00a0Henry\u00a0(Out)');
+        // Henry is on the second league's roster too; nothing else changed there.
+        await expect(card(page, SECOND_LEAGUE_NAME).locator('.mls-lc-synced')).toHaveText('Synced: Derrick\u00a0Henry\u00a0(Out)');
+        // Folded, the card still says it.
+        if (await card(page, 'Fixture League').locator('.mls-lc-body').isVisible()) await card(page, 'Fixture League').locator('.mls-lc-fold').click();
+        await expect(card(page, 'Fixture League')).toHaveClass(/\bis-collapsed\b/);
+        await expect(synced).toBeVisible();
+        // The Sync Logs keep it too; after a reload only they do.
+        await expect(page.locator('#syncLogContent')).toContainText('Zay Flowers');
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await showTab(page, 'setup');
+        await expect(cards(page)).toHaveCount(2);
+        await expect(cards(page).locator('.mls-lc-synced')).toHaveCount(0);
+        await expect(page.locator('#syncLogContent')).toContainText('Zay Flowers');
+        await expectClean(page, state);
+    });
+
     test('✕ hides it until a league it did not list needs you, or the next run', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         // Kittle (healthy, benched) in the Fixture League's IR slot; only the second league needs you.

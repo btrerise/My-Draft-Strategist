@@ -3797,3 +3797,51 @@ Cooper over Jaylin Noel" from the first draw).
 **Checks.** `npm run check`: precache OK, 328 unit tests, 338 Playwright tests pass; the 10 failures are only
 visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 6's,
 so main against this branch differs in the same six MLS screenshots as before, all intended.
+
+### S12, round 8: roster changes on each card after Sync All; a reason beside a routine bench change (owner's go-ahead after my fifth review as a user)
+
+**Why.** The review ran a real Sync All on the owner's 21 leagues (read-only, 16 seconds): the strip went from 9
+lineups to set to 1, which works. Two things didn't.
+1. **"3 with roster changes"... which three?** The toast pointed at the Sync Logs, which open by themselves, but since
+   S12 they sit under all 21 cards: about 4,700px down on a phone. (They were Mike Washington pickups in two leagues,
+   best available's suggestion, and one in Gridiron Best Ball.)
+2. **"Bench Ashton Jeanty" with no reason.** The one change left told the owner to bench his RB1: right (Jeanty is
+   Questionable and not in Wk5), but unexplained, so you double-check everything.
+
+**What changed.**
+1. js/mls/render/dashboard.js: Sync All's log entries also record the league's id (no storage key changed), and the
+   run's changes are kept in memory for the visit (`syncChangesFor`, `syncChangesHTML`). Each card
+   (js/mls/render/leagueCards.js) shows its own under the status row, so a folded card shows it too:
+   "Synced: + Zay Flowers · − Garrett Wilson · Derrick Henry (Out)", in the Sync Logs' colors (`.mls-lc-synced*` in
+   css/mls.css). A newly out player reads "(Out)", not the log's "Out: … (OUT)"; another status stays ("(IR)"). After
+   a reload the cards are quiet; the Sync Logs keep the history as before.
+2. `getSleeperLineupChanges` (js/mls/lineup/gameInfo.js) returns `benchWhy` beside `benchNotes`: for a routine bench
+   change, the player's status when it still lets him play ("Q") and/or "not in <set>" when the rankings the optimizer
+   used (Weekly, else ROS) leave him out. The set's own name when it's short ("Wk5"), else "your Weekly rankings" (the
+   default name, "Weekly Rankings – 9/15/2026", would crowd the line). `sleeperChangesHTML` shows it muted
+   (`.mls-needs-why`); an urgent note stays red, and the change stays routine. The Lineup tab's drop-down says the
+   same. `getLeagueRankings` is re-exported by js/mls/main.js for it.
+
+**Tests** (both shown failing on the old code first), in `tests/mls-lineup-needs.spec.mjs`:
+- "a routine bench change says why…": Kittle Questionable, Garrett Wilson left out of the rankings: "(Q)", "(not in
+  your Weekly rankings)", then "(not in Wk5)" once the set is named Wk5; still "1 to set", no amber; the Lineup tab
+  says the same.
+- "Sync All's roster changes show on each league's card": between syncs Derrick Henry is ruled out and Zay Flowers is
+  picked up for Garrett Wilson; the Fixture League's card says all three (folded too), the second league's only Henry,
+  and after a reload only the Sync Logs do.
+
+No legend line: these are text lines, not badges (tests/unit/badgeLegend.test.mjs agrees).
+
+On the owner's backup after a real Sync All: 13 cards say what changed ("Synced: + Mike Washington · − Chris Godwin",
+"Synced: Jordan Addison (Out)"), and the reasons read "Bench CeeDee Lamb (Q · not in Wk5)". (ESPN is blocked here, so
+the Thursday players weren't locked; in the owner's browser they are.)
+
+**A flake seen once, not from this change:** in one full run, `tests/mls-waiver-tiers.spec.mjs` "a Pos Rank column
+shows the overall tier…" failed with "Execution context was destroyed" in `showTab` right after `seedMls` /
+`loadMlsRankings` (the page was still navigating). It passed 6 of 6 alone, and this round doesn't touch that spec or
+the code it runs. If CI hits it, the fix is the one mls-display-ranks got in round 4: wait for `networkidle` before
+the first `showTab`.
+
+**Checks.** `npm run check`: precache OK, 328 unit tests, 342 Playwright tests pass; the 10 failures are only
+visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 7's
+(the screenshot leagues never Sync All, and their Sleeper changes have no reasons to give).

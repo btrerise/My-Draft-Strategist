@@ -63,6 +63,25 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         content.innerHTML = html;
     };
 
+    // The roster changes this visit's last Sync All found, by league id (S12 round 8). Each league's card shows its own
+    // ("Synced: + Mike Washington · − Chris Godwin"), since the Sync Logs above sit under every card, thousands of
+    // pixels down on a phone. In memory only: after a reload the cards are quiet again and the logs keep the history.
+    let syncChangesThisVisit = null;
+    export function syncChangesFor(leagueId) {
+        return (syncChangesThisVisit && syncChangesThisVisit.get(leagueId)) || null;
+    }
+
+    // "+ Mike Washington · − Chris Godwin · Tony Pollard (Out)", names kept whole, in the Sync Logs' colors. The log
+    // stores a newly out player as "Tony Pollard (OUT)" (or "(IR)"): the card says "(Out)" rather than "Out: … (OUT)".
+    export function syncChangesHTML(log) {
+        const nb = (names) => names.map(n => escapeHtml(n).replace(/ /g, '&nbsp;')).join(', ');
+        const parts = [];
+        if (log.added.length) parts.push(`<span class="mls-lc-synced-add">+&nbsp;${nb(log.added)}</span>`);
+        if (log.dropped.length) parts.push(`<span class="mls-lc-synced-drop">&minus;&nbsp;${nb(log.dropped)}</span>`);
+        if (log.newlyOut.length) parts.push(`<span class="mls-lc-synced-out">${nb(log.newlyOut.map(n => n.replace(/\(OUT\)$/, '(Out)')))}</span>`);
+        return parts.join('<span class="mls-needs-sep"> · </span>');
+    }
+
     // --- LINEUPS THAT NEED YOU (improvements S11; in the league cards since S12) ---
     // Every league whose lineup needs you before kickoff: a starter who's injured, in your Sleeper IR slot or on
     // bye, or an empty starting slot. Each says what to do ("Justin Jefferson is Doubtful: start CeeDee Lamb
@@ -443,6 +462,7 @@ export const syncAllLeagues = async function(btn) {
                         // If it returned our rosterDiff object with actual changes, log it
                         if (typeof result === 'object' && (result.added.length || result.dropped.length || result.newlyOut.length)) {
                             newLogs.push({
+                                leagueId: l.leagueId,
                                 leagueName: l.name,
                                 added: result.added,
                                 dropped: result.dropped,
@@ -476,6 +496,8 @@ export const syncAllLeagues = async function(btn) {
 
                 // Save logs to state and local storage
                 State.syncLogs = newLogs;
+                // And on each league's card for the rest of the visit (S12 round 8): the logs sit under every card.
+                syncChangesThisVisit = new Map(newLogs.map(log => [log.leagueId, log]));
                 localStorage.setItem(KEYS.mls.syncLogs, JSON.stringify(State.syncLogs));
                 
                 // Toast a summary that accounts for every league we tried, not just the ones
