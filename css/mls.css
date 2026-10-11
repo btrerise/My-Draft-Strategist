@@ -1628,12 +1628,13 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-lc-count-sleeper { color: var(--text-muted); font-weight: 500; }
 .mls-lc-count-upgrades { color: var(--primary-green); }
 .mls-lc-count-upgrades:empty { display: none; }
-/* This visit's Sync All roster changes (round 8), in the Sync Logs' colors. */
+/* This visit's Sync All roster changes (round 8), in the Sync Logs' colors, except a newly out player: muted, not the
+   injury red (owner's choice, round 10). It's news; red is for what you have to act on, like "Bench X (Out)". */
 .mls-lc-synced { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
 .mls-lc-synced-label { font-weight: 600; }
 .mls-lc-synced-add { color: #86efac; }
 .mls-lc-synced-drop { color: #9ca3af; }
-.mls-lc-synced-out { color: #fca5a5; }
+.mls-lc-synced-out { color: var(--text-muted); }
 .mls-lc-body { display: flex; flex-wrap: wrap; gap: 0 1.5rem; margin-top: 0.45rem; border-top: 1px solid var(--border); }
 .mls-lc-body[hidden] { display: none; }
 .mls-lc-todo, .mls-lc-ba { flex: 1 1 320px; min-width: 0; }

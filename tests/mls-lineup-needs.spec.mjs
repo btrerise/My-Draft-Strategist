@@ -362,6 +362,10 @@ test.describe('Lineups that need you', () => {
         const synced = card(page, 'Fixture League').locator('.mls-lc-synced');
         await expect(synced).toHaveText('Synced: +\u00a0Zay\u00a0Flowers · \u2212\u00a0Garrett\u00a0Wilson · Derrick\u00a0Henry\u00a0(Out)');
         await expect(synced.locator('.mls-lc-synced-out')).toHaveText('Derrick\u00a0Henry\u00a0(Out)');
+        // Muted, not the injury red: it's news, and red is for what you have to act on (owner's choice, round 10).
+        const color = (loc) => loc.evaluate(e => getComputedStyle(e).color);
+        expect(await color(synced.locator('.mls-lc-synced-out'))).toBe(await color(synced));
+        expect(await color(synced.locator('.mls-lc-synced-out'))).not.toBe('rgb(252, 165, 165)');
         // Henry is on the second league's roster too; nothing else changed there.
         await expect(card(page, SECOND_LEAGUE_NAME).locator('.mls-lc-synced')).toHaveText('Synced: Derrick\u00a0Henry\u00a0(Out)');
         // Folded, the card still says it.

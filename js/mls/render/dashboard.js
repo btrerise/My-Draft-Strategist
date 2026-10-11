@@ -71,7 +71,7 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         return (syncChangesThisVisit && syncChangesThisVisit.get(leagueId)) || null;
     }
 
-    // "+ Mike Washington · − Chris Godwin · Tony Pollard (Out)", names kept whole, in the Sync Logs' colors. The log
+    // "+ Mike Washington · − Chris Godwin · Tony Pollard (Out)", names kept whole (newly out ones muted). The log
     // stores a newly out player as "Tony Pollard (OUT)" (or "(IR)"): the card says "(Out)" rather than "Out: … (OUT)".
     export function syncChangesHTML(log) {
         const nb = (names) => names.map(n => escapeHtml(n).replace(/ /g, '&nbsp;')).join(', ');

@@ -3881,3 +3881,12 @@ on the next showing of the Lineup tab (fails without fix 2).
 
 **Checks.** `npm run check`: precache OK, 328 unit tests, 344 Playwright tests pass; the 10 failures are only
 visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 8's.
+
+### S12, round 10: newly out players muted in the "Synced:" line (owner's choice)
+
+From my sixth review as a user: after a real Sync All, 14 calm, folded cards carried a red line ("Synced: Jordan
+Addison (Out)", a bench player), in the same red as a to-do's "Bench Will Shipley (Out)". The owner saw the side-by-side
+(red now, muted proposed) and chose muted. css/mls.css: `.mls-lc-synced-out` is `var(--text-muted)`. Pickups stay
+green; red stays for what needs acting on. Test: `tests/mls-lineup-needs.spec.mjs`, "Sync All's roster changes show on
+each league's card", now checks the newly out name is the line's muted color, not the injury red (fails on round 9). Checks: precache OK, 328 unit and 344 Playwright tests pass (only visual.spec fails here, as
+always); screenshots pixel-identical to round 9.
