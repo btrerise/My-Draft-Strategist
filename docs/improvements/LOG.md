@@ -3336,3 +3336,114 @@ else (318 other tests passed). It took three runs: a test stops at its first fai
 - Run 37996843439: `{desktop,phone}/mls-league-guide.png`. The lock line ("Manual locks (and swaps, which lock) last
   for the week…"), step 7 "Lineups that need you" and the legend's box sample (desktop 6229 → 6350px, phone
   12707 → 12930px).
+
+## S12 — A phone Dashboard: one card per league
+
+**User-visible effect.** The Dashboard's League Command Center lists your leagues as cards, one per league, in your
+league order, at every width. Each card holds everything about that league, so each league shows once:
+- **Header:** a chevron that folds the card, the league's name (tap it to make it the active league; the active one
+  has the table's green edge), its format and last sync ("Redraft 1QB PPR · Synced 4 days ago", amber when old, red
+  when the last sync failed), and ▲ ▼ ✕ (reorder, remove, with the same confirm naming the league).
+- **Status row:** a chip each for **Rankings** (Weekly rankings fresh in the last 6 days: green; stale or missing:
+  amber) and **Lineup** (matches Sleeper: green; differs: red; not optimized yet: grey; no Sleeper lineup on record
+  yet: amber), EARLY or BB as before, then "2 to do" (amber) and "1 upgrade" (green), which stay readable with the card
+  folded. Each chip carries a word, so a phone shows what it's about without hover, and tapping it opens the
+  table's tooltip text, under the status row so it never runs off the screen.
+- **Body:** the league's to-dos from S11 ("Needs you · Sun 1:00 PM", one item per line, Open lineup / Find RB), its
+  Sleeper changes in a fold ("Differs from your Sleeper lineup: 4 changes"), and its Best Available section from S5
+  (open when the league has an upgrade, folded otherwise, with View, ×, Restore and, on desktop, the Sleeper link). A
+  manual league's card says why it has no best available. On a wide screen the to-dos and best available sit side by
+  side; on a phone they stack.
+- **Above the cards:** the box under Sync All / Optimize All is now one line ("2 lineups need you before kickoff · 1
+  to set on Sleeper", ✕, "Sync All again"); its ✕ hides the cards' to-dos for the session until another league needs
+  you, or the next Optimize All or Sync All, as before. Then a toolbar: "Best available by [Weekly | ROS]", the summary
+  ("Upgrades in 2 of 5 leagues") and **Fold all / Unfold all**.
+- **Gone:** the League / Rankings / Lineup / Settings table, the box's per-league lines and its Sleeper drop-down, and
+  the Best Available card (its tooltip text moved into the Command Center's (i)).
+- At 375px and 390px nothing runs past the edge, names are whole (they wrap between words), and every button sits
+  inside its card.
+
+**Owner's decisions (asked before building, with a sketch).**
+1. **Phones only or desktop too:** I suggested phones only, up to 600px. The owner asked whether it would make more
+   sense to have it all fit in one League Command Center, consistent everywhere. I took that as **cards at every width**:
+   the table, the box and the Best Available card go on desktop too, and a wide card puts its to-dos and best available
+   side by side.
+2. **What each card holds:** status chips, S11's to-dos and buttons, its Sleeper changes (folded) and its Best
+   Available line, as I proposed. The owner added: **every card can fold, even with to-dos**, to move through many
+   leagues quickly. Folding is remembered per league (new key below), and I added Fold all / Unfold all for the same
+   reason. A folded card keeps its header, chips and counts, so a new to-do still shows.
+3. **The separate box and the Best Available card go:** yes (my recommendation). The box's header stays as the strip.
+4. **Order:** your league order (▲▼), not soonest kickoff first. Urgency shows as the strip's count, an amber border
+   on each card that needs you, and the kickoff time (amber within a day).
+
+**What changed and where.**
+- `js/mls/render/leagueCards.js` (new, in `PRECACHE_ASSETS`): `renderLeagueCards` (the cards, the strip, Fold all),
+  `leagueStatus` (the table's Rankings / Lineup / EARLY / format / sync logic, moved from `renderLeagueManager`),
+  `toggleLeagueCard`, `foldAllLeagueCards`. A redraw keeps focus on the same control (or the league's name), each
+  card's Sleeper fold state, and its Best Available section until that redraws (no flash).
+- `js/mls/leagues/sync.js`: `renderLeagueManager` now calls `renderLeagueCards` (all its callers unchanged); the table
+  code and its imports are gone.
+- `js/mls/render/dashboard.js`: `collectLineupNeeds` (exported) returns the lines in league order plus `byLeague`, so
+  the strip and the cards read one computation per render. `leagueNeedsHTML` / `leagueSleeperFoldHTML` (the box's line
+  markup, per card), `lineupNeedsHidden` (the ✕ rule), `renderLineupNeeds` draws the strip. ✕, Optimize All and Sync All
+  redraw through `renderLeagueManager`.
+- `js/mls/scout/bestAvailable.js`: `renderBestAvailable` fills each card's `.mls-lc-ba` and upgrade count, the toolbar's
+  switch and summary; `leagueSectionHTML` replaces the line (a fold whose state survives redraws unless the league
+  gains or loses an upgrade). `toggleBestAvailable` and the "Show N more leagues" fold are gone. The upgrade rule,
+  dismissals and View are unchanged.
+- `js/mls/lineup/issues.js`: `needsYouCount` (the "2 to do" count; `needsYou` uses it).
+- `js/mls/badges.js`: `leagueStatusChipMarkup` (the chip; legend sample from the same helper). `js/mls/legend.js`: the
+  status line now shows the chips; the sync-age sample drops `.mls-ba-sync`.
+- `lineup/index.html`: the strip, toolbar and `#leagueCards` in place of the table; the Best Available card removed;
+  the Command Center's (i), Guide steps 2 and 7.
+- `css/mls.css`: `.mls-lc-*` (cards, chips, toolbar), `.status-pending`; the Best Available and needs rules trimmed to
+  what the cards use; the old `.mls-league-row-btn` and `.mls-ba-more` rules removed.
+- **New key `mls_league_cards_collapsed`** (`KEYS.mls.leagueCardsCollapsed`): the ids of folded cards, removed when
+  none is folded. `mls_best_available_collapsed` is no longer read but stays in `keys.js` (no key removals before 6C).
+- `js/mls/main.js`: actions `toggleLeagueCard`, `foldAllLeagueCards`; `toggleBestAvailable` removed.
+- CHANGELOG: a new line, and the S5 and S11 Unreleased lines updated to the cards. `CACHE_NAME` v2.8.91 → v2.8.92.
+
+**One behavior change in the status.** The table showed a red "Differs from your Sleeper lineup" icon for a synced
+league with no Sleeper lineup on record (the fixture league, for one), though there was nothing to compare. The card
+shows an amber Lineup chip, "No Sleeper lineup to compare yet: Sync All gets it". Red now means exactly that the
+card has Sleeper changes to show (`getSleeperLineupChanges`, the same comparison as before).
+
+**Tests.**
+- `tests/mls-league-cards.spec.mjs` (new, both projects): two fixture leagues at **375px and 390px**: one card each in
+  league order, each name once in the Command Center, the strip's count, each card's chips and tones, meta, "1 to do",
+  to-dos, Sleeper fold, Best Available section; no overflow (page and every element), names whole, every button inside
+  its card; the Lineup chip's tooltip opens on a tap and stays on screen; Open lineup works. Then **reorder** (▲ keeps
+  focus on the league, storage order), **switch** by name, **fold** a card with to-dos (header, chips and count stay;
+  remembered across a reload and a redraw), **Fold all / Unfold all** (key removed), a **manual league's** grey and
+  amber chips and no-best-available line, and **delete** via the confirm dialog. And at 1280px the to-dos and best
+  available sit side by side, stacking at 375px.
+- `tests/mls-lineup-needs.spec.mjs`: reads the to-dos from the cards (league order now, so the kickoff test checks
+  order stays and the amber time), the Sleeper fold in the card with the red chip, ✕ hiding the cards' to-dos.
+- `tests/mls-best-available.spec.mjs`: the sections in the cards: empty states (no leagues: no Command Center; only a
+  manual league: its note, no switch), open/folded by upgrade, the counts, the sync age in the header, a folded card
+  remembered (replacing the card's collapse).
+- `tests/mls-rename-ranking-set.spec.mjs`: the Best Available source label in the card.
+- The tooltip test caught a real problem: the site-wide tooltip hangs left from its trigger, so a chip's tooltip ran
+  51px off a phone's left edge. The status row now anchors its tooltips (`css/mls.css`).
+
+**Screenshots: six change, to be re-taken from the PR's CI run.** This container can't render CI-matching baselines
+(F1, S9). Rendered here, main and this branch differ in exactly these six (`npm run pxdiff`); the other 34 are
+pixel-identical:
+- `{desktop,phone}/mls-league-setup.png`: the Command Center as cards: the strip ("1 lineup needs you before
+  kickoff"), the toolbar (Weekly | ROS, "1 league without rankings", Fold all) and the Fixture League's card (amber
+  Rankings and Lineup chips, "1 to do", "RB slot is empty · Find RB", Best available open with its Upload button and,
+  on desktop, the Sleeper link). The table and the Best Available card are gone (desktop 2639 → 2461px, phone
+  2934 → 2761px here).
+- `{desktop,phone}/mls-empty-setup.png`: no Best Available card with no leagues (the Command Center was already hidden;
+  desktop 2067 → 1903px, phone 2185 → 2005px here).
+- `{desktop,phone}/mls-league-guide.png`: Guide steps 2 and 7's new text and the legend's status-chip line.
+
+No PR is open yet, so CI hasn't run. Once one is: let its first run fail on these, and commit CI's renders ("Accepting
+an intended visual change" in `docs/TESTING.md`).
+
+**Left over.**
+- The six screenshots above, from the PR's CI.
+- With many leagues the list is long; Fold all and the per-card fold are the answer for now. A "show only leagues
+  that need me" filter was not asked for.
+- The Best Available card's old collapse key (`mls_best_available_collapsed`) is unread; remove it with the other
+  key work after 6C if wanted.

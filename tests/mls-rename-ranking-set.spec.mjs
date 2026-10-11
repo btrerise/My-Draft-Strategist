@@ -117,7 +117,7 @@ for (const [type, t] of Object.entries(TYPES)) {
             if (type === 'weekly') {
                 await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
                 await showTab(page, 'setup');
-                const line = page.locator('#dashboardBestAvailable .mls-ba-line').filter({ hasText: 'Fixture League' });
+                const line = page.locator('#leagueCards > .mls-lc-card').filter({ hasText: 'Fixture League' }).locator('.mls-lc-ba');
                 await expect(line.locator('.mls-ba-source')).toHaveText(`Weekly · ${ODD_NAME}`);
             }
 

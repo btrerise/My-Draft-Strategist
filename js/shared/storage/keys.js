@@ -75,7 +75,8 @@ export const KEYS = {
         weeklyUpdated: 'mls_weekly_updated',
         autolockOverridesMap: 'mls_autolock_overrides_map',
         lineupNeedsCollapsed: 'mls_lineup_needs_collapsed', // '1' while the Lineup tab's "This lineup needs you" box is folded (improvements S11)
-        bestAvailableCollapsed: 'mls_best_available_collapsed', // '1' while the Dashboard's Best Available card is collapsed (improvements S5)
+        bestAvailableCollapsed: 'mls_best_available_collapsed', // '1' while the Dashboard's Best Available card was collapsed (improvements S5); unread since S12 folded the card into the league cards, kept until refactor 6C
+        leagueCardsCollapsed: 'mls_league_cards_collapsed', // [leagueId] of the Dashboard's league cards folded to their header (improvements S12)
         bestAvailableDismissed: 'mls_best_available_dismissed', // players dismissed from the Best Available card, per league, this NFL week (improvements S5)
         hasOptimized: 'mls_has_optimized',
         hasSeenRankingsToast: 'mls_has_seen_rankings_toast',

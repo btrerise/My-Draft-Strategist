@@ -226,7 +226,7 @@
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">At-a-glance status of all your synced leagues. Click 'Optimize All Lineups' to update every roster instantly based on your latest uploaded weekly rankings. 'Sync All Leagues' also gets the latest injury news for every league. Any lineup that needs you before kickoff (an injured, bye or IR-slot starter, an empty slot, an IR move) is listed under these buttons, soonest kickoff first, with what to do; a league drops off once you've fixed it. The drop-down under that list shows each lineup that differs from the one on Sleeper, the same leagues the Lineup column marks.</span>
+                <span class="tooltip-text">One card per league, in your order (move them with the arrows). Tap a league's name to make it the active league. Each card shows whether its Weekly rankings are fresh and whether its lineup matches the one on Sleeper (tap a chip for more), what its lineup needs from you before kickoff (an injured, bye or IR-slot starter, an empty slot, an IR move) with the buttons that fix it, how it differs from your Sleeper lineup, and its best available players. The chevron folds a card to its header; that's remembered. 'Optimize All Lineups' updates every lineup from your latest Weekly rankings. 'Sync All Leagues' also gets the latest injury news for every league. Best available: for each Sleeper-synced league, the three best-ranked RBs, WRs and TEs nobody has rostered, by that league's own Weekly or ROS rankings (the switch is the same Rank By the Scout tab's Waiver Wire Assistant uses), from the last sync. An upgrade is a ranked free agent who beats one of your players at his position: on Weekly, a starter in your best lineup this week; on ROS, your weakest rostered player. He must be in a better tier when your rankings have tiers (otherwise at least 3 spots better). On a computer, Sleeper opens the league's page on sleeper.com. View opens that league's full Top Available list on the Scout tab.</span>
             </div>
         </header>
         
@@ -240,25 +240,21 @@
                 Optimize All Lineups
             </button>
         </div>
-        <!-- Lineups that need you (js/mls/render/dashboard.js, improvements S11): filled after Optimize All
-             and Sync All when a league has an injured, IR-slot or bye starter or an empty slot. -->
+        <!-- Lineups that need you (js/mls/render/dashboard.js, improvements S11): since S12 a one-line strip (how many
+             need you, ✕ and "Sync All again"); the to-dos themselves are in the league cards below. -->
         <div id="lineupNeedsBox" class="mls-needs-box" role="status" hidden></div>
 
-        <div class="table-responsive custom-scrollbar" style="max-height: 400px; overflow-y: auto;">
-            <table class="sos-grid" style="width: 100%; text-align: left; position: relative;">
-                <thead style="position: sticky; top: 0; z-index: 10; background: var(--card-bg); box-shadow: 0 1px 0 var(--border);">
-                    <tr>
-                        <th class="pl-2" style="text-align: left;">League</th>
-                        <th>Rankings</th>
-                        <th>Lineup</th>
-                        <th>Settings</th>
-                    </tr>
-                </thead>
-                <tbody id="dashboardMatrixBody">
-                    <!-- Populated by JS -->
-                </tbody>
-            </table>
+        <!-- One card per league (js/mls/render/leagueCards.js, improvements S12): status, to-dos, Sleeper changes and
+             best available. Above them, best available's Weekly | ROS switch and summary, and Fold all. -->
+        <div class="mls-lc-toolbar">
+            <div id="leagueCardsBa" class="mls-lc-toolbar-ba" hidden>
+                <span class="mls-lc-toolbar-label">Best available by</span>
+                <div id="bestAvailableBasis" class="mls-segmented mls-ba-basis" role="group" aria-label="Rank best available by"></div>
+                <span id="bestAvailableSummary" class="mls-lc-toolbar-summary"></span>
+            </div>
+            <button type="button" id="foldAllLeagueCards" class="btn-bare mls-lc-fold-all" data-action="foldAllLeagueCards">Fold all</button>
         </div>
+        <ul id="leagueCards" class="mls-lc-list"></ul>
         <!-- RECENT SYNC LOGS -->
         <details class="sos-details-accordion mt-4" id="syncLogAccordion" style="display: none; border-color: rgba(59, 130, 246, 0.3); background: rgba(0,0,0,0.15);">
             <summary class="sos-summary" style="color: #60a5fa;" id="syncLogSummary">Recent Sync Logs</summary>
@@ -266,28 +262,6 @@
                 <!-- Populated by JS -->
             </div>
         </details>
-    </section>
-
-    <!-- BEST AVAILABLE IN YOUR LEAGUES (js/mls/scout/bestAvailable.js, improvements S5). Shown and
-         filled by renderBestAvailable whenever the Command Center above renders on the Dashboard.
-         Collapsible like the rankings cards (the same toggle markup and CSS); the summary line under
-         the title stays visible when it's collapsed. -->
-    <section id="dashboardBestAvailable" class="settings-card rankings-card expanded" style="display: none;">
-        <header class="card-header rankings-card-header">
-            <div class="rankings-header-titles">
-                <h3><button type="button" class="rankings-card-toggle btn-bare" data-action="toggleBestAvailable" aria-expanded="true" aria-controls="bestAvailableBody"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg><span>Best available in your leagues</span><svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button></h3>
-                <div id="bestAvailableSummary" class="rankings-header-set"></div>
-            </div>
-            <div class="cluster cluster-sm">
-                <div class="tooltip-container">
-                    <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">For each Sleeper-synced league, the three best-ranked RBs, WRs and TEs nobody has rostered, by that league's own Weekly or ROS rankings (the switch is the same Rank By the Scout tab's Waiver Wire Assistant uses). An upgrade is a ranked free agent who beats one of your players at his position: on Weekly, a starter in your best lineup this week (he'd start over him); on ROS, your weakest rostered player. He must be in a better tier when your rankings have tiers (otherwise at least 3 spots better). Leagues with the biggest upgrades come first. On a computer, Sleeper opens the league's page on sleeper.com. Manual leagues are left out, since the app only knows your own roster there. View opens that league's full Top Available list (RB/WR/TE) on the Scout tab.</span>
-                </div>
-            </div>
-        </header>
-        <div id="bestAvailableBody" class="rankings-card-body">
-            <!-- Populated by JS -->
-        </div>
     </section>
 
     <!-- ADD/SYNC LEAGUE -->
@@ -917,9 +891,9 @@
         </div>
     </section>
 
-    <!-- GLOBAL INJURY AUDITOR: folded into the Dashboard's "lineups need you" box (improvements S11, round 4).
-         Sync All ("Sync All again" in the box) gets the injury news; the box lists injured starters, IR moves and your
-         Sleeper lineup's differences. This one-line pointer catches people who still look for it here, like the
+    <!-- GLOBAL INJURY AUDITOR: folded into the Dashboard's "lineups need you" box (improvements S11, round 4), which
+         is each league card's to-dos since S12. Sync All ("Sync All again") gets the injury news; the cards list injured
+         starters, IR moves and your Sleeper lineup's differences. This one-line pointer catches people who still look for it here, like the
          Power Rankings pointer on the Scout tab. -->
     <section class="settings-card mls-moved-pointer" id="injuryAuditPointer">
         <p class="card-desc mls-moved-pointer-text">
@@ -1284,7 +1258,7 @@
             <!-- Step 2 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">2</span> League Command Center & Requirements</h4>
-                <p class="step-desc">The <strong class="text-main">League Command Center</strong> on the Dashboard shows every league at a glance, with the status of its rankings, lineup, and settings.</p>
+                <p class="step-desc">The <strong class="text-main">League Command Center</strong> on the Dashboard has one card per league, in your order (move them with the arrows; the chevron folds a card to its header). Each card shows whether its Weekly rankings are fresh, whether its lineup matches the one on Sleeper (tap a chip for more), what it needs from you before kickoff, and its best available free agents. Tap a league's name to make it the active league.</p>
                 <ul class="guide-list">
                     <li><strong class="text-main">Sync All Leagues:</strong> Refreshes rosters, waivers, and trades for all of your Sleeper leagues at once (manual leagues are skipped).</li>
                     <li><strong class="text-main">Optimize All Lineups:</strong> Re-runs the Lineup Optimizer for every league using your latest Weekly rankings.</li>
@@ -1347,7 +1321,7 @@
             <!-- Step 7 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">7</span> Lineups that need you</h4>
-                <p class="step-desc">On the <strong class="text-main">Dashboard</strong>, a box under Sync All and Optimize All lists every league whose lineup needs you before kickoff: a starter who's injured, on bye or still in your Sleeper IR slot, an empty starting slot, an injured bench player you could move to IR, or an IR-slot player who has to come out. Each line says what to do and when the first game kicks off, with a button to swap in a healthy bench player or find a free agent. A drop-down lists the leagues whose lineup on Sleeper differs from yours. <strong class="text-main">Sync All</strong> ("Sync All again" in the box) gets the latest injury news for every league, manual ones included. The Lineup tab shows the same items for the league you have open.</p>
+                <p class="step-desc">On the <strong class="text-main">Dashboard</strong>, each league's card lists what its lineup needs from you before kickoff: a starter who's injured, on bye or still in your Sleeper IR slot, an empty starting slot, an injured bench player you could move to IR, or an IR-slot player who has to come out. It says what to do and when the first game kicks off, with a button to swap in a healthy bench player or find a free agent, and a drop-down shows how the lineup on Sleeper differs from yours. A line under Sync All and Optimize All counts the lineups that need you. <strong class="text-main">Sync All</strong> ("Sync All again" on that line) gets the latest injury news for every league, manual ones included. The Lineup tab shows the same items for the league you have open.</p>
             </div>
 
             <!-- Step 8 -->

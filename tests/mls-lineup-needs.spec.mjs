@@ -1,10 +1,11 @@
-// Lineups that need you (improvements S11). A box under the Dashboard's Sync All / Optimize All buttons lists each
-// league whose lineup needs you before kickoff: a starter who's injured, on bye or still in your Sleeper IR slot, an
-// empty starting slot, an IR move, an IR-slot player who has to come out. Each line says what to do and when the
-// first of those games kicks off (soonest league first), with the buttons that fix it (Open lineup for a swap or an
-// activation, Find <pos> for a pickup on Top Available). A drop-down lists the leagues whose lineup differs from
-// Sleeper. It's always on, drawn from the lineups as they are now; ✕ hides it for the session until a league it
-// didn't list needs you, or the next Optimize All or Sync All. Starters you locked in are shown muted, not counted.
+// Lineups that need you (improvements S11). Each league whose lineup needs you before kickoff (a starter who's
+// injured, on bye or still in your Sleeper IR slot, an empty starting slot, an IR move, an IR-slot player who has to
+// come out) lists it in its Dashboard card (improvements S12, js/mls/render/leagueCards.js; a box under Sync All /
+// Optimize All before): what to do and when the first of those games kicks off, with the buttons that fix it (Open
+// lineup for a swap or an activation, Find <pos> for a pickup on Top Available). The card's drop-down shows how the
+// lineup differs from Sleeper. A strip under the buttons counts them. It's always on, drawn from the lineups as they
+// are now; the strip's ✕ hides the to-dos for the session until a league it didn't list needs you, or the next
+// Optimize All or Sync All. Starters you locked in are shown muted, not counted.
 // The Lineup tab shows the same items for the open league in one box ("This lineup needs you"), with a one-tap
 // swap. Sync All gets the latest injury news, manual leagues included (it replaced the Global Injury Auditor).
 // The rule is getLineupIssues (js/mls/lineup/issues.js).
@@ -25,12 +26,15 @@ const CHASE = '4866', ALLEN = '4984', LAMAR = '4881', HURTS = '6904', BIJAN = '9
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
 const move = (from, to, id) => { from.players = from.players.filter(p => p !== id); to.players.push(id); };
 
+// The strip under the buttons (the count, ✕, "Sync All again"), and each league's card with its to-dos.
 const box = (page) => page.locator('#lineupNeedsBox');
-const problemLines = (page) => box(page).locator(':scope > .mls-needs-list > .mls-needs-line');
-const line = (page, league) => problemLines(page).filter({ has: page.locator('.mls-needs-league', { hasText: league }) });
-// "League: item · item", the items as listed (one per line on screen).
-const lineSummaries = (page) => problemLines(page).evaluateAll(ls => ls.map(l =>
-    `${l.querySelector('.mls-needs-league').textContent.trim()}: ${[...l.querySelectorAll('.mls-needs-item')].map(i => i.textContent.replace(/\u00a0/g, ' ').trim()).join(' · ')}`));
+const cards = (page) => page.locator('#leagueCards > .mls-lc-card');
+const card = (page, league) => cards(page).filter({ has: page.locator('.mls-lc-name', { hasText: league }) });
+const problemLines = (page) => page.locator('#leagueCards .mls-lc-todo > .mls-needs-line');
+const line = (page, league) => card(page, league).locator('.mls-lc-todo > .mls-needs-line');
+// "League: item · item" for each card with to-dos, in card order; the items as listed (one per line on screen).
+const lineSummaries = (page) => cards(page).evaluateAll(cs => cs.filter(c => c.querySelector('.mls-lc-todo > .mls-needs-line')).map(c =>
+    `${c.querySelector('.mls-lc-name').textContent.trim()}: ${[...c.querySelectorAll('.mls-lc-todo > .mls-needs-line .mls-needs-item')].map(i => i.textContent.replace(/\u00a0/g, ' ').trim()).join(' · ')}`));
 const openLineup = (page, league) => line(page, league).getByRole('button', { name: `Open ${league}'s lineup` });
 const lineupBox = (page) => page.locator('#optimalLineupContainer .lineup-needs-box');
 const lineupItems = (page) => lineupBox(page).locator('.lineup-needs-item').evaluateAll(ls => ls.map(l => l.textContent.replace(/ /g, ' ').trim()));
@@ -111,8 +115,8 @@ test.describe('Lineups that need you', () => {
         const state = await openApp(page, '/lineup/');
         await routeLeagues(page);
         await seedTwoLeagues(page);
-        // The Command Center's (i) says what the box is.
-        await expect(page.locator('#dashboardCommandCenter .card-header .tooltip-text')).toContainText('listed under these buttons');
+        // The Command Center's (i) says what the cards hold.
+        await expect(page.locator('#dashboardCommandCenter .card-header .tooltip-text')).toContainText('what its lineup needs from you before kickoff');
 
         // Always on: the syncs already re-optimized both leagues.
         await expect(box(page)).toBeVisible();
@@ -122,7 +126,10 @@ test.describe('Lineups that need you', () => {
         await expect(line(page, 'Fixture League').locator('.mls-needs-item.is-ir')).toHaveText(CHASE_ITEM.replace("Ja'Marr Chase", "Ja'Marr Chase"));
         await expect(line(page, SECOND_LEAGUE_NAME).locator('.mls-needs-item.is-injured')).toHaveCount(1);
         // Both are Lineup tab jobs (an activation, a swap): Open lineup, no Find.
-        await expect(box(page).locator('.mls-needs-find')).toHaveCount(0);
+        await expect(page.locator('#leagueCards .mls-needs-find')).toHaveCount(0);
+        // Each card counts its to-dos and has the amber edge.
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to do');
+        await expect(card(page, 'Fixture League')).toHaveClass(/\bneeds-you\b/);
 
         await optimizeAll(page, 'Optimized 2 lineups · 2 need you');
         expect(await lineSummaries(page)).toEqual([CHASE_LINE, LAMAR_LINE]);
@@ -151,6 +158,9 @@ test.describe('Lineups that need you', () => {
         await expect(lineupBox(page)).toHaveCount(0);
         await showTab(page, 'setup');
         await expect(box(page)).toBeHidden();
+        await expect(problemLines(page)).toHaveCount(0);
+        await expect(cards(page).filter({ hasText: 'to do' })).toHaveCount(0);
+        await expect(page.locator('#leagueCards .needs-you')).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -194,7 +204,7 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 
-    test('soonest kickoff first, and amber within a day', async ({ page }) => {
+    test('the kickoff time, amber within a day; the cards stay in your league order', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await routeLeagues(page);
         await seedTwoLeagues(page);
@@ -205,7 +215,8 @@ test.describe('Lineups that need you', () => {
         }, Date.parse(FIXED_NOW));
         await showTab(page, 'lineup');
         await showTab(page, 'setup');
-        expect(await lineSummaries(page)).toEqual([LAMAR_LINE, CHASE_LINE]);
+        // League order (owner's choice, S12; the box sorted soonest first before), so ▲▼ always move a card.
+        expect(await lineSummaries(page)).toEqual([CHASE_LINE, LAMAR_LINE]);
         await expect(line(page, SECOND_LEAGUE_NAME).locator('.mls-needs-when')).toHaveClass(/\bis-soon\b/);
         await expect(line(page, 'Fixture League').locator('.mls-needs-when')).not.toHaveClass(/\bis-soon\b/);
         await expect(line(page, 'Fixture League').locator('.mls-needs-when')).not.toBeEmpty();
@@ -243,8 +254,12 @@ test.describe('Lineups that need you', () => {
         await expect(box(page)).toBeVisible();
         await expect(problemLines(page)).toHaveCount(0);
         await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup to set on Sleeper');
-        const fold = box(page).locator('.mls-needs-sleeper');
-        await expect(fold.locator('summary')).toHaveText('1 league differs from your Sleeper lineup');
+        // In the Fixture League's card, folded, and its Lineup chip is red; the other league has none.
+        await expect(page.locator('#leagueCards .mls-needs-sleeper')).toHaveCount(1);
+        const fold = card(page, 'Fixture League').locator('.mls-needs-sleeper');
+        await expect(card(page, 'Fixture League').locator('.mls-lc-chip.is-danger .mls-lc-chip-label')).toHaveText('Lineup');
+        await expect(fold.locator('summary')).toHaveText('Differs from your Sleeper lineup: 4 changes');
+        await expect(fold).not.toHaveAttribute('open', '');
         await fold.locator('summary').click();
         const sleeperLine = fold.locator('.mls-needs-line');
         await expect(sleeperLine).toHaveCount(1);
@@ -266,13 +281,18 @@ test.describe('Lineups that need you', () => {
         await routeLeagues(page, { reserve: [KITTLE] });
         await seedTwoLeagues(page);
         expect(await lineSummaries(page)).toEqual([LAMAR_LINE]);
-        await box(page).getByRole('button', { name: 'Close this list' }).click();
+        await box(page).getByRole('button', { name: 'Hide the to-dos' }).click();
         await expect(box(page)).toBeHidden();
+        // The cards' to-dos go with it; the cards stay.
+        await expect(problemLines(page)).toHaveCount(0);
+        await expect(cards(page)).toHaveCount(2);
+        await expect(page.locator('#leagueCards .needs-you')).toHaveCount(0);
 
         // Re-renders keep it closed...
         await showTab(page, 'lineup');
         await showTab(page, 'setup');
         await expect(box(page)).toBeHidden();
+        await expect(problemLines(page)).toHaveCount(0);
         // ...until the Fixture League needs you too: Kittle started from the IR slot.
         await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
         await showTab(page, 'lineup');
@@ -281,7 +301,7 @@ test.describe('Lineups that need you', () => {
         expect(await lineSummaries(page)).toEqual(['Fixture League: Activate George Kittle from IR on Sleeper', LAMAR_LINE]);
 
         // Closed again, the next run brings it back.
-        await box(page).getByRole('button', { name: 'Close this list' }).click();
+        await box(page).getByRole('button', { name: 'Hide the to-dos' }).click();
         await expect(box(page)).toBeHidden();
         await optimizeAll(page, 'Optimized 2 lineups · 2 need you');
         await expect(box(page)).toBeVisible();
@@ -292,7 +312,7 @@ test.describe('Lineups that need you', () => {
         const state = await openApp(page, '/lineup/');
         await routeLeagues(page);
         await seedTwoLeagues(page);
-        await box(page).getByRole('button', { name: 'Close this list' }).click();
+        await box(page).getByRole('button', { name: 'Hide the to-dos' }).click();
 
         await page.click('#syncAllBtn');
         // One short line (phones): what was synced, then how many need you.
@@ -402,7 +422,7 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 
-    test('at 375px wide each league is one block, names whole, its buttons under its items, nothing past the edge', async ({ page }) => {
+    test('at 375px wide each league is one card, names whole, its buttons under its items, nothing past the edge', async ({ page }) => {
         await page.setViewportSize({ width: 375, height: 812 });
         const state = await openApp(page, '/lineup/');
         await routeLeagues(page);
@@ -410,18 +430,18 @@ test.describe('Lineups that need you', () => {
         await expect(problemLines(page)).toHaveCount(2);
 
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
-        const boxRect = await box(page).boundingBox();
         for (const league of ['Fixture League', SECOND_LEAGUE_NAME]) {
-            const l = line(page, league);
-            // The league's name in full (no ellipsis); its buttons in a row under its items, inside the box.
-            const name = l.locator('.mls-needs-league');
+            const c = card(page, league);
+            const cardRect = await c.boundingBox();
+            // The league's name in full (no ellipsis); its buttons in a row under its items, inside the card.
+            const name = c.locator('.mls-lc-name');
             await expect(name).toHaveText(league);
             expect(await name.evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true);
             const btn = await openLineup(page, league).boundingBox();
-            const main = await l.locator('.mls-needs-main').boundingBox();
-            expect(btn.x + btn.width).toBeLessThanOrEqual(boxRect.x + boxRect.width);
+            const main = await line(page, league).locator('.mls-needs-main').boundingBox();
+            expect(btn.x + btn.width).toBeLessThanOrEqual(cardRect.x + cardRect.width);
             expect(btn.y).toBeGreaterThanOrEqual(main.y + main.height - 1);
-            expect(btn.x).toBeGreaterThanOrEqual(boxRect.x);
+            expect(btn.x).toBeGreaterThanOrEqual(cardRect.x);
         }
         // The Lineup tab's box fits too (that tab's button row above it is wider than 375px already).
         await openLineup(page, SECOND_LEAGUE_NAME).click();

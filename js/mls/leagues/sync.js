@@ -8,23 +8,19 @@ import { clearSimResults } from '../sim/ui.js';
 import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG, fantasyPosition } from '../constants.js';
 import { State } from '../state.js';
-import { getActiveLeague, getShortInjuryStatus, HARD_OUT_STATUSES, isBestBallLeague } from '../helpers.js';
+import { getActiveLeague, getShortInjuryStatus, HARD_OUT_STATUSES } from '../helpers.js';
 import { updatePulsePrompts } from '../init.js';
-import { isEarlyPlayer } from '../lineup/earlyGames.js';
-import { sleeperLineupChanges } from '../lineup/issues.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderBestAvailable, renderLineupNeeds } from '../main.js';
+import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderLeagueCards } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
-import { getFreshness } from '../../shared/freshness.js';
 import { applyMarketSettingsToUI } from '../settings.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { flashButton } from '../../shared/ui/flashButton.js';
 import { normalizeName } from '../../shared/names.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showToast } from '../../shared/ui/toast.js';
-import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatusIconMarkup } from '../badges.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -52,139 +48,11 @@ import { STATUS_CHECK_ICON, STATUS_WARN_ICON, bestBallBadgeMarkup, pendingStatus
         if (typeof updateLeagueNavUI === 'function') updateLeagueNavUI();
     }
 
+    // The Dashboard's League Command Center: one card per league since improvements S12 (render/leagueCards.js),
+    // with each league's status, to-dos, Sleeper changes and Best Available line, in place of the table, the
+    // "lineups need you" box and the Best Available card.
     export function renderLeagueManager() {
-        const cmdCenter = document.getElementById('dashboardCommandCenter');
-        const tbody = document.getElementById('dashboardMatrixBody');
-        
-        if (!cmdCenter || !tbody) return;
-
-        // The card under this one (scout/bestAvailable.js); it draws only while the Dashboard is shown.
-        renderBestAvailable();
-        // The "lineups need you" box under Optimize All (render/dashboard.js, improvements S11), from the
-        // lineups as they are now: a league fixed since the run drops off.
-        renderLineupNeeds();
-
-        if (State.leagues.length === 0) {
-            cmdCenter.style.display = 'none';
-            return;
-        }
-
-        cmdCenter.style.display = 'block';
-        let html = "";
-        
-        State.leagues.forEach((l, index) => {
-            // --- Rankings Status Check ---
-            let wDate = null;
-            let wSet = l.weeklyRankingSetId ? State.rankingSets.weekly.find(s => s.id === l.weeklyRankingSetId) : null;
-            if (wSet) wDate = wSet.updatedAt;
-            else if (l.weeklyRankingsUpdatedAt) wDate = l.weeklyRankingsUpdatedAt;
-            
-            let wFresh = getFreshness(wDate, 6);
-            let wIsStale = !wFresh || wFresh.isStale;
-
-            let rankIcon = wIsStale 
-                ? `<span class="status-icon status-warn tooltip-container">${STATUS_WARN_ICON}<span class="tooltip-text">Weekly Rankings Stale or Missing</span></span>`
-                : `<span class="status-icon status-good tooltip-container">${STATUS_CHECK_ICON}<span class="tooltip-text">Weekly Rankings Fresh</span></span>`;
-
-            // --- Lineup Match Check ---
-            let isBestBall = isBestBallLeague(l);
-            let starters = State.manualStartersMap[l.leagueId] || [];
-            let optStarterIds = starters.filter(s => s.player).map(s => s.player.id);
-            let sleeperStarters = (l.sleeperStarters || []).filter(id => id && id !== "0");
-            
-            let isMatch = false;
-            let isSetup = optStarterIds.length > 0;
-            
-            if (isSetup && sleeperStarters.length > 0) {
-                // The same comparison as the "lineups need you" box's Sleeper drop-down (improvements S11).
-                const changes = sleeperLineupChanges(optStarterIds, sleeperStarters);
-                isMatch = changes.start.length === 0 && changes.bench.length === 0;
-            } else if (isSetup && l.leagueId.startsWith('manual_')) {
-                isMatch = true; 
-            }
-
-            let lineupIcon = '';
-            if (isBestBall) {
-                lineupIcon = bestBallBadgeMarkup('<span class="tooltip-text">Best Ball (No Lineup Management)</span>');
-            } else if (!isSetup) {
-                lineupIcon = pendingStatusIconMarkup('<span class="tooltip-text">Not Optimized Yet</span>');
-            } else if (isMatch) {
-                lineupIcon = `<span class="status-icon status-good tooltip-container">${STATUS_CHECK_ICON}<span class="tooltip-text">Matches Sleeper Lineup</span></span>`;
-            } else {
-                lineupIcon = `<span class="status-icon status-danger tooltip-container">${STATUS_WARN_ICON}<span class="tooltip-text">Differs from your Sleeper lineup: the changes are in the list above</span></span>`;
-            }
-
-            // --- Early Game Check ---
-            let hasEarly = false;
-            if (isSetup) {
-                hasEarly = starters.some(s => s.player && isEarlyPlayer(s.player.team));
-            }
-            let earlyIcon = hasEarly ? `<span class="badge early-badge tooltip-container" style="padding: 2px 4px; font-size: 0.6rem; margin-left: 6px; cursor: help;">EARLY<span class="tooltip-text">Starter has an Early Game</span></span>` : '';
-
-            // --- Layout ---
-            let formatText = l.formatBadge ? `<span style="display: block; color:var(--text-muted); font-size: 0.75rem; margin-top: 2px; font-weight: normal;">${l.formatBadge}</span>` : "";
-            // Roster age. Manual and Draft Strategist handoff leagues are never synced from
-            // Sleeper, so they get no label. A Sleeper league with no lastSyncedAt was last
-            // synced before this was tracked -- flagged the same way the Rankings column treats
-            // a missing date (stale), since we can't vouch for it. Past 2 days a waiver run or
-            // trade has likely landed, so it goes amber.
-            let syncText = "";
-            if (!/^(manual|handoff)_/.test(l.leagueId)) {
-                const syncFresh = getFreshness(l.lastSyncedAt, 2, 'Synced');
-                const syncStale = !syncFresh || syncFresh.isStale;
-                const syncLabel = syncFresh ? syncFresh.label : 'Last sync unknown';
-                if (l.lastSyncFailedAt) {
-                    // A failed sync outranks the age label: this roster is not just old, we
-                    // know it's behind. Age still gets shown alongside it, since how stale the
-                    // data is decides whether you can trust a lineup off it before retrying.
-                    // Set in processSleeperData's catch, cleared on the next successful sync.
-                    const staleFor = syncFresh ? syncFresh.label.replace(/^Synced /, 'from ') : 'never synced';
-                    syncText = `<span class="sync-failed" style="display: block; font-size: 0.75rem; margin-top: 2px;">Last sync failed · roster ${staleFor}</span>`;
-                } else {
-                    syncText = `<span class="${syncStale ? 'freshness-stale' : 'freshness-ok'}" style="display: block; font-size: 0.75rem; margin-top: 2px;">${syncLabel}</span>`;
-                }
-            }
-            let activeStyle = l.leagueId === State.activeLeagueId ? 'background: rgba(16, 185, 129, 0.08);' : '';
-            let activeIndicator = l.leagueId === State.activeLeagueId ? `<div style="width: 3px; height: 100%; background: var(--primary-green); position: absolute; left: 0; top: 0;"></div>` : '';
-
-            html += `
-            <tr style="position: relative; ${activeStyle}">
-                <td style="padding: 0; border-bottom: 1px solid var(--border); position: relative;">
-                    ${activeIndicator}
-                    <!-- A real button (was a clickable <td>) so the row can be reached with Tab and
-                         switched to with Enter/Space. Fills the cell, so the click area is unchanged. -->
-                    <button type="button" class="mls-league-row-btn" data-focus-key="row:${escapeHtml(l.leagueId)}" data-action="switchActiveLeague" data-league-id="${l.leagueId}" ${l.leagueId === State.activeLeagueId ? 'aria-current="true"' : ''}>
-                        <strong style="color: var(--text-main); font-size: 0.9rem;">${escapeHtml(l.name)}</strong>
-                        ${formatText}
-                        ${syncText}
-                    </button>
-                </td>
-                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: center;">
-                    ${rankIcon}
-                </td>
-                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap;">
-                    ${lineupIcon} ${earlyIcon}
-                </td>
-                <td style="padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap;">
-                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="up:${escapeHtml(l.leagueId)}" data-action="moveLeague" data-index="${index}" data-direction="-1" ${index === 0 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} up">▲</button>
-                    <button class="btn-sm btn-secondary mls-league-move-btn" style="padding: 0.3rem 0.5rem;" data-focus-key="down:${escapeHtml(l.leagueId)}" data-action="moveLeague" data-index="${index}" data-direction="1" ${index === State.leagues.length - 1 ? 'disabled' : ''} aria-label="Move ${escapeHtml(l.name)} down">▼</button>
-                    <button class="btn-sm btn-danger" style="padding: 0.3rem 0.5rem; margin-left: 0.3rem;" data-action="deleteLeagueManager" data-league-id="${l.leagueId}" aria-label="Remove ${escapeHtml(l.name)}">✕</button>
-                </td>
-            </tr>`;
-        });
-
-        // Rebuilding the rows destroys whatever button had focus, which drops a keyboard user
-        // back at the top of the page after every switch or reorder. Put focus back on the same
-        // control for the same league (or its row, if that control is now disabled, e.g. ▲ on a
-        // league that just moved to the top).
-        const focusKey = tbody.contains(document.activeElement) ? document.activeElement.getAttribute('data-focus-key') : null;
-        tbody.innerHTML = html;
-        if (focusKey) {
-            const leagueId = focusKey.slice(focusKey.indexOf(':') + 1);
-            const same = tbody.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
-            const target = (same && !same.disabled) ? same : tbody.querySelector(`[data-focus-key="${CSS.escape('row:' + leagueId)}"]`);
-            if (target) target.focus();
-        }
+        renderLeagueCards();
     }
 
     export const moveLeague = function(index, direction) {

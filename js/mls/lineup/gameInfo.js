@@ -409,8 +409,8 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     // Your lineup here against the one on Sleeper as of the last sync: { start: [names], bench: [names] }, or null
     // when they match or there's nothing to compare (Best Ball, manual leagues, no lineup yet). A benched name
     // carries his status when he's unlikely to play ("Derrick Henry (Out)"): the Global Injury Auditor's "injured
-    // starter in your Sleeper lineup", which this replaces (S11 round 4). Shared with the Dashboard box; the
-    // Command Center's Lineup column uses the same comparison (sleeperLineupChanges), so they agree.
+    // starter in your Sleeper lineup", which this replaces (S11 round 4). Shared with the Dashboard's league cards,
+    // whose Lineup chip is red exactly when this returns changes (render/leagueCards.js, improvements S12).
     export function getSleeperLineupChanges(league, starters) {
         const sleeperIds = getValidSleeperStarterIds(league);
         const optimized = (starters || []).filter(s => s && s.player);

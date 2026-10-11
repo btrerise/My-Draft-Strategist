@@ -67,22 +67,29 @@
 // network calls), as runAllLeaguesSearch does. No Would Start check: it needs the active league's
 // lineup.
 //
-// When it draws: from renderLeagueManager (the Command Center's own render), only while the
-// Dashboard is the active tab. That covers the Dashboard being shown (nav.js → refreshLeagueDropdown),
+// S12 (owner's choice: one League Command Center, one card per league): the card is gone. Each league's line
+// is a section of that league's card (render/leagueCards.js, .mls-lc-ba), folded unless it has an upgrade (or
+// no league has rankings yet); its fold is kept across redraws. The Weekly | ROS switch and the summary
+// ("Upgrades in 2 of 5 leagues") sit in the toolbar above the cards, and each card's status row counts its
+// upgrades ("1 upgrade") so a folded card still shows it. A manual league's card says why it has none. The
+// sync note moved to the card's header, which already shows the sync age. The card's remembered collapse
+// (KEYS.mls.bestAvailableCollapsed) is no longer read; each league card folds instead.
+//
+// When it draws: from renderLeagueManager (the Command Center's own render, after the cards are drawn), only
+// while the Dashboard is the active tab. That covers the Dashboard being shown (nav.js → refreshLeagueDropdown),
 // Sync All (its finally re-renders the Command Center) and adding, importing or deleting a league.
 // Rankings change on the Lineup and Roster tabs, so coming back to the Dashboard picks them up.
 import { escapeHtml } from '../../shared/html.js';
-import { getFreshness } from '../../shared/freshness.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { State } from '../state.js';
 import { getLeagueRankings } from '../leagues/sync.js';
-import { setRankingsCardExpanded } from '../rankings/engine.js';
 import { bestLineup, buildRankDisplayIndex, checkAgainstLineup, findFreeAgents, FLEX_POSITIONS, upgradeGap } from './waiverScanner.js';
 import { freeAgentPlayer, getSleeperMetaByName, lineupCheckDeps, makeLeagueGetPos, rosterBenchmark, updateWaiverScanSetting } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { showTab, switchActiveLeague } from '../main.js';
 import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
+import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
 
     const PER_LEAGUE = 3;
 
@@ -119,10 +126,7 @@ import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
         if (changed) writeDismissed(all);
         return all;
     }
-    const CARD_ID = 'dashboardBestAvailable';
-
     const EXTERNAL_ICON = `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
-    const CHEVRON_ICON = `<svg aria-hidden="true" class="mls-ba-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 
     // Renders are async (the player map), and Sync All asks for one per league it syncs; only the
     // newest one writes.
@@ -256,7 +260,7 @@ import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
             ...freeAgents.filter(fa => !flagged.has(fa.cleanName)).map(fa => ({ fa, upgrade: null }))
         ].slice(0, PER_LEAGUE);
 
-        return { league, basis, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
+        return { league, basis, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null, upgradeCount: upgrades.length, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
     }
 
     function playerHTML(a, { fa, upgrade }) {
@@ -268,29 +272,25 @@ import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
         return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${dismiss}${over}</li>`;
     }
 
-    // "Synced 4 days ago" when a league's ownership is old enough that an upgrade may already be gone
-    // (the Command Center's 2-day rule), or when its last sync failed.
-    function syncNote(league) {
-        if (league.lastSyncFailedAt) return `<span class="mls-ba-sync sync-failed">Last sync failed</span>`;
-        const fresh = getFreshness(league.lastSyncedAt, 2, 'Synced');
-        if (fresh && !fresh.isStale) return '';
-        return `<span class="mls-ba-sync freshness-stale">${fresh ? fresh.label : 'Last sync unknown'}</span>`;
-    }
-
-    function leagueLineHTML(a) {
+    // A league card's Best Available section (S12; one line of the card before). A fold: open when the league has
+    // an upgrade (or no league has rankings yet), so the rest stay out of the way. prevFold: the section's fold
+    // before this redraw; its open state is kept unless the default changed (the league gained or lost an
+    // upgrade).
+    function leagueSectionHTML(a, defaultOpen, prevFold) {
         const { league, basis, upgrade } = a;
         const id = escapeHtml(league.leagueId);
         const name = escapeHtml(league.name || 'Unnamed league');
         // Sleeper's web app, where the claim actually happens. A plain link: no data is fetched.
         const sleeperLink = `<a class="btn btn-secondary mls-btn-sm mls-ba-sleeper" href="https://sleeper.com/leagues/${encodeURIComponent(league.leagueId)}" target="_blank" rel="noopener" aria-label="Open ${name} in Sleeper (new tab)">${EXTERNAL_ICON}Sleeper</a>`;
 
-        let source, body, button;
+        let source, flag = '', body, button;
         if (!basis) {
             source = 'No rankings';
             body = `<div class="mls-ba-empty">Upload Weekly rankings on the Lineup tab (or ROS on the Roster tab) with this league active.</div>`;
             button = `<button type="button" class="btn btn-secondary mls-btn-sm" data-action="bestAvailableUpload" data-league-id="${id}" aria-label="Upload rankings for ${name}">Upload</button>`;
         } else {
             source = sourceLabel(basis);
+            if (!upgrade) flag = `<span class="mls-ba-flag">No upgrade</span>`;
             if (a.players.length > 0) {
                 body = `<ol class="mls-ba-players">${a.players.map(p => playerHTML(a, p)).join('')}</ol>`;
             } else if (a.dismissedCount > 0) {
@@ -306,14 +306,14 @@ import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
             }
             button = `<button type="button" class="btn btn-secondary mls-btn-sm" data-action="viewLeagueTopAvailable" data-league-id="${id}" aria-label="View top available in ${name}">View</button>`;
         }
-
-        return `<li class="mls-ba-line${upgrade ? ' has-upgrade' : ''}" data-league-id="${id}">
-            <div class="mls-ba-main">
-                <div class="mls-ba-head"><span class="mls-ba-league">${name}</span><span class="mls-ba-source">${source}</span>${syncNote(league)}</div>
-                ${body}
+        const open = prevFold && prevFold.dataset.default === String(defaultOpen) ? prevFold.open : defaultOpen;
+        return `<details class="mls-change-fold mls-ba-fold${upgrade ? ' has-upgrade' : ''}" data-default="${defaultOpen}"${open ? ' open' : ''}>
+            <summary>${FOLD_CHEVRON}<span class="mls-ba-title">Best available</span><span class="mls-ba-source">${source}</span>${flag}</summary>
+            <div class="mls-ba-line">
+                <div class="mls-ba-main">${body}</div>
+                <div class="mls-ba-actions">${button}${sleeperLink}</div>
             </div>
-            <div class="mls-ba-actions">${button}${sleeperLink}</div>
-        </li>`;
+        </details>`;
     }
 
     // The header's one-liner, readable with the card collapsed.
@@ -328,13 +328,12 @@ import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
     }
 
     export async function renderBestAvailable() {
-        const card = document.getElementById(CARD_ID);
-        const body = document.getElementById('bestAvailableBody');
+        const list = document.getElementById('leagueCards');
+        const toolbar = document.getElementById('leagueCardsBa');
         const summary = document.getElementById('bestAvailableSummary');
-        if (!card || !body || !dashboardShown()) return;
+        const switchBox = document.getElementById('bestAvailableBasis');
+        if (!list || !dashboardShown()) return;
         const gen = ++renderGen;
-        card.style.display = 'block';
-        setRankingsCardExpanded(CARD_ID, !isCollapsedSaved());
 
         const leagues = State.leagues || [];
         const synced = leagues.filter(isFullyMappedLeague);
@@ -348,46 +347,31 @@ import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
         }
         if (gen !== renderGen) return;
 
-        if (leagues.length === 0) {
-            if (summary) summary.textContent = '';
-            body.innerHTML = `<div class="mls-scan-empty">No leagues yet. Sync a Sleeper league or import all of yours under Add/Sync League below, and each league's best available players show here.</div>`;
-            return;
+        // The toolbar's part: the switch and the summary, only with a Sleeper-synced league to show.
+        if (toolbar) toolbar.hidden = synced.length === 0;
+        const dismissedAll = synced.length > 0 ? currentDismissed() : {};
+        const analyses = new Map(synced.map(l => [l.leagueId, analyzeLeague(l, meta, dismissedAll)]));
+        if (summary) summary.textContent = synced.length > 0 ? summaryText([...analyses.values()]) : '';
+        if (switchBox) {
+            const basis = chosenBasis();
+            const basisBtn = (b) => `<button type="button" class="mls-segmented-btn${b === basis ? ' active' : ''}" data-action="setBestAvailableBasis" data-basis="${b}" aria-pressed="${b === basis}">${NAMES[b]}</button>`;
+            switchBox.innerHTML = basisBtn('weekly') + basisBtn('ros');
         }
-        if (synced.length === 0) {
-            if (summary) summary.textContent = 'No Sleeper-synced leagues';
-            body.innerHTML = `<div class="mls-scan-empty">Best available needs a league synced from Sleeper. Manual leagues only know your own roster, not who's on the waiver wire. Sync a Sleeper league under Add/Sync League below.</div>`;
-            return;
-        }
-        const dismissedAll = currentDismissed();
-        const analyses = synced.map(l => analyzeLeague(l, meta, dismissedAll));
-        if (summary) summary.textContent = summaryText(analyses);
 
-        // Biggest upgrade first; ties keep the Command Center's league order (sort is stable).
-        const withUpgrade = analyses.filter(a => a.upgrade).sort((x, y) => y.upgrade.gap - x.upgrade.gap);
-        const rest = [...analyses.filter(a => a.basis && !a.upgrade), ...analyses.filter(a => !a.basis)];
-        const anyRanked = analyses.some(a => a.basis);
-
-        const basis = chosenBasis();
-        const basisBtn = (b) => `<button type="button" class="mls-segmented-btn${b === basis ? ' active' : ''}" data-action="setBestAvailableBasis" data-basis="${b}" aria-pressed="${b === basis}">${NAMES[b]}</button>`;
-        let html = `<div class="mls-ba-controls">
-                <div class="mls-segmented mls-ba-basis" role="group" aria-label="Rank by">${basisBtn('weekly')}${basisBtn('ros')}</div>
-                <p class="mls-ba-note">Each league by its own ${NAMES[basis]} rankings. Ownership is from the last sync: <strong>Sync All Leagues</strong> refreshes it.</p>
-            </div>`;
-        if (withUpgrade.length > 0) {
-            html += `<ul class="mls-ba-list">${withUpgrade.map(leagueLineHTML).join('')}</ul>`;
-        } else if (anyRanked) {
-            html += `<div class="mls-ba-none">No free agent is ranked ahead of your weakest RB, WR or TE in any league.</div>`;
-        }
-        if (rest.length > 0) {
-            const restList = `<ul class="mls-ba-list">${rest.map(leagueLineHTML).join('')}</ul>`;
-            // With nothing above them (no league has rankings yet), the lines show unfolded.
-            html += anyRanked
-                ? `<details class="mls-ba-more"><summary>${CHEVRON_ICON}<span><span class="mls-ba-when-closed">Show</span><span class="mls-ba-when-open">Hide</span> ${plural(rest.length, withUpgrade.length > 0 ? 'more league' : 'league')}</span></summary>${restList}</details>`
-                : restList;
-        }
-        const leftOut = leagues.length - synced.length;
-        if (leftOut > 0) html += `<p class="mls-ba-excluded">${plural(leftOut, 'manual league')} not included: the app only knows your own roster there, not who's on the waiver wire.</p>`;
-        body.innerHTML = html;
+        // With no league ranked yet, every section opens (each one's Upload is the to-do).
+        const anyRanked = [...analyses.values()].some(a => a.basis);
+        leagues.forEach(l => {
+            const sel = `[data-league-id="${CSS.escape(l.leagueId)}"]`;
+            const section = list.querySelector(`.mls-lc-ba${sel}`);
+            const count = list.querySelector(`.mls-lc-count-upgrades${sel}`);
+            const a = analyses.get(l.leagueId);
+            if (section) {
+                section.innerHTML = a
+                    ? leagueSectionHTML(a, !!a.upgrade || !anyRanked, section.querySelector(':scope > details.mls-ba-fold'))
+                    : `<p class="mls-ba-excluded">No best available here: in a manual league the app only knows your own roster, not who's on the waiver wire.</p>`;
+            }
+            if (count) count.textContent = a && a.upgradeCount ? plural(a.upgradeCount, 'upgrade') : '';
+        });
     }
 
     // × on a player: hide him from this league's line for the rest of the NFL week.
@@ -407,22 +391,6 @@ import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
         delete all[leagueId];
         writeDismissed(all);
         renderBestAvailable();
-    }
-
-    function isCollapsedSaved() {
-        try { return localStorage.getItem(KEYS.mls.bestAvailableCollapsed) === '1'; } catch (e) { return false; }
-    }
-
-    // The header's toggle. Remembered across visits; the summary line stays visible either way.
-    export function toggleBestAvailable() {
-        const card = document.getElementById(CARD_ID);
-        if (!card) return;
-        const expand = !card.classList.contains('expanded');
-        setRankingsCardExpanded(CARD_ID, expand);
-        try {
-            if (expand) localStorage.removeItem(KEYS.mls.bestAvailableCollapsed);
-            else localStorage.setItem(KEYS.mls.bestAvailableCollapsed, '1');
-        } catch (e) { /* storage blocked: it still toggles for this visit */ }
     }
 
     // The Weekly | ROS switch: the Waiver Wire Assistant's Rank By, shared with the Scout tab.

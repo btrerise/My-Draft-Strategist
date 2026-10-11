@@ -1,5 +1,5 @@
 // What on a lineup needs you before kickoff (improvements S11). One rule for the Lineup tab's "This lineup needs
-// you" box (gameInfo.js) and the Dashboard's "lineups need you" box (js/mls/render/dashboard.js), so the two can't
+// you" box (gameInfo.js) and the Dashboard's league cards (js/mls/render/dashboard.js and leagueCards.js), so the two can't
 // disagree. Pure: no State, no DOM, so tests/unit/lineupIssues.test.mjs runs it in Node. gameInfo.js's
 // getLineupIssues supplies the State-backed parts (statuses, kickoffs, byes, locks, the league's IR rules).
 import { SLOT_POSITIONS, slotDisplayName } from '../constants.js';
@@ -175,7 +175,9 @@ export function lineupIssueItems(issues) {
 }
 
 // Something to do before kickoff (not only starters you kept, or IR moves).
-export const needsYou = (items) => items.some(i => !i.muted && !i.note);
+// How many items count (not a starter you kept, not a note); a league card shows it as "2 to do" (S12).
+export const needsYouCount = (items) => items.filter(i => !i.muted && !i.note).length;
+export const needsYou = (items) => needsYouCount(items) > 0;
 
 // Which buttons a league's Dashboard line gets (owner's choice): Open lineup when its Lineup tab can act on it
 // (a suggested swap, or a starter to activate), and a Find button per position nobody on the bench can fill.

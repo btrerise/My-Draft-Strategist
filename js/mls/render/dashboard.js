@@ -1,6 +1,7 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Dashboard (Setup tab) part of RENDERERS. The
 // sync-log accordion (renderSyncLogs) and the Optimize All / Sync All buttons.
-// Improvements S11 added the "lineups need you" box under the buttons (renderLineupNeeds).
+// Improvements S11 added the "lineups need you" box under the buttons (renderLineupNeeds); since S12 its to-dos
+// are in the league cards (render/leagueCards.js) and the box is a one-line strip.
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
 import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
@@ -62,48 +63,62 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         content.innerHTML = html;
     };
 
-    // --- LINEUPS THAT NEED YOU (improvements S11) ---
-    // A box under Sync All / Optimize All listing every league whose lineup needs you before kickoff: a
-    // starter who's injured, in your Sleeper IR slot or on bye, or an empty starting slot. Each line says
-    // what to do ("Justin Jefferson is Doubtful: start CeeDee Lamb instead?"), when the first of those games
-    // kicks off, and has the buttons that fix it: Open lineup (a swap or an activation) and Find <pos> (a
-    // pickup, on Top Available). Soonest kickoff first. Below them, a drop-down lists the leagues whose
-    // lineup differs from the one on Sleeper (the Command Center's Lineup column), with the changes.
-    // The rule is getLineupIssues, the one the Lineup tab's warnings use, read from each league's lineup in
+    // --- LINEUPS THAT NEED YOU (improvements S11; in the league cards since S12) ---
+    // Every league whose lineup needs you before kickoff: a starter who's injured, in your Sleeper IR slot or on
+    // bye, or an empty starting slot. Each says what to do ("Justin Jefferson is Doubtful: start CeeDee Lamb
+    // instead?"), when the first of those games kicks off, and has the buttons that fix it: Open lineup (a swap or
+    // an activation) and Find <pos> (a pickup, on Top Available). And the leagues whose lineup differs from the one
+    // on Sleeper, with the changes.
+    // The rule is getLineupIssues, the one the Lineup tab's box uses, read from each league's lineup in
     // State.manualStartersMap / manualBenchMap without switching leagues. Manual and hand-off leagues have
     // no IR slot (only a Sleeper sync sets isReserve) and no Sleeper lineup to compare.
-    // It's always on (owner's decision, S11 round 3): drawn from the lineups as they are now on every
-    // Dashboard render (renderLeagueManager calls it), so a fixed league drops off. ✕ hides it for the
-    // session (State.lineupNeedsDismissed, in memory) until a league it didn't list needs you, or the next
+    // Since S12 (owner's choice: one League Command Center) each league's to-dos and Sleeper changes sit in that
+    // league's card (render/leagueCards.js), and the box under the buttons (#lineupNeedsBox) is a one-line strip:
+    // the count, ✕ and "Sync All again". It's always on (owner's decision, S11 round 3): drawn from the lineups as
+    // they are now on every Dashboard render, so a fixed league drops off. ✕ hides the strip and the cards' to-dos
+    // for the session (State.lineupNeedsDismissed, in memory) until a league it didn't list needs you, or the next
     // Optimize All or Sync All.
     const DAY_MS = 24 * 60 * 60 * 1000;
 
-    function collectLineupNeeds() {
+    // { lines, sleeper, needCount, byLeague }: lines and sleeper in league order; byLeague maps a league id to its
+    // { line, sleeper } (either may be missing). The league cards and the strip both read this; nothing else
+    // works the to-dos out.
+    export function collectLineupNeeds() {
         const leagues = (State.leagues || []).filter(l => !isBestBallLeague(l));
-        const lines = leagues.map(l => {
+        const byLeague = new Map();
+        const lines = [], sleeper = [];
+        leagues.forEach(l => {
             const starters = State.manualStartersMap[l.leagueId] || [];
             const issues = getLineupIssues(starters, l, State.manualBenchMap[l.leagueId] || []);
             const items = lineupIssueItems(issues);
-            return { league: l, issues, items, needs: needsYou(items) };
-        }).filter(n => n.items.length > 0);
-        // Leagues that need you, soonest kickoff first (no known kickoff: only byes or empty slots, after them, in
-        // league order); then leagues with only notes (starters you kept, IR moves).
-        const when = (n) => (!n.needs ? 2 : Number.isFinite(n.issues.firstKickoffMs) ? 0 : 1);
-        const ms = (n) => (Number.isFinite(n.issues.firstKickoffMs) ? n.issues.firstKickoffMs : 0);
-        lines.sort((a, b) => (when(a) - when(b)) || (when(a) === 0 ? ms(a) - ms(b) : 0));
-
-        const sleeper = leagues.map(l => {
-            const changes = getSleeperLineupChanges(l, State.manualStartersMap[l.leagueId] || []);
-            return changes ? { league: l, changes } : null;
-        }).filter(Boolean);
-        return { lines, sleeper, needCount: lines.filter(n => n.needs).length };
+            const entry = {};
+            if (items.length > 0) {
+                entry.line = { league: l, issues, items, needs: needsYou(items) };
+                lines.push(entry.line);
+            }
+            const changes = getSleeperLineupChanges(l, starters);
+            if (changes) {
+                entry.sleeper = { league: l, changes };
+                sleeper.push(entry.sleeper);
+            }
+            byLeague.set(l.leagueId, entry);
+        });
+        return { lines, sleeper, needCount: lines.filter(n => n.needs).length, byLeague };
     }
 
     const needKeys = (needs) => [...needs.lines.filter(n => n.needs).map(n => `p:${n.league.leagueId}`), ...needs.sleeper.map(n => `s:${n.league.leagueId}`)];
 
+    // Whether ✕ has hidden the to-dos: every league that needs you now was already listed when it was pressed.
+    export function lineupNeedsHidden(needs) {
+        const dismissed = State.lineupNeedsDismissed;
+        return !!dismissed && needKeys(needs).every(k => dismissed.has(k));
+    }
+
     const nb = (text) => escapeHtml(text).replace(/ /g, '&nbsp;');
 
-    function problemLineHTML(n) {
+    // A league card's to-dos (S12; the box's line before): "Needs you · Sun 1:00 PM" (amber within a day), one
+    // item per line, and the buttons. "Notes" when nothing counts (starters you kept, IR moves).
+    export function leagueNeedsHTML(n) {
         const id = escapeHtml(n.league.leagueId);
         const name = escapeHtml(n.league.name || 'Unnamed league');
         const ms = n.needs ? n.issues.firstKickoffMs : NaN;
@@ -118,61 +133,57 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-find" data-action="findLeaguePlayers" data-league-id="${id}" data-pos="${escapeHtml(chip)}" aria-label="${label} in ${name}">${label}</button>`);
         });
         return `
-            <li class="mls-needs-line${n.needs ? '' : ' is-kept-only'}">
+            <div class="mls-needs-line${n.needs ? '' : ' is-kept-only'}">
                 <div class="mls-needs-main">
-                    <span class="mls-needs-head-line"><span class="mls-needs-league">${name}</span>${when ? ` <span class="mls-needs-when${soon ? ' is-soon' : ''}">${nb(when)}</span>` : ''}</span>
+                    <span class="mls-needs-head-line"><span class="mls-needs-label">${n.needs ? 'Needs you' : 'Notes'}</span>${when ? ` <span class="mls-needs-when${soon ? ' is-soon' : ''}">${nb(when)}</span>` : ''}</span>
                     <span class="mls-needs-items is-stacked">${items}</span>
                 </div>
                 ${buttons.length ? `<div class="mls-needs-actions">${buttons.join('')}</div>` : ''}
-            </li>`;
+            </div>`;
     }
 
-    function sleeperLineHTML(n) {
+    // A league card's Sleeper changes, folded (the box's drop-down before S12). open: kept across re-renders.
+    export function leagueSleeperFoldHTML(n, open) {
         const id = escapeHtml(n.league.leagueId);
         const name = escapeHtml(n.league.name || 'Unnamed league');
+        const count = n.changes.start.length + n.changes.bench.length;
         return `
-            <li class="mls-needs-line">
-                <div class="mls-needs-main">
-                    <span class="mls-needs-league">${name}</span>
-                    <span class="mls-needs-items">${sleeperChangesHTML(n.changes)}</span>
+            <details class="mls-change-fold mls-needs-sleeper" data-league-id="${id}"${open ? ' open' : ''}>
+                <summary>${FOLD_CHEVRON}<span>Differs from your Sleeper lineup: ${count} change${count === 1 ? '' : 's'}</span></summary>
+                <div class="mls-needs-line">
+                    <div class="mls-needs-main">
+                        <span class="mls-needs-items">${sleeperChangesHTML(n.changes)}</span>
+                        <p class="mls-needs-note">As of your last sync: set it on Sleeper, then sync to clear this.</p>
+                    </div>
+                    <div class="mls-needs-actions"><button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button></div>
                 </div>
-                <div class="mls-needs-actions"><button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button></div>
-            </li>`;
+            </details>`;
     }
 
-    export function renderLineupNeeds() {
+    // The strip under the buttons: how many lineups need you, ✕, and "Sync All again". The to-dos themselves are
+    // in the league cards. needs: collectLineupNeeds() when the caller has it.
+    export function renderLineupNeeds(needs = collectLineupNeeds()) {
         const box = document.getElementById('lineupNeedsBox');
         if (!box) return;
-        const needs = collectLineupNeeds();
-        const keys = needKeys(needs);
-        const dismissed = State.lineupNeedsDismissed;
         const shown = needs.lines.length > 0 || needs.sleeper.length > 0;
-        if (!shown || (dismissed && keys.every(k => dismissed.has(k)))) {
+        if (!shown || lineupNeedsHidden(needs)) {
             box.hidden = true;
             box.innerHTML = '';
             return;
         }
-        // Re-renders are frequent (every lineup render); keep the drop-down as the person left it.
-        const wasOpen = !!box.querySelector('.mls-needs-sleeper[open]');
         const p = needs.needCount, sl = needs.sleeper.length;
         const keptOnly = needs.lines.length - p;
         const title = p > 0 ? `${p} lineup${p === 1 ? ' needs' : 's need'} you before kickoff`
             : keptOnly > 0 ? `Nothing needs you before kickoff · ${keptOnly} league${keptOnly === 1 ? '' : 's'} with notes`
             : `${sl} lineup${sl === 1 ? '' : 's'} to set on Sleeper`;
-        const sleeperFold = sl === 0 ? '' : `
-            <details class="mls-change-fold mls-needs-sleeper"${wasOpen ? ' open' : ''}>
-                <summary>${FOLD_CHEVRON}<span>${sl} league${sl === 1 ? ' differs' : 's differ'} from your Sleeper lineup</span></summary>
-                <p class="mls-needs-note">As of your last sync: set these on Sleeper, then sync to clear them.</p>
-                <ul class="mls-needs-list">${needs.sleeper.map(sleeperLineHTML).join('')}</ul>
-            </details>`;
+        // With to-dos as well, the Sleeper count is a second part of the title.
+        const sleeperPart = p + keptOnly > 0 && sl > 0 ? `<span class="mls-needs-title-more"> · ${sl} to set on Sleeper</span>` : '';
         box.innerHTML = `
             <div class="mls-needs-head">
                 ${p > 0 ? WARNING_ICON : INFO_ICON}
-                <span class="mls-needs-title">${title}</span>
-                <button type="button" class="close-banner-btn close-banner-btn-sm mls-needs-close" data-action="dismissLineupNeeds" aria-label="Close this list">✕</button>
+                <span class="mls-needs-title">${title}${sleeperPart}</span>
+                <button type="button" class="close-banner-btn close-banner-btn-sm mls-needs-close" data-action="dismissLineupNeeds" aria-label="Hide the to-dos">✕</button>
             </div>
-            ${needs.lines.length > 0 ? `<ul class="mls-needs-list">${needs.lines.map(problemLineHTML).join('')}</ul>` : ''}
-            ${sleeperFold}
             <p class="mls-needs-check"><button type="button" class="btn-bare mls-needs-check-link" data-action="checkSleeperNow">Sync All again</button> to get the latest injury news and your current Sleeper lineups for every league.</p>`;
         box.classList.toggle('has-problems', p > 0);
         box.hidden = false;
@@ -181,14 +192,14 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
     // ✕: hidden for the session, until a league it doesn't list now needs you (or the next run).
     export function dismissLineupNeeds() {
         State.lineupNeedsDismissed = new Set(needKeys(collectLineupNeeds()));
-        renderLineupNeeds();
+        renderLeagueManager();
     }
 
     // After Optimize All or Sync All: the box comes back even if it was closed, and the toast says how many
     // leagues need you.
     function showLineupNeedsAfterRun() {
         State.lineupNeedsDismissed = null;
-        renderLineupNeeds();
+        renderLeagueManager();
         return collectLineupNeeds().needCount;
     }
 
@@ -496,9 +507,9 @@ export const syncAllLeagues = async function(btn) {
                 optimizeLineup(false);
 
                 // Every league's lineup is final now (each synced league was re-optimized, yours last):
-                // the "lineups need you" box comes back even if it was closed.
+                // the to-dos come back even if ✕ hid them.
                 State.lineupNeedsDismissed = null;
-                renderLineupNeeds();
+                renderLeagueManager();
             }
         }, 50);
     };

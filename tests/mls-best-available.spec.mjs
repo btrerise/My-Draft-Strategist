@@ -1,9 +1,10 @@
 // Lineup Strategist Dashboard: "Best available in your leagues" (improvements S5,
-// js/mls/scout/bestAvailable.js). One line per Sleeper-synced league with its top 3 available
-// RB/WR/TE by that league's own Weekly or ROS rankings (a switch that is the Waiver Wire Assistant's
-// Rank By), an upgrade when a free agent is ranked ahead of your weakest player at his position,
-// leagues with the biggest upgrade first, the rest folded, and a View button that opens that league's
-// Top Available. Manual leagues are left out. The card collapses and remembers it.
+// js/mls/scout/bestAvailable.js). Since S12 a section of each Sleeper-synced league's card in the League
+// Command Center (js/mls/render/leagueCards.js): its top 3 available RB/WR/TE by that league's own Weekly or
+// ROS rankings (a switch above the cards that is the Waiver Wire Assistant's Rank By), an upgrade when a free
+// agent is ranked ahead of your weakest player at his position, open when the league has an upgrade and folded
+// otherwise, and a View button that opens that league's Top Available. Manual leagues' cards say why they have
+// none. The card's status row counts its upgrades, so a folded card still shows them.
 //
 // An upgrade (upgradeGap, unit-tested in tests/unit/waiverScanner.test.mjs) needs a better tier when both
 // players are tiered; rankings-waivers.csv has a Tier column, so these files move tiers with ranks.
@@ -26,9 +27,9 @@
 //   legacy per-league data: rankings-waivers.csv with Zay Flowers/CeeDee Lamb and Sam LaPorta/Brock
 //   Bowers swapped (tiers too). Your best lineup there has Puka Nacua at FLEX and Trey McBride at TE,
 //   so it has two upgrades: Flowers WR3 over Nacua WR4 and LaPorta TE1 over McBride TE2 (gap 1
-//   each). It sorts after Fixture League. With ROS picked it falls back to its Weekly rankings and
+//   each). With ROS picked it falls back to its Weekly rankings and
 //   says so. Flowers is listed as Questionable by Sleeper here.
-// - Manual League: left out, with a line saying so.
+// - Manual League: no best available, with a line saying so in its card.
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, WAIVER_RANKINGS_CSV, RANKINGS_CSV, FIXTURE_LEAGUE_ID, FIXED_NOW } from './helpers.mjs';
@@ -44,13 +45,21 @@ const LEAGUE_JSON = readFileSync(new URL('./fixtures/sleeper/league.json', impor
 const PLAYERS_JSON = readFileSync(new URL('./fixtures/sleeper/players-nfl.json', import.meta.url), 'utf8');
 const SECOND_LEAGUE_ID = '1000000000000000002';
 
-const card = (page) => page.locator('#dashboardBestAvailable');
+const commandCenter = (page) => page.locator('#dashboardCommandCenter');
 const summary = (page) => page.locator('#bestAvailableSummary');
-const line = (page, name) => card(page).locator('.mls-ba-line').filter({ has: page.locator('.mls-ba-league', { hasText: name }) });
+const leagueCard = (page, name) => page.locator('#leagueCards > .mls-lc-card').filter({ has: page.locator('.mls-lc-name', { hasText: name }) });
+const line = (page, name) => leagueCard(page, name).locator('.mls-lc-ba');
+const fold = (page, name) => line(page, name).locator('details.mls-ba-fold');
+const openFold = async (page, name) => {
+    if (!(await fold(page, name).evaluate(d => d.open))) await fold(page, name).locator('summary').click();
+    await expect(fold(page, name)).toHaveAttribute('open', '');
+};
 const names = (page, name) => line(page, name).locator('.mls-ba-name').allInnerTexts();
-const more = (page) => card(page).locator('details.mls-ba-more');
-const leaguesAboveFold = (page) => card(page).locator('.mls-ba-list').first().locator('.mls-ba-league');
-const basisBtn = (page, b) => card(page).locator(`[data-action="setBestAvailableBasis"][data-basis="${b}"]`);
+// The leagues whose best available is open (has an upgrade, or opened by hand), in card order.
+const openLeagues = (page) => page.locator('#leagueCards > .mls-lc-card').filter({ has: page.locator('details.mls-ba-fold[open]') }).locator('.mls-lc-name');
+const upgradeCount = (page, name) => leagueCard(page, name).locator('.mls-lc-count-upgrades');
+const basisBtn = (page, b) => page.locator(`#bestAvailableBasis [data-action="setBestAvailableBasis"][data-basis="${b}"]`);
+const MANUAL_NOTE = "No best available here: in a manual league the app only knows your own roster, not who's on the waiver wire.";
 
 async function upload(page, inputId, csv, count) {
     await page.setInputFiles('#' + inputId, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
@@ -78,35 +87,36 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         const state = await openApp(page, '/lineup/');
         await oneRbSlot(page);
         await showTab(page, 'setup');
-        await expect(card(page)).toBeVisible();
-        await expect(card(page)).toContainText('No leagues yet. Sync a Sleeper league or import all of yours under Add/Sync League below');
+        // No leagues: no Command Center at all (the Setup progress card says where to start).
+        await expect(commandCenter(page)).toBeHidden();
 
-        // Only a manual league: nothing to show, and the card says why.
+        // Only a manual league: its card says why it has no best available, and there's no switch.
         await createManualLeague(page, 'Manual League');
-        await expect(summary(page)).toHaveText('No Sleeper-synced leagues');
-        await expect(card(page)).toContainText("Best available needs a league synced from Sleeper. Manual leagues only know your own roster, not who's on the waiver wire.");
-        await expect(basisBtn(page, 'weekly')).toHaveCount(0);
+        await expect(commandCenter(page)).toBeVisible();
+        await expect(line(page, 'Manual League')).toHaveText(MANUAL_NOTE);
+        await expect(basisBtn(page, 'weekly')).toBeHidden();
 
-        // A synced league with no rankings: say where to upload; with no ranked league, nothing is folded.
+        // A synced league with no rankings: say where to upload; with no ranked league, it shows unfolded.
         await seedMls(page);
         await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
         await expect(summary(page)).toHaveText('1 league without rankings');
-        await expect(card(page).locator('.mls-ba-league')).toHaveText(['Fixture League']);
-        await expect(card(page).locator('.mls-ba-excluded')).toHaveText("1 manual league not included: the app only knows your own roster there, not who's on the waiver wire.");
-        await expect(more(page)).toHaveCount(0);
+        await expect(basisBtn(page, 'weekly')).toBeVisible();
+        await expect(page.locator('#leagueCards .mls-ba-fold')).toHaveCount(1);
+        await expect(line(page, 'Manual League')).toHaveText(MANUAL_NOTE);
+        await expect(fold(page, 'Fixture League')).toHaveAttribute('open', '');
+        await expect(fold(page, 'Fixture League').locator('summary .mls-ba-source')).toHaveText('No rankings');
         await expect(line(page, 'Fixture League')).toContainText('Upload Weekly rankings on the Lineup tab (or ROS on the Roster tab) with this league active.');
         await line(page, 'Fixture League').locator('[data-action="bestAvailableUpload"]').click();
         await expect(page.locator('#lineupTab')).toHaveClass(/\bactive\b/);
 
-        // Every player rankings.csv ranks is rostered in the fixture league: no upgrade, so the line folds.
+        // Every player rankings.csv ranks is rostered in the fixture league: no upgrade, so its line folds.
         await loadMlsRankings(page, RANKINGS_CSV, 24);
         await showTab(page, 'setup');
         await expect(summary(page)).toHaveText('No upgrades in your 1 league');
-        await expect(card(page).locator('.mls-ba-none')).toHaveText('No free agent is ranked ahead of your weakest RB, WR or TE in any league.');
-        await expect(line(page, 'Fixture League')).toBeHidden();
-        await expect(more(page).locator('summary')).toHaveText('Show 1 league', { useInnerText: true });
-        await more(page).locator('summary').click();
-        await expect(more(page).locator('summary')).toHaveText('Hide 1 league', { useInnerText: true });
+        await expect(fold(page, 'Fixture League')).not.toHaveAttribute('open', '');
+        await expect(fold(page, 'Fixture League').locator('.mls-ba-flag')).toHaveText('No upgrade');
+        await expect(upgradeCount(page, 'Fixture League')).toBeHidden();
+        await openFold(page, 'Fixture League');
         await expect(line(page, 'Fixture League')).toContainText('Every RB, WR and TE in its Weekly rankings (20 ranked) is already rostered in this league.');
         await expect(line(page, 'Fixture League').locator('[data-action="viewLeagueTopAvailable"]')).toBeVisible();
 
@@ -115,12 +125,13 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
         await showTab(page, 'setup');
         await expect(summary(page)).toHaveText('No upgrades in your 1 league');
-        await more(page).locator('summary').click();
+        // Opened by hand, it stays open across redraws.
+        await expect(fold(page, 'Fixture League')).toHaveAttribute('open', '');
         expect(await names(page, 'Fixture League')).toEqual(['James Cook', 'Jaxon Smith-Njigba', 'Chase Brown']);
         await expect(line(page, 'Fixture League').locator('.mls-ta-pos')).toHaveText(['RB8', 'WR11', 'RB9']);
         await expect(line(page, 'Fixture League').locator('.is-upgrade')).toHaveCount(0);
-        // Synced today: no sync note. Every line links to the league in Sleeper.
-        await expect(line(page, 'Fixture League').locator('.mls-ba-sync')).toHaveCount(0);
+        // Synced today: the card's header says so, not in amber. Every line links to the league in Sleeper.
+        await expect(leagueCard(page, 'Fixture League').locator('.mls-lc-meta .freshness-ok')).toHaveText('Synced today');
         await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('href', `https://sleeper.com/leagues/${FIXTURE_LEAGUE_ID}`);
         await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('target', '_blank');
         // Desktop only: on phones the link would open the Sleeper app's home, not the league.
@@ -136,6 +147,7 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(summary(page)).toHaveText('No upgrades in your 1 league');
         await basisBtn(page, 'ros').click();
         await expect(summary(page)).toHaveText('Upgrades in 1 of 1 league');
+        await expect(upgradeCount(page, 'Fixture League')).toHaveText('1 upgrade');
         await expect(line(page, 'Fixture League').locator('.mls-ba-over')).toHaveText(['over Garrett Wilson (unranked)']);
         await basisBtn(page, 'weekly').click();
         await expect(summary(page)).toHaveText('No upgrades in your 1 league');
@@ -145,22 +157,22 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await loadMlsRankings(page, SAME_TIER_CSV, 30);
         await showTab(page, 'setup');
         await expect(summary(page)).toHaveText('No upgrades in your 1 league');
-        await more(page).locator('summary').click();
+        await openFold(page, 'Fixture League');
         await expect(line(page, 'Fixture League').locator('.mls-ta-pos')).toHaveText(['RB5', 'WR11', 'RB9']);
         await expect(line(page, 'Fixture League').locator('.is-upgrade')).toHaveCount(0);
 
-        // Sync All redraws the card.
+        // Sync All redraws the cards.
         await page.click('#syncAllBtn');
         await expect(page.locator('#syncAllBtn')).toBeEnabled();
         await expect(summary(page)).toHaveText('No upgrades in your 1 league');
-        await expect(card(page).locator('.mls-ba-excluded')).toBeVisible();
+        await expect(line(page, 'Manual League')).toHaveText(MANUAL_NOTE);
 
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
         await expectClean(page, state);
     });
 
-    test('upgrades first by size, the Weekly/ROS switch, View and collapse', async ({ page }) => {
+    test('upgrades open and counted, the Weekly/ROS switch, View and a folded card', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         // Sleeper lists Zay Flowers as Questionable (registered after openApp's routes, so it runs first).
         await page.route(/api\.sleeper\.app\/v1\/players\/nfl$/, (route) => {
@@ -194,28 +206,27 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await page.reload();
         await showTab(page, 'setup');
 
-        // Weekly (the default Rank By): both leagues have an upgrade, biggest first; the manual league is left out.
+        // Weekly (the default Rank By): both leagues have an upgrade, so both lines are open; the manual league has none.
         await expect(basisBtn(page, 'weekly')).toHaveAttribute('aria-pressed', 'true');
         await expect(summary(page)).toHaveText('Upgrades in 2 of 2 leagues');
-        await expect(card(page)).toContainText('Each league by its own Weekly rankings. Ownership is from the last sync: Sync All Leagues refreshes it.');
-        await expect(leaguesAboveFold(page)).toHaveText(['Fixture League', 'Second League']);
-        await expect(more(page)).toHaveCount(0);
-        await expect(line(page, 'Manual League')).toHaveCount(0);
-        await expect(card(page).locator('.mls-ba-excluded')).toHaveText("1 manual league not included: the app only knows your own roster there, not who's on the waiver wire.");
+        await expect(openLeagues(page)).toHaveText(['Fixture League', 'Second League']);
+        await expect(upgradeCount(page, 'Fixture League')).toHaveText('1 upgrade');
+        await expect(upgradeCount(page, 'Second League')).toHaveText('2 upgrades');
+        await expect(line(page, 'Manual League')).toHaveText(MANUAL_NOTE);
 
         const fixture = line(page, 'Fixture League');
         const second = line(page, 'Second League');
         await expect(fixture.locator('.mls-ba-source')).toHaveText('Weekly · 9/15/2026');
-        await expect(fixture.locator('.mls-ba-sync')).toHaveCount(0);
+        await expect(leagueCard(page, 'Fixture League').locator('.mls-lc-meta .freshness-stale')).toHaveCount(0);
         // The upgrade is marked inside the list (no name twice): Cook, then the best of the rest.
         expect(await names(page, 'Fixture League')).toEqual(['James Cook', 'Jaxon Smith-Njigba', 'Chase Brown']);
         await expect(fixture.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['RB5', 'WR11', 'RB9']);
         await expect(fixture.locator('.mls-ta-pos').first()).toHaveClass(/\bpos-badge\b.*\bRB\b/);
         await expect(fixture.locator('.is-upgrade .mls-ba-name')).toHaveText(['James Cook']);
         await expect(fixture.locator('.mls-ba-over')).toHaveText(['over Derrick Henry RB8']);
-        // Two upgrades, biggest first, then the best of the rest; an injury badge; an old sync is flagged.
+        // Two upgrades, biggest first, then the best of the rest; an injury badge; an old sync is flagged in the header.
         await expect(second.locator('.mls-ba-source')).toHaveText('Weekly');
-        await expect(second.locator('.mls-ba-sync')).toHaveText('Synced 4 days ago');
+        await expect(leagueCard(page, 'Second League').locator('.mls-lc-meta .freshness-stale')).toHaveText('Synced 4 days ago');
         expect(await names(page, 'Second League')).toEqual(['Zay Flowers', 'Sam LaPorta', 'James Cook']);
         await expect(second.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['WR3', 'TE1', 'RB8']);
         await expect(second.locator('.mls-ba-over')).toHaveText(['over Puka Nacua WR4', 'over Trey McBride TE2']);
@@ -226,8 +237,9 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         // so the league has no upgrade left and folds. Restore brings him back; so does a new NFL week.
         await fixture.getByRole('button', { name: /^Not interested in James Cook/ }).click();
         await expect(summary(page)).toHaveText('Upgrades in 1 of 2 leagues');
-        await expect(leaguesAboveFold(page)).toHaveText(['Second League']);
-        await more(page).locator('summary').click();
+        await expect(openLeagues(page)).toHaveText(['Second League']);
+        await expect(upgradeCount(page, 'Fixture League')).toBeHidden();
+        await openFold(page, 'Fixture League');
         expect(await names(page, 'Fixture League')).toEqual(['Jaxon Smith-Njigba', 'Chase Brown', 'Zay Flowers']);
         await expect(fixture.locator('.mls-ba-dismissed')).toHaveText('1 dismissed this week · Restore');
         // Only this league: Cook still shows in Second League.
@@ -236,7 +248,7 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await page.reload();
         await showTab(page, 'setup');
         await expect(summary(page)).toHaveText('Upgrades in 1 of 2 leagues');
-        await more(page).locator('summary').click();
+        await openFold(page, 'Fixture League');
         await fixture.locator('[data-action="restoreBestAvailable"]').click();
         await expect(summary(page)).toHaveText('Upgrades in 2 of 2 leagues');
         expect(await names(page, 'Fixture League')).toEqual(['James Cook', 'Jaxon Smith-Njigba', 'Chase Brown']);
@@ -255,11 +267,10 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(basisBtn(page, 'ros')).toHaveAttribute('aria-pressed', 'true');
         await expect(page.locator('#waiverScanBasis')).toHaveValue('ros');
         await expect(summary(page)).toHaveText('Upgrades in 1 of 2 leagues');
-        await expect(card(page)).toContainText('Each league by its own ROS rankings.');
-        await expect(leaguesAboveFold(page)).toHaveText(['Second League']);
+        await expect(openLeagues(page)).toHaveText(['Second League']);
         await expect(second.locator('.mls-ba-source')).toHaveText('Weekly (no ROS set)');
-        await expect(more(page).locator('summary')).toHaveText('Show 1 more league', { useInnerText: true });
-        await more(page).locator('summary').click();
+        await expect(fold(page, 'Fixture League').locator('.mls-ba-flag')).toHaveText('No upgrade');
+        await openFold(page, 'Fixture League');
         await expect(fixture.locator('.mls-ba-source')).toHaveText('ROS · 9/15/2026');
         await expect(fixture.locator('.is-upgrade')).toHaveCount(0);
         await expect(fixture.locator('.mls-ba-players .mls-ta-pos')).toHaveText(['RB8', 'WR11', 'RB9']);
@@ -267,12 +278,14 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         // Drawing every line didn't change the active league.
         expect(await page.locator('#headerLeagueSelect').inputValue()).toBe(FIXTURE_LEAGUE_ID);
 
-        // Collapse: the summary stays, the lines hide, and it's remembered after a reload (so is ROS).
-        const toggle = card(page).locator('[data-action="toggleBestAvailable"]');
+        // Folding a league's card (S12; the Best Available card's collapse before): its line hides, its upgrade
+        // count stays in the header, and it's remembered after a reload (so is ROS).
+        const secondCard = leagueCard(page, 'Second League');
+        const toggle = secondCard.locator('[data-action="toggleLeagueCard"]');
         await toggle.click();
         await expect(toggle).toHaveAttribute('aria-expanded', 'false');
         await expect(second).toBeHidden();
-        await expect(summary(page)).toBeVisible();
+        await expect(upgradeCount(page, 'Second League')).toHaveText('2 upgrades');
         await page.reload();
         await showTab(page, 'setup');
         await expect(summary(page)).toHaveText('Upgrades in 1 of 2 leagues');
@@ -293,10 +306,10 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(page.locator('#waiverOutput')).toContainText('Top available RB/WR/TE in Second League by Weekly rank');
         await expect(page.locator('#waiverOutput')).toContainText('No ROS rankings loaded for this league - using Weekly rank instead.');
 
-        // Back on the Dashboard, Weekly again: the card redraws and doesn't depend on the active league.
+        // Back on the Dashboard, Weekly again: the lines redraw and don't depend on the active league.
         await showTab(page, 'setup');
         await basisBtn(page, 'weekly').click();
-        await expect(leaguesAboveFold(page)).toHaveText(['Fixture League', 'Second League']);
+        await expect(openLeagues(page)).toHaveText(['Fixture League', 'Second League']);
         await expect(page.locator('#waiverScanBasis')).toHaveValue('weekly');
 
         await page.waitForLoadState('networkidle');
@@ -311,6 +324,7 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
         await showTab(page, 'setup');
         await expect(summary(page)).toHaveText('Upgrades in 1 of 1 league');
+        await expect(fold(page, 'Fixture League')).toHaveAttribute('open', '');
         const fixture = line(page, 'Fixture League');
         await expect(fixture.locator('.is-upgrade .mls-ba-name')).toHaveText(['James Cook']);
         await expect(fixture.locator('.mls-ba-over')).toHaveText(['fills an empty lineup spot']);
