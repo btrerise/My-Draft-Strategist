@@ -94,6 +94,34 @@ describe('swaps and pickups', () => {
         assert.deepEqual(items(issues).map(i => [i.text, i.find]), [['Hurt TE is Out: no healthy TE on your bench', 'TE']]);
     });
 
+    // S12 round 3 (owner's request): the suggestion picks the way the optimizer would fill that slot
+    // (pickForSlot, js/mls/lineup/flexChoice.js), projections included.
+    test('a flex slot: the optimizer\'s FLEX rule, not "his position first"', () => {
+        const hurt = pl('Hurt WR', 'WR', { inj: 'OUT' });
+        // A better FLEX rank wins over a same-position player.
+        assert.equal(swapFor(lineupIssues([s('FLEX1', hurt)], ctx(), [lamb, bijan]), hurt), bijan);
+        // No FLEX ranks: the best-ranked at each position, by projection; within a position, rank over projection;
+        // a ranked player over an unranked one.
+        const wr50 = pl('WR50', 'WR', { posRank: 50, flexRank: 999, proj: 2 });
+        const wr55 = pl('WR55', 'WR', { posRank: 55, flexRank: 999, proj: 12 });
+        const te10 = pl('TE10', 'TE', { posRank: 10, flexRank: 999, proj: 9 });
+        const ur = pl('Unranked', 'TE', { posRank: 999, flexRank: 999, proj: 30 });
+        const c = ctx({ projOf: (p) => p.proj ?? null });
+        assert.equal(swapFor(lineupIssues([s('FLEX1', hurt)], c, [wr55, ur, wr50, te10]), hurt), te10);
+        assert.equal(swapFor(lineupIssues([s('FLEX1', hurt)], c, [wr55, ur, wr50]), hurt), wr50);
+        assert.equal(swapFor(lineupIssues([s('WR1', hurt)], c, [wr55, ur, wr50]), hurt), wr50);
+    });
+
+    test('an SFLEX slot: a ranked QB first; with nobody ranked, the higher projection', () => {
+        const hurt = pl('Hurt QB', 'QB', { inj: 'OUT' });
+        const c = ctx({ projOf: (p) => p.proj ?? null });
+        const qb = pl('QB20', 'QB', { posRank: 20, flexRank: 999, proj: 14 });
+        const wr = pl('WR3', 'WR', { posRank: 3, flexRank: 5, proj: 20 });
+        assert.equal(swapFor(lineupIssues([s('SFLEX1', hurt)], c, [wr, qb]), hurt), qb);
+        const a = pl('A', 'RB', { posRank: 999, flexRank: 999, proj: 4 }), b = pl('B', 'QB', { posRank: 999, flexRank: 999, proj: 11 });
+        assert.equal(swapFor(lineupIssues([s('SFLEX1', hurt)], c, [a, b]), hurt), b);
+    });
+
     test('each bench player is suggested once', () => {
         const a = pl('A', 'WR', { inj: 'D' }), b = pl('B', 'WR', { inj: 'D' });
         const issues = lineupIssues([s('WR1', a), s('WR2', b)], ctx(), [lamb]);

@@ -117,8 +117,8 @@ for (const [type, t] of Object.entries(TYPES)) {
             if (type === 'weekly') {
                 await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
                 await showTab(page, 'setup');
-                const line = page.locator('#dashboardBestAvailable .mls-ba-line').filter({ hasText: 'Fixture League' });
-                await expect(line.locator('.mls-ba-source')).toHaveText(`Weekly · ${ODD_NAME}`);
+                const line = page.locator('#leagueCards > .mls-lc-card').filter({ hasText: 'Fixture League' }).locator('.mls-lc-ba');
+                await expect(line.locator('.mls-ba-source')).toHaveText(ODD_NAME);
             }
 
             sets = await storedSets(page, t.storage);
@@ -192,6 +192,7 @@ test.describe('Rename', () => {
         await expect(page.locator(t.del)).toBeHidden();
         await page.fill('#rosNewSetName', 'Second ROS');
         await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_CSV) });
+        await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
         await expect(page.locator('#rankingsPreviewOverlay')).toContainText('24 players parsed');
         await callApp(page, 'confirmRankingsPreview');
         await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();

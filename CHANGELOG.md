@@ -76,8 +76,59 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **The Dashboard names the lineups that need you.** A box under Sync All and Optimize All lists each league whose
-  lineup needs something before kickoff, soonest kickoff first, with the time (amber within a day). It covers:
+Nothing yet.
+
+### v2.15.0 — 2026-10-11
+
+- **FLEX picks follow your rankings when there's no FLEX rank.** With Weekly rankings by position (separate
+  QB/RB/WR/TE files, no FLEX list), the optimizer filled FLEX and SFLEX by Sleeper's projections alone. So it could
+  start your WR55 over your WR53 because he projected higher, or an unranked player over ranked ones. Now a FLEX rank
+  still comes first. Then a ranked player beats an unranked one, and at one position the better rank wins.
+  Projections only decide between positions (a TE24 isn't necessarily better than a WR50), or between unranked
+  players. The Waiver Wire Assistant, the Dashboard's best available and the "start X instead?" suggestions judge
+  the same way.
+- **Optimize All and Sync All use this week's projections and kickoff times.** Projections used to load only with
+  the Lineup tab, so optimizing from the Dashboard right after opening the app chose FLEX players between positions
+  by rank alone. Both now load them first, and if they arrive late, every league optimized without them is redone,
+  not just the one you have open. They also wait for the kickoff times, so a player who already played (Thursday
+  night) stays locked in even when your updated rankings leave him out. The Dashboard's best available waits for
+  both too, so its first answer no longer changes after a tap that changed nothing else. Optimize All's message also
+  says how many lineups to set on Sleeper ("Optimized 14 lineups · 1 needs you · 10 to set on Sleeper").
+- **SFLEX is never left empty** when you have someone who can play there: with nobody ranked left, it takes the
+  higher projection, as FLEX does. A healthy ranked RB, WR or TE now also beats an injured ranked QB there.
+- **A benched player whose game has started stays benched.** Once his game kicks off, Sleeper won't let you start
+  him, so the optimizer no longer does. The Dashboard's best available also no longer counts him as one of your
+  starters. That made it compare a free agent with the wrong player ("over Zay Flowers" where Auto-Find rightly said
+  he'd replace George Kittle). Not in Best Ball, where nobody sets a lineup: there every player still counts.
+- **"Start X instead?" follows the lineup's rule.** For an injured or bye starter, the suggestion is whoever the
+  optimizer would put in that slot from your healthy bench (projections included), not "his own position first".
+- **One card per league on the Dashboard.** The League Command Center now lists your leagues as cards, one per league,
+  in your order (tap Reorder above the cards for ▲ ▼ to move them and ✕ to remove one; tap a name to switch to that
+  league). Each card holds everything about that league: whether its Weekly rankings are fresh and whether its lineup
+  matches Sleeper (chips with a word on them; tap one for the details), its format, what its lineup needs from you
+  before kickoff and what to set on Sleeper ("Start X · Bench Y"), with the buttons that fix it, and its
+  best available free agents. It replaces the table, the separate "lineups need you" box and the Best Available card,
+  so each league shows once, and on a phone nothing is squeezed: names are whole and nothing runs past the edge.
+  - A card with nothing to do (no to-dos, no Sleeper changes, no upgrade) starts folded to its header. Tap a card's
+    chevron to fold or open it; that's remembered, and "Fold all" does every card. A folded card still says "2 to do"
+    (in amber, for what needs you before kickoff: only those cards get the amber border), "1 to set" (lineup changes
+    to make on Sleeper) or "1 upgrade". A player who's injured or on bye but still in your Sleeper lineup needs you:
+    "Bench D'Andre Swift (Out)" is amber and counted, not a routine "1 to set". A routine change says why when it isn't
+    just a lower rank: "Bench Ashton Jeanty (Q · not in Wk5)", in muted text. In a card open for its to-dos, best
+    available shows only when it has an upgrade.
+  - After Sync All, each league's card says what changed on its roster ("Synced: + Mike Washington · − Chris
+    Godwin"), folded too, until you leave the page. The Sync Logs under the cards keep them as before.
+  - A line under Sync All and Optimize All counts the lineups that need you and says the next step ("Set the lineups
+    on Sleeper, then Sync All again to clear them"): its "Show" scrolls to that league's card ("Show next" steps
+    through several), and its ✕ hides the to-dos until another league needs you.
+  - The last sync shows only when it's old or failed. Best available names your rankings set ("Wk5") without
+    repeating "Weekly". Free agents who'd all replace the same player count as one upgrade, and the line says so ("3
+    options for one spot: each over Kenny Gainwell").
+  - On a wide screen each card puts its to-dos and best available side by side.
+  - A league with no Sleeper lineup on record yet shows an amber Lineup chip ("No Sleeper lineup to compare yet")
+    instead of the red "differs" icon.
+- **The Dashboard names the lineups that need you.** Each league's card lists what its lineup needs before kickoff,
+  with the time of the first of those games (amber within a day). It covers:
   - a starter in your Sleeper IR slot ("Activate Ja'Marr Chase from IR on Sleeper");
   - an injured or bye starter ("Justin Jefferson is Doubtful: start Puka Nacua instead?", or "Derrick Henry is Out:
     no healthy RB on your bench");
@@ -87,10 +138,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   - an IR-slot player who isn't eligible there any more (Sleeper blocks adds and drops until he's out).
 
   Activations say when your roster is full. Each league has the buttons that fix it (on phones, in a row under its
-  items): Open lineup, or Find RB (any position) for Top Available. A starter you locked in is shown greyed out and not counted. A drop-down lists the
-  leagues whose lineup differs from the one on Sleeper, with who to start and bench there; injured ones are marked.
-  The box follows your lineups: fix one and it drops off. The ✕ hides it until another league needs you or you run
-  Optimize All or Sync All again, and both say how many lineups need you.
+  items): Open lineup, or Find RB (any position) for Top Available. A starter you locked in is shown greyed out and not counted. The card
+  also says how the lineup differs from the one on Sleeper, with who to start and bench there; injured ones are
+  marked. The list follows your lineups: fix one and it drops off. The ✕ on the line under the buttons hides the
+  to-dos until another league needs you or you run Optimize All or Sync All again, and both say how many lineups need
+  you.
 - **One box above the Lineup tab's lineup.** "This lineup needs you" lists the same items for the league you have
   open, one per line, with Swap in and Find buttons. Tap its title to fold it to one line (with the count); it stays
   folded until you open it again. It replaces the red injury warning, the purple IR-slot line and
@@ -210,18 +262,18 @@ What changed for users in each version of the two apps, in plain language. Newes
   most adds first, each with your position rank or "UR" when your rankings leave him out, so you can see when the
   crowd is chasing someone your rankings don't like, or skipping someone they do. The position buttons filter it too.
   Your rankings' order never changes. If Sleeper can't be reached, the icon and the switch just don't show.
-- **Best available in your leagues, on the Dashboard:** a new card under the League Command Center shows, for every
+- **Best available in your leagues, on the Dashboard:** each league's card shows, for every
   league synced from Sleeper, its top 3 available RBs, WRs and TEs with their position ranks and injury badges
   ("James Cook RB8"), ranked by that league's own Weekly or ROS rankings. A Weekly | ROS switch picks which; it's the
   same Rank By as the Scout tab's Waiver Wire Assistant, so the two always agree. Free agents worth a roster spot over
   a player of yours are marked as upgrades ("James Cook RB5 over Derrick Henry RB8"). On Weekly that means he'd start
   over someone in your best lineup this week (or fill an empty starting spot); on ROS, that he beats your weakest
   rostered player at his position. He must be in a better tier when your rankings have tiers (otherwise at least 3
-  spots better), but any ranked player can count. Leagues with the biggest upgrades come first; the rest fold under "Show N more leagues". View opens that
+  spots better), but any ranked player can count. A league with an upgrade shows its line open, and the card counts
+  them ("1 upgrade"); the rest are folded. View opens that
   league's Top Available on the Scout tab, filtered to RB/WR/TE like the line. On a computer, a Sleeper link opens the
-  league on sleeper.com. Each line says when the league hasn't synced in over 2 days. The card collapses and
-  remembers it, keeping a one-line summary ("Upgrades in 2 of 5 leagues"). Manual leagues are left out, since the
-  app only knows your own roster there. A league with no rankings yet says where to upload them. Tap × on a player
+  league on sleeper.com. A one-line summary above the cards reads "Upgrades in 2 of 5 leagues". Manual leagues get
+  none, since the app only knows your own roster there. A league with no rankings yet says where to upload them. Tap × on a player
   you're not interested in to hide him from that league's line for the week; "Restore" brings him back, and
   dismissals clear themselves when the NFL week changes.
 - **"Your weakest player" skips IR, Out and taxi players.** Check a List and Auto-Find's Whole Roster comparison (and

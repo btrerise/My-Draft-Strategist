@@ -48,6 +48,7 @@ async function savedLineup(page) {
 // Uploads a CSV as one kind of rankings only ('ros' or 'weekly').
 async function uploadOne(page, kind, csv, count) {
     await page.setInputFiles(`#${kind}FileInput`, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
     await expect(page.locator('#rankingsPreviewOverlay')).toContainText(`${count} players parsed`);
     await callApp(page, 'confirmRankingsPreview');
     await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
@@ -217,6 +218,9 @@ async function storePerPositionFiles(page, rbOrder) {
         }
     }, { POS, rbOrder });
     await page.reload();
+    // Let the reload settle before the next callApp, as the other specs do (it failed now and then with "Execution
+    // context was destroyed": the evaluate landed mid-navigation).
+    await page.waitForLoadState('networkidle');
 }
 
 test.describe('Lineup Strategist: the Waiver Wire with per-position uploads', () => {

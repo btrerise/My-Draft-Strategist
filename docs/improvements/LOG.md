@@ -3336,3 +3336,592 @@ else (318 other tests passed). It took three runs: a test stops at its first fai
 - Run 37996843439: `{desktop,phone}/mls-league-guide.png`. The lock line ("Manual locks (and swaps, which lock) last
   for the week…"), step 7 "Lineups that need you" and the legend's box sample (desktop 6229 → 6350px, phone
   12707 → 12930px).
+
+## S12 — A phone Dashboard: one card per league
+
+**User-visible effect.** The Dashboard's League Command Center lists your leagues as cards, one per league, in your
+league order, at every width. Each card holds everything about that league, so each league shows once:
+- **Header:** a chevron that folds the card, the league's name (tap it to make it the active league; the active one
+  has the table's green edge), its format and last sync ("Redraft 1QB PPR · Synced 4 days ago", amber when old, red
+  when the last sync failed), and ▲ ▼ ✕ (reorder, remove, with the same confirm naming the league).
+- **Status row:** a chip each for **Rankings** (Weekly rankings fresh in the last 6 days: green; stale or missing:
+  amber) and **Lineup** (matches Sleeper: green; differs: red; not optimized yet: grey; no Sleeper lineup on record
+  yet: amber), EARLY or BB as before, then "2 to do" (amber) and "1 upgrade" (green), which stay readable with the card
+  folded. Each chip carries a word, so a phone shows what it's about without hover, and tapping it opens the
+  table's tooltip text, under the status row so it never runs off the screen.
+- **Body:** the league's to-dos from S11 ("Needs you · Sun 1:00 PM", one item per line, Open lineup / Find RB), its
+  Sleeper changes in a fold ("Differs from your Sleeper lineup: 4 changes"), and its Best Available section from S5
+  (open when the league has an upgrade, folded otherwise, with View, ×, Restore and, on desktop, the Sleeper link). A
+  manual league's card says why it has no best available. On a wide screen the to-dos and best available sit side by
+  side; on a phone they stack.
+- **Above the cards:** the box under Sync All / Optimize All is now one line ("2 lineups need you before kickoff · 1
+  to set on Sleeper", ✕, "Sync All again"); its ✕ hides the cards' to-dos for the session until another league needs
+  you, or the next Optimize All or Sync All, as before. Then a toolbar: "Best available by [Weekly | ROS]", the summary
+  ("Upgrades in 2 of 5 leagues") and **Fold all / Unfold all**.
+- **Gone:** the League / Rankings / Lineup / Settings table, the box's per-league lines and its Sleeper drop-down, and
+  the Best Available card (its tooltip text moved into the Command Center's (i)).
+- At 375px and 390px nothing runs past the edge, names are whole (they wrap between words), and every button sits
+  inside its card.
+
+**Owner's decisions (asked before building, with a sketch).**
+1. **Phones only or desktop too:** I suggested phones only, up to 600px. The owner asked whether it would make more
+   sense to have it all fit in one League Command Center, consistent everywhere. I took that as **cards at every width**:
+   the table, the box and the Best Available card go on desktop too, and a wide card puts its to-dos and best available
+   side by side.
+2. **What each card holds:** status chips, S11's to-dos and buttons, its Sleeper changes (folded) and its Best
+   Available line, as I proposed. The owner added: **every card can fold, even with to-dos**, to move through many
+   leagues quickly. Folding is remembered per league (new key below), and I added Fold all / Unfold all for the same
+   reason. A folded card keeps its header, chips and counts, so a new to-do still shows.
+3. **The separate box and the Best Available card go:** yes (my recommendation). The box's header stays as the strip.
+4. **Order:** your league order (▲▼), not soonest kickoff first. Urgency shows as the strip's count, an amber border
+   on each card that needs you, and the kickoff time (amber within a day).
+
+**What changed and where.**
+- `js/mls/render/leagueCards.js` (new, in `PRECACHE_ASSETS`): `renderLeagueCards` (the cards, the strip, Fold all),
+  `leagueStatus` (the table's Rankings / Lineup / EARLY / format / sync logic, moved from `renderLeagueManager`),
+  `toggleLeagueCard`, `foldAllLeagueCards`. A redraw keeps focus on the same control (or the league's name), each
+  card's Sleeper fold state, and its Best Available section until that redraws (no flash).
+- `js/mls/leagues/sync.js`: `renderLeagueManager` now calls `renderLeagueCards` (all its callers unchanged); the table
+  code and its imports are gone.
+- `js/mls/render/dashboard.js`: `collectLineupNeeds` (exported) returns the lines in league order plus `byLeague`, so
+  the strip and the cards read one computation per render. `leagueNeedsHTML` / `leagueSleeperFoldHTML` (the box's line
+  markup, per card), `lineupNeedsHidden` (the ✕ rule), `renderLineupNeeds` draws the strip. ✕, Optimize All and Sync All
+  redraw through `renderLeagueManager`.
+- `js/mls/scout/bestAvailable.js`: `renderBestAvailable` fills each card's `.mls-lc-ba` and upgrade count, the toolbar's
+  switch and summary; `leagueSectionHTML` replaces the line (a fold whose state survives redraws unless the league
+  gains or loses an upgrade). `toggleBestAvailable` and the "Show N more leagues" fold are gone. The upgrade rule,
+  dismissals and View are unchanged.
+- `js/mls/lineup/issues.js`: `needsYouCount` (the "2 to do" count; `needsYou` uses it).
+- `js/mls/badges.js`: `leagueStatusChipMarkup` (the chip; legend sample from the same helper). `js/mls/legend.js`: the
+  status line now shows the chips; the sync-age sample drops `.mls-ba-sync`.
+- `lineup/index.html`: the strip, toolbar and `#leagueCards` in place of the table; the Best Available card removed;
+  the Command Center's (i), Guide steps 2 and 7.
+- `css/mls.css`: `.mls-lc-*` (cards, chips, toolbar), `.status-pending`; the Best Available and needs rules trimmed to
+  what the cards use; the old `.mls-league-row-btn` and `.mls-ba-more` rules removed.
+- **New key `mls_league_cards_collapsed`** (`KEYS.mls.leagueCardsCollapsed`): the ids of folded cards, removed when
+  none is folded. `mls_best_available_collapsed` is no longer read but stays in `keys.js` (no key removals before 6C).
+- `js/mls/main.js`: actions `toggleLeagueCard`, `foldAllLeagueCards`; `toggleBestAvailable` removed.
+- CHANGELOG: a new line, and the S5 and S11 Unreleased lines updated to the cards. `CACHE_NAME` v2.8.91 → v2.8.92.
+
+**One behavior change in the status.** The table showed a red "Differs from your Sleeper lineup" icon for a synced
+league with no Sleeper lineup on record (the fixture league, for one), though there was nothing to compare. The card
+shows an amber Lineup chip, "No Sleeper lineup to compare yet: Sync All gets it". Red now means exactly that the
+card has Sleeper changes to show (`getSleeperLineupChanges`, the same comparison as before).
+
+**Tests.**
+- `tests/mls-league-cards.spec.mjs` (new, both projects): two fixture leagues at **375px and 390px**: one card each in
+  league order, each name once in the Command Center, the strip's count, each card's chips and tones, meta, "1 to do",
+  to-dos, Sleeper fold, Best Available section; no overflow (page and every element), names whole, every button inside
+  its card; the Lineup chip's tooltip opens on a tap and stays on screen; Open lineup works. Then **reorder** (▲ keeps
+  focus on the league, storage order), **switch** by name, **fold** a card with to-dos (header, chips and count stay;
+  remembered across a reload and a redraw), **Fold all / Unfold all** (key removed), a **manual league's** grey and
+  amber chips and no-best-available line, and **delete** via the confirm dialog. And at 1280px the to-dos and best
+  available sit side by side, stacking at 375px.
+- `tests/mls-lineup-needs.spec.mjs`: reads the to-dos from the cards (league order now, so the kickoff test checks
+  order stays and the amber time), the Sleeper fold in the card with the red chip, ✕ hiding the cards' to-dos.
+- `tests/mls-best-available.spec.mjs`: the sections in the cards: empty states (no leagues: no Command Center; only a
+  manual league: its note, no switch), open/folded by upgrade, the counts, the sync age in the header, a folded card
+  remembered (replacing the card's collapse).
+- `tests/mls-rename-ranking-set.spec.mjs`: the Best Available source label in the card.
+- The tooltip test caught a real problem: the site-wide tooltip hangs left from its trigger, so a chip's tooltip ran
+  51px off a phone's left edge. The status row now anchors its tooltips (`css/mls.css`).
+
+**Screenshots: six change, to be re-taken from the PR's CI run.** This container can't render CI-matching baselines
+(F1, S9). Rendered here, main and this branch differ in exactly these six (`npm run pxdiff`); the other 34 are
+pixel-identical:
+- `{desktop,phone}/mls-league-setup.png`: the Command Center as cards: the strip ("1 lineup needs you before
+  kickoff"), the toolbar (Weekly | ROS, "1 league without rankings", Fold all) and the Fixture League's card (amber
+  Rankings and Lineup chips, "1 to do", "RB slot is empty · Find RB", Best available open with its Upload button and,
+  on desktop, the Sleeper link). The table and the Best Available card are gone (desktop 2639 → 2461px, phone
+  2934 → 2761px here).
+- `{desktop,phone}/mls-empty-setup.png`: no Best Available card with no leagues (the Command Center was already hidden;
+  desktop 2067 → 1903px, phone 2185 → 2005px here).
+- `{desktop,phone}/mls-league-guide.png`: Guide steps 2 and 7's new text and the legend's status-chip line.
+
+No PR is open yet, so CI hasn't run. Once one is: let its first run fail on these, and commit CI's renders ("Accepting
+an intended visual change" in `docs/TESTING.md`).
+
+**Left over.**
+- The six screenshots above, from the PR's CI.
+- With many leagues the list is long; Fold all and the per-card fold are the answer for now. A "show only leagues
+  that need me" filter was not asked for.
+- The Best Available card's old collapse key (`mls_best_available_collapsed`) is unread; remove it with the other
+  key work after 6C if wanted.
+
+### S12, round 2: FLEX picks without FLEX ranks (a bug), and "Show" on the strip (owner's requests)
+
+**The bug** (found by the owner in "Fantasy Leftovers", with a backup; likely older than S12, fixed here because the
+cards are about lineups that need setting). The league's Weekly rankings were per-position files, so nobody had a
+FLEX rank. For FLEX slots, `compareFlexCandidates` (js/mls/render/lineup.js) then compared any two players by Sleeper
+projection, same position or not, ranked or not. So the lineup started Kendrick Bourne (WR55, 8.6 projected) over
+Treylon Burks (WR53, 3.5), and an unranked Kyle Pitts (7.7) in a FLEX slot (relabeled to SFLEX by kickoff) over ranked
+WRs. Traced from the backup: FLEX 2 and 3 went to Bourne and Pitts by projection; Gadsden (TE24) took SFLEX.
+
+**The owner's rule:** FLEX rank, then any rank, then projected points; projections decide between different positions
+(a TE24 isn't necessarily better than a WR50).
+
+**The fix.**
+- `js/mls/lineup/flexChoice.js` (new, pure, in `PRECACHE_ASSETS`): `pickFlexStarter(candidates, projOf)`.
+  1. Anyone with a FLEX rank: the best FLEX rank (as before).
+  2. Else, among ranked players: the best-ranked left at each position (so WR53 always before WR55, whatever they
+     project), then the higher projection among those leaders. A projected player beats an unprojected one; with no
+     projection, the better position rank.
+  3. Else (nobody ranked): the higher projection.
+
+  Also `bestBy`. The order is a strict lexicographic one, so the pick doesn't depend on roster order (the old pairwise
+  mix of rank and projection could have formed a cycle).
+- `optimizeLineup` uses it for W/R, W/T, FLEX and SFLEX's RB/WR/TE step (a QB with a position rank still comes first in
+  SFLEX, and SFLEX still never takes an unranked RB/WR/TE). Strict slots are unchanged.
+- `fillLineup` (js/mls/scout/waiverScanner.js), the copy Auto-Find, Check a List and the Dashboard's Best Available use
+  for "would he start?", uses the same function. It never used projections before, and now takes each candidate's
+  `proj` from a new optional `projOf` dep (`lineupCheckDeps` in waivers.js passes `getLineupProjection`). So the
+  optimizer and the waiver tools agree again.
+- With the backup's league (projections from the owner's screenshot, run through `fillLineup`), the rule gives: FLEX
+  Luther Burden (the one FLEX rank left), Oronde Gadsden (TE24, 7.0, over Burks WR53, 3.5) and Burks, then SFLEX
+  Kendrick Bourne (WR55, next at WR). Burks now starts before Bourne, and Pitts (unranked) sits.
+
+**Tests** (rule 4: the spec first, failing on the old code). `tests/mls-flex-choice.spec.mjs`: the fixture league
+with two FLEX slots, position-only Weekly ranks and routed projections. Before the fix FLEX went to A.J. Brown (WR6,
+30 projected) and George Kittle (unranked, 20); after it, Trey McBride (TE2, 6) and CeeDee Lamb (WR3, 2).
+`tests/unit/flexChoice.test.mjs` (9): FLEX rank first, Burks over Bourne, ranked over unranked, leaders by projection,
+the projection fallbacks, order independence, and `fillLineup`'s FLEX and SFLEX.
+
+**"Show" on the strip** (the owner asked how hard a link to the league needing attention would be; it's small, so it's
+built). Next to "1 lineup to set on Sleeper" (or "2 lineups need you…"), a **Show** link with a down arrow scrolls to
+that league's card. With several leagues it reads **Show next** and steps through them in league order, wrapping
+around. A folded card unfolds (remembered, as its chevron would). A card whose only item is its Sleeper changes opens
+that fold. Focus moves to the league's name. `jumpToLeagueNeeds` in render/leagueCards.js; the page's own
+`scroll-padding-top` keeps the card clear of the sticky header. Spec: both cards folded, Show next goes to each in turn
+and around again, unfolding each.
+
+**Left over / noticed.**
+- The Lineup tab's "Bench Priorities" order still sorts by FLEX rank, then position rank across positions. That's
+  display only, and who starts is unchanged by it.
+- The S11 swap suggestions ("start X instead?") pick the same position by rank first, then anyone by FLEX rank; no
+  projections. Not changed.
+- SFLEX leaves its slot empty rather than start an unranked RB/WR/TE (FLEX starts one). Pre-existing; not changed.
+- `CACHE_NAME` stays v2.8.92 (this branch's bump). The six screenshots listed above still change; the strip in
+  `mls-league-setup` now also has "Show".
+- Seen once in the full run: `mls-display-ranks.spec.mjs` ("keeps the files' position ranks…", desktop) failed with
+  "Execution context was destroyed": its setup reloads the page and the next `callApp` can land mid-reload. It passed
+  12 of 12 on repeat (`--repeat-each=6`); it doesn't touch the Dashboard. A follow-up could wait for the load after
+  that reload.
+
+### S12, round 3: one slot rule everywhere, SFLEX, and players whose game has started (owner's requests)
+
+**Asked:** make the S11 "start X instead?" suggestions consistent with round 2's rule; have SFLEX use projections
+too; and explain why the Dashboard said "Mike Washington over Zay Flowers" in "How I Met Your Punter" while Auto-Find
+(FLEX) said he'd replace George Kittle (backup and Sleeper username supplied).
+
+**The mismatch, traced** (backup, plus Sleeper's week 5 matchup for the league: Chris Godwin, TB, already had 5.5
+points from Thursday). Auto-Find checks your saved lineup. Best Available builds a fresh best lineup from the whole
+roster (S5 round 7), and its deps (`lineupCheckDeps`) counted every player whose game had kicked off as locked in,
+bench players too. So the benched, unranked Godwin was locked into a WR slot. That pushed Nabers to W/T and Flowers to
+FLEX, and left Kittle out of the lineup it compared against. With Washington added, Flowers was the one left out.
+Rerun on the backup with the fix, both say Kittle. The optimizer itself only auto-locks a kicked-off *starter*, but it
+let a kicked-off bench player be picked to start, which Sleeper won't allow.
+
+**What changed.**
+- **One rule for a player whose game has kicked off:** `kickoffFreeze(league, p)` in `js/mls/lineup/gameInfo.js`
+  returns 'in' if he started (Sleeper's last-synced lineup; with none, the saved lineup, as the auto-lock always read
+  it), 'out' if he didn't, and null before kickoff or when you overrode the auto-lock.
+  - The optimizer auto-locks 'in' (as before) and now holds 'out' players out of the starter pool; they rejoin the
+    bench.
+  - `lineupCheckDeps` uses it: `isLocked` only for 'in', and a new `cannotStart` for 'out'. `bestLineup` leaves those
+    players out, as it does taxi players; `checkAgainstLineup` counts them unavailable.
+- **One slot rule:** `pickForSlot(slotType, candidates, projOf)` in `js/mls/lineup/flexChoice.js`:
+  - strict slots by position rank;
+  - W/R, W/T and FLEX by `pickFlexStarter`;
+  - SFLEX: a ranked QB first, then a ranked RB/WR/TE by `pickFlexStarter`, then **anyone it takes by projection**.
+  `optimizeLineup` (its fillSlot and the SFLEX loop are now one fillSlot over the slot order) and `fillLineup` both
+  call it, with the available players first and everyone as the fallback.
+  - **SFLEX bug 1:** with nobody ranked left, SFLEX stayed empty. Now it takes the higher projection.
+  - **SFLEX bug 2,** found while doing this: the QB step ran the "unavailable as a last resort" fallback on its own, so
+    an Out ranked QB beat a healthy ranked RB/WR/TE. Now availability applies to the slot as a whole.
+  - The owner kept "a ranked QB first" in SFLEX (F1's scope note). Projections don't decide QB against FLEX while a
+    QB is ranked; say if they should.
+- **"Start X instead?"** (`lineupIssues` in `js/mls/lineup/issues.js`): the swap is `pickForSlot` over the healthy
+  bench players the slot takes, with projections (`projOf` in ctx, from `getLineupIssues`). It used to take his own
+  position first, then the best FLEX rank. In a FLEX slot that's now whoever the optimizer would start: an injured WR's
+  FLEX spot can go to a better-ranked RB. Strict slots still take only their position.
+- `js/mls/scout/waivers.js`: `lineupCheckDeps` as above (its own `hasKickedOff` / override check moved into
+  `kickoffFreeze`).
+
+**Tests** (each bug shown on the old code first).
+- `tests/unit/flexChoice.test.mjs`: SFLEX with nobody ranked (empty before), a healthy ranked WR over an Out ranked QB
+  (the QB before), and `pickForSlot` per slot type.
+- `tests/unit/lineupIssues.test.mjs`: the swap in a FLEX slot by the FLEX rule (before: "his position first"); no
+  FLEX ranks (leaders by projection, rank within a position, ranked over unranked); SFLEX.
+- `tests/unit/waiverScanner.test.mjs`: the old "a QB with no rank never fills SFLEX" is now "SFLEX takes him" (the
+  owner's change).
+- `tests/mls-flex-choice.spec.mjs`: SFLEX with nobody ranked left takes A.J. Brown (30 projected; empty before). Then,
+  with his game (PHI) kicked off and him not in your Sleeper lineup, it takes Kittle instead.
+- `tests/mls-best-available.spec.mjs`: a benched Puka Nacua whose game has started doesn't change "over CeeDee Lamb
+  WR4" (before: the line changed, as in the owner's league).
+
+**Left over.** Screenshots: unchanged from round 2's six. The fixture lineups have no unranked SFLEX and no kicked-off
+games.
+
+### S12, round 4: a quieter Command Center, and Lineup Strategist v2.15.0 (owner's go-ahead after my review as a user)
+
+**Why.** I loaded the owner's backup (21 leagues) into the app at 390px and 1280px and reviewed it as a user. Liked:
+one place per league, chips with words, counts that survive folding, Show next, desktop's side by side, Best Ball
+leagues still getting upgrades, and lines that now agree with Auto-Find. Disliked, worst first:
+1. Length: about 5,100px on a phone (six screens); about 10 cards had nothing to do and still took a full card.
+2. The Sunday job ("9 lineups to set on Sleeper") sat behind a fold in each card, and those cards got no "to do"
+   count or border.
+3. ▲ ▼ ✕ on every card (63 buttons, 21 red ✕s) for once-a-season actions, squeezing names.
+4. "Synced today" ×21 and "Weekly · Wk5" on every best available line.
+5. "3 upgrades" in Slow Mock Draft that were three options for one spot (all "over Kenny Gainwell").
+6. On desktop the left column was mostly empty when the only to-do was the folded Sleeper line.
+
+**Owner's decisions.**
+- Build 1–5 as proposed.
+- On #4: keep the rankings set's own name ("Wk5" is the name the owner gave that upload); drop only the repeated
+  "Weekly".
+- Bump the visible version: Lineup Strategist **v2.15.0**. The changelog's Unreleased list, everything since v2.14.0
+  (S1 through S12), becomes v2.15.0 — 2026-10-11.
+
+**User-visible effect.**
+- **Quiet cards fold.** A card with nothing to do starts folded to its header: no to-dos, no Sleeper changes, no
+  upgrade, no rankings to upload while no league has any. Your own fold or unfold of a card wins and is remembered;
+  Fold all / Unfold all set every card. "Show" unfolds the card it goes to, remembered as an unfold.
+- **Sleeper changes inline.** They're one more item in the card's to-dos, in amber: "Start Terry McLaurin · Bench
+  Jacory Croskey-Merritt" under the label "Set on Sleeper" when that's all there is, or "On Sleeper: Start …" beside
+  other items. One Open lineup button serves both. They count toward "N to do" and the amber border. This also fixes
+  #6: on desktop the left column holds the line.
+- **Reorder mode.** ▲ ▼ ✕ show only after tapping **Reorder** in the toolbar (it reads **Done** while on; in memory,
+  so it starts off on every visit).
+- **Less repetition.**
+  - The header shows the sync only when it's old, unknown or failed.
+  - Best available shows the set's name alone ("Wk5", "9/15/2026"), or nothing for a legacy upload. A fallback still
+    says "Weekly · Wk5 (no ROS set)".
+- **Shared targets.** Upgrades that would replace the same player (or fill the same empty spot) count once ("1
+  upgrade"), and the line says "2 options for one spot: each over Puka Nacua WR4" above the players instead of
+  repeating it on each.
+- **Footer:** "My Lineup Strategist v2.15.0".
+
+Checked again on the backup: Legends of the Pocket Dynasty, Late Round Lame Legends, May the Receptions Be With You
+and LRD Cucks start folded; the 9 Sleeper leagues show their changes inline. The page is no shorter on this Sunday
+morning, because those 9 lines are now visible rather than folded; on a quiet day it is.
+
+**What changed and where.**
+- `js/mls/render/leagueCards.js`:
+  - `readFolds` / `writeFolds`: `KEYS.mls.leagueCardsCollapsed` now holds `{ folded, open }` (round 1's array, which
+    the owner's live data has, is read as folded).
+  - `applyDefaultFolds`, run after each draw and by `renderBestAvailable` once upgrades are known (through main.js).
+  - Reorder mode (`toggleLeagueReorder`); the sync note rule.
+- `js/mls/render/dashboard.js`: `leagueTodoHTML(line, sleeper)` replaces `leagueNeedsHTML` and
+  `leagueSleeperFoldHTML`.
+- `js/mls/scout/bestAvailable.js`: `sourceLabel` without the type; `target` on each upgrade, `upgradeCount` by
+  distinct target, the `.mls-ba-shared` note.
+- `lineup/index.html`: the Reorder button; the (i) and Guide step 2 mention Reorder and folding; the footer version.
+- `css/mls.css`: the toolbar buttons, the Sleeper item, the shared note. `js/mls/main.js`: the
+  `toggleLeagueReorder` action, the `applyDefaultFolds` re-export.
+- CHANGELOG: the v2.15.0 heading, the cards line rewritten for what ships, and the S11 line's drop-down sentence.
+
+**Tests.**
+- `mls-league-cards.spec.mjs`: Reorder mode around ▲▼ and ✕; the Sleeper changes as a to-do item ("2 to do", one Open
+  lineup); the `{ folded, open }` key; a quiet manual league starting folded, and opening it remembered.
+- `mls-lineup-needs.spec.mjs`: the Sleeper test reads the card's to-do item.
+- `mls-best-available.spec.mjs`:
+  - the source labels;
+  - no "Synced today";
+  - `openFold` opens a folded card first;
+  - new: two upgrades over the same player counted once and said once (a third free agent, WR3 over WR4, isn't an
+    upgrade under S5's 3-spot rule).
+- `mls-rename-ranking-set.spec.mjs`: the source label is the set's name.
+
+**Noticed, not changed.** A lineup saved before an optimizer change isn't recomputed until its rankings change or
+you optimize. So after this deploys, the owner's saved Fantasy Leftovers lineup (from before round 2's FLEX fix)
+still says "Start Kendrick Bourne, Kyle Pitts" on Sleeper until Optimize All runs. Tapping Optimize All Lineups once
+after the deploy fixes every league. An automatic one-time re-optimize (a rules version in the lineup stamp) is
+possible; I've offered it.
+
+**Screenshots (round 4).** Rendered here, main and this branch still differ in exactly the six PNGs listed in round 1.
+They now also show the Reorder button, no "Synced today", and v2.15.0 in the footer (`mls-empty-setup`,
+`mls-league-setup`); `mls-league-guide` has Guide step 2's new text. All six are to be re-taken from the PR's CI run.
+Checks: 328 passed; the 10 that fail are `visual.spec.mjs`'s screenshots, which this container can't render to CI's
+baselines (as on main).
+
+### S12, round 5: projections for Optimize All, amber only for real problems, the strip's next step (owner's go-ahead after my second review as a user)
+
+**Why.** I loaded the owner's newest backup, tapped Optimize All on the Dashboard (as they would after the deploy) and
+read every card.
+- **The good:** the Sleeper lines read as instructions; quiet Best Ball leagues fold; names get the full width; "2
+  options for one spot" reads right. I also checked that Fantasy Leftovers starting Bourne and Pitts is correct for
+  the new Wk5 set: Bourne is WR43 with a FLEX rank (91) and Pitts is TE25.
+- **Found:**
+  1. **Optimize All from the Dashboard ran without projections.** They loaded only with the Lineup tab. All 14 lineup
+     leagues were marked projection-less, and when projections arrived only the active one was redone. Since round 2,
+     projections decide FLEX picks between positions when there's no FLEX rank.
+  2. **Amber everywhere:** 13 of 14 cards were amber with "1 to do", nearly all just Sleeper differences.
+  3. **The strip's second line** ("Sync All again to get the latest injury news…") wasn't the next step.
+- The owner said build 1–3.
+
+**What changed.**
+1. **Projections first.**
+   - `ensureLineupProjections()` (js/mls/lineup/gameInfo.js) loads this week's Sleeper projections if they aren't in
+     yet. It never throws: a failure leaves the position-rank fallback.
+   - Optimize All awaits it before its loop. Sync All loads it alongside the player map.
+   - `reoptimizeProjectionlessLeagues()` (js/mls/render/dashboard.js, re-exported by main.js) quietly re-optimizes
+     every league in `State.projectionlessLineups` other than the active one. Locks are kept, as in Optimize All's
+     loop, and the active league is restored with `switchActiveLeague`. `refreshLineupStats` calls it once projections
+     are loaded; the active league keeps its existing redo there.
+   - This touches Optimize All and Sync All, which the card had out of scope; the owner approved it.
+2. **Amber only for what needs you before kickoff.**
+   - A card's amber border and "N to do" count only its S11 items.
+   - Sleeper changes show "1 to set" in muted text (`.mls-lc-count-sleeper`). The item itself is in the main text
+     color, and a Sleeper-only card's "Set on Sleeper" label is muted.
+   - On the backup after Optimize All: 0 of 21 cards amber (nothing needed them before kickoff) and 13 reading
+     "1 to set".
+3. **The strip's next step.** With lineups to set it reads "Set the lineups on Sleeper, then Sync All again to clear
+   them." ("Set the lineup … clear it." for one). Otherwise it keeps "Sync All again to get the latest injury news…".
+
+**Tests** (#1 shown failing on the old code first).
+- `tests/mls-flex-choice.spec.mjs`:
+  - "Optimize All from the Dashboard loads projections first": one FLEX slot, Lamb projected 10 against McBride TE2.
+    McBride on the old code, Lamb now.
+  - "projections that arrive late redo every league optimized without them": a second league, projections answering
+    503 during Optimize All, then a Lineup tab visit. With the new hook off, the other league stays on McBride.
+  - The `proj` option of `setup` was renamed `extraProj`; it shadowed the route's own variable.
+- `tests/mls-league-cards.spec.mjs`: "1 to do" plus "1 to set", and the strip's line.
+- `tests/mls-lineup-needs.spec.mjs`: the Sleeper-only card is neutral ("1 to set", no amber border), and the strip's
+  line.
+- CHANGELOG (v2.15.0): a line for the projections, and the cards line's counts and strip.
+- `tests/mls-display-ranks.spec.mjs`: its per-position helper now waits for the reload to settle (`networkidle`, as
+  the other specs do). The "Execution context was destroyed" flake noted in round 2 failed on both widths in this
+  round's full run. With the wait, the spec passed 84 of 84 (`--repeat-each=6`).
+
+**Checks.** 330 passed in the full run. Apart from the two `mls-display-ranks` failures (fixed above), the only
+failures are `visual.spec.mjs`'s 10 screenshots, which this container can't render to CI's baselines. Screenshots: the
+same six PNGs as before differ from main; the fixture's Dashboard has no Sleeper changes, so round 5 adds nothing
+there.
+
+### S12, round 6: injured players still starting on Sleeper, kickoff times for Optimize All, the toast, a shorter card (owner's go-ahead after my third review as a user)
+
+**Why.** In the review I marked D'Andre Swift (How I Met Your Punter) Out in a copy of the backup and tapped Optimize
+All.
+1. **The urgent case looked routine (my round-5 regression).** The optimizer benched Swift, but he was still in the
+   Sleeper lineup, and the card read "Set on Sleeper · Bench D'Andre Swift (Out)" as a neutral "1 to set". That's the
+   old Global Injury Auditor's case.
+2. **The toast contradicted the page:** "Successfully optimized 14 lineups!" over 14 lineups to set on Sleeper.
+3. **A "Best available · Wk5 · No upgrade" row** in every card open for its to-dos.
+
+**The owner's point on CeeDee Lamb and Dak Prescott** ("they played TNF; my updated rankings take them out; they
+should be auto-locked"). That was the disconnect, and it came from this container: ESPN's scoreboard is blocked here,
+so my review runs had no kickoff times, nothing was auto-locked, and the optimizer benched the unranked Lamb and Dak.
+- In the backup every one of them is in the league's last-synced Sleeper lineup. Re-run with Dallas's and Tampa Bay's
+  kickoffs on Thursday, they're all locked in, and three leagues drop off the list.
+- In the owner's browser the kickoff times load at startup, but in the background, and Optimize All didn't wait for
+  them. A tap before ESPN answered, or after it failed, would have benched them the same way. Fixed below.
+
+**What changed.**
+1. **Injured or bye players starting on Sleeper.**
+   - `getSleeperLineupChanges` (js/mls/lineup/gameInfo.js) now returns `bench` as names, with `benchNotes` (his
+     status when he's unlikely to play, or "on bye"; byes weren't noted before) and `urgent`.
+   - `sleeperChangesHTML` shows a note as "(Out)" in the injury red (`.mls-needs-hurt`).
+   - An urgent change makes the card need you: amber border, "1 to do" (not "1 to set"), the "Needs you" label and
+     "On Sleeper: …" in the item. It counts in `collectLineupNeeds().needCount`, so the strip reads "1 lineup needs
+     you before kickoff · 10 to set on Sleeper" and the toasts count it.
+2. **Kickoff times and the toasts.**
+   - Optimize All awaits `refreshGameTimes()` along with the projections; Sync All loads it with the player map. It's
+     cached for the week, and a hang is cut at 12 seconds (`mdsFetch`).
+   - Optimize All's toast adds "N to set on Sleeper" ("Optimized 14 lineups · 1 needs you · 10 to set on Sleeper";
+     unchanged when there's nothing to say). Sync All's adds the same.
+3. **No empty best available row.** In a card with to-dos, a best available that's folded by default (no upgrade) is
+   hidden by CSS. A card with nothing else still shows it, so opening a quiet card still shows its best available.
+
+On the backup (Swift Out; Dallas and Tampa Bay kicked off Thursday) after Optimize All: one amber card, 10 "1 to set",
+and the toast "Optimized 14 lineups · 1 needs you · 10 to set on Sleeper". The phone page went from about 5,700px to
+4,400px.
+
+**Tests** (#1 and the kickoff wait shown failing on the old code first).
+- `tests/mls-lineup-needs.spec.mjs`: the Sleeper test splits in two.
+  - Routine changes stay neutral ("1 to set"), with the toast "Optimized 2 lineups · 1 to set on Sleeper".
+  - An Out player starting on Sleeper needs you: the title, the "Needs you" label, "(Out)" marked, "1 to do", the
+    amber border, and the toast "Optimized 2 lineups · 1 needs you · 1 to set on Sleeper".
+- `tests/mls-flex-choice.spec.mjs`: ESPN down while the app starts and back by the tap. Lamb, in your Sleeper lineup
+  and missing from the rankings, stays locked in. On the old code he's benched.
+- `tests/mls-league-cards.spec.mjs`: best available is shown in a to-do card only with an upgrade.
+
+**Left over.**
+- A per-card "Sync this league" to clear a card after setting it on Sleeper (raised in round 5). The owner agreed to
+  leave it for its own card.
+- The kickoff times still load in the background at startup for everything else (the Lineup tab re-renders when they
+  arrive, the Dashboard on its next render).
+
+**Checks.** `npm run check`: precache OK, 328 unit tests pass, 336 Playwright tests pass; the 10 failures are only
+visual.spec, which can't match the CI renderer in this container. Rendered here, main against this branch: the same six
+MLS screenshots differ as in the earlier rounds (`{desktop,phone}/mls-empty-setup`, `mls-league-setup`,
+`mls-league-guide`), all intended. Every other one is identical. They're re-taken from the PR's CI run.
+
+### S12, round 7: best available waits for projections and kickoff times; "Open lineup" back at the right edge (owner's go-ahead after my fourth review as a user)
+
+**Why.** In the review (the owner's latest backup, phone, Sunday 10:30 ET with Dallas and Tampa Bay played Thursday):
+1. **Best available changed its answer for no visible reason.** Apex said "2 options for one spot: each over Kimani
+   Vidal" on opening the Dashboard and "Darius Cooper over Jaylin Noel" after Optimize All, which changed no lineup;
+   Slow Mock did the same. The projections only loaded with the Lineup tab, Optimize All or Sync All, so best
+   available picked the weakest FLEX starter by rank alone until then (confirmed: `lineupProjectionsLoaded()` false
+   before the tap). The kickoff times, which decide who's frozen in place, weren't awaited either.
+2. **On desktop, a to-do card's "Open lineup" sat in the middle of the row.** My round 6 rule hid best available's
+   fold in a to-do card with no upgrade, but its section kept its half of the row.
+
+**The owner's decisions.** Build 1, and the button fix. Keep the red "Lineup" chip ("the icon is small... since a large
+part of the app is setting lineups, the quick visual scan is nice") and the "Rankings" chip on every card. The per-card
+"Sync this league" goes into the runbook as a card to revisit: **S13, "Sync one league from its card"** (Later, Asks
+you whether it's wanted at all), with S12's decisions added to the runbook's "Your answers so far".
+
+**What changed.**
+1. `renderBestAvailable` (js/mls/scout/bestAvailable.js) awaits `ensureLineupProjections()` and `refreshGameTimes()`
+   with the Sleeper player map (`Promise.allSettled`, so a failure of either just leaves today's fallback). The cards
+   draw at once as before; their best available sections fill in when these arrive.
+   - Both now share a fetch already on its way for the same week (`ensureLineupProjections` in
+     js/mls/lineup/gameInfo.js, `refreshGameTimes` in js/mls/state.js), since the Dashboard redraws often and the
+     startup fetch of the kickoff times can still be pending.
+2. css/mls.css: in a to-do card, a best available section with no upgrade is hidden as a whole
+   (`.mls-lc-todo + .mls-lc-ba:has(> .mls-ba-fold[data-default="false"])`), so the to-dos take the row.
+
+**Tests** (both shown failing on the old code first).
+- `tests/mls-flex-choice.spec.mjs`: "the Dashboard's best available uses projections from its first draw". Zay
+  Flowers (free agent, WR1) is an upgrade over CeeDee Lamb only with projections (Lamb at FLEX over Trey McBride).
+  On the old code: "No upgrade". The two Optimize All projection tests now keep Sleeper's projections at 503 until
+  the tap (a `projUp` option on `setup`), since the Dashboard loads them itself now.
+- `tests/mls-league-cards.spec.mjs`, "on a wide screen…": a to-do card with no upgrade has its to-dos across the
+  whole row and "Open lineup" at the card's right edge (old code: half the row). The side-by-side check now uses a
+  card that does have an upgrade; before, it was measuring the empty section.
+
+On the owner's backup the Dashboard's best available now reads the same before and after Optimize All (Apex: "Darius
+Cooper over Jaylin Noel" from the first draw).
+
+**Checks.** `npm run check`: precache OK, 328 unit tests, 338 Playwright tests pass; the 10 failures are only
+visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 6's,
+so main against this branch differs in the same six MLS screenshots as before, all intended.
+
+### S12, round 8: roster changes on each card after Sync All; a reason beside a routine bench change (owner's go-ahead after my fifth review as a user)
+
+**Why.** The review ran a real Sync All on the owner's 21 leagues (read-only, 16 seconds): the strip went from 9
+lineups to set to 1, which works. Two things didn't.
+1. **"3 with roster changes"... which three?** The toast pointed at the Sync Logs, which open by themselves, but since
+   S12 they sit under all 21 cards: about 4,700px down on a phone. (They were Mike Washington pickups in two leagues,
+   best available's suggestion, and one in Gridiron Best Ball.)
+2. **"Bench Ashton Jeanty" with no reason.** The one change left told the owner to bench his RB1: right (Jeanty is
+   Questionable and not in Wk5), but unexplained, so you double-check everything.
+
+**What changed.**
+1. js/mls/render/dashboard.js: Sync All's log entries also record the league's id (no storage key changed), and the
+   run's changes are kept in memory for the visit (`syncChangesFor`, `syncChangesHTML`). Each card
+   (js/mls/render/leagueCards.js) shows its own under the status row, so a folded card shows it too:
+   "Synced: + Zay Flowers · − Garrett Wilson · Derrick Henry (Out)", in the Sync Logs' colors (`.mls-lc-synced*` in
+   css/mls.css). A newly out player reads "(Out)", not the log's "Out: … (OUT)"; another status stays ("(IR)"). After
+   a reload the cards are quiet; the Sync Logs keep the history as before.
+2. `getSleeperLineupChanges` (js/mls/lineup/gameInfo.js) returns `benchWhy` beside `benchNotes`: for a routine bench
+   change, the player's status when it still lets him play ("Q") and/or "not in <set>" when the rankings the optimizer
+   used (Weekly, else ROS) leave him out. The set's own name when it's short ("Wk5"), else "your Weekly rankings" (the
+   default name, "Weekly Rankings – 9/15/2026", would crowd the line). `sleeperChangesHTML` shows it muted
+   (`.mls-needs-why`); an urgent note stays red, and the change stays routine. The Lineup tab's drop-down says the
+   same. `getLeagueRankings` is re-exported by js/mls/main.js for it.
+
+**Tests** (both shown failing on the old code first), in `tests/mls-lineup-needs.spec.mjs`:
+- "a routine bench change says why…": Kittle Questionable, Garrett Wilson left out of the rankings: "(Q)", "(not in
+  your Weekly rankings)", then "(not in Wk5)" once the set is named Wk5; still "1 to set", no amber; the Lineup tab
+  says the same.
+- "Sync All's roster changes show on each league's card": between syncs Derrick Henry is ruled out and Zay Flowers is
+  picked up for Garrett Wilson; the Fixture League's card says all three (folded too), the second league's only Henry,
+  and after a reload only the Sync Logs do.
+
+No legend line: these are text lines, not badges (tests/unit/badgeLegend.test.mjs agrees).
+
+On the owner's backup after a real Sync All: 13 cards say what changed ("Synced: + Mike Washington · − Chris Godwin",
+"Synced: Jordan Addison (Out)"), and the reasons read "Bench CeeDee Lamb (Q · not in Wk5)". (ESPN is blocked here, so
+the Thursday players weren't locked; in the owner's browser they are.)
+
+**A flake seen once, not from this change:** in one full run, `tests/mls-waiver-tiers.spec.mjs` "a Pos Rank column
+shows the overall tier…" failed with "Execution context was destroyed" in `showTab` right after `seedMls` /
+`loadMlsRankings` (the page was still navigating). It passed 6 of 6 alone, and this round doesn't touch that spec or
+the code it runs. If CI hits it, the fix is the one mls-display-ranks got in round 4: wait for `networkidle` before
+the first `showTab`. (Superseded: the real cause and fix are under "S12, pull request" below.)
+
+**Checks.** `npm run check`: precache OK, 328 unit tests, 342 Playwright tests pass; the 10 failures are only
+visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 7's
+(the screenshot leagues never Sync All, and their Sleeper changes have no reasons to give).
+
+### S12, round 9: Best Ball lineups lost their kicked-off players (a round 3 regression, found by the owner)
+
+**What the owner saw** (Sunday afternoon, a preview of this branch on a phone): LRD Cucks' card said it had an empty
+spot, though the roster has 16 of 16, and the Lineup tab had empty starting slots.
+
+**Reproduced** with the owner's 3:11 pm backup and the real week 5 kickoffs (Sleeper's schedule:
+`api.sleeper.app/schedule/nfl/regular/2026`; DAL–TB Thursday, PHI–JAX in the morning, nine 1 pm games under way).
+LRD Cucks' Lineup tab showed six "[ Empty Slot ]" rows (QB, WR, TE, two FLEX, DEF), and best available offered free
+agents in five best-ball leagues: "3 options for one spot: each fills an empty lineup spot". The saved lineups had the
+holes: LRD Cucks 6, Slow Mock Draft 9, BB Ying 3, three others 1 each.
+
+**Cause.** Round 3's `kickoffFreeze` (js/mls/lineup/gameInfo.js) keeps a player whose game has kicked off where he
+is: 'in' if he started, 'out' (held out of the pool) if not. "Started" is Sleeper's lineup, or with none this app's
+saved lineup. Best Ball has no Sleeper lineup (`getValidSleeperStarterIds` returns []: nobody sets one), so the saved
+lineup stood in, and once a kicked-off player was missing from it he was 'out' for good: the next optimize saved his
+slot empty. By the afternoon 11 of LRD Cucks' 16 players had kicked off, both QBs included (Kyler Murray is on
+Minnesota now). Main doesn't have round 3, so the live site is fine.
+
+**Fix.**
+1. `kickoffFreeze` returns null in Best Ball: every player stays in the pool, as before round 3. That fixes the
+   optimizer and best available (which uses the same rule).
+2. js/mls/render/lineup.js: a saved lineup with an empty slot is rebuilt when it's shown, not re-shown as-is, so the
+   lineups the bug already saved heal when opened. Optimize All skips Best Ball leagues, so without this they'd have
+   kept their holes until a sync.
+
+On the owner's backup LRD Cucks now opens full (Maye at QB, Watson, Warren and the Patriots "Started"), and no card
+mentions an empty spot.
+
+**Test** (`tests/mls-flex-choice.spec.mjs`, "Best Ball: a player whose game has kicked off still fills his slot, and a
+lineup saved with a hole heals"): a best-ball league, Buffalo and Philadelphia kicked off, Josh Allen and A.J. Brown
+missing from the saved lineup. Optimize: Allen at QB, no empty slot (before the fix: "QB:-"). Then a saved hole fills
+on the next showing of the Lineup tab (fails without fix 2).
+
+**Checks.** `npm run check`: precache OK, 328 unit tests, 344 Playwright tests pass; the 10 failures are only
+visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 8's.
+
+### S12, round 10: newly out players muted in the "Synced:" line (owner's choice)
+
+From my sixth review as a user: after a real Sync All, 14 calm, folded cards carried a red line ("Synced: Jordan
+Addison (Out)", a bench player), in the same red as a to-do's "Bench Will Shipley (Out)". The owner saw the side-by-side
+(red now, muted proposed) and chose muted. css/mls.css: `.mls-lc-synced-out` is `var(--text-muted)`. Pickups stay
+green; red stays for what needs acting on. Test: `tests/mls-lineup-needs.spec.mjs`, "Sync All's roster changes show on
+each league's card", now checks the newly out name is the line's muted color, not the injury red (fails on round 9). Checks: precache OK, 328 unit and 344 Playwright tests pass (only visual.spec fails here, as
+always); screenshots pixel-identical to round 9.
+
+### S12, pull request (btrerise/My-Draft-Strategist#195): screenshots from CI, and the waiver-tiers flake's real cause
+
+**Screenshots.** As planned, CI's first runs failed only on the six intended MLS PNGs (each test stops at its first
+failing shot, so two runs). Each was taken from the run's `playwright-results` artifact after checking its
+`-expected.png` was identical to the committed baseline and the change was S12's: `{desktop,phone}/mls-empty-setup` and
+`mls-league-setup` (run 38169361425; the cards replace the table, box and Best Available card), and
+`{desktop,phone}/mls-league-guide` (run 38169904585; Guide step 2's new text, everything below shifted). Phone heights
+differ from this container's renders by a few lines of wrapping (CI's font is narrower); the content is the same.
+
+**The flake was this branch's, and wasn't a navigation.** The second run also failed `mls-waiver-tiers.spec.mjs` "a Pos
+Rank column shows the overall tier…" on phone, the "Execution context was destroyed" seen once locally in round 8.
+- Reproduced: about 1 in 20 here (2 of 50, 4 of 50, 5 of 40); main 0 of 50. Bisected: round 1 0 of 60, round 2 1 of 60,
+  every later round failing.
+- No navigation: no load, unload, reload or form submit, only `#scout`'s `history.pushState`. Playwright's protocol log
+  shows the browser's answer to the `page.evaluate`: `"Promise was collected"`. Chrome's garbage collector dropped the
+  promise the evaluate was waiting on, and Playwright words that as a destroyed context. `callApp` (tests/helpers.mjs)
+  awaited `import('/js/mls/main.js')` with nothing in the page holding that promise; round 2 made tab switches
+  allocate more, so a collection inside that window became likely.
+- First fix (tests only): `callApp` kept its `import()` promise on `window`. 200 runs of that test passed, but the next
+  full run failed another test in the same spec the same way, and the whole spec under load still failed 2 in 120.
+  So the promise collected wasn't (only) the import's: it was the evaluate's own, pending while the tab switch ran.
+- Fix: `callApp` (tests/helpers.mjs) makes two calls. The first imports the module and keeps it on
+  `window.__callAppModules`; the second calls the function synchronously, so no evaluate is waiting on a promise while
+  the app works (a function that returns a promise is still awaited). The whole spec under load: 360 of 360.
+
+**And a second race, in the tests' uploads.** CI's third run (38173606583) failed `mls-sos-scale.spec.mjs` "an SoS
+column in a ROS rankings upload follows the switch…" on desktop: the saved SoS was empty. Here 1 in 80; main 0 in 120.
+After one upload's preview closes, its "24 players parsed" stays in the hidden overlay, so the next upload's
+`toContainText` passed at once, Save ran before the new preview existed and did nothing (the failure's snapshot shows
+the upload button still disabled, its parse running). S12 makes the page busier during a parse, which widened it.
+Fix: every wait for "players parsed" (`loadMlsRankings` in tests/helpers.mjs and six specs) first waits for the overlay
+to be visible. 160 of 160 after.
+
+Full check after both: precache OK, 328 unit and 344 Playwright tests pass (only visual.spec fails here).

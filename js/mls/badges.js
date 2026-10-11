@@ -98,8 +98,9 @@ export function posCountChipMarkup(pos, label, count, notes, colorClass, { lit =
         + `</button>`;
 }
 
-// --- LEAGUE COMMAND CENTER (leagues/sync.js) ---
-// The Rankings and Lineup columns' status icons, inside .status-icon.status-good / -warn / -danger.
+// --- LEAGUE COMMAND CENTER (render/leagueCards.js) ---
+// The league cards' status icons (the table's Rankings and Lineup columns before S12), inside .status-icon.status-good /
+// -warn / -danger / -pending.
 export const STATUS_CHECK_ICON = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 export const STATUS_WARN_ICON = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
 export const STATUS_PENDING_ICON = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
@@ -108,6 +109,17 @@ export const pendingStatusIconMarkup = (tooltip = '') =>
     `<span class="status-icon${tooltip ? ' tooltip-container' : ''}" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${STATUS_PENDING_ICON}${tooltip}</span>`;
 export const bestBallBadgeMarkup = (tooltip = '') =>
     `<span class="badge${tooltip ? ' tooltip-container' : ''}" style="background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); padding: 2px 6px;">BB${tooltip}</span>`;
+// A league card's status chip (improvements S12): the status icon and a one-word label ("Rankings",
+// "Lineup"), so a phone shows what each icon is about without hover. tone: 'good' | 'warn' | 'danger' |
+// 'pending'. tip: the sentence (plain, escaped here), shown on hover, focus or a tap (js/shared/ui/tooltips.js).
+export function leagueStatusChipMarkup(tone, label, tip, { sample = false } = {}) {
+    const icon = tone === 'good' ? STATUS_CHECK_ICON : tone === 'pending' ? STATUS_PENDING_ICON : STATUS_WARN_ICON;
+    const dot = tone === 'pending'
+        ? `<span class="status-icon status-pending">${icon}</span>`
+        : `<span class="status-icon status-${tone}">${icon}</span>`;
+    const tipHTML = sample ? '' : `<span class="tooltip-text">${escapeHtml(tip)}</span>`;
+    return `<span class="mls-lc-chip is-${tone}${sample ? '' : ' tooltip-container'}">${dot}<span class="mls-lc-chip-label">${escapeHtml(label)}</span>${tipHTML}</span>`;
+}
 
 // --- LINEUP TAB (render/lineup.js) ---
 // The player's spot on Sleeper differs from this lineup: on a starter row "Bench in Sleeper",

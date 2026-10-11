@@ -5,6 +5,7 @@
 // DOM, localStorage, or js/mls/state.js's State. The caller injects everything league-specific
 // (position lookup, lock/availability checks) as plain callbacks, so this whole file runs
 // under Node for validation without a browser.
+import { pickForSlot } from '../lineup/flexChoice.js';
 
 export const FLEX_POSITIONS = ['RB', 'WR', 'TE'];
 // WRRB / WRTE: Sleeper's W/R and W/T slots (improvements S1), filled before FLEX like optimizeLineup does.
@@ -194,13 +195,14 @@ export function upgradeGap({ faRank, faTier = null, benchRank, benchTier = null,
 
 // --- LINEUP SIMULATION ---
 // Fills a set of starter slots from a candidate pool using the exact same rules as
-// optimizeLineup in js/mls/render/lineup.js (strict slots by posRank, FLEX by flexRank-then-posRank, SFLEX by
-// QB posRank -> FLEX flexRank -> FLEX posRank, locked players placed first, unavailable
+// optimizeLineup in js/mls/render/lineup.js (pickForSlot, js/mls/lineup/flexChoice.js: strict slots by posRank,
+// FLEX-type slots by FLEX rank, then the best-ranked at each position by projection; SFLEX a ranked QB, a ranked
+// RB/WR/TE, then anyone by projection), locked players placed first, unavailable
 // players only as a last resort so no slot is left empty). If the two ever drift apart, this
 // tool would claim a free agent "starts" when the optimizer wouldn't actually start him --
 // so any change to optimizeLineup's fillSlot/SFLEX logic belongs here too.
 //
-// pool entries: { id, pos, posRank, flexRank, isLocked, unavailable }
+// pool entries: { id, pos, posRank, flexRank, isLocked, unavailable, proj? } (proj: Sleeper's projection, or null)
 // Returns { starters: [{ slotType, player }], leftover: [...] }.
 //
 // A slot type outside SLOT_ORDER (an IDP "DL", say) is skipped: it gets no starters entry, and a
@@ -217,26 +219,11 @@ export function fillLineup(slotTypes, candidates) {
     const pool = candidates.slice();
     const starters = [];
 
-    const findBest = (matchFn, compareFn) => {
-        let best = -1;
-        pool.forEach((p, i) => {
-            if (!matchFn(p) || p.unavailable) return;
-            if (best === -1 || compareFn(p, pool[best]) < 0) best = i;
-        });
-        if (best !== -1) return best;
-        pool.forEach((p, i) => {
-            if (!matchFn(p)) return;
-            if (best === -1 || compareFn(p, pool[best]) < 0) best = i;
-        });
-        return best;
-    };
-
-    const byPosRank = (a, b) => a.posRank - b.posRank;
-    const byFlex = (a, b) => {
-        if (a.flexRank !== UNRANKED && b.flexRank !== UNRANKED) return a.flexRank - b.flexRank;
-        if (a.flexRank !== UNRANKED) return -1;
-        if (b.flexRank !== UNRANKED) return 1;
-        return a.posRank - b.posRank;
+    // pickForSlot (js/mls/lineup/flexChoice.js), preferring available players, as optimizeLineup's fillSlot does.
+    const projOf = (p) => (p.proj == null ? null : p.proj);
+    const pick = (slotType) => {
+        const best = pickForSlot(slotType, pool.filter(p => !p.unavailable), projOf) || pickForSlot(slotType, pool, projOf);
+        return best ? pool.indexOf(best) : -1;
     };
 
     const take = (slotType, idx) => starters.push({ slotType, player: idx === -1 ? null : pool.splice(idx, 1)[0] });
@@ -246,22 +233,8 @@ export function fillLineup(slotTypes, candidates) {
 
     SLOT_ORDER.forEach(slotType => {
         for (let i = 0; i < (counts[slotType] || 0); i++) {
-            if (slotType === 'SFLEX') {
-                const lockedIdx = pool.findIndex(p => p.isLocked && ['QB', ...FLEX_POSITIONS].includes(p.pos));
-                if (lockedIdx !== -1) { take(slotType, lockedIdx); continue; }
-                let idx = findBest(p => p.pos === 'QB' && p.posRank !== UNRANKED, byPosRank);
-                if (idx === -1) idx = findBest(p => FLEX_POSITIONS.includes(p.pos) && p.flexRank !== UNRANKED, (a, b) => a.flexRank - b.flexRank);
-                if (idx === -1) idx = findBest(p => FLEX_POSITIONS.includes(p.pos) && p.posRank !== UNRANKED, byPosRank);
-                take(slotType, idx);
-                continue;
-            }
-            const accepts = slotType === 'FLEX' ? (p => FLEX_POSITIONS.includes(p.pos))
-                : RESTRICTED_FLEX[slotType] ? (p => RESTRICTED_FLEX[slotType].includes(p.pos))
-                : (p => p.pos === slotType);
-            const isFlexType = slotType === 'FLEX' || !!RESTRICTED_FLEX[slotType];
-            const lockedIdx = pool.findIndex(p => p.isLocked && accepts(p));
-            if (lockedIdx !== -1) { take(slotType, lockedIdx); continue; }
-            take(slotType, findBest(accepts, isFlexType ? byFlex : byPosRank));
+            const lockedIdx = pool.findIndex(p => p.isLocked && slotAcceptsPos(slotType, p.pos));
+            take(slotType, lockedIdx !== -1 ? lockedIdx : pick(slotType));
         }
     });
 
@@ -275,11 +248,13 @@ export function fillLineup(slotTypes, candidates) {
 // new upload it can still start a player the new rankings leave out. Taxi players are left out;
 // locked and unavailable players are handled as fillLineup does.
 // reqs: { QB: 1, RB: 2, ... }; roster: [{ id, cleanName, isTaxi, ... }];
-// deps: { getPos(cleanName), rankOf(player) -> { posRank, flexRank }, isLocked(player), isUnavailable(player) }
-export function bestLineup(reqs, roster, { getPos, rankOf, isLocked, isUnavailable }) {
+// deps: { getPos(cleanName), rankOf(player) -> { posRank, flexRank }, isLocked(player), isUnavailable(player),
+//         projOf(player) -> Sleeper's projection or null (optional),
+//         cannotStart(player) -> true for a bench player whose game has kicked off (optional; left out, as taxi players are) }
+export function bestLineup(reqs, roster, { getPos, rankOf, isLocked, isUnavailable, projOf = () => null, cannotStart = () => false }) {
     const slotTypes = [];
     Object.entries(reqs || {}).forEach(([slotType, n]) => { for (let i = 0; i < (n || 0); i++) slotTypes.push(slotType); });
-    const candidates = (roster || []).filter(p => p && !p.isTaxi).map(p => {
+    const candidates = (roster || []).filter(p => p && !p.isTaxi && !cannotStart(p)).map(p => {
         const rk = rankOf(p) || {};
         const pos = getPos(p.cleanName);
         // The returned player carries the position the lineup was filled with, so a later
@@ -287,7 +262,7 @@ export function bestLineup(reqs, roster, { getPos, rankOf, isLocked, isUnavailab
         return {
             id: p.id, pos, ref: { ...p, pos },
             posRank: rankOr999(rk.posRank), flexRank: rankOr999(rk.flexRank),
-            isLocked: !!isLocked(p), unavailable: !!isUnavailable(p)
+            isLocked: !!isLocked(p), unavailable: !!isUnavailable(p), proj: projOf(p)
         };
     });
     return fillLineup(slotTypes, candidates).starters.map(s => ({ slotType: s.slotType, player: s.player ? s.player.ref : null }));
@@ -317,7 +292,9 @@ export function slotAcceptsPos(slotType, pos) {
 // currentStarters: [{ slotType, player: { id, name, pos, ... } | null }]
 // rankOf(player) -> { posRank, flexRank } from the check rankings (999 when unranked)
 // isLocked(player), isUnavailable(player) -> booleans
-export function checkAgainstLineup(fa, currentStarters, { rankOf, isLocked, isUnavailable }) {
+// projOf(player) -> Sleeper's projection or null (optional; the FLEX rule's tiebreak between positions)
+// cannotStart(player) -> true once a player who wasn't starting has kicked off (optional; counted as unavailable)
+export function checkAgainstLineup(fa, currentStarters, { rankOf, isLocked, isUnavailable, projOf = () => null, cannotStart = () => false }) {
     const slotTypes = currentStarters.map(s => s.slotType);
     if (!slotTypes.some(t => slotAcceptsPos(t, fa.pos))) return { status: 'noSlot' };
 
@@ -326,7 +303,7 @@ export function checkAgainstLineup(fa, currentStarters, { rankOf, isLocked, isUn
         return {
             id: p.id, pos: p.pos, ref: p,
             posRank: rankOr999(rk.posRank), flexRank: rankOr999(rk.flexRank),
-            isLocked: !!isLocked(p), unavailable: !!isUnavailable(p),
+            isLocked: !!isLocked(p), unavailable: !!isUnavailable(p) || !!cannotStart(p), proj: projOf(p),
             ...extra
         };
     };

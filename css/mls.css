@@ -159,6 +159,7 @@
 .status-good { background: rgba(16, 185, 129, 0.15); color: #10b981; }
 .status-warn { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
 .status-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.status-pending { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
 
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
 
@@ -477,24 +478,6 @@ button.close-chip {
     border-radius: 4px;
 }
 
-/* League Command Center: the league cell's content is a full-cell <button> (was a clickable
-   <td>), so it's reachable by keyboard. Padding moved here from the <td> so the whole cell
-   stays the click target. */
-.mls-league-row-btn {
-    display: block;
-    width: 100%;
-    padding: 0.75rem 0.5rem 0.75rem calc(0.5rem + 6px);
-    background: none;
-    border: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-.mls-league-row-btn:focus-visible {
-    outline: 2px solid var(--primary-green);
-    outline-offset: -2px;
-}
 /* ▲/▼ on the first/last league. The dimming used to be a second style="" attribute on a button
    that already had one, which browsers ignore, so disabled arrows looked clickable. */
 .mls-league-move-btn:disabled {
@@ -1519,20 +1502,16 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-ta-trend-title { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--primary-green); }
 .mls-trend-icon { vertical-align: -2px; margin-right: 0.35rem; }
 
-/* Best available in your leagues (Dashboard, js/mls/scout/bestAvailable.js, improvements S5): one
-   line per league, its top 3 RB/WR/TE with Top Available's rank chips, and a View button. */
-.mls-ba-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; margin-bottom: 0.75rem; }
+/* Best available in your leagues (js/mls/scout/bestAvailable.js, improvements S5): since S12 a fold in each league
+   card (.mls-lc-ba), its top 3 RB/WR/TE with Top Available's rank chips, and a View button. */
 .mls-ba-basis { flex: 0 0 auto; }
-.mls-ba-basis .mls-segmented-btn { flex: 0 0 auto; padding: 0.4rem 1rem; }
-.mls-ba-note { flex: 1 1 260px; margin: 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
-.mls-ba-excluded { margin: 0.6rem 0 0; font-size: 0.78rem; color: var(--text-muted); }
-.mls-ba-note strong { color: var(--text-main); }
-.mls-ba-list { list-style: none; margin: 0; padding: 0; }
-.mls-ba-line { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0; }
-.mls-ba-line + .mls-ba-line { border-top: 1px solid var(--border); }
+.mls-ba-basis .mls-segmented-btn { flex: 0 0 auto; padding: 0.3rem 0.85rem; }
+.mls-ba-excluded { margin: 0.5rem 0 0.2rem; font-size: 0.78rem; color: var(--text-muted); }
+.mls-ba-fold { margin: 0; padding: 0.45rem 0 0.2rem; }
+.mls-ba-title { color: var(--text-main); }
+.mls-ba-fold > summary .mls-ba-source, .mls-ba-flag { font-size: 0.72rem; font-weight: 400; color: var(--text-muted); }
+.mls-ba-line { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.4rem 0 0; }
 .mls-ba-main { flex: 1; min-width: 0; }
-.mls-ba-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 0.5rem; margin-bottom: 0.25rem; }
-.mls-ba-league { font-weight: 600; color: var(--text-main); font-size: 0.9rem; }
 .mls-ba-source { font-size: 0.72rem; color: var(--text-muted); }
 .mls-ba-players { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; font-size: 0.85rem; }
 .mls-ba-player { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.15rem 0.3rem; }
@@ -1542,12 +1521,14 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-ba-player.is-upgrade > svg { color: var(--primary-green); flex-shrink: 0; }
 .mls-ba-player.is-upgrade .mls-ba-name { font-weight: 600; }
 .mls-ba-over { font-size: 0.78rem; color: var(--primary-green); }
-/* Phones: an upgrade takes its own row, with "over your …" under the name. */
+/* Phones: an upgrade takes its own row, with "over …" under the name; the buttons go in a row under the players,
+   as the to-dos' do. */
 @media (max-width: 600px) {
     .mls-ba-player.is-upgrade { flex-basis: 100%; }
     .mls-ba-player.is-upgrade .mls-ba-over { flex-basis: 100%; padding-left: calc(14px + 0.3rem); }
+    .mls-ba-line { flex-direction: column; align-items: stretch; gap: 0.4rem; }
+    .mls-ba-actions { flex-direction: row; flex-wrap: wrap; }
 }
-.mls-ba-sync { font-size: 0.72rem; }
 .mls-ba-actions { display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; flex-shrink: 0; }
 .mls-ba-sleeper { display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; text-decoration: none; }
 /* Desktop only (owner's choice): on phones and tablets the link opens the Sleeper app's home, not the league. */
@@ -1557,42 +1538,37 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-ba-player .inj-badge { margin-left: 0.1rem; }
 .mls-ba-dismiss { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 0.1rem; border-radius: 50%; color: var(--text-muted); opacity: 0.6; cursor: pointer; }
 .mls-ba-dismiss:hover, .mls-ba-dismiss:focus-visible { opacity: 1; color: var(--text-main); background: rgba(255, 255, 255, 0.08); }
+.mls-ba-shared { margin-bottom: 0.2rem; font-size: 0.78rem; color: var(--primary-green); }
 .mls-ba-dismissed { margin-top: 0.25rem; font-size: 0.75rem; color: var(--text-muted); }
 .mls-ba-restore { font-size: 0.75rem; font-weight: 600; color: var(--primary-green); cursor: pointer; text-decoration: underline; }
-.mls-ba-none { font-size: 0.85rem; color: var(--text-muted); padding: 0.25rem 0 0.5rem; }
-.mls-ba-more { margin-top: 0.25rem; border-top: 1px solid var(--border); }
-.mls-ba-more > summary { cursor: pointer; padding: 0.6rem 0 0.2rem; font-size: 0.82rem; font-weight: 600; color: var(--primary-green); list-style: none; display: inline-flex; align-items: center; gap: 0.3rem; }
-.mls-ba-more > summary::-webkit-details-marker { display: none; }
-.mls-ba-chevron { transform: rotate(-90deg); transition: transform 0.15s; }
-.mls-ba-more[open] .mls-ba-chevron { transform: none; }
-.mls-ba-more:not([open]) .mls-ba-when-open,
-.mls-ba-more[open] .mls-ba-when-closed { display: none; }
-/* The header's summary line wraps rather than cutting off, unlike the rankings cards' set name. */
-#bestAvailableSummary { white-space: normal; }
 
-/* Lineups that need you (Dashboard, under Optimize All / Sync All; js/mls/render/dashboard.js, improvements S11):
-   one line per league, what to do, its first kickoff and the buttons that fix it; then a drop-down of the leagues
-   whose lineup differs from Sleeper. A neutral box: each item takes the Lineup tab's color for it (the injury
-   warning's red, the IR badge's purple), so an activation reads the same in both places. */
-.mls-needs-box { margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.5rem 0.75rem; }
+/* Lineups that need you (js/mls/render/dashboard.js, improvements S11). Since S12 the box under Optimize All / Sync
+   All is a one-line strip (the count, ✕, "Sync All again"), and each league's to-dos sit in its card: what to do, its
+   first kickoff and the buttons that fix it, then its Sleeper changes, folded. Each item takes the Lineup tab's color
+   for it (the injury warning's red, the IR badge's purple), so an activation reads the same in both places. */
+.mls-needs-box { margin-bottom: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.5rem 0.75rem; }
 .mls-needs-box[hidden] { display: none; }
 .mls-needs-head { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
 .mls-needs-head > svg { flex-shrink: 0; color: var(--text-muted); }
 .mls-needs-box.has-problems .mls-needs-head > svg { color: #f59e0b; }
 .mls-needs-title { flex: 1; min-width: 0; }
+.mls-needs-title-more { font-weight: 400; color: var(--text-muted); }
 .mls-needs-close { flex-shrink: 0; }
-.mls-needs-list { list-style: none; margin: 0; padding: 0; }
-.mls-needs-line { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.5rem 0; }
-.mls-needs-line + .mls-needs-line { border-top: 1px solid var(--border); }
+.mls-needs-jump { flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.8rem; font-weight: 600; color: var(--primary-green); text-decoration: underline; cursor: pointer; white-space: nowrap; }
+.mls-needs-line { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.45rem 0 0.2rem; }
 .mls-needs-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
 .mls-needs-head-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.1rem 0.5rem; }
-.mls-needs-league { font-weight: 600; color: var(--text-main); font-size: 0.9rem; overflow-wrap: anywhere; }
+.mls-needs-label { font-weight: 600; color: var(--text-muted); font-size: 0.82rem; }
+.mls-lc-card.needs-you .mls-needs-label { color: #f59e0b; }
 .mls-needs-when { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
 .mls-needs-when.is-soon { color: #f59e0b; font-weight: 600; }
 .mls-needs-items { font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
 .mls-needs-items.is-stacked { display: flex; flex-direction: column; gap: 0.15rem; }
 .mls-needs-item.is-injured, .lineup-needs-item.is-injured { color: #fca5a5; }
 .mls-needs-item.is-ir, .lineup-needs-item.is-ir { color: #d6bcfa; }
+.mls-needs-item.is-sleeper { color: var(--text-main); }
+.mls-needs-hurt { color: #fca5a5; font-weight: 600; }
+.mls-needs-why { color: var(--text-muted); }
 .mls-needs-item.is-kept, .lineup-needs-item.is-kept, .mls-needs-item.is-unmatched, .lineup-needs-item.is-unmatched { opacity: 0.7; font-style: italic; }
 .mls-needs-sep { color: var(--text-muted); opacity: 0.7; }
 .mls-needs-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; }
@@ -1603,11 +1579,76 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     .mls-needs-line { flex-direction: column; align-items: stretch; gap: 0.4rem; }
     .mls-needs-actions { flex-direction: row; flex-wrap: wrap; }
 }
-.mls-needs-sleeper { margin-top: 0.4rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
-.mls-needs-note { margin: 0.4rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
-.mls-needs-line.is-kept-only .mls-needs-league { color: var(--text-muted); }
-.mls-needs-check { margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
+.mls-needs-sleeper { margin: 0; padding: 0.45rem 0 0.2rem; }
+.mls-needs-sleeper .mls-needs-line { padding-top: 0.3rem; }
+.mls-needs-note { margin: 0.2rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
+.mls-needs-check { margin: 0.35rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
 .mls-needs-check-link { color: var(--primary-green); font-weight: 600; text-decoration: underline; cursor: pointer; }
+
+/* The League Command Center's league cards (js/mls/render/leagueCards.js, improvements S12): one per league, in your
+   order. A header (fold chevron, the name as the switch-league button with its format and sync age, ▲ ▼ ✕), a status
+   row (chips, EARLY or BB, "2 to do" and "1 upgrade"), and a body with the to-dos and Best Available, side by side
+   when there's room. The active league has the table's green edge; a league that needs you an amber border. */
+.mls-lc-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 0.75rem; margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
+.mls-lc-toolbar-ba { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 0.6rem; flex: 1 1 auto; min-width: 0; }
+.mls-lc-toolbar-ba[hidden] { display: none; }
+.mls-lc-toolbar-summary { min-width: 0; }
+.mls-lc-toolbar-buttons { margin-left: auto; display: inline-flex; gap: 0.9rem; }
+.mls-lc-fold-all { color: var(--primary-green); font-weight: 600; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+.mls-lc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.mls-lc-card { position: relative; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.55rem 0.7rem 0.6rem; min-width: 0; }
+.mls-lc-card.is-active { background: rgba(16, 185, 129, 0.06); box-shadow: inset 3px 0 0 var(--primary-green); }
+.mls-lc-card.needs-you { border-color: rgba(245, 158, 11, 0.55); }
+.mls-lc-head { display: flex; align-items: flex-start; gap: 0.4rem; }
+.mls-lc-fold { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: var(--text-muted); cursor: pointer; }
+.mls-lc-fold:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.06); }
+.mls-lc-chevron { transition: transform 0.15s; }
+.mls-lc-card.is-collapsed .mls-lc-chevron { transform: rotate(-90deg); }
+.mls-lc-name-btn { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0.2rem 0; background: none; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
+.mls-lc-name-btn:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+.mls-lc-name { color: var(--text-main); font-size: 0.95rem; overflow-wrap: break-word; }
+.mls-lc-meta { font-size: 0.75rem; color: var(--text-muted); }
+.mls-lc-sep { opacity: 0.7; }
+.mls-lc-controls { flex-shrink: 0; display: flex; align-items: center; gap: 0.3rem; }
+.mls-lc-controls .btn-sm { padding: 0.3rem 0.5rem; }
+.mls-lc-delete { margin-left: 0.15rem; }
+.mls-lc-status { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; margin: 0.35rem 0 0 calc(28px + 0.4rem); }
+.mls-lc-status .early-badge { margin-left: 0; }
+/* A chip's tooltip opens under the status row, from its left edge, so it never runs off a phone's screen (the
+   site-wide tooltip hangs left from its trigger's right edge, which for a chip near the card's left edge is past
+   the screen's). */
+.mls-lc-status { position: relative; }
+.mls-lc-status > .tooltip-container { position: static; }
+.mls-lc-status > .tooltip-container > .tooltip-text { left: 0; right: auto; width: min(260px, 100%); }
+.mls-lc-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 2px 8px 2px 2px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.75rem; color: var(--text-main); }
+.mls-lc-chip .status-icon { width: 20px; height: 20px; }
+.mls-lc-chip .status-icon svg { width: 12px; height: 12px; }
+.mls-lc-counts { display: inline-flex; align-items: center; gap: 0.6rem; margin-left: auto; font-size: 0.75rem; font-weight: 600; }
+.mls-lc-count-todo { color: #f59e0b; }
+.mls-lc-count-sleeper { color: var(--text-muted); font-weight: 500; }
+.mls-lc-count-upgrades { color: var(--primary-green); }
+.mls-lc-count-upgrades:empty { display: none; }
+/* This visit's Sync All roster changes (round 8), in the Sync Logs' colors, except a newly out player: muted, not the
+   injury red (owner's choice, round 10). It's news; red is for what you have to act on, like "Bench X (Out)". */
+.mls-lc-synced { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
+.mls-lc-synced-label { font-weight: 600; }
+.mls-lc-synced-add { color: #86efac; }
+.mls-lc-synced-drop { color: #9ca3af; }
+.mls-lc-synced-out { color: var(--text-muted); }
+.mls-lc-body { display: flex; flex-wrap: wrap; gap: 0 1.5rem; margin-top: 0.45rem; border-top: 1px solid var(--border); }
+.mls-lc-body[hidden] { display: none; }
+.mls-lc-todo, .mls-lc-ba { flex: 1 1 320px; min-width: 0; }
+.mls-lc-ba:empty { display: none; }
+/* In a card that's open for its to-dos, a best available with no upgrade (folded by default) is left out: a row per
+   card that said nothing (round 6). A card with nothing else keeps it, so opening a quiet card still shows it. The
+   whole section goes, not just its fold: an empty section still took half the row on desktop, which left the to-dos'
+   "Open lineup" in the middle of the card (round 7). */
+.mls-lc-todo + .mls-lc-ba:has(> .mls-ba-fold[data-default="false"]) { display: none; }
+/* Phones: the status row starts at the card's edge, under the chevron, so the chips get the full width. */
+@media (max-width: 600px) {
+    .mls-lc-card { padding: 0.5rem 0.55rem 0.55rem; }
+    .mls-lc-status, .mls-lc-synced { margin-left: 0; }
+}
 
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
    One card per player, with a per-league ownership row beneath the header. Markup comes from

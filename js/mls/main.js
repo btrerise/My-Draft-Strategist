@@ -21,7 +21,7 @@ import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
 import { addEarlyTeam, removeEarlyTeam } from './lineup/earlyGames.js';
 import { explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
-import { addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, moveLeague, saveRequirements, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
+import { addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, moveLeague, saveRequirements, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
@@ -31,7 +31,7 @@ import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
 import { onScoutTabShown, refreshTopAvailable, setTopAvailableView, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
-import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restoreBestAvailable, setBestAvailableBasis, toggleBestAvailable, viewLeagueTopAvailable } from './scout/bestAvailable.js';
+import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restoreBestAvailable, setBestAvailableBasis, viewLeagueTopAvailable } from './scout/bestAvailable.js';
 import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
@@ -48,7 +48,8 @@ import { copyLineupAsText, exportLineup } from './trade/export.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
-import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderLineupNeeds, renderSyncLogs, syncAllLeagues } from './render/dashboard.js';
+import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
+import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeagueReorder } from './render/leagueCards.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
@@ -66,7 +67,7 @@ import { dismissBannerAndReveal, dismissBanner } from '../shared/ui/banners.js';
 // state.js would then read State in its TDZ, and the headshot/SoS/market load-time code would run
 // out of mls.js order. main.js is the entry module, so it is always mid-evaluation while the
 // others evaluate, and importing from it never triggers an evaluation.
-export { checkForDraftStrategistHandoff, clearLocksForNewWeek, computePositionalPower, generateSoSGrid, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLineupNeeds, renderLineupUI, renderSyncLogs, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
+export { applyDefaultFolds, checkForDraftStrategistHandoff, clearLocksForNewWeek, computePositionalPower, generateSoSGrid, getLeagueRankings, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLeagueCards, renderLineupUI, renderSyncLogs, reoptimizeProjectionlessLeagues, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
 export { confirmRankingsPreview, createManualLeague, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
@@ -105,7 +106,7 @@ const clickActions = {
     dismissDraftStrategistHandoff() { dismissDraftStrategistHandoff(); },
     syncAllLeagues() { syncAllLeagues(this); },
     optimizeAllLineups() { optimizeAllLineups(this); },
-    // The "lineups need you" box under those two buttons (improvements S11).
+    // The "lineups need you" to-dos (improvements S11): the strip under those two buttons and each league card's.
     openLeagueLineup() { openLeagueLineup(this.dataset.leagueId); },
     findLeaguePlayers() { findLeaguePlayers(this.dataset.leagueId, this.dataset.pos); },
     checkSleeperNow() { checkSleeperNow(); },
@@ -114,14 +115,17 @@ const clickActions = {
     createManualLeague() { createManualLeague(); },
     importAllSleeperLeagues() { importAllSleeperLeagues(this); },
     saveRequirements() { saveRequirements(this); },
-    // Command Center league rows (leagues/sync.js)
+    // Command Center league cards (render/leagueCards.js, improvements S12; the table's rows before)
     switchActiveLeague() { switchActiveLeague(this.dataset.leagueId); },
     moveLeague() { moveLeague(Number(this.dataset.index), Number(this.dataset.direction)); },
     deleteLeagueManager() { deleteLeagueManager(this.dataset.leagueId); },
-    // Best available in your leagues (scout/bestAvailable.js, improvements S5)
+    toggleLeagueCard() { toggleLeagueCard(this.dataset.leagueId); },
+    foldAllLeagueCards() { foldAllLeagueCards(); },
+    toggleLeagueReorder() { toggleLeagueReorder(); },
+    jumpToLeagueNeeds() { jumpToLeagueNeeds(); },
+    // Best available in your leagues (scout/bestAvailable.js, improvements S5; a section of each league card since S12)
     viewLeagueTopAvailable() { viewLeagueTopAvailable(this.dataset.leagueId); },
     bestAvailableUpload() { bestAvailableUpload(this.dataset.leagueId); },
-    toggleBestAvailable() { toggleBestAvailable(); },
     setBestAvailableBasis() { setBestAvailableBasis(this.dataset.basis); },
     dismissBestAvailable() { dismissBestAvailable(this.dataset.leagueId, this.dataset.player); },
     restoreBestAvailable() { restoreBestAvailable(this.dataset.leagueId); },

@@ -12,7 +12,8 @@ import { getByeWeek } from '../../shared/data/byes.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
-import { renderLineupUI, optimizeLineup } from '../main.js';
+import { getLeagueRankings, isAutoLockOverridden, renderLineupUI, optimizeLineup, reoptimizeProjectionlessLeagues } from '../main.js';
+import { normalizeName } from '../../shared/names.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
 
@@ -99,6 +100,25 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         return !isNaN(ms) && Date.now() >= ms;
     }
 
+    // Where a player whose game has kicked off is stuck for the rest of the week (improvements S12 round 3): 'in' if he
+    // started (Sleeper's last-synced lineup; with none, this app's saved lineup, as optimizeLineup's auto-lock reads
+    // it), 'out' if he didn't, null before kickoff or when you overrode his auto-lock. One rule for the optimizer (which
+    // keeps an 'in' player in his slot and an 'out' one on the bench) and the waiver checks (lineupCheckDeps,
+    // scout/waivers.js). Before round 3 the Dashboard's Best Available counted every kicked-off player as locked in,
+    // bench players too, so a benched Thursday player took a starting spot in the lineup it compared against.
+    // Never in Best Ball (round 9): nobody sets a lineup there (Sleeper counts your best scores), so there's no "started"
+    // to read. This app's own saved lineup stood in for it, and once a kicked-off player was missing from it he counted
+    // as benched: the next optimize saved his slot empty, and by Sunday afternoon the owner's best-ball lineups had up to
+    // nine "[ Empty Slot ]" rows, and best available offered free agents to fill them.
+    export function kickoffFreeze(league, p) {
+        if (!league || !p || isBestBallLeague(league) || !hasKickedOff(p) || isAutoLockOverridden(league.leagueId, p.id)) return null;
+        const sleeperIds = getValidSleeperStarterIds(league);
+        const started = sleeperIds.length > 0
+            ? sleeperIds.includes(p.id)
+            : (State.manualStartersMap[league.leagueId] || []).some(s => s && s.player && s.player.id === p.id);
+        return started ? 'in' : 'out';
+    }
+
     // True only when ESPN says the team's game is over -- unlike hasKickedOff, which is just
     // "kickoff time has passed" and stays true through the whole game. Unknown is false.
     function isGameFinal(team) {
@@ -128,6 +148,33 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     export function lineupProjectionsLoaded() {
         const proj = State.lineupProjections;
         return State.currentNflWeek != null && proj.week === State.currentNflWeek && !!proj.data;
+    }
+
+    // This week's Sleeper projections, loaded if they aren't yet (improvements S12 round 5). They used to load only
+    // with the Lineup tab (refreshLineupStats), so Optimize All or Sync All from the Dashboard right after opening the
+    // app chose between positions by position rank alone, and only the active league was redone when they arrived.
+    // Both now wait for this first, and so does the Dashboard's best available (round 7). Resolves true when they're
+    // loaded; never throws (a failed fetch just leaves the position-rank fallback, as before). Calls made while a fetch
+    // for the same week is on its way share it (the Dashboard redraws often).
+    let projectionsInFlight = null;
+    export function ensureLineupProjections() {
+        if (lineupProjectionsLoaded()) return Promise.resolve(true);
+        const week = State.currentNflWeek;
+        if (!State.currentNflSeason || week == null) return Promise.resolve(false);
+        if (projectionsInFlight && projectionsInFlight.week === week) return projectionsInFlight.promise;
+        const promise = (async () => {
+            try {
+                const data = await getWeeklyProjections(State.currentNflSeason, week);
+                if (data) State.lineupProjections = { week, data, fetchedAt: Date.now() };
+            } catch (e) {
+                console.warn('Projections unavailable; FLEX picks between positions fall back to position rank.', e);
+            } finally {
+                if (projectionsInFlight && projectionsInFlight.promise === promise) projectionsInFlight = null;
+            }
+            return lineupProjectionsLoaded();
+        })();
+        projectionsInFlight = { week, promise };
+        return promise;
     }
 
     // Sleeper's projected points for this player this week in the league's scoring format, or
@@ -209,7 +256,7 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         if (!league || !league.leagueId || week == null) return;
 
         // This league's lineup was optimized before projections loaded, so its FLEX picks
-        // couldn't use the projection fallback (see compareFlexCandidates). Now that they're
+        // couldn't use the projection fallback (see pickFlexStarter, lineup/flexChoice.js). Now that they're
         // here, recompute once -- same full recompute a Sleeper sync does, so locks and
         // manual swaps (which lock) are preserved. optimizeLineup clears the flag and
         // re-renders, which calls back in here with nothing left to redo.
@@ -265,6 +312,9 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
             } finally {
                 State.lineupStatsRefreshing = false;
             }
+
+            // The other leagues optimized before projections loaded get them now too (S12 round 5).
+            if (lineupProjectionsLoaded()) reoptimizeProjectionlessLeagues();
 
             const activeTab = document.querySelector('.tab-content.active');
             if (changed && activeTab && activeTab.id === 'lineupTab') {
@@ -406,11 +456,14 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     // the Dashboard.
     export const FOLD_CHEVRON = `<svg class="mls-change-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 
-    // Your lineup here against the one on Sleeper as of the last sync: { start: [names], bench: [names] }, or null
-    // when they match or there's nothing to compare (Best Ball, manual leagues, no lineup yet). A benched name
-    // carries his status when he's unlikely to play ("Derrick Henry (Out)"): the Global Injury Auditor's "injured
-    // starter in your Sleeper lineup", which this replaces (S11 round 4). Shared with the Dashboard box; the
-    // Command Center's Lineup column uses the same comparison (sleeperLineupChanges), so they agree.
+    // Your lineup here against the one on Sleeper as of the last sync: { start: [names], bench: [names], benchNotes,
+    // urgent }, or null when they match or there's nothing to compare (Best Ball, manual leagues, no lineup yet). A
+    // benched player's note says why he can't help: his status when he's unlikely to play ("Out"), or "on bye"; shown
+    // as "Derrick Henry (Out)". That's the Global Injury Auditor's "injured starter in your Sleeper lineup", which this
+    // replaces (S11 round 4), and any note makes the change urgent (S12 round 6). A routine bench change gets a muted
+    // reason when the rankings alone don't explain it (round 8): "Ashton Jeanty (Q · not in Wk5)". Shared with the
+    // Dashboard's league cards,
+    // whose Lineup chip is red exactly when this returns changes (render/leagueCards.js, improvements S12).
     export function getSleeperLineupChanges(league, starters) {
         const sleeperIds = getValidSleeperStarterIds(league);
         const optimized = (starters || []).filter(s => s && s.player);
@@ -418,21 +471,47 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         const changes = sleeperLineupChanges(optimized.map(s => s.player.id), sleeperIds);
         if (changes.start.length === 0 && changes.bench.length === 0) return null;
         const playerOf = (id) => (optimized.find(s => s.player.id === id) || {}).player || ((league && league.roster) || []).find(p => p.id === id) || null;
-        const label = (id) => {
+        const name = (id) => { const p = playerOf(id); return p ? p.name : 'Unknown player'; };
+        // Why a benched player shouldn't be starting on Sleeper: his status when he's unlikely to play ("Out"), or "on
+        // bye" (S12 round 6). Either makes the change urgent: you'd get zero from him.
+        const note = (id) => {
             const p = playerOf(id);
-            if (!p) return 'Unknown player';
-            const hurt = SIM_EXCLUDE_STATUSES.includes(p.inj) ? ` (${statusPhrase(p.inj).replace(/^is /, '')})` : '';
-            return `${p.name}${hurt}`;
+            if (!p) return '';
+            if (SIM_EXCLUDE_STATUSES.includes(p.inj)) return statusPhrase(p.inj).replace(/^is /, '');
+            return isOnByeThisWeek(p.team) ? 'on bye' : '';
         };
-        return { start: changes.start.map(label), bench: changes.bench.map(label) };
+        const benchNotes = changes.bench.map(note);
+        // Otherwise, why the optimizer benched someone you're starting, when it isn't just a lower rank: a status that
+        // still lets him play ("Q"), or his absence from the rankings it used ("not in Wk5"; Weekly, else ROS, as the
+        // optimizer picks). A star benched with no reason given made you check everything else (round 8).
+        const weekly = getLeagueRankings(league, 'weekly');
+        const used = weekly || getLeagueRankings(league, 'ros');
+        const rankedNames = used ? new Set(used.data.map(r => r.cleanName)) : null;
+        // A short name you gave the set ("Wk5"); a long one (the default "Weekly Rankings – 9/15/2026") would crowd the line.
+        const setLabel = used && used.setName && used.setName.length <= 16 ? used.setName : `your ${weekly ? 'Weekly' : 'ROS'} rankings`;
+        const why = (id) => {
+            const p = playerOf(id);
+            if (!p) return '';
+            const parts = [];
+            if (p.inj) parts.push(p.inj);
+            if (rankedNames && !rankedNames.has(p.cleanName || normalizeName(p.name))) parts.push(`not in ${setLabel}`);
+            return parts.join(' · ');
+        };
+        const benchWhy = changes.bench.map((id, i) => (benchNotes[i] ? '' : why(id)));
+        return { start: changes.start.map(name), bench: changes.bench.map(name), benchNotes, benchWhy, urgent: benchNotes.some(Boolean) };
     }
 
-    // "Start Ja'Marr Chase · Bench Garrett Wilson, Derrick Henry (Out)", names kept whole.
+    // "Start Ja'Marr Chase · Bench Garrett Wilson, Derrick Henry (Out)", names kept whole; a routine reason is muted.
     export function sleeperChangesHTML(changes) {
-        const names = (list) => list.map(n => escapeHtml(n).replace(/ /g, '&nbsp;')).join(', ');
+        const nb = (t) => escapeHtml(t).replace(/ /g, '&nbsp;');
+        const notes = changes.benchNotes || [];
+        const whys = changes.benchWhy || [];
+        const noteHTML = (i) => notes[i] ? `&nbsp;<span class="mls-needs-hurt">(${nb(notes[i])})</span>`
+            : whys[i] ? `&nbsp;<span class="mls-needs-why">(${nb(whys[i])})</span>` : '';
+        const names = (list, withNotes) => list.map((n, i) => nb(n) + (withNotes ? noteHTML(i) : '')).join(', ');
         const parts = [];
-        if (changes.start.length) parts.push(`Start ${names(changes.start)}`);
-        if (changes.bench.length) parts.push(`Bench ${names(changes.bench)}`);
+        if (changes.start.length) parts.push(`Start ${names(changes.start, false)}`);
+        if (changes.bench.length) parts.push(`Bench ${names(changes.bench, true)}`);
         return parts.join('<span class="mls-needs-sep"> · </span>');
     }
 
@@ -453,6 +532,7 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
                 return iso ? new Date(iso).getTime() : NaN;
             },
             kept: p => isKeptStarter(league, p),
+            projOf: p => getLineupProjection(p.id, league),
             irRules: league ? league.irRules || null : null,
             rosterSize: league ? league.rosterSize : null,
             roster: league ? league.roster || [] : [],
