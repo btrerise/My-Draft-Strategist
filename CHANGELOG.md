@@ -99,7 +99,7 @@ Nothing yet.
 - **A benched player whose game has started stays benched.** Once his game kicks off, Sleeper won't let you start
   him, so the optimizer no longer does. The Dashboard's best available also no longer counts him as one of your
   starters. That made it compare a free agent with the wrong player ("over Zay Flowers" where Auto-Find rightly said
-  he'd replace George Kittle).
+  he'd replace George Kittle). Not in Best Ball, where nobody sets a lineup: there every player still counts.
 - **"Start X instead?" follows the lineup's rule.** For an injured or bye starter, the suggestion is whoever the
   optimizer would put in that slot from your healthy bench (projections included), not "his own position first".
 - **One card per league on the Dashboard.** The League Command Center now lists your leagues as cards, one per league,

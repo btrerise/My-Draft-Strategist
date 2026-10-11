@@ -290,7 +290,10 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // same full recompute a sync does: locks and manual swaps (which lock) carry over.
         const rankingsStamp = getLeagueRankingsStamp(league);
         const savedLineupCurrent = State.lineupRankingsStamps[State.activeLeagueId] === rankingsStamp;
-        if (!forceReset && savedLineupCurrent && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
+        // A saved lineup with an empty slot is rebuilt too, in case someone can fill it now (improvements S12 round 9: a
+        // bug in Best Ball saved empty slots, and Optimize All skips Best Ball, so they'd have stayed until a sync).
+        const savedHasHole = (State.manualStartersMap[State.activeLeagueId] || []).some(s => s && !s.player);
+        if (!forceReset && savedLineupCurrent && !savedHasHole && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
             renderLineupUI(); 
             return;
         }

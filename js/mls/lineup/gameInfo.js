@@ -106,8 +106,12 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     // keeps an 'in' player in his slot and an 'out' one on the bench) and the waiver checks (lineupCheckDeps,
     // scout/waivers.js). Before round 3 the Dashboard's Best Available counted every kicked-off player as locked in,
     // bench players too, so a benched Thursday player took a starting spot in the lineup it compared against.
+    // Never in Best Ball (round 9): nobody sets a lineup there (Sleeper counts your best scores), so there's no "started"
+    // to read. This app's own saved lineup stood in for it, and once a kicked-off player was missing from it he counted
+    // as benched: the next optimize saved his slot empty, and by Sunday afternoon the owner's best-ball lineups had up to
+    // nine "[ Empty Slot ]" rows, and best available offered free agents to fill them.
     export function kickoffFreeze(league, p) {
-        if (!league || !p || !hasKickedOff(p) || isAutoLockOverridden(league.leagueId, p.id)) return null;
+        if (!league || !p || isBestBallLeague(league) || !hasKickedOff(p) || isAutoLockOverridden(league.leagueId, p.id)) return null;
         const sleeperIds = getValidSleeperStarterIds(league);
         const started = sleeperIds.length > 0
             ? sleeperIds.includes(p.id)

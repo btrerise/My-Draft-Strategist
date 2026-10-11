@@ -3845,3 +3845,39 @@ the first `showTab`.
 **Checks.** `npm run check`: precache OK, 328 unit tests, 342 Playwright tests pass; the 10 failures are only
 visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 7's
 (the screenshot leagues never Sync All, and their Sleeper changes have no reasons to give).
+
+### S12, round 9: Best Ball lineups lost their kicked-off players (a round 3 regression, found by the owner)
+
+**What the owner saw** (Sunday afternoon, a preview of this branch on a phone): LRD Cucks' card said it had an empty
+spot, though the roster has 16 of 16, and the Lineup tab had empty starting slots.
+
+**Reproduced** with the owner's 3:11 pm backup and the real week 5 kickoffs (Sleeper's schedule:
+`api.sleeper.app/schedule/nfl/regular/2026`; DAL–TB Thursday, PHI–JAX in the morning, nine 1 pm games under way).
+LRD Cucks' Lineup tab showed six "[ Empty Slot ]" rows (QB, WR, TE, two FLEX, DEF), and best available offered free
+agents in five best-ball leagues: "3 options for one spot: each fills an empty lineup spot". The saved lineups had the
+holes: LRD Cucks 6, Slow Mock Draft 9, BB Ying 3, three others 1 each.
+
+**Cause.** Round 3's `kickoffFreeze` (js/mls/lineup/gameInfo.js) keeps a player whose game has kicked off where he
+is: 'in' if he started, 'out' (held out of the pool) if not. "Started" is Sleeper's lineup, or with none this app's
+saved lineup. Best Ball has no Sleeper lineup (`getValidSleeperStarterIds` returns []: nobody sets one), so the saved
+lineup stood in, and once a kicked-off player was missing from it he was 'out' for good: the next optimize saved his
+slot empty. By the afternoon 11 of LRD Cucks' 16 players had kicked off, both QBs included (Kyler Murray is on
+Minnesota now). Main doesn't have round 3, so the live site is fine.
+
+**Fix.**
+1. `kickoffFreeze` returns null in Best Ball: every player stays in the pool, as before round 3. That fixes the
+   optimizer and best available (which uses the same rule).
+2. js/mls/render/lineup.js: a saved lineup with an empty slot is rebuilt when it's shown, not re-shown as-is, so the
+   lineups the bug already saved heal when opened. Optimize All skips Best Ball leagues, so without this they'd have
+   kept their holes until a sync.
+
+On the owner's backup LRD Cucks now opens full (Maye at QB, Watson, Warren and the Patriots "Started"), and no card
+mentions an empty spot.
+
+**Test** (`tests/mls-flex-choice.spec.mjs`, "Best Ball: a player whose game has kicked off still fills his slot, and a
+lineup saved with a hole heals"): a best-ball league, Buffalo and Philadelphia kicked off, Josh Allen and A.J. Brown
+missing from the saved lineup. Optimize: Allen at QB, no empty slot (before the fix: "QB:-"). Then a saved hole fills
+on the next showing of the Lineup tab (fails without fix 2).
+
+**Checks.** `npm run check`: precache OK, 328 unit tests, 344 Playwright tests pass; the 10 failures are only
+visual.spec (this container can't match CI's renderer). Rendered here, the screenshots are pixel-identical to round 8's.

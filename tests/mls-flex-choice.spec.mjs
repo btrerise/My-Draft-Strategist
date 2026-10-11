@@ -34,9 +34,13 @@ const FLEX_SLOTS = ['QB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', 'K', 'DEF', 'B
 // opts: positions (Sleeper's roster_positions), ranks, sleeperStarters (your lineup on Sleeper, ids), extraProj (extra
 // projections, by id), dashboard (stay on the Dashboard: no Lineup tab visit, no optimize), second (also a copy of the
 // league, "Second League", written into storage: same roster and rankings), projUp (a function: while it returns
-// false, Sleeper's projections answer 503; the Dashboard's best available loads them as soon as it's drawn).
-async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStarters, extraProj = {}, dashboard = false, second = false, projUp = () => true } = {}) {
-    await page.route(/sleeper\.app\/v1\/league\/\d+$/, route => route.fulfill({ json: { ...fixture('league.json'), roster_positions: positions } }));
+// false, Sleeper's projections answer 503; the Dashboard's best available loads them as soon as it's drawn), bestBall
+// (Sleeper's best_ball setting on).
+async function setup(page, { positions = FLEX_SLOTS, ranks = RANKS, sleeperStarters, extraProj = {}, dashboard = false, second = false, projUp = () => true, bestBall = false } = {}) {
+    await page.route(/sleeper\.app\/v1\/league\/\d+$/, route => {
+        const league = fixture('league.json');
+        return route.fulfill({ json: { ...league, roster_positions: positions, settings: { ...league.settings, ...(bestBall ? { best_ball: 1 } : {}) } } });
+    });
     if (sleeperStarters) {
         await page.route(/sleeper\.app\/v1\/league\/\d+\/rosters$/, route => {
             const rosters = fixture('league-rosters.json');
@@ -114,6 +118,39 @@ test.describe('Lineup Optimizer: FLEX without FLEX ranks', () => {
         const lineup = await starters(page);
         expect(lineup.filter(s => s.startsWith('SFLEX:'))).toEqual(['SFLEX:George Kittle']);
         expect(lineup).not.toContain('WR:A.J. Brown');
+        await expectClean(page, state);
+    });
+
+    // S12 round 9 (the owner's best-ball leagues on Sunday afternoon: up to nine "[ Empty Slot ]" rows). In Best Ball
+    // nobody sets a lineup, so a player whose game has kicked off isn't "benched": he stays in the pool. Round 3's rule
+    // read this app's saved lineup as who started there, so once a kicked-off player was missing from it his slot
+    // stayed empty, and the next optimize saved the hole.
+    test('Best Ball: a player whose game has kicked off still fills his slot, and a lineup saved with a hole heals', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await setup(page, { bestBall: true });
+        await expect(page.locator('#lineupTab')).toContainText('Josh Allen');
+        // Buffalo (Allen) and Philadelphia (A.J. Brown) have kicked off, and the saved lineup has lost them.
+        await page.evaluate(async (leagueId) => {
+            const { State } = await import('/js/mls/state.js');
+            State.gameTimesByTeam = { ...State.gameTimesByTeam, BUF: '2026-09-15T12:00:00Z', PHI: '2026-09-15T12:00:00Z' };
+            State.manualStartersMap[leagueId] = State.manualStartersMap[leagueId].map(s => (s.player && ['Josh Allen', 'A.J. Brown'].includes(s.player.name) ? { ...s, player: null } : s));
+        }, FIXTURE_LEAGUE_ID);
+        await optimize(page);
+        const lineup = await starters(page);
+        expect(lineup).toContain('QB:Josh Allen');
+        expect(lineup.filter(s => s.endsWith(':-'))).toEqual([]);
+        await expect(page.locator('#optimalLineupContainer')).not.toContainText('Empty Slot');
+
+        // A lineup the bug already saved with empty slots fills them the next time it's shown, without a tap (Optimize
+        // All skips Best Ball leagues).
+        await page.evaluate(async (leagueId) => {
+            const { State } = await import('/js/mls/state.js');
+            State.manualStartersMap[leagueId] = State.manualStartersMap[leagueId].map(s => (s.player && s.player.name === 'Josh Allen' ? { ...s, player: null } : s));
+        }, FIXTURE_LEAGUE_ID);
+        await showTab(page, 'setup');
+        await showTab(page, 'lineup');
+        expect(await starters(page)).toContain('QB:Josh Allen');
+        await expect(page.locator('#optimalLineupContainer')).not.toContainText('Empty Slot');
         await expectClean(page, state);
     });
 
