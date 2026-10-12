@@ -278,6 +278,14 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 
 .btn-flex-2 { flex: 2; margin-top: 0 !important; }
 .btn-flex-1 { flex: 1; margin-top: 0 !important; }
+/* Phones: the three buttons kept 1.5rem of padding each side and wouldn't shrink, so the row needed about 400px and
+   made the Lineup tab 8px wider than a 390px screen. A mobile browser then widened the page while the tab showed, which
+   also aborted every view transition into it (improvements S16, found with the owner's data). Less padding, and allowed
+   to shrink. */
+@media (max-width: 480px) {
+    .lineup-action-row { gap: 0.5rem; }
+    .lineup-action-row > .btn { min-width: 0; padding-left: 0.75rem; padding-right: 0.75rem; }
+}
 
 .lineup-container-wrapper {
     border-top: 1px solid var(--border);

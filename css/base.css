@@ -2180,7 +2180,7 @@ button.pos-filter {
    folds and reorders through document.startViewTransition, and marks <html> while one runs: data-vt="tab" |
    "league" | "cards", data-vt-dir="forward" | "back" (tabs, by the tab bar's order). The header and the tab bar
    get names only then, so they stay put while the page between them moves, and nothing changes outside a
-   transition. Owner's choices: tabs slide on phones and fade through wider; 275 ms on phones, 375 ms wider.
+   transition. Owner's choices: tabs slide on phones and fade ("soft + rise") wider; 275 ms on phones, 375 ms wider.
    Reduce Motion: the helper never starts one, and none of this applies. */
 :root {
     --vt-ms: 275ms;
@@ -2203,14 +2203,17 @@ button.pos-filter {
         animation-timing-function: var(--vt-ease);
     }
 
-    /* Fade-through (owner's choice after a review as a user): the old screen fades out over the first 40% and the
-       new one fades in after, so the two are never on screen at once (a plain crossfade showed both, the same
-       layout's text ghosting in place on a league switch). For a league switch, and for tabs where they don't
-       slide (wider screens, below). */
+    /* "Soft + rise" (owner's choice after two reviews as a user): the old screen fades out over the first 60%, the new
+       one fades in from 25% while rising 8px, and what shows through in between is the card navy rather than the
+       near-black page background. A plain crossfade showed both screens at once (the same layout's text ghosting on a
+       league switch); a full fade-through dipped to near-black, which read as a flash. For a league switch, and for
+       tabs where they don't slide (wider screens, below). */
+    html[data-vt="league"]::view-transition,
+    html[data-vt="tab"]::view-transition { background: var(--card-bg); }
     html[data-vt="league"]::view-transition-old(root),
     html[data-vt="tab"]::view-transition-old(root) { animation-name: vt-fade-out; }
     html[data-vt="league"]::view-transition-new(root),
-    html[data-vt="tab"]::view-transition-new(root) { animation-name: vt-fade-in; }
+    html[data-vt="tab"]::view-transition-new(root) { animation-name: vt-fade-in-rise; }
 
     html[data-vt="league"]::view-transition-old(vt-league-name) { animation-name: vt-out-up; }
     html[data-vt="league"]::view-transition-new(vt-league-name) { animation-name: vt-in-up; }
@@ -2232,7 +2235,7 @@ button.pos-filter {
     .nav-marker { transition: left var(--vt-ms) var(--vt-ease), width var(--vt-ms) var(--vt-ease); }
 }
 /* Phones: the old tab leaves and the new one arrives in the direction of travel (a swipe left, or a tab further
-   right, moves forward). Wider screens fade through (above). */
+   right, moves forward). Wider screens fade (above). */
 @media (prefers-reduced-motion: no-preference) and (max-width: 767px) {
     html[data-vt="tab"][data-vt-dir="forward"]::view-transition-old(root) { animation-name: vt-out-left; }
     html[data-vt="tab"][data-vt-dir="forward"]::view-transition-new(root) { animation-name: vt-in-right; }
@@ -2250,8 +2253,8 @@ button.pos-filter {
 @keyframes vt-in-right { from { transform: translateX(var(--vt-shift)); opacity: 0; } }
 @keyframes vt-out-right { to { transform: translateX(var(--vt-shift)); opacity: 0; } }
 @keyframes vt-in-left { from { transform: translateX(calc(-1 * var(--vt-shift))); opacity: 0; } }
-@keyframes vt-fade-out { 0% { opacity: 1; } 40%, 100% { opacity: 0; } }
-@keyframes vt-fade-in { 0%, 40% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes vt-fade-out { 0% { opacity: 1; } 60%, 100% { opacity: 0; } }
+@keyframes vt-fade-in-rise { 0%, 25% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: none; } }
 @keyframes vt-out-up { to { transform: translateY(-40%); opacity: 0; } }
 @keyframes vt-in-up { from { transform: translateY(40%); opacity: 0; } }
 

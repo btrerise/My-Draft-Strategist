@@ -6,7 +6,7 @@
 // Motion or without the API nothing animates and the switch is immediate.
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, seedMls, transitionsDone, FIXTURE_LEAGUE_ID } from './helpers.mjs';
+import { openApp, expectClean, seedMls, loadMlsRankings, transitionsDone, FIXTURE_LEAGUE_ID } from './helpers.mjs';
 
 const SECOND_LEAGUE_ID = '1000000000000000002';
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
@@ -210,6 +210,39 @@ test.describe('Lineup Strategist', () => {
         await tapTabs(page, ['roster', 'lineup']);
         expect(await activeTabs(page)).toEqual(['lineupTab']);
         await expectMarkerUnder(page, 'lineup');
+        await expectClean(page, state);
+    });
+});
+
+// Found with the owner's data (round 5): on a phone the Lineup tab was 8px wider than the screen (the Optimize / Copy /
+// PNG row), so a mobile browser widened the page while it showed, and Chrome aborted every transition into it ("invalid
+// state": the viewport changed size between the two pictures). With mobile emulation, each tab fits the screen and
+// switching to it really animates.
+test.describe('Lineup Strategist on a phone (mobile emulation)', () => {
+    test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    test('every tab fits the screen, and switching to it animates instead of being skipped', async ({ page }, info) => {
+        test.skip(info.project.name !== 'phone', 'one width is enough: the viewport is set here');
+        await page.addInitScript(() => {
+            window.__vtSkipped = [];
+            const start = document.startViewTransition.bind(document);
+            document.startViewTransition = (update) => {
+                const t = start(update);
+                const kind = document.documentElement.dataset.vt;
+                t.ready.catch(e => window.__vtSkipped.push(`${kind}: ${e.message}`));
+                return t;
+            };
+        });
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        for (const tab of ['roster', 'lineup', 'scout', 'lineup', 'setup']) {
+            await page.locator(`.nav-bar .nav-btn[data-target="${tab}"]`).tap();
+            await transitionsDone(page);
+            await expect(page.locator(`#${tab}Tab`)).toHaveClass(/\bactive\b/);
+            const widths = await page.evaluate(() => ({ page: document.documentElement.scrollWidth, screen: document.documentElement.clientWidth }));
+            expect(widths.page, `${tab} tab is wider than the screen`).toBeLessThanOrEqual(widths.screen);
+        }
+        expect(await page.evaluate(() => window.__vtSkipped)).toEqual([]);
         await expectClean(page, state);
     });
 });

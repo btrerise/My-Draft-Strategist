@@ -4063,3 +4063,31 @@ pictures; the owner chose **B + C** and asked whether the width could follow the
   past the screen (both widths).
 - Screenshots: this changes the header in Lineup Strategist's screenshots (phones: no logo, a wider drop-down; desktop:
   the label's text); listed with the marker's when they're compared at the end of the card.
+
+### S16, round 5: "soft + rise", and a bug in transitions to the Lineup tab on phones (found with the owner's data)
+
+**The fade.** The owner found the fade-through jarring: the screen went dark mid-way. Measured, it dipped to the page
+background (`#0a0e17`, rgb 7,12,20), which reads as black; what looks navy on screen is the cards (`--card-bg`, `#131b2c`).
+I showed three versions side by side (today, "soft", "soft + rise"); the owner chose **soft + rise**: the old screen
+fades out over the first 60%, the new one fades in from 25% while rising 8px (`vt-fade-in-rise`), and the backdrop
+between them is the card navy (`::view-transition { background: var(--card-bg) }`). The middle of a switch now dims
+the screen from a mean brightness of about 25 to 23 (the fade-through went to 11), with only a faint overlap. Desktop tabs
+and every league switch; phones keep the slide (its backdrop is the card navy too).
+
+**The bug: no transition into the Lineup tab on a phone.** The owner saw it on their phone and sent a backup
+(my-lineup-strategist-backup-2026-10-12.json, 21 leagues). Loaded into a phone-emulated Chromium at its export time,
+every switch to Lineup ended in 100–180 ms, too fast to have animated, while the others took the 275 ms plus their
+drawing. The transition's `ready` promise rejected: "Transition was aborted because of invalid state". No duplicate
+`view-transition-name` was on the page; the cause was the Lineup tab being **398px wide on a 390px screen**: the
+Optimize / Copy / PNG row (`.lineup-action-row`) kept each button's 1.5rem side padding and wouldn't shrink. A mobile
+browser widens the page to fit (the layout viewport grows) only while that tab shows, so the viewport changed size
+between the two pictures and Chrome aborted the transition. It was on main too: the phone baseline
+`mls-league-lineup.png` is 398px wide. Without mobile emulation (the specs' phone project) the page doesn't widen, which is
+why the specs and my recordings never showed it.
+- Fix (css/mls.css): up to 480px, the row's gap is 0.5rem and its buttons have 0.75rem side padding and may shrink. The tab
+  fits at 320, 360, 375 and 390px, and with the owner's data every switch to Lineup now animates (380–490 ms), none skipped.
+- Test first: `view-transitions.spec.mjs`, "Lineup Strategist on a phone (mobile emulation)" (390px, `isMobile`): taps
+  through Roster, Lineup, Scout, Lineup, Dashboard and checks each tab is no wider than the screen and that no transition
+  was skipped. It failed on this branch before the fix ("lineup tab is wider than the screen", 398 > 390).
+- Screenshots: `phone/mls-league-lineup.png` changes (390px wide instead of 398, the buttons narrower); with the
+  header's, re-taken from CI.
