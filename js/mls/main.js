@@ -49,7 +49,7 @@ import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
-import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeagueReorder } from './render/leagueCards.js';
+import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
@@ -117,7 +117,8 @@ const clickActions = {
     saveRequirements() { saveRequirements(this); },
     // Command Center league cards (render/leagueCards.js, improvements S12; the table's rows before)
     switchActiveLeague() { switchActiveLeague(this.dataset.leagueId, { animate: true }); },
-    moveLeague() { moveLeague(Number(this.dataset.index), Number(this.dataset.direction)); },
+    // ▲ ▼ move the card into place (S16); moveLeague's redraw runs inside the transition.
+    moveLeague() { const i = Number(this.dataset.index), d = Number(this.dataset.direction); withCardsTransition(() => moveLeague(i, d)); },
     deleteLeagueManager() { deleteLeagueManager(this.dataset.leagueId); },
     toggleLeagueCard() { toggleLeagueCard(this.dataset.leagueId); },
     foldAllLeagueCards() { foldAllLeagueCards(); },

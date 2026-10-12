@@ -12,6 +12,7 @@
 // tests/unit/badgeLegend.test.mjs fails when a badge class used in js/mds or index.html isn't in the HTML
 // this builds. Imports only modules with no app state, so that test can load it in Node.
 import { STACK_BADGE_HTML, byeWarningMarkup, slotLabelMarkup, tScoreBadgeMarkup, tierChipMarkup, valueBadgeMarkup } from './badges.js';
+import { flashElement } from '../shared/ui/viewTransition.js';
 
 const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 const boardCell = (pos, mine) => `<div class="draft-cell picked ${pos}${mine ? ' mine' : ''}"><div style="display:flex; flex-direction:column; align-items:center;"><div class="draft-cell-first">${mine ? 'Your' : 'Their'}</div><div class="draft-cell-last">Pick</div></div></div>`;
@@ -81,4 +82,5 @@ export function focusBadgeLegend() {
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     if (title) title.focus({ preventScroll: true });
+    flashElement(section);
 }

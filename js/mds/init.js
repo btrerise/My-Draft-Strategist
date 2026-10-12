@@ -30,6 +30,7 @@ import './recap.js';
 import './export.js';
 import './affinity.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
+import { placeTabMarker } from '../shared/ui/viewTransition.js';
 import { updateSetupGuidance } from './setupGuide.js';
 
     // --- INITIALIZATION ---
@@ -158,6 +159,7 @@ import { updateSetupGuidance } from './setupGuide.js';
         // later restores the right tab instead of falling through to Setup.
         const initialTab = getTabFromHash() || 'setup';
         if (initialTab !== 'setup') showTab(initialTab, true, { instant: true });
+        else placeTabMarker(); // showTab places the tab bar's marker; Setup is already showing
         history.replaceState({ tab: initialTab }, '');
 
         // Last line of init on purpose: tells the safety net in js/boot.js that this script

@@ -40,6 +40,7 @@ import { needsYouCount } from '../lineup/issues.js';
 import { bestBallBadgeMarkup, leagueStatusChipMarkup } from '../badges.js';
 import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
+import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/viewTransition.js';
 
     const CHEVRON = `<svg class="mls-lc-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
     const isOffSleeper = (l) => /^(manual|handoff)_/.test(l.leagueId);
@@ -247,10 +248,45 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
 
     // The toolbar's Reorder / Done: shows or hides ▲ ▼ ✕ on every card.
     export function toggleLeagueReorder() {
-        reordering = !reordering;
-        renderLeagueCards();
-        const re = document.getElementById('reorderLeagueCards');
-        if (re) re.focus();
+        withCardsTransition(() => {
+            reordering = !reordering;
+            renderLeagueCards();
+            const re = document.getElementById('reorderLeagueCards');
+            if (re) re.focus();
+        });
+    }
+
+    // Folding, Fold all, Reorder and ▲ ▼ move the cards in place (owner's choice, S16): each card gets a
+    // view-transition-name from its league id while the transition runs, in the picture before and in the
+    // redrawn list after, so the browser moves each one from its old box to its new one (css/base.css,
+    // .vt-card). The names come off when the last such transition ends; until then a second fold or move
+    // still needs them.
+    // The Command Center's own box and everything after the list (the sync log, then the Dashboard's other cards) get
+    // names too, so they grow, shrink and move with the cards instead of jumping to their new places at once.
+    let cardTransitions = 0;
+    function nameEl(el, name) {
+        el.style.setProperty('view-transition-name', name || '');
+        el.style.setProperty('view-transition-class', name ? 'vt-card' : '');
+        if (!name && !el.getAttribute('style')) el.removeAttribute('style');
+    }
+    function nameCards(on) {
+        document.querySelectorAll('#leagueCards .mls-lc-card').forEach(card => nameEl(card, on && vtName('vt-lc-', card.dataset.leagueId)));
+        const list = document.getElementById('leagueCards');
+        const center = document.getElementById('dashboardCommandCenter');
+        if (!list || !center) return;
+        nameEl(center, on && 'vt-lc-center');
+        let i = 0;
+        for (let el = list.nextElementSibling; el; el = el.nextElementSibling) nameEl(el, on && `vt-lc-after-${i++}`);
+        for (let el = center.nextElementSibling; el; el = el.nextElementSibling) nameEl(el, on && `vt-lc-after-${i++}`);
+    }
+    export function withCardsTransition(update) {
+        if (!canViewTransition()) { update(); return Promise.resolve(); }
+        cardTransitions++;
+        nameCards(true);
+        return withViewTransition(() => { update(); nameCards(true); }, {
+            kind: 'cards',
+            onEnd: () => { if (--cardTransitions === 0) nameCards(false); },
+        });
     }
 
     function setCardCollapsed(card, collapsed) {
@@ -267,15 +303,19 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
 
     // A card's chevron: fold it to its header, or open it. Remembered per league.
     export function toggleLeagueCard(leagueId) {
-        const card = document.querySelector(`#leagueCards .mls-lc-card[data-league-id="${CSS.escape(leagueId)}"]`);
-        if (!card) return;
-        const collapsed = !card.classList.contains('is-collapsed');
-        setCardCollapsed(card, collapsed);
-        const folds = readFolds();
-        if (collapsed) { folds.folded.add(leagueId); folds.open.delete(leagueId); }
-        else { folds.open.add(leagueId); folds.folded.delete(leagueId); }
-        writeFolds(folds);
-        renderToolbarButtons();
+        const find = () => document.querySelector(`#leagueCards .mls-lc-card[data-league-id="${CSS.escape(leagueId)}"]`);
+        if (!find()) return Promise.resolve();
+        return withCardsTransition(() => {
+            const card = find();
+            if (!card) return;
+            const collapsed = !card.classList.contains('is-collapsed');
+            setCardCollapsed(card, collapsed);
+            const folds = readFolds();
+            if (collapsed) { folds.folded.add(leagueId); folds.open.delete(leagueId); }
+            else { folds.open.add(leagueId); folds.folded.delete(leagueId); }
+            writeFolds(folds);
+            renderToolbarButtons();
+        });
     }
 
     // The strip's "Show" / "Show next" (owner's request, S12): scrolls to the next card with to-dos or Sleeper changes,
@@ -288,18 +328,22 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
         const prev = targets.findIndex(c => c.dataset.leagueId === lastJumpId);
         const card = targets[(prev + 1) % targets.length];
         lastJumpId = card.dataset.leagueId;
-        if (card.classList.contains('is-collapsed')) toggleLeagueCard(lastJumpId);
-        card.scrollIntoView({ block: 'start', behavior: 'smooth' });
-        const name = card.querySelector('.mls-lc-name-btn');
-        if (name) name.focus({ preventScroll: true });
+        const opened = card.classList.contains('is-collapsed') ? toggleLeagueCard(lastJumpId) : Promise.resolve();
+        opened.then(() => {
+            card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            const name = card.querySelector('.mls-lc-name-btn');
+            if (name) name.focus({ preventScroll: true });
+        });
     }
 
     // "Fold all" while any card is open, "Unfold all" when none is.
     export function foldAllLeagueCards() {
-        const cards = [...document.querySelectorAll('#leagueCards .mls-lc-card')];
-        const collapse = cards.some(c => !c.classList.contains('is-collapsed'));
-        cards.forEach(c => setCardCollapsed(c, collapse));
-        const ids = new Set(cards.map(c => c.dataset.leagueId));
-        writeFolds(collapse ? { folded: ids, open: new Set() } : { folded: new Set(), open: ids });
-        renderToolbarButtons();
+        withCardsTransition(() => {
+            const cards = [...document.querySelectorAll('#leagueCards .mls-lc-card')];
+            const collapse = cards.some(c => !c.classList.contains('is-collapsed'));
+            cards.forEach(c => setCardCollapsed(c, collapse));
+            const ids = new Set(cards.map(c => c.dataset.leagueId));
+            writeFolds(collapse ? { folded: ids, open: new Set() } : { folded: new Set(), open: ids });
+            renderToolbarButtons();
+        });
     }

@@ -19,6 +19,7 @@ import {
     sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
+import { flashElement } from '../shared/ui/viewTransition.js';
 
 const SAMPLE = { sample: true };
 const posBadge = (pos, text = pos, extra = '') => `<span class="badge pos-badge ${pos}${extra}">${text}</span>`;
@@ -142,4 +143,5 @@ export function focusBadgeLegend() {
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     if (title) title.focus({ preventScroll: true });
+    flashElement(section);
 }

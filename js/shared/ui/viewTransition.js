@@ -9,16 +9,19 @@
 // this returns. Calling it again before an earlier transition has finished skips that one (its
 // update still runs, first), so rapid taps end on the last one and every update runs once.
 //
-// While a transition runs, <html> carries data-vt (the kind: "tab" or "league"), data-vt-dir
+// While a transition runs, <html> carries data-vt (the kind: "tab", "league" or "cards"), data-vt-dir
 // ("forward" / "back", tabs only) for the CSS, and data-vt-busy, which the tests wait on.
+//
+// Owner's choices (S16): tabs slide on phones (in the direction of the swipe or of the tab tapped) and
+// fade on wider screens; 275 ms on phones, 375 ms wider; a league switch fades; the tab bar has a
+// marker that slides to the active tab; League Command Center cards fold and reorder in place.
 
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 export function canViewTransition() {
     return typeof document.startViewTransition === 'function'
         && document.visibilityState === 'visible'
-        && !reduceMotion()
-        && document.documentElement.dataset.vtStyle !== 'off'; // DEMO ONLY
+        && !reduceMotion();
 }
 
 // An exception in `update` would otherwise only reject the transition's promises; report it the
@@ -37,12 +40,14 @@ let current = null;
 /**
  * Runs `update` inside a view transition when the browser can animate, else right away.
  * @param {() => void} update the DOM change (synchronous).
- * @param {{ kind?: 'tab'|'league', direction?: 'forward'|'back'|'' , instant?: boolean }} [opts]
+ * @param {{ kind?: 'tab'|'league'|'cards', direction?: 'forward'|'back'|'', instant?: boolean, onEnd?: () => void }} [opts]
+ *   onEnd runs once the transition is over (or straight after `update` without one).
  * @returns {Promise<void>} resolves once `update` has run.
  */
-export function withViewTransition(update, { kind = 'tab', direction = '', instant = false } = {}) {
+export function withViewTransition(update, { kind = 'tab', direction = '', instant = false, onEnd = null } = {}) {
     if (instant || !canViewTransition()) {
         runReporting(update);
+        if (onEnd) onEnd();
         return Promise.resolve();
     }
     const root = document.documentElement;
@@ -54,6 +59,7 @@ export function withViewTransition(update, { kind = 'tab', direction = '', insta
     const transition = document.startViewTransition(() => runReporting(update));
     current = transition;
     transition.finished.catch(() => {}).then(() => {
+        if (onEnd) onEnd();
         if (current !== transition) return; // a later transition owns the attributes now
         current = null;
         delete root.dataset.vt;
@@ -71,37 +77,46 @@ export function tabDirection(order, from, to) {
     return b > a ? 'forward' : 'back';
 }
 
-// DEMO ONLY (S16, until the owner picks): ?vt=slide|fade|auto|off and ?vtms=<milliseconds> choose
-// the style and speed on a branch preview; &marker=1 shows the sliding tab-bar marker. Removed
-// once the choice is made.
-try {
-    const params = new URLSearchParams(location.search);
-    const style = params.get('vt');
-    const ms = parseInt(params.get('vtms'), 10);
-    const root = document.documentElement;
-    root.dataset.vtStyle = ['slide', 'fade', 'auto', 'off'].includes(style) ? style : 'slide';
-    if (ms >= 50 && ms <= 2000) root.style.setProperty('--vt-ms', `${ms}ms`);
-    if (params.get('marker') === '1') root.dataset.vtMarker = '';
-} catch (e) { /* demo only */ }
 
-// DEMO ONLY (extra a, with &marker=1): a green bar along the top of the active tab-bar button that
-// slides to the new tab. Both apps' showTab call this after moving .active.
+// A view-transition-name for an id from outside the app (a Sleeper league id, "manual_…"): a valid CSS
+// identifier, unique per id. Letters, digits and "-" stay; any other character becomes "_" plus four hex
+// digits, so two different ids never give the same name.
+export function vtName(prefix, id) {
+    return prefix + String(id).replace(/[^a-zA-Z0-9-]/g, c => '_' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+}
+
+// The tab bar's marker (owner's choice, S16): a short green bar above the active tab, which slides to
+// the new one (css/base.css, .nav-marker). Both apps' showTab call this after moving .active; it's
+// built on first use, so neither page's HTML carries it.
 export function placeTabMarker() {
-    if (!('vtMarker' in document.documentElement.dataset)) return;
     const bar = document.querySelector('.nav-bar');
-    const active = bar && bar.querySelector('.nav-btn.active');
     if (!bar) return;
+    const active = bar.querySelector('.nav-btn.active');
+    // Measured before a new marker is added, so the first one starts in place instead of sliding in.
+    const w = active ? Math.round(active.offsetWidth * 0.5) : 0;
+    const x = active ? Math.round(active.offsetLeft + (active.offsetWidth - w) / 2) : 0;
     let marker = bar.querySelector('.nav-marker');
     if (!marker) {
+        window.addEventListener('resize', () => placeTabMarker());
         marker = document.createElement('span');
         marker.className = 'nav-marker';
         marker.setAttribute('aria-hidden', 'true');
+        marker.style.width = `${w}px`;
+        marker.style.transform = `translateX(${x}px)`;
         bar.appendChild(marker);
     }
-    if (!active) { marker.style.width = '0'; return; }
-    const w = active.offsetWidth * 0.5;
+    marker.hidden = !active;
     marker.style.width = `${w}px`;
-    marker.style.transform = `translateX(${active.offsetLeft + (active.offsetWidth - w) / 2}px)`;
+    marker.style.transform = `translateX(${x}px)`;
 }
-window.addEventListener('resize', () => placeTabMarker());
-window.addEventListener('load', () => placeTabMarker());
+
+// A brief green glow on a section you were just taken to (owner's choice, S16: the Guide's legend after
+// "What do these mean?"). The glow is CSS (.vt-flash in css/base.css), off with Reduce Motion.
+export function flashElement(el) {
+    if (!el) return;
+    el.classList.remove('vt-flash');
+    void el.offsetWidth; // restart the animation on a second tap
+    el.classList.add('vt-flash');
+    clearTimeout(el.vtFlashTimer);
+    el.vtFlashTimer = setTimeout(() => el.classList.remove('vt-flash'), 2000);
+}
