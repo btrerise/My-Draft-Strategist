@@ -135,10 +135,21 @@ export async function callApp(page, name, ...args) {
     }, [name, args]);
 }
 
+/**
+ * Waits until no view transition is running (improvements S16). A tab or league switch can animate
+ * (js/shared/ui/viewTransition.js): the DOM changes a frame after the tap, and <html> carries
+ * data-vt-busy until the animation ends. Use it before reading the DOM synchronously after a switch
+ * (an evaluate, not an auto-waiting expect) and before a screenshot.
+ */
+export async function transitionsDone(page) {
+    await page.waitForFunction(() => !document.documentElement.hasAttribute('data-vt-busy'));
+}
+
 /** Shows a tab the way a user would on MDS or MLS: showTab, same as the nav buttons call. */
 export async function showTab(page, tab) {
     await callApp(page, 'showTab', tab);
     await expect(page.locator(`#${tab}Tab`)).toHaveClass(/\bactive\b/);
+    await transitionsDone(page);
 }
 
 export const RANKINGS_CSV = readFileSync(here('./fixtures/rankings.csv'), 'utf8');

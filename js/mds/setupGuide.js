@@ -43,8 +43,10 @@ import { renderSetupStep, scrollToCard } from '../shared/ui/setupChecklist.js';
         const cfg = SETUP_STEPS[step];
         if (!cfg) return;
         const setupTab = document.getElementById('setupTab');
-        if (setupTab && !setupTab.classList.contains('active')) showTab('setup');
-        scrollToCard(document.getElementById(cfg.cardId), document.getElementById(cfg.focusId));
+        // After the tab switch has landed (it can animate, improvements S16), or its scroll to the top
+        // would undo this one.
+        const shown = setupTab && !setupTab.classList.contains('active') ? showTab('setup') : Promise.resolve();
+        shown.then(() => scrollToCard(document.getElementById(cfg.cardId), document.getElementById(cfg.focusId)));
     };
 
     export function updateSetupGuidance() {

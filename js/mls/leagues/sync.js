@@ -21,6 +21,7 @@ import { flashButton } from '../../shared/ui/flashButton.js';
 import { normalizeName } from '../../shared/names.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showToast } from '../../shared/ui/toast.js';
+import { withViewTransition } from '../../shared/ui/viewTransition.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -140,8 +141,16 @@ import { showToast } from '../../shared/ui/toast.js';
         }).join('|');
     }
 
-    export const switchActiveLeague = function(leagueId) {
-        if (!leagueId) return;
+    // `animate`: a switch you make yourself (the header's drop-down and arrows, a card's name, Switch on a
+    // Scout result) fades to the new league where the browser can (improvements S16); the DOM then
+    // changes a frame later, and the returned promise resolves once it has. Every other caller (Sync
+    // All, Optimize All, adding a league, the Dashboard's buttons that also change tab) switches at once.
+    export const switchActiveLeague = function(leagueId, { animate = false } = {}) {
+        if (!leagueId) return Promise.resolve();
+        return withViewTransition(() => applyActiveLeague(leagueId), { kind: 'league', instant: !animate });
+    };
+
+    function applyActiveLeague(leagueId) {
         State.activeLeagueId = leagueId;
         localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
         
@@ -195,7 +204,7 @@ import { showToast } from '../../shared/ui/toast.js';
         // under League B's header. There's no equivalent of the re-run branches above -- the
         // sim is an explicit, network-bound action the user has to press Run for.
         clearSimResults();
-    };
+    }
 
     // Adds a league the app builds itself (a manual league, a Draft Strategist hand-off) and
     // opens it the way switching to it would. switchActiveLeague is what loads the new league's
@@ -222,12 +231,10 @@ import { showToast } from '../../shared/ui/toast.js';
         if (newIndex >= State.leagues.length) newIndex = 0;
         
         const newLeagueId = State.leagues[newIndex].leagueId;
-        
-        // Ensure the dropdown UI updates visually before triggering the data switch
-        const selectEl = document.getElementById('headerLeagueSelect');
-        if (selectEl) selectEl.value = newLeagueId;
-        
-        switchActiveLeague(newLeagueId);
+
+        // switchActiveLeague sets the header's drop-down too, inside the transition, so its old
+        // picture still shows the league you're leaving.
+        switchActiveLeague(newLeagueId, { animate: true });
     };
 
     function updateLeagueNavUI() {

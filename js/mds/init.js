@@ -157,7 +157,7 @@ import { updateSetupGuidance } from './setupGuide.js';
         // replaceState stamps this first history entry with its tab, so pressing Back to it
         // later restores the right tab instead of falling through to Setup.
         const initialTab = getTabFromHash() || 'setup';
-        if (initialTab !== 'setup') showTab(initialTab, true);
+        if (initialTab !== 'setup') showTab(initialTab, true, { instant: true });
         history.replaceState({ tab: initialTab }, '');
 
         // Last line of init on purpose: tells the safety net in js/boot.js that this script

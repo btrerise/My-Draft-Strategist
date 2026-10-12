@@ -2173,3 +2173,61 @@ button.pos-filter {
 /* A link on a line of its own: above Draft Strategist's Tracker chips (no card header there) and Lineup Strategist's
    Roster position counts (its header is full on a phone with a long league name). */
 .badge-legend-link-row { display: flex; justify-content: flex-end; margin: -0.25rem 0 0.5rem; }
+
+/* --- VIEW TRANSITIONS (improvements S16) ---
+   js/shared/ui/viewTransition.js runs tab and league switches through document.startViewTransition and
+   marks <html> while one runs: data-vt="tab" | "league", data-vt-dir="forward" | "back" (tabs, by the tab
+   bar's order). The header and the tab bar get names only then, so they stay put while the page between
+   them moves, and nothing changes outside a transition. Reduce Motion: the helper never starts one, and
+   none of this applies. */
+:root {
+    --vt-ms: 220ms;
+    --vt-ease: cubic-bezier(0.2, 0, 0, 1);
+    --vt-shift: 48px;
+}
+@media (prefers-reduced-motion: no-preference) {
+    html[data-vt] .header { view-transition-name: vt-header; }
+    html[data-vt] .nav-bar { view-transition-name: vt-nav; }
+    /* The league's name changes on its own, a short slide up, while the page fades. */
+    html[data-vt="league"] #headerLeagueSelect { view-transition-name: vt-league-name; }
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation-duration: var(--vt-ms);
+        animation-timing-function: var(--vt-ease);
+    }
+
+    /* Slide: the old tab leaves and the new one arrives in the direction of travel (a swipe left, or
+       a tab further right, moves forward). DEMO: [data-vt-style] picks slide, fade or auto (slide on
+       phones, fade wider); the final build keeps only the owner's choice. */
+    html[data-vt="tab"][data-vt-dir="forward"][data-vt-style="slide"]::view-transition-old(root) { animation-name: vt-out-left; }
+    html[data-vt="tab"][data-vt-dir="forward"][data-vt-style="slide"]::view-transition-new(root) { animation-name: vt-in-right; }
+    html[data-vt="tab"][data-vt-dir="back"][data-vt-style="slide"]::view-transition-old(root) { animation-name: vt-out-right; }
+    html[data-vt="tab"][data-vt-dir="back"][data-vt-style="slide"]::view-transition-new(root) { animation-name: vt-in-left; }
+    @media (max-width: 767px) {
+        html[data-vt="tab"][data-vt-dir="forward"][data-vt-style="auto"]::view-transition-old(root) { animation-name: vt-out-left; }
+        html[data-vt="tab"][data-vt-dir="forward"][data-vt-style="auto"]::view-transition-new(root) { animation-name: vt-in-right; }
+        html[data-vt="tab"][data-vt-dir="back"][data-vt-style="auto"]::view-transition-old(root) { animation-name: vt-out-right; }
+        html[data-vt="tab"][data-vt-dir="back"][data-vt-style="auto"]::view-transition-new(root) { animation-name: vt-in-left; }
+    }
+    html[data-vt="league"]::view-transition-old(vt-league-name) { animation-name: vt-out-up; }
+    html[data-vt="league"]::view-transition-new(vt-league-name) { animation-name: vt-in-up; }
+
+    /* DEMO: the tab bar's sliding marker (extra a). */
+    .nav-marker { transition: transform var(--vt-ms) var(--vt-ease), width var(--vt-ms) var(--vt-ease); }
+}
+/* Browsers with View Transitions animate the switch itself, so the tab's own fade-in (fadeIn above) is off
+   there: inside a transition it would play twice. Browsers without keep it, as before. */
+@supports (view-transition-name: none) {
+    .tab-content.active { animation: none; }
+}
+@keyframes vt-out-left { to { transform: translateX(calc(-1 * var(--vt-shift))); opacity: 0; } }
+@keyframes vt-in-right { from { transform: translateX(var(--vt-shift)); opacity: 0; } }
+@keyframes vt-out-right { to { transform: translateX(var(--vt-shift)); opacity: 0; } }
+@keyframes vt-in-left { from { transform: translateX(calc(-1 * var(--vt-shift))); opacity: 0; } }
+@keyframes vt-out-up { to { transform: translateY(-40%); opacity: 0; } }
+@keyframes vt-in-up { from { transform: translateY(40%); opacity: 0; } }
+
+/* DEMO: the marker itself, a short green bar along the top of the active tab. */
+.nav-marker { position: absolute; top: 0; left: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--primary-green); pointer-events: none; }

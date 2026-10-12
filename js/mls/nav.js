@@ -6,6 +6,7 @@ import { loadRosterTab, onScoutTabShown, optimizeLineup } from './main.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderBadgeLegend } from './legend.js';
+import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/viewTransition.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at
@@ -100,7 +101,21 @@ import { renderBadgeLegend } from './legend.js';
     }
 
     // --- NAVIGATION LOGIC ---
-    export const showTab = function(tabId, skipHistory = false) {
+    // The tab bar's order, Guide last: a transition slides forward or back by it (improvements S16).
+    const TAB_ORDER = ['setup', 'roster', 'lineup', 'scout', 'guide'];
+
+    // Every way of changing tab comes here (the tab bar, swipes, number keys, the drawer, Back and
+    // Forward). The switch animates where the browser can (js/shared/ui/viewTransition.js), so the
+    // DOM changes a frame later: the returned promise resolves once the new tab is showing and its
+    // work below has run. Callers that scroll or focus inside the new tab wait for it.
+    // `instant` (page load) switches without a transition.
+    export const showTab = function(tabId, skipHistory = false, { instant = false } = {}) {
+        const activeEl = document.querySelector('.tab-content.active');
+        const fromId = activeEl ? activeEl.id.replace(/Tab$/, '') : '';
+        return withViewTransition(() => applyTab(tabId, skipHistory), { kind: 'tab', direction: tabDirection(TAB_ORDER, fromId, tabId), instant });
+    };
+
+    function applyTab(tabId, skipHistory) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         const targetTab = document.getElementById(tabId + 'Tab');
         if (targetTab) targetTab.classList.add('active');
@@ -108,6 +123,7 @@ import { renderBadgeLegend } from './legend.js';
         document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
         const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
         if (activeNavBtn) activeNavBtn.classList.add('active');
+        placeTabMarker();
 
         // Announced to screen readers via the aria-live region in index.html -- covers every
         // way a tab can change (swipe, number-key shortcuts, hamburger menu, browser back/
@@ -135,7 +151,7 @@ import { renderBadgeLegend } from './legend.js';
         if (!skipHistory) {
             history.pushState({ tab: tabId }, '', `#${tabId}`);
         }
-    };
+    }
 
     // Catches the native back/forward button and replays it as a tab switch, passing
     // skipHistory=true so we don't push a duplicate entry back onto the history stack.

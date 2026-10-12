@@ -3,7 +3,7 @@
 // visual change: `npm run test:update`, then review the changed PNGs in the diff.
 import { test, expect } from '@playwright/test';
 import {
-    openApp, showTab, showTScoreTab, seedMds, seedMls,
+    openApp, showTab, showTScoreTab, seedMds, seedMls, transitionsDone,
     MDS_TABS, MLS_TABS, TSCORE_TABS,
 } from './helpers.mjs';
 import { renderEnvProblems, renderEnvError } from './render-env.mjs';
@@ -28,6 +28,7 @@ test.use({ launchOptions: { args: ['--disable-partial-raster'] } });
 // mds-draft-tracker came out with or without the card's hover lift about 1 run in 4 (49,500 px).
 // (0, 0) is where compare-css parks it too.
 const shot = async (page, name) => {
+    await transitionsDone(page); // a tab switch can still be animating (improvements S16)
     await page.mouse.move(0, 0);
     await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true });
 };
