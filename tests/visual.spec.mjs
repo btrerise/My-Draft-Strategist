@@ -30,7 +30,9 @@ test.use({ launchOptions: { args: ['--disable-partial-raster'] } });
 const shot = async (page, name) => {
     await transitionsDone(page); // a tab switch can still be animating (improvements S16)
     await page.mouse.move(0, 0);
-    await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true });
+    // Soft (improvements S16): a mismatch still fails the test, but the test goes on and renders its other shots, so one CI
+    // run produces every changed PNG instead of only each test's first.
+    await expect.soft(page).toHaveScreenshot(`${name}.png`, { fullPage: true });
 };
 
 test('MDS empty tabs', async ({ page }) => {
