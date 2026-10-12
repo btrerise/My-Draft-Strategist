@@ -4117,3 +4117,13 @@ which was taken before rounds 4 and 5:
 - **`mls-league-lineup`**: the marker and header, and on phones the button row, so the PNG is 390px wide instead of 398.
 
 All at `{desktop,phone}/`. To be taken from the pull request's CI renders ("Accepting an intended visual change").
+
+### S16, pull request (btrerise/My-Draft-Strategist#196): the 24 screenshots from CI in one run
+
+The owner asked whether there was a faster way than one CI round per changed shot. `visual.spec.mjs` now checks each
+screenshot with `expect.soft` (tests/visual.spec.mjs, `shot()`; docs/TESTING.md updated): a mismatch still fails the test,
+but the test goes on and renders its other tabs. So CI run 38288136796 (commit a20a9f8) failed on exactly the 24 PNGs
+listed above and rendered all of them; nothing else failed (T-Score passed). For each one, its `-expected.png` was
+byte-identical to the committed baseline, and CI's change sat where this container's main-vs-branch comparison put it: the
+marker (y 827–829 on desktop, 771–773 on phone), the MLS header (the top 60px), and `phone/mls-league-lineup` at 390px
+wide (CI's previous baseline was 396). Committed CI's `-actual.png` renders as the baselines.
