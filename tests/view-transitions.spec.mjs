@@ -109,6 +109,8 @@ test.describe('Lineup Strategist', () => {
         await page.locator('#nextLeagueBtn').click();
         await transitionsDone(page);
         await expect(page.locator('#headerLeagueSelect')).toHaveValue(SECOND_LEAGUE_ID);
+        // The header's name is a label over the drop-down (so a long name can end in "…"); it follows the switch.
+        await expect(page.locator('#headerLeagueLabel')).toHaveText('Second League');
         const after = await vt(page);
         expect(after.starts).toBe(before + 1);
         expect(after.kinds.at(-1)).toBe('league');
@@ -117,7 +119,35 @@ test.describe('Lineup Strategist', () => {
         await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
         await transitionsDone(page);
         await expect(page.locator('#headerLeagueSelect')).toHaveValue(FIXTURE_LEAGUE_ID);
+        await expect(page.locator('#headerLeagueLabel')).toHaveText('Fixture League');
         expect((await vt(page)).kinds.at(-1)).toBe('league');
+        await expectClean(page, state);
+    });
+
+    test('the header shows the whole league name when it fits, and ends a long one in "…"', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        const label = page.locator('#headerLeagueLabel');
+        await expect(label).toHaveText('Fixture League');
+        const fits = (l) => l.evaluate(e => e.scrollWidth <= e.clientWidth);
+        expect(await fits(label)).toBe(true);
+        expect(await label.evaluate(e => getComputedStyle(e).textOverflow)).toBe('ellipsis');
+        // A long name: the label is cut with an ellipsis, inside the drop-down, and nothing runs past the screen.
+        await page.evaluate(() => {
+            const ls = JSON.parse(localStorage.getItem('mls_leagues'));
+            ls[0].name = 'The Long-Named Dynasty League of Champions and Friends';
+            localStorage.setItem('mls_leagues', JSON.stringify(ls));
+        });
+        await page.reload();
+        await expect(label).toHaveText('The Long-Named Dynasty League of Champions and Friends');
+        expect(await fits(label)).toBe(false);
+        const box = await page.evaluate(() => {
+            const r = (id) => document.getElementById(id).getBoundingClientRect();
+            return { label: r('headerLeagueLabel'), select: r('headerLeagueSelect'), next: r('nextLeagueBtn'), page: document.documentElement.scrollWidth, vw: innerWidth };
+        });
+        expect(box.label.right).toBeLessThanOrEqual(box.select.right);
+        expect(box.select.right).toBeLessThanOrEqual(box.next.left);
+        expect(box.page).toBeLessThanOrEqual(box.vw);
         await expectClean(page, state);
     });
 

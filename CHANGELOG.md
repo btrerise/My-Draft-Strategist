@@ -87,6 +87,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   yourself (the header's drop-down or arrows, a league's name on the Dashboard, Switch on a Scout result) fades out and
   in to the new league, with its name sliding up in the header. Browsers without View Transitions (older Safari and
   Firefox) switch as before, and with Reduce Motion turned on nothing moves.
+- **The league's name fits in the header on phones.** The league picker now takes the room beside the menu button
+  (the small logo hides on phones; the tab bar's Dashboard does the same), so "Dynasty Champs 2026" shows whole on most
+  phones, and a name too long to fit ends in "…" instead of a cut-off letter, on phones and desktop alike.
 - **League cards fold and move in place.** On the Dashboard, folding or unfolding a league card, Fold all / Unfold all,
   Reorder and the ▲ ▼ arrows now grow, shrink and slide the cards into their new places instead of jumping, and the
   card's chevron turns at the same pace.

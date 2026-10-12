@@ -8,7 +8,7 @@ import { setRankingsCardExpanded, updateRankingsMetaDisplay } from './rankings/e
 import { RANKING_TYPE_CONFIG } from './constants.js';
 import { attachPlayerAutocomplete, attachScoutSuggestionHandler } from './players.js';
 import { populateEarlyGameDropdown } from './lineup/earlyGames.js';
-import { getLeagueRankings, loadActiveLeagueData, refreshLeagueDropdown } from './leagues/sync.js';
+import { getLeagueRankings, loadActiveLeagueData, refreshLeagueDropdown, syncHeaderLeagueLabel } from './leagues/sync.js';
 import { initManualAddForm } from './leagues/addPlayer.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
@@ -194,6 +194,7 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         if (State.activeLeagueId) {
             const leagueSelect = document.getElementById('headerLeagueSelect');
             if (leagueSelect) leagueSelect.value = State.activeLeagueId;
+            syncHeaderLeagueLabel();
             loadActiveLeagueData();
         }
         // Deep link: open the tab named in the URL hash (a reload, or a shared #lineup link),

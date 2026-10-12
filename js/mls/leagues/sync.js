@@ -36,6 +36,7 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
         if (!select) return;
         if (State.leagues.length === 0) {
             select.innerHTML = `<option value="">No Leagues</option>`;
+            syncHeaderLeagueLabel();
             return;
         }
         let html = "";
@@ -46,7 +47,19 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
             html += `<option value="${escapeHtml(l.leagueId)}" ${sel}>${escapeHtml(l.name)}</option>`;
         });
         select.innerHTML = html;
+        syncHeaderLeagueLabel();
         if (typeof updateLeagueNavUI === 'function') updateLeagueNavUI();
+    }
+
+    // The header shows the league's name in a label over the drop-down (improvements S16; css/mls.css,
+    // .league-select-label), so a long name ends in "…" (a <select> can't). Call it after anything sets the
+    // drop-down's value. textContent, so an outside league name is never read as HTML.
+    export function syncHeaderLeagueLabel() {
+        const select = document.getElementById('headerLeagueSelect');
+        const label = document.getElementById('headerLeagueLabel');
+        if (!select || !label) return;
+        const opt = select.options[select.selectedIndex];
+        label.textContent = opt ? opt.textContent : '';
     }
 
     // The Dashboard's League Command Center: one card per league since improvements S12 (render/leagueCards.js),
@@ -157,6 +170,7 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
         // Keep UI elements in sync with the active state
         const headerSelect = document.getElementById('headerLeagueSelect');
         if (headerSelect && headerSelect.value !== leagueId) headerSelect.value = leagueId;
+        syncHeaderLeagueLabel();
         if (typeof renderLeagueManager === 'function') renderLeagueManager();
         
         // HYDRATION: Unpack rankings for this specific league. Priority: named set assignment,

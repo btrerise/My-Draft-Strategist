@@ -4038,3 +4038,28 @@ test stops at its first failing shot, so it takes a few runs).
   in CSS alone (same origin), in Chrome and Safari 18.2+. Small, but each page's header differs, so it needs its own look
   and a check that the service worker's cached navigations still animate. Worth a small card if you move between the apps
   often; I'd rate it low.
+
+### S16, round 4: the league name in the header (owner's choice), and a softer fade (asked)
+
+**The league name.** On phones the header's league drop-down was held to 130px (css/base.css, a `max-width: 130px
+!important` shared with Draft Strategist's draft drop-down), so "Dynasty Champs 2026" read "Dynasty C", cut mid-letter: a
+`<select>` can't end its text in "…". The rolling name in a league switch drew the eye to it. I showed three options with
+pictures; the owner chose **B + C** and asked whether the width could follow the screen:
+- **B:** on phones the small MLS logo button hides (the tab bar's Dashboard does the same) and the drop-down takes all the
+  room the menu button and the arrows leave, at any width (168px at 320px, 238px at 390px). On desktop it fits the longest
+  league name, up to 22rem. So it's dynamic both ways; the menu button is untouched.
+- **C:** the name is drawn by a label laid over the drop-down (`#headerLeagueLabel`, `aria-hidden`; the drop-down's own
+  text is transparent and its options keep their color), so a long name ends in "…". Tapping still opens the native
+  picker; the drop-down keeps its `aria-label` for screen readers. `syncHeaderLeagueLabel` (js/mls/leagues/sync.js) sets the
+  label wherever the drop-down's value is set (its render, a league switch, page load). The league-switch roll now animates
+  the label.
+- Where: lineup/index.html (the wrap and label), css/mls.css ("Header league picker"), css/base.css (the 130px rule now
+  covers only `#draftProfileSelect`), js/mls/leagues/sync.js, js/mls/init.js. Draft Strategist's draft drop-down is
+  unchanged (not asked).
+- Found while measuring: the label measured a few pixels tighter than Chrome sizes the drop-down, so a name the drop-down
+  fit still got "…" on desktop; the label's right edge has 7px of slack before the arrow.
+- Tests: `view-transitions.spec.mjs` checks the label follows each league switch, and a new test checks a fitting name
+  shows whole, a long one ends in "…" inside the drop-down, the drop-down stays left of the › button, and nothing runs
+  past the screen (both widths).
+- Screenshots: this changes the header in Lineup Strategist's screenshots (phones: no logo, a wider drop-down; desktop:
+  the label's text); listed with the marker's when they're compared at the end of the card.

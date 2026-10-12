@@ -199,8 +199,9 @@ body {
         display: none;
     }
     
-    /* 5. Keep the dropdown contained and leave room for the arrows */
-        #draftProfileSelect, #headerLeagueSelect { 
+    /* 5. Keep the dropdown contained and leave room for the arrows. (Lineup Strategist's league drop-down
+       sizes itself to the free space instead: css/mls.css, "Header league picker", improvements S16.) */
+        #draftProfileSelect { 
             max-width: 130px !important; 
         }
 
@@ -2193,7 +2194,7 @@ button.pos-filter {
     html[data-vt] .header { view-transition-name: vt-header; }
     html[data-vt] .nav-bar { view-transition-name: vt-nav; }
     /* The league's name changes on its own, a short slide up, while the page fades. */
-    html[data-vt="league"] #headerLeagueSelect { view-transition-name: vt-league-name; }
+    html[data-vt="league"] #headerLeagueLabel { view-transition-name: vt-league-name; }
 
     ::view-transition-group(*),
     ::view-transition-old(*),
