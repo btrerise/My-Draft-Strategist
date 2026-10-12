@@ -4091,3 +4091,12 @@ why the specs and my recordings never showed it.
   was skipped. It failed on this branch before the fix ("lineup tab is wider than the screen", 398 > 390).
 - Screenshots: `phone/mls-league-lineup.png` changes (390px wide instead of 398, the buttons narrower); with the
   header's, re-taken from CI.
+
+### S16, round 6: the page navy behind the fade, and a slower desktop fade (owner's choices)
+
+The owner kept "soft + rise" but asked for **the page's navy behind it** (`--bg-color`, #0a0e17) instead of the card navy,
+and **a slower desktop fade**. New variable `--vt-fade-ms` (css/base.css): the tab and league fades and the tab bar's
+marker use it; **500 ms on wider screens** (was 375), the phone speed (275 ms) on phones. The Dashboard cards keep
+`--vt-ms` (375 ms wider), since a fold at 500 ms felt slow in the recordings. Measured mid-switch, the screen dims from a
+mean brightness of about 25 to 11 again (the card navy held it at 23), but more slowly and with the two screens briefly
+overlapping, so it doesn't drop all at once.

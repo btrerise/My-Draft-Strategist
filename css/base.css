@@ -2180,15 +2180,19 @@ button.pos-filter {
    folds and reorders through document.startViewTransition, and marks <html> while one runs: data-vt="tab" |
    "league" | "cards", data-vt-dir="forward" | "back" (tabs, by the tab bar's order). The header and the tab bar
    get names only then, so they stay put while the page between them moves, and nothing changes outside a
-   transition. Owner's choices: tabs slide on phones and fade ("soft + rise") wider; 275 ms on phones, 375 ms wider.
+   transition. Owner's choices: tabs slide on phones and fade ("soft + rise") wider; 275 ms on phones; wider, 500 ms
+   for tab and league fades and 375 ms for the Dashboard cards.
    Reduce Motion: the helper never starts one, and none of this applies. */
 :root {
     --vt-ms: 275ms;
+    /* Tab and league fades, and the tab bar's marker that moves with them: the phone speed on phones, slower on
+       wider screens (owner's choice, round 6: 500 ms). Dashboard cards keep --vt-ms. */
+    --vt-fade-ms: var(--vt-ms);
     --vt-ease: cubic-bezier(0.2, 0, 0, 1);
     --vt-shift: 48px;
 }
 @media (min-width: 768px) {
-    :root { --vt-ms: 375ms; }
+    :root { --vt-ms: 375ms; --vt-fade-ms: 500ms; }
 }
 @media (prefers-reduced-motion: no-preference) {
     html[data-vt] .header { view-transition-name: vt-header; }
@@ -2204,12 +2208,18 @@ button.pos-filter {
     }
 
     /* "Soft + rise" (owner's choice after two reviews as a user): the old screen fades out over the first 60%, the new
-       one fades in from 25% while rising 8px, and what shows through in between is the card navy rather than the
-       near-black page background. A plain crossfade showed both screens at once (the same layout's text ghosting on a
+       one fades in from 25% while rising 8px, over the page's own navy (round 6: the owner preferred it to the card
+       navy), at --vt-fade-ms (500 ms on wider screens). A plain crossfade showed both screens at once (the same layout's text ghosting on a
        league switch); a full fade-through dipped to near-black, which read as a flash. For a league switch, and for
        tabs where they don't slide (wider screens, below). */
     html[data-vt="league"]::view-transition,
-    html[data-vt="tab"]::view-transition { background: var(--card-bg); }
+    html[data-vt="tab"]::view-transition { background: var(--bg-color); }
+    html[data-vt="league"]::view-transition-group(*),
+    html[data-vt="league"]::view-transition-old(*),
+    html[data-vt="league"]::view-transition-new(*),
+    html[data-vt="tab"]::view-transition-group(*),
+    html[data-vt="tab"]::view-transition-old(*),
+    html[data-vt="tab"]::view-transition-new(*) { animation-duration: var(--vt-fade-ms); }
     html[data-vt="league"]::view-transition-old(root),
     html[data-vt="tab"]::view-transition-old(root) { animation-name: vt-fade-out; }
     html[data-vt="league"]::view-transition-new(root),
@@ -2232,7 +2242,7 @@ button.pos-filter {
     }
 
     /* The tab bar's marker slides to the active tab. */
-    .nav-marker { transition: left var(--vt-ms) var(--vt-ease), width var(--vt-ms) var(--vt-ease); }
+    .nav-marker { transition: left var(--vt-fade-ms) var(--vt-ease), width var(--vt-fade-ms) var(--vt-ease); }
 }
 /* Phones: the old tab leaves and the new one arrives in the direction of travel (a swipe left, or a tab further
    right, moves forward). Wider screens fade (above). */
