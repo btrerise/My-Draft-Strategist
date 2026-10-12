@@ -4100,3 +4100,20 @@ marker use it; **500 ms on wider screens** (was 375), the phone speed (275 ms) o
 `--vt-ms` (375 ms wider), since a fold at 500 ms felt slow in the recordings. Measured mid-switch, the screen dims from a
 mean brightness of about 25 to 11 again (the card navy held it at 23), but more slowly and with the two screens briefly
 overlapping, so it doesn't drop all at once.
+
+### S16: the final screenshot comparison, before the pull request
+
+Full check: precache OK, 331 unit and 361 Playwright tests pass (1 skipped: the phone-only mobile-emulation test on the
+desktop project); only visual.spec fails, as it does here on main (this container can't render CI's baselines).
+
+Rendered here, main and this branch differ in **24 PNGs, 12 per width**, each for one of three reasons; the other 16
+(Draft Strategist's Setup and Guide, all of T-Score) are pixel-identical. This replaces the list of 22 in the first entry,
+which was taken before rounds 4 and 5:
+- **The tab bar marker** (3px under the active tab-bar button): `mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`,
+  `mds-empty-board`, `mds-empty-team`, `mds-empty-tracker` (189 px on phone, 633 on desktop).
+- **The marker and the header's league label** (phones: no logo, the wider drop-down): `mls-empty-setup`,
+  `mls-league-roster`, `mls-league-scout`, `mls-league-setup`; and `mls-league-guide`, where only the header changes (the
+  Guide isn't in the tab bar).
+- **`mls-league-lineup`**: the marker and header, and on phones the button row, so the PNG is 390px wide instead of 398.
+
+All at `{desktop,phone}/`. To be taken from the pull request's CI renders ("Accepting an intended visual change").
