@@ -263,21 +263,50 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
     // still needs them.
     // The Command Center's own box and everything after the list (the sync log, then the Dashboard's other cards) get
     // names too, so they grow, shrink and move with the cards instead of jumping to their new places at once.
+    //
+    // Only what's on or near the screen gets a name, before the change and after it, and the Command Center's box
+    // only while it's under two screens tall. The browser takes a picture of every named element, and with 21
+    // unfolded cards that was the whole Dashboard several times over: on a phone the pictures took long enough to
+    // show a black frame first (owner, S16). Off-screen elements just take their new places, as before.
     let cardTransitions = 0;
+    let namedCards = new Set();
+    let namedAfter = new Set();
+    let namedCenter = null; // decided once per run of transitions, from the box's height before the change
     function nameEl(el, name) {
         el.style.setProperty('view-transition-name', name || '');
         el.style.setProperty('view-transition-class', name ? 'vt-card' : '');
         if (!name && !el.getAttribute('style')) el.removeAttribute('style');
     }
-    function nameCards(on) {
-        document.querySelectorAll('#leagueCards .mls-lc-card').forEach(card => nameEl(card, on && vtName('vt-lc-', card.dataset.leagueId)));
+    function nearScreen(el) {
+        const r = el.getBoundingClientRect();
+        const h = window.innerHeight;
+        return r.height > 0 && r.bottom > -h * 0.5 && r.top < h * 1.5;
+    }
+    function afterElements() {
         const list = document.getElementById('leagueCards');
         const center = document.getElementById('dashboardCommandCenter');
-        if (!list || !center) return;
-        nameEl(center, on && 'vt-lc-center');
-        let i = 0;
-        for (let el = list.nextElementSibling; el; el = el.nextElementSibling) nameEl(el, on && `vt-lc-after-${i++}`);
-        for (let el = center.nextElementSibling; el; el = el.nextElementSibling) nameEl(el, on && `vt-lc-after-${i++}`);
+        const els = [];
+        if (list) for (let el = list.nextElementSibling; el; el = el.nextElementSibling) els.push(el);
+        if (center) for (let el = center.nextElementSibling; el; el = el.nextElementSibling) els.push(el);
+        return els;
+    }
+    // on: name what's near the screen now, keeping the names given before the change (so each pairs up with its
+    // new self). off: clear every name.
+    function nameCards(on) {
+        if (!on) { namedCards = new Set(); namedAfter = new Set(); }
+        document.querySelectorAll('#leagueCards .mls-lc-card').forEach(card => {
+            const id = card.dataset.leagueId;
+            if (on && (namedCards.has(id) || nearScreen(card))) namedCards.add(id);
+            nameEl(card, on && namedCards.has(id) && vtName('vt-lc-', id));
+        });
+        afterElements().forEach((el, i) => {
+            if (on && (namedAfter.has(i) || nearScreen(el))) namedAfter.add(i);
+            nameEl(el, on && namedAfter.has(i) && `vt-lc-after-${i}`);
+        });
+        const center = document.getElementById('dashboardCommandCenter');
+        if (on && center && namedCenter === null) namedCenter = center.getBoundingClientRect().height < window.innerHeight * 2;
+        if (!on) namedCenter = null;
+        if (center) nameEl(center, on && namedCenter && 'vt-lc-center');
     }
     export function withCardsTransition(update) {
         if (!canViewTransition()) { update(); return Promise.resolve(); }
@@ -288,7 +317,6 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
             onEnd: () => { if (--cardTransitions === 0) nameCards(false); },
         });
     }
-
     function setCardCollapsed(card, collapsed) {
         const name = card.querySelector('.mls-lc-name');
         const fold = card.querySelector('.mls-lc-fold');

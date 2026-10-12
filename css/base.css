@@ -2219,7 +2219,7 @@ button.pos-filter {
     }
 
     /* The tab bar's marker slides to the active tab. */
-    .nav-marker { transition: transform var(--vt-ms) var(--vt-ease), width var(--vt-ms) var(--vt-ease); }
+    .nav-marker { transition: left var(--vt-ms) var(--vt-ease), width var(--vt-ms) var(--vt-ease); }
 }
 /* Phones: the old tab leaves and the new one arrives in the direction of travel (a swipe left, or a tab further
    right, moves forward). Wider screens keep the browser's crossfade. */
@@ -2229,10 +2229,12 @@ button.pos-filter {
     html[data-vt="tab"][data-vt-dir="back"]::view-transition-old(root) { animation-name: vt-out-right; }
     html[data-vt="tab"][data-vt-dir="back"]::view-transition-new(root) { animation-name: vt-in-left; }
 }
-/* Browsers with View Transitions animate the switch itself, so the tab's own fade-in (fadeIn above) is off
-   there: inside a transition it would play twice. Browsers without keep it, as before. */
+/* Browsers with View Transitions animate the switch itself, so the tab's own fade-in (fadeIn above) is cut to 1 ms
+   there: inside a transition it would play twice. Not `none` or 0s: the tab must end exactly as the finished fade-in
+   leaves it, or corners and text render a few pixels differently (the screenshots caught it). Browsers without View
+   Transitions keep the 0.3s fade-in. */
 @supports (view-transition-name: none) {
-    .tab-content.active { animation: none; }
+    .tab-content.active { animation-duration: 1ms; }
 }
 @keyframes vt-out-left { to { transform: translateX(calc(-1 * var(--vt-shift))); opacity: 0; } }
 @keyframes vt-in-right { from { transform: translateX(var(--vt-shift)); opacity: 0; } }
@@ -2255,13 +2257,3 @@ button.pos-filter {
     }
 }
 
-/* The Guide's legend after "What do these mean?" (flashElement in js/shared/ui/viewTransition.js): a green
-   glow that fades, once the smooth scroll has mostly landed. None with Reduce Motion. */
-@media (prefers-reduced-motion: no-preference) {
-    .vt-flash { animation: vt-flash 1.6s ease-out 0.25s; }
-}
-@keyframes vt-flash {
-    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    15% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.75), 0 0 18px rgba(16, 185, 129, 0.35); }
-    100% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0), 0 0 18px rgba(16, 185, 129, 0); }
-}

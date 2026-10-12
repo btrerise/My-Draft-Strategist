@@ -67,6 +67,12 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   instance and runs exactly what the buttons run; nothing needs to be on `window`. To call a new function from a
   test, export it from that `main.js`. `showTab(page, id)` uses it. On T-Score, `showTScoreTab` clicks the tab's
   nav button.
+- **View transitions** (improvements S16): a tab switch, your own league switch and a League Command Center fold or
+  move can animate (`js/shared/ui/viewTransition.js`), so the DOM changes a frame after the tap and `<html>` carries
+  `data-vt-busy` until the animation ends. `transitionsDone(page)` waits for that: `showTab()` and the screenshots'
+  `shot()` call it; call it yourself before reading the DOM synchronously (an `evaluate`, not an auto-waiting
+  `expect`) after a tap or key that switches. Don't turn transitions off for a spec to get around it.
+  `view-transitions.spec.mjs` covers the transitions themselves.
 - **Unit tests** (`tests/unit/`) import app modules by relative path. MLS modules that pull in the whole page can
   be loaded with the resolve-hook stubs in `tests/unit/helpers/playersEnv.mjs` (LOG 9C).
 - **Widths:** every Playwright test runs twice, as `desktop` (1280×900) and `phone` (390×844, touch).

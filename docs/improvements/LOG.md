@@ -3925,3 +3925,110 @@ Fix: every wait for "players parsed" (`loadMlsRankings` in tests/helpers.mjs and
 to be visible. 160 of 160 after.
 
 Full check after both: precache OK, 328 unit and 344 Playwright tests pass (only visual.spec fails here).
+
+## S16 — Smooth transitions between tabs and leagues
+
+**User-visible effect.** Both apps animate between screens with the browser's View Transitions API, plain CSS and no
+library:
+- **Tabs:** on a phone (under 768px) the old tab slides 48px toward where you're going and fades while the new one
+  slides in from the other side; wider screens crossfade. 275 ms on phones, 375 ms wider. The header and the tab bar
+  stay still. Every way of changing tab gets it: the tab bar, swipes, number keys, the menu drawer, Back and Forward,
+  and the buttons that jump to a tab (Open lineup, Find RB, View, the setup checklist's jumps). Direction comes from
+  the tab bar's order, Guide last (a swipe left is forward).
+- **The tab bar's marker:** a short green bar along the top of the active tab-bar button, which slides to the new tab.
+  On a tab that isn't in the bar (Draft Strategist's Setup, either Guide) there's no marker.
+- **League switch (Lineup Strategist):** the page fades to the new league and the league's name slides up in the
+  header, when you switch yourself: the header's drop-down and ‹ › arrows, a league's name on a Dashboard card, Switch on
+  a Scout result. Sync All, Optimize All, adding a league and the Dashboard's buttons that also change tab switch at
+  once, as before.
+- **League Command Center cards:** folding or unfolding a card, Fold all / Unfold all, Reorder / Done and ▲ ▼ grow, shrink
+  and slide the cards (and what's below them) into place. The card's chevron turns at the same speed (it was 0.15s).
+- **Toasts** already slid up and out; with Reduce Motion they now appear and go without moving.
+- **Without the API** (older Safari and Firefox) everything switches as before, including the tab's old 0.3s fade-up.
+  **With Reduce Motion** nothing animates: no transition starts and the switch is immediate.
+
+**Owner's decisions (asked before building, with recordings and a branch preview).**
+1. **Tab style:** a slide on phones and a fade on desktop (of slide, crossfade, or that mix).
+2. **Speed:** 275 ms on phones, 375 ms on desktop (I'd suggested 200–250 ms).
+3. **Extras:** (a) the sliding tab-bar marker, yes; (b) the league fade with the name sliding, yes; (c) the Dashboard cards,
+   yes, after a second demo (it wasn't in the first, which the owner rightly noticed), with two fixes asked for: Fold
+   all blinked black on the owner's phone (below), and the chevron should turn slower; (d) toasts: they already slid,
+   so only the Reduce Motion fix; (e) a glow on the Guide's legend after "What do these mean?": built for the second
+   demo, then **dropped** ("the navigation to that section is enough").
+
+**What changed and where.**
+- `js/shared/ui/viewTransition.js` (new, in `PRECACHE_ASSETS`): `withViewTransition(update, { kind, direction, instant,
+  onEnd })` runs `update` inside `document.startViewTransition` when the browser has it, the page is visible and Reduce
+  Motion is off, else at once; it marks `<html>` with `data-vt` (tab / league / cards), `data-vt-dir` and `data-vt-busy`
+  until the transition ends, and returns a promise that resolves once `update` has run. `tabDirection`, `vtName` (a
+  view-transition-name from an outside id: letters, digits and "-" kept, anything else `_` plus four hex digits, so it's
+  a valid identifier and unique per id), `placeTabMarker`.
+- `js/mls/nav.js`, `js/mds/ui.js`: `showTab(tabId, skipHistory, { instant })` runs the old body (now `applyTab`) through
+  the helper and returns its promise. Page load uses `instant`.
+- Callers that scroll or focus inside the new tab wait for that promise: `openBadgeLegend` (both apps), `goToSetupStep`
+  (both), `goToLineupNeeds`, `goToPowerRankings`, `scoutGoToLeague`. Without it, showTab's scroll to the top (now a frame
+  later) undid their scroll.
+- `js/mls/leagues/sync.js`: `switchActiveLeague(id, { animate })`; the body is `applyActiveLeague`. `cycleLeague` no
+  longer sets the drop-down first (the switch does, inside the transition, so the old picture shows the old name);
+  `selectActiveLeague` (main.js) puts the old value back before switching, for the same reason.
+- `js/mls/render/leagueCards.js`: `withCardsTransition` for `toggleLeagueCard`, `foldAllLeagueCards`,
+  `toggleLeagueReorder` and (from main.js) `moveLeague`. While it runs, each card is named `vt-lc-<league id>` (class
+  `vt-card`), plus the Command Center box and what follows the list, so they move together; names come off when the last
+  such transition ends.
+- `css/base.css`, "VIEW TRANSITIONS": the durations, the header / tab bar / league-name names (only while `data-vt` is
+  set, so nothing changes outside a transition), the phone slide keyframes, the cards' pictures clipped to their box
+  instead of stretched, the marker, toasts under Reduce Motion. `css/mls.css`: the chevron's speed.
+- CHANGELOG: lines under both apps. `docs/TESTING.md`: `transitionsDone`. `CACHE_NAME` v2.8.92 → v2.8.93.
+
+**Things found on the way.**
+- **Tabs weren't instant before:** `.tab-content.active` ran a 0.3s fade-up (`fadeIn`). Inside a transition it played a
+  second time, and when the transition's attributes came off it restarted (a visible second fade in the first demo).
+  With View Transitions the fade-in is cut to 1 ms (`@supports (view-transition-name: none)`). Not `none` or 0s: those
+  leave the tab composited differently from a finished fade-in, and main's and this branch's screenshots then differed
+  by 44 to 370,000 pixels of anti-aliasing on every screen, T-Score included. With 1 ms they're identical.
+- **Fold all blinked black on the owner's phone.** Headless Chromium here never showed a dark frame, but the first
+  version named every card and everything below the list, so the browser photographed the whole Dashboard several
+  times over before animating: at a 4x CPU slowdown with 21 leagues that was 105–126 ms of long tasks before the first
+  frame. Large pictures like that can run out of graphics memory on a phone and show black. Now only what's on or near
+  the screen (half a screen above to one and a half below) is named, before and after the change, and the Command Center
+  box only while it's under two screens tall. Same test: long tasks 50 ms, frames about every 25–35 ms on the phone
+  size. **Owner: please check Fold all on your phone again**; if it still blinks, say which phone and browser.
+- **Rapid taps:** a second `startViewTransition` before the first has drawn skips the first, but its update still runs,
+  first. So three taps run three updates in order (three history entries, one announcement each, the work after each
+  switch once), and the page ends on the last tab tapped. The spec checks it.
+- **Tests read the DOM a frame too early:** two specs (`mls-keyboard`, `mls-lineup-needs`) evaluated the active tab
+  straight after a key or click. `transitionsDone(page)` (tests/helpers.mjs) waits for `data-vt-busy` to clear; the
+  `showTab` helper and `visual.spec`'s `shot()` call it. No spec turns transitions off.
+- **Performance on phones (the card's check):** tab switches with 21 leagues at a 4x CPU slowdown, phone and desktop
+  sizes: each switch has a 100–230 ms long task, and the same run with View Transitions removed has the same (85–232
+  ms): it's each tab's own drawing (the lineup, the 21 cards), not the transition. During it the old picture stays on
+  screen, then the slide runs. The root picture is only the viewport, so a long page doesn't make tab switches slower;
+  only the cards needed limiting (above).
+
+**Tests.**
+- `tests/view-transitions.spec.mjs` (new, both widths): MLS: a tab tap starts one "tab" transition and ends on the tab;
+  three taps in one go end on the last with three updates, three history entries and its announcement; the marker ends
+  under the active tab; Back animates too; a switch from code (as Sync All makes) starts none; the header's arrow and
+  drop-down start a "league" transition; a card's fold starts a "cards" transition with `vt-lc-<id>` on the card during
+  it and no name after; with Reduce Motion no transition starts and showTab and a fold are immediate; without the API
+  taps switch at once and the marker still lands. MDS: rapid taps end on the last tab, no marker on Setup; Reduce Motion.
+  70 of 70 over five repeats.
+- `tests/unit/viewTransition.test.mjs` (new): `tabDirection`, and `vtName` escaping, validity and uniqueness.
+
+**Screenshots: the marker changes 22, to be re-taken from the PR's CI.** Rendered here, main and this branch differ
+only by the marker (3px under the active tab-bar button, 141–633 pixels each) in these, at both widths; the others are
+pixel-identical:
+`mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`, `mds-empty-board`, `mds-empty-team`, `mds-empty-tracker`,
+`mls-empty-setup`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scout`, `mls-league-setup`
+(`{desktop,phone}/`). Unchanged: MDS Setup and Guide, the MLS Guide (not in the tab bar), all of T-Score. No PR is open,
+so CI hasn't run; when one is, take CI's renders as in "Accepting an intended visual change" in docs/TESTING.md (each
+test stops at its first failing shot, so it takes a few runs).
+
+**Left over.**
+- The 22 screenshots above, from the PR's CI.
+- Draft Strategist has no league switch; switching drafts (the header's draft drop-down) isn't animated. Easy to add with
+  the same helper if wanted.
+- **Cross-page transitions** (between /, /lineup/ and /t-score/): possible with `@view-transition { navigation: auto; }`
+  in CSS alone (same origin), in Chrome and Safari 18.2+. Small, but each page's header differs, so it needs its own look
+  and a check that the service worker's cached navigations still animate. Worth a small card if you move between the apps
+  often; I'd rate it low.

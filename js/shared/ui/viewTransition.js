@@ -102,21 +102,10 @@ export function placeTabMarker() {
         marker.className = 'nav-marker';
         marker.setAttribute('aria-hidden', 'true');
         marker.style.width = `${w}px`;
-        marker.style.transform = `translateX(${x}px)`;
+        marker.style.left = `${x}px`;
         bar.appendChild(marker);
     }
     marker.hidden = !active;
     marker.style.width = `${w}px`;
-    marker.style.transform = `translateX(${x}px)`;
-}
-
-// A brief green glow on a section you were just taken to (owner's choice, S16: the Guide's legend after
-// "What do these mean?"). The glow is CSS (.vt-flash in css/base.css), off with Reduce Motion.
-export function flashElement(el) {
-    if (!el) return;
-    el.classList.remove('vt-flash');
-    void el.offsetWidth; // restart the animation on a second tap
-    el.classList.add('vt-flash');
-    clearTimeout(el.vtFlashTimer);
-    el.vtFlashTimer = setTimeout(() => el.classList.remove('vt-flash'), 2000);
+    marker.style.left = `${x}px`;
 }

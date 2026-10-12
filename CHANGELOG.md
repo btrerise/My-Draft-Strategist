@@ -15,6 +15,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Smooth tab changes.** Switching tabs (tapping the tab bar, swiping, the menu, number keys, Back and Forward) now
+  slides the page in the direction you're going on a phone, and fades on a wider screen, while the header and tab bar
+  stay put. A green bar above the tab bar's active tab slides to the new one. Browsers without View Transitions
+  (older Safari and Firefox) switch as before, and with Reduce Motion turned on nothing moves.
+- **Toasts respect Reduce Motion:** with it on they appear and go without sliding.
 - **What the badges mean, in the Guide.** A new last step in the Guide tab shows every badge, label and color the app
   uses (positions and their colors, the Tracker's tier chips, the Team tab's flex labels, the Board's pick colors,
   Value and Reach, T-Score labels, rookie, injury, Stack, the bye-week warning, the pick counter and the LIVE pill),
@@ -76,7 +81,16 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-Nothing yet.
+- **Smooth tab and league changes.** Switching tabs (tapping the tab bar, swiping, the menu, number keys, Back and
+  Forward) now slides the page in the direction you're going on a phone, and fades on a wider screen, while the header
+  and tab bar stay put. A green bar above the tab bar's active tab slides to the new one. Switching league yourself
+  (the header's drop-down or arrows, a league's name on the Dashboard, Switch on a Scout result) fades to the new
+  league, with its name sliding up in the header. Browsers without View Transitions (older Safari and Firefox) switch
+  as before, and with Reduce Motion turned on nothing moves.
+- **League cards fold and move in place.** On the Dashboard, folding or unfolding a league card, Fold all / Unfold all,
+  Reorder and the ▲ ▼ arrows now grow, shrink and slide the cards into their new places instead of jumping, and the
+  card's chevron turns at the same pace.
+- **Toasts respect Reduce Motion:** with it on they appear and go without sliding.
 
 ### v2.15.0 — 2026-10-11
 

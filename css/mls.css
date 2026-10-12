@@ -1602,7 +1602,9 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-lc-head { display: flex; align-items: flex-start; gap: 0.4rem; }
 .mls-lc-fold { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: var(--text-muted); cursor: pointer; }
 .mls-lc-fold:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.06); }
-.mls-lc-chevron { transition: transform 0.15s; }
+/* The chevron turns with the card's fold (S16: at the same speed as the card, owner's request; no turn with Reduce Motion). */
+.mls-lc-chevron { transition: transform var(--vt-ms) var(--vt-ease); }
+@media (prefers-reduced-motion: reduce) { .mls-lc-chevron { transition: none; } }
 .mls-lc-card.is-collapsed .mls-lc-chevron { transform: rotate(-90deg); }
 .mls-lc-name-btn { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0.2rem 0; background: none; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
 .mls-lc-name-btn:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
