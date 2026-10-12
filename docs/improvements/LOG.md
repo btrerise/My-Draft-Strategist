@@ -3931,13 +3931,13 @@ Full check after both: precache OK, 328 unit and 344 Playwright tests pass (only
 **User-visible effect.** Both apps animate between screens with the browser's View Transitions API, plain CSS and no
 library:
 - **Tabs:** on a phone (under 768px) the old tab slides 48px toward where you're going and fades while the new one
-  slides in from the other side; wider screens crossfade. 275 ms on phones, 375 ms wider. The header and the tab bar
+  slides in from the other side; wider screens fade through (the old screen fades out, then the new one fades in). 275 ms on phones, 375 ms wider. The header and the tab bar
   stay still. Every way of changing tab gets it: the tab bar, swipes, number keys, the menu drawer, Back and Forward,
   and the buttons that jump to a tab (Open lineup, Find RB, View, the setup checklist's jumps). Direction comes from
   the tab bar's order, Guide last (a swipe left is forward).
 - **The tab bar's marker:** a short green bar along the top of the active tab-bar button, which slides to the new tab.
   On a tab that isn't in the bar (Draft Strategist's Setup, either Guide) there's no marker.
-- **League switch (Lineup Strategist):** the page fades to the new league and the league's name slides up in the
+- **League switch (Lineup Strategist):** the page fades through to the new league and the league's name slides up in the
   header, when you switch yourself: the header's drop-down and ‹ › arrows, a league's name on a Dashboard card, Switch on
   a Scout result. Sync All, Optimize All, adding a league and the Dashboard's buttons that also change tab switch at
   once, as before.
@@ -3955,6 +3955,12 @@ library:
    all blinked black on the owner's phone (below), and the chevron should turn slower; (d) toasts: they already slid,
    so only the Reduce Motion fix; (e) a glow on the Guide's legend after "What do these mean?": built for the second
    demo, then **dropped** ("the navigation to that section is enough").
+4. **After a review as a user** (round 3): the desktop fade and the league fade showed both screens at half strength for a
+   moment (the same layout's text ghosting in place on a league switch). The owner chose **fade-through**: the old screen
+   fades out over the first 40% of the time and the new one fades in after (`vt-fade-out` / `vt-fade-in` in css/base.css),
+   for tabs on wider screens and every league switch. Phones keep the slide. The owner also asked for **S17**, a runbook
+   card for speed (their PageSpeed Insights run: mobile Performance 69, FCP 3.7 s, LCP 6.0 s, a white first frame), added
+   to the runbook on 2026-10-12.
 
 **What changed and where.**
 - `js/shared/ui/viewTransition.js` (new, in `PRECACHE_ASSETS`): `withViewTransition(update, { kind, direction, instant,
