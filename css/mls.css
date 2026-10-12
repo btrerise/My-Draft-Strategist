@@ -278,6 +278,14 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 
 .btn-flex-2 { flex: 2; margin-top: 0 !important; }
 .btn-flex-1 { flex: 1; margin-top: 0 !important; }
+/* Phones: the three buttons kept 1.5rem of padding each side and wouldn't shrink, so the row needed about 400px and
+   made the Lineup tab 8px wider than a 390px screen. A mobile browser then widened the page while the tab showed, which
+   also aborted every view transition into it (improvements S16, found with the owner's data). Less padding, and allowed
+   to shrink. */
+@media (max-width: 480px) {
+    .lineup-action-row { gap: 0.5rem; }
+    .lineup-action-row > .btn { min-width: 0; padding-left: 0.75rem; padding-right: 0.75rem; }
+}
 
 .lineup-container-wrapper {
     border-top: 1px solid var(--border);
@@ -1602,7 +1610,9 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-lc-head { display: flex; align-items: flex-start; gap: 0.4rem; }
 .mls-lc-fold { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: var(--text-muted); cursor: pointer; }
 .mls-lc-fold:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.06); }
-.mls-lc-chevron { transition: transform 0.15s; }
+/* The chevron turns with the card's fold (S16: at the same speed as the card, owner's request; no turn with Reduce Motion). */
+.mls-lc-chevron { transition: transform var(--vt-ms) var(--vt-ease); }
+@media (prefers-reduced-motion: reduce) { .mls-lc-chevron { transition: none; } }
 .mls-lc-card.is-collapsed .mls-lc-chevron { transform: rotate(-90deg); }
 .mls-lc-name-btn { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0.2rem 0; background: none; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
 .mls-lc-name-btn:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
@@ -2036,3 +2046,33 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-move-chip.is-up { color: var(--primary-green); border-color: rgba(16, 185, 129, 0.45); }
 .mls-move-chip.is-down { color: var(--error-text); border-color: rgba(252, 165, 165, 0.45); }
 .mls-move-chip.is-new { color: var(--text-main); }
+
+/* Header league picker (improvements S16, owner's choice). The league's name is drawn by a label laid over the
+   drop-down (#headerLeagueLabel, kept in step by syncHeaderLeagueLabel in js/mls/leagues/sync.js), so a long name
+   ends in "…" instead of a cut letter; the drop-down itself is still what you tap, with its text made transparent.
+   Desktop: the drop-down fits the longest league name, up to 22rem. Phones: the logo button hides (the tab bar's
+   Dashboard does the same) and the name takes all the room the menu button and the arrows leave, at any width. */
+.league-select-wrap { position: relative; display: block; flex: 0 1 auto; min-width: 0; max-width: 22rem; }
+#headerLeagueSelect { width: auto; max-width: 100%; color: transparent; }
+#headerLeagueSelect option { color: var(--text-main); background-color: var(--card-bg); }
+.league-select-label {
+    position: absolute;
+    top: 50%;
+    left: 17px;   /* the drop-down's 1px border + 16px padding */
+    right: 34px;  /* clear of the arrow (it sits in the drop-down's last 31px); the 7px of slack keeps a name the
+                     drop-down was sized to fit from ending in "…" */
+    transform: translateY(-50%);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    pointer-events: none;
+}
+@media (max-width: 767px) {
+    .header .logo-container { display: none; }
+    .header .header-controls { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
+    .header .header-controls > .cluster { flex: 1 1 auto; min-width: 0; }
+    .league-select-wrap { flex: 1 1 auto; max-width: none; }
+    #headerLeagueSelect { width: 100%; }
+}

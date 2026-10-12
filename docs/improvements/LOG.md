@@ -3925,3 +3925,205 @@ Fix: every wait for "players parsed" (`loadMlsRankings` in tests/helpers.mjs and
 to be visible. 160 of 160 after.
 
 Full check after both: precache OK, 328 unit and 344 Playwright tests pass (only visual.spec fails here).
+
+## S16 — Smooth transitions between tabs and leagues
+
+**User-visible effect.** Both apps animate between screens with the browser's View Transitions API, plain CSS and no
+library:
+- **Tabs:** on a phone (under 768px) the old tab slides 48px toward where you're going and fades while the new one
+  slides in from the other side; wider screens fade through (the old screen fades out, then the new one fades in). 275 ms on phones, 375 ms wider. The header and the tab bar
+  stay still. Every way of changing tab gets it: the tab bar, swipes, number keys, the menu drawer, Back and Forward,
+  and the buttons that jump to a tab (Open lineup, Find RB, View, the setup checklist's jumps). Direction comes from
+  the tab bar's order, Guide last (a swipe left is forward).
+- **The tab bar's marker:** a short green bar along the top of the active tab-bar button, which slides to the new tab.
+  On a tab that isn't in the bar (Draft Strategist's Setup, either Guide) there's no marker.
+- **League switch (Lineup Strategist):** the page fades through to the new league and the league's name slides up in the
+  header, when you switch yourself: the header's drop-down and ‹ › arrows, a league's name on a Dashboard card, Switch on
+  a Scout result. Sync All, Optimize All, adding a league and the Dashboard's buttons that also change tab switch at
+  once, as before.
+- **League Command Center cards:** folding or unfolding a card, Fold all / Unfold all, Reorder / Done and ▲ ▼ grow, shrink
+  and slide the cards (and what's below them) into place. The card's chevron turns at the same speed (it was 0.15s).
+- **Toasts** already slid up and out; with Reduce Motion they now appear and go without moving.
+- **Without the API** (older Safari and Firefox) everything switches as before, including the tab's old 0.3s fade-up.
+  **With Reduce Motion** nothing animates: no transition starts and the switch is immediate.
+
+**Owner's decisions (asked before building, with recordings and a branch preview).**
+1. **Tab style:** a slide on phones and a fade on desktop (of slide, crossfade, or that mix).
+2. **Speed:** 275 ms on phones, 375 ms on desktop (I'd suggested 200–250 ms).
+3. **Extras:** (a) the sliding tab-bar marker, yes; (b) the league fade with the name sliding, yes; (c) the Dashboard cards,
+   yes, after a second demo (it wasn't in the first, which the owner rightly noticed), with two fixes asked for: Fold
+   all blinked black on the owner's phone (below), and the chevron should turn slower; (d) toasts: they already slid,
+   so only the Reduce Motion fix; (e) a glow on the Guide's legend after "What do these mean?": built for the second
+   demo, then **dropped** ("the navigation to that section is enough").
+4. **After a review as a user** (round 3): the desktop fade and the league fade showed both screens at half strength for a
+   moment (the same layout's text ghosting in place on a league switch). The owner chose **fade-through**: the old screen
+   fades out over the first 40% of the time and the new one fades in after (`vt-fade-out` / `vt-fade-in` in css/base.css),
+   for tabs on wider screens and every league switch. Phones keep the slide. The owner also asked for **S17**, a runbook
+   card for speed (their PageSpeed Insights run: mobile Performance 69, FCP 3.7 s, LCP 6.0 s, a white first frame), added
+   to the runbook on 2026-10-12.
+
+**What changed and where.**
+- `js/shared/ui/viewTransition.js` (new, in `PRECACHE_ASSETS`): `withViewTransition(update, { kind, direction, instant,
+  onEnd })` runs `update` inside `document.startViewTransition` when the browser has it, the page is visible and Reduce
+  Motion is off, else at once; it marks `<html>` with `data-vt` (tab / league / cards), `data-vt-dir` and `data-vt-busy`
+  until the transition ends, and returns a promise that resolves once `update` has run. `tabDirection`, `vtName` (a
+  view-transition-name from an outside id: letters, digits and "-" kept, anything else `_` plus four hex digits, so it's
+  a valid identifier and unique per id), `placeTabMarker`.
+- `js/mls/nav.js`, `js/mds/ui.js`: `showTab(tabId, skipHistory, { instant })` runs the old body (now `applyTab`) through
+  the helper and returns its promise. Page load uses `instant`.
+- Callers that scroll or focus inside the new tab wait for that promise: `openBadgeLegend` (both apps), `goToSetupStep`
+  (both), `goToLineupNeeds`, `goToPowerRankings`, `scoutGoToLeague`. Without it, showTab's scroll to the top (now a frame
+  later) undid their scroll.
+- `js/mls/leagues/sync.js`: `switchActiveLeague(id, { animate })`; the body is `applyActiveLeague`. `cycleLeague` no
+  longer sets the drop-down first (the switch does, inside the transition, so the old picture shows the old name);
+  `selectActiveLeague` (main.js) puts the old value back before switching, for the same reason.
+- `js/mls/render/leagueCards.js`: `withCardsTransition` for `toggleLeagueCard`, `foldAllLeagueCards`,
+  `toggleLeagueReorder` and (from main.js) `moveLeague`. While it runs, each card is named `vt-lc-<league id>` (class
+  `vt-card`), plus the Command Center box and what follows the list, so they move together; names come off when the last
+  such transition ends.
+- `css/base.css`, "VIEW TRANSITIONS": the durations, the header / tab bar / league-name names (only while `data-vt` is
+  set, so nothing changes outside a transition), the phone slide keyframes, the cards' pictures clipped to their box
+  instead of stretched, the marker, toasts under Reduce Motion. `css/mls.css`: the chevron's speed.
+- CHANGELOG: lines under both apps. `docs/TESTING.md`: `transitionsDone`. `CACHE_NAME` v2.8.92 → v2.8.93.
+
+**Things found on the way.**
+- **Tabs weren't instant before:** `.tab-content.active` ran a 0.3s fade-up (`fadeIn`). Inside a transition it played a
+  second time, and when the transition's attributes came off it restarted (a visible second fade in the first demo).
+  With View Transitions the fade-in is cut to 1 ms (`@supports (view-transition-name: none)`). Not `none` or 0s: those
+  leave the tab composited differently from a finished fade-in, and main's and this branch's screenshots then differed
+  by 44 to 370,000 pixels of anti-aliasing on every screen, T-Score included. With 1 ms they're identical.
+- **Fold all blinked black on the owner's phone.** Headless Chromium here never showed a dark frame, but the first
+  version named every card and everything below the list, so the browser photographed the whole Dashboard several
+  times over before animating: at a 4x CPU slowdown with 21 leagues that was 105–126 ms of long tasks before the first
+  frame. Large pictures like that can run out of graphics memory on a phone and show black. Now only what's on or near
+  the screen (half a screen above to one and a half below) is named, before and after the change, and the Command Center
+  box only while it's under two screens tall. Same test: long tasks 50 ms, frames about every 25–35 ms on the phone
+  size. **Owner: please check Fold all on your phone again**; if it still blinks, say which phone and browser.
+- **Rapid taps:** a second `startViewTransition` before the first has drawn skips the first, but its update still runs,
+  first. So three taps run three updates in order (three history entries, one announcement each, the work after each
+  switch once), and the page ends on the last tab tapped. The spec checks it.
+- **Tests read the DOM a frame too early:** two specs (`mls-keyboard`, `mls-lineup-needs`) evaluated the active tab
+  straight after a key or click. `transitionsDone(page)` (tests/helpers.mjs) waits for `data-vt-busy` to clear; the
+  `showTab` helper and `visual.spec`'s `shot()` call it. No spec turns transitions off.
+- **Performance on phones (the card's check):** tab switches with 21 leagues at a 4x CPU slowdown, phone and desktop
+  sizes: each switch has a 100–230 ms long task, and the same run with View Transitions removed has the same (85–232
+  ms): it's each tab's own drawing (the lineup, the 21 cards), not the transition. During it the old picture stays on
+  screen, then the slide runs. The root picture is only the viewport, so a long page doesn't make tab switches slower;
+  only the cards needed limiting (above).
+
+**Tests.**
+- `tests/view-transitions.spec.mjs` (new, both widths): MLS: a tab tap starts one "tab" transition and ends on the tab;
+  three taps in one go end on the last with three updates, three history entries and its announcement; the marker ends
+  under the active tab; Back animates too; a switch from code (as Sync All makes) starts none; the header's arrow and
+  drop-down start a "league" transition; a card's fold starts a "cards" transition with `vt-lc-<id>` on the card during
+  it and no name after; with Reduce Motion no transition starts and showTab and a fold are immediate; without the API
+  taps switch at once and the marker still lands. MDS: rapid taps end on the last tab, no marker on Setup; Reduce Motion.
+  70 of 70 over five repeats.
+- `tests/unit/viewTransition.test.mjs` (new): `tabDirection`, and `vtName` escaping, validity and uniqueness.
+
+**Screenshots: the marker changes 22, to be re-taken from the PR's CI.** Rendered here, main and this branch differ
+only by the marker (3px under the active tab-bar button, 141–633 pixels each) in these, at both widths; the others are
+pixel-identical:
+`mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`, `mds-empty-board`, `mds-empty-team`, `mds-empty-tracker`,
+`mls-empty-setup`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scout`, `mls-league-setup`
+(`{desktop,phone}/`). Unchanged: MDS Setup and Guide, the MLS Guide (not in the tab bar), all of T-Score. No PR is open,
+so CI hasn't run; when one is, take CI's renders as in "Accepting an intended visual change" in docs/TESTING.md (each
+test stops at its first failing shot, so it takes a few runs).
+
+**Left over.**
+- The 22 screenshots above, from the PR's CI.
+- Draft Strategist has no league switch; switching drafts (the header's draft drop-down) isn't animated. Easy to add with
+  the same helper if wanted.
+- **Cross-page transitions** (between /, /lineup/ and /t-score/): possible with `@view-transition { navigation: auto; }`
+  in CSS alone (same origin), in Chrome and Safari 18.2+. Small, but each page's header differs, so it needs its own look
+  and a check that the service worker's cached navigations still animate. Worth a small card if you move between the apps
+  often; I'd rate it low.
+
+### S16, round 4: the league name in the header (owner's choice), and a softer fade (asked)
+
+**The league name.** On phones the header's league drop-down was held to 130px (css/base.css, a `max-width: 130px
+!important` shared with Draft Strategist's draft drop-down), so "Dynasty Champs 2026" read "Dynasty C", cut mid-letter: a
+`<select>` can't end its text in "…". The rolling name in a league switch drew the eye to it. I showed three options with
+pictures; the owner chose **B + C** and asked whether the width could follow the screen:
+- **B:** on phones the small MLS logo button hides (the tab bar's Dashboard does the same) and the drop-down takes all the
+  room the menu button and the arrows leave, at any width (168px at 320px, 238px at 390px). On desktop it fits the longest
+  league name, up to 22rem. So it's dynamic both ways; the menu button is untouched.
+- **C:** the name is drawn by a label laid over the drop-down (`#headerLeagueLabel`, `aria-hidden`; the drop-down's own
+  text is transparent and its options keep their color), so a long name ends in "…". Tapping still opens the native
+  picker; the drop-down keeps its `aria-label` for screen readers. `syncHeaderLeagueLabel` (js/mls/leagues/sync.js) sets the
+  label wherever the drop-down's value is set (its render, a league switch, page load). The league-switch roll now animates
+  the label.
+- Where: lineup/index.html (the wrap and label), css/mls.css ("Header league picker"), css/base.css (the 130px rule now
+  covers only `#draftProfileSelect`), js/mls/leagues/sync.js, js/mls/init.js. Draft Strategist's draft drop-down is
+  unchanged (not asked).
+- Found while measuring: the label measured a few pixels tighter than Chrome sizes the drop-down, so a name the drop-down
+  fit still got "…" on desktop; the label's right edge has 7px of slack before the arrow.
+- Tests: `view-transitions.spec.mjs` checks the label follows each league switch, and a new test checks a fitting name
+  shows whole, a long one ends in "…" inside the drop-down, the drop-down stays left of the › button, and nothing runs
+  past the screen (both widths).
+- Screenshots: this changes the header in Lineup Strategist's screenshots (phones: no logo, a wider drop-down; desktop:
+  the label's text); listed with the marker's when they're compared at the end of the card.
+
+### S16, round 5: "soft + rise", and a bug in transitions to the Lineup tab on phones (found with the owner's data)
+
+**The fade.** The owner found the fade-through jarring: the screen went dark mid-way. Measured, it dipped to the page
+background (`#0a0e17`, rgb 7,12,20), which reads as black; what looks navy on screen is the cards (`--card-bg`, `#131b2c`).
+I showed three versions side by side (today, "soft", "soft + rise"); the owner chose **soft + rise**: the old screen
+fades out over the first 60%, the new one fades in from 25% while rising 8px (`vt-fade-in-rise`), and the backdrop
+between them is the card navy (`::view-transition { background: var(--card-bg) }`). The middle of a switch now dims
+the screen from a mean brightness of about 25 to 23 (the fade-through went to 11), with only a faint overlap. Desktop tabs
+and every league switch; phones keep the slide (its backdrop is the card navy too).
+
+**The bug: no transition into the Lineup tab on a phone.** The owner saw it on their phone and sent a backup
+(my-lineup-strategist-backup-2026-10-12.json, 21 leagues). Loaded into a phone-emulated Chromium at its export time,
+every switch to Lineup ended in 100–180 ms, too fast to have animated, while the others took the 275 ms plus their
+drawing. The transition's `ready` promise rejected: "Transition was aborted because of invalid state". No duplicate
+`view-transition-name` was on the page; the cause was the Lineup tab being **398px wide on a 390px screen**: the
+Optimize / Copy / PNG row (`.lineup-action-row`) kept each button's 1.5rem side padding and wouldn't shrink. A mobile
+browser widens the page to fit (the layout viewport grows) only while that tab shows, so the viewport changed size
+between the two pictures and Chrome aborted the transition. It was on main too: the phone baseline
+`mls-league-lineup.png` is 398px wide. Without mobile emulation (the specs' phone project) the page doesn't widen, which is
+why the specs and my recordings never showed it.
+- Fix (css/mls.css): up to 480px, the row's gap is 0.5rem and its buttons have 0.75rem side padding and may shrink. The tab
+  fits at 320, 360, 375 and 390px, and with the owner's data every switch to Lineup now animates (380–490 ms), none skipped.
+- Test first: `view-transitions.spec.mjs`, "Lineup Strategist on a phone (mobile emulation)" (390px, `isMobile`): taps
+  through Roster, Lineup, Scout, Lineup, Dashboard and checks each tab is no wider than the screen and that no transition
+  was skipped. It failed on this branch before the fix ("lineup tab is wider than the screen", 398 > 390).
+- Screenshots: `phone/mls-league-lineup.png` changes (390px wide instead of 398, the buttons narrower); with the
+  header's, re-taken from CI.
+
+### S16, round 6: the page navy behind the fade, and a slower desktop fade (owner's choices)
+
+The owner kept "soft + rise" but asked for **the page's navy behind it** (`--bg-color`, #0a0e17) instead of the card navy,
+and **a slower desktop fade**. New variable `--vt-fade-ms` (css/base.css): the tab and league fades and the tab bar's
+marker use it; **500 ms on wider screens** (was 375), the phone speed (275 ms) on phones. The Dashboard cards keep
+`--vt-ms` (375 ms wider), since a fold at 500 ms felt slow in the recordings. Measured mid-switch, the screen dims from a
+mean brightness of about 25 to 11 again (the card navy held it at 23), but more slowly and with the two screens briefly
+overlapping, so it doesn't drop all at once.
+
+### S16: the final screenshot comparison, before the pull request
+
+Full check: precache OK, 331 unit and 361 Playwright tests pass (1 skipped: the phone-only mobile-emulation test on the
+desktop project); only visual.spec fails, as it does here on main (this container can't render CI's baselines).
+
+Rendered here, main and this branch differ in **24 PNGs, 12 per width**, each for one of three reasons; the other 16
+(Draft Strategist's Setup and Guide, all of T-Score) are pixel-identical. This replaces the list of 22 in the first entry,
+which was taken before rounds 4 and 5:
+- **The tab bar marker** (3px under the active tab-bar button): `mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`,
+  `mds-empty-board`, `mds-empty-team`, `mds-empty-tracker` (189 px on phone, 633 on desktop).
+- **The marker and the header's league label** (phones: no logo, the wider drop-down): `mls-empty-setup`,
+  `mls-league-roster`, `mls-league-scout`, `mls-league-setup`; and `mls-league-guide`, where only the header changes (the
+  Guide isn't in the tab bar).
+- **`mls-league-lineup`**: the marker and header, and on phones the button row, so the PNG is 390px wide instead of 398.
+
+All at `{desktop,phone}/`. To be taken from the pull request's CI renders ("Accepting an intended visual change").
+
+### S16, pull request (btrerise/My-Draft-Strategist#196): the 24 screenshots from CI in one run
+
+The owner asked whether there was a faster way than one CI round per changed shot. `visual.spec.mjs` now checks each
+screenshot with `expect.soft` (tests/visual.spec.mjs, `shot()`; docs/TESTING.md updated): a mismatch still fails the test,
+but the test goes on and renders its other tabs. So CI run 38288136796 (commit a20a9f8) failed on exactly the 24 PNGs
+listed above and rendered all of them; nothing else failed (T-Score passed). For each one, its `-expected.png` was
+byte-identical to the committed baseline, and CI's change sat where this container's main-vs-branch comparison put it: the
+marker (y 827–829 on desktop, 771–773 on phone), the MLS header (the top 60px), and `phone/mls-league-lineup` at 390px
+wide (CI's previous baseline was 396). Committed CI's `-actual.png` renders as the baselines.

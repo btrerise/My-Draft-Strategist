@@ -4,7 +4,7 @@
 // to <body>; Tab then resumes from where that button was. 3E checked this is unchanged; a later
 // change that keeps focus on the rebuilt button should update this spec on purpose.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, RANKINGS_CSV, callApp } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, RANKINGS_CSV, callApp, transitionsDone } from './helpers.mjs';
 
 const activeTab = page => page.evaluate(() => document.querySelector('.tab-content.active')?.id);
 const blur = page => page.evaluate(() => document.activeElement && document.activeElement.blur());
@@ -16,10 +16,12 @@ test.describe('Lineup Strategist keyboard', () => {
         for (const [key, tab] of [['2', 'rosterTab'], ['3', 'lineupTab'], ['4', 'scoutTab'], ['5', 'guideTab'], ['1', 'setupTab']]) {
             await blur(page);
             await page.keyboard.press(key);
+            await transitionsDone(page);
             expect(await activeTab(page)).toBe(tab);
         }
         await page.focus('#sleeperUsername');
         await page.keyboard.press('3');
+        await transitionsDone(page);
         expect(await activeTab(page)).toBe('setupTab');
 
         await callApp(page, 'toggleDrawer');

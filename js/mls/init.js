@@ -8,7 +8,7 @@ import { setRankingsCardExpanded, updateRankingsMetaDisplay } from './rankings/e
 import { RANKING_TYPE_CONFIG } from './constants.js';
 import { attachPlayerAutocomplete, attachScoutSuggestionHandler } from './players.js';
 import { populateEarlyGameDropdown } from './lineup/earlyGames.js';
-import { getLeagueRankings, loadActiveLeagueData, refreshLeagueDropdown } from './leagues/sync.js';
+import { getLeagueRankings, loadActiveLeagueData, refreshLeagueDropdown, syncHeaderLeagueLabel } from './leagues/sync.js';
 import { initManualAddForm } from './leagues/addPlayer.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
@@ -32,12 +32,15 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         const cfg = SETUP_STEPS[step];
         if (!cfg) return;
         const activeTab = document.querySelector('.tab-content.active');
+        let shown = Promise.resolve();
         if (!activeTab || activeTab.id !== cfg.tab + 'Tab') {
-            showTab(cfg.tab);
+            shown = showTab(cfg.tab);
             updateDrawerActiveState(cfg.tab);
         }
+        // After the tab switch has landed (it can animate, improvements S16), or its scroll to the top
+        // would undo this one.
         if (step !== 'leagues') setRankingsCardExpanded(cfg.cardId, true);
-        scrollToCard(document.getElementById(cfg.cardId), document.getElementById(cfg.focusId));
+        shown.then(() => scrollToCard(document.getElementById(cfg.cardId), document.getElementById(cfg.focusId)));
     };
 
     // Fills one setup-checklist <li> (js/shared/ui/setupChecklist.js builds it, since 8A). The jump
@@ -191,6 +194,7 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         if (State.activeLeagueId) {
             const leagueSelect = document.getElementById('headerLeagueSelect');
             if (leagueSelect) leagueSelect.value = State.activeLeagueId;
+            syncHeaderLeagueLabel();
             loadActiveLeagueData();
         }
         // Deep link: open the tab named in the URL hash (a reload, or a shared #lineup link),
@@ -198,7 +202,7 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         // a second history entry on every page load, so the first Back press went nowhere.
         // Stamping this entry with its tab also means Back to it restores the right tab.
         const initialTab = getTabFromHash() || 'setup';
-        showTab(initialTab, true);
+        showTab(initialTab, true, { instant: true });
         history.replaceState({ tab: initialTab }, '', `#${initialTab}`);
 
         // Last line of init on purpose: tells the safety net in js/boot.js that this module --

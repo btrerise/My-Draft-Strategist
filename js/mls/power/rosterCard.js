@@ -94,8 +94,7 @@ export function refreshPowerRankings() {
 // section in index.html, this function, and the .mls-moved-pointer CSS -- on or after
 // 2026-10-04, once regular users have had a week to find the card's new home.
 export const goToPowerRankings = function() {
-    showTab('roster');
-    setTimeout(() => scrollToPowerRankings(), 60);
+    showTab('roster').then(() => setTimeout(() => scrollToPowerRankings(), 60));
 };
 
 // Kept for anything still calling the old Scout-tab button handler.

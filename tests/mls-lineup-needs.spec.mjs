@@ -17,7 +17,7 @@
 // would list too; one test uses that).
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings, FIXTURE_LEAGUE_ID, FIXED_NOW } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, transitionsDone, FIXTURE_LEAGUE_ID, FIXED_NOW } from './helpers.mjs';
 
 const SECOND_LEAGUE_ID = '1000000000000000002';
 const SECOND_LEAGUE_NAME = 'The Long-Named Dynasty League of Champions';
@@ -150,6 +150,7 @@ test.describe('Lineups that need you', () => {
         await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you before kickoff');
         await openLineup(page, 'Fixture League').click();
         await expect(page.locator('#headerLeagueSelect')).toHaveValue(FIXTURE_LEAGUE_ID);
+        await transitionsDone(page);
         expect(await lineupItems(page)).toEqual([CHASE_ITEM]);
         await expect(lineupBox(page).locator('.lineup-needs-item.is-ir')).toHaveCount(1);
 

@@ -233,10 +233,11 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
     // The Lineup tab's pointer where the Global Injury Auditor was: the Dashboard, at the Command Center (the box
     // sits under its buttons).
     export function goToLineupNeeds() {
-        showTab('setup');
         updateDrawerActiveState('setup');
-        const card = document.getElementById('dashboardCommandCenter');
-        if (card && card.scrollIntoView) card.scrollIntoView({ block: 'start' });
+        showTab('setup').then(() => {
+            const card = document.getElementById('dashboardCommandCenter');
+            if (card && card.scrollIntoView) card.scrollIntoView({ block: 'start' });
+        });
     }
 
     // "Sync All again" (the box's footer link; named so it's clear it's the button above, owner's choice S11 round 6):

@@ -48,7 +48,7 @@ const clickActions = {
     toggleMenu() { toggleMenu(); },
     showTab() { showTab(this.dataset.tab); },
     // "What do these mean?" on the Tracker (improvements S10): the Guide tab, scrolled to its badge legend.
-    openBadgeLegend() { showTab('guide'); focusBadgeLegend(); },
+    openBadgeLegend() { showTab('guide').then(focusBadgeLegend); },
     handleSmartSync() { handleSmartSync(); },
     dismissBanner() { dismissBanner(this.dataset.banner, this.dataset.storageKey); },
     // The Setup Progress checklist's "Show me ↓" links (setupGuide.js, 8A)

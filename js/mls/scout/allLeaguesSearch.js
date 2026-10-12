@@ -50,11 +50,10 @@ import { switchActiveLeague } from '../main.js';
     // no longer scrolls to the top on its own.)
     export const scoutGoToLeague = function(leagueId) {
         if (!leagueId || leagueId === State.activeLeagueId) return;
-        switchActiveLeague(leagueId);
-        setTimeout(() => {
+        switchActiveLeague(leagueId, { animate: true }).then(() => setTimeout(() => {
             const out = document.getElementById('waiverOutput');
             if (out) out.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 60);
+        }, 60));
     };
 
     export async function runAllLeaguesSearch(names, outputEl) {

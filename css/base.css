@@ -199,8 +199,9 @@ body {
         display: none;
     }
     
-    /* 5. Keep the dropdown contained and leave room for the arrows */
-        #draftProfileSelect, #headerLeagueSelect { 
+    /* 5. Keep the dropdown contained and leave room for the arrows. (Lineup Strategist's league drop-down
+       sizes itself to the free space instead: css/mls.css, "Header league picker", improvements S16.) */
+        #draftProfileSelect { 
             max-width: 130px !important; 
         }
 
@@ -2173,3 +2174,111 @@ button.pos-filter {
 /* A link on a line of its own: above Draft Strategist's Tracker chips (no card header there) and Lineup Strategist's
    Roster position counts (its header is full on a phone with a long league name). */
 .badge-legend-link-row { display: flex; justify-content: flex-end; margin: -0.25rem 0 0.5rem; }
+
+/* --- VIEW TRANSITIONS (improvements S16) ---
+   js/shared/ui/viewTransition.js runs tab switches, your own league switches, and the League Command Center's
+   folds and reorders through document.startViewTransition, and marks <html> while one runs: data-vt="tab" |
+   "league" | "cards", data-vt-dir="forward" | "back" (tabs, by the tab bar's order). The header and the tab bar
+   get names only then, so they stay put while the page between them moves, and nothing changes outside a
+   transition. Owner's choices: tabs slide on phones and fade ("soft + rise") wider; 275 ms on phones; wider, 500 ms
+   for tab and league fades and 375 ms for the Dashboard cards.
+   Reduce Motion: the helper never starts one, and none of this applies. */
+:root {
+    --vt-ms: 275ms;
+    /* Tab and league fades, and the tab bar's marker that moves with them: the phone speed on phones, slower on
+       wider screens (owner's choice, round 6: 500 ms). Dashboard cards keep --vt-ms. */
+    --vt-fade-ms: var(--vt-ms);
+    --vt-ease: cubic-bezier(0.2, 0, 0, 1);
+    --vt-shift: 48px;
+}
+@media (min-width: 768px) {
+    :root { --vt-ms: 375ms; --vt-fade-ms: 500ms; }
+}
+@media (prefers-reduced-motion: no-preference) {
+    html[data-vt] .header { view-transition-name: vt-header; }
+    html[data-vt] .nav-bar { view-transition-name: vt-nav; }
+    /* The league's name changes on its own, a short slide up, while the page fades. */
+    html[data-vt="league"] #headerLeagueLabel { view-transition-name: vt-league-name; }
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation-duration: var(--vt-ms);
+        animation-timing-function: var(--vt-ease);
+    }
+
+    /* "Soft + rise" (owner's choice after two reviews as a user): the old screen fades out over the first 60%, the new
+       one fades in from 25% while rising 8px, over the page's own navy (round 6: the owner preferred it to the card
+       navy), at --vt-fade-ms (500 ms on wider screens). A plain crossfade showed both screens at once (the same layout's text ghosting on a
+       league switch); a full fade-through dipped to near-black, which read as a flash. For a league switch, and for
+       tabs where they don't slide (wider screens, below). */
+    html[data-vt="league"]::view-transition,
+    html[data-vt="tab"]::view-transition { background: var(--bg-color); }
+    html[data-vt="league"]::view-transition-group(*),
+    html[data-vt="league"]::view-transition-old(*),
+    html[data-vt="league"]::view-transition-new(*),
+    html[data-vt="tab"]::view-transition-group(*),
+    html[data-vt="tab"]::view-transition-old(*),
+    html[data-vt="tab"]::view-transition-new(*) { animation-duration: var(--vt-fade-ms); }
+    html[data-vt="league"]::view-transition-old(root),
+    html[data-vt="tab"]::view-transition-old(root) { animation-name: vt-fade-out; }
+    html[data-vt="league"]::view-transition-new(root),
+    html[data-vt="tab"]::view-transition-new(root) { animation-name: vt-fade-in-rise; }
+
+    html[data-vt="league"]::view-transition-old(vt-league-name) { animation-name: vt-out-up; }
+    html[data-vt="league"]::view-transition-new(vt-league-name) { animation-name: vt-in-up; }
+
+    /* League Command Center cards (js/mls/render/leagueCards.js names each one while a "cards" transition runs):
+       a card that folds or unfolds changes height in place, and the cards below or around it move to their new
+       places. Each card's pictures keep their size and are clipped to the card's box as it grows or shrinks,
+       instead of being stretched. */
+    ::view-transition-group(.vt-card) { overflow: clip; }
+    ::view-transition-old(.vt-card),
+    ::view-transition-new(.vt-card) {
+        width: 100%;
+        height: auto;
+        object-fit: none;
+        object-position: top;
+    }
+
+    /* The tab bar's marker slides to the active tab. */
+    .nav-marker { transition: left var(--vt-fade-ms) var(--vt-ease), width var(--vt-fade-ms) var(--vt-ease); }
+}
+/* Phones: the old tab leaves and the new one arrives in the direction of travel (a swipe left, or a tab further
+   right, moves forward). Wider screens fade (above). */
+@media (prefers-reduced-motion: no-preference) and (max-width: 767px) {
+    html[data-vt="tab"][data-vt-dir="forward"]::view-transition-old(root) { animation-name: vt-out-left; }
+    html[data-vt="tab"][data-vt-dir="forward"]::view-transition-new(root) { animation-name: vt-in-right; }
+    html[data-vt="tab"][data-vt-dir="back"]::view-transition-old(root) { animation-name: vt-out-right; }
+    html[data-vt="tab"][data-vt-dir="back"]::view-transition-new(root) { animation-name: vt-in-left; }
+}
+/* Browsers with View Transitions animate the switch itself, so the tab's own fade-in (fadeIn above) is cut to 1 ms
+   there: inside a transition it would play twice. Not `none` or 0s: the tab must end exactly as the finished fade-in
+   leaves it, or corners and text render a few pixels differently (the screenshots caught it). Browsers without View
+   Transitions keep the 0.3s fade-in. */
+@supports (view-transition-name: none) {
+    .tab-content.active { animation-duration: 1ms; }
+}
+@keyframes vt-out-left { to { transform: translateX(calc(-1 * var(--vt-shift))); opacity: 0; } }
+@keyframes vt-in-right { from { transform: translateX(var(--vt-shift)); opacity: 0; } }
+@keyframes vt-out-right { to { transform: translateX(var(--vt-shift)); opacity: 0; } }
+@keyframes vt-in-left { from { transform: translateX(calc(-1 * var(--vt-shift))); opacity: 0; } }
+@keyframes vt-fade-out { 0% { opacity: 1; } 60%, 100% { opacity: 0; } }
+@keyframes vt-fade-in-rise { 0%, 25% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: none; } }
+@keyframes vt-out-up { to { transform: translateY(-40%); opacity: 0; } }
+@keyframes vt-in-up { from { transform: translateY(40%); opacity: 0; } }
+
+/* The tab bar's marker (js/shared/ui/viewTransition.js, placeTabMarker): a short green bar along the top of the
+   active tab. */
+.nav-marker { position: absolute; top: 0; left: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--primary-green); pointer-events: none; }
+
+/* Toasts slide up from the bottom (above); with Reduce Motion they appear and go without moving. */
+@media (prefers-reduced-motion: reduce) {
+    .mds-toast, .mds-toast.show { transition: opacity 0.2s ease, visibility 0s linear 0.2s; }
+    .mds-toast.show { transition: opacity 0.2s ease, visibility 0s; }
+    .mds-toast { transform: none; }
+    @media (max-width: 767px) {
+        .mds-toast, .mds-toast.show { transform: translateX(-50%); }
+    }
+}
+

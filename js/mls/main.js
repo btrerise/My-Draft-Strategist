@@ -11,7 +11,7 @@ import './sim/ui.js';
 import '../shared/api/sleeperStats.js';
 import './sim/stats.js';
 import './constants.js';
-import { redoLineupChange, undoLineupChange, updateLineupSetting } from './state.js';
+import { State, redoLineupChange, undoLineupChange, updateLineupSetting } from './state.js';
 import './helpers.js';
 import { navigateFromDrawer, showTab, toggleDrawer, updateDrawerActiveState } from './nav.js';
 import { focusBadgeLegend } from './legend.js';
@@ -49,7 +49,7 @@ import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
-import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeagueReorder } from './render/leagueCards.js';
+import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
@@ -97,7 +97,7 @@ const clickActions = {
     showTab() { showTab(this.dataset.tab); },
     // "What do these mean?" on the Waiver Wire Assistant and the Lineup and Roster tabs (improvements S10):
     // the Guide tab, scrolled to its badge legend.
-    openBadgeLegend() { showTab('guide'); updateDrawerActiveState('guide'); focusBadgeLegend(); },
+    openBadgeLegend() { updateDrawerActiveState('guide'); showTab('guide').then(focusBadgeLegend); },
     cycleLeague() { cycleLeague(Number(this.dataset.direction)); },
     // Setup tab: banners, Draft Strategist handoff, Command Center, Add/Sync League, requirements
     dismissBannerAndReveal() { dismissBannerAndReveal(this.dataset.banner, this.dataset.storageKey, this.dataset.nextBanner, this.dataset.nextStorageKey); },
@@ -116,8 +116,9 @@ const clickActions = {
     importAllSleeperLeagues() { importAllSleeperLeagues(this); },
     saveRequirements() { saveRequirements(this); },
     // Command Center league cards (render/leagueCards.js, improvements S12; the table's rows before)
-    switchActiveLeague() { switchActiveLeague(this.dataset.leagueId); },
-    moveLeague() { moveLeague(Number(this.dataset.index), Number(this.dataset.direction)); },
+    switchActiveLeague() { switchActiveLeague(this.dataset.leagueId, { animate: true }); },
+    // ▲ ▼ move the card into place (S16); moveLeague's redraw runs inside the transition.
+    moveLeague() { const i = Number(this.dataset.index), d = Number(this.dataset.direction); withCardsTransition(() => moveLeague(i, d)); },
     deleteLeagueManager() { deleteLeagueManager(this.dataset.leagueId); },
     toggleLeagueCard() { toggleLeagueCard(this.dataset.leagueId); },
     foldAllLeagueCards() { foldAllLeagueCards(); },
@@ -197,7 +198,9 @@ const clickActions = {
 };
 
 const changeActions = {
-    selectActiveLeague() { switchActiveLeague(this.value); },
+    // The drop-down already shows the new league; put the old one back for the transition's first picture
+    // (switchActiveLeague sets the new one again), so the league name changes with the page.
+    selectActiveLeague() { const id = this.value; if (State.activeLeagueId) this.value = State.activeLeagueId; switchActiveLeague(id, { animate: true }); },
     onRankingSetSelectChange() { onRankingSetSelectChange(this.dataset.type, this); },
     toggleUploadMode() { toggleUploadMode(this.dataset.type); },
     togglePosInput() { togglePosInput(this.dataset.type, this.dataset.pos); },

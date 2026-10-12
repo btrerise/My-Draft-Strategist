@@ -67,6 +67,12 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   instance and runs exactly what the buttons run; nothing needs to be on `window`. To call a new function from a
   test, export it from that `main.js`. `showTab(page, id)` uses it. On T-Score, `showTScoreTab` clicks the tab's
   nav button.
+- **View transitions** (improvements S16): a tab switch, your own league switch and a League Command Center fold or
+  move can animate (`js/shared/ui/viewTransition.js`), so the DOM changes a frame after the tap and `<html>` carries
+  `data-vt-busy` until the animation ends. `transitionsDone(page)` waits for that: `showTab()` and the screenshots'
+  `shot()` call it; call it yourself before reading the DOM synchronously (an `evaluate`, not an auto-waiting
+  `expect`) after a tap or key that switches. Don't turn transitions off for a spec to get around it.
+  `view-transitions.spec.mjs` covers the transitions themselves.
 - **Unit tests** (`tests/unit/`) import app modules by relative path. MLS modules that pull in the whole page can
   be loaded with the resolve-hook stubs in `tests/unit/helpers/playersEnv.mjs` (LOG 9C).
 - **Widths:** every Playwright test runs twice, as `desktop` (1280×900) and `phone` (390×844, touch).
@@ -133,9 +139,10 @@ way there and compare them with `npm run pxdiff` to find the PNGs your change to
 let the PR's CI fail on exactly those. Then take CI's renders from the run's `playwright-results` artifact:
 `gh run download <run-id> -R btrerise/My-Draft-Strategist -n playwright-results -D <new empty folder>` works from
 cloud sessions. Before committing an `-actual.png` as the baseline, check that its `-expected.png` is identical to the
-committed baseline, and that the new image differs only where your change is. A test stops at its first failing
-screenshot (each test in `visual.spec.mjs` shoots several tabs), so a run only renders the first changed PNG of each
-test: commit those, push, and take the next ones from the next run, until it's green (S10 took four runs for 14).
+committed baseline, and that the new image differs only where your change is. `visual.spec.mjs` checks each screenshot
+with `expect.soft` (since improvements S16), so a test that fails on one tab still renders the rest: one run gives every
+changed PNG, and the next run, with them committed, should be green. (Before that, a test stopped at its first failing
+shot and S10 took four runs for 14.)
 
 ### The opt-in tools
 
