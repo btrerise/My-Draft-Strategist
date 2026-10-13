@@ -12,6 +12,7 @@ import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js'
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML } from '../trade/verdict.js';
+import { buildTradeImpactHTML } from '../trade/lineupSection.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 
@@ -290,6 +291,13 @@ import { normalizeName } from '../../shared/names.js';
                 verdictHTML = buildTradeVerdictHTML(getResults, giveResults);
             }
             html += verdictHTML;
+            // How your team changes, under the verdict (improvements S14). Its own failure leaves the
+            // verdict and the cards as they were.
+            try {
+                html += await buildTradeImpactHTML(league, targetNames, sellNames);
+            } catch (e) {
+                console.warn('Trade Analyzer: lineup comparison unavailable.', e);
+            }
 
             if (targetNames.length > 0) {
                 html += `<div style="font-weight:bold; color:#4ade80; margin-bottom:0.5rem;">You Receive</div>`;

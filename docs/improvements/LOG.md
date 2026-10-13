@@ -4127,3 +4127,77 @@ listed above and rendered all of them; nothing else failed (T-Score passed). For
 byte-identical to the committed baseline, and CI's change sat where this container's main-vs-branch comparison put it: the
 marker (y 827–829 on desktop, 771–773 on phone), the MLS header (the top 60px), and `phone/mls-league-lineup` at 390px
 wide (CI's previous baseline was 396). Committed CI's `-actual.png` renders as the baselines.
+
+## S14 — Trade Analyzer: how your team changes
+
+**User-visible effect.** Under the Scout tab's trade verdict there's a new section. In a Sleeper-synced league it's
+**"Power Rankings after the trade"**: your row of the Positional Power Rankings (Start, Ovr, QB, RB, WR, TE) with each
+rank shown as before → after (green when it improves, red when it drops, one number when it doesn't move), and a
+sentence above it ("Starting lineup 5th → 3rd of 12. Stronger at WR (8th → 4th); weaker at RB (2nd → 7th)."). Hover or
+tap a number for that room after the trade, as on the Roster tab: players coming in are green with a "+", the ones
+leaving are listed underneath. When everyone you'd get comes from one team, **"Their team: <name>"** folds open to the
+same view of their side. Notes under it say when the trade **leaves a starting slot empty** ("Leaves your RB empty."),
+name draft picks ("no lineup spot"), unranked players ("counts as unranked (almost no value)"), names it can't match and
+players who aren't yours, and that injuries and byes are left out. In a **manual league** (only your roster known) it's
+**"Your lineup after the trade"** instead: each slot whose starter changes, with who goes out (−, red) and who comes in
+(+, green) and their position rank, and a sentence per slot ("Better at RB; worse at FLEX; WR left empty.";
+"Can't compare at RB (Bijan Robinson is unranked)."). Picks only (or nothing) on either side: no section. No rankings:
+one line saying what to load; a manual league without lineup slots: one line saying where to set them.
+
+**The owner's decisions (Asks you).**
+1. **Rankings: ROS**, since a trade is for the rest of the season. In a Sleeper league, Market Consensus stands in with a
+   note when no ROS rankings are loaded (the Power Rankings card's own fallback). The manual view needs ROS.
+2. **Format: not a list of starters, but the Positional Power Rankings before and after**, each number hoverable for its
+   players like the Roster tab (the owner's own idea, in place of the two options offered). So in Sleeper leagues the
+   lineup is the Power Rankings' best legal lineup (`pickPowerStarters`, by overall-rank value), not the Lineup tab's
+   optimizer: the numbers match the Roster tab's table, which is the point. No third lineup builder was written.
+3. **Summary: per slot in words.** In Power Rankings form that's the Start rank and each room that moves; in the manual
+   view, one phrase per changed slot, with "can't compare at RB (X is unranked)" when a rank is missing. A QB against an
+   RB/WR/TE in Superflex is compared by overall rank, the only number spanning both.
+4. **The other team: yes, folded** (`<details>`, closed by default), when all the players you'd get come from one team.
+5. **Manual leagues** (asked after the sketch): show your starters before and after, by `bestLineup`.
+
+**What changed and where.**
+- `js/mls/trade/lineupImpact.js` (new, pure, in `PRECACHE_ASSETS`): `tradePartner`, `leagueAfterTrade` (a copy of the
+  league with the players moved; your players go to the partner, or off every roster when there's no single partner),
+  `openPowerSlots`, `powerTradeImpact` (scores before and after with an injected `computePositionalPower`, and the
+  slots the trade newly leaves empty), `powerSummaryText`, `lineupTradeChanges` (two `bestLineup` runs, nobody locked or
+  unavailable), `lineupSummaryText`, `lineupSlotCount`, `ordinalOf`.
+- `js/mls/trade/lineupSection.js` (new, in `PRECACHE_ASSETS`): `buildTradeImpactHTML(league, getNames, giveNames)`
+  resolves names (positions from the league, then `getSleeperMetaByName`, then market data), sorts out picks, unmatched
+  names, players not yours and players already yours, and draws either view. The Sleeper view reuses the Power Rankings
+  table's classes (`.mls-power-table`), so its tooltips open and close as there (tap, keyboard, Escape).
+- `js/mls/scout/engine.js`: the trade branch appends the section after the verdict, inside a try/catch so a failure
+  leaves the verdict and cards as they were. The verdicts' math is unchanged.
+- `js/mls/power/shared.js`: `POWER_DEFAULT_REQS` is exported (no change to the math).
+- `css/mls.css`: `.mls-trade-impact*`, `.mls-trade-rank-up/down`, `.mls-trade-lineup-*`, `.mls-trade-in/out`.
+- `sw.js`: the two files in `PRECACHE_ASSETS`; `CACHE_NAME` v2.8.93 → v2.8.94.
+- `CHANGELOG.md`: a line under Lineup Strategist, Unreleased.
+- **Legend:** nothing new is a badge, chip or pill (the ranks are the Power Rankings' own cells, recolored by direction;
+  + and − are text), so no legend line; `badgeLegend.test.mjs` passes.
+
+**Tests.**
+- Unit (`tests/unit/tradeImpact.test.mjs`, with `tests/unit/helpers/powerEnv.mjs`, which loads `power/shared.js` in Node
+  with its two app imports stubbed): the partner rule, the league copy, a 2-for-1 that empties both RB slots (power and
+  manual), a hole that was already there isn't reported, a QB swap in a Superflex league (QB and SFLEX both change; the
+  QB room goes 2nd → 1st), a QB against a WR in SFLEX, an unranked incoming player (manual: can't compare; power: rank
+  300), and a bench swap that changes nothing.
+- Spec (`tests/mls-trade-impact.spec.mjs`, both widths, the phone one at 375px): the fixture league trading your three
+  best WRs for their three best RBs (RB 2→1 green, WR 1→2 red, the RB tooltip with three "+" rows, "Leaving:" in the WR
+  one, a tap opens it, the partner fold, the pick note, no sideways scroll, the table inside its box), a 2-for-1 that
+  takes your only RB ("Leaves your RB empty."), picks-only on either side (no section), unmatched names and players not
+  yours, no rankings (one line), a manual league (one changed slot, slot/name/rank on one line), a manual league with no
+  slots, and an unranked incoming starter in a manual league.
+
+**Checks.** Precache OK; 346 unit tests and 369 Playwright tests pass (1 skipped, the phone-only emulation test on
+desktop). visual.spec fails here as it does on main (this container can't render CI's baselines).
+
+**Screenshots.** None change: the screenshot league has no rankings and the trade form is empty. All 40, rendered here
+on main and on this branch, are pixel-identical (`npm run pxdiff`). The Guide's Trade
+Analyzer step is unchanged on purpose (a sentence there would re-take `mls-league-guide` at both widths).
+
+**Left over.**
+- The Guide's step 9 (Scout: Trade Analyzer) could mention the section, at the cost of re-taking the Guide screenshots.
+- A three-way trade (players from more than one team) shows only your team, with a note; who gets your players isn't
+  known.
+- The Power Rankings view ignores dynasty Future value (no Future column), and the manual view doesn't show a partner.

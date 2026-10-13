@@ -1,0 +1,171 @@
+// The Trade Analyzer's "after the trade" comparison (improvements S14): js/mls/trade/lineupImpact.js,
+// scored with the real Power Rankings math (js/mls/power/shared.js, loaded through powerEnv.mjs).
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { loadPower } from './helpers/powerEnv.mjs';
+import {
+    leagueAfterTrade, lineupSummaryText, lineupTradeChanges, openPowerSlots, powerSummaryText,
+    powerTradeImpact, tradePartner
+} from '../../js/mls/trade/lineupImpact.js';
+
+const { computePositionalPower, POWER_DEFAULT_REQS } = await loadPower();
+
+// [clean name, pos, owner, overall rank or null (unranked)]
+function makeLeague(players, reqs) {
+    const league = { leagueId: 'L1', reqs, globalRosterMap: {}, globalPosMap: {}, roster: [] };
+    const rankings = [];
+    players.forEach(([clean, pos, owner, rank]) => {
+        if (owner) league.globalRosterMap[clean] = owner;
+        league.globalPosMap[clean] = pos;
+        if (owner === 'You') league.roster.push({ id: clean, cleanName: clean, name: clean, isTaxi: false });
+        if (rank != null) rankings.push({ cleanName: clean, name: clean, rank });
+    });
+    // Position ranks in overall order, FLEX ranks for RB/WR/TE, as a single-file upload's display ranks read.
+    const byPos = {};
+    let flex = 0;
+    rankings.sort((a, b) => a.rank - b.rank).forEach(r => {
+        const pos = league.globalPosMap[r.cleanName];
+        r.posRank = byPos[pos] = (byPos[pos] || 0) + 1;
+        if (['RB', 'WR', 'TE'].includes(pos)) r.flexRank = ++flex;
+    });
+    return { league, rankings };
+}
+const rankOfFrom = (rankings) => { const m = new Map(rankings.map(r => [r.cleanName, r])); return (p) => (p && m.get(p.cleanName)) || null; };
+const getPosFrom = (league) => (clean) => league.globalPosMap[clean] || 'UNK';
+
+const ONE_QB = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SFLEX: 0, K: 0, DEF: 0 };
+const BASE = [
+    ['qb1', 'QB', 'You', 10], ['rb1', 'RB', 'You', 2], ['rb2', 'RB', 'You', 8], ['wr1', 'WR', 'You', 3],
+    ['wr2', 'WR', 'You', 12], ['wr3', 'WR', 'You', 20], ['te1', 'TE', 'You', 15],
+    ['qbR', 'QB', 'Rival', 5], ['rbR', 'RB', 'Rival', 4], ['rbR2', 'RB', 'Rival', 18], ['rbR3', 'RB', 'Rival', 25],
+    ['wrR', 'WR', 'Rival', 1], ['wrR2', 'WR', 'Rival', 14], ['wrR3', 'WR', 'Rival', 7], ['teR', 'TE', 'Rival', 9],
+    ['fa', 'RB', null, 30],
+];
+
+describe('tradePartner', () => {
+    const map = { a: 'You', b: 'Rival', c: 'Rival', d: 'Third' };
+    test('one other team', () => assert.equal(tradePartner(map, ['b', 'c']), 'Rival'));
+    test('free agents only', () => assert.equal(tradePartner(map, ['zz']), null));
+    test('two teams', () => assert.equal(tradePartner(map, ['b', 'd']), null));
+});
+
+describe('leagueAfterTrade', () => {
+    test('moves players without touching the original', () => {
+        const { league } = makeLeague(BASE, ONE_QB);
+        const after = leagueAfterTrade(league, ['rb1'], [{ cleanName: 'wrR', pos: 'WR' }, { cleanName: 'new', pos: 'TE' }], 'Rival');
+        assert.equal(after.globalRosterMap.rb1, 'Rival');
+        assert.equal(after.globalRosterMap.wrR, 'You');
+        assert.equal(after.globalPosMap.new, 'TE');
+        assert.equal(league.globalRosterMap.rb1, 'You');
+        assert.equal(league.globalPosMap.new, undefined);
+    });
+    test('no partner: your players leave every roster', () => {
+        const { league } = makeLeague(BASE, ONE_QB);
+        assert.equal(leagueAfterTrade(league, ['rb1'], [{ cleanName: 'fa', pos: 'RB' }], null).globalRosterMap.rb1, undefined);
+    });
+});
+
+describe('2-for-1 that leaves an empty slot', () => {
+    // You give both your RBs for the Rival's best WR: two RB slots, no RB left.
+    const { league, rankings } = makeLeague(BASE, ONE_QB);
+    const reqs = { ...POWER_DEFAULT_REQS, ...league.reqs };
+    const trade = { give: ['rb1', 'rb2'], get: [{ cleanName: 'wrR', pos: 'WR' }], partner: 'Rival', reqs };
+    const impact = powerTradeImpact(league, trade, (l) => computePositionalPower(l, rankings));
+
+    test('power ranks: your RB room drops, your WR room rises, the partner the other way', () => {
+        assert.equal(impact.teams, 2);
+        assert.equal(impact.you.before.rbRank, 1);
+        assert.equal(impact.you.after.rbRank, 2);
+        assert.equal(impact.you.before.wrRank, 2);
+        assert.equal(impact.you.after.wrRank, 1);
+        assert.equal(impact.partner.owner, 'Rival');
+        assert.equal(impact.partner.after.rbRank, 1);
+    });
+    test('both RB slots are new holes; the partner has none', () => {
+        assert.deepEqual(impact.you.newHoles, ['RB', 'RB']);
+        assert.deepEqual(openPowerSlots(impact.you.before, reqs), []);
+        assert.deepEqual(impact.partner.newHoles, []);
+    });
+    test('summary in words', () => {
+        assert.equal(powerSummaryText(impact.you, impact.teams),
+            'Starting lineup stays 2nd of 2. Stronger at WR (2nd → 1st); weaker at RB (1st → 2nd).');
+    });
+    test('a hole already there before the trade isn\'t reported', () => {
+        const thin = makeLeague(BASE.filter(p => p[0] !== 'rb2'), ONE_QB);
+        const r = { ...POWER_DEFAULT_REQS, ...thin.league.reqs };
+        const imp = powerTradeImpact(thin.league, { give: ['rb1'], get: [{ cleanName: 'wrR', pos: 'WR' }], partner: 'Rival', reqs: r },
+            (l) => computePositionalPower(l, thin.rankings));
+        assert.deepEqual(openPowerSlots(imp.you.before, r), ['RB']);
+        assert.deepEqual(imp.you.newHoles, ['RB']);
+    });
+    test('manual view: the RB slots go empty, slot by slot', () => {
+        const rankOf = rankOfFrom(rankings);
+        const { rows } = lineupTradeChanges(league.reqs, league.roster, new Set(['rb1', 'rb2']),
+            [{ cleanName: 'wrR', name: 'wrR', pos: 'WR' }], { getPos: getPosFrom(league), rankOf });
+        assert.deepEqual(rows.map(r => [r.slotType, r.out && r.out.cleanName, r.in && r.in.cleanName]), [
+            ['RB', 'rb1', null], ['RB', 'rb2', null], ['WR', 'wr1', 'wrR'], ['WR', 'wr2', 'wr1'], ['FLEX', 'wr3', 'wr2'],
+        ]);
+        assert.equal(lineupSummaryText(rows, rankOf, p => p.cleanName), 'RB left empty; better at WR; better at FLEX.');
+    });
+});
+
+describe('QB swap in a superflex league', () => {
+    const SF = { QB: 1, RB: 1, WR: 1, TE: 0, FLEX: 0, SFLEX: 1, K: 0, DEF: 0 };
+    const players = [
+        ['qbA', 'QB', 'You', 10], ['qbB', 'QB', 'You', 22], ['rb1', 'RB', 'You', 2], ['wr1', 'WR', 'You', 3], ['wr2', 'WR', 'You', 40],
+        ['qbStar', 'QB', 'Rival', 1], ['qbR2', 'QB', 'Rival', 30], ['rbR', 'RB', 'Rival', 4], ['wrR', 'WR', 'Rival', 6],
+    ];
+    const { league, rankings } = makeLeague(players, SF);
+    const rankOf = rankOfFrom(rankings);
+
+    test('your second QB for their star: QB and SFLEX both change hands', () => {
+        const { rows } = lineupTradeChanges(league.reqs, league.roster, new Set(['qbB']),
+            [{ cleanName: 'qbStar', name: 'qbStar', pos: 'QB' }], { getPos: getPosFrom(league), rankOf });
+        assert.deepEqual(rows.map(r => [r.slotType, r.out.cleanName, r.in.cleanName]), [['QB', 'qbA', 'qbStar'], ['SFLEX', 'qbB', 'qbA']]);
+        assert.equal(lineupSummaryText(rows, rankOf, p => p.cleanName), 'Better at QB; better at SFLEX.');
+    });
+    test('power ranks: the QB room moves to first', () => {
+        const reqs = { ...POWER_DEFAULT_REQS, ...SF };
+        const imp = powerTradeImpact(league, { give: ['qbB'], get: [{ cleanName: 'qbStar', pos: 'QB' }], partner: 'Rival', reqs },
+            (l) => computePositionalPower(l, rankings));
+        assert.equal(imp.you.before.qbRank, 2);
+        assert.equal(imp.you.after.qbRank, 1);
+        assert.ok(imp.you.after.starters.some(p => p.slot === 'SFLEX' && p.pos === 'QB'));
+        assert.match(powerSummaryText(imp.you, imp.teams), /Stronger at QB \(2nd → 1st\)/);
+    });
+    test('a QB against a WR in SFLEX is judged by the overall rank', () => {
+        const rows = [{ slotType: 'SFLEX', out: { cleanName: 'qbB', pos: 'QB' }, in: { cleanName: 'wr1', pos: 'WR' } }];
+        assert.equal(lineupSummaryText(rows, rankOf, p => p.cleanName), 'Better at SFLEX.');
+    });
+});
+
+describe('an unranked incoming player', () => {
+    const players = [...BASE, ['nobody', 'RB', 'Rival', null]];
+    const { league, rankings } = makeLeague(players, ONE_QB);
+    const rankOf = rankOfFrom(rankings);
+
+    test("manual view: the slot can't be compared", () => {
+        const { rows } = lineupTradeChanges(league.reqs, league.roster, new Set(['rb2']),
+            [{ cleanName: 'nobody', name: 'Nobody Ranked', pos: 'RB' }], { getPos: getPosFrom(league), rankOf });
+        assert.deepEqual(rows.map(r => [r.slotType, r.out && r.out.cleanName, r.in && r.in.cleanName]), [['RB', 'rb2', 'nobody']]);
+        assert.equal(lineupSummaryText(rows, rankOf, p => p.name), "Can't compare at RB (Nobody Ranked is unranked).");
+    });
+    test('power ranks: he counts as unranked, so your RB room drops', () => {
+        const reqs = { ...POWER_DEFAULT_REQS, ...league.reqs };
+        const imp = powerTradeImpact(league, { give: ['rb2'], get: [{ cleanName: 'nobody', pos: 'RB' }], partner: 'Rival', reqs },
+            (l) => computePositionalPower(l, rankings));
+        const before = imp.you.before.scores.RB, after = imp.you.after.scores.RB;
+        assert.ok(after < before);
+        assert.ok(imp.you.after.players.RB.some(p => p.cleanName === 'nobody' && p.rank === 300));
+    });
+});
+
+describe('no change', () => {
+    test("a bench swap leaves the starters alone", () => {
+        const { league, rankings } = makeLeague([...BASE, ['wr9', 'WR', 'You', 60], ['wrR9', 'WR', 'Rival', 61]], ONE_QB);
+        const { rows } = lineupTradeChanges(league.reqs, league.roster, new Set(['wr9']),
+            [{ cleanName: 'wrR9', name: 'wrR9', pos: 'WR' }], { getPos: getPosFrom(league), rankOf: rankOfFrom(rankings) });
+        assert.deepEqual(rows, []);
+        assert.equal(lineupSummaryText(rows, rankOfFrom(rankings)), "Your starters don't change.");
+    });
+});

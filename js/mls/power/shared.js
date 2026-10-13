@@ -29,7 +29,7 @@ export function powerRankFor(rankingsIdx, cleanName) {
 export const POWER_STARTER_CARRY_CAP = 1.5;
 
 // Same fallback lineup the rest of this file uses for a league with no saved reqs.
-const POWER_DEFAULT_REQS = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
+export const POWER_DEFAULT_REQS = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0 };
 // Filled in this order: fixed slots first, then Sleeper's restricted flex slots (W/R, W/T; added in
 // improvements S1), then FLEX, then Superflex -- most restrictive to least, the optimizer's order.
 // Taking the best available player for each slot in that order is optimal for the fixed-FLEX-SFLEX
