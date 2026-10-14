@@ -18,6 +18,8 @@ export const POWER_LINEUP_SLOTS = ['QB', 'RB', 'WR', 'TE', 'WRRB', 'WRTE', 'FLEX
 // The Power Rankings columns, in the Roster tab table's order: [label, team field, room key].
 export const POWER_COLUMNS = [['Start', 'starterRank', null], ['Ovr', 'overallRank', null],
     ['QB', 'qbRank', 'QB'], ['RB', 'rbRank', 'RB'], ['WR', 'wrRank', 'WR'], ['TE', 'teRank', 'TE']];
+// Dynasty and keeper leagues add the Roster tab's Future column (future value: rankings value x age).
+export const FUTURE_COLUMN = ['Future', 'futureRank', 'future'];
 
 // The one other team every rostered player you'd get comes from, or null: none (free agents only,
 // or nobody matched) or more than one (a three-way trade, where who gets your players is unknown).
@@ -88,7 +90,8 @@ export function ordinalOf(n) {
 const POWER_ROOM_NAMES = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE' };
 
 // One line in words: "Starting lineup 5th → 3rd of 12. Stronger at WR (8th → 4th); weaker at RB (2nd → 7th)."
-// Lower is better (1 = strongest). Positions that don't move are left out.
+// Lower is better (1 = strongest). Positions that don't move are left out. With future value (dynasty and
+// keeper leagues), a last sentence: "Future value 4th → 2nd."
 export function powerSummaryText(side, teams) {
     const { before: b, after: a } = side;
     const parts = [];
@@ -105,6 +108,12 @@ export function powerSummaryText(side, teams) {
     if (down.length) rooms.push(`weaker at ${down.join(', ')}`);
     if (rooms.length) parts.push(rooms.join('; ').replace(/^./, ch => ch.toUpperCase()) + '.');
     else parts.push('No position room changes rank.');
+    // Dynasty and keeper leagues: future value too, when both sides were scored with it.
+    if (Number.isFinite(b.futureRank) && Number.isFinite(a.futureRank)) {
+        parts.push(b.futureRank === a.futureRank
+            ? `Future value stays ${ordinalOf(a.futureRank)}.`
+            : `Future value ${ordinalOf(b.futureRank)} → ${ordinalOf(a.futureRank)}.`);
+    }
     return parts.join(' ');
 }
 

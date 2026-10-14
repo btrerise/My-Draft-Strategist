@@ -29,6 +29,7 @@ export function powerAgeFactor(pos, age) {
 // is remembered for the session so it doesn't retry on every Roster tab render.
 let _powerAgeIndex = null;
 let _powerAgeState = 'idle'; // 'idle' | 'loading' | 'ready' | 'failed'
+let _powerAgePromise = null;
 function ageFromMeta(m) {
     if (m.birthDate) {
         const b = new Date(m.birthDate + 'T00:00:00');
@@ -45,7 +46,7 @@ function ageFromMeta(m) {
 export function ensurePowerAgeIndex() {
     if (_powerAgeState !== 'idle') return;
     _powerAgeState = 'loading';
-    getSleeperMetaByName().then(meta => {
+    _powerAgePromise = getSleeperMetaByName().then(meta => {
         const idx = {};
         Object.entries(meta).forEach(([clean, m]) => {
             const age = ageFromMeta(m);
@@ -59,6 +60,14 @@ export function ensurePowerAgeIndex() {
         _powerAgeState = 'failed';
         refreshPowerRankings();
     });
+}
+
+// For a caller that can wait (the Trade Analyzer's Power Rankings after the trade, improvements S14):
+// starts the load if needed and resolves once ages are ready or have failed, so resolvePowerFuture
+// then gives the final answer.
+export function whenPowerAgesLoaded() {
+    ensurePowerAgeIndex();
+    return _powerAgePromise || Promise.resolve();
 }
 
 // Future value source for the active league: rankings x Sleeper age (preferred), else dynasty

@@ -169,3 +169,35 @@ describe('no change', () => {
         assert.equal(lineupSummaryText(rows, rankOfFrom(rankings)), "Your starters don't change.");
     });
 });
+
+describe('dynasty: future value', () => {
+    // Your old RB room for their young one: the starting lineup barely moves, the future flips.
+    const players = [
+        ['qb1', 'QB', 'You', 10], ['rbOld', 'RB', 'You', 3], ['rbOld2', 'RB', 'You', 9], ['wr1', 'WR', 'You', 4], ['wr2', 'WR', 'You', 12],
+        ['te1', 'TE', 'You', 15],
+        ['qbR', 'QB', 'Rival', 11], ['rbYoung', 'RB', 'Rival', 5], ['rbYoung2', 'RB', 'Rival', 8], ['wrR', 'WR', 'Rival', 2],
+        ['wrR2', 'WR', 'Rival', 14], ['teR', 'TE', 'Rival', 16],
+    ];
+    const ages = { qb1: 27, rbOld: 30, rbOld2: 29, wr1: 26, wr2: 26, te1: 27, qbR: 27, rbYoung: 22, rbYoung2: 22, wrR: 26, wrR2: 26, teR: 27 };
+    const { league, rankings } = makeLeague(players, ONE_QB);
+    const reqs = { ...POWER_DEFAULT_REQS, ...league.reqs };
+    // powerEnv.mjs stubs the age curve to 1, so this scores future value the other way the Roster tab can:
+    // from dynasty Market Consensus ranks, where the older players rank 40 spots lower.
+    const market = rankings.map(r => ({ ...r, rank: r.rank + (ages[r.cleanName] >= 29 ? 40 : 0) }));
+    const imp = powerTradeImpact(league, { give: ['rbOld', 'rbOld2'], get: [{ cleanName: 'rbYoung', pos: 'RB' }, { cleanName: 'rbYoung2', pos: 'RB' }], partner: 'Rival', reqs },
+        (l) => computePositionalPower(l, rankings, { future: { mode: 'market', rankings: market } }));
+
+    test('future ranks before and after', () => {
+        assert.equal(imp.you.before.futureRank, 2);
+        assert.equal(imp.you.after.futureRank, 1);
+        assert.equal(imp.partner.after.futureRank, 2);
+    });
+    test('the summary ends with the future sentence', () => {
+        assert.match(powerSummaryText(imp.you, imp.teams), / Future value 2nd → 1st\.$/);
+    });
+    test('without future value, no future sentence', () => {
+        const plain = powerTradeImpact(league, { give: ['rbOld'], get: [{ cleanName: 'rbYoung', pos: 'RB' }], partner: 'Rival', reqs },
+            (l) => computePositionalPower(l, rankings));
+        assert.doesNotMatch(powerSummaryText(plain.you, plain.teams), /Future/);
+    });
+});

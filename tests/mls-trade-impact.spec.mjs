@@ -105,6 +105,37 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expectClean(page, state);
     });
 
+    test('dynasty league: the Future column, with ages in its tooltip', async ({ page }) => {
+        await at375(page);
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'scout');
+        // Redraft first: no Future column.
+        await runTrade(page, 'Bijan Robinson', 'Derrick Henry\nGarrett Wilson');
+        await expect(section(page).locator('table').first().locator('th')).toHaveText(['Team', 'Start', 'Ovr', 'QB', 'RB', 'WR', 'TE']);
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.leagues.find(l => l.leagueId === State.activeLeagueId).leagueType = 'dynasty';
+        });
+        await runTrade(page, 'Bijan Robinson\nJahmyr Gibbs\nSaquon Barkley', "Ja'Marr Chase\nJustin Jefferson\nCeeDee Lamb\nPuka Nacua\nAmon-Ra St. Brown");
+        const s = section(page);
+        await expect(s.locator('table').first().locator('th')).toHaveText(['Team', 'Start', 'Ovr', 'QB', 'RB', 'WR', 'TE', 'Future']);
+        await expect(s.locator('.mls-trade-impact-summary').first()).toHaveText(/ Future value 1st → 2nd\.$/);
+        expect((await cellTexts(s.locator('tr.mls-power-you')))[7]).toBe('1→2');
+        await expect(s.locator('tr.mls-power-you td').nth(7)).toHaveClass(/mls-trade-rank-down/);
+        const tip = s.locator('tr.mls-power-you td').nth(7).locator('.tooltip-text');
+        await expect(tip).toContainText('Future value after');
+        await expect(tip).toContainText('+ Bijan Robinson');
+        await expect(tip).toContainText('24 yrs');
+        await expect(tip).toContainText("Leaving: Ja'Marr Chase, Justin Jefferson, CeeDee Lamb, Puka Nacua, Amon-Ra St. Brown");
+        await expect(s).toContainText('adjusted for player age (from Sleeper), as on the Roster tab');
+        await expect(s.locator('details.mls-trade-impact-partner th').last()).toHaveText('Future');
+        expect(await noSideScroll(page)).toBe(true);
+        expect(await s.locator('.mls-power-table-wrap').first().evaluate(w => w.scrollWidth <= w.clientWidth)).toBe(true);
+        await expectClean(page, state);
+    });
+
     test('no rankings loaded: one line saying what to load', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);

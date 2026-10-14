@@ -86,10 +86,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   (Market Consensus if you have none), with a sentence such as "Starting lineup 5th → 3rd of 12. Stronger at WR
   (8th → 4th); weaker at RB (2nd → 7th)." Hover or tap a number to see that room after the trade, with the players
   coming in marked and the ones leaving listed. When everyone you'd get comes from one team, their change is under
-  "Their team", folded. It says when the trade leaves a starting slot empty, and names draft picks, unranked players
+  "Their team", folded. In dynasty and keeper leagues a Future column (roster value adjusted for age, as on the
+  Roster tab) shows too, with each player's age in its tooltip. It says when the trade leaves a starting slot empty, and names draft picks, unranked players
   and names it can't match. In a manual league, where the app only knows your roster, it lists the starters who
   change instead (slot, who goes out, who comes in), by the Lineup tab's rules. Injuries and byes are left out, and
-  nothing is saved: your Lineup tab doesn't change.
+  nothing is saved: your Lineup tab doesn't change. The Guide's Trade Analyzer step describes it.
 - **Smooth tab and league changes.** Switching tabs (tapping the tab bar, swiping, the menu, number keys, Back and
   Forward) now slides the page in the direction you're going on a phone, and fades softly (the new page rising a
   little) on a wider screen, while the header and tab bar stay put. A green bar above the tab bar's active tab slides to the new one. Switching league

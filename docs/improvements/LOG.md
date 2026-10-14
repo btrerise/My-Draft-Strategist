@@ -4197,7 +4197,41 @@ on main and on this branch, are pixel-identical (`npm run pxdiff`). The Guide's 
 Analyzer step is unchanged on purpose (a sentence there would re-take `mls-league-guide` at both widths).
 
 **Left over.**
-- The Guide's step 9 (Scout: Trade Analyzer) could mention the section, at the cost of re-taking the Guide screenshots.
 - A three-way trade (players from more than one team) shows only your team, with a note; who gets your players isn't
   known.
-- The Power Rankings view ignores dynasty Future value (no Future column), and the manual view doesn't show a partner.
+- The manual view doesn't show a partner (the app doesn't know other rosters there).
+
+### S14, round 2: the Guide, and Future value in dynasty leagues
+
+**The owner asked** for the Guide sentence (left out of round 1 to keep the screenshots) and for dynasty Future value.
+
+**User-visible effect.**
+- **Future column in dynasty leagues.** In a dynasty or keeper league, "Power Rankings after the trade" gets the Roster
+  tab's **Future** column (before → after, colored like the others), and the summary ends with "Future value 1st → 2nd."
+  (or "stays 3rd"). Tap the number for the roster's top future values after the trade, each with its age, the incoming
+  players marked and the ones leaving listed. A note says what Future means; if Sleeper's player ages can't load, it
+  uses dynasty Market Consensus (as the Roster tab does) or says there's no Future column. The partner's fold has it too.
+  Redraft leagues are unchanged. "Dynasty" is the Roster tab's own rule (`getPowerLeagueKind`: Sleeper's dynasty and
+  keeper types), so the trade section and the Roster tab's table always show the same columns.
+- **Guide:** step 9 (Scout: Trade Analyzer) now describes the section, the Future column and the manual-league view.
+
+**What changed and where.**
+- `js/mls/power/futureValue.js`: `whenPowerAgesLoaded()` starts the age load if needed and resolves when it's done (the
+  Roster tab renders first and re-renders when ages land; the trade section can wait instead).
+- `js/mls/trade/lineupSection.js`: in a dynasty league, waits for ages, scores with `resolvePowerFuture()`'s source,
+  adds the column and its tooltip (`futureTooltip`) and the note. `js/mls/trade/lineupImpact.js`: `FUTURE_COLUMN`, and
+  `powerSummaryText` adds the future sentence when both sides have a future rank.
+- `lineup/index.html` (Guide step 9), `CHANGELOG.md` (the Unreleased line extended). `CACHE_NAME` stays v2.8.94 (once
+  per branch; main is still v2.8.93).
+
+**Tests.** Unit: future ranks before and after an old-RBs-for-young-RBs trade (scored from dynasty Market Consensus
+ranks, since `powerEnv.mjs` stubs the age curve), the summary's future sentence, and none without future value. Spec: the
+fixture league is redraft (no Future column), then marked dynasty in memory: five WRs for three RBs shows Future 1→2 in
+red, the tooltip with "+ Bijan Robinson", "24 yrs" and the five leaving, the note, the partner's Future column, and no
+sideways scroll at 375px with eight columns.
+
+**Checks.** Precache OK; 350 unit and 371 Playwright tests pass (visual.spec fails here as on main).
+
+**Screenshots.** Rendered here on main and this branch: only **`mls-league-guide.png`** changes, at both widths
+(`desktop/` 1280×6607 → 1280×6676, `phone/` 390×13963 → 390×14170), from the Guide sentence. All 38 others are
+pixel-identical. To be taken from this branch's CI renders ("Accepting an intended visual change").
