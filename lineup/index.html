@@ -1066,9 +1066,15 @@
             <button class="btn btn-secondary mls-btn-sm" data-action="clearBuyInput">Clear</button>
         </div>
         <div class="mls-trade-picker" data-side="get">
+            <!-- The team you're trading with (Sleeper leagues): pick it first to browse its roster, or pick a
+                 player and it follows his manager (trade/picker.js, round 6). -->
+            <label class="mls-trade-team">
+                <span>From</span>
+                <select id="tradeGetTeam" class="form-input" data-action="tradeTeamChanged" aria-label="Team you'd trade with"><option value="">Any team</option></select>
+            </label>
             <ul id="tradeGetTokens" class="mls-trade-tokens" aria-label="Players You Receive"></ul>
             <input type="text" id="tradeGetSearch" class="form-input" placeholder="Search a player to add…" autocomplete="off">
-            <div class="mls-trade-pick-row">
+            <div class="mls-trade-pick-row" id="tradeGetPickRow">
                 <select id="tradeGetPickYear" class="form-input" aria-label="Draft pick year"></select>
                 <select id="tradeGetPickRound" class="form-input" aria-label="Draft pick round">
                     <option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option><option value="4th">4th</option>
@@ -1086,8 +1092,8 @@
         </div>
         <div class="mls-trade-picker" data-side="give">
             <ul id="tradeGiveTokens" class="mls-trade-tokens" aria-label="Players You Give Up"></ul>
-            <input type="text" id="tradeGiveSearch" class="form-input" placeholder="Search a player to add…" autocomplete="off">
-            <div class="mls-trade-pick-row">
+            <input type="text" id="tradeGiveSearch" class="form-input" placeholder="Tap to pick from your roster, or search…" autocomplete="off">
+            <div class="mls-trade-pick-row" id="tradeGivePickRow">
                 <select id="tradeGivePickYear" class="form-input" aria-label="Draft pick year"></select>
                 <select id="tradeGivePickRound" class="form-input" aria-label="Draft pick round">
                     <option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option><option value="4th">4th</option>
@@ -1373,7 +1379,7 @@
             <!-- Step 9 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">9</span> Scout: Trade Analyzer</h4>
-                <p class="step-desc">Add the players you'd receive and the players you'd give up: search a name on each side and tap it (or type it and press Enter, or paste a list), and add draft picks with the year and round. The Trade Analyzer tells you who owns each player and totals up each side's value using your own custom ROS Rankings from the Roster tab, and if you've also loaded Market Value data from the Trade Finder section, it shows a second verdict from market consensus for comparison. Under the verdict, <strong class="text-main">Power Rankings after the trade</strong> shows how your Positional Power Rankings change (by your ROS rankings), so you can see whether a deal that wins on value still leaves a hole in your lineup; hover or tap a number to see that room after the trade, and in dynasty and keeper leagues a <strong class="text-main">Future</strong> column shows the age-adjusted value too. In a manual league it lists the starters who change instead. A headline says what the trade costs or gains in value and what it does to your starting lineup, as a percent of the league average. <strong class="text-main">Export Trade</strong>, at the bottom of the card, saves the trade as an image for your league chat: each player or pick with its value, and the verdict (switch on <strong class="text-main">Include Power Rankings</strong> to add the Power Rankings change). The values used for your ROS Rankings are estimated by converting your ROS Rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more; rank #1 player is around 10,000, and the values decay from there at ~1.8% per rank. It's a way to help compare players on your own board; not intended to be an exact evaluation of your rankings.</p>
+                <p class="step-desc">Add the players you'd receive and the players you'd give up: search a name on each side and tap it (or type it and press Enter, or paste a list). In a Sleeper league, choose the other team under <strong class="text-main">From</strong> to browse its roster (or pick a player and it follows his manager); tap Players You Give Up to pick from your roster. In dynasty and keeper leagues, add draft picks with the year and round. Once a trade is analyzed, changing it updates the results. The Trade Analyzer tells you who owns each player and totals up each side's value using your own custom ROS Rankings from the Roster tab, and if you've also loaded Market Value data from the Trade Finder section, it shows a second verdict from market consensus for comparison. Under the verdict, <strong class="text-main">Power Rankings after the trade</strong> shows how your Positional Power Rankings change (by your ROS rankings), so you can see whether a deal that wins on value still leaves a hole in your lineup; hover or tap a number to see that room after the trade, and in dynasty and keeper leagues a <strong class="text-main">Future</strong> column shows the age-adjusted value too. In a manual league it lists the starters who change instead. A headline says what the trade costs or gains in value and what it does to your starting lineup, as a percent of the league average. <strong class="text-main">Export Trade</strong>, at the bottom of the card, saves the trade as an image for your league chat: each player or pick with its value, and the verdict (switch on <strong class="text-main">Include Power Rankings</strong> to add the Power Rankings change). The values used for your ROS Rankings are estimated by converting your ROS Rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more; rank #1 player is around 10,000, and the values decay from there at ~1.8% per rank. It's a way to help compare players on your own board; not intended to be an exact evaluation of your rankings.</p>
                 <p class="step-desc mt-2"><strong class="text-main">Waiver Adjustment</strong> (on by default): trading away more players than you receive frees up roster spots you can refill from waivers. When this is on, the side with fewer players gets a flat credit (500 by default, adjustable) for each extra open roster spot.</p>
             </div>
 

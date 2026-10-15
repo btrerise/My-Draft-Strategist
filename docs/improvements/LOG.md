@@ -4374,3 +4374,58 @@ flagged `mls-trade-row-warn` (red owner text, not a symbol): added to its `ALLOW
 - `desktop/mls-league-scout.png` (1280×2267 → 1280×2131) and `phone/mls-league-scout.png` (390×2380 → 390×2243): the
   Trade Analyzer's picker in place of the textareas, and Waiver Adjustment folded.
 The other 36 are pixel-identical.
+
+### S14, round 6: team drop-down, roster lists, owner tags, live re-run, picks only in dynasty, market age
+
+**The owner's answers** to my second review as a user: (1) re-run a changed trade, yes, and date the market values
+(a notice when they're over a day old); (2) yes to owner tags and your roster first, and, like FantasyCalc and Dynasty
+Daddy, a drop-down of the league's teams above the player input: choose the team first and the input lists its players,
+or pick a player and the drop-down selects his manager; (3) the draft-pick row only where picks trade; (4) say why a
+pick has no value.
+
+**User-visible effect.**
+- **From** (Sleeper leagues): a drop-down above Players You Receive with "Any team" and every other manager. With a
+  team chosen, tapping the search lists its roster (best ROS rank first) and typing searches only it; with Any team,
+  typing searches everyone (other teams' players first, then free agents, then yours), and picking a player sets the
+  drop-down to his manager. Hidden in manual leagues.
+- **Players You Give Up** lists your roster when you tap it (best ROS rank first), and your players first as you type.
+- **Owner tags** on every suggestion: "Yours", the manager's name, or "Free agent" (in Sleeper leagues).
+- After a pick the list opens again, so taking several players from one roster is a tap each.
+- **Live re-run:** once a trade has been analyzed, adding, removing or clearing a player re-runs it where it is (after a
+  quarter second, so a pasted list runs once); nothing scrolls. Before the first Analyze, nothing runs.
+- **Draft-pick row** only in dynasty and keeper leagues (`getPowerLeagueKind`, as the Future column).
+- **Picks without a value:** the row shows "–" and "Needs market data" (or "Not in market data"), the image a dash with
+  a key line, and the verdict says "2027 1st has no value without Market Consensus data (Trade Finder below), so it's
+  left out of this total." (or "isn't in the Market Consensus data") instead of counting it as "player not found".
+- **Market age:** under the verdicts, whenever market data is loaded, "Market values: Updated today." or, once a day or
+  more old, in amber: "Market values: Updated 3 days ago. Refresh them in Trade Finder (below) before you trade." On
+  screen only (not in the image).
+
+**What changed and where.**
+- `js/mls/players.js` (`attachPlayerAutocomplete`): optional `opts` (`pool`, `tag`, `limit`), a list on focus or tap
+  of an empty field when a pool offers one, and `refresh()`. Without opts it behaves as before (Add Player Manually, the
+  simulator's search).
+- `js/mls/trade/picker.js`: the pools, owner tags, `syncTradePicker` (managers and the pick rows; called when the
+  Scout tab shows, from `js/mls/nav.js`, and on a league change, from `js/mls/leagues/scoutResults.js`),
+  `tradeTeamChanged`, `clearTradeSide`, and the debounced re-run. `setTradePlayers` (tests) doesn't re-run.
+- `js/mls/trade/verdict.js`: the pick wording and the market-age line (`getFreshness`, js/shared/freshness.js).
+- `js/mls/scout/engine.js` (the pick row's dash and reason), `js/mls/trade/export.js` (the dash and key), `js/mls/main.js`
+  (actions), `lineup/index.html` (the drop-down, the pick rows' ids, the Give placeholder, Guide step 9), `css/mls.css`.
+
+**Tests.** A new spec at 375px: the drop-down's teams; your roster on tapping Give (14, "Yours", Chase first); Bijan
+tagged "Rival" and the drop-down following him; Rival's roster on tapping Get; analyze, then adding and removing a
+player re-runs (rows 2 → 3 → 2); a pick's dash, reason and verdict wording; market data three days old (amber) and
+today (plain). The picker spec now checks the pick row is hidden in a redraft league and shown in dynasty. Tests close
+an open suggestion list before tapping Analyze, as a tap elsewhere does on a phone.
+
+Two races found while testing round 6, both fixed: (1) `attachPlayerAutocomplete` closed its list 150 ms after the field
+lost focus even if it had focus again by then, so refocusing quickly closed the new list as it opened (it now closes only
+if the field still doesn't have focus; this applies to every search that uses it); (2) a pick made just before tapping
+Analyze scheduled a re-run that fired after the first analysis, running the trade twice (a re-run is now scheduled only
+for a trade analyzed before the change). The round 6 spec ran 16 times in a row without a failure after the fixes.
+
+**Checks.** Precache OK; 355 unit and 377 Playwright tests pass (visual.spec fails here as on main).
+
+**Screenshots.** Still the same four, to be taken from CI: `mls-league-guide.png` (desktop 1280×6792, phone 390×14539,
+step 9's text) and `mls-league-scout.png` (desktop 1280×2102, phone 390×2214: the From drop-down added, the draft-pick
+rows hidden in the screenshot league, which is redraft). The other 36 are pixel-identical to main.

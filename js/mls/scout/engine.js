@@ -265,7 +265,9 @@ import { normalizeName } from '../../shared/names.js';
                 ];
                 const valueText = userValueObj
                     ? `${userValueObj.value.toLocaleString()}${userValueObj.fromMarket ? '<sup title="Market value: your ROS rankings have no draft picks">*</sup>' : ''}`
-                    : '<span class="mls-trade-row-ur">UR</span>';
+                    : `<span class="mls-trade-row-ur">${isPick ? '&ndash;' : 'UR'}</span>`;
+                // A pick's value comes from market data only (round 6): say so where the dash is.
+                if (isPick && !userValueObj) rankBits.push(State.marketRankings.length > 0 ? 'Not in market data' : 'Needs market data');
                 const mkt = State.marketRankings.length > 0
                     ? `<span class="mls-trade-row-mkt">Mkt ${marketValueObj ? marketValueObj.value.toLocaleString() : '&ndash;'}</span>` : '';
                 return {

@@ -52,6 +52,16 @@ const HTML2CANVAS = readFileSync(here('./node_modules/html2canvas/dist/html2canv
 })();
 `;
 
+// Analyze Trade, scrolled to the middle first: at 375px the fixed bottom nav can cover it.
+async function analyze(page) {
+    const btn = page.locator('[data-action="runScout"][data-scout-type="trade"]');
+    // A search's suggestion list closes when the field loses focus, as a tap elsewhere does on a phone.
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    await expect(page.locator('.autocomplete-dropdown:visible')).toHaveCount(0);
+    await btn.evaluate(el => el.scrollIntoView({ block: 'center' }));
+    await btn.click();
+}
+
 const section = (page) => page.locator('#tradeOutput [data-trade-impact]');
 const cellTexts = (row) => row.locator('td').evaluateAll(tds => tds.map(td => td.firstChild && td.querySelector('.mls-dotted-underline') ? td.querySelector('.mls-dotted-underline').textContent : td.textContent.trim()));
 
@@ -198,9 +208,9 @@ test.describe('Trade Analyzer: how your team changes', () => {
         };
         let clone = await exportOnce();
         expect(clone.text).toContain('Trade · Fixture League');
-        // Each asset with its value by your rankings; the pick borrows the market's (none loaded here: UR).
+        // Each asset with its value by your rankings; the pick borrows the market's (none loaded here: a dash).
         expect(clone.assets).toHaveLength(7);
-        expect(clone.assets[3]).toBe('Pick 2027 1st UR');
+        expect(clone.assets[3]).toBe('Pick 2027 1st –');
         expect(clone.assets[0]).toMatch(/^RB Bijan Robinson [\d,]+$/);
         expect(clone.assets[4]).toMatch(/^WR Ja'Marr Chase [\d,]+$/);
         expect(clone.text).toMatch(/You get/i);
@@ -260,6 +270,16 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await page.locator('.autocomplete-item', { hasText: 'Bijan Robinson' }).click();
         await expect(getTokens).toHaveCount(1);
 
+        // Draft picks are for dynasty and keeper leagues: the fixture league is redraft, so no pick row until it's
+        // marked dynasty (in memory) and the Scout tab shows again.
+        await expect(page.locator('#tradeGetPickRow')).toBeHidden();
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.leagues.find(l => l.leagueId === State.activeLeagueId).leagueType = 'dynasty';
+        });
+        await showTab(page, 'roster');
+        await showTab(page, 'scout');
+        await expect(page.locator('#tradeGetPickRow')).toBeVisible();
         // A draft pick from the year and round (the clock says 2026-09-15, so the next draft is 2027).
         await expect(page.locator('#tradeGetPickYear option')).toHaveText(['2027', '2028', '2029']);
         await page.selectOption('#tradeGetPickRound', '2nd');
@@ -284,7 +304,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
         expect(await noSideScroll(page)).toBe(true);
 
         // Analyze: the misspelled name gets a "Did you mean"; taking it fixes the token too.
-        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        await analyze(page);
         await page.locator('.scout-suggest-link', { hasText: 'Jahmyr Gibbs' }).click();
         await expect(giveTokens.nth(2)).toContainText('Jahmyr Gibbs');
         // Remove a token with its button.
@@ -293,7 +313,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expect(page.locator('#sellInput')).toHaveValue('Derrick Henry\nGarrett Wilson');
 
         // Each player is one compact row in the results: badge, name, ranks, who has him, his value.
-        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        await analyze(page);
         const rows = page.locator('#tradeOutput .mls-trade-row');
         await expect(rows).toHaveCount(4);
         await expect(rows.first()).toContainText('Bijan Robinson');
@@ -314,6 +334,85 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await page.locator('[data-action="clearSellInput"]').click();
         await expect(giveTokens).toHaveCount(0);
         await expect(page.locator('#sellInput')).toHaveValue('');
+        await expectClean(page, state);
+    });
+
+    test('the team drop-down, roster lists, owner tags, re-running a changed trade, and picks without a value', async ({ page }) => {
+        await at375(page);
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'scout');
+        const team = page.locator('#tradeGetTeam');
+        await expect(team.locator('option')).toHaveText(['Any team', 'Rival']);
+
+        // Give: tapping the empty search lists your roster, best ROS rank first, each tagged "Yours".
+        await page.locator('#tradeGiveSearch').click();
+        let items = page.locator('[data-side="give"] .autocomplete-item');
+        await expect(items.first()).toContainText("Ja'Marr Chase");
+        await expect(items.first()).toContainText('Yours');
+        expect(await items.count()).toBe(14);
+        await items.filter({ hasText: 'Derrick Henry' }).click();
+
+        // Get, Any team: typing finds anyone, tagged with who has him; picking Bijan sets the team to his manager.
+        const getSearch = page.locator('#tradeGetSearch');
+        items = page.locator('[data-side="get"] .autocomplete-item');
+        await getSearch.fill('Bij');
+        await expect(items.first()).toContainText('Rival');
+        await items.first().click();
+        await expect(team).toHaveValue('Rival');
+        // With a team chosen, tapping the empty search lists that team's roster.
+        await getSearch.click();
+        await expect(items.first()).toContainText('Bijan Robinson');
+        await expect(items.first()).toContainText('Rival');
+        expect(await items.count()).toBe(14);
+        await page.keyboard.press('Escape');
+
+        // Analyze once; after that, changing the trade re-runs it where it is.
+        await analyze(page);
+        await expect(page.locator('#tradeOutput .mls-trade-row')).toHaveCount(2);
+        await getSearch.fill('Gibbs');
+        // Focusing the empty field shows Rival's roster first; wait for the search to settle on the one match.
+        await expect(items).toHaveCount(1);
+        await items.filter({ hasText: 'Jahmyr Gibbs' }).click();
+        await expect(page.locator('#tradeOutput .mls-trade-row')).toHaveCount(3);
+        await page.locator('#tradeGetTokens .mls-trade-token').nth(1).locator('.mls-trade-token-remove').click();
+        await expect(page.locator('#tradeOutput .mls-trade-row')).toHaveCount(2);
+
+        // A pick with no market data: a dash and why, not "not found" (marked dynasty so the pick row shows).
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.leagues.find(l => l.leagueId === State.activeLeagueId).leagueType = 'dynasty';
+        });
+        await showTab(page, 'roster');
+        await showTab(page, 'scout');
+        await page.locator('[data-action="addTradePick"][data-side="get"]').click();
+        const out = page.locator('#tradeOutput');
+        await expect(out).toContainText('2027 1st has no value without Market Consensus data (Trade Finder below)');
+        await expect(out).not.toContainText('player not found');
+        const pickRow = out.locator('.mls-trade-row', { hasText: '2027 1st' });
+        await expect(pickRow).toContainText('Needs market data');
+        await expect(pickRow.locator('.mls-trade-row-value')).toHaveText('–');
+
+        // Market data three days old: dated under the verdict, in amber.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.marketRankings = [{ name: 'Bijan Robinson', cleanName: 'bijan robinson', rank: 2, pos: 'RB' }];
+            State.marketUpdatedAt = String(Date.now() - 3 * 24 * 3600 * 1000);
+        });
+        await analyze(page);
+        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated 3 days ago. Refresh them in Trade Finder (below) before you trade.');
+        await expect(out.locator('.mls-trade-market-age')).toHaveClass(/is-stale/);
+        await expect(out).toContainText("2027 1st isn't in the Market Consensus data");
+        // Fresh today: dated, not amber.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.marketUpdatedAt = String(Date.now());
+        });
+        await analyze(page);
+        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated today.');
+        await expect(out.locator('.mls-trade-market-age')).not.toHaveClass(/is-stale/);
+        expect(await noSideScroll(page)).toBe(true);
         await expectClean(page, state);
     });
 

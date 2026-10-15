@@ -1020,6 +1020,9 @@ button.close-chip {
 .mls-trade-token-meta { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
 .mls-trade-token-remove { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; }
 .mls-trade-token-remove:hover, .mls-trade-token-remove:focus-visible { color: var(--text-main); background: rgba(255, 255, 255, 0.08); }
+.mls-trade-team { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.mls-trade-team select { flex: 1 1 auto; min-width: 0; }
+.mls-trade-team[hidden], .mls-trade-pick-row[hidden] { display: none; }
 .mls-trade-pick-row { display: flex; gap: 6px; align-items: center; }
 .mls-trade-pick-row select { width: auto; flex: 0 0 auto; padding-top: 0.4rem; padding-bottom: 0.4rem; }
 .mls-trade-value-settings { margin-top: 0.75rem; }
@@ -1056,6 +1059,10 @@ button.close-chip {
 .mls-trade-export-foot { font-size: 0.7rem; color: var(--text-muted); margin: 0.2rem 0 0.8rem; }
 .mls-trade-impact-headline { font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-top: 0.5rem; line-height: 1.4; }
 .mls-trade-impact-key { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem; }
+
+/* The market values' age under the verdicts (improvements S14, round 6): amber after a day. */
+.mls-trade-market-age { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin: -0.25rem 0 0.75rem; }
+.mls-trade-market-age.is-stale { color: #fbbf24; font-weight: 600; }
 
 .verdict-fair { border-color: var(--dart-border); background: var(--dart-bg); }
 .verdict-fair .trade-verdict-result { color: #93c5fd; }

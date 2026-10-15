@@ -94,10 +94,17 @@ What changed for users in each version of the two apps, in plain language. Newes
   change instead (slot, who goes out, who comes in), by the Lineup tab's rules. Injuries and byes are left out, and
   nothing is saved: your Lineup tab doesn't change. The Guide's Trade Analyzer step describes it.
 - **Pick players for a trade instead of typing them.** Each side of the Trade Analyzer has a search (the same one as
-  Add Player Manually): tap a name and it's added as a token with its position and team, which you remove with ✕.
-  Draft picks have their own year and round picker ("+ Draft pick"). Typing a name and pressing Enter, or pasting a
-  list, still works. The results list each player on one compact line (position, name, ROS and weekly rank, who has
-  him, and his value), and Waiver Adjustment now sits in a "Value settings" fold under Analyze Trade.
+  Add Player Manually): tap a name and it's added as a token with its position and team, which you remove with ✕. In a
+  Sleeper league a "From" drop-down above Players You Receive lists every team: choose one and tapping the search shows
+  that team's roster, or pick any player and the drop-down follows his manager. Players You Give Up shows your roster
+  when you tap it. Every suggestion says who has the player ("Yours", the manager, "Free agent"). Dynasty and keeper
+  leagues get a draft-pick row (year and round). Typing a name and pressing Enter, or pasting a list, still works. Once
+  a trade is analyzed, changing it updates the results in place. The results list each player on one compact line
+  (position, name, ROS and weekly rank, who has him, and his value), and Waiver Adjustment now sits in a "Value
+  settings" fold under Analyze Trade.
+- **Trade values say how old the market data is.** Under the verdict, "Market values: Updated 3 days ago", in amber
+  with a nudge to refresh once it's more than a day old. A draft pick with no market value says so ("has no value
+  without Market Consensus data") instead of "1 player not found".
 - **Export Trade.** At the bottom of the Trade Analyzer, a button saves the trade as an image for your league chat,
   like the Lineup tab's PNG: the league, each player or pick you'd get and give with its value (by your rankings, and
   the market's when loaded), and the value verdict. Turn on "Include Power Rankings" beside it to add the Power

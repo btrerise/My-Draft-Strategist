@@ -1,6 +1,7 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3B: LEAGUE-SCOPED SCOUT
 // RESULTS.
 import { State } from '../state.js';
+import { syncTradePicker } from '../trade/picker.js';
 
     // --- LEAGUE-SCOPED SCOUT RESULTS ---
     // The Trade Analyzer (the players typed into both sides, plus its verdict and the dynamic
@@ -22,6 +23,7 @@ import { State } from '../state.js';
         });
         const tradeOutput = document.getElementById('tradeOutput');
         if (tradeOutput) tradeOutput.innerHTML = '';
+        syncTradePicker(); // the new league's managers, and whether it trades draft picks
         const adjustHint = document.getElementById('tradeWaiverAdjustHint');
         if (adjustHint) { adjustHint.innerText = ''; adjustHint.style.display = 'none'; }
 

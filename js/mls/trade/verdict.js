@@ -1,7 +1,9 @@
 // Moved out of js/mls/scout/engine.js in refactor chunk 3G: runScout's TRADE FAIRNESS VERDICT(S) block,
 // now buildTradeVerdictHTML (its lines re-indented, otherwise unchanged), and renderTradeVerdict, which
 // only that block calls.
+import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
+import { getFreshness } from '../../shared/freshness.js';
 
     // --- TRADE FAIRNESS VERDICT(S) ---
     // Returns the verdict banner(s) runScout puts above the Trade Analyzer's player cards, for a trade
@@ -24,6 +26,16 @@ import { State } from '../state.js';
             "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value - not the source's official number.",
             getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
         );
+
+        // How old the market values are (improvements S14, round 6, owner's choice): always dated, and amber with a
+        // nudge once they're more than a day old, since trade values move with every injury and depth-chart change.
+        // On screen only: Export Trade copies the banners and notes, not this line.
+        if (State.marketRankings.length > 0) {
+            const fresh = getFreshness(State.marketUpdatedAt, 0);
+            if (fresh) {
+                verdictHTML += `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">Market values: ${fresh.label}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`;
+            }
+        }
 
         if (!verdictHTML) {
             verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
@@ -77,7 +89,8 @@ import { State } from '../state.js';
     function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
         if (!sourceLoaded) return "";
 
-        let unmatchedCount = getResults.concat(giveResults).filter(r => !r[matchedKey]).length;
+        const unmatched = getResults.concat(giveResults).filter(r => !r[matchedKey]);
+        let unmatchedCount = unmatched.length;
         const nums = tradeVerdictNumbers(getResults, giveResults, valueKey);
 
         if (!nums) {
@@ -101,9 +114,21 @@ import { State } from '../state.js';
             verdictText = "Favors Them";
         }
 
-        let unmatchedNote = unmatchedCount > 0
-            ? `<div class="trade-verdict-note">${unmatchedCount} player${unmatchedCount > 1 ? 's' : ''} not found, excluded from this total.</div>`
+        // A draft pick only ever has a market value (your ROS rankings have no picks), so one without a value
+        // isn't a typo: say why instead of "not found" (improvements S14, round 6). exportRow is the Trade
+        // Analyzer's (scout/engine.js).
+        const isPick = (r) => !!(r.exportRow && r.exportRow.pos === 'Pick');
+        const picks = unmatched.filter(isPick).map(r => r.exportRow.name);
+        const playersMissing = unmatched.length - picks.length;
+        let unmatchedNote = playersMissing > 0
+            ? `<div class="trade-verdict-note">${playersMissing} player${playersMissing > 1 ? 's' : ''} not found, excluded from this total.</div>`
             : "";
+        if (picks.length) {
+            const names = picks.map(n => escapeHtml(n)).join(', ');
+            unmatchedNote += State.marketRankings.length > 0
+                ? `<div class="trade-verdict-note">${names} ${picks.length > 1 ? "aren't" : "isn't"} in the Market Consensus data, so ${picks.length > 1 ? "they're" : "it's"} left out of this total.</div>`
+                : `<div class="trade-verdict-note">${names} ${picks.length > 1 ? 'have' : 'has'} no value without Market Consensus data (Trade Finder below), so ${picks.length > 1 ? "they're" : "it's"} left out of this total.</div>`;
+        }
 
         return `
         <div class="trade-verdict-banner ${verdictClass}">
