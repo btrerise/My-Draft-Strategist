@@ -1059,48 +1059,54 @@
             </div>
         </header>
         
-        <!-- Players You Receive: picked with the search below (improvements S14, js/mls/trade/picker.js). The textarea
-             stays as the list runScout reads (one name per line), hidden; the picker keeps it in step. -->
-        <div class="trade-group-header">
-            <label class="text-target-label" for="tradeGetSearch"><span class="dot bg-target"></span> Players You Receive</label>
-            <button class="btn btn-secondary mls-btn-sm" data-action="clearBuyInput">Clear</button>
-        </div>
-        <div class="mls-trade-picker" data-side="get">
-            <!-- The team you're trading with (Sleeper leagues): pick it first to browse its roster, or pick a
-                 player and it follows his manager (trade/picker.js, round 6). -->
-            <label class="mls-trade-team">
-                <span>From</span>
-                <select id="tradeGetTeam" class="form-input" data-action="tradeTeamChanged" aria-label="Team you'd trade with"><option value="">Any team</option></select>
-            </label>
-            <ul id="tradeGetTokens" class="mls-trade-tokens" aria-label="Players You Receive"></ul>
-            <input type="text" id="tradeGetSearch" class="form-input" placeholder="Search a player to add…" autocomplete="off">
-            <div class="mls-trade-pick-row" id="tradeGetPickRow">
-                <select id="tradeGetPickYear" class="form-input" aria-label="Draft pick year"></select>
-                <select id="tradeGetPickRound" class="form-input" aria-label="Draft pick round">
-                    <option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option><option value="4th">4th</option>
-                </select>
-                <button type="button" class="btn btn-secondary mls-btn-sm" data-action="addTradePick" data-side="get">+ Draft pick</button>
+        <!-- The two sides: side by side on wider screens, stacked on phones (improvements S14, round 8). -->
+        <div class="mls-trade-sides">
+            <div class="mls-trade-side">
+            <!-- Players You Receive: picked with the search below (improvements S14, js/mls/trade/picker.js). The textarea
+                 stays as the list runScout reads (one name per line), hidden; the picker keeps it in step. -->
+            <div class="trade-group-header">
+                <label class="text-target-label" for="tradeGetSearch"><span class="dot bg-target"></span> Players You Receive</label>
+                <button class="btn btn-secondary mls-btn-sm" data-action="clearBuyInput">Clear</button>
             </div>
-            <textarea id="buyInput" class="scout-textarea" hidden aria-hidden="true" tabindex="-1"></textarea>
-        </div>
-
-        <!-- Players You Give Up: picked with the search below (improvements S14, js/mls/trade/picker.js). The textarea
-             stays as the list runScout reads (one name per line), hidden; the picker keeps it in step. -->
-        <div class="trade-group-header mt-3">
-            <label class="text-avoid-label" for="tradeGiveSearch"><span class="dot bg-avoid"></span> Players You Give Up</label>
-            <button class="btn btn-secondary mls-btn-sm" data-action="clearSellInput">Clear</button>
-        </div>
-        <div class="mls-trade-picker" data-side="give">
-            <ul id="tradeGiveTokens" class="mls-trade-tokens" aria-label="Players You Give Up"></ul>
-            <input type="text" id="tradeGiveSearch" class="form-input" placeholder="Tap to pick from your roster, or search…" autocomplete="off">
-            <div class="mls-trade-pick-row" id="tradeGivePickRow">
-                <select id="tradeGivePickYear" class="form-input" aria-label="Draft pick year"></select>
-                <select id="tradeGivePickRound" class="form-input" aria-label="Draft pick round">
-                    <option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option><option value="4th">4th</option>
-                </select>
-                <button type="button" class="btn btn-secondary mls-btn-sm" data-action="addTradePick" data-side="give">+ Draft pick</button>
+            <div class="mls-trade-picker" data-side="get">
+                <!-- The team you're trading with (Sleeper leagues): pick it first to browse its roster, or pick a
+                     player and it follows his manager (trade/picker.js, round 6). -->
+                <label class="mls-trade-team">
+                    <span>From</span>
+                    <select id="tradeGetTeam" class="form-input" data-action="tradeTeamChanged" aria-label="Team you'd trade with"><option value="">Any team</option></select>
+                </label>
+                <ul id="tradeGetTokens" class="mls-trade-tokens" aria-label="Players You Receive"></ul>
+                <input type="text" id="tradeGetSearch" class="form-input" placeholder="Search a player to add…" autocomplete="off">
+                <div class="mls-trade-pick-row" id="tradeGetPickRow">
+                    <select id="tradeGetPickYear" class="form-input" aria-label="Draft pick year"></select>
+                    <select id="tradeGetPickRound" class="form-input" aria-label="Draft pick round">
+                        <option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option><option value="4th">4th</option>
+                    </select>
+                    <button type="button" class="btn btn-secondary mls-btn-sm" data-action="addTradePick" data-side="get">+ Draft pick</button>
+                </div>
+                <textarea id="buyInput" class="scout-textarea" hidden aria-hidden="true" tabindex="-1"></textarea>
             </div>
-            <textarea id="sellInput" class="scout-textarea" hidden aria-hidden="true" tabindex="-1"></textarea>
+            </div>
+            <div class="mls-trade-side">
+            <!-- Players You Give Up: picked with the search below (improvements S14, js/mls/trade/picker.js). The textarea
+                 stays as the list runScout reads (one name per line), hidden; the picker keeps it in step. -->
+            <div class="trade-group-header mt-3">
+                <label class="text-avoid-label" for="tradeGiveSearch"><span class="dot bg-avoid"></span> Players You Give Up</label>
+                <button class="btn btn-secondary mls-btn-sm" data-action="clearSellInput">Clear</button>
+            </div>
+            <div class="mls-trade-picker" data-side="give">
+                <ul id="tradeGiveTokens" class="mls-trade-tokens" aria-label="Players You Give Up"></ul>
+                <input type="text" id="tradeGiveSearch" class="form-input" placeholder="Tap to pick from your roster, or search…" autocomplete="off">
+                <div class="mls-trade-pick-row" id="tradeGivePickRow">
+                    <select id="tradeGivePickYear" class="form-input" aria-label="Draft pick year"></select>
+                    <select id="tradeGivePickRound" class="form-input" aria-label="Draft pick round">
+                        <option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option><option value="4th">4th</option>
+                    </select>
+                    <button type="button" class="btn btn-secondary mls-btn-sm" data-action="addTradePick" data-side="give">+ Draft pick</button>
+                </div>
+                <textarea id="sellInput" class="scout-textarea" hidden aria-hidden="true" tabindex="-1"></textarea>
+            </div>
+            </div>
         </div>
 
         <button class="btn btn-purple mt-4" data-action="runScout" data-scout-type="trade">Analyze Trade</button>

@@ -2,11 +2,12 @@
 // (runScout, incl. dynamic waiver adjustment and the position resolver). The trade fairness verdicts
 // and renderTradeVerdict (with its waiver adjustment) moved to trade/verdict.js in 3G.
 import { escapeHtml } from '../../shared/html.js';
+import { injuryBadgeMarkup } from '../badges.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';
 import { ensureSleeperPosByName, findClosestRankedName, sleeperPosByName } from '../players.js';
-import { buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts, WAIVER_SOS_OPTS } from './waivers.js';
+import { getSleeperMetaByName, buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts, WAIVER_SOS_OPTS } from './waivers.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
@@ -100,6 +101,12 @@ import { normalizeName } from '../../shared/names.js';
         if (!sleeperPosByName) {
             outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Looking up player positions…</div>`;
             await ensureSleeperPosByName();
+        }
+        // The Trade Analyzer's rows show each player's injury from Sleeper (improvements S14, round 8). Without the
+        // player map the rows just go without it.
+        let tradeMeta = null;
+        if (type === 'trade') {
+            try { tradeMeta = await getSleeperMetaByName(); } catch (e) { tradeMeta = null; }
         }
 
         // Indexed once for this whole Scout run -- getPos and buildCard below are both called
@@ -275,7 +282,7 @@ import { normalizeName } from '../../shared/names.js';
                 <div class="mls-trade-row">
                     <span class="badge pos-badge ${isPick ? 'FLEX' : badgeClass} mls-pos-badge-sizing">${isPick ? 'Pick' : displayPos}</span>
                     <div class="mls-trade-row-main">
-                        <div class="mls-trade-row-name">${escapeHtml(displayName)}${sosBadge}</div>
+                        <div class="mls-trade-row-name">${escapeHtml(displayName)}${tradeMeta && tradeMeta[clean] && tradeMeta[clean].inj ? injuryBadgeMarkup(tradeMeta[clean].inj) : ''}${sosBadge}</div>
                         <div class="mls-trade-row-meta">${rankBits.map(b => `<span>${b}</span>`).join('')}<span class="${owns.cls}">${escapeHtml(owns.text)}</span></div>
                         ${suggestHTML}
                     </div>
@@ -354,14 +361,19 @@ import { normalizeName } from '../../shared/names.js';
             }
             html += verdictHTML + impactHTML;
 
+            // The two sides side by side on wider screens, stacked on phones (round 8; css/mls.css .mls-trade-sides).
+            html += `<div class="mls-trade-sides">`;
             if (targetNames.length > 0) {
-                html += `<div style="font-weight:bold; color:#4ade80; margin-bottom:0.5rem;">You Receive</div>`;
+                html += `<div class="mls-trade-side"><div class="mls-trade-side-title mls-trade-side-get">You Receive</div>`;
                 getResults.forEach(r => html += r.html);
+                html += `</div>`;
             }
             if (sellNames.length > 0) {
-                html += `<div style="font-weight:bold; color:#fca5a5; margin:1rem 0 0.5rem 0;">You Give Up</div>`;
+                html += `<div class="mls-trade-side"><div class="mls-trade-side-title mls-trade-side-give">You Give Up</div>`;
                 giveResults.forEach(r => html += r.html);
+                html += `</div>`;
             }
+            html += `</div>`;
 
             // Export Trade (trade/export.js), at the bottom of the card: an image of the assets with their
             // values and the verdict, plus the Power Rankings change when "Include Power Rankings" is on

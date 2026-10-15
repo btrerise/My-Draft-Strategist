@@ -454,6 +454,40 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expectClean(page, state);
     });
 
+    test('suggestions show your ROS rank; rows show injuries; the sides sit side by side on wider screens', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'scout');
+        // Bijan is questionable this week, in the session's Sleeper player map.
+        await page.evaluate(async () => {
+            const { getSleeperMetaByName } = await import('/js/mls/scout/waivers.js');
+            const { normalizeName } = await import('/js/shared/names.js');
+            (await getSleeperMetaByName())[normalizeName('Bijan Robinson')].inj = 'Q';
+        });
+        await page.locator('#tradeGetSearch').fill('Bijan');
+        const item = page.locator('[data-side="get"] .autocomplete-item').first();
+        await expect(item).toContainText('Rival · ROS 2');
+        await item.click();
+        await page.locator('#tradeGiveSearch').click();
+        await expect(page.locator('[data-side="give"] .autocomplete-item').first()).toContainText('Yours · ROS 1');
+        await page.locator('[data-side="give"] .autocomplete-item', { hasText: 'Derrick Henry' }).click();
+        await analyze(page);
+        const bijan = page.locator('#tradeOutput .mls-trade-row', { hasText: 'Bijan Robinson' });
+        await expect(bijan.locator('.inj-badge')).toHaveText('Q');
+        await expect(page.locator('#tradeOutput .mls-trade-row', { hasText: 'Derrick Henry' }).locator('.inj-badge')).toHaveCount(0);
+
+        // Side by side from 768px (the desktop project), stacked on phones; in the form and in the results.
+        const tops = (sel) => page.locator(sel).evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));
+        const wide = test.info().project.name === 'desktop';
+        for (const sel of ['.settings-card .mls-trade-sides:not(#tradeOutput *) > .mls-trade-side', '#tradeOutput .mls-trade-sides > .mls-trade-side']) {
+            const [a, b] = await tops(sel);
+            if (wide) expect(a).toBe(b); else expect(b).toBeGreaterThan(a);
+        }
+        expect(await noSideScroll(page)).toBe(true);
+        await expectClean(page, state);
+    });
+
     test('no rankings loaded: one line saying what to load', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);

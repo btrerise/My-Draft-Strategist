@@ -95,14 +95,14 @@ What changed for users in each version of the two apps, in plain language. Newes
   nothing is saved: your Lineup tab doesn't change. The Guide's Trade Analyzer step describes it.
 - **Pick players for a trade instead of typing them.** Each side of the Trade Analyzer has a search (the same one as
   Add Player Manually): tap a name and it's added as a token with its position and team, which you remove with ✕. In a
-  Sleeper league a "From" drop-down above Players You Receive lists every team: choose one and tapping the search shows
-  that team's roster, or pick any player and the drop-down follows his manager. Switching to a different team clears the players you'd
-  receive from the old one (Any team keeps them). Players You Give Up shows your roster
-  when you tap it. Every suggestion says who has the player ("Yours", the manager, "Free agent"). Dynasty and keeper
-  leagues get a draft-pick row (year and round). Typing a name and pressing Enter, or pasting a list, still works. Once
-  a trade is analyzed, changing it updates the results in place. The results list each player on one compact line
-  (position, name, ROS and weekly rank, who has him, and his value), and Waiver Adjustment now sits in a "Value
-  settings" fold under Analyze Trade.
+  Sleeper league a "From" drop-down above Players You Receive lists every team: choose one and tapping the search
+  shows that team's roster, or pick any player and the drop-down follows his manager. Switching to a different team
+  clears the players you'd receive from the old one (Any team keeps them). Players You Give Up shows your roster when
+  you tap it. Every suggestion says who has the player ("Yours", the manager, "Free agent") and your ROS rank for him.
+  Dynasty and keeper leagues get a draft-pick row (year and round). Typing a name and pressing Enter, or pasting a
+  list, still works. Once a trade is analyzed, changing it updates the results in place. The results list each player
+  on one compact line (position, name, injury, ROS and weekly rank, who has him, and his value), with Receive and Give
+  side by side on wider screens, and Waiver Adjustment now sits in a "Value settings" fold under Analyze Trade.
 - **Trade values say how old the market data is.** Under the verdict, "Market values: Updated 3 days ago", in amber
   with a nudge to refresh once it's more than a day old. A draft pick with no market value says so ("has no value
   without Market Consensus data") instead of "1 player not found".

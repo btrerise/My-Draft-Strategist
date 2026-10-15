@@ -53,11 +53,13 @@ function ownersNow() {
     return (p) => map.get(cleanOf(p)) || null;
 }
 const ownerOf = (name) => ownersNow()({ name });
+// Who has him, then your ROS rank ("Rival · ROS 2"), so a roster can be shopped from the list (round 8).
 function ownerTag(p) {
     const owner = ownerOf(p.name);
-    if (owner === 'You') return 'Yours';
-    if (owner) return owner;
-    return isFullyMappedLeague(getActiveLeague()) ? 'Free agent' : '';
+    const who = owner === 'You' ? 'Yours' : owner ? owner : (isFullyMappedLeague(getActiveLeague()) ? 'Free agent' : '');
+    const r = rankingIndex(State.rosRankings).get(cleanOf(p));
+    const rank = r && r.rank ? `ROS ${r.rank}` : '';
+    return [who, rank].filter(Boolean).join(' · ');
 }
 // Best ROS rank first, then by name, so a roster list reads like your depth chart.
 function byRank(list) {
@@ -224,8 +226,8 @@ export function initTradePicker() {
             if (owner && owner !== 'You' && select && [...select.options].some(o => o.value === owner)) select.value = owner;
             addTradeNames(side, [p.name]);
             search.value = '';
-            // The list again right away, so several players from one roster take a tap each.
-            setTimeout(() => { if (document.activeElement === search && _search[side]) _search[side].refresh(); }, 0);
+            // The list doesn't reopen by itself (round 8): on a phone it covered the other side's search, where a
+            // tap meant for that box picked a player. Tapping this search again shows it.
         }, { pool: POOLS[side], tag: ownerTag, limit: 30 });
         _search[side] = ac;
         // Enter with no suggestion to pick: add what's typed (a player the search doesn't know, or a pick

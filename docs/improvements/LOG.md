@@ -4446,3 +4446,35 @@ which cleared on Any team → Rival with Rival's players picked; it now compares
 analyze, Any team keeps him, back to Rival keeps him, Third clears him and re-runs one-sided, your side stays.
 Checks: precache OK; 355 unit and 379 Playwright tests pass (visual.spec fails here as on main). No screenshot changes
 beyond the four already listed.
+
+### S14, round 8: your rank in suggestions, injuries on rows, two columns on desktop; S19 in the runbook
+
+**The owner's answers** to my third review as a user: yes to (1) the rank in suggestions, (2) injuries on the rows and
+(3) Receive and Give side by side on desktop; (4) "what would make it fair" goes in the runbook as its own card (S19).
+
+**User-visible effect.**
+- **Suggestions show your ROS rank** after the owner: "RB · ATL · Rival · ROS 2", "Yours · ROS 1".
+- **Injuries on the result rows:** the red injury badge (Q, D, OUT, IR…, `injuryBadgeMarkup` from js/mls/badges.js,
+  already in the Guide's legend) after the name, from the Sleeper player map. Still left out of the lineup math.
+- **Two columns from 768px:** Players You Receive and Players You Give Up side by side in the form, and You Receive /
+  You Give Up side by side in the results; phones stay stacked as before.
+- **A suggestion list no longer reopens by itself after a pick** (added in round 6). Found while testing this round: on a
+  phone the reopened list covered the Give side's search, where a tap meant for that box picked a player. Tapping the
+  search again shows the list.
+
+**What changed and where.** `js/mls/trade/picker.js` (`ownerTag` adds the rank; the reopen removed),
+`js/mls/scout/engine.js` (the player map read once per trade run for injuries; the results wrapped in
+`.mls-trade-sides`), `lineup/index.html` (the form's two sides wrapped the same way), `css/mls.css` (`.mls-trade-sides`,
+`.mls-trade-side-title`), `CHANGELOG.md`.
+
+**Runbook.** S19 "Trade Analyzer: what would make it fair" added (needs S14; Asks you: which values decide the gap,
+where suggestions come from, how many, and whether to spare the other team's starters), with a table row, a lane
+(Trades: S14 → S19), a parallel-tracks note, and this card's decisions under "Your answers so far". 30 cards now.
+
+**Tests.** A spec: "Rival · ROS 2" and "Yours · ROS 1" in the suggestions, Bijan's Q badge (set in the session's player
+map) and none on Henry, and the two sides' tops equal on desktop and stacked on the phone width, in the form and in
+the results.
+
+**Checks.** Precache OK; 355 unit and 381 Playwright tests pass (visual.spec fails here as on main). Screenshots: still
+the same four to take from CI, `mls-league-guide.png` (desktop 1280×6792, phone 390×14539) and `mls-league-scout.png`
+(desktop now 1280×2015 with the two columns, phone 390×2214); the other 36 are pixel-identical to main.

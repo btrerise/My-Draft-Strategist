@@ -1012,6 +1012,17 @@ button.close-chip {
 
 /* Trade Analyzer (improvements S14, round 5): the player picker (js/mls/trade/picker.js) and the compact rows the
    analysis lists each player in (js/mls/scout/engine.js). */
+/* Receive and Give side by side from tablet width up, in the form and in the results (round 8); stacked on phones. */
+.mls-trade-sides { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.5rem; }
+.mls-trade-side-title { font-weight: 700; margin: 1rem 0 0.5rem; }
+.mls-trade-side-get { color: #4ade80; }
+.mls-trade-side-give { color: #fca5a5; }
+.mls-trade-sides > .mls-trade-side:first-child > .mls-trade-side-title { margin-top: 0; }
+@media (min-width: 768px) {
+    .mls-trade-sides { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .mls-trade-sides > .mls-trade-side > .trade-group-header.mt-3,
+    .mls-trade-sides > .mls-trade-side > .mls-trade-side-title { margin-top: 0; }
+}
 .mls-trade-picker { display: flex; flex-direction: column; gap: 0.45rem; }
 .mls-trade-tokens { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .mls-trade-tokens:empty { display: none; }
