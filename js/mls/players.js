@@ -122,7 +122,13 @@ export async function ensureSleeperPosByName() {
 }
 
 // Autocomplete Dropdown Logic
-export function attachPlayerAutocomplete(inputEl, onSelect) {
+// opts (all optional; the Trade Analyzer's picker uses them, improvements S14 round 6):
+//   pool(q, index) -> the players to search instead of the whole player index, or null for the whole index.
+//                     With q '' (the field focused while empty) a returned list is shown as it is, so a
+//                     side can offer "your roster" or one team's roster before anything is typed.
+//   tag(p) -> a short label after the position and team ("Yours", a manager's name, "Free agent").
+//   limit -> how many to show (8 by default).
+export function attachPlayerAutocomplete(inputEl, onSelect, opts = {}) {
     if (!inputEl || inputEl.dataset.autocompleteAttached) return;
     inputEl.dataset.autocompleteAttached = '1';
 
@@ -149,7 +155,7 @@ export function attachPlayerAutocomplete(inputEl, onSelect) {
         dropdown.innerHTML = matches.map((p, i) => `
             <div class="autocomplete-item${i === highlightedIdx ? ' highlighted' : ''}" role="option" data-idx="${i}">
                 <span>${escapeHtml(p.name)}</span>
-                <span class="autocomplete-meta">${escapeHtml(p.pos)} ·${escapeHtml(p.team)}</span>
+                <span class="autocomplete-meta">${escapeHtml(p.pos)} ·${escapeHtml(p.team)}${opts.tag && opts.tag(p) ? ` · ${escapeHtml(opts.tag(p))}` : ''}</span>
             </div>
         `).join('');
         dropdown.style.display = 'block';
@@ -168,23 +174,35 @@ export function attachPlayerAutocomplete(inputEl, onSelect) {
         if (typeof onSelect === 'function') onSelect(p);
     }
 
-    inputEl.addEventListener('input', () => {
+    const limit = opts.limit || 8;
+    function search() {
         const q = inputEl.value.trim().toLowerCase();
         highlightedIdx = -1;
-        if (q.length < 2) { pending = false; close(); return; }
+        // An empty field shows a list only when the caller's pool offers one for it.
+        if (q.length < 2 && !(q === '' && opts.pool)) { pending = false; close(); return; }
         pending = true;
         getPlayerSearchIndex().then(index => {
             if (inputEl.value.trim().toLowerCase() !== q) return;
             pending = false;
+            const pool = opts.pool ? opts.pool(q, index) : null;
+            if (q === '') { matches = (pool || []).slice(0, limit); render(); return; }
+            if (q.length < 2) { close(); return; }
             const starts = [], contains = [];
-            for (const p of index) {
-                if (p.searchKey.startsWith(q)) { starts.push(p); if (starts.length >= 8) break; }
-                else if (contains.length < 8 && p.searchKey.includes(q)) contains.push(p);
+            for (const p of (pool || index)) {
+                if (p.searchKey.startsWith(q)) { starts.push(p); if (starts.length >= limit) break; }
+                else if (contains.length < limit && p.searchKey.includes(q)) contains.push(p);
             }
-            matches = starts.concat(contains).slice(0, 8);
+            matches = starts.concat(contains).slice(0, limit);
             render();
         }).catch(() => { pending = false; });
-    });
+    }
+    inputEl.addEventListener('input', search);
+    if (opts.pool) {
+        // Tapping the empty field (focused or not) shows the pool's list.
+        const showList = () => { if (!inputEl.value.trim()) search(); };
+        inputEl.addEventListener('focus', showList);
+        inputEl.addEventListener('click', showList);
+    }
 
     dropdown.addEventListener('mousedown', (e) => {
         const item = e.target.closest('.autocomplete-item');
@@ -210,11 +228,15 @@ export function attachPlayerAutocomplete(inputEl, onSelect) {
         else if (e.key === 'Escape') { close(); }
     });
 
-    inputEl.addEventListener('blur', () => setTimeout(close, 150));
+    // Closes a moment after the field loses focus (so a tap on a suggestion lands first), unless it has focus
+    // again by then: refocusing within that moment used to close the new list as it opened.
+    inputEl.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== inputEl) close(); }, 150));
 
     return {
         isOpen: () => matches.length > 0,
-        isPending: () => pending
+        isPending: () => pending,
+        // Re-run the search for what's in the field now (the trade picker, after its team changes).
+        refresh: search
     };
 }
 
@@ -267,6 +289,8 @@ export function attachScoutSuggestionHandler(outputElId) {
         const idx = inputEl.value.indexOf(original);
         if (idx !== -1) {
             inputEl.value = inputEl.value.slice(0, idx) + link.dataset.suggested + inputEl.value.slice(idx + original.length);
+            // The Trade Analyzer's picker redraws its tokens from the textarea (trade/picker.js).
+            inputEl.dispatchEvent(new Event('input'));
         }
         runScout(link.dataset.scoutType);
     });

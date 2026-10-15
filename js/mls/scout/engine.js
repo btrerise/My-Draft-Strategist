@@ -2,16 +2,19 @@
 // (runScout, incl. dynamic waiver adjustment and the position resolver). The trade fairness verdicts
 // and renderTradeVerdict (with its waiver adjustment) moved to trade/verdict.js in 3G.
 import { escapeHtml } from '../../shared/html.js';
+import { injuryBadgeMarkup } from '../badges.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';
 import { ensureSleeperPosByName, findClosestRankedName, sleeperPosByName } from '../players.js';
-import { buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts, WAIVER_SOS_OPTS } from './waivers.js';
+import { getSleeperMetaByName, buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts, WAIVER_SOS_OPTS } from './waivers.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML } from '../trade/verdict.js';
+import { buildTradeImpactHTML } from '../trade/lineupSection.js';
+import { setTradeExport } from '../trade/export.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 
@@ -98,6 +101,12 @@ import { normalizeName } from '../../shared/names.js';
         if (!sleeperPosByName) {
             outputEl.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Looking up player positions…</div>`;
             await ensureSleeperPosByName();
+        }
+        // The Trade Analyzer's rows show each player's injury from Sleeper (improvements S14, round 8). Without the
+        // player map the rows just go without it.
+        let tradeMeta = null;
+        if (type === 'trade') {
+            try { tradeMeta = await getSleeperMetaByName(); } catch (e) { tradeMeta = null; }
         }
 
         // Indexed once for this whole Scout run -- getPos and buildCard below are both called
@@ -241,6 +250,59 @@ import { normalizeName } from '../../shared/names.js';
                 }
             }
 
+            // Trade Analyzer rows (improvements S14, round 5): one compact line per player instead of a card with
+            // a large status circle, so a trade reads on a phone without scrolling: badge, name, ranks and who
+            // has him, and his value on the right (the market's under it when loaded).
+            if (type === 'trade') {
+                const isPick = isDraftPickName(name);
+                let owns;
+                if (roleLabel === 'GIVE') {
+                    owns = owner === 'You' ? { text: 'Yours', cls: '' }
+                        : isPick ? { text: 'Pick', cls: '' }
+                        : { text: owner ? `Not yours (${owner})` : 'Not on your roster', cls: 'mls-trade-row-warn' };
+                } else {
+                    owns = owner === 'You' ? { text: 'Already yours', cls: 'mls-trade-row-warn' }
+                        : owner ? { text: `Rostered by ${owner}`, cls: '' }
+                        : isPick ? { text: 'Pick', cls: '' }
+                        : { text: knowsWholeLeague ? 'Free agent' : 'Not yours', cls: '' };
+                }
+                const rankBits = isPick ? [] : [
+                    `ROS ${rRank}${tierTag(rosObj?.tier)}`,
+                    `Wk ${wRank}`
+                ];
+                const valueText = userValueObj
+                    ? `${userValueObj.value.toLocaleString()}${userValueObj.fromMarket ? '<sup title="Market value: your ROS rankings have no draft picks">*</sup>' : ''}`
+                    : `<span class="mls-trade-row-ur">${isPick ? '&ndash;' : 'UR'}</span>`;
+                // A pick's value comes from market data only (round 6): say so where the dash is.
+                if (isPick && !userValueObj) rankBits.push(State.marketRankings.length > 0 ? 'Not in market data' : 'Needs market data');
+                const mkt = State.marketRankings.length > 0
+                    ? `<span class="mls-trade-row-mkt">Mkt ${marketValueObj ? marketValueObj.value.toLocaleString() : '&ndash;'}</span>` : '';
+                return {
+                    html: `
+                <div class="mls-trade-row">
+                    <span class="badge pos-badge ${isPick ? 'FLEX' : badgeClass} mls-pos-badge-sizing">${isPick ? 'Pick' : displayPos}</span>
+                    <div class="mls-trade-row-main">
+                        <div class="mls-trade-row-name">${escapeHtml(displayName)}${tradeMeta && tradeMeta[clean] && tradeMeta[clean].inj ? injuryBadgeMarkup(tradeMeta[clean].inj) : ''}${sosBadge}</div>
+                        <div class="mls-trade-row-meta">${rankBits.map(b => `<span>${b}</span>`).join('')}<span class="${owns.cls}">${escapeHtml(owns.text)}</span></div>
+                        ${suggestHTML}
+                    </div>
+                    <div class="mls-trade-row-value"><span class="mls-stat-value">${valueText}</span>${mkt}</div>
+                </div>`,
+                    // One line of Export Trade's image (trade/export.js): who, his position, and his value by
+                    // your rankings and the market (null = not in that source).
+                    exportRow: {
+                        name: displayName, pos: isPick ? 'Pick' : displayPos, badge: isPick ? 'FLEX' : badgeClass,
+                        value: userValueObj ? userValueObj.value : null, valueFromMarket: !!(userValueObj && userValueObj.fromMarket),
+                        market: marketValueObj ? marketValueObj.value : null
+                    },
+                    userValue: userValueObj ? userValueObj.value : 0,
+                    userMatched: !!userValueObj,
+                    marketValue: marketValueObj ? marketValueObj.value : 0,
+                    marketMatched: !!marketValueObj,
+                    availabilityOrder, rosSortRank, weekSortRank
+                };
+            }
+
             return {
                 html: `
                 <div class="scout-result-card">
@@ -289,15 +351,51 @@ import { normalizeName } from '../../shared/names.js';
             } else {
                 verdictHTML = buildTradeVerdictHTML(getResults, giveResults);
             }
-            html += verdictHTML;
+            // How your team changes, under the verdict (improvements S14). Its own failure leaves the
+            // verdict and the cards as they were.
+            let impactHTML = '';
+            try {
+                impactHTML = await buildTradeImpactHTML(league, targetNames, sellNames, { getResults, giveResults });
+            } catch (e) {
+                console.warn('Trade Analyzer: lineup comparison unavailable.', e);
+            }
+            html += verdictHTML + impactHTML;
 
+            // The two sides side by side on wider screens, stacked on phones (round 8; css/mls.css .mls-trade-sides).
+            html += `<div class="mls-trade-sides">`;
             if (targetNames.length > 0) {
-                html += `<div style="font-weight:bold; color:#4ade80; margin-bottom:0.5rem;">You Receive</div>`;
+                html += `<div class="mls-trade-side"><div class="mls-trade-side-title mls-trade-side-get">You Receive</div>`;
                 getResults.forEach(r => html += r.html);
+                html += `</div>`;
             }
             if (sellNames.length > 0) {
-                html += `<div style="font-weight:bold; color:#fca5a5; margin:1rem 0 0.5rem 0;">You Give Up</div>`;
+                html += `<div class="mls-trade-side"><div class="mls-trade-side-title mls-trade-side-give">You Give Up</div>`;
                 giveResults.forEach(r => html += r.html);
+                html += `</div>`;
+            }
+            html += `</div>`;
+
+            // Export Trade (trade/export.js), at the bottom of the card: an image of the assets with their
+            // values and the verdict, plus the Power Rankings change when "Include Power Rankings" is on
+            // (owner's choice: off by default, since it isn't usually part of a trade talk). Both sides needed.
+            setTradeExport(isOneSided ? null : {
+                league: league && league.name ? league.name : '',
+                get: getResults.map(r => r.exportRow),
+                give: giveResults.map(r => r.exportRow),
+                market: State.marketRankings.length > 0
+            });
+            if (!isOneSided) {
+                html += `
+                <div class="mls-trade-export-row">
+                    <label class="mls-trade-export-toggle">
+                        <input type="checkbox" id="tradeExportPower" data-action="updateTradeSettingChecked" data-setting="exportPower"${State.tradeSettings.exportPower ? ' checked' : ''}>
+                        Include Power Rankings
+                    </label>
+                    <button type="button" id="exportTradeBtn" class="btn btn-purple" data-action="exportTrade" title="Save the trade, each asset's value and the verdict as an image">
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        Export Trade
+                    </button>
+                </div>`;
             }
 
             outputEl.innerHTML = html;

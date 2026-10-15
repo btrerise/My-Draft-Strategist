@@ -7,6 +7,7 @@ import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderBadgeLegend } from './legend.js';
 import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/viewTransition.js';
+import { syncTradePicker } from './trade/picker.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at
@@ -139,7 +140,7 @@ import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/v
         if (tabId === 'lineup') optimizeLineup(false);
         if (tabId === 'roster') loadRosterTab();
         if (tabId === 'setup') refreshLeagueDropdown();
-        if (tabId === 'scout') onScoutTabShown();
+        if (tabId === 'scout') { onScoutTabShown(); syncTradePicker(); }
         // The Guide's badge legend is built the first time the Guide is shown (improvements S10).
         if (tabId === 'guide') renderBadgeLegend();
         window.scrollTo(0, 0);

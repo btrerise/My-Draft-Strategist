@@ -81,6 +81,35 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The Trade Analyzer shows how your team changes.** Under the trade verdict, "Power Rankings after the trade"
+  shows your Positional Power Rankings (Start, Ovr, QB, RB, WR, TE) before and after the trade, by your ROS rankings
+  (Market Consensus if you have none). A headline puts value and lineup together ("You pay in value (−4,389 pts) to
+  make your starting lineup stronger (96% → 108% of league average)."), then a sentence such as "Starting lineup 5th
+  → 3rd of 12. Stronger at WR (8th → 4th); weaker at RB (2nd → 7th)." The percent of league average shows a change
+  even when your rank doesn't move, and a line under the table says 1 = strongest. Hover or tap a number to see that room after the trade, with the players
+  coming in marked and the ones leaving listed. When everyone you'd get comes from one team, their change is under
+  "Their team", folded. In dynasty and keeper leagues a Future column (roster value adjusted for age, as on the
+  Roster tab) shows too, with each player's age in its tooltip. It says when the trade leaves a starting slot empty, and names draft picks, unranked players
+  and names it can't match. In a manual league, where the app only knows your roster, it lists the starters who
+  change instead (slot, who goes out, who comes in), by the Lineup tab's rules. Injuries and byes are left out, and
+  nothing is saved: your Lineup tab doesn't change. The Guide's Trade Analyzer step describes it.
+- **Pick players for a trade instead of typing them.** Each side of the Trade Analyzer has a search (the same one as
+  Add Player Manually): tap a name and it's added as a token with its position and team, which you remove with ✕. In a
+  Sleeper league a "From" drop-down above Players You Receive lists every team: choose one and tapping the search
+  shows that team's roster, or pick any player and the drop-down follows his manager. Switching to a different team
+  clears the players you'd receive from the old one (Any team keeps them). Players You Give Up shows your roster when
+  you tap it. Every suggestion says who has the player ("Yours", the manager, "Free agent") and your ROS rank for him.
+  Dynasty and keeper leagues get a draft-pick row (year and round). Typing a name and pressing Enter, or pasting a
+  list, still works. Once a trade is analyzed, changing it updates the results in place. The results list each player
+  on one compact line (position, name, injury, ROS and weekly rank, who has him, and his value), with Receive and Give
+  side by side on wider screens, and Waiver Adjustment now sits in a "Value settings" fold under Analyze Trade.
+- **Trade values say how old the market data is.** Under the verdict, "Market values: Updated 3 days ago", in amber
+  with a nudge to refresh once it's more than a day old. A draft pick with no market value says so ("has no value
+  without Market Consensus data") instead of "1 player not found".
+- **Export Trade.** At the bottom of the Trade Analyzer, a button saves the trade as an image for your league chat,
+  like the Lineup tab's PNG: the league, each player or pick you'd get and give with its value (by your rankings, and
+  the market's when loaded), and the value verdict. Turn on "Include Power Rankings" beside it to add the Power
+  Rankings change too (off by default; the switch is remembered).
 - **Smooth tab and league changes.** Switching tabs (tapping the tab bar, swiping, the menu, number keys, Back and
   Forward) now slides the page in the direction you're going on a phone, and fades softly (the new page rising a
   little) on a wider screen, while the header and tab bar stay put. A green bar above the tab bar's active tab slides to the new one. Switching league

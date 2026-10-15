@@ -30,6 +30,7 @@ const ALLOWED = new Set([
     'pos-filter', 'active-filter',                       // the position filter buttons' state
     'tooltip-container', 'tooltip-text',                 // hover text holders
     'mls-pos-badge-sizing', 'mls-ta-title-badge',        // sizing of a position badge in a row or title
+    'mls-trade-row-warn',                                // red text for "Not on your roster" in a Trade Analyzer row (S14)
     'mls-player-badges-row', 'mls-name-badges', 'card-badges-row', 'mls-nowrap', 'mls-scan-pill-stack',
     'mls-rank-badge-sizing',
     'status-badge', 'status-badge-meta',                 // the upload cards' "Updated ..." lines (text)

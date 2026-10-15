@@ -44,7 +44,8 @@ import { autoFetchRosRankings } from './rankings/rosFetch.js';
 import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './settings.js';
 import './trade/valueCurve.js';
 import './trade/waiverValue.js';
-import { copyLineupAsText, exportLineup } from './trade/export.js';
+import { copyLineupAsText, exportLineup, exportTrade } from './trade/export.js';
+import { addTradePick, clearTradeSide, removeTradeToken, setTradePlayers, tradeTeamChanged } from './trade/picker.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
@@ -71,6 +72,8 @@ export { applyDefaultFolds, checkForDraftStrategistHandoff, clearLocksForNewWeek
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
 export { confirmRankingsPreview, createManualLeague, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
+// The Trade Analyzer's picker, for tests (callApp) to set a whole trade at once.
+export { setTradePlayers };
 
 // The only window.* names left. Until refactor chunk 5D this block held every name something read
 // through window (originally the inline on*="..." handlers); 5B and 5C replaced the handlers with
@@ -161,6 +164,8 @@ const clickActions = {
     optimizeLineup() { optimizeLineup(true, true); },
     copyLineupAsText() { copyLineupAsText(this); },
     exportLineup() { exportLineup(); },
+    // Scout tab: Trade Analyzer's Export Trade (improvements S14)
+    exportTrade() { exportTrade(); },
     toggleLockCountdown() { toggleLockCountdown(); },
     unlockAllPlayers() { unlockAllPlayers(); },
     overrideAutoLock() { overrideAutoLock(this.dataset.id); },
@@ -187,8 +192,11 @@ const clickActions = {
     setWaiverIntent() { setWaiverIntent(this.dataset.intent); },
     runScout() { runScout(this.dataset.scoutType); },
     scoutGoToLeague() { scoutGoToLeague(this.dataset.leagueId); },
-    clearBuyInput() { document.getElementById('buyInput').value=''; },
-    clearSellInput() { document.getElementById('sellInput').value=''; },
+    clearBuyInput() { clearTradeSide('get'); },
+    clearSellInput() { clearTradeSide('give'); },
+    // Trade Analyzer's player picker (trade/picker.js, improvements S14)
+    removeTradeToken() { removeTradeToken(this.dataset.side, parseInt(this.dataset.idx, 10)); },
+    addTradePick() { addTradePick(this.dataset.side); },
     goToPowerRankings() { goToPowerRankings(); },
     fetchMarketValue() { fetchMarketValue(this); },
     runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },
@@ -223,6 +231,8 @@ const changeActions = {
     updateTradeSetting() { updateTradeSetting(this.dataset.setting, this.value); },
     toggleDisconnectMode() { toggleDisconnectMode(); },
     toggleDisconnectRankBasis() { toggleDisconnectRankBasis(); },
+    // Trade Analyzer: the team drop-down above Players You Receive (trade/picker.js)
+    tradeTeamChanged() { tradeTeamChanged(); },
 };
 
 // The hero logo hides itself if it fails to load; a player headshot (lineup/headshots.js) removes

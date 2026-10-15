@@ -1,5 +1,6 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3D: TEXT EXPORT
 // (DISCORD/GROUP CHAT) and SCREENSHOT EXPORT (copyLineupAsText, exportLineup).
+import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { slotDisplayName } from '../constants.js';
 import { getActiveLeague } from '../helpers.js';
@@ -136,5 +137,103 @@ function splitBlendedBorders(root) {
         buttons.forEach(b => b.style.display = 'inline-block');
         screenOnly.forEach(e => e.style.display = '');
         exportBtn.innerText = origText;
+    }
+};
+
+// --- TRADE EXPORT (improvements S14) ---
+// The Trade Analyzer's trade as a PNG for a league chat, the way Export Lineup saves the lineup (owner's
+// choices, round 4): a header with the league, each asset you'd get and give with its value by your rankings
+// (and the market, when loaded), the value verdict, and the "Power Rankings after the trade" section only when
+// "Include Power Rankings" is on (State.tradeSettings.exportPower, off by default: a team's power ranks aren't
+// usually part of a trade talk). runScout hands over the assets (setTradeExport); the verdict and the section
+// are copied from the page. The image is drawn from html2canvas's clone of #tradeOutput, whose content is
+// swapped for the image's, so the page doesn't change.
+let _tradeExport = null; // { league, get: [row], give: [row], market } from runScout; row: buildCard's exportRow
+export function setTradeExport(data) { _tradeExport = data; }
+
+const fmtValue = (v, isPick = false) => (v == null ? `<span class="mls-trade-export-ur">${isPick ? '&ndash;' : 'UR'}</span>` : v.toLocaleString('en-US'));
+
+function tradeExportHTML(data, verdictHTML, powerHTML) {
+    const rows = (list) => list.map(r => `
+        <div class="mls-trade-export-asset">
+            <span class="badge pos-badge ${escapeHtml(r.badge)} mls-pos-badge-sizing">${escapeHtml(r.pos)}</span>
+            <span class="mls-trade-export-name">${escapeHtml(r.name)}</span>
+            <span class="mls-trade-export-val">${fmtValue(r.value, r.pos === 'Pick')}${r.valueFromMarket ? '<sup>*</sup>' : ''}</span>
+            ${data.market ? `<span class="mls-trade-export-val mls-trade-export-mkt">${r.market == null ? '&ndash;' : r.market.toLocaleString('en-US')}</span>` : ''}
+        </div>`).join('');
+    const side = (title, cls, list) => `
+        <div class="mls-trade-export-sidebox">
+            <div class="mls-trade-export-sidehead ${cls}">
+                <span>${title}</span><span class="mls-trade-export-val">Value</span>${data.market ? '<span class="mls-trade-export-val mls-trade-export-mkt">Mkt</span>' : ''}
+            </div>
+            ${rows(list)}
+        </div>`;
+    const marketPick = data.get.concat(data.give).some(r => r.valueFromMarket);
+    return `
+        <div class="mls-trade-export-title">Trade${data.league ? ` &middot; ${escapeHtml(data.league)}` : ''}</div>
+        ${side('You get', 'mls-trade-export-get', data.get)}
+        ${side('You give', 'mls-trade-export-give', data.give)}
+        <div class="mls-trade-export-foot">Value: estimated from my ROS rankings (0-10,000).${data.market ? ' Mkt: market consensus.' : ''}${marketPick ? ' * Draft pick: market value.' : ''} UR: unranked.${data.get.concat(data.give).some(r => r.pos === 'Pick' && r.value == null) ? ' &ndash;: no market value loaded for the pick.' : ''}</div>
+        ${verdictHTML}
+        ${powerHTML}`;
+}
+
+export const exportTrade = async function() {
+    const out = document.getElementById('tradeOutput');
+    const btn = document.getElementById('exportTradeBtn');
+    if (!out || !btn || !_tradeExport) return;
+    if (!(await ensureHtml2Canvas())) {
+        showToast("Couldn't load the screenshot library. Check your connection and try again.", { isError: true });
+        return;
+    }
+    const pick = (sel) => [...out.querySelectorAll(sel)].map(el => el.outerHTML).join('');
+    const verdictHTML = pick(':scope > .trade-verdict-banner, :scope > .trade-verdict-note');
+    const powerHTML = State.tradeSettings.exportPower ? pick(':scope > [data-trade-impact]') : '';
+    const imageHTML = tradeExportHTML(_tradeExport, verdictHTML, powerHTML);
+
+    const label = btn.lastChild;
+    const origText = label.textContent;
+    label.textContent = ' Capturing…';
+    try {
+        const canvas = await html2canvas(out, {
+            backgroundColor: '#1c2541',
+            scale: 2,
+            onclone: (clonedDoc) => {
+                const clone = clonedDoc.getElementById('tradeOutput');
+                if (!clone) return;
+                clone.innerHTML = imageHTML;
+                clone.classList.add('mls-trade-export-image');
+                clone.querySelectorAll('details').forEach(el => el.setAttribute('open', ''));
+                // html2canvas draws a <summary> as a numbered list item ("1. Their team"): a plain heading instead.
+                clone.querySelectorAll('summary').forEach(el => {
+                    const title = clonedDoc.createElement('div');
+                    title.className = 'mls-trade-impact-partner-title';
+                    title.textContent = el.textContent;
+                    el.replaceWith(title);
+                });
+                // On-screen only: tooltips, "i" icons, dotted underlines, and the notes written for you rather
+                // than the league (.mls-trade-impact-help: injuries left out, typos, ...).
+                clone.querySelectorAll('.tooltip-text, .tooltip-icon').forEach(el => el.remove());
+                clone.querySelectorAll('.mls-dotted-underline').forEach(el => el.classList.remove('mls-dotted-underline'));
+                clone.querySelectorAll('.mls-trade-impact-help').forEach(el => el.closest('li').remove());
+                clone.querySelectorAll('.mls-trade-impact-notes').forEach(ul => { if (!ul.children.length) ul.remove(); });
+                clone.style.width = '480px';
+                clone.style.maxWidth = 'none';
+                clone.style.margin = '0';
+                clone.style.padding = '1rem';
+                clone.style.borderRadius = '8px';
+                clone.style.background = '#1c2541';
+                clone.style.boxSizing = 'border-box';
+            }
+        });
+        const link = document.createElement('a');
+        link.download = 'My_Trade_Lineup_Strategist.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } catch (err) {
+        console.error('Export failed:', err);
+        showToast('Export failed. Please try again.', { isError: true });
+    } finally {
+        label.textContent = origText;
     }
 };

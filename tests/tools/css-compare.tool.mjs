@@ -296,8 +296,14 @@ const SCENARIOS = {
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await page.waitForLoadState('networkidle');
         await snap('scout, auto-find');
-        await page.fill('#buyInput', "Ja'Marr Chase");
-        await page.fill('#sellInput', 'Josh Allen\nBijan Robinson');
+        // Set as values: after improvements S14 these textareas are hidden behind a player picker, which redraws from them.
+        await page.evaluate(() => {
+            for (const [id, v] of [['buyInput', "Ja'Marr Chase"], ['sellInput', 'Josh Allen\nBijan Robinson']]) {
+                const el = document.getElementById(id);
+                el.value = v;
+                el.dispatchEvent(new Event('input'));
+            }
+        });
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
         await page.waitForLoadState('networkidle');
         await snap('scout, trade verdict');

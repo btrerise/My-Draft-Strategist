@@ -4127,3 +4127,362 @@ listed above and rendered all of them; nothing else failed (T-Score passed). For
 byte-identical to the committed baseline, and CI's change sat where this container's main-vs-branch comparison put it: the
 marker (y 827–829 on desktop, 771–773 on phone), the MLS header (the top 60px), and `phone/mls-league-lineup` at 390px
 wide (CI's previous baseline was 396). Committed CI's `-actual.png` renders as the baselines.
+
+## S14 — Trade Analyzer: how your team changes
+
+**User-visible effect.** Under the Scout tab's trade verdict there's a new section. In a Sleeper-synced league it's
+**"Power Rankings after the trade"**: your row of the Positional Power Rankings (Start, Ovr, QB, RB, WR, TE) with each
+rank shown as before → after (green when it improves, red when it drops, one number when it doesn't move), and a
+sentence above it ("Starting lineup 5th → 3rd of 12. Stronger at WR (8th → 4th); weaker at RB (2nd → 7th)."). Hover or
+tap a number for that room after the trade, as on the Roster tab: players coming in are green with a "+", the ones
+leaving are listed underneath. When everyone you'd get comes from one team, **"Their team: <name>"** folds open to the
+same view of their side. Notes under it say when the trade **leaves a starting slot empty** ("Leaves your RB empty."),
+name draft picks ("no lineup spot"), unranked players ("counts as unranked (almost no value)"), names it can't match and
+players who aren't yours, and that injuries and byes are left out. In a **manual league** (only your roster known) it's
+**"Your lineup after the trade"** instead: each slot whose starter changes, with who goes out (−, red) and who comes in
+(+, green) and their position rank, and a sentence per slot ("Better at RB; worse at FLEX; WR left empty.";
+"Can't compare at RB (Bijan Robinson is unranked)."). Picks only (or nothing) on either side: no section. No rankings:
+one line saying what to load; a manual league without lineup slots: one line saying where to set them.
+
+**The owner's decisions (Asks you).**
+1. **Rankings: ROS**, since a trade is for the rest of the season. In a Sleeper league, Market Consensus stands in with a
+   note when no ROS rankings are loaded (the Power Rankings card's own fallback). The manual view needs ROS.
+2. **Format: not a list of starters, but the Positional Power Rankings before and after**, each number hoverable for its
+   players like the Roster tab (the owner's own idea, in place of the two options offered). So in Sleeper leagues the
+   lineup is the Power Rankings' best legal lineup (`pickPowerStarters`, by overall-rank value), not the Lineup tab's
+   optimizer: the numbers match the Roster tab's table, which is the point. No third lineup builder was written.
+3. **Summary: per slot in words.** In Power Rankings form that's the Start rank and each room that moves; in the manual
+   view, one phrase per changed slot, with "can't compare at RB (X is unranked)" when a rank is missing. A QB against an
+   RB/WR/TE in Superflex is compared by overall rank, the only number spanning both.
+4. **The other team: yes, folded** (`<details>`, closed by default), when all the players you'd get come from one team.
+5. **Manual leagues** (asked after the sketch): show your starters before and after, by `bestLineup`.
+
+**What changed and where.**
+- `js/mls/trade/lineupImpact.js` (new, pure, in `PRECACHE_ASSETS`): `tradePartner`, `leagueAfterTrade` (a copy of the
+  league with the players moved; your players go to the partner, or off every roster when there's no single partner),
+  `openPowerSlots`, `powerTradeImpact` (scores before and after with an injected `computePositionalPower`, and the
+  slots the trade newly leaves empty), `powerSummaryText`, `lineupTradeChanges` (two `bestLineup` runs, nobody locked or
+  unavailable), `lineupSummaryText`, `lineupSlotCount`, `ordinalOf`.
+- `js/mls/trade/lineupSection.js` (new, in `PRECACHE_ASSETS`): `buildTradeImpactHTML(league, getNames, giveNames)`
+  resolves names (positions from the league, then `getSleeperMetaByName`, then market data), sorts out picks, unmatched
+  names, players not yours and players already yours, and draws either view. The Sleeper view reuses the Power Rankings
+  table's classes (`.mls-power-table`), so its tooltips open and close as there (tap, keyboard, Escape).
+- `js/mls/scout/engine.js`: the trade branch appends the section after the verdict, inside a try/catch so a failure
+  leaves the verdict and cards as they were. The verdicts' math is unchanged.
+- `js/mls/power/shared.js`: `POWER_DEFAULT_REQS` is exported (no change to the math).
+- `css/mls.css`: `.mls-trade-impact*`, `.mls-trade-rank-up/down`, `.mls-trade-lineup-*`, `.mls-trade-in/out`.
+- `sw.js`: the two files in `PRECACHE_ASSETS`; `CACHE_NAME` v2.8.93 → v2.8.94.
+- `CHANGELOG.md`: a line under Lineup Strategist, Unreleased.
+- **Legend:** nothing new is a badge, chip or pill (the ranks are the Power Rankings' own cells, recolored by direction;
+  + and − are text), so no legend line; `badgeLegend.test.mjs` passes.
+
+**Tests.**
+- Unit (`tests/unit/tradeImpact.test.mjs`, with `tests/unit/helpers/powerEnv.mjs`, which loads `power/shared.js` in Node
+  with its two app imports stubbed): the partner rule, the league copy, a 2-for-1 that empties both RB slots (power and
+  manual), a hole that was already there isn't reported, a QB swap in a Superflex league (QB and SFLEX both change; the
+  QB room goes 2nd → 1st), a QB against a WR in SFLEX, an unranked incoming player (manual: can't compare; power: rank
+  300), and a bench swap that changes nothing.
+- Spec (`tests/mls-trade-impact.spec.mjs`, both widths, the phone one at 375px): the fixture league trading your three
+  best WRs for their three best RBs (RB 2→1 green, WR 1→2 red, the RB tooltip with three "+" rows, "Leaving:" in the WR
+  one, a tap opens it, the partner fold, the pick note, no sideways scroll, the table inside its box), a 2-for-1 that
+  takes your only RB ("Leaves your RB empty."), picks-only on either side (no section), unmatched names and players not
+  yours, no rankings (one line), a manual league (one changed slot, slot/name/rank on one line), a manual league with no
+  slots, and an unranked incoming starter in a manual league.
+
+**Checks.** Precache OK; 346 unit tests and 369 Playwright tests pass (1 skipped, the phone-only emulation test on
+desktop). visual.spec fails here as it does on main (this container can't render CI's baselines).
+
+**Screenshots.** None change: the screenshot league has no rankings and the trade form is empty. All 40, rendered here
+on main and on this branch, are pixel-identical (`npm run pxdiff`). The Guide's Trade
+Analyzer step is unchanged on purpose (a sentence there would re-take `mls-league-guide` at both widths).
+
+**Left over.**
+- A three-way trade (players from more than one team) shows only your team, with a note; who gets your players isn't
+  known.
+- The manual view doesn't show a partner (the app doesn't know other rosters there).
+
+### S14, round 2: the Guide, and Future value in dynasty leagues
+
+**The owner asked** for the Guide sentence (left out of round 1 to keep the screenshots) and for dynasty Future value.
+
+**User-visible effect.**
+- **Future column in dynasty leagues.** In a dynasty or keeper league, "Power Rankings after the trade" gets the Roster
+  tab's **Future** column (before → after, colored like the others), and the summary ends with "Future value 1st → 2nd."
+  (or "stays 3rd"). Tap the number for the roster's top future values after the trade, each with its age, the incoming
+  players marked and the ones leaving listed. A note says what Future means; if Sleeper's player ages can't load, it
+  uses dynasty Market Consensus (as the Roster tab does) or says there's no Future column. The partner's fold has it too.
+  Redraft leagues are unchanged. "Dynasty" is the Roster tab's own rule (`getPowerLeagueKind`: Sleeper's dynasty and
+  keeper types), so the trade section and the Roster tab's table always show the same columns.
+- **Guide:** step 9 (Scout: Trade Analyzer) now describes the section, the Future column and the manual-league view.
+
+**What changed and where.**
+- `js/mls/power/futureValue.js`: `whenPowerAgesLoaded()` starts the age load if needed and resolves when it's done (the
+  Roster tab renders first and re-renders when ages land; the trade section can wait instead).
+- `js/mls/trade/lineupSection.js`: in a dynasty league, waits for ages, scores with `resolvePowerFuture()`'s source,
+  adds the column and its tooltip (`futureTooltip`) and the note. `js/mls/trade/lineupImpact.js`: `FUTURE_COLUMN`, and
+  `powerSummaryText` adds the future sentence when both sides have a future rank.
+- `lineup/index.html` (Guide step 9), `CHANGELOG.md` (the Unreleased line extended). `CACHE_NAME` stays v2.8.94 (once
+  per branch; main is still v2.8.93).
+
+**Tests.** Unit: future ranks before and after an old-RBs-for-young-RBs trade (scored from dynasty Market Consensus
+ranks, since `powerEnv.mjs` stubs the age curve), the summary's future sentence, and none without future value. Spec: the
+fixture league is redraft (no Future column), then marked dynasty in memory: five WRs for three RBs shows Future 1→2 in
+red, the tooltip with "+ Bijan Robinson", "24 yrs" and the five leaving, the note, the partner's Future column, and no
+sideways scroll at 375px with eight columns.
+
+**Checks.** Precache OK; 350 unit and 371 Playwright tests pass (visual.spec fails here as on main).
+
+**Screenshots.** Rendered here on main and this branch: only **`mls-league-guide.png`** changes, at both widths
+(`desktop/` 1280×6607 → 1280×6676, `phone/` 390×13963 → 390×14170), from the Guide sentence. All 38 others are
+pixel-identical. To be taken from this branch's CI renders ("Accepting an intended visual change").
+
+### S14, round 3: Export Trade
+
+**The owner asked** for an "Export Trade" button like the Lineup tab's PNG.
+
+**User-visible effect.** Under the verdict and "Power Rankings after the trade" (when both sides have players), an
+**Export Trade** button (camera icon, purple like the Lineup tab's PNG) saves `My_Trade_Lineup_Strategist.png`, 480px
+wide at 2x:
+- a header only the image shows: "Trade · <league>", "You get: …", "You give: …" (names as your rankings spell them);
+- the value verdict(s), then the Power Rankings section (or a manual league's starters), with the partner's fold open;
+- no tooltips, "i" icons or dotted underlines, and none of the notes written for you (injuries left out, typos, players
+  not yours, the Market Consensus fallback, the Future explanation): those are marked `.mls-trade-impact-help` in
+  `lineupSection.js`. Notes the league should see stay: an empty slot, draft picks, unranked players.
+The page itself doesn't change. A one-sided entry has no verdict and no button.
+
+**What changed and where.**
+- `js/mls/scout/engine.js`: the verdict and the section sit in `#tradeExportArea` with the hidden header, and the
+  button follows.
+- `js/mls/trade/export.js`: `exportTrade`, Export Lineup's pattern (html2canvas on first use, a clone made for the
+  image). html2canvas draws a `<summary>` as a numbered list item ("1. Their team"), so the clone swaps it for a div.
+- `js/mls/main.js`: the `exportTrade` action. `css/mls.css`: `.mls-trade-export-*`, `.mls-trade-impact-partner-title`.
+- `lineup/index.html` (Guide step 9 mentions it), `CHANGELOG.md`.
+
+**Tests.** `mls-trade-impact.spec.mjs` serves html2canvas 1.4.1 from tests/node_modules (as `export-flex.spec.mjs`
+does), records the clone after the app's own `onclone`, and checks: the file name, a 960px-wide PNG, the header, the
+verdict and the summary in it, the partner's section open with no `<summary>`, no tooltips, the pick note kept and the
+injury note dropped, the page unchanged afterwards, and no button for a one-sided entry. I looked at the PNG at both
+widths.
+
+**Checks.** Precache OK; 350 unit and 373 Playwright tests pass (visual.spec fails here as on main).
+
+**Screenshots.** Still only `mls-league-guide.png` at both widths (desktop 1280×6676, phone now 390×14216 with the
+longer Guide sentence); the other 38 are pixel-identical to main. To be taken from CI.
+
+### S14, round 4: the export reworked; a headline, the percent of league average, a key
+
+**The owner asked** (after my review as a user): move Export Trade to the bottom of the card; leave Power Rankings out
+of the image or make them optional ("not normally discussed when sharing trades"); show each asset's value in the image.
+And yes to three of my review points: the percent of league average when the rank doesn't move, one headline for value
+and lineup together, and a note that 1 = strongest.
+
+**User-visible effect.**
+- **Export Trade** now sits at the bottom of the Trade Analyzer, after the player cards, with an **Include Power
+  Rankings** switch beside it (off by default; remembered as `exportPower` inside the existing `mls_tradeSettings`
+  value, so no new storage key). The image (480px at 2x) is put together for sharing rather than copied from the page:
+  "Trade · <league>", then **You get** and **You give**, each player or pick on one line with its position badge and
+  its **Value** by your rankings (a draft pick borrows the market's value, marked *; UR when unranked), plus a **Mkt**
+  column when market data is loaded, a one-line key to the columns, then the value verdict(s). With the switch on, the
+  "Power Rankings after the trade" section follows, as in round 3 (partner open, notes for you left out). The page
+  itself no longer carries a hidden header or a wrapper.
+- **Headline** at the top of "Power Rankings after the trade" (Sleeper leagues): the value verdict by the same rankings
+  as the ranks, and the lineup change, in one sentence: "You pay in value (−4,389 pts) to make your starting lineup
+  stronger (100% → 115% of league average).", "You gain value (+2,100 pts), but your starting lineup gets weaker (…): a
+  move for later, not now.", "A fair trade by value that doesn't change your starting lineup." (nine cases; the lineup
+  counts as changed at 1 point of league average or more). No value verdict, no headline.
+- **Percent of league average** in the Start sentence: "Starting lineup 5th → 3rd of 12 (96% → 108% of league
+  average)", "stays 5th of 12, but stronger: 96% → 108% of league average", "stays 5th of 12 (96% …)". Under a
+  headline (which already gives the percents) the sentence keeps only the words ("stays 1st of 2, but stronger."). The
+  percent is the Power Rankings' own Start score (`starterScore`, 1 = league average), the number behind the Start rank.
+- **Key** under your table: "Ranks of 12 teams: 1 = strongest. Green = better after the trade, red = worse."
+
+**What changed and where.**
+- `js/mls/trade/verdict.js`: `tradeVerdictNumbers` (the banner's totals, waiver adjustment and Fair/You/Them, moved out
+  of `renderTradeVerdict` unchanged) so the headline and the banner can't disagree. The banners' output is the same.
+- `js/mls/trade/lineupImpact.js`: `startPct`, `tradeHeadline`, and `powerSummaryText`'s percent and `{ pct }` option.
+- `js/mls/trade/lineupSection.js`: the headline (from the cards' values, passed in by `runScout`) and the key.
+- `js/mls/scout/engine.js`: each card's `exportRow` (name, position or "Pick", value, market value); the switch and
+  the button after the cards; `setTradeExport` hands the assets to the export.
+- `js/mls/trade/export.js`: `setTradeExport`, and `exportTrade` builds the image's HTML and swaps it into
+  html2canvas's clone of `#tradeOutput`.
+- `css/mls.css`, `CHANGELOG.md`, `lineup/index.html` (Guide step 9).
+
+**Tests.** Unit: the headline (pay for a stronger lineup, gain value but weaker, fair and unchanged under a point,
+none without a verdict) and the percent sentences. Spec: the button after the cards, the switch off by default, the
+image's assets (seven lines, "Pick 2027 1st UR"), no player cards and no Power Rankings in it by default, then with the
+switch on the section, the partner open, the pick note in and the injury note out; the switch remembered on the next
+trade; the headline, the key and the sentence without percents on screen. I looked at the image at phone width.
+
+**Checks.** Precache OK; 355 unit and 373 Playwright tests pass (visual.spec fails here as on main).
+
+**Screenshots.** Still only `mls-league-guide.png` at both widths (the Guide sentence is longer again).
+
+**Proposed, waiting for the owner** (not built):
+- *The Trade Analyzer on phones is long* (my review, point 4). Suggestions: (a) fold Waiver Adjustment into a closed
+  "Value settings" row under Analyze Trade; (b) after Analyze, scroll to the result on phones; (c) make the "You
+  Receive / You Give Up" cards compact rows (badge, name, ROS rank, value, owner), like the export's asset lines,
+  instead of three-line cards with a big status circle.
+- *Picking players instead of typing them* (owner's idea): replace the two textareas with the Add Player Manually
+  search (`attachPlayerAutocomplete`, js/mls/players.js) that adds each pick as a removable chip, plus a "+ Draft pick"
+  control (year and round). Names always match, so no "Did you mean". Big enough for its own card (S19).
+
+### S14, round 5: picking players, compact rows, Value settings folded
+
+**The owner's answers** to round 4's proposals: (a) fold Waiver Adjustment, yes; (b) scroll to the result after
+Analyze, no (people adjust and re-run, and scrolling back up each time would annoy); (c) compact rows, yes; and the
+player picker (their idea) on this branch rather than a new card.
+
+**User-visible effect.**
+- **Picking players.** Each side of the Trade Analyzer is a search box (Add Player Manually's, `attachPlayerAutocomplete`)
+  with the side's players as tokens above it: name, position and team in small print, and ✕ to remove. Tap a suggestion
+  (or Enter on the only one) to add; a name the search doesn't know is added as typed on Enter; a pasted list ("A, B"
+  or one per line) adds one token each; the same name twice is ignored. **+ Draft pick** adds "2027 1st" from a year
+  (the next three drafts: from March on, next year's first) and a round (1st-4th). Clear empties a side. "Did you
+  mean" still works, and fixes the token.
+- **Compact rows.** In the results each player is one line: position badge ("Pick" for a draft pick), name (and SoS
+  badge), "ROS 2 (T1) · Wk 2 · Rostered by Rival" (or "Yours", "Free agent", "Already yours" / "Not yours (Team)" in
+  red when something's off), and his value on the right with "Mkt 8,500" under it when market data is loaded. They
+  replace the three-line cards with the big status circle; the waiver list keeps its cards.
+- **Value settings.** Waiver Adjustment (toggle, value and the auto-calculated hint) is in a closed "Value settings" fold
+  under Analyze Trade.
+
+**What changed and where.**
+- `js/mls/trade/picker.js` (new, in `PRECACHE_ASSETS`): `initTradePicker` (called from `js/mls/init.js` beside the
+  manual-add form), `addTradeNames`, `setTradePlayers`, `removeTradeToken`, `addTradePick`. The textareas `#buyInput`
+  and `#sellInput` stay, hidden, as the list `runScout` reads; the picker keeps them in step, and anything else that
+  edits them fires an `input` event the tokens redraw from (Clear, "Did you mean" in `js/mls/players.js`, a league
+  switch in `js/mls/leagues/scoutResults.js`).
+- `js/mls/scout/engine.js`: `buildCard`'s trade branch returns the compact row (names escaped now).
+- `js/mls/main.js`: the `removeTradeToken` / `addTradePick` actions, Clear through `setTradePlayers`, and
+  `setTradePlayers` exported for tests. `lineup/index.html`: the picker markup, the Value settings fold, Guide step 9.
+- `css/mls.css`: `.mls-trade-picker`, `.mls-trade-token*`, `.mls-trade-pick-row`, `.mls-trade-value-settings`,
+  `.mls-trade-row*`. The tokens are an input control, not a symbol with a meaning, so no legend line.
+- Tests type into the picker or call `setTradePlayers` (a hidden textarea can't be filled): `mls-scout.spec.mjs`, this
+  card's spec, and `tests/tools/css-compare.tool.mjs` (sets the values, so it works on main and on the branch).
+
+**Tests.** A new spec at 375px: search and tap (token with "RB · ATL", search cleared), no duplicate, a 2027 2nd pick
+from the selects (years 2027-2029 under the fixed clock), a pasted list, a typed unknown name on Enter, the hidden
+textarea's value, "Did you mean" fixing the token, removing a token, four compact rows ("ROS 2", "Rostered by Rival",
+the pick, "Yours"), the Value settings fold closed and opening, Clear, no sideways scroll.
+
+**Checks.** Precache OK; 355 unit and 375 Playwright tests pass (visual.spec fails here as on main). The legend test
+flagged `mls-trade-row-warn` (red owner text, not a symbol): added to its `ALLOWED` with that reason.
+
+**Screenshots.** Rendered here on main and on this branch, four PNGs change, all to be taken from CI:
+- `desktop/mls-league-guide.png` (1280×6607 → 1280×6745) and `phone/mls-league-guide.png` (390×13963 → 390×14423):
+  Guide step 9's longer text;
+- `desktop/mls-league-scout.png` (1280×2267 → 1280×2131) and `phone/mls-league-scout.png` (390×2380 → 390×2243): the
+  Trade Analyzer's picker in place of the textareas, and Waiver Adjustment folded.
+The other 36 are pixel-identical.
+
+### S14, round 6: team drop-down, roster lists, owner tags, live re-run, picks only in dynasty, market age
+
+**The owner's answers** to my second review as a user: (1) re-run a changed trade, yes, and date the market values
+(a notice when they're over a day old); (2) yes to owner tags and your roster first, and, like FantasyCalc and Dynasty
+Daddy, a drop-down of the league's teams above the player input: choose the team first and the input lists its players,
+or pick a player and the drop-down selects his manager; (3) the draft-pick row only where picks trade; (4) say why a
+pick has no value.
+
+**User-visible effect.**
+- **From** (Sleeper leagues): a drop-down above Players You Receive with "Any team" and every other manager. With a
+  team chosen, tapping the search lists its roster (best ROS rank first) and typing searches only it; with Any team,
+  typing searches everyone (other teams' players first, then free agents, then yours), and picking a player sets the
+  drop-down to his manager. Hidden in manual leagues.
+- **Players You Give Up** lists your roster when you tap it (best ROS rank first), and your players first as you type.
+- **Owner tags** on every suggestion: "Yours", the manager's name, or "Free agent" (in Sleeper leagues).
+- After a pick the list opens again, so taking several players from one roster is a tap each.
+- **Live re-run:** once a trade has been analyzed, adding, removing or clearing a player re-runs it where it is (after a
+  quarter second, so a pasted list runs once); nothing scrolls. Before the first Analyze, nothing runs.
+- **Draft-pick row** only in dynasty and keeper leagues (`getPowerLeagueKind`, as the Future column).
+- **Picks without a value:** the row shows "–" and "Needs market data" (or "Not in market data"), the image a dash with
+  a key line, and the verdict says "2027 1st has no value without Market Consensus data (Trade Finder below), so it's
+  left out of this total." (or "isn't in the Market Consensus data") instead of counting it as "player not found".
+- **Market age:** under the verdicts, whenever market data is loaded, "Market values: Updated today." or, once a day or
+  more old, in amber: "Market values: Updated 3 days ago. Refresh them in Trade Finder (below) before you trade." On
+  screen only (not in the image).
+
+**What changed and where.**
+- `js/mls/players.js` (`attachPlayerAutocomplete`): optional `opts` (`pool`, `tag`, `limit`), a list on focus or tap
+  of an empty field when a pool offers one, and `refresh()`. Without opts it behaves as before (Add Player Manually, the
+  simulator's search).
+- `js/mls/trade/picker.js`: the pools, owner tags, `syncTradePicker` (managers and the pick rows; called when the
+  Scout tab shows, from `js/mls/nav.js`, and on a league change, from `js/mls/leagues/scoutResults.js`),
+  `tradeTeamChanged`, `clearTradeSide`, and the debounced re-run. `setTradePlayers` (tests) doesn't re-run.
+- `js/mls/trade/verdict.js`: the pick wording and the market-age line (`getFreshness`, js/shared/freshness.js).
+- `js/mls/scout/engine.js` (the pick row's dash and reason), `js/mls/trade/export.js` (the dash and key), `js/mls/main.js`
+  (actions), `lineup/index.html` (the drop-down, the pick rows' ids, the Give placeholder, Guide step 9), `css/mls.css`.
+
+**Tests.** A new spec at 375px: the drop-down's teams; your roster on tapping Give (14, "Yours", Chase first); Bijan
+tagged "Rival" and the drop-down following him; Rival's roster on tapping Get; analyze, then adding and removing a
+player re-runs (rows 2 → 3 → 2); a pick's dash, reason and verdict wording; market data three days old (amber) and
+today (plain). The picker spec now checks the pick row is hidden in a redraft league and shown in dynasty. Tests close
+an open suggestion list before tapping Analyze, as a tap elsewhere does on a phone.
+
+Two races found while testing round 6, both fixed: (1) `attachPlayerAutocomplete` closed its list 150 ms after the field
+lost focus even if it had focus again by then, so refocusing quickly closed the new list as it opened (it now closes only
+if the field still doesn't have focus; this applies to every search that uses it); (2) a pick made just before tapping
+Analyze scheduled a re-run that fired after the first analysis, running the trade twice (a re-run is now scheduled only
+for a trade analyzed before the change). The round 6 spec ran 16 times in a row without a failure after the fixes.
+
+**Checks.** Precache OK; 355 unit and 377 Playwright tests pass (visual.spec fails here as on main).
+
+**Screenshots.** Still the same four, to be taken from CI: `mls-league-guide.png` (desktop 1280×6792, phone 390×14539,
+step 9's text) and `mls-league-scout.png` (desktop 1280×2102, phone 390×2214: the From drop-down added, the draft-pick
+rows hidden in the screenshot league, which is redraft). The other 36 are pixel-identical to main.
+
+### S14, round 7: switching the From team clears the players you'd receive
+
+**The owner asked:** when the team in the From drop-down changes, clear the players already picked.
+
+**User-visible effect.** Choosing a different team under From clears Players You Receive when they belong to another
+manager (a new partner is a new trade); an analyzed trade re-runs, now one-sided. "Any team", or going back to the team
+the players came from, keeps them, and so do tokens no manager has (free agents, draft picks). A pick that sets the
+drop-down itself (with Any team) never clears anything. Players You Give Up never changes.
+
+**Where.** `tradeTeamChanged` in `js/mls/trade/picker.js`. My first version compared with the drop-down's previous value,
+which cleared on Any team → Rival with Rival's players picked; it now compares with the players' own managers.
+
+**Tests.** A third manager added in memory (the fixture league has two): pick Bijan (drop-down follows to Rival),
+analyze, Any team keeps him, back to Rival keeps him, Third clears him and re-runs one-sided, your side stays.
+Checks: precache OK; 355 unit and 379 Playwright tests pass (visual.spec fails here as on main). No screenshot changes
+beyond the four already listed.
+
+### S14, round 8: your rank in suggestions, injuries on rows, two columns on desktop; S19 in the runbook
+
+**The owner's answers** to my third review as a user: yes to (1) the rank in suggestions, (2) injuries on the rows and
+(3) Receive and Give side by side on desktop; (4) "what would make it fair" goes in the runbook as its own card (S19).
+
+**User-visible effect.**
+- **Suggestions show your ROS rank** after the owner: "RB · ATL · Rival · ROS 2", "Yours · ROS 1".
+- **Injuries on the result rows:** the red injury badge (Q, D, OUT, IR…, `injuryBadgeMarkup` from js/mls/badges.js,
+  already in the Guide's legend) after the name, from the Sleeper player map. Still left out of the lineup math.
+- **Two columns from 768px:** Players You Receive and Players You Give Up side by side in the form, and You Receive /
+  You Give Up side by side in the results; phones stay stacked as before.
+- **A suggestion list no longer reopens by itself after a pick** (added in round 6). Found while testing this round: on a
+  phone the reopened list covered the Give side's search, where a tap meant for that box picked a player. Tapping the
+  search again shows the list.
+
+**What changed and where.** `js/mls/trade/picker.js` (`ownerTag` adds the rank; the reopen removed),
+`js/mls/scout/engine.js` (the player map read once per trade run for injuries; the results wrapped in
+`.mls-trade-sides`), `lineup/index.html` (the form's two sides wrapped the same way), `css/mls.css` (`.mls-trade-sides`,
+`.mls-trade-side-title`), `CHANGELOG.md`.
+
+**Runbook.** S19 "Trade Analyzer: what would make it fair" added (needs S14; Asks you: which values decide the gap,
+where suggestions come from, how many, and whether to spare the other team's starters), with a table row, a lane
+(Trades: S14 → S19), a parallel-tracks note, and this card's decisions under "Your answers so far". 30 cards now.
+
+**Tests.** A spec: "Rival · ROS 2" and "Yours · ROS 1" in the suggestions, Bijan's Q badge (set in the session's player
+map) and none on Henry, and the two sides' tops equal on desktop and stacked on the phone width, in the form and in
+the results.
+
+**Checks.** Precache OK; 355 unit and 381 Playwright tests pass (visual.spec fails here as on main). Screenshots: still
+the same four to take from CI, `mls-league-guide.png` (desktop 1280×6792, phone 390×14539) and `mls-league-scout.png`
+(desktop now 1280×2015 with the two columns, phone 390×2214); the other 36 are pixel-identical to main.
+
+### S14, pull request (btrerise/My-Draft-Strategist#197): the four screenshots from CI
+
+CI run 38815932926 (commit 05dcc1f) failed only `visual.spec.mjs` "MLS synced league tabs" at both widths, on exactly the
+four PNGs listed above; 389 tests passed. For each, CI's `-expected.png` was byte-identical to the committed baseline, and
+the height change from main matched this container's main-vs-branch comparison (desktop scout −252 both; phone guide +576
+both; desktop guide +161 vs +185 and phone scout −169 vs −166, from text wrapping under CI's fonts). Committed CI's
+`-actual.png` renders as the baselines: `{desktop,phone}/mls-league-guide.png` and `{desktop,phone}/mls-league-scout.png`.

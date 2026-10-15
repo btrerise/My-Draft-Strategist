@@ -982,6 +982,99 @@ button.close-chip {
     margin-top: 0.5rem;
 }
 
+/* Trade Analyzer -- how your team changes, under the verdict (improvements S14, js/mls/trade/lineupSection.js).
+   Sleeper leagues reuse the Power Rankings table and its tooltips (.mls-power-table); manual leagues list the
+   starters who change, slot, name and rank on one line, names kept whole. */
+.mls-trade-impact { border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); padding: 0.85rem 1rem; margin-bottom: 1rem; }
+.mls-trade-impact-head { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+.mls-trade-impact-via { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+.mls-trade-impact-summary { font-size: 0.85rem; color: var(--text-main); margin: 0.45rem 0 0.5rem; line-height: 1.45; }
+.mls-trade-impact-empty { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem; }
+.mls-trade-impact-notes { margin: 0.55rem 0 0; padding-left: 1.1rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; }
+.mls-trade-impact-table td { white-space: nowrap; }
+.mls-trade-rank-up { color: #4ade80; }
+.mls-trade-rank-down { color: #fca5a5; }
+.mls-trade-impact-partner { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
+.mls-trade-impact-partner > summary { cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--text-main); }
+/* The same title in Export Trade's image, where the <summary> is swapped for a plain div (trade/export.js). */
+.mls-trade-impact-partner-title { font-size: 0.82rem; font-weight: 600; color: var(--text-main); }
+.mls-power-tooltip-row.mls-trade-in .mls-power-tooltip-name { color: #4ade80; }
+.mls-trade-lineup-row { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.35rem 0; border-top: 1px solid var(--border); }
+.mls-trade-lineup-slot { flex: 0 0 2.6em; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); padding-top: 2px; }
+.mls-trade-lineup-change { flex: 1 1 auto; min-width: 0; }
+.mls-trade-lineup-line { display: flex; gap: 0.4rem; align-items: baseline; font-size: 0.85rem; }
+.mls-trade-lineup-sign { flex: 0 0 0.8em; font-weight: 700; }
+.mls-trade-lineup-name { flex: 1 1 auto; white-space: nowrap; }
+.mls-trade-lineup-rank { flex: 0 0 auto; color: var(--text-muted); font-weight: 600; font-size: 0.78rem; }
+.mls-trade-lineup-line.mls-trade-out { color: #fca5a5; }
+.mls-trade-lineup-line.mls-trade-in { color: #4ade80; }
+.mls-trade-lineup-line em { color: var(--text-muted); }
+
+/* Trade Analyzer (improvements S14, round 5): the player picker (js/mls/trade/picker.js) and the compact rows the
+   analysis lists each player in (js/mls/scout/engine.js). */
+/* Receive and Give side by side from tablet width up, in the form and in the results (round 8); stacked on phones. */
+.mls-trade-sides { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.5rem; }
+.mls-trade-side-title { font-weight: 700; margin: 1rem 0 0.5rem; }
+.mls-trade-side-get { color: #4ade80; }
+.mls-trade-side-give { color: #fca5a5; }
+.mls-trade-sides > .mls-trade-side:first-child > .mls-trade-side-title { margin-top: 0; }
+@media (min-width: 768px) {
+    .mls-trade-sides { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .mls-trade-sides > .mls-trade-side > .trade-group-header.mt-3,
+    .mls-trade-sides > .mls-trade-side > .mls-trade-side-title { margin-top: 0; }
+}
+.mls-trade-picker { display: flex; flex-direction: column; gap: 0.45rem; }
+.mls-trade-tokens { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.mls-trade-tokens:empty { display: none; }
+.mls-trade-token { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 4px 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255, 255, 255, 0.04); font-size: 0.85rem; color: var(--text-main); }
+.mls-trade-token-name { font-weight: 600; overflow-wrap: anywhere; }
+.mls-trade-token-meta { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+.mls-trade-token-remove { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; }
+.mls-trade-token-remove:hover, .mls-trade-token-remove:focus-visible { color: var(--text-main); background: rgba(255, 255, 255, 0.08); }
+.mls-trade-team { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.mls-trade-team select { flex: 1 1 auto; min-width: 0; }
+.mls-trade-team[hidden], .mls-trade-pick-row[hidden] { display: none; }
+.mls-trade-pick-row { display: flex; gap: 6px; align-items: center; }
+.mls-trade-pick-row select { width: auto; flex: 0 0 auto; padding-top: 0.4rem; padding-bottom: 0.4rem; }
+.mls-trade-value-settings { margin-top: 0.75rem; }
+.mls-trade-value-settings .settings-subsection { margin: 0; }
+.mls-trade-row { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.55rem 0; border-bottom: 1px solid var(--border); }
+.mls-trade-row .badge { flex: 0 0 auto; min-width: 3.3em; justify-content: center; text-align: center; margin-top: 2px; }
+.mls-trade-row-main { flex: 1 1 auto; min-width: 0; }
+.mls-trade-row-name { font-weight: 700; font-size: 0.92rem; color: var(--text-main); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mls-trade-row-meta { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
+.mls-trade-row-warn { color: #fca5a5; font-weight: 600; }
+.mls-trade-row-value { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mls-trade-row-mkt { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+.mls-trade-row-ur { color: var(--text-muted); }
+
+/* Export Trade (improvements S14, js/mls/trade/export.js): the switch and button at the bottom of the Trade Analyzer,
+   and the image's own parts (only in html2canvas's clone of #tradeOutput). */
+.mls-trade-export-row { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.mls-trade-export-row .btn { width: auto; display: inline-flex; align-items: center; gap: 6px; }
+.mls-trade-export-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; }
+.mls-trade-export-toggle input { width: 16px; height: 16px; accent-color: var(--primary-green); }
+.mls-trade-export-title { font-weight: 800; font-size: 1.05rem; color: var(--text-main); margin-bottom: 0.6rem; }
+.mls-trade-export-sidebox { margin-bottom: 0.6rem; }
+.mls-trade-export-sidehead { display: flex; gap: 0.5rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 3px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.mls-trade-export-sidehead > span:first-child { flex: 1 1 auto; }
+.mls-trade-export-get { color: #4ade80; }
+.mls-trade-export-give { color: #fca5a5; }
+.mls-trade-export-asset { display: flex; align-items: center; gap: 0.5rem; padding: 3px 0; font-size: 0.9rem; color: var(--text-main); }
+.mls-trade-export-asset .badge { min-width: 3.3em; justify-content: center; text-align: center; }
+.mls-trade-export-name { flex: 1 1 auto; font-weight: 600; white-space: nowrap; }
+.mls-trade-export-val { flex: 0 0 4.2em; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mls-trade-export-sidehead .mls-trade-export-val { font-weight: 700; color: var(--text-muted); }
+.mls-trade-export-mkt { color: var(--text-muted); }
+.mls-trade-export-ur { color: var(--text-muted); font-weight: 600; }
+.mls-trade-export-foot { font-size: 0.7rem; color: var(--text-muted); margin: 0.2rem 0 0.8rem; }
+.mls-trade-impact-headline { font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-top: 0.5rem; line-height: 1.4; }
+.mls-trade-impact-key { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem; }
+
+/* The market values' age under the verdicts (improvements S14, round 6): amber after a day. */
+.mls-trade-market-age { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin: -0.25rem 0 0.75rem; }
+.mls-trade-market-age.is-stale { color: #fbbf24; font-weight: 600; }
+
 .verdict-fair { border-color: var(--dart-border); background: var(--dart-bg); }
 .verdict-fair .trade-verdict-result { color: #93c5fd; }
 
