@@ -44,7 +44,7 @@ import { autoFetchRosRankings } from './rankings/rosFetch.js';
 import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './settings.js';
 import './trade/valueCurve.js';
 import './trade/waiverValue.js';
-import { copyLineupAsText, exportLineup } from './trade/export.js';
+import { copyLineupAsText, exportLineup, exportTrade } from './trade/export.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
@@ -161,6 +161,8 @@ const clickActions = {
     optimizeLineup() { optimizeLineup(true, true); },
     copyLineupAsText() { copyLineupAsText(this); },
     exportLineup() { exportLineup(); },
+    // Scout tab: Trade Analyzer's Export Trade (improvements S14)
+    exportTrade() { exportTrade(); },
     toggleLockCountdown() { toggleLockCountdown(); },
     unlockAllPlayers() { unlockAllPlayers(); },
     overrideAutoLock() { overrideAutoLock(this.dataset.id); },

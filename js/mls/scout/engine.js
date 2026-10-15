@@ -290,13 +290,38 @@ import { normalizeName } from '../../shared/names.js';
             } else {
                 verdictHTML = buildTradeVerdictHTML(getResults, giveResults);
             }
-            html += verdictHTML;
             // How your team changes, under the verdict (improvements S14). Its own failure leaves the
             // verdict and the cards as they were.
+            let impactHTML = '';
             try {
-                html += await buildTradeImpactHTML(league, targetNames, sellNames);
+                impactHTML = await buildTradeImpactHTML(league, targetNames, sellNames);
             } catch (e) {
                 console.warn('Trade Analyzer: lineup comparison unavailable.', e);
+            }
+            if (isOneSided) {
+                html += verdictHTML + impactHTML;
+            } else {
+                // Export Trade (trade/export.js) saves the verdict and the section as an image, with a
+                // header naming the league and both sides; the header shows only in the image.
+                const shownName = (n) => {
+                    const c = normalizeName(n);
+                    return (rosIndex.get(c) || weeklyIndex.get(c) || { name: n }).name;
+                };
+                const side = (label, names) => `<div class="mls-trade-export-side"><strong>${label}:</strong> ${names.map(n => escapeHtml(shownName(n))).join(', ')}</div>`;
+                html += `
+                <div id="tradeExportArea" class="mls-trade-export-area">
+                    <div class="mls-trade-export-head" hidden>
+                        <div class="mls-trade-export-title">Trade${league && league.name ? ` &middot; ${escapeHtml(league.name)}` : ''}</div>
+                        ${side('You get', targetNames)}${side('You give', sellNames)}
+                    </div>
+                    ${verdictHTML}${impactHTML}
+                </div>
+                <div class="mls-trade-export-row">
+                    <button type="button" id="exportTradeBtn" class="btn btn-purple" data-action="exportTrade" title="Save the verdict and the Power Rankings change as an image">
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        Export Trade
+                    </button>
+                </div>`;
             }
 
             if (targetNames.length > 0) {

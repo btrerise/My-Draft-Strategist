@@ -4235,3 +4235,36 @@ sideways scroll at 375px with eight columns.
 **Screenshots.** Rendered here on main and this branch: only **`mls-league-guide.png`** changes, at both widths
 (`desktop/` 1280×6607 → 1280×6676, `phone/` 390×13963 → 390×14170), from the Guide sentence. All 38 others are
 pixel-identical. To be taken from this branch's CI renders ("Accepting an intended visual change").
+
+### S14, round 3: Export Trade
+
+**The owner asked** for an "Export Trade" button like the Lineup tab's PNG.
+
+**User-visible effect.** Under the verdict and "Power Rankings after the trade" (when both sides have players), an
+**Export Trade** button (camera icon, purple like the Lineup tab's PNG) saves `My_Trade_Lineup_Strategist.png`, 480px
+wide at 2x:
+- a header only the image shows: "Trade · <league>", "You get: …", "You give: …" (names as your rankings spell them);
+- the value verdict(s), then the Power Rankings section (or a manual league's starters), with the partner's fold open;
+- no tooltips, "i" icons or dotted underlines, and none of the notes written for you (injuries left out, typos, players
+  not yours, the Market Consensus fallback, the Future explanation): those are marked `.mls-trade-impact-help` in
+  `lineupSection.js`. Notes the league should see stay: an empty slot, draft picks, unranked players.
+The page itself doesn't change. A one-sided entry has no verdict and no button.
+
+**What changed and where.**
+- `js/mls/scout/engine.js`: the verdict and the section sit in `#tradeExportArea` with the hidden header, and the
+  button follows.
+- `js/mls/trade/export.js`: `exportTrade`, Export Lineup's pattern (html2canvas on first use, a clone made for the
+  image). html2canvas draws a `<summary>` as a numbered list item ("1. Their team"), so the clone swaps it for a div.
+- `js/mls/main.js`: the `exportTrade` action. `css/mls.css`: `.mls-trade-export-*`, `.mls-trade-impact-partner-title`.
+- `lineup/index.html` (Guide step 9 mentions it), `CHANGELOG.md`.
+
+**Tests.** `mls-trade-impact.spec.mjs` serves html2canvas 1.4.1 from tests/node_modules (as `export-flex.spec.mjs`
+does), records the clone after the app's own `onclone`, and checks: the file name, a 960px-wide PNG, the header, the
+verdict and the summary in it, the partner's section open with no `<summary>`, no tooltips, the pick note kept and the
+injury note dropped, the page unchanged afterwards, and no button for a one-sided entry. I looked at the PNG at both
+widths.
+
+**Checks.** Precache OK; 350 unit and 373 Playwright tests pass (visual.spec fails here as on main).
+
+**Screenshots.** Still only `mls-league-guide.png` at both widths (desktop 1280×6676, phone now 390×14216 with the
+longer Guide sentence); the other 38 are pixel-identical to main. To be taken from CI.

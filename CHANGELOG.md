@@ -91,6 +91,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   and names it can't match. In a manual league, where the app only knows your roster, it lists the starters who
   change instead (slot, who goes out, who comes in), by the Lineup tab's rules. Injuries and byes are left out, and
   nothing is saved: your Lineup tab doesn't change. The Guide's Trade Analyzer step describes it.
+- **Export Trade.** A button under the trade verdict saves the verdict and "Power Rankings after the trade" as an
+  image for your league chat, like the Lineup tab's PNG: a header names the league and both sides, the other team's
+  change is shown open, and the notes meant only for you (injuries left out, typos) stay out of it.
 - **Smooth tab and league changes.** Switching tabs (tapping the tab bar, swiping, the menu, number keys, Back and
   Forward) now slides the page in the direction you're going on a phone, and fades softly (the new page rising a
   little) on a wider screen, while the header and tab bar stay put. A green bar above the tab bar's active tab slides to the new one. Switching league

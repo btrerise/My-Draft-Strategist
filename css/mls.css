@@ -996,6 +996,8 @@ button.close-chip {
 .mls-trade-rank-down { color: #fca5a5; }
 .mls-trade-impact-partner { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
 .mls-trade-impact-partner > summary { cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--text-main); }
+/* The same title in Export Trade's image, where the <summary> is swapped for a plain div (trade/export.js). */
+.mls-trade-impact-partner-title { font-size: 0.82rem; font-weight: 600; color: var(--text-main); }
 .mls-power-tooltip-row.mls-trade-in .mls-power-tooltip-name { color: #4ade80; }
 .mls-trade-lineup-row { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.35rem 0; border-top: 1px solid var(--border); }
 .mls-trade-lineup-slot { flex: 0 0 2.6em; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); padding-top: 2px; }
@@ -1007,6 +1009,15 @@ button.close-chip {
 .mls-trade-lineup-line.mls-trade-out { color: #fca5a5; }
 .mls-trade-lineup-line.mls-trade-in { color: #4ade80; }
 .mls-trade-lineup-line em { color: var(--text-muted); }
+
+/* Export Trade (improvements S14, js/mls/trade/export.js): the button under the verdict and the section, and the
+   header that shows only in the image. */
+.mls-trade-export-row { display: flex; justify-content: flex-end; margin: -0.25rem 0 1rem; }
+.mls-trade-export-row .btn { width: auto; display: inline-flex; align-items: center; gap: 6px; }
+.mls-trade-export-head { margin-bottom: 0.75rem; }
+.mls-trade-export-title { font-weight: 800; font-size: 1.05rem; color: var(--text-main); margin-bottom: 4px; }
+.mls-trade-export-side { font-size: 0.85rem; color: var(--text-main); line-height: 1.45; }
+.mls-trade-export-side strong { color: var(--text-muted); font-weight: 700; }
 
 .verdict-fair { border-color: var(--dart-border); background: var(--dart-bg); }
 .verdict-fair .trade-verdict-result { color: #93c5fd; }

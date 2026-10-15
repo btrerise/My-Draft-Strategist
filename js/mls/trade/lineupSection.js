@@ -19,7 +19,10 @@ import {
     powerSummaryText, powerTradeImpact, tradePartner
 } from './lineupImpact.js';
 
-const INJURY_NOTE = 'Injuries and byes are left out: this compares your team for the rest of the season, not this week.';
+// Notes that explain the screen to you, not the trade to your league: Export Trade (trade/export.js) leaves
+// them out of the image. The rest (an empty slot, picks, unranked players) stay in it.
+const forYou = (text) => `<span class="mls-trade-impact-help">${text}</span>`;
+const INJURY_NOTE = forYou('Injuries and byes are left out: this compares your team for the rest of the season, not this week.');
 
 const section = (title, body) => `
     <section class="mls-trade-impact" data-trade-impact>
@@ -69,9 +72,9 @@ export async function buildTradeImpactHTML(league, getNames, giveNames) {
         if (isMine(clean)) { alreadyYours.push(n); return; }
         if (!get.some(g => g.cleanName === clean)) get.push({ cleanName: clean, name: nameOf(n, clean), pos });
     });
-    if (unmatched.length) notes.push(`Couldn't match ${listNames(unmatched)} to a player, so ${unmatched.length > 1 ? 'they take' : 'he takes'} no spot.`);
-    if (notYours.length) notes.push(`${listNames(notYours)} ${notYours.length > 1 ? "aren't" : "isn't"} on your roster, so ${notYours.length > 1 ? "they're" : "he's"} left out.`);
-    if (alreadyYours.length) notes.push(`${listNames(alreadyYours)} ${alreadyYours.length > 1 ? 'are' : 'is'} already on your roster.`);
+    if (unmatched.length) notes.push(forYou(`Couldn't match ${listNames(unmatched)} to a player, so ${unmatched.length > 1 ? 'they take' : 'he takes'} no spot.`));
+    if (notYours.length) notes.push(forYou(`${listNames(notYours)} ${notYours.length > 1 ? "aren't" : "isn't"} on your roster, so ${notYours.length > 1 ? "they're" : "he's"} left out.`));
+    if (alreadyYours.length) notes.push(forYou(`${listNames(alreadyYours)} ${alreadyYours.length > 1 ? 'are' : 'is'} already on your roster.`));
     if (picks.length) notes.push(`${listNames(picks)} ${picks.length > 1 ? 'are draft picks' : 'is a draft pick'}: no lineup spot.`);
 
     if (give.length === 0 || get.length === 0) {
@@ -92,7 +95,7 @@ async function powerSection(league, title, give, get, notes) {
         }
         rankings = State.marketRankings;
         via = 'by Market Consensus';
-        notes.unshift('No ROS rankings loaded, so this uses Market Consensus. Upload ROS rankings on the Roster tab for your own board.');
+        notes.unshift(forYou('No ROS rankings loaded, so this uses Market Consensus. Upload ROS rankings on the Roster tab for your own board.'));
     }
     const idx = rankingIndex(rankings);
     const rosterMap = league.globalRosterMap || {};
@@ -116,11 +119,11 @@ async function powerSection(league, title, give, get, notes) {
     const hasFuture = Number.isFinite(impact.you.before.futureRank) && Number.isFinite(impact.you.after.futureRank);
     const columns = hasFuture ? [...POWER_COLUMNS, FUTURE_COLUMN] : POWER_COLUMNS;
     if (hasFuture) {
-        notes.push(futureInfo.label === 'market'
+        notes.push(forYou(futureInfo.label === 'market'
             ? "<strong>Future</strong> is each roster's dynasty Market Consensus value (player ages from Sleeper couldn't be loaded), as on the Roster tab."
-            : "<strong>Future</strong> is each roster's value from these rankings, adjusted for player age (from Sleeper), as on the Roster tab: younger players count a bit more, older players less.");
+            : "<strong>Future</strong> is each roster's value from these rankings, adjusted for player age (from Sleeper), as on the Roster tab: younger players count a bit more, older players less."));
     } else if (dynasty) {
-        notes.push("Couldn't load player ages from Sleeper, so there's no Future column. Dynasty Market Consensus data (Trade Finder below) gives a fallback.");
+        notes.push(forYou("Couldn't load player ages from Sleeper, so there's no Future column. Dynasty Market Consensus data (Trade Finder below) gives a fallback."));
     }
 
     const unranked = give.concat(get).filter(p => !idx.get(p.cleanName)).map(p => p.name);

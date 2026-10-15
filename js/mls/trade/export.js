@@ -138,3 +138,61 @@ function splitBlendedBorders(root) {
         exportBtn.innerText = origText;
     }
 };
+
+// --- TRADE EXPORT (improvements S14) ---
+// The Trade Analyzer's verdict and "after the trade" section as a PNG for a league chat, the way Export
+// Lineup saves the lineup. The image is drawn from a clone, so the page doesn't change: the header naming
+// the league and both sides shows (it's hidden on the page), the partner's fold opens, and what only
+// makes sense on screen goes: tooltips and their dotted underlines, the "i" icons, the button, and the
+// notes written for you rather than the league (.mls-trade-impact-help: injuries left out, typos, ...).
+export const exportTrade = async function() {
+    if (!(await ensureHtml2Canvas())) {
+        showToast("Couldn't load the screenshot library. Check your connection and try again.", { isError: true });
+        return;
+    }
+    const area = document.getElementById('tradeExportArea');
+    const btn = document.getElementById('exportTradeBtn');
+    if (!area || !btn) return;
+    const label = btn.lastChild;
+    const origText = label.textContent;
+    label.textContent = ' Capturing…';
+    try {
+        const canvas = await html2canvas(area, {
+            backgroundColor: '#1c2541',
+            scale: 2,
+            onclone: (clonedDoc) => {
+                const clone = clonedDoc.getElementById('tradeExportArea');
+                if (!clone) return;
+                clone.querySelectorAll('.mls-trade-export-head').forEach(el => el.removeAttribute('hidden'));
+                clone.querySelectorAll('details').forEach(el => el.setAttribute('open', ''));
+                // html2canvas draws a <summary> as a numbered list item ("1. Their team"): a plain heading instead.
+                clone.querySelectorAll('summary').forEach(el => {
+                    const title = clonedDoc.createElement('div');
+                    title.className = 'mls-trade-impact-partner-title';
+                    title.textContent = el.textContent;
+                    el.replaceWith(title);
+                });
+                clone.querySelectorAll('.tooltip-text, .tooltip-icon').forEach(el => el.remove());
+                clone.querySelectorAll('.mls-dotted-underline').forEach(el => el.classList.remove('mls-dotted-underline'));
+                clone.querySelectorAll('.mls-trade-impact-help').forEach(el => el.closest('li').remove());
+                clone.querySelectorAll('.mls-trade-impact-notes').forEach(ul => { if (!ul.children.length) ul.remove(); });
+                clone.style.width = '480px';
+                clone.style.maxWidth = 'none';
+                clone.style.margin = '0';
+                clone.style.padding = '1rem';
+                clone.style.borderRadius = '8px';
+                clone.style.background = '#1c2541';
+                clone.style.boxSizing = 'border-box';
+            }
+        });
+        const link = document.createElement('a');
+        link.download = 'My_Trade_Lineup_Strategist.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } catch (err) {
+        console.error('Export failed:', err);
+        showToast('Export failed. Please try again.', { isError: true });
+    } finally {
+        label.textContent = origText;
+    }
+};

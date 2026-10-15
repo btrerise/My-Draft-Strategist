@@ -2,6 +2,8 @@
 // Sleeper league (yours, and the partner's in a fold), your starters before and after in a manual league,
 // and the cases that show a note or nothing.
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, loadMlsRankings } from './helpers.mjs';
 
@@ -22,6 +24,32 @@ async function asManualLeague(page, reqs) {
         if (reqs) league.reqs = reqs;
     }, reqs);
 }
+
+// Export Trade: html2canvas 1.4.1 from tests/node_modules (helpers.mjs aborts the CDN), wrapped to record what the
+// app's clone holds after its own onclone has run (as export-flex.spec.mjs does for the lineup).
+const here = (p) => fileURLToPath(new URL(p, import.meta.url));
+const { PNG } = createRequire(import.meta.url)(here('./node_modules/playwright-core/lib/utilsBundle.js'));
+const HTML2CANVAS = readFileSync(here('./node_modules/html2canvas/dist/html2canvas.min.js'), 'utf8') + `
+;(() => {
+    const original = window.html2canvas;
+    window.html2canvas = (element, options = {}) => original(element, {
+        ...options,
+        onclone: async (doc) => {
+            if (options.onclone) await options.onclone(doc);
+            const area = doc.getElementById('tradeExportArea');
+            const head = area.querySelector('.mls-trade-export-head');
+            window.__tradeClone = {
+                width: area.getBoundingClientRect().width,
+                head: head && !head.hidden ? head.innerText : null,
+                text: area.innerText,
+                tooltips: area.querySelectorAll('.tooltip-text, .tooltip-icon').length,
+                closedDetails: area.querySelectorAll('details:not([open])').length,
+                summaries: area.querySelectorAll('summary').length,
+            };
+        },
+    });
+})();
+`;
 
 const section = (page) => page.locator('#tradeOutput [data-trade-impact]');
 const cellTexts = (row) => row.locator('td').evaluateAll(tds => tds.map(td => td.firstChild && td.querySelector('.mls-dotted-underline') ? td.querySelector('.mls-dotted-underline').textContent : td.textContent.trim()));
@@ -133,6 +161,51 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expect(s.locator('details.mls-trade-impact-partner th').last()).toHaveText('Future');
         expect(await noSideScroll(page)).toBe(true);
         expect(await s.locator('.mls-power-table-wrap').first().evaluate(w => w.scrollWidth <= w.clientWidth)).toBe(true);
+        await expectClean(page, state);
+    });
+
+    test('Export Trade saves the verdict and the section as an image', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await page.route(/^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/html2canvas\/1\.4\.1\/html2canvas\.min\.js$/,
+            (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: HTML2CANVAS }));
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'scout');
+        await runTrade(page, 'Bijan Robinson\nJahmyr Gibbs\nSaquon Barkley\n2027 1st', "Ja'Marr Chase\nJustin Jefferson\nCeeDee Lamb");
+        // The header is for the image only.
+        await expect(page.locator('#tradeExportArea .mls-trade-export-head')).toBeHidden();
+        const btn = page.locator('#exportTradeBtn');
+        await expect(btn).toHaveText('Export Trade');
+        const download = page.waitForEvent('download');
+        await btn.click();
+        const file = await download;
+        expect(file.suggestedFilename()).toBe('My_Trade_Lineup_Strategist.png');
+        const png = PNG.sync.read(readFileSync(await file.path()));
+        expect(png.width).toBe(960); // 480px at scale 2
+        const clone = await page.evaluate(() => window.__tradeClone);
+        expect(clone.head).toContain('Trade · Fixture League');
+        expect(clone.head).toContain('You get: Bijan Robinson, Jahmyr Gibbs, Saquon Barkley, 2027 1st');
+        expect(clone.head).toContain("You give: Ja'Marr Chase, Justin Jefferson, CeeDee Lamb");
+        expect(clone.text).toMatch(/By Your Rankings/i);
+        expect(clone.text).toContain('Stronger at RB (2nd → 1st)');
+        expect(clone.text).toContain('Their team: Rival');
+        expect(clone.closedDetails).toBe(0);
+        expect(clone.summaries).toBe(0);
+        expect(clone.tooltips).toBe(0);
+        // Notes for the league stay (the pick); notes for you go (injuries left out).
+        expect(clone.text).toContain('2027 1st is a draft pick');
+        expect(clone.text).not.toContain('Injuries and byes');
+        // The page itself is unchanged: header hidden, fold closed, button label back.
+        await expect(page.locator('#tradeExportArea .mls-trade-export-head')).toBeHidden();
+        await expect(page.locator('#tradeExportArea details')).not.toHaveAttribute('open', '');
+        await expect(btn).toHaveText('Export Trade');
+
+        // A one-sided entry has no verdict, so no export.
+        await page.fill('#buyInput', 'Bijan Robinson');
+        await page.fill('#sellInput', '');
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        await expect(page.locator('#tradeOutput')).toContainText('only one side has players');
+        await expect(page.locator('#exportTradeBtn')).toHaveCount(0);
         await expectClean(page, state);
     });
 
