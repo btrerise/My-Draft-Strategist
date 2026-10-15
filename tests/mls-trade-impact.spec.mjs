@@ -36,12 +36,12 @@ const HTML2CANVAS = readFileSync(here('./node_modules/html2canvas/dist/html2canv
         ...options,
         onclone: async (doc) => {
             if (options.onclone) await options.onclone(doc);
-            const area = doc.getElementById('tradeExportArea');
-            const head = area.querySelector('.mls-trade-export-head');
+            const area = doc.getElementById('tradeOutput');
             window.__tradeClone = {
                 width: area.getBoundingClientRect().width,
-                head: head && !head.hidden ? head.innerText : null,
                 text: area.innerText,
+                assets: [...area.querySelectorAll('.mls-trade-export-asset')].map(r => r.innerText.replace(/\\s+/g, ' ').trim()),
+                cards: area.querySelectorAll('.scout-result-card').length,
                 tooltips: area.querySelectorAll('.tooltip-text, .tooltip-icon').length,
                 closedDetails: area.querySelectorAll('details:not([open])').length,
                 summaries: area.querySelectorAll('summary').length,
@@ -73,6 +73,11 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expect(s).toContainText('Power Rankings after the trade');
         await expect(s).toContainText('by your ROS rankings');
         await expect(s.locator('.mls-trade-impact-summary').first()).toHaveText(/Stronger at RB \(2nd → 1st\); weaker at WR \(1st → 2nd\)\./);
+        // The headline puts the value verdict (Fair, by your rankings) and the lineup change together; the key explains the ranks.
+        await expect(s.locator('.mls-trade-impact-headline')).toHaveText(/^A fair trade by value (that makes your starting lineup stronger|, but your starting lineup gets weaker|that doesn't change your starting lineup)/);
+        await expect(s.locator('.mls-trade-impact-key')).toHaveText('Ranks of 2 teams: 1 = strongest. Green = better after the trade, red = worse.');
+        // Under the headline, the sentence leaves out the percents the headline already gives.
+        await expect(s.locator('.mls-trade-impact-summary').first()).toHaveText(/^Starting lineup stays 1st of 2(, but (stronger|weaker))?\. /);
         const you = s.locator('table').first().locator('tr.mls-power-you');
         const cells = await cellTexts(you);
         expect(cells[0]).toBe('You');
@@ -164,7 +169,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expectClean(page, state);
     });
 
-    test('Export Trade saves the verdict and the section as an image', async ({ page }) => {
+    test('Export Trade: each asset with its value and the verdict; Power Rankings only when switched on', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await page.route(/^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/html2canvas\/1\.4\.1\/html2canvas\.min\.js$/,
             (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: HTML2CANVAS }));
@@ -172,33 +177,54 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await loadMlsRankings(page);
         await showTab(page, 'scout');
         await runTrade(page, 'Bijan Robinson\nJahmyr Gibbs\nSaquon Barkley\n2027 1st', "Ja'Marr Chase\nJustin Jefferson\nCeeDee Lamb");
-        // The header is for the image only.
-        await expect(page.locator('#tradeExportArea .mls-trade-export-head')).toBeHidden();
         const btn = page.locator('#exportTradeBtn');
+        const toggle = page.locator('#tradeExportPower');
         await expect(btn).toHaveText('Export Trade');
-        const download = page.waitForEvent('download');
-        await btn.click();
-        const file = await download;
-        expect(file.suggestedFilename()).toBe('My_Trade_Lineup_Strategist.png');
-        const png = PNG.sync.read(readFileSync(await file.path()));
-        expect(png.width).toBe(960); // 480px at scale 2
-        const clone = await page.evaluate(() => window.__tradeClone);
-        expect(clone.head).toContain('Trade · Fixture League');
-        expect(clone.head).toContain('You get: Bijan Robinson, Jahmyr Gibbs, Saquon Barkley, 2027 1st');
-        expect(clone.head).toContain("You give: Ja'Marr Chase, Justin Jefferson, CeeDee Lamb");
+        // At the bottom of the card, after the player cards; the switch is off by default.
+        expect(await page.locator('#tradeOutput').evaluate(el => {
+            const cards = el.querySelectorAll('.scout-result-card');
+            return !!(cards[cards.length - 1].compareDocumentPosition(el.querySelector('#exportTradeBtn')) & Node.DOCUMENT_POSITION_FOLLOWING);
+        })).toBe(true);
+        await expect(toggle).not.toBeChecked();
+
+        const exportOnce = async () => {
+            const download = page.waitForEvent('download');
+            await btn.click();
+            const file = await download;
+            expect(file.suggestedFilename()).toBe('My_Trade_Lineup_Strategist.png');
+            expect(PNG.sync.read(readFileSync(await file.path())).width).toBe(960); // 480px at scale 2
+            return page.evaluate(() => window.__tradeClone);
+        };
+        let clone = await exportOnce();
+        expect(clone.text).toContain('Trade · Fixture League');
+        // Each asset with its value by your rankings; the pick borrows the market's (none loaded here: UR).
+        expect(clone.assets).toHaveLength(7);
+        expect(clone.assets[3]).toBe('Pick 2027 1st UR');
+        expect(clone.assets[0]).toMatch(/^RB Bijan Robinson [\d,]+$/);
+        expect(clone.assets[4]).toMatch(/^WR Ja'Marr Chase [\d,]+$/);
+        expect(clone.text).toMatch(/You get/i);
+        expect(clone.text).toMatch(/You give/i);
         expect(clone.text).toMatch(/By Your Rankings/i);
+        expect(clone.cards).toBe(0);
+        expect(clone.text).not.toContain('Power Rankings after the trade');
+        expect(clone.tooltips).toBe(0);
+
+        // Switched on: the section comes too, the partner's part open, notes for you left out.
+        await toggle.check();
+        clone = await exportOnce();
+        expect(clone.text).toMatch(/Power Rankings after the trade/i);
         expect(clone.text).toContain('Stronger at RB (2nd → 1st)');
         expect(clone.text).toContain('Their team: Rival');
         expect(clone.closedDetails).toBe(0);
         expect(clone.summaries).toBe(0);
         expect(clone.tooltips).toBe(0);
-        // Notes for the league stay (the pick); notes for you go (injuries left out).
         expect(clone.text).toContain('2027 1st is a draft pick');
         expect(clone.text).not.toContain('Injuries and byes');
-        // The page itself is unchanged: header hidden, fold closed, button label back.
-        await expect(page.locator('#tradeExportArea .mls-trade-export-head')).toBeHidden();
-        await expect(page.locator('#tradeExportArea details')).not.toHaveAttribute('open', '');
+        // The page is unchanged, and the switch is remembered for the next trade.
+        await expect(page.locator('#tradeOutput details')).not.toHaveAttribute('open', '');
         await expect(btn).toHaveText('Export Trade');
+        await runTrade(page, 'Bijan Robinson', 'Derrick Henry');
+        await expect(page.locator('#tradeExportPower')).toBeChecked();
 
         // A one-sided entry has no verdict, so no export.
         await page.fill('#buyInput', 'Bijan Robinson');

@@ -31,23 +31,14 @@ import { State } from '../state.js';
         return verdictHTML;
     }
 
-    // Builds one verdict banner (label + totals + Fair/Favors-You/Favors-Them) from a set of
-    // GET/GIVE card results, keyed off whichever value field ("userValue" or "marketValue") and
-    // matched flag the caller wants. Returns "" when the underlying data source isn't loaded at
-    // all, or when nothing on either side matched it, so callers can concatenate freely and fall
-    // back to a single prompt only when BOTH sources come back empty.
-    function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
-        if (!sourceLoaded) return "";
-
+    // The verdict's numbers, for the banner below and for the Trade Analyzer's headline under it (improvements
+    // S14, js/mls/trade/lineupSection.js), so the two never disagree. getTotal/giveTotal include the waiver
+    // adjustment (bonusGet/bonusGive). verdict: 'fair' | 'you' | 'them'. Returns null when nothing on either side
+    // has a value.
+    export function tradeVerdictNumbers(getResults, giveResults, valueKey) {
         let getTotal = getResults.reduce((sum, r) => sum + r[valueKey], 0);
         let giveTotal = giveResults.reduce((sum, r) => sum + r[valueKey], 0);
-        let unmatchedCount = getResults.concat(giveResults).filter(r => !r[matchedKey]).length;
-
-        if (getTotal === 0 && giveTotal === 0) {
-            return unmatchedCount > 0
-                ? `<div class="trade-verdict-note" style="margin-bottom:1rem;">${label}: none of the players entered were found, so no value total could be calculated.</div>`
-                : "";
-        }
+        if (getTotal === 0 && giveTotal === 0) return null;
 
         // --- WAIVER ADJUSTMENT ---
         // Credits whichever side of the trade includes FEWER total players. A straight sum of
@@ -57,19 +48,14 @@ import { State } from '../state.js';
         // like FantasyCalc apply to their own trade calculators, though the credit amount here is
         // a flat, user-configurable estimate (see the Trade Analyzer's settings above) rather
         // than one derived from real trade data.
-        let waiverSubnoteGet = "", waiverSubnoteGive = "";
+        let bonusGet = 0, bonusGive = 0;
         if (State.tradeSettings.waiverAdjustment) {
             let spotDiff = giveResults.length - getResults.length; // >0 = you're sending more pieces than you receive
             let perSpot = parseFloat(State.tradeSettings.waiverAdjustmentValue) || 0;
             if (spotDiff !== 0 && perSpot > 0) {
                 let bonus = Math.abs(spotDiff) * perSpot;
-                if (spotDiff > 0) {
-                    getTotal += bonus;
-                    waiverSubnoteGet = `<span class="trade-verdict-subnote">+${bonus.toLocaleString()} waiver adj.</span>`;
-                } else {
-                    giveTotal += bonus;
-                    waiverSubnoteGive = `<span class="trade-verdict-subnote">+${bonus.toLocaleString()} waiver adj.</span>`;
-                }
+                if (spotDiff > 0) { getTotal += bonus; bonusGet = bonus; }
+                else { giveTotal += bonus; bonusGive = bonus; }
             }
         }
 
@@ -79,11 +65,35 @@ import { State } from '../state.js';
 
         // Within 10% of the larger side's value counts as a fair trade -- outside that, it
         // clearly favors whoever's receiving more value.
+        const verdict = swingPct < 10 ? 'fair' : (diff > 0 ? 'you' : 'them');
+        return { getTotal, giveTotal, bonusGet, bonusGive, diff, swingPct, verdict };
+    }
+
+    // Builds one verdict banner (label + totals + Fair/Favors-You/Favors-Them) from a set of
+    // GET/GIVE card results, keyed off whichever value field ("userValue" or "marketValue") and
+    // matched flag the caller wants. Returns "" when the underlying data source isn't loaded at
+    // all, or when nothing on either side matched it, so callers can concatenate freely and fall
+    // back to a single prompt only when BOTH sources come back empty.
+    function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
+        if (!sourceLoaded) return "";
+
+        let unmatchedCount = getResults.concat(giveResults).filter(r => !r[matchedKey]).length;
+        const nums = tradeVerdictNumbers(getResults, giveResults, valueKey);
+
+        if (!nums) {
+            return unmatchedCount > 0
+                ? `<div class="trade-verdict-note" style="margin-bottom:1rem;">${label}: none of the players entered were found, so no value total could be calculated.</div>`
+                : "";
+        }
+        const { getTotal, giveTotal, diff, swingPct } = nums;
+        let waiverSubnoteGet = nums.bonusGet ? `<span class="trade-verdict-subnote">+${nums.bonusGet.toLocaleString()} waiver adj.</span>` : "";
+        let waiverSubnoteGive = nums.bonusGive ? `<span class="trade-verdict-subnote">+${nums.bonusGive.toLocaleString()} waiver adj.</span>` : "";
+
         let verdictClass, verdictText;
-        if (swingPct < 10) {
+        if (nums.verdict === 'fair') {
             verdictClass = "verdict-fair";
             verdictText = "Fair Trade";
-        } else if (diff > 0) {
+        } else if (nums.verdict === 'you') {
             verdictClass = "verdict-favor-you";
             verdictText = "Favors You";
         } else {

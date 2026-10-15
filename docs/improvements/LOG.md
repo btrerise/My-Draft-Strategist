@@ -4268,3 +4268,60 @@ widths.
 
 **Screenshots.** Still only `mls-league-guide.png` at both widths (desktop 1280×6676, phone now 390×14216 with the
 longer Guide sentence); the other 38 are pixel-identical to main. To be taken from CI.
+
+### S14, round 4: the export reworked; a headline, the percent of league average, a key
+
+**The owner asked** (after my review as a user): move Export Trade to the bottom of the card; leave Power Rankings out
+of the image or make them optional ("not normally discussed when sharing trades"); show each asset's value in the image.
+And yes to three of my review points: the percent of league average when the rank doesn't move, one headline for value
+and lineup together, and a note that 1 = strongest.
+
+**User-visible effect.**
+- **Export Trade** now sits at the bottom of the Trade Analyzer, after the player cards, with an **Include Power
+  Rankings** switch beside it (off by default; remembered as `exportPower` inside the existing `mls_tradeSettings`
+  value, so no new storage key). The image (480px at 2x) is put together for sharing rather than copied from the page:
+  "Trade · <league>", then **You get** and **You give**, each player or pick on one line with its position badge and
+  its **Value** by your rankings (a draft pick borrows the market's value, marked *; UR when unranked), plus a **Mkt**
+  column when market data is loaded, a one-line key to the columns, then the value verdict(s). With the switch on, the
+  "Power Rankings after the trade" section follows, as in round 3 (partner open, notes for you left out). The page
+  itself no longer carries a hidden header or a wrapper.
+- **Headline** at the top of "Power Rankings after the trade" (Sleeper leagues): the value verdict by the same rankings
+  as the ranks, and the lineup change, in one sentence: "You pay in value (−4,389 pts) to make your starting lineup
+  stronger (100% → 115% of league average).", "You gain value (+2,100 pts), but your starting lineup gets weaker (…): a
+  move for later, not now.", "A fair trade by value that doesn't change your starting lineup." (nine cases; the lineup
+  counts as changed at 1 point of league average or more). No value verdict, no headline.
+- **Percent of league average** in the Start sentence: "Starting lineup 5th → 3rd of 12 (96% → 108% of league
+  average)", "stays 5th of 12, but stronger: 96% → 108% of league average", "stays 5th of 12 (96% …)". Under a
+  headline (which already gives the percents) the sentence keeps only the words ("stays 1st of 2, but stronger."). The
+  percent is the Power Rankings' own Start score (`starterScore`, 1 = league average), the number behind the Start rank.
+- **Key** under your table: "Ranks of 12 teams: 1 = strongest. Green = better after the trade, red = worse."
+
+**What changed and where.**
+- `js/mls/trade/verdict.js`: `tradeVerdictNumbers` (the banner's totals, waiver adjustment and Fair/You/Them, moved out
+  of `renderTradeVerdict` unchanged) so the headline and the banner can't disagree. The banners' output is the same.
+- `js/mls/trade/lineupImpact.js`: `startPct`, `tradeHeadline`, and `powerSummaryText`'s percent and `{ pct }` option.
+- `js/mls/trade/lineupSection.js`: the headline (from the cards' values, passed in by `runScout`) and the key.
+- `js/mls/scout/engine.js`: each card's `exportRow` (name, position or "Pick", value, market value); the switch and
+  the button after the cards; `setTradeExport` hands the assets to the export.
+- `js/mls/trade/export.js`: `setTradeExport`, and `exportTrade` builds the image's HTML and swaps it into
+  html2canvas's clone of `#tradeOutput`.
+- `css/mls.css`, `CHANGELOG.md`, `lineup/index.html` (Guide step 9).
+
+**Tests.** Unit: the headline (pay for a stronger lineup, gain value but weaker, fair and unchanged under a point,
+none without a verdict) and the percent sentences. Spec: the button after the cards, the switch off by default, the
+image's assets (seven lines, "Pick 2027 1st UR"), no player cards and no Power Rankings in it by default, then with the
+switch on the section, the partner open, the pick note in and the injury note out; the switch remembered on the next
+trade; the headline, the key and the sentence without percents on screen. I looked at the image at phone width.
+
+**Checks.** Precache OK; 355 unit and 373 Playwright tests pass (visual.spec fails here as on main).
+
+**Screenshots.** Still only `mls-league-guide.png` at both widths (the Guide sentence is longer again).
+
+**Proposed, waiting for the owner** (not built):
+- *The Trade Analyzer on phones is long* (my review, point 4). Suggestions: (a) fold Waiver Adjustment into a closed
+  "Value settings" row under Analyze Trade; (b) after Analyze, scroll to the result on phones; (c) make the "You
+  Receive / You Give Up" cards compact rows (badge, name, ROS rank, value, owner), like the export's asset lines,
+  instead of three-line cards with a big status circle.
+- *Picking players instead of typing them* (owner's idea): replace the two textareas with the Add Player Manually
+  search (`attachPlayerAutocomplete`, js/mls/players.js) that adds each pick as a removable chip, plus a "+ Draft pick"
+  control (year and round). Names always match, so no "Did you mean". Big enough for its own card (S19).

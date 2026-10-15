@@ -14,9 +14,10 @@ import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
 import { isDraftPickName } from './valueCurve.js';
+import { tradeVerdictNumbers } from './verdict.js';
 import {
     FUTURE_COLUMN, lineupSlotCount, lineupSummaryText, lineupTradeChanges, POWER_COLUMNS,
-    powerSummaryText, powerTradeImpact, tradePartner
+    powerSummaryText, powerTradeImpact, tradeHeadline, tradePartner
 } from './lineupImpact.js';
 
 // Notes that explain the screen to you, not the trade to your league: Export Trade (trade/export.js) leaves
@@ -36,7 +37,7 @@ const listNames = (names) => names.map(n => `<strong>${escapeHtml(n)}</strong>`)
 
 // getNames / giveNames: the Trade Analyzer's two lists as typed. Returns '' when there's nothing
 // to show: no league, or a side with no players (draft picks only, or empty).
-export async function buildTradeImpactHTML(league, getNames, giveNames) {
+export async function buildTradeImpactHTML(league, getNames, giveNames, { getResults = null, giveResults = null } = {}) {
     if (!league) return '';
     const getTyped = getNames.filter(n => !isDraftPickName(n));
     const giveTyped = giveNames.filter(n => !isDraftPickName(n));
@@ -82,12 +83,12 @@ export async function buildTradeImpactHTML(league, getNames, giveNames) {
     }
 
     return fullLeague
-        ? await powerSection(league, title, give, get, notes)
+        ? await powerSection(league, title, give, get, notes, { getResults, giveResults })
         : manualSection(league, title, give, get, notes, getPos);
 }
 
 // --- Sleeper leagues: Power Rankings before and after ---
-async function powerSection(league, title, give, get, notes) {
+async function powerSection(league, title, give, get, notes, cards) {
     let rankings = State.rosRankings, via = 'by your ROS rankings';
     if (rankings.length === 0) {
         if (State.marketRankings.length === 0) {
@@ -134,10 +135,17 @@ async function powerSection(league, title, give, get, notes) {
     notes.push(INJURY_NOTE);
 
     const youIn = new Set(get.map(p => p.cleanName)), youOut = give;
+    // The value verdict by the same rankings as these ranks (yours, or the market's when that's what's
+    // loaded), and the lineup change, in one sentence (round 4).
+    const value = cards.getResults && cards.giveResults
+        ? tradeVerdictNumbers(cards.getResults, cards.giveResults, rankings === State.rosRankings ? 'userValue' : 'marketValue') : null;
+    const headline = tradeHeadline(value, impact.you);
     let body = `
         <div class="mls-trade-impact-via">${via}</div>
-        <div class="mls-trade-impact-summary">${escapeHtml(powerSummaryText(impact.you, impact.teams))}</div>
-        ${powerTable([impact.you], impact.teams, youIn, youOut, columns)}`;
+        ${headline ? `<div class="mls-trade-impact-headline">${escapeHtml(headline)}</div>` : ''}
+        <div class="mls-trade-impact-summary">${escapeHtml(powerSummaryText(impact.you, impact.teams, { pct: !headline }))}</div>
+        ${powerTable([impact.you], impact.teams, youIn, youOut, columns)}
+        <div class="mls-trade-impact-key">Ranks of ${impact.teams} teams: 1 = strongest. <span class="mls-trade-rank-up">Green</span> = better after the trade, <span class="mls-trade-rank-down">red</span> = worse.</div>`;
     if (impact.partner) {
         const pIn = new Set(give.map(p => p.cleanName));
         const pOut = get.filter(p => rosterMap[p.cleanName] === partner);

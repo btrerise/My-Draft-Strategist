@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { loadPower } from './helpers/powerEnv.mjs';
 import {
     leagueAfterTrade, lineupSummaryText, lineupTradeChanges, openPowerSlots, powerSummaryText,
-    powerTradeImpact, tradePartner
+    powerTradeImpact, startPct, tradeHeadline, tradePartner
 } from '../../js/mls/trade/lineupImpact.js';
 
 const { computePositionalPower, POWER_DEFAULT_REQS } = await loadPower();
@@ -88,7 +88,7 @@ describe('2-for-1 that leaves an empty slot', () => {
     });
     test('summary in words', () => {
         assert.equal(powerSummaryText(impact.you, impact.teams),
-            'Starting lineup stays 2nd of 2. Stronger at WR (2nd → 1st); weaker at RB (1st → 2nd).');
+            'Starting lineup stays 2nd of 2, but weaker: 93% → 87% of league average. Stronger at WR (2nd → 1st); weaker at RB (1st → 2nd).');
     });
     test('a hole already there before the trade isn\'t reported', () => {
         const thin = makeLeague(BASE.filter(p => p[0] !== 'rb2'), ONE_QB);
@@ -199,5 +199,32 @@ describe('dynasty: future value', () => {
         const plain = powerTradeImpact(league, { give: ['rbOld'], get: [{ cleanName: 'rbYoung', pos: 'RB' }], partner: 'Rival', reqs },
             (l) => computePositionalPower(l, rankings));
         assert.doesNotMatch(powerSummaryText(plain.you, plain.teams), /Future/);
+    });
+});
+
+describe('the headline: value and lineup in one sentence', () => {
+    const side = (b, a) => ({ before: { starterScore: b }, after: { starterScore: a } });
+    test('pay value to get stronger', () => {
+        assert.equal(tradeHeadline({ verdict: 'them', diff: -4389 }, side(0.96, 1.08)),
+            'You pay in value (\u22124,389 pts) to make your starting lineup stronger (96% → 108% of league average).');
+    });
+    test('gain value, lose lineup', () => {
+        assert.equal(tradeHeadline({ verdict: 'you', diff: 2100 }, side(1.1, 1.0)),
+            'You gain value (+2,100 pts), but your starting lineup gets weaker (110% → 100% of league average): a move for later, not now.');
+    });
+    test('fair, no lineup change (under a point of league average)', () => {
+        assert.equal(tradeHeadline({ verdict: 'fair', diff: 50 }, side(1.001, 1.004)), "A fair trade by value that doesn't change your starting lineup.");
+    });
+    test('no value verdict, no headline', () => assert.equal(tradeHeadline(null, side(1, 1.2)), null));
+    test('summary: rank moves, with the percent; rank stays, same percent', () => {
+        const t = (rank, score) => ({ starterRank: rank, starterScore: score, qbRank: 1, rbRank: 1, wrRank: 1, teRank: 1 });
+        assert.equal(powerSummaryText({ before: t(5, 0.96), after: t(3, 1.08) }, 12),
+            'Starting lineup 5th → 3rd of 12 (96% → 108% of league average). No position room changes rank.');
+        assert.equal(powerSummaryText({ before: t(5, 0.96), after: t(5, 0.961) }, 12),
+            'Starting lineup stays 5th of 12 (96% of league average). No position room changes rank.');
+        assert.equal(startPct({ starterScore: 1.084 }), 108);
+        // Under a headline, which already has the percents: words only.
+        assert.equal(powerSummaryText({ before: t(5, 0.96), after: t(5, 1.08) }, 12, { pct: false }),
+            'Starting lineup stays 5th of 12, but stronger. No position room changes rank.');
     });
 });

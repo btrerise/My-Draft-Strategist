@@ -89,15 +89,25 @@ export function ordinalOf(n) {
 
 const POWER_ROOM_NAMES = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE' };
 
-// One line in words: "Starting lineup 5th → 3rd of 12. Stronger at WR (8th → 4th); weaker at RB (2nd → 7th)."
-// Lower is better (1 = strongest). Positions that don't move are left out. With future value (dynasty and
-// keeper leagues), a last sentence: "Future value 4th → 2nd."
-export function powerSummaryText(side, teams) {
+// The Start score as a percent of the league average (computePositionalPower's starterScore: 1 = average).
+export const startPct = (team) => Math.round(((team && team.starterScore) || 0) * 100);
+
+// One line in words: "Starting lineup 5th → 3rd of 12 (96% → 108% of league average). Stronger at WR (8th → 4th);
+// weaker at RB (2nd → 7th)." Lower is better (1 = strongest). Positions that don't move are left out. The percent
+// shows a change the rank alone hides ("stays 5th of 12, but stronger: 96% → 108% of league average"). With future
+// value (dynasty and keeper leagues), a last sentence: "Future value 4th → 2nd."
+// pct: false leaves the percents out (the headline above already gives them).
+export function powerSummaryText(side, teams, { pct = true } = {}) {
     const { before: b, after: a } = side;
     const parts = [];
-    parts.push(b.starterRank === a.starterRank
-        ? `Starting lineup stays ${ordinalOf(a.starterRank)} of ${teams}.`
-        : `Starting lineup ${ordinalOf(b.starterRank)} → ${ordinalOf(a.starterRank)} of ${teams}.`);
+    const pb = startPct(b), pa = startPct(a);
+    if (b.starterRank !== a.starterRank) {
+        parts.push(`Starting lineup ${ordinalOf(b.starterRank)} → ${ordinalOf(a.starterRank)} of ${teams}${pct ? ` (${pb}% → ${pa}% of league average)` : ''}.`);
+    } else if (pb === pa) {
+        parts.push(`Starting lineup stays ${ordinalOf(a.starterRank)} of ${teams}${pct ? ` (${pa}% of league average)` : ''}.`);
+    } else {
+        parts.push(`Starting lineup stays ${ordinalOf(a.starterRank)} of ${teams}, but ${pa > pb ? 'stronger' : 'weaker'}${pct ? `: ${pb}% → ${pa}% of league average` : ''}.`);
+    }
     const up = [], down = [];
     POWER_COLUMNS.filter(c => c[2]).forEach(([label, key]) => {
         if (a[key] < b[key]) up.push(`${POWER_ROOM_NAMES[label]} (${ordinalOf(b[key])} → ${ordinalOf(a[key])})`);
@@ -115,6 +125,31 @@ export function powerSummaryText(side, teams) {
             : `Future value ${ordinalOf(b.futureRank)} → ${ordinalOf(a.futureRank)}.`);
     }
     return parts.join(' ');
+}
+
+// The headline over the section: the value verdict and the lineup change in one sentence, so a trade that
+// costs value to get better now (or the reverse) says so. value: tradeVerdictNumbers (trade/verdict.js) for
+// the rankings the section uses, or null; side: powerTradeImpact's you. Lineup "stronger" / "weaker" means the
+// Start score moved at least 1 point of league average. Returns null without a value verdict.
+export function tradeHeadline(value, side) {
+    if (!value || !side) return null;
+    const pb = startPct(side.before), pa = startPct(side.after);
+    const lineup = pa > pb ? 'better' : pa < pb ? 'worse' : 'same';
+    const pts = `${value.diff >= 0 ? '+' : '\u2212'}${Math.abs(Math.round(value.diff)).toLocaleString('en-US')} pts`;
+    const change = `${pb}% → ${pa}% of league average`;
+    if (value.verdict === 'fair') {
+        if (lineup === 'better') return `A fair trade by value that makes your starting lineup stronger (${change}).`;
+        if (lineup === 'worse') return `A fair trade by value, but your starting lineup gets weaker (${change}).`;
+        return "A fair trade by value that doesn't change your starting lineup.";
+    }
+    if (value.verdict === 'them') {
+        if (lineup === 'better') return `You pay in value (${pts}) to make your starting lineup stronger (${change}).`;
+        if (lineup === 'worse') return `You lose value (${pts}) and your starting lineup gets weaker (${change}).`;
+        return `You lose value (${pts}) without changing your starting lineup.`;
+    }
+    if (lineup === 'better') return `You gain value (${pts}) and your starting lineup gets stronger (${change}).`;
+    if (lineup === 'worse') return `You gain value (${pts}), but your starting lineup gets weaker (${change}): a move for later, not now.`;
+    return `You gain value (${pts}) without changing your starting lineup.`;
 }
 
 // --- MANUAL LEAGUES: YOUR STARTERS BEFORE AND AFTER ---

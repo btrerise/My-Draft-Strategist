@@ -1010,14 +1010,28 @@ button.close-chip {
 .mls-trade-lineup-line.mls-trade-in { color: #4ade80; }
 .mls-trade-lineup-line em { color: var(--text-muted); }
 
-/* Export Trade (improvements S14, js/mls/trade/export.js): the button under the verdict and the section, and the
-   header that shows only in the image. */
-.mls-trade-export-row { display: flex; justify-content: flex-end; margin: -0.25rem 0 1rem; }
+/* Export Trade (improvements S14, js/mls/trade/export.js): the switch and button at the bottom of the Trade Analyzer,
+   and the image's own parts (only in html2canvas's clone of #tradeOutput). */
+.mls-trade-export-row { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
 .mls-trade-export-row .btn { width: auto; display: inline-flex; align-items: center; gap: 6px; }
-.mls-trade-export-head { margin-bottom: 0.75rem; }
-.mls-trade-export-title { font-weight: 800; font-size: 1.05rem; color: var(--text-main); margin-bottom: 4px; }
-.mls-trade-export-side { font-size: 0.85rem; color: var(--text-main); line-height: 1.45; }
-.mls-trade-export-side strong { color: var(--text-muted); font-weight: 700; }
+.mls-trade-export-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; }
+.mls-trade-export-toggle input { width: 16px; height: 16px; accent-color: var(--primary-green); }
+.mls-trade-export-title { font-weight: 800; font-size: 1.05rem; color: var(--text-main); margin-bottom: 0.6rem; }
+.mls-trade-export-sidebox { margin-bottom: 0.6rem; }
+.mls-trade-export-sidehead { display: flex; gap: 0.5rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 3px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.mls-trade-export-sidehead > span:first-child { flex: 1 1 auto; }
+.mls-trade-export-get { color: #4ade80; }
+.mls-trade-export-give { color: #fca5a5; }
+.mls-trade-export-asset { display: flex; align-items: center; gap: 0.5rem; padding: 3px 0; font-size: 0.9rem; color: var(--text-main); }
+.mls-trade-export-asset .badge { min-width: 3.3em; justify-content: center; text-align: center; }
+.mls-trade-export-name { flex: 1 1 auto; font-weight: 600; white-space: nowrap; }
+.mls-trade-export-val { flex: 0 0 4.2em; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mls-trade-export-sidehead .mls-trade-export-val { font-weight: 700; color: var(--text-muted); }
+.mls-trade-export-mkt { color: var(--text-muted); }
+.mls-trade-export-ur { color: var(--text-muted); font-weight: 600; }
+.mls-trade-export-foot { font-size: 0.7rem; color: var(--text-muted); margin: 0.2rem 0 0.8rem; }
+.mls-trade-impact-headline { font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-top: 0.5rem; line-height: 1.4; }
+.mls-trade-impact-key { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem; }
 
 .verdict-fair { border-color: var(--dart-border); background: var(--dart-bg); }
 .verdict-fair .trade-verdict-result { color: #93c5fd; }

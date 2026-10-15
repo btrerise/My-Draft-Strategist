@@ -13,6 +13,7 @@ import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valu
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML } from '../trade/verdict.js';
 import { buildTradeImpactHTML } from '../trade/lineupSection.js';
+import { setTradeExport } from '../trade/export.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 
@@ -260,6 +261,13 @@ import { normalizeName } from '../../shared/names.js';
                     </div>
                     <div class="mls-text-right">${statusHTML}</div>
                 </div>`,
+                // One line of Export Trade's image (trade/export.js): who, his position, and his value by
+                // your rankings and the market (null = not in that source).
+                exportRow: {
+                    name: displayName, pos: isDraftPickName(name) ? 'Pick' : displayPos, badge: badgeClass,
+                    value: userValueObj ? userValueObj.value : null, valueFromMarket: !!(userValueObj && userValueObj.fromMarket),
+                    market: marketValueObj ? marketValueObj.value : null
+                },
                 userValue: userValueObj ? userValueObj.value : 0,
                 userMatched: !!userValueObj,
                 marketValue: marketValueObj ? marketValueObj.value : 0,
@@ -294,35 +302,11 @@ import { normalizeName } from '../../shared/names.js';
             // verdict and the cards as they were.
             let impactHTML = '';
             try {
-                impactHTML = await buildTradeImpactHTML(league, targetNames, sellNames);
+                impactHTML = await buildTradeImpactHTML(league, targetNames, sellNames, { getResults, giveResults });
             } catch (e) {
                 console.warn('Trade Analyzer: lineup comparison unavailable.', e);
             }
-            if (isOneSided) {
-                html += verdictHTML + impactHTML;
-            } else {
-                // Export Trade (trade/export.js) saves the verdict and the section as an image, with a
-                // header naming the league and both sides; the header shows only in the image.
-                const shownName = (n) => {
-                    const c = normalizeName(n);
-                    return (rosIndex.get(c) || weeklyIndex.get(c) || { name: n }).name;
-                };
-                const side = (label, names) => `<div class="mls-trade-export-side"><strong>${label}:</strong> ${names.map(n => escapeHtml(shownName(n))).join(', ')}</div>`;
-                html += `
-                <div id="tradeExportArea" class="mls-trade-export-area">
-                    <div class="mls-trade-export-head" hidden>
-                        <div class="mls-trade-export-title">Trade${league && league.name ? ` &middot; ${escapeHtml(league.name)}` : ''}</div>
-                        ${side('You get', targetNames)}${side('You give', sellNames)}
-                    </div>
-                    ${verdictHTML}${impactHTML}
-                </div>
-                <div class="mls-trade-export-row">
-                    <button type="button" id="exportTradeBtn" class="btn btn-purple" data-action="exportTrade" title="Save the verdict and the Power Rankings change as an image">
-                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                        Export Trade
-                    </button>
-                </div>`;
-            }
+            html += verdictHTML + impactHTML;
 
             if (targetNames.length > 0) {
                 html += `<div style="font-weight:bold; color:#4ade80; margin-bottom:0.5rem;">You Receive</div>`;
@@ -331,6 +315,29 @@ import { normalizeName } from '../../shared/names.js';
             if (sellNames.length > 0) {
                 html += `<div style="font-weight:bold; color:#fca5a5; margin:1rem 0 0.5rem 0;">You Give Up</div>`;
                 giveResults.forEach(r => html += r.html);
+            }
+
+            // Export Trade (trade/export.js), at the bottom of the card: an image of the assets with their
+            // values and the verdict, plus the Power Rankings change when "Include Power Rankings" is on
+            // (owner's choice: off by default, since it isn't usually part of a trade talk). Both sides needed.
+            setTradeExport(isOneSided ? null : {
+                league: league && league.name ? league.name : '',
+                get: getResults.map(r => r.exportRow),
+                give: giveResults.map(r => r.exportRow),
+                market: State.marketRankings.length > 0
+            });
+            if (!isOneSided) {
+                html += `
+                <div class="mls-trade-export-row">
+                    <label class="mls-trade-export-toggle">
+                        <input type="checkbox" id="tradeExportPower" data-action="updateTradeSettingChecked" data-setting="exportPower"${State.tradeSettings.exportPower ? ' checked' : ''}>
+                        Include Power Rankings
+                    </label>
+                    <button type="button" id="exportTradeBtn" class="btn btn-purple" data-action="exportTrade" title="Save the trade, each asset's value and the verdict as an image">
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        Export Trade
+                    </button>
+                </div>`;
             }
 
             outputEl.innerHTML = html;
