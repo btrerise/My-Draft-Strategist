@@ -4478,3 +4478,11 @@ the results.
 **Checks.** Precache OK; 355 unit and 381 Playwright tests pass (visual.spec fails here as on main). Screenshots: still
 the same four to take from CI, `mls-league-guide.png` (desktop 1280×6792, phone 390×14539) and `mls-league-scout.png`
 (desktop now 1280×2015 with the two columns, phone 390×2214); the other 36 are pixel-identical to main.
+
+### S14, pull request (btrerise/My-Draft-Strategist#197): the four screenshots from CI
+
+CI run 38815932926 (commit 05dcc1f) failed only `visual.spec.mjs` "MLS synced league tabs" at both widths, on exactly the
+four PNGs listed above; 389 tests passed. For each, CI's `-expected.png` was byte-identical to the committed baseline, and
+the height change from main matched this container's main-vs-branch comparison (desktop scout −252 both; phone guide +576
+both; desktop guide +161 vs +185 and phone scout −169 vs −166, from text wrapping under CI's fonts). Committed CI's
+`-actual.png` renders as the baselines: `{desktop,phone}/mls-league-guide.png` and `{desktop,phone}/mls-league-scout.png`.
