@@ -243,6 +243,57 @@ import { normalizeName } from '../../shared/names.js';
                 }
             }
 
+            // Trade Analyzer rows (improvements S14, round 5): one compact line per player instead of a card with
+            // a large status circle, so a trade reads on a phone without scrolling: badge, name, ranks and who
+            // has him, and his value on the right (the market's under it when loaded).
+            if (type === 'trade') {
+                const isPick = isDraftPickName(name);
+                let owns;
+                if (roleLabel === 'GIVE') {
+                    owns = owner === 'You' ? { text: 'Yours', cls: '' }
+                        : isPick ? { text: 'Pick', cls: '' }
+                        : { text: owner ? `Not yours (${owner})` : 'Not on your roster', cls: 'mls-trade-row-warn' };
+                } else {
+                    owns = owner === 'You' ? { text: 'Already yours', cls: 'mls-trade-row-warn' }
+                        : owner ? { text: `Rostered by ${owner}`, cls: '' }
+                        : isPick ? { text: 'Pick', cls: '' }
+                        : { text: knowsWholeLeague ? 'Free agent' : 'Not yours', cls: '' };
+                }
+                const rankBits = isPick ? [] : [
+                    `ROS ${rRank}${tierTag(rosObj?.tier)}`,
+                    `Wk ${wRank}`
+                ];
+                const valueText = userValueObj
+                    ? `${userValueObj.value.toLocaleString()}${userValueObj.fromMarket ? '<sup title="Market value: your ROS rankings have no draft picks">*</sup>' : ''}`
+                    : '<span class="mls-trade-row-ur">UR</span>';
+                const mkt = State.marketRankings.length > 0
+                    ? `<span class="mls-trade-row-mkt">Mkt ${marketValueObj ? marketValueObj.value.toLocaleString() : '&ndash;'}</span>` : '';
+                return {
+                    html: `
+                <div class="mls-trade-row">
+                    <span class="badge pos-badge ${isPick ? 'FLEX' : badgeClass} mls-pos-badge-sizing">${isPick ? 'Pick' : displayPos}</span>
+                    <div class="mls-trade-row-main">
+                        <div class="mls-trade-row-name">${escapeHtml(displayName)}${sosBadge}</div>
+                        <div class="mls-trade-row-meta">${rankBits.map(b => `<span>${b}</span>`).join('')}<span class="${owns.cls}">${escapeHtml(owns.text)}</span></div>
+                        ${suggestHTML}
+                    </div>
+                    <div class="mls-trade-row-value"><span class="mls-stat-value">${valueText}</span>${mkt}</div>
+                </div>`,
+                    // One line of Export Trade's image (trade/export.js): who, his position, and his value by
+                    // your rankings and the market (null = not in that source).
+                    exportRow: {
+                        name: displayName, pos: isPick ? 'Pick' : displayPos, badge: isPick ? 'FLEX' : badgeClass,
+                        value: userValueObj ? userValueObj.value : null, valueFromMarket: !!(userValueObj && userValueObj.fromMarket),
+                        market: marketValueObj ? marketValueObj.value : null
+                    },
+                    userValue: userValueObj ? userValueObj.value : 0,
+                    userMatched: !!userValueObj,
+                    marketValue: marketValueObj ? marketValueObj.value : 0,
+                    marketMatched: !!marketValueObj,
+                    availabilityOrder, rosSortRank, weekSortRank
+                };
+            }
+
             return {
                 html: `
                 <div class="scout-result-card">
@@ -261,13 +312,6 @@ import { normalizeName } from '../../shared/names.js';
                     </div>
                     <div class="mls-text-right">${statusHTML}</div>
                 </div>`,
-                // One line of Export Trade's image (trade/export.js): who, his position, and his value by
-                // your rankings and the market (null = not in that source).
-                exportRow: {
-                    name: displayName, pos: isDraftPickName(name) ? 'Pick' : displayPos, badge: badgeClass,
-                    value: userValueObj ? userValueObj.value : null, valueFromMarket: !!(userValueObj && userValueObj.fromMarket),
-                    market: marketValueObj ? marketValueObj.value : null
-                },
                 userValue: userValueObj ? userValueObj.value : 0,
                 userMatched: !!userValueObj,
                 marketValue: marketValueObj ? marketValueObj.value : 0,

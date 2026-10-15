@@ -45,6 +45,7 @@ import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './set
 import './trade/valueCurve.js';
 import './trade/waiverValue.js';
 import { copyLineupAsText, exportLineup, exportTrade } from './trade/export.js';
+import { addTradePick, removeTradeToken, setTradePlayers } from './trade/picker.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
@@ -71,6 +72,8 @@ export { applyDefaultFolds, checkForDraftStrategistHandoff, clearLocksForNewWeek
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
 export { confirmRankingsPreview, createManualLeague, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
+// The Trade Analyzer's picker, for tests (callApp) to set a whole trade at once.
+export { setTradePlayers };
 
 // The only window.* names left. Until refactor chunk 5D this block held every name something read
 // through window (originally the inline on*="..." handlers); 5B and 5C replaced the handlers with
@@ -189,8 +192,11 @@ const clickActions = {
     setWaiverIntent() { setWaiverIntent(this.dataset.intent); },
     runScout() { runScout(this.dataset.scoutType); },
     scoutGoToLeague() { scoutGoToLeague(this.dataset.leagueId); },
-    clearBuyInput() { document.getElementById('buyInput').value=''; },
-    clearSellInput() { document.getElementById('sellInput').value=''; },
+    clearBuyInput() { setTradePlayers('get', []); },
+    clearSellInput() { setTradePlayers('give', []); },
+    // Trade Analyzer's player picker (trade/picker.js, improvements S14)
+    removeTradeToken() { removeTradeToken(this.dataset.side, parseInt(this.dataset.idx, 10)); },
+    addTradePick() { addTradePick(this.dataset.side); },
     goToPowerRankings() { goToPowerRankings(); },
     fetchMarketValue() { fetchMarketValue(this); },
     runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },

@@ -4325,3 +4325,52 @@ trade; the headline, the key and the sentence without percents on screen. I look
 - *Picking players instead of typing them* (owner's idea): replace the two textareas with the Add Player Manually
   search (`attachPlayerAutocomplete`, js/mls/players.js) that adds each pick as a removable chip, plus a "+ Draft pick"
   control (year and round). Names always match, so no "Did you mean". Big enough for its own card (S19).
+
+### S14, round 5: picking players, compact rows, Value settings folded
+
+**The owner's answers** to round 4's proposals: (a) fold Waiver Adjustment, yes; (b) scroll to the result after
+Analyze, no (people adjust and re-run, and scrolling back up each time would annoy); (c) compact rows, yes; and the
+player picker (their idea) on this branch rather than a new card.
+
+**User-visible effect.**
+- **Picking players.** Each side of the Trade Analyzer is a search box (Add Player Manually's, `attachPlayerAutocomplete`)
+  with the side's players as tokens above it: name, position and team in small print, and ✕ to remove. Tap a suggestion
+  (or Enter on the only one) to add; a name the search doesn't know is added as typed on Enter; a pasted list ("A, B"
+  or one per line) adds one token each; the same name twice is ignored. **+ Draft pick** adds "2027 1st" from a year
+  (the next three drafts: from March on, next year's first) and a round (1st-4th). Clear empties a side. "Did you
+  mean" still works, and fixes the token.
+- **Compact rows.** In the results each player is one line: position badge ("Pick" for a draft pick), name (and SoS
+  badge), "ROS 2 (T1) · Wk 2 · Rostered by Rival" (or "Yours", "Free agent", "Already yours" / "Not yours (Team)" in
+  red when something's off), and his value on the right with "Mkt 8,500" under it when market data is loaded. They
+  replace the three-line cards with the big status circle; the waiver list keeps its cards.
+- **Value settings.** Waiver Adjustment (toggle, value and the auto-calculated hint) is in a closed "Value settings" fold
+  under Analyze Trade.
+
+**What changed and where.**
+- `js/mls/trade/picker.js` (new, in `PRECACHE_ASSETS`): `initTradePicker` (called from `js/mls/init.js` beside the
+  manual-add form), `addTradeNames`, `setTradePlayers`, `removeTradeToken`, `addTradePick`. The textareas `#buyInput`
+  and `#sellInput` stay, hidden, as the list `runScout` reads; the picker keeps them in step, and anything else that
+  edits them fires an `input` event the tokens redraw from (Clear, "Did you mean" in `js/mls/players.js`, a league
+  switch in `js/mls/leagues/scoutResults.js`).
+- `js/mls/scout/engine.js`: `buildCard`'s trade branch returns the compact row (names escaped now).
+- `js/mls/main.js`: the `removeTradeToken` / `addTradePick` actions, Clear through `setTradePlayers`, and
+  `setTradePlayers` exported for tests. `lineup/index.html`: the picker markup, the Value settings fold, Guide step 9.
+- `css/mls.css`: `.mls-trade-picker`, `.mls-trade-token*`, `.mls-trade-pick-row`, `.mls-trade-value-settings`,
+  `.mls-trade-row*`. The tokens are an input control, not a symbol with a meaning, so no legend line.
+- Tests type into the picker or call `setTradePlayers` (a hidden textarea can't be filled): `mls-scout.spec.mjs`, this
+  card's spec, and `tests/tools/css-compare.tool.mjs` (sets the values, so it works on main and on the branch).
+
+**Tests.** A new spec at 375px: search and tap (token with "RB · ATL", search cleared), no duplicate, a 2027 2nd pick
+from the selects (years 2027-2029 under the fixed clock), a pasted list, a typed unknown name on Enter, the hidden
+textarea's value, "Did you mean" fixing the token, removing a token, four compact rows ("ROS 2", "Rostered by Rival",
+the pick, "Yours"), the Value settings fold closed and opening, Clear, no sideways scroll.
+
+**Checks.** Precache OK; 355 unit and 375 Playwright tests pass (visual.spec fails here as on main). The legend test
+flagged `mls-trade-row-warn` (red owner text, not a symbol): added to its `ALLOWED` with that reason.
+
+**Screenshots.** Rendered here on main and on this branch, four PNGs change, all to be taken from CI:
+- `desktop/mls-league-guide.png` (1280×6607 → 1280×6745) and `phone/mls-league-guide.png` (390×13963 → 390×14423):
+  Guide step 9's longer text;
+- `desktop/mls-league-scout.png` (1280×2267 → 1280×2131) and `phone/mls-league-scout.png` (390×2380 → 390×2243): the
+  Trade Analyzer's picker in place of the textareas, and Waiver Adjustment folded.
+The other 36 are pixel-identical.

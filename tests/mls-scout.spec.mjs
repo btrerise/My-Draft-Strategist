@@ -31,8 +31,9 @@ test.describe('Lineup Strategist Scout tab', () => {
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(waivers).toContainText('checked against your current Week 2 starting lineup');
 
-        await page.fill('#buyInput', "Ja'Marr Chase");
-        await page.fill('#sellInput', 'Josh Allen\nBijan Robinson');
+        // Each side is picked with a search since improvements S14; setTradePlayers sets a whole side at once.
+        await callApp(page, 'setTradePlayers', 'get', ["Ja'Marr Chase"]);
+        await callApp(page, 'setTradePlayers', 'give', ['Josh Allen', 'Bijan Robinson']);
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
         await expect(page.locator('#tradeOutput')).toContainText('Favors Them');
         await page.waitForLoadState('networkidle');

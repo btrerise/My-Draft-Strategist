@@ -10,6 +10,7 @@ import { attachPlayerAutocomplete, attachScoutSuggestionHandler } from './player
 import { populateEarlyGameDropdown } from './lineup/earlyGames.js';
 import { getLeagueRankings, loadActiveLeagueData, refreshLeagueDropdown, syncHeaderLeagueLabel } from './leagues/sync.js';
 import { initManualAddForm } from './leagues/addPlayer.js';
+import { initTradePicker } from './trade/picker.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
 import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs, showTab, lookupSimPlayer } from './main.js';
@@ -139,6 +140,7 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
 
     export const onload = function() {
         initManualAddForm();
+        initTradePicker();
         attachPlayerAutocomplete(document.getElementById('simPlayerSearch'), (p) => {
             lookupSimPlayer(p);
         });

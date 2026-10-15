@@ -18,7 +18,7 @@ import { State } from '../state.js';
 
         ['buyInput', 'sellInput'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.value = '';
+            if (el) { el.value = ''; el.dispatchEvent(new Event('input')); } // the picker's tokens follow (trade/picker.js)
         });
         const tradeOutput = document.getElementById('tradeOutput');
         if (tradeOutput) tradeOutput.innerHTML = '';

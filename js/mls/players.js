@@ -267,6 +267,8 @@ export function attachScoutSuggestionHandler(outputElId) {
         const idx = inputEl.value.indexOf(original);
         if (idx !== -1) {
             inputEl.value = inputEl.value.slice(0, idx) + link.dataset.suggested + inputEl.value.slice(idx + original.length);
+            // The Trade Analyzer's picker redraws its tokens from the textarea (trade/picker.js).
+            inputEl.dispatchEvent(new Event('input'));
         }
         runScout(link.dataset.scoutType);
     });

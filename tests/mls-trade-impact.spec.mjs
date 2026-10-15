@@ -5,11 +5,12 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp } from './helpers.mjs';
 
 async function runTrade(page, get, give) {
-    await page.fill('#buyInput', get);
-    await page.fill('#sellInput', give);
+    // Each side is picked with a search (trade/picker.js); setTradePlayers sets a whole side at once.
+    await callApp(page, 'setTradePlayers', 'get', get.split('\n').filter(Boolean));
+    await callApp(page, 'setTradePlayers', 'give', give.split('\n').filter(Boolean));
     await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
     await expect(page.locator('#tradeOutput')).toContainText('You Receive');
 }
@@ -41,7 +42,7 @@ const HTML2CANVAS = readFileSync(here('./node_modules/html2canvas/dist/html2canv
                 width: area.getBoundingClientRect().width,
                 text: area.innerText,
                 assets: [...area.querySelectorAll('.mls-trade-export-asset')].map(r => r.innerText.replace(/\\s+/g, ' ').trim()),
-                cards: area.querySelectorAll('.scout-result-card').length,
+                cards: area.querySelectorAll('.mls-trade-row').length,
                 tooltips: area.querySelectorAll('.tooltip-text, .tooltip-icon').length,
                 closedDetails: area.querySelectorAll('details:not([open])').length,
                 summaries: area.querySelectorAll('summary').length,
@@ -109,7 +110,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
         expect(await page.locator('#tradeOutput').evaluate(el => {
             const sec = el.querySelector('[data-trade-impact]');
             return !!(el.querySelector('.trade-verdict-banner').compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_FOLLOWING)
-                && !!(sec.compareDocumentPosition(el.querySelector('.scout-result-card')) & Node.DOCUMENT_POSITION_FOLLOWING);
+                && !!(sec.compareDocumentPosition(el.querySelector('.mls-trade-row')) & Node.DOCUMENT_POSITION_FOLLOWING);
         })).toBe(true);
         expect(await noSideScroll(page)).toBe(true);
         expect(await s.locator('.mls-power-table-wrap').first().evaluate(w => w.scrollWidth <= w.clientWidth)).toBe(true);
@@ -182,7 +183,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expect(btn).toHaveText('Export Trade');
         // At the bottom of the card, after the player cards; the switch is off by default.
         expect(await page.locator('#tradeOutput').evaluate(el => {
-            const cards = el.querySelectorAll('.scout-result-card');
+            const cards = el.querySelectorAll('.mls-trade-row');
             return !!(cards[cards.length - 1].compareDocumentPosition(el.querySelector('#exportTradeBtn')) & Node.DOCUMENT_POSITION_FOLLOWING);
         })).toBe(true);
         await expect(toggle).not.toBeChecked();
@@ -227,11 +228,92 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expect(page.locator('#tradeExportPower')).toBeChecked();
 
         // A one-sided entry has no verdict, so no export.
-        await page.fill('#buyInput', 'Bijan Robinson');
-        await page.fill('#sellInput', '');
+        await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
+        await callApp(page, 'setTradePlayers', 'give', []);
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
         await expect(page.locator('#tradeOutput')).toContainText('only one side has players');
         await expect(page.locator('#exportTradeBtn')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    test('picking players: search, Enter, paste, draft picks, remove, Did you mean, Clear; Value settings folded', async ({ page }) => {
+        await at375(page);
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'scout');
+        const getTokens = page.locator('#tradeGetTokens .mls-trade-token');
+        const giveTokens = page.locator('#tradeGiveTokens .mls-trade-token');
+        // The textareas are the hidden list runScout reads.
+        await expect(page.locator('#buyInput')).toBeHidden();
+
+        // Search and tap a suggestion: a token with position and team; the search clears.
+        const getSearch = page.locator('#tradeGetSearch');
+        await getSearch.fill('Bijan');
+        await page.locator('.autocomplete-item', { hasText: 'Bijan Robinson' }).click();
+        await expect(getTokens).toHaveCount(1);
+        await expect(getTokens.first()).toContainText('Bijan Robinson');
+        await expect(getTokens.first()).toContainText('RB · ATL');
+        await expect(getSearch).toHaveValue('');
+        // The same player again: no second token.
+        await getSearch.fill('Bijan');
+        await page.locator('.autocomplete-item', { hasText: 'Bijan Robinson' }).click();
+        await expect(getTokens).toHaveCount(1);
+
+        // A draft pick from the year and round (the clock says 2026-09-15, so the next draft is 2027).
+        await expect(page.locator('#tradeGetPickYear option')).toHaveText(['2027', '2028', '2029']);
+        await page.selectOption('#tradeGetPickRound', '2nd');
+        await page.locator('[data-action="addTradePick"][data-side="get"]').click();
+        await expect(getTokens.nth(1)).toContainText('2027 2nd');
+        await expect(getTokens.nth(1)).toContainText('Pick');
+
+        // Give side: a pasted list becomes one token each; a name the search doesn't know is added as typed on Enter.
+        const giveSearch = page.locator('#tradeGiveSearch');
+        await giveSearch.focus();
+        await giveSearch.evaluate((el) => {
+            const data = new DataTransfer();
+            data.setData('text', 'Derrick Henry, Garrett Wilson');
+            el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+        });
+        await expect(giveTokens).toHaveCount(2);
+        await giveSearch.fill('Jahmir Gibbz');
+        await page.waitForTimeout(150); // the search finds nothing
+        await giveSearch.press('Enter');
+        await expect(giveTokens).toHaveCount(3);
+        await expect(page.locator('#sellInput')).toHaveValue('Derrick Henry\nGarrett Wilson\nJahmir Gibbz');
+        expect(await noSideScroll(page)).toBe(true);
+
+        // Analyze: the misspelled name gets a "Did you mean"; taking it fixes the token too.
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        await page.locator('.scout-suggest-link', { hasText: 'Jahmyr Gibbs' }).click();
+        await expect(giveTokens.nth(2)).toContainText('Jahmyr Gibbs');
+        // Remove a token with its button.
+        await giveTokens.nth(2).locator('.mls-trade-token-remove').click();
+        await expect(giveTokens).toHaveCount(2);
+        await expect(page.locator('#sellInput')).toHaveValue('Derrick Henry\nGarrett Wilson');
+
+        // Each player is one compact row in the results: badge, name, ranks, who has him, his value.
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        const rows = page.locator('#tradeOutput .mls-trade-row');
+        await expect(rows).toHaveCount(4);
+        await expect(rows.first()).toContainText('Bijan Robinson');
+        await expect(rows.first()).toContainText('ROS 2');
+        await expect(rows.first()).toContainText('Rostered by Rival');
+        await expect(rows.nth(1)).toContainText('2027 2nd');
+        await expect(rows.nth(2)).toContainText('Yours');
+        expect(await noSideScroll(page)).toBe(true);
+
+        // Value settings (Waiver Adjustment) are folded under the button.
+        const fold = page.locator('details.mls-trade-value-settings');
+        await expect(fold).not.toHaveAttribute('open', '');
+        await expect(page.locator('#tradeWaiverAdjustToggle')).toBeHidden();
+        await fold.locator('summary').click();
+        await expect(page.locator('#tradeWaiverAdjustValue')).toBeVisible();
+
+        // Clear empties a side.
+        await page.locator('[data-action="clearSellInput"]').click();
+        await expect(giveTokens).toHaveCount(0);
+        await expect(page.locator('#sellInput')).toHaveValue('');
         await expectClean(page, state);
     });
 
