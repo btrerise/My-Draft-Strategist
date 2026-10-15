@@ -96,7 +96,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Pick players for a trade instead of typing them.** Each side of the Trade Analyzer has a search (the same one as
   Add Player Manually): tap a name and it's added as a token with its position and team, which you remove with ✕. In a
   Sleeper league a "From" drop-down above Players You Receive lists every team: choose one and tapping the search shows
-  that team's roster, or pick any player and the drop-down follows his manager. Players You Give Up shows your roster
+  that team's roster, or pick any player and the drop-down follows his manager. Switching to a different team clears the players you'd
+  receive from the old one (Any team keeps them). Players You Give Up shows your roster
   when you tap it. Every suggestion says who has the player ("Yours", the manager, "Free agent"). Dynasty and keeper
   leagues get a draft-pick row (year and round). Typing a name and pressing Enter, or pasting a list, still works. Once
   a trade is analyzed, changing it updates the results in place. The results list each player on one compact line

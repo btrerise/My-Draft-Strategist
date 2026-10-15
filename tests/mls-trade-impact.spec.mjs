@@ -416,6 +416,44 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expectClean(page, state);
     });
 
+    test('switching the From team clears the players you would receive; Any team keeps them', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        // A third manager, in memory (the fixture league has two teams): Zay Flowers, a free agent, goes to "Third".
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.leagues.find(l => l.leagueId === State.activeLeagueId).globalRosterMap['zay flowers'] = 'Third';
+        });
+        await showTab(page, 'scout');
+        const team = page.locator('#tradeGetTeam');
+        await expect(team.locator('option')).toHaveText(['Any team', 'Rival', 'Third']);
+        const getTokens = page.locator('#tradeGetTokens .mls-trade-token');
+        await callApp(page, 'setTradePlayers', 'give', ['Derrick Henry']);
+
+        // Pick from Rival: the drop-down follows him.
+        await page.locator('#tradeGetSearch').fill('Bijan');
+        await page.locator('[data-side="get"] .autocomplete-item', { hasText: 'Bijan Robinson' }).click();
+        await expect(team).toHaveValue('Rival');
+        await expect(getTokens).toHaveCount(1);
+        await analyze(page);
+        await expect(page.locator('#tradeOutput .mls-trade-row')).toHaveCount(2);
+
+        // "Any team" keeps them.
+        await team.selectOption('');
+        await expect(getTokens).toHaveCount(1);
+        // Back to Rival (where they came from): kept too.
+        await team.selectOption('Rival');
+        await expect(getTokens).toHaveCount(1);
+        // Another team: cleared, and the analyzed trade re-runs (now one-sided). Your side stays.
+        await team.selectOption('Third');
+        await expect(getTokens).toHaveCount(0);
+        await expect(page.locator('#buyInput')).toHaveValue('');
+        await expect(page.locator('#tradeGiveTokens .mls-trade-token')).toHaveCount(1);
+        await expect(page.locator('#tradeOutput')).toContainText('only one side has players');
+        await expectClean(page, state);
+    });
+
     test('no rankings loaded: one line saying what to load', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);

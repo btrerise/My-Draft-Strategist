@@ -168,8 +168,17 @@ export function addTradePick(side) {
     if (year && round) addTradeNames(side, [`${year} ${round}`]);
 }
 
-// The team drop-down changed: offer that team's roster right away if the search has focus.
+// The team drop-down changed (you, not a pick setting it). Another team is another trade, so if the players
+// you'd receive belong to a different manager, they're cleared (round 7, owner's choice). "Any team", or
+// going back to the team they came from, keeps them. Then that team's roster is offered right away if the
+// search has focus.
 export function tradeTeamChanged() {
+    const team = el(TEAM_SELECT)?.value || '';
+    if (team) {
+        const owner = ownersNow();
+        const fromElsewhere = namesOf('get').some(n => { const o = owner({ name: n }); return o && o !== 'You' && o !== team; });
+        if (fromElsewhere) clearTradeSide('get');
+    }
     const search = el(SIDES.get.search);
     if (search && document.activeElement === search && _search.get) _search.get.refresh();
 }

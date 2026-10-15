@@ -4429,3 +4429,20 @@ for a trade analyzed before the change). The round 6 spec ran 16 times in a row 
 **Screenshots.** Still the same four, to be taken from CI: `mls-league-guide.png` (desktop 1280×6792, phone 390×14539,
 step 9's text) and `mls-league-scout.png` (desktop 1280×2102, phone 390×2214: the From drop-down added, the draft-pick
 rows hidden in the screenshot league, which is redraft). The other 36 are pixel-identical to main.
+
+### S14, round 7: switching the From team clears the players you'd receive
+
+**The owner asked:** when the team in the From drop-down changes, clear the players already picked.
+
+**User-visible effect.** Choosing a different team under From clears Players You Receive when they belong to another
+manager (a new partner is a new trade); an analyzed trade re-runs, now one-sided. "Any team", or going back to the team
+the players came from, keeps them, and so do tokens no manager has (free agents, draft picks). A pick that sets the
+drop-down itself (with Any team) never clears anything. Players You Give Up never changes.
+
+**Where.** `tradeTeamChanged` in `js/mls/trade/picker.js`. My first version compared with the drop-down's previous value,
+which cleared on Any team → Rival with Rival's players picked; it now compares with the players' own managers.
+
+**Tests.** A third manager added in memory (the fixture league has two): pick Bijan (drop-down follows to Rival),
+analyze, Any team keeps him, back to Rival keeps him, Third clears him and re-runs one-sided, your side stays.
+Checks: precache OK; 355 unit and 379 Playwright tests pass (visual.spec fails here as on main). No screenshot changes
+beyond the four already listed.
