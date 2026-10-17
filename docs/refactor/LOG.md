@@ -5548,3 +5548,94 @@ baselines.
   line pointing to it.
 - Not checked: the font packages themselves. The OS version stands in for them; if CI's screenshots ever fail with
   this check green, compare the fonts first.
+
+### 6C — Delete the old storage-key names 6B kept (behavior change: what's in localStorage; nothing users see)
+
+Started 2026-10-17, two weeks after 6B (`v2.8.64`) went live on 2026-10-03, as the owner timed it.
+
+**Each page now deletes the old copies of the keys its own rename copies, once, right after the rename.**
+Per page, exactly as the planning entry's table says:
+
+| Page | Deletes | Never deletes |
+|---|---|---|
+| Draft Strategist (`/`) | `ds_*`, `mds_tscore_cache`, `mds_tscore_cache_updated` | `mds_season_*`, `mds_handoff_roster` |
+| Lineup Strategist (`/lineup/`) | `mds_season_*`, `mds_handoff_roster` | `ds_*` |
+| T-Score (`/t-score/`) | `mds_tscore_cache`, `mds_tscore_cache_updated` | everything else |
+
+#### What changed
+
+- **`js/shared/storage/keyMigration.js`**, new section `// --- OLD KEY DELETION (refactor chunk 6C) ---`:
+  - `deleteOldKeyNames(page)` picks old keys with the same `MIGRATIONS[page].copies` rule `migrateKeyNames` uses
+    (so the two can't drift) and removes them. It runs only when the page's `*_key_names_version` marker is `'1'`
+    (the rename finished). Unset (rename deferred, storage full): it deletes nothing, and both retry on the next
+    load. An error leaves the marker at `'1'` and logs `Old storage key deletion deferred:`.
+  - **Marker: chose bumping the existing marker's value to `'2'`, not a new key.** `'1'` = old names copied (6B),
+    `'2'` = old copies deleted (6C). `migrateKeyNames` now treats both values as done, so it doesn't copy again.
+    Why not a new key: a new `mds_` / `mls_` marker would be in each app's backup, and `backup.spec.mjs`'s
+    old-format restores check the exact list of owned keys after a restore (the card says they pass unchanged).
+    A stale cached 6B page (it checks for `'1'` only) would see `'2'`, run its copy again, find no old keys, and
+    set `'1'`; the next new load deletes nothing and sets `'2'` again. Harmless, and two weeks on there should be
+    no such page.
+  - `keepKeyNamesMarker(page, run)`: Restore keeps **this browser's** marker across its clear-and-write instead of
+    taking the file's. Without it, restoring an older file (no marker, or `'1'`) would make the reload run the
+    deletion again, and that reaches keys outside the app's backup (MDS the old T-Score cache names, MLS the old
+    hand-off), which a Restore never touches (`backup.spec.mjs` checks it; it failed that way before this).
+    If this browser's rename was deferred (marker unset), it stays unset, so the rename still runs. The restored
+    data needs neither step: `renameLegacyKeys` has already given it today's names.
+- **Call sites:** `js/mds/migrateKeys.js`, `js/mls/migrateKeys.js` and `js/tscore/main.js` call
+  `deleteOldKeyNames(page)` right after `migrateKeyNames(page)`. Still the first import of each app's `main.js`.
+- **Restore** in `js/mds/backup.js` and `js/mls/backup.js`: the existing clear-and-write lines are wrapped in
+  `keepKeyNamesMarker('mds' | 'mls', ...)`. Hard Reset and Factory Reset are unchanged: they clear the marker, so
+  the reload renames and deletes again (nothing left to do, unless something wrote old names back).
+- **`js/shared/storage/keys.js`:** comments only (the three marker lines; OLD NAMES says the table is permanent).
+- `sw.js`: CACHE_NAME `v2.8.94` → `v2.8.95`. No file added, so PRECACHE_ASSETS is unchanged.
+
+#### Kept permanently, and why
+
+`LEGACY_KEY_RENAMES`, `renamedKey`, `isLegacyKey`, `renameLegacyKeys` (old backup files must still restore), the
+`isLegacyKey` exclusion in `isMdsOwnedKey`, the `isMdsOwnedOrLegacyKey` / `isMlsOwnedOrLegacyKey` filters and
+boot.js's old-name clauses. 6B said the last two could go once no browser holds an old key, but that can't be
+known: a browser that hasn't opened a page since before 6B still holds that page's old keys (and the other app's,
+until that app is opened), and its next load is what copies them. So they stay, for good.
+
+#### Difference in localStorage (nothing users see)
+
+- After each page loads once, none of that page's old names remain, and every value is under its new name. For
+  someone who saved data before 6B, each app's keys stop being stored twice: localStorage use for them drops by
+  roughly half (MDS's player pools and MLS's ranking sets are most of it).
+- The other app's old keys stay until that app is opened. Backup files are unchanged except that the marker's
+  value is now `'2'`. Old backup files (pre-6B names) and 6B-era files restore as before.
+- The 6B transition edge gets one step stricter: an old key a stale tab writes *after* this page's deletion stays
+  (the deletion runs once), and as in 6B it isn't carried over.
+
+#### Tests
+
+- **`tests/unit/keyMigration.test.mjs`** (+11, 26 total): per page, deletion after the rename removes exactly its
+  old keys with every value under its new name and nothing else changed; a page never deletes the other app's old
+  keys, and after all three pages no old name is left; nothing deleted while the marker is unset (rename deferred),
+  then the next load renames and deletes; runs once (old keys written back later stay, nothing copied back); the
+  hand-off MLS already consumed loses its old copy and isn't copied back; a browser 6B already renamed (marker
+  `'1'`) is cleaned on its next load; storage nearly full; `keepKeyNamesMarker` keeps the browser's marker
+  whatever the file holds, and leaves a deferred rename unset. Mutation-checked: dropping the marker check fails
+  the deferred test; deleting every old name fails the four per-page / other-app tests.
+- **`tests/key-migration.spec.mjs`** (same 3 tests): (1) pre-6B snapshot, open `/`: `ds_*` and the old T-Score
+  names gone, every value under its new name, MLS's old keys and the old hand-off untouched, marker `'2'`. Then
+  `/lineup/`: `mds_season_*` and the old hand-off gone, the hand-off banner and roster show. Then `/t-score/`:
+  label shows, no old name left anywhere. (2) T-Score first deletes only its two old cache names; MDS opened next
+  still has the cache. (3) the resets: since the pages have already deleted their old keys, the test plants both
+  apps' old names back before Hard Reset / Factory Reset, then checks as before.
+- **`tests/backup.spec.mjs`:** one line in the round trip, the exported marker is `'2'` (was `'1'`). The two
+  old-format restores and `bootKeyFilters.test.mjs` are unchanged and pass.
+
+#### Checks run
+
+CHECKS_PLACEHOLDER
+
+#### Left for later
+
+- **10B:** remove CLAUDE.md's "6C is pending" line; in TESTING.md / CLAUDE.md mention the marker's two values and
+  `deleteOldKeyNames`. No test or tooling code became unneeded in 6C (the pre-6B fixtures still drive both specs).
+- **Bridging app code for 10B's list:** `deleteOldKeyNames` (and `migrateKeyNames`) only bridge pre-6B installs,
+  but per "Kept permanently" there's no date after which they're safe to drop; listing them is enough.
+  `KEYS.mls.bestAvailableCollapsed` says "unread since S12 … kept until refactor 6C": 6C renames and removes no
+  key (card), so it's still there, for the owner to decide.

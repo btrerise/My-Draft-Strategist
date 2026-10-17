@@ -2,7 +2,8 @@
 // hand-off and T-Score cache keys out of mds_). This suite checks the old -> new table in
 // js/shared/storage/keys.js against every pre-6B name (helpers/pre6bKeys.mjs), the ownership
 // filters on old names, and js/shared/storage/keyMigration.js against an in-memory Storage:
-// old keys in, new keys out, nothing lost, the other app's keys untouched.
+// old keys in, new keys out, nothing lost, the other app's keys untouched. Since 6C it also checks
+// deleteOldKeyNames: each page deletes the old copies of what it renamed, once, and nothing else.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -10,7 +11,7 @@ import {
     KEYS, STORAGE_KEYS, mdsDraftPoolKey, renamedKey, isLegacyKey,
     isMdsOwnedKey, isMlsOwnedKey, isMdsOwnedOrLegacyKey, isMlsOwnedOrLegacyKey,
 } from '../../js/shared/storage/keys.js';
-import { migrateKeyNames, renameLegacyKeys } from '../../js/shared/storage/keyMigration.js';
+import { migrateKeyNames, deleteOldKeyNames, keepKeyNamesMarker, renameLegacyKeys } from '../../js/shared/storage/keyMigration.js';
 import { PRE_6B_KEYS, PRE_6B_DRAFT_POOL_PREFIX } from './helpers/pre6bKeys.mjs';
 
 const keyAt = (path) => path.split('.').reduce((o, p) => o[p], KEYS);
@@ -170,6 +171,146 @@ describe('migrateKeyNames', () => {
         try { migrateKeyNames('mds', storage); } finally { console.error = origError; }
         assert.deepEqual(storage.dump(), before);
         assert.equal(errors.length, 1);
+    });
+});
+
+// What one page load does since 6C (js/mds/migrateKeys.js, js/mls/migrateKeys.js, js/tscore/main.js).
+const loadPage = (page, storage) => { migrateKeyNames(page, storage); deleteOldKeyNames(page, storage); };
+
+describe('deleteOldKeyNames (6C)', () => {
+    for (const page of ['mds', 'mls', 'tscore']) {
+        test(`${page}: after the rename, deletes exactly its old keys, and every value is under its new name`, () => {
+            const storage = preRenameStorage();
+            const before = storage.dump();
+            loadPage(page, storage);
+            const after = storage.dump();
+
+            const own = renamedOldNames.filter(COPIED_BY[page]);
+            assert.ok(own.length > 0);
+            for (const k of own) {
+                assert.equal(after[k], undefined, `${k} deleted`);
+                assert.equal(after[newNameOf(k)], before[k], `${k} -> ${newNameOf(k)}`);
+            }
+            // Everything else is as it was: the other app's old keys, unrelated keys.
+            for (const [k, v] of Object.entries(before)) if (!own.includes(k)) assert.equal(after[k], v, `${k} untouched`);
+            assert.equal(after[KEYS[page].keyNamesVersion], '2');
+            const added = Object.keys(after).filter(k => !(k in before)).sort();
+            assert.deepEqual(added, [...own.map(newNameOf), KEYS[page].keyNamesVersion].sort());
+        });
+    }
+
+    test("a page never deletes the other app's old keys; that app copies them when it's opened", () => {
+        const storage = preRenameStorage();
+        const before = storage.dump();
+        loadPage('mds', storage);
+        loadPage('tscore', storage);
+        for (const k of renamedOldNames.filter(k => groupOf(k) === 'mls')) assert.equal(storage.getItem(k), before[k], k);
+        assert.equal(storage.getItem('mds_handoff_roster'), before.mds_handoff_roster);
+
+        loadPage('mls', storage);
+        for (const k of renamedOldNames.filter(COPIED_BY.mls)) {
+            assert.equal(storage.getItem(k), null, `${k} deleted by MLS`);
+            assert.equal(storage.getItem(newNameOf(k)), before[k], `${k} -> ${newNameOf(k)}`);
+        }
+        // All three pages opened: no old name left, every value under its new name.
+        for (const k of renamedOldNames) {
+            assert.equal(storage.getItem(k), null, k);
+            assert.equal(storage.getItem(newNameOf(k)), before[k], k);
+        }
+        assert.deepEqual(Object.fromEntries(Object.keys(UNRELATED).map(k => [k, storage.getItem(k)])), UNRELATED);
+    });
+
+    test('deletes nothing while the rename marker is unset (rename deferred: storage refused every write)', () => {
+        const storage = preRenameStorage();
+        const realSet = storage.setItem.bind(storage);
+        storage.setItem = () => { throw new Error('QuotaExceededError'); };
+        const before = storage.dump();
+        const origError = console.error;
+        console.error = () => {};
+        try { loadPage('mds', storage); } finally { console.error = origError; }
+        assert.deepEqual(storage.dump(), before);
+
+        // On its own, too: no marker, nothing deleted.
+        deleteOldKeyNames('mls', storage);
+        assert.deepEqual(storage.dump(), before);
+
+        // The next load, with room again, renames and deletes.
+        storage.setItem = realSet;
+        loadPage('mds', storage);
+        assert.equal(storage.getItem('ds_meta'), null);
+        assert.equal(storage.getItem(KEYS.mds.meta), before.ds_meta);
+        assert.equal(storage.getItem(KEYS.mds.keyNamesVersion), '2');
+    });
+
+    test('runs once: old keys written back later stay, and the rename does not copy again', () => {
+        const storage = preRenameStorage();
+        loadPage('mds', storage);
+        storage.removeItem(KEYS.mds.meta); // a key the new code cleared
+        storage.setItem('ds_meta', 'written by a stale tab');
+        storage.setItem('mds_tscore_cache', 'written by a stale tab');
+        const before = storage.dump();
+        loadPage('mds', storage);
+        assert.deepEqual(storage.dump(), before);
+        assert.equal(storage.getItem(KEYS.mds.meta), null, 'not copied back');
+    });
+
+    test('a key the page already consumed (the hand-off) loses its old copy too, and is not copied back', () => {
+        const storage = preRenameStorage();
+        const handoff = storage.getItem('mds_handoff_roster');
+        migrateKeyNames('mls', storage); // 6B's code ran on an earlier load
+        assert.equal(storage.getItem(KEYS.shared.handoffRoster), handoff);
+        storage.removeItem(KEYS.shared.handoffRoster); // MLS consumed it
+        loadPage('mls', storage); // the first load with 6C
+        assert.equal(storage.getItem('mds_handoff_roster'), null);
+        assert.equal(storage.getItem(KEYS.shared.handoffRoster), null);
+        assert.equal(storage.getItem(KEYS.mls.keyNamesVersion), '2');
+    });
+
+    test('a browser 6B already renamed (marker 1, old copies kept) has them deleted on its next load', () => {
+        const storage = preRenameStorage();
+        for (const page of ['mds', 'mls', 'tscore']) migrateKeyNames(page, storage);
+        const before = storage.dump();
+        for (const page of ['mds', 'mls', 'tscore']) {
+            assert.equal(before[KEYS[page].keyNamesVersion], '1');
+            loadPage(page, storage);
+        }
+        for (const k of renamedOldNames) {
+            assert.equal(storage.getItem(k), null, k);
+            assert.equal(storage.getItem(newNameOf(k)), before[newNameOf(k)], k);
+        }
+    });
+
+    test('storage nearly full: the rename moves, the deletion has nothing left of its own to remove', () => {
+        const probe = preRenameStorage();
+        const used = Object.entries(probe.dump()).reduce((n, [k, v]) => n + k.length + v.length, 0);
+        const storage = preRenameStorage(used + 600);
+        const before = storage.dump();
+        loadPage('mds', storage);
+        for (const k of renamedOldNames.filter(COPIED_BY.mds)) {
+            assert.equal(storage.getItem(k), null, k);
+            assert.equal(storage.getItem(newNameOf(k)), before[k], k);
+        }
+        assert.equal(storage.getItem(KEYS.mds.keyNamesVersion), '2');
+    });
+});
+
+describe('keepKeyNamesMarker (Restore)', () => {
+    test("keeps this browser's marker whatever the restored file holds", () => {
+        const storage = preRenameStorage();
+        loadPage('mds', storage);
+        for (const fileMarker of [undefined, '1', '2']) {
+            keepKeyNamesMarker('mds', () => {
+                storage.removeItem(KEYS.mds.keyNamesVersion);
+                if (fileMarker) storage.setItem(KEYS.mds.keyNamesVersion, fileMarker);
+            }, storage);
+            assert.equal(storage.getItem(KEYS.mds.keyNamesVersion), '2', `file marker ${fileMarker}`);
+        }
+    });
+
+    test('a browser whose rename was deferred stays unset, so the rename still runs', () => {
+        const storage = new MemoryStorage({ ds_meta: 'x' });
+        keepKeyNamesMarker('mls', () => storage.setItem(KEYS.mls.keyNamesVersion, '2'), storage);
+        assert.equal(storage.getItem(KEYS.mls.keyNamesVersion), null);
     });
 });
 

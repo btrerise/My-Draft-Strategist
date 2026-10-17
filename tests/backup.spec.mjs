@@ -73,7 +73,7 @@ async function roundTrip(page, state, { app, inputId, junkKey, dropKey }) {
     expect(payload.data[dropKey], `${dropKey} is in the backup`).toBeDefined();
     for (const k of Object.keys(OWNED_EXTRA[app])) expect(payload.data[k], `${k} is in the backup`).toBeDefined();
     expect(payload.data[HANDOFF], `${HANDOFF} is not in the backup`).toBeUndefined();
-    expect(payload.data[app === 'mds' ? 'mds_key_names_version' : 'mls_key_names_version'], 'the 6B rename ran').toBe('1');
+    expect(payload.data[app === 'mds' ? 'mds_key_names_version' : 'mls_key_names_version'], 'the 6B rename and the 6C deletion ran').toBe('2');
 
     // Scramble: lose one owned key, add an owned key the backup doesn't have.
     await page.evaluate(({ dropKey, junkKey }) => {

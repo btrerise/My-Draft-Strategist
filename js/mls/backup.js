@@ -1,6 +1,6 @@
 // Moved from lineup/mls.js in refactor chunk 3A: BACKUP & RESTORE.
 import { isMlsOwnedKey, isMlsOwnedOrLegacyKey } from '../shared/storage/keys.js';
-import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
+import { renameLegacyKeys, keepKeyNamesMarker } from '../shared/storage/keyMigration.js';
 import { showToast } from '../shared/ui/toast.js';
 import { showConfirm } from '../shared/ui/confirm.js';
 
@@ -76,8 +76,11 @@ import { showConfirm } from '../shared/ui/confirm.js';
                 return;
             }
 
-            getMlsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
-            Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+            // The storage-key rename marker stays as this browser has it (6C, keyMigration.js).
+            keepKeyNamesMarker('mls', () => {
+                getMlsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
+                Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+            });
 
             showToast("Backup restored! Reloading now.");
             setTimeout(() => { window.location.reload(); }, 900);

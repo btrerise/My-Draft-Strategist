@@ -51,7 +51,7 @@ export const KEYS = {
         tscore: 'mds_tscore',
         username: 'mds_username',
         showHeadshots: 'mds_show_headshots', // the one MDS key whose name 6B didn't change
-        keyNamesVersion: 'mds_key_names_version', // set once keyMigration.js has copied the old names (6B)
+        keyNamesVersion: 'mds_key_names_version', // keyMigration.js sets '1' once the old names are copied (6B), '2' once deleted (6C)
     },
     // My Lineup Strategist (/lineup/). All start with MLS_PREFIX.
     mls: {
@@ -94,7 +94,7 @@ export const KEYS = {
         syncLogs: 'mls_sync_logs',
         tradeSettings: 'mls_trade_settings',
         waiverScanSettings: 'mls_waiver_scan_settings',
-        keyNamesVersion: 'mls_key_names_version', // set once keyMigration.js has copied the old names (6B)
+        keyNamesVersion: 'mls_key_names_version', // keyMigration.js sets '1' once the old names are copied (6B), '2' once deleted (6C)
     },
     // In neither app's backup.
     shared: {
@@ -109,7 +109,7 @@ export const KEYS = {
         cache: 'tscore_cache',
         cacheUpdated: 'tscore_cache_updated',
         pageCache: 'tscore_page_cache',
-        keyNamesVersion: 'tscore_key_names_version', // set once keyMigration.js has copied the old names (6B)
+        keyNamesVersion: 'tscore_key_names_version', // keyMigration.js sets '1' once the old names are copied (6B), '2' once deleted (6C)
     },
 };
 
@@ -135,9 +135,11 @@ export const IDB_DATABASES = {
 // Until 6B, MDS's keys started with ds_, MLS's with mds_season_ or mls_, and the hand-off and
 // T-Score cache keys with mds_. This is the permanent old -> new table: keyMigration.js copies
 // a browser's old keys to their new names on load, and Restore renames the keys in old backup
-// files. The old keys stay in localStorage until a later release deletes them (LOG, 6B), so the
-// filters below still have to tell them apart from today's mds_ keys. Apart from js/boot.js,
-// this is the only place an old name is spelled.
+// files. Since 6C each page deletes the old copies of the keys it renamed, but a browser that
+// hasn't opened a page since before 6B still holds that page's old keys, and old backup files
+// keep them for good. So the table is permanent, and the filters below still have to tell old
+// names apart from today's mds_ keys. Apart from js/boot.js, this is the only place an old name
+// is spelled.
 export const LEGACY_MDS_PREFIX = 'ds_';
 export const LEGACY_MLS_PREFIX = 'mds_season_';
 export const LEGACY_KEY_RENAMES = {
