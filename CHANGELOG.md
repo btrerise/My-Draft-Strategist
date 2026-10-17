@@ -81,6 +81,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The Trade Analyzer says what would make a trade fair.** When a trade is outside the fair band, a box under the
+  verdict says who would have to add and about how much ("To make it fair, they'd add about 4,400"), by your ROS
+  rankings (Market Consensus if you have none), and lists up to three players from that team's roster, or from yours,
+  whose value would bring it within 10%, closest to even first, each with an Add button that puts him on the trade and
+  re-runs it. In dynasty and keeper leagues that team's own draft picks can be suggested too (market value). When no
+  single player is enough, it suggests pairs ("Add both"); when nothing fits, it says so in one line. The waiver
+  adjustment is counted as it would be after the add. In a manual league it suggests only what you'd add. It isn't
+  part of Export Trade's image.
 - **The Trade Analyzer shows how your team changes.** Under the trade verdict, "Power Rankings after the trade"
   shows your Positional Power Rankings (Start, Ovr, QB, RB, WR, TE) before and after the trade, by your ROS rankings
   (Market Consensus if you have none). A headline puts value and lineup together ("You pay in value (−4,389 pts) to

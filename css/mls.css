@@ -1010,6 +1010,25 @@ button.close-chip {
 .mls-trade-lineup-line.mls-trade-in { color: #4ade80; }
 .mls-trade-lineup-line em { color: var(--text-muted); }
 
+/* Trade Analyzer -- "To make it fair" under a lopsided verdict (improvements S19, js/mls/trade/fairSection.js): the gap
+   and up to three suggestions, one per line on phones with names kept whole and Add at the right edge; two columns from
+   tablet width up, like the trade's two sides. */
+.mls-trade-fair { border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); padding: 0.85rem 1rem; margin-bottom: 1rem; }
+.mls-trade-fair-head { font-size: 0.92rem; font-weight: 600; color: var(--text-main); }
+.mls-trade-fair-via, .mls-trade-fair-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; line-height: 1.45; }
+.mls-trade-fair-list { list-style: none; margin: 0.4rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.5rem; }
+.mls-trade-fair-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-top: 1px solid var(--border); }
+.mls-trade-fair-badges { flex: 0 0 auto; display: inline-flex; gap: 4px; }
+.mls-trade-fair-badges .badge { min-width: 3.3em; justify-content: center; text-align: center; }
+.mls-trade-fair-names { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 0.88rem; color: var(--text-main); display: flex; flex-wrap: wrap; column-gap: 0.35rem; }
+.mls-trade-fair-player { white-space: nowrap; }
+.mls-trade-fair-plus { color: var(--text-muted); font-weight: 600; }
+.mls-trade-fair-val { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-main); font-size: 0.88rem; }
+.mls-trade-fair-add { flex: 0 0 auto; }
+@media (min-width: 768px) {
+    .mls-trade-fair-list { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
 /* Trade Analyzer (improvements S14, round 5): the player picker (js/mls/trade/picker.js) and the compact rows the
    analysis lists each player in (js/mls/scout/engine.js). */
 /* Receive and Give side by side from tablet width up, in the form and in the results (round 8); stacked on phones. */

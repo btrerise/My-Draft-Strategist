@@ -2,7 +2,7 @@
 // (runScout, incl. dynamic waiver adjustment and the position resolver). The trade fairness verdicts
 // and renderTradeVerdict (with its waiver adjustment) moved to trade/verdict.js in 3G.
 import { escapeHtml } from '../../shared/html.js';
-import { injuryBadgeMarkup } from '../badges.js';
+import { injuryBadgeMarkup, PICK_BADGE_HTML } from '../badges.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';
@@ -14,6 +14,7 @@ import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valu
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML } from '../trade/verdict.js';
 import { buildTradeImpactHTML } from '../trade/lineupSection.js';
+import { buildMakeFairHTML } from '../trade/fairSection.js';
 import { setTradeExport } from '../trade/export.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
@@ -280,7 +281,7 @@ import { normalizeName } from '../../shared/names.js';
                 return {
                     html: `
                 <div class="mls-trade-row">
-                    <span class="badge pos-badge ${isPick ? 'FLEX' : badgeClass} mls-pos-badge-sizing">${isPick ? 'Pick' : displayPos}</span>
+                    ${isPick ? PICK_BADGE_HTML : `<span class="badge pos-badge ${badgeClass} mls-pos-badge-sizing">${displayPos}</span>`}
                     <div class="mls-trade-row-main">
                         <div class="mls-trade-row-name">${escapeHtml(displayName)}${tradeMeta && tradeMeta[clean] && tradeMeta[clean].inj ? injuryBadgeMarkup(tradeMeta[clean].inj) : ''}${sosBadge}</div>
                         <div class="mls-trade-row-meta">${rankBits.map(b => `<span>${b}</span>`).join('')}<span class="${owns.cls}">${escapeHtml(owns.text)}</span></div>
@@ -359,7 +360,16 @@ import { normalizeName } from '../../shared/names.js';
             } catch (e) {
                 console.warn('Trade Analyzer: lineup comparison unavailable.', e);
             }
-            html += verdictHTML + impactHTML;
+            // What would make a lopsided trade fair (improvements S19), right under the verdicts. Same guard.
+            let fairHTML = '';
+            if (!isOneSided) {
+                try {
+                    fairHTML = buildMakeFairHTML(league, targetNames, sellNames, getResults, giveResults);
+                } catch (e) {
+                    console.warn('Trade Analyzer: fair-trade suggestions unavailable.', e);
+                }
+            }
+            html += verdictHTML + fairHTML + impactHTML;
 
             // The two sides side by side on wider screens, stacked on phones (round 8; css/mls.css .mls-trade-sides).
             html += `<div class="mls-trade-sides">`;

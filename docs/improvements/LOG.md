@@ -4486,3 +4486,76 @@ four PNGs listed above; 389 tests passed. For each, CI's `-expected.png` was byt
 the height change from main matched this container's main-vs-branch comparison (desktop scout −252 both; phone guide +576
 both; desktop guide +161 vs +185 and phone scout −169 vs −166, from text wrapping under CI's fonts). Committed CI's
 `-actual.png` renders as the baselines: `{desktop,phone}/mls-league-guide.png` and `{desktop,phone}/mls-league-scout.png`.
+
+## S19 — Trade Analyzer: what would make it fair
+
+**User-visible effect.** When the Trade Analyzer's verdict is Favors Them or Favors You, a box between the verdict
+banners and "Power Rankings after the trade" says who would have to add and about how much: **"To make it fair, they'd
+add about 9,800"** (or "you'd add"), then "By Your Rankings, from Rival's roster. Any one of these brings it within
+10%." and up to three suggestions, closest to even first, one per line: position badge, name, value, **Add**. Add puts
+the player on the right side of the trade through the picker (a token appears) and the trade re-runs in place; the
+box then updates, or disappears when the trade is Fair. When no single player is enough: "No single player on Rival's
+roster closes a 19,100 gap. By Your Rankings, these pairs would:" and up to three pairs with **Add both**. When nothing
+fits: "No player or pair on Rival's roster closes a 18,600 gap by Your Rankings." When one more player on that side
+moves the waiver adjustment (so "about" differs from the banner's gap), the line adds "Counts the waiver adjustment,
+which changes with one more player." In dynasty and keeper leagues with Market Consensus loaded, that team's own picks
+("2027 2nd", marked *) can be suggested, with "* Draft pick: market value. Assumes Rival still has its own picks (traded
+picks aren't synced)." No box for a Fair Trade, a one-sided entry or no rankings. Other cases say why in one line: a
+manual league when they'd add ("the app knows only your roster"), players from more than one team, or only free agents
+or picks on your side with "Any team" under From ("Choose their team under From"). Phones: one suggestion per line,
+names kept whole (a pair wraps as "Gibbs" / "+ Barkley"), Add at the right edge; from 768px the suggestions sit in two
+columns, like the trade's two sides. Export Trade's image leaves the box out.
+
+Also: the Guide's badge legend has a line for the **Pick** badge (a FLEX-colored position badge reading "Pick"), which
+the trade rows have shown since S14 without one; see Screenshots.
+
+**The owner's decisions (Asks you).**
+1. **Values: Your Rankings** (the first verdict); Market Consensus only when no ROS rankings are loaded (as S14's
+   headline). The line names which.
+2. **Pool: the adding side's roster plus its own picks** in dynasty and keeper leagues: the From team's roster when
+   the trade favors them (Sleeper leagues), yours when it favors you. No free agents. Pick ownership isn't synced, so
+   each team is assumed to hold its own next three drafts' picks, rounds 1-4 (the picker's years), valued by the market.
+3. **3 suggestions, pairs as a fallback**: up to 3 single players; only when none fits, up to 3 pairs with one "Add
+   both".
+4. **Ignore the lineup**: closest fit first, starter or not (the Power Rankings section shows the lineup effect after
+   the add).
+
+**What changed and where.**
+- `js/mls/trade/makeFair.js` (new, pure, in `PRECACHE_ASSETS`): `verdictFromValues` (the verdict's math, moved from
+  `tradeVerdictNumbers` unchanged, so a suggestion is checked with exactly the banner's numbers, waiver adjustment
+  included), `gapToClose` (who adds, and the value one more piece would need, waiver change included), `fairSuggestions`
+  (each candidate re-checked with the whole verdict as if added; singles closest to even first; pairs from the 40 most
+  valuable candidates under the gap when no single fits), `fairCandidates` (ranked roster players; picks only in
+  dynasty), `nextDraftYears`, `ownPickNames`, `roundGap`.
+- `js/mls/trade/fairSection.js` (new, in `PRECACHE_ASSETS`): `buildMakeFairHTML` picks the values, the adding team (the
+  one team the players you'd get come from, else the From drop-down), its roster from `globalRosterMap` (yours also
+  from `league.roster`), and draws the box. Never suggests a player already in the trade, an unranked player, or a pick
+  already on the adding side.
+- `js/mls/trade/verdict.js`: `tradeVerdictNumbers` calls `verdictFromValues`; the banners' output is unchanged.
+- `js/mls/scout/engine.js`: the box between the verdicts and the impact section (try/catch, like the section); the Pick
+  badge from `PICK_BADGE_HTML`. `js/mls/badges.js`: `PICK_BADGE_HTML`. `js/mls/legend.js`: its line.
+- `js/mls/trade/picker.js`: the pick years from `nextDraftYears` (same years). `js/mls/main.js`: the
+  `addFairSuggestion` action (`addTradeNames`). `css/mls.css`: `.mls-trade-fair*`.
+- `lineup/index.html`: Guide step 9 gets a sentence on "To make it fair" (the legend line already changes that screenshot).
+- `sw.js`: the two files; `CACHE_NAME` v2.8.95 → v2.8.96. `CHANGELOG.md`: a line under Lineup Strategist.
+- No storage key.
+
+**Tests.**
+- Unit (`tests/unit/makeFair.test.mjs`, 13): the moved verdict math and waiver credit; fair or valueless trades get
+  nothing; favors them adds to Get and favors you to Give; closest to even first, at most 3; the waiver adjustment
+  recomputed (a 1-for-2 needs 5,000, not the raw 4,000, and a candidate that looks fair with the old credit isn't);
+  players in the trade skipped, a pick only on the same side; unranked never suggested; pairs only when no single fits;
+  nothing fits; picks only in dynasty and only with market values; the pick years; rounding.
+- Spec (`tests/mls-trade-fair.spec.mjs`, both widths, the phone at 375px): Bijan for Chase + Jefferson shows up to 3 of
+  Rival's players (none in the trade), between the verdicts and Power Rankings, one per line with names whole and Add on
+  screen, no sideways scroll; Add makes a token, re-runs (4 rows) and the verdict turns Fair with no box. Favors you:
+  from your roster, Add on Give, Fair. A pair with "Add both". Nobody fits: the one line. Fair, one-sided and no
+  rankings: no box. A manual league: the note when they'd add, suggestions when you'd add. Export Trade's clone has the
+  verdict and not the box. (The tests that prune rosters turn the waiver adjustment off: its auto value comes from the
+  best free agents, which pruned players become.)
+
+**Checks.** See the S19 entry's last paragraph (filled in before pushing).
+
+**Left over.**
+- Picks assume nobody has traded theirs: Sleeper's `traded_picks` isn't synced. Syncing it would make pick suggestions
+  (and Power Rankings' Future) exact.

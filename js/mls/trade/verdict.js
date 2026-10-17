@@ -4,6 +4,7 @@
 import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { getFreshness } from '../../shared/freshness.js';
+import { verdictFromValues } from './makeFair.js';
 
     // --- TRADE FAIRNESS VERDICT(S) ---
     // Returns the verdict banner(s) runScout puts above the Trade Analyzer's player cards, for a trade
@@ -48,37 +49,11 @@ import { getFreshness } from '../../shared/freshness.js';
     // adjustment (bonusGet/bonusGive). verdict: 'fair' | 'you' | 'them'. Returns null when nothing on either side
     // has a value.
     export function tradeVerdictNumbers(getResults, giveResults, valueKey) {
-        let getTotal = getResults.reduce((sum, r) => sum + r[valueKey], 0);
-        let giveTotal = giveResults.reduce((sum, r) => sum + r[valueKey], 0);
-        if (getTotal === 0 && giveTotal === 0) return null;
-
-        // --- WAIVER ADJUSTMENT ---
-        // Credits whichever side of the trade includes FEWER total players. A straight sum of
-        // player values overvalues the many-piece side of an uneven trade: consolidating value
-        // into fewer roster spots is worth something on its own, since the newly-freed bench
-        // spot(s) can be refilled off waivers. This mirrors the "waiver adjustment" concept sites
-        // like FantasyCalc apply to their own trade calculators, though the credit amount here is
-        // a flat, user-configurable estimate (see the Trade Analyzer's settings above) rather
-        // than one derived from real trade data.
-        let bonusGet = 0, bonusGive = 0;
-        if (State.tradeSettings.waiverAdjustment) {
-            let spotDiff = giveResults.length - getResults.length; // >0 = you're sending more pieces than you receive
-            let perSpot = parseFloat(State.tradeSettings.waiverAdjustmentValue) || 0;
-            if (spotDiff !== 0 && perSpot > 0) {
-                let bonus = Math.abs(spotDiff) * perSpot;
-                if (spotDiff > 0) { getTotal += bonus; bonusGet = bonus; }
-                else { giveTotal += bonus; bonusGive = bonus; }
-            }
-        }
-
-        let diff = getTotal - giveTotal;
-        let biggerSide = Math.max(getTotal, giveTotal, 1); // avoid div-by-zero
-        let swingPct = (Math.abs(diff) / biggerSide) * 100;
-
-        // Within 10% of the larger side's value counts as a fair trade -- outside that, it
-        // clearly favors whoever's receiving more value.
-        const verdict = swingPct < 10 ? 'fair' : (diff > 0 ? 'you' : 'them');
-        return { getTotal, giveTotal, bonusGet, bonusGive, diff, swingPct, verdict };
+        // The math is verdictFromValues (trade/makeFair.js, improvements S19), so "what would make it fair"
+        // checks each suggestion with exactly the banner's numbers.
+        return verdictFromValues(getResults.map(r => r[valueKey]), giveResults.map(r => r[valueKey]), {
+            on: !!State.tradeSettings.waiverAdjustment, perSpot: State.tradeSettings.waiverAdjustmentValue
+        });
     }
 
     // Builds one verdict banner (label + totals + Fair/Favors-You/Favors-Them) from a set of
