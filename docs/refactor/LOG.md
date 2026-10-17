@@ -2,7 +2,7 @@
 
 **The refactor is finished** (10B, 2026-10-17: every runbook card is done). Start from
 [`docs/TESTING.md`](../TESTING.md) and the root `CLAUDE.md`; this file is the history, kept as it was. Look up an
-entry by its chunk ID when the guide points to one. Open follow-ups are listed in the last entry (10B).
+entry by its chunk ID when the guide points to one. Open follow-ups are in TESTING.md, "Open follow-ups".
 
 The plan, the rules every session follows, and a copyable prompt per chunk are in the runbook:
 https://claude.ai/artifact/4ZapAQXgsVu96YRkToSJFS (read it with the Artifact tool).
@@ -5731,9 +5731,8 @@ Still open, all optional and none a refactor task:
 - **8B:** the setup checklist doesn't mention stale data; `weekly-success-feedback` keeps its MLS name.
 - **8C:** the unclosed-quote toast still shows after saving from the preview; MDS's preview lists draft-pick rows as
   unmatched names; `analyzeRankingsFile` stays in `js/mls/scout/waivers.js`.
-- **10A:** make `Checks / check` a required status check for main (owner's call, in GitHub's settings); bump
-  `actions/checkout`, `actions/setup-node` (and `upload-artifact`) from v4 when convenient (they run on Node 20 and
-  are forced onto Node 24).
+- **10A:** make `Checks / check` a required status check for main. Owner says it is already on (main shows as
+  protected; the session couldn't see the rule's details). The Actions bump is done (10B follow-up below).
 
 #### Checks run
 
@@ -5744,3 +5743,18 @@ Still open, all optional and none a refactor task:
   byte-identical to main's (`git diff --stat origin/main` lists only CLAUDE.md, docs/TESTING.md and this log).
   CI, whose renders match the baselines (10A), is the screenshot check: it runs when a pull request is opened.
 - `CACHE_NAME` not bumped (no deployed file changed).
+
+#### Follow-up (owner's request): Actions bump, an "Open follow-ups" list
+
+- **`.github/workflows/check.yml`:** `actions/checkout`, `actions/setup-node` and `actions/upload-artifact` v4 →
+  v7 (the latest major of each; all three run on Node 24, so the Node 20 warning goes). Their breaking changes
+  since v4 don't reach this workflow: checkout v7 refuses fork code only under `pull_request_target` /
+  `workflow_run`; setup-node v5–v7 changed default caching (we set `cache: npm` explicitly), removed
+  `always-auth` and the dummy `NODE_AUTH_TOKEN` (we use neither, nor `registry-url`); every upload-artifact input
+  we pass (`name`, `path`, `retention-days`) is unchanged. Checked against each action's v7 `action.yml` and README.
+  CI on the pull request is the real check.
+- **`docs/TESTING.md`, new section "Open follow-ups":** the open items above, grouped by date, owner's decision
+  and small polish, each with the LOG entry it came from. `CLAUDE.md` points to it: a session whose change touches
+  one of those areas mentions the item to the owner, and removes the line when it's done or dropped. **From now
+  on that list, not this log, is where open work is tracked.**
+- Only tooling and docs changed, so no `CACHE_NAME` bump.

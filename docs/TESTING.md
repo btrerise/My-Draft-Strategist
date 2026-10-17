@@ -215,3 +215,35 @@ shot and S10 took four runs for 14.)
 - **User-visible changes** (8A): add a plain-language line under the app's **Unreleased** section in
   `CHANGELOG.md`. Bumping an app's footer version (the `APP VERSION` comment in `index.html` or
   `lineup/index.html`) turns those lines into that version's entry.
+
+## Open follow-ups
+
+Optional work that sessions found but nothing has scheduled. None is a bug that hurts users today. **Sessions:**
+when your change touches one of these areas, mention the item to the owner (don't build it unasked). When one is
+done or dropped, remove its line here in the same change. Background for each is in the LOG entry named in brackets.
+
+**On a date**
+- **May 2027:** run `node scripts/update-byes.mjs 2027` once the NFL schedule is out (7C). Until then 2027 has no
+  byes. Draft Strategist uses the calendar year for byes, not the draft's season.
+
+**Needs the owner's decision first**
+- Merge `dropTitleRows` and `findHeaderRowIndex` in `js/shared/rankings/parse.js` into one title-row finder. That
+  changes how some rankings files are read, so do it only if a file parses wrong (2C).
+- IDP positions (LB, DL, DB) get K/DEF's Boom/Bust floor of 4, and the simulator uses Sleeper's default scoring,
+  not the league's own. Owner chose to leave both until IDP leagues or custom scoring matter (9B).
+- Save the name → position lookup (`window.sleeperPosByName`) so a new page doesn't rebuild it from the player map.
+  Only a speed-up, and it needs a new storage key (3G).
+
+**Small polish, one session each**
+- Draft Strategist's setup checklist doesn't say when rankings or ADP are stale; `getSetupState()` in
+  `js/mds/setupGuide.js` would read `State.rankingsMeta.updatedAt` / `State.adpMeta.updatedAt` (8B).
+- After saving from Draft Strategist's upload preview, the unclosed-quote error toast still shows, though the
+  preview already listed the lost rows (a one-line change in `applyRankings`). Draft Strategist's preview also lists
+  draft-pick rows ("2026 1st") as unmatched names, which Lineup Strategist's skips (8C).
+- The shared info banner (4C feature 6) was never built for Draft Strategist; build it if an MDS message needs it,
+  with a `keys.js` key if it can be dismissed (8A).
+- `weekly-success-feedback` keeps its Lineup Strategist name; rename it if Draft Strategist ever uses the blue
+  variant (8B). `analyzeRankingsFile` lives in `js/mls/scout/waivers.js`; if Draft Strategist needs it, pass in
+  MLS's inputs rather than importing `js/mls/` from `js/shared/` (8C).
+- `shared_sleeper_league_id`'s cleanup line in `js/mls/init.js` can go any time (keep its `keys.js` entry); see
+  the bridging-code table in LOG 10B for what else only exists for old installs and why most of it stays.

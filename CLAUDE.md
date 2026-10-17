@@ -55,3 +55,6 @@ all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.md`).
   `tests/key-migration.spec.mjs`.
 
 Details and the reasons for each rule: `docs/TESTING.md`.
+
+Optional work nobody has scheduled is under "Open follow-ups" in `docs/TESTING.md`. If your change touches one of
+those areas, mention the item to the owner; remove an item's line when it's done or dropped.
