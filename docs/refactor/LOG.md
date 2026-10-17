@@ -1,5 +1,9 @@
 # Module-structure refactor log
 
+**The refactor is finished** (10B, 2026-10-17: every runbook card is done). Start from
+[`docs/TESTING.md`](../TESTING.md) and the root `CLAUDE.md`; this file is the history, kept as it was. Look up an
+entry by its chunk ID when the guide points to one. Open follow-ups are in TESTING.md, "Open follow-ups".
+
 The plan, the rules every session follows, and a copyable prompt per chunk are in the runbook:
 https://claude.ai/artifact/4ZapAQXgsVu96YRkToSJFS (read it with the Artifact tool).
 
@@ -5664,3 +5668,93 @@ the league cards, and was "kept until refactor 6C". The owner asked to remove it
 - Tests: a unit test (retired keys aren't in the registry, carry their app's prefix, aren't old names) and a
   `key-migration.spec.mjs` test (a planted `mls_best_available_collapsed` is gone after `/lineup/` loads; checked
   it fails without the cleanup line). Nothing users see changes.
+
+### 10B — Wrap-up, part 2: close out the refactor after 6C (no visible change)
+
+6C (PR #198, merged 2026-10-17) and 10A were confirmed on main first. Started from the 6C and 10A entries and a grep
+of this whole log for "Left for later". Only docs changed (no file the site loads), so `CACHE_NAME` stays `v2.8.95`
+and PRECACHE_ASSETS is unchanged. No user-visible change, so no CHANGELOG line.
+
+**The runbook is finished: every card, 0A through 10B, is done.** From here, `docs/TESTING.md` and `CLAUDE.md` are
+where to start; this log is history.
+
+#### What changed
+
+- **Removed: nothing.** 6C's entry says no test or tooling code became unneeded (the pre-6B fixtures still drive
+  `keyMigration.test.mjs` and `key-migration.spec.mjs`), and a grep of `tests/`, `scripts/` and `.github/` for
+  6C / 10B found only comments describing what 6C does. Kept, as 6C keeps them permanently: `LEGACY_KEY_RENAMES`,
+  `renamedKey`, `isLegacyKey`, `renameLegacyKeys`, the `*OrLegacy` filters, boot.js's old-name clauses.
+- **`CLAUDE.md`:** the "Refactor chunk 6C is pending" line is gone. In its place, one rule on old key names (copy then
+  delete, the marker's `'1'` / `'2'`, what stays for good, `RETIRED_KEYS`, the two test files).
+- **`docs/TESTING.md`:** two new Conventions bullets, "Old key names" (`migrateKeyNames` → `deleteOldKeyNames`, the
+  marker's values, `keepKeyNamesMarker` on Restore, what to keep and why, the tests) and "Retiring a key"
+  (`RETIRED_KEYS`; a rename needs a new migration plus an OLD NAMES entry). The header says it was updated for 6C.
+- **This log:** a note at the top saying the refactor is finished and TESTING.md is the place to start. No old
+  entry was rewritten or deleted.
+
+#### App code that only bridges old installs (for the owner; nothing deleted)
+
+"Live since" is the day it reached main (Cloudflare Pages deploys main). Today is 2026-10-17.
+
+| # | Code | What it does | Live since | Safe to delete? |
+|---|---|---|---|---|
+| 1 | `js/mls/init.js`, STARTUP CLEANUP: `localStorage.removeItem(KEYS.shared.sleeperLeagueId)` (and the `sleeperLeagueId` entry in `keys.js`) | Removes `shared_sleeper_league_id`, an MDS → MLS league-ID hand-off nothing ever wrote. Runs on every MLS load; no marker. | 2026-09-24 (58364e3), ~3.5 weeks | **Yes, when you like.** Its comment: "safe to delete once existing installs have loaded once". The key was never written by any version, so only a browser that somehow holds it is affected, and then only by one stray key that no code reads. Deleting the init.js line is a one-line change. Deleting the `keys.js` entry too touches tests: `tests/unit/helpers/pre6bKeys.mjs` ("don't edit: it records the past") maps the name to `shared.sleeperLeagueId`, and `keyMigration.test.mjs` / `bootKeyFilters.test.mjs` check every entry there, so leaving the entry is simplest. |
+| 2 | `js/mls/init.js`, STARTUP CLEANUP: `RETIRED_KEYS.mls.forEach(... removeItem ...)` | Removes `mls_best_available_collapsed` (unread since improvements S12). | 2026-10-17 (ee5c4ee, 6C follow-up), today | **Not yet.** Keep the loop as the place future retired keys go (TESTING.md, "Retiring a key"). A retired name can leave `RETIRED_KEYS` once its app has been opened a few weeks; a backup file still holding it restores it, and the next load removes it again, so dropping the name only means a harmless stray key. |
+| 3 | `js/shared/storage/keyMigration.js`: `migrateKeyNames`, called from `js/mds/migrateKeys.js`, `js/mls/migrateKeys.js`, `js/tscore/main.js` | Copies a browser's pre-6B keys (`ds_*`, `mds_season_*`, the old hand-off and T-Score cache names) to today's names, once per page (marker `'1'`). | 2026-10-04 (6B), ~2 weeks | **No date.** A browser not opened since before 6B still holds only the old names; this is what carries its data over. 6C: "there's no date after which they're safe to drop". |
+| 4 | Same file: `deleteOldKeyNames` (6C) and `keepKeyNamesMarker` (Restore in `js/mds/backup.js`, `js/mls/backup.js`) | Deletes the old copies after the rename (marker `'2'`); keeps this browser's marker across a Restore. | 2026-10-17 (6C), today | **No date**, same reason as 3; it runs only for a browser that still has old keys. |
+| 5 | Kept permanently by 6C: the OLD NAMES table (`LEGACY_KEY_RENAMES`, `renamedKey`, `isLegacyKey`) in `keys.js`, `renameLegacyKeys`, `isMdsOwnedOrLegacyKey` / `isMlsOwnedOrLegacyKey`, boot.js's old-name clauses | Restore old backup files; let Hard/Factory Reset and the rescue backup find old keys. | 2026-10-04 (6B) | **Never** (old backup files can turn up any time). Listed only so the list is complete. |
+| 6 | `js/mds/storage.js`: `migrateDraftStorage()` (v1 → v2, marker `KEYS.mds.storageVersion`), the `mds_drafts_premigration_backup` snapshot it writes, `readDraftPlayerPool`'s inline-v1 fallback, and the "deferred pool rescue" in `saveActiveDraftState` (`js/mds/state.js`) | Moves each draft profile's player pool out of the `mds_drafts` blob into its own key, keeping a one-time snapshot of the old blob. The fallbacks keep a deferred (storage-full) migration working. | 2026-09-20 (b43adc2), ~4 weeks | **No date, like 3.** It also converts a pre-v2 backup on the reload after Restore (`js/mds/backup.js`'s comment), so it serves old backup files, not only old installs. The premigration snapshot key could be cleared on load once you're sure nobody needs to recover from the v2 move (it's already left out of backups and cleared by Hard Reset); that is the one part with a real "done" date. |
+| 7 | `js/shared/api/sleeper.js`: the `isSleeperPlayerMap(cached.data)` check on the IndexedDB player-map cache | Skips and replaces a bad cache entry that an older version could have saved (an error reply cached as the player map). | 2026-10-02 (dd46812), ~2 weeks | **The bridging part is over** (the cache expires after 24 h, so any bad entry from before is long gone), but the check is cheap and also guards against a corrupt entry. Suggest keeping it. |
+
+Not on the list on purpose: MLS's "Unassigned Upload (legacy)" per-league rankings (`js/mls/rankings/sets.js`,
+`leagues/sync.js`, `init.js` around "a setup from before per-league rankings") are still user data shown in the
+dropdown, not a bridge; and the small read fallbacks for data saved before a field existed (meta with no
+`updatedAt` before 8B, SoS before round 6, What-changed baselines without `flexRank`) only decide what a label
+says for old saved data, which can stay in storage indefinitely.
+
+#### "Left for later" items still open (grep of the whole log)
+
+Everything else listed under a "Left for later" heading was done by a later chunk (comment sweeps and window
+names: 5D; LeagueLogs names: 5D; the guide banner: 8A; spacing helpers: 8D; drifted baselines: 0C; the FFC_LISTS
+binding: done by the owner, 7A follow-up; `getSleeperPlayerMap`'s `res.ok`: 2C follow-up; 9B's K/DEF item: 9B).
+Still open, all optional and none a refactor task:
+
+- **2C:** `dropTitleRows` and `findHeaderRowIndex` in `js/shared/rankings/parse.js` are still separate; unifying
+  them would be its own behavior change.
+- **3G:** the name → position lookup (`window.sleeperPosByName`) isn't saved, so each page builds it once from the
+  cached player map. Saving it would need a new key.
+- **7C:** run `node scripts/update-byes.mjs 2027` in May 2027. MDS uses the calendar year for byes, not the draft's
+  season.
+- **0C:** if a spec other than `visual.spec.mjs` takes screenshots, give it the same launch flag.
+- **9B (owner chose to leave):** IDP positions' Boom/Bust lines; a user-adjustable K/DEF floor; custom league scoring.
+- **8A:** the shared info banner (4C feature 6) has no card.
+- **8B:** the setup checklist doesn't mention stale data; `weekly-success-feedback` keeps its MLS name.
+- **8C:** the unclosed-quote toast still shows after saving from the preview; MDS's preview lists draft-pick rows as
+  unmatched names; `analyzeRankingsFile` stays in `js/mls/scout/waivers.js`.
+- **10A:** make `Checks / check` a required status check for main. Owner says it is already on (main shows as
+  protected; the session couldn't see the rule's details). The Actions bump is done (10B follow-up below).
+
+#### Checks run
+
+- `cd tests && npm ci && npm run check`: check-precache OK (136 precached). `node --test` 367/367. Playwright 383
+  passed, 1 skipped, and the same 10 `visual.spec.mjs` screenshot tests (5 per width) that 6C's entry reports
+  failing **in this cloud container on main's code too**: text reflows by a few pixels (the container's fonts;
+  `render-env.mjs` matches). This branch changes only `.md` files, which no page loads, so the served files are
+  byte-identical to main's (`git diff --stat origin/main` lists only CLAUDE.md, docs/TESTING.md and this log).
+  CI, whose renders match the baselines (10A), is the screenshot check: it runs when a pull request is opened.
+- `CACHE_NAME` not bumped (no deployed file changed).
+
+#### Follow-up (owner's request): Actions bump, an "Open follow-ups" list
+
+- **`.github/workflows/check.yml`:** `actions/checkout`, `actions/setup-node` and `actions/upload-artifact` v4 →
+  v7 (the latest major of each; all three run on Node 24, so the Node 20 warning goes). Their breaking changes
+  since v4 don't reach this workflow: checkout v7 refuses fork code only under `pull_request_target` /
+  `workflow_run`; setup-node v5–v7 changed default caching (we set `cache: npm` explicitly), removed
+  `always-auth` and the dummy `NODE_AUTH_TOKEN` (we use neither, nor `registry-url`); every upload-artifact input
+  we pass (`name`, `path`, `retention-days`) is unchanged. Checked against each action's v7 `action.yml` and README.
+  CI on the pull request is the real check.
+- **`docs/TESTING.md`, new section "Open follow-ups":** the open items above, grouped by date, owner's decision
+  and small polish, each with the LOG entry it came from. `CLAUDE.md` points to it: a session whose change touches
+  one of those areas mentions the item to the owner, and removes the line when it's done or dropped. **From now
+  on that list, not this log, is where open work is tracked.**
+- Only tooling and docs changed, so no `CACHE_NAME` bump.

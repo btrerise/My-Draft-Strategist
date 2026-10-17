@@ -1,8 +1,8 @@
 # Testing and working in this repo
 
 How to run the checks, how they work, and the conventions that keep the three pages working. Written in
-refactor chunk 10A from the lasting parts of [`docs/refactor/LOG.md`](refactor/LOG.md), which still has the full
-history (look up an entry by its chunk ID when this guide points to one).
+refactor chunk 10A (updated for 6C in 10B) from the lasting parts of [`docs/refactor/LOG.md`](refactor/LOG.md),
+which still has the full history (look up an entry by its chunk ID when this guide points to one).
 
 ## The checks
 
@@ -180,6 +180,23 @@ shot and S10 took four runs for 14.)
   Strategist, `mls_` for Lineup Strategist) or it silently drops out of that app's backups. Never rename or remove a
   key casually: users' saved data lives under those exact strings. `js/boot.js` keeps its own copy of the
   ownership filters (checked by `tests/unit/bootKeyFilters.test.mjs`).
+- **Old key names** (6B, 6C): before 6B, MDS's keys started with `ds_` and MLS's with `mds_season_`. On every load
+  each page runs `migrateKeyNames(page)` then `deleteOldKeyNames(page)` (`js/shared/storage/keyMigration.js`, called
+  from `js/mds/migrateKeys.js`, `js/mls/migrateKeys.js` and `js/tscore/main.js`, the first thing each page does).
+  The first copies that page's old keys to their new names, the second deletes the old copies. Each page's marker
+  (`KEYS.<page>.keyNamesVersion`) says how far it got: unset = not renamed yet (or deferred, storage full), `'1'` =
+  copied (6B), `'2'` = old copies deleted (6C). A page only touches its own old keys, so the other app's stay until
+  that app is opened. Restore wraps its clear-and-write in `keepKeyNamesMarker` so this browser's marker survives,
+  and `renameLegacyKeys` gives an old backup file today's names. **Keep all of it, permanently:** the OLD NAMES
+  table in `keys.js`, `renameLegacyKeys`, the `*OrLegacy` filters and boot.js's old-name clauses. A browser not
+  opened since before 6B, or an old backup file, can turn up at any time.
+  Tests: `tests/unit/keyMigration.test.mjs` (copy, delete, markers, the other app's keys, storage full),
+  `tests/key-migration.spec.mjs` (opens the three pages on the pre-6B snapshot in `tests/fixtures/pre-6b/`),
+  `backup.spec.mjs` (old-format restores) and `bootKeyFilters.test.mjs`.
+- **Retiring a key:** when nothing reads or writes a key any more, remove it from `KEYS` and list it in
+  `RETIRED_KEYS` (`keys.js`). The owning app removes the leftover copy on load (MLS: `js/mls/init.js`, STARTUP
+  CLEANUP; MDS has no such loop yet). Renaming a key means a new copy-then-delete migration like 6B/6C's, with its
+  own marker value, plus an entry in the OLD NAMES table so old backups still restore.
 - **Bye weeks** (7C): only from `getByeWeek` in `js/shared/data/byes.js`, regenerated each May with
   `node scripts/update-byes.mjs <season>` (see the README).
 - **Icons are SVG, never emoji** (owner's rule, improvements S1): any icon users see is an inline `<svg
@@ -198,3 +215,35 @@ shot and S10 took four runs for 14.)
 - **User-visible changes** (8A): add a plain-language line under the app's **Unreleased** section in
   `CHANGELOG.md`. Bumping an app's footer version (the `APP VERSION` comment in `index.html` or
   `lineup/index.html`) turns those lines into that version's entry.
+
+## Open follow-ups
+
+Optional work that sessions found but nothing has scheduled. None is a bug that hurts users today. **Sessions:**
+when your change touches one of these areas, mention the item to the owner (don't build it unasked). When one is
+done or dropped, remove its line here in the same change. Background for each is in the LOG entry named in brackets.
+
+**On a date**
+- **May 2027:** run `node scripts/update-byes.mjs 2027` once the NFL schedule is out (7C). Until then 2027 has no
+  byes. Draft Strategist uses the calendar year for byes, not the draft's season.
+
+**Needs the owner's decision first**
+- Merge `dropTitleRows` and `findHeaderRowIndex` in `js/shared/rankings/parse.js` into one title-row finder. That
+  changes how some rankings files are read, so do it only if a file parses wrong (2C).
+- IDP positions (LB, DL, DB) get K/DEF's Boom/Bust floor of 4, and the simulator uses Sleeper's default scoring,
+  not the league's own. Owner chose to leave both until IDP leagues or custom scoring matter (9B).
+- Save the name → position lookup (`window.sleeperPosByName`) so a new page doesn't rebuild it from the player map.
+  Only a speed-up, and it needs a new storage key (3G).
+
+**Small polish, one session each**
+- Draft Strategist's setup checklist doesn't say when rankings or ADP are stale; `getSetupState()` in
+  `js/mds/setupGuide.js` would read `State.rankingsMeta.updatedAt` / `State.adpMeta.updatedAt` (8B).
+- After saving from Draft Strategist's upload preview, the unclosed-quote error toast still shows, though the
+  preview already listed the lost rows (a one-line change in `applyRankings`). Draft Strategist's preview also lists
+  draft-pick rows ("2026 1st") as unmatched names, which Lineup Strategist's skips (8C).
+- The shared info banner (4C feature 6) was never built for Draft Strategist; build it if an MDS message needs it,
+  with a `keys.js` key if it can be dismissed (8A).
+- `weekly-success-feedback` keeps its Lineup Strategist name; rename it if Draft Strategist ever uses the blue
+  variant (8B). `analyzeRankingsFile` lives in `js/mls/scout/waivers.js`; if Draft Strategist needs it, pass in
+  MLS's inputs rather than importing `js/mls/` from `js/shared/` (8C).
+- `shared_sleeper_league_id`'s cleanup line in `js/mls/init.js` can go any time (keep its `keys.js` entry); see
+  the bridging-code table in LOG 10B for what else only exists for old installs and why most of it stays.

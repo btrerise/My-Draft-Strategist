@@ -48,7 +48,13 @@ all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.md`).
 - New badge, chip, pill or symbol → a line in that app's Guide legend (`js/mls/legend.js` or `js/mds/legend.js`) in the
   same change, drawn with the same markup (`tests/unit/badgeLegend.test.mjs` fails on a badge class it doesn't list).
 - Keep the public URLs (`/`, `/lineup/`, `/t-score/`) and `sw.js` at the root.
-- **Refactor chunk 6C is pending** (not before 2026-10-17): don't rename or remove storage keys, and don't edit
-  `js/shared/storage/keyMigration.js` or its tests.
+- Old key names (pre-6B `ds_*`, `mds_season_*`): each page copies its own to the new names, then deletes them
+  (`js/shared/storage/keyMigration.js`; marker `*_key_names_version` = `'1'` copied, `'2'` deleted). Keep the OLD
+  NAMES table, `renameLegacyKeys` and the `*OrLegacy` filters for good (old browsers, old backup files). A key nothing
+  uses any more goes in `RETIRED_KEYS` (`keys.js`), not just deleted. Tests: `tests/unit/keyMigration.test.mjs`,
+  `tests/key-migration.spec.mjs`.
 
 Details and the reasons for each rule: `docs/TESTING.md`.
+
+Optional work nobody has scheduled is under "Open follow-ups" in `docs/TESTING.md`. If your change touches one of
+those areas, mention the item to the owner; remove an item's line when it's done or dropped.

@@ -25,9 +25,9 @@ jobs:
       run:
         working-directory: tests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -48,7 +48,7 @@ jobs:
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
 
       # Screenshot diffs (expected, actual, diff PNGs) land in test-results/.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-results
