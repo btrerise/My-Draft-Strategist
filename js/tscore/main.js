@@ -12,12 +12,14 @@ import { showToast } from '../shared/ui/toast.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { delegate } from '../shared/ui/delegate.js';
-import { migrateKeyNames } from '../shared/storage/keyMigration.js';
+import { migrateKeyNames, deleteOldKeyNames } from '../shared/storage/keyMigration.js';
 import { getFreshness } from '../shared/freshness.js';
 
 // Refactor chunk 6B: copy the T-Score cache keys from their pre-6B names (mds_tscore_cache*)
-// before the DOMContentLoaded handler below reads them. Runs at load, as on the other two pages.
+// before the DOMContentLoaded handler below reads them, then (6C) delete the old copies. Runs at
+// load, as on the other two pages.
 migrateKeyNames('tscore');
+deleteOldKeyNames('tscore');
 
 // --- T-SCORE SHEET AUTO-REFRESH ---
 // Pulls the WR/RB Google Sheets (published to web as CSV, so no auth is needed -- the call

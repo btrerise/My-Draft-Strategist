@@ -17,7 +17,7 @@
 //   whose free agent is ranked ahead says "Upgrade: X RB5 over your Y RB8".
 // - Leagues with an upgrade come first, the biggest gap in position spots first; the rest (no
 //   upgrade, no rankings) fold under "Show N more leagues".
-// - The card collapses, and remembers it (KEYS.mls.bestAvailableCollapsed). Its header keeps a
+// - The card collapses, and remembers it (a key since retired, RETIRED_KEYS.mls). Its header keeps a
 //   summary line ("Upgrades in 2 of 5 leagues") so it's useful closed.
 //
 // Owner's choices in round 3:
@@ -73,7 +73,7 @@
 // ("Upgrades in 2 of 5 leagues") sit in the toolbar above the cards, and each card's status row counts its
 // upgrades ("1 upgrade") so a folded card still shows it. A manual league's card says why it has none. The
 // sync note moved to the card's header, which already shows the sync age. The card's remembered collapse
-// (KEYS.mls.bestAvailableCollapsed) is no longer read; each league card folds instead.
+// is retired (RETIRED_KEYS.mls in keys.js; init.js removes a leftover copy on load).
 //
 // When it draws: from renderLeagueManager (the Command Center's own render, after the cards are drawn), only
 // while the Dashboard is the active tab. That covers the Dashboard being shown (nav.js → refreshLeagueDropdown),

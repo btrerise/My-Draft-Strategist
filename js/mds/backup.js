@@ -3,7 +3,7 @@
 import { PREMIGRATION_BACKUP_KEY } from './storage.js';
 import { State } from './state.js';
 import { isMdsOwnedKey, isMdsOwnedOrLegacyKey } from '../shared/storage/keys.js';
-import { renameLegacyKeys } from '../shared/storage/keyMigration.js';
+import { renameLegacyKeys, keepKeyNamesMarker } from '../shared/storage/keyMigration.js';
 import { showToast } from '../shared/ui/toast.js';
 import { showConfirm } from '../shared/ui/confirm.js';
 
@@ -93,8 +93,11 @@ import { showConfirm } from '../shared/ui/confirm.js';
             // not restoring it leaves the marker unset, and migrateDraftStorage() converts the
             // restored v1 drafts on the reload below. A post-migration backup carries the
             // marker and its own mdsDraftPoolKey(draftId) keys, so it restores as-is.
-            getMdsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
-            Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+            // The storage-key rename marker stays as this browser has it (6C, keyMigration.js).
+            keepKeyNamesMarker('mds', () => {
+                getMdsOwnedOrLegacyKeys().forEach(k => localStorage.removeItem(k));
+                Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+            });
 
             showToast("Backup restored! Reloading now.");
             setTimeout(() => { window.location.reload(); }, 900);

@@ -51,7 +51,7 @@ export const KEYS = {
         tscore: 'mds_tscore',
         username: 'mds_username',
         showHeadshots: 'mds_show_headshots', // the one MDS key whose name 6B didn't change
-        keyNamesVersion: 'mds_key_names_version', // set once keyMigration.js has copied the old names (6B)
+        keyNamesVersion: 'mds_key_names_version', // keyMigration.js sets '1' once the old names are copied (6B), '2' once deleted (6C)
     },
     // My Lineup Strategist (/lineup/). All start with MLS_PREFIX.
     mls: {
@@ -75,7 +75,6 @@ export const KEYS = {
         weeklyUpdated: 'mls_weekly_updated',
         autolockOverridesMap: 'mls_autolock_overrides_map',
         lineupNeedsCollapsed: 'mls_lineup_needs_collapsed', // '1' while the Lineup tab's "This lineup needs you" box is folded (improvements S11)
-        bestAvailableCollapsed: 'mls_best_available_collapsed', // '1' while the Dashboard's Best Available card was collapsed (improvements S5); unread since S12 folded the card into the league cards, kept until refactor 6C
         leagueCardsCollapsed: 'mls_league_cards_collapsed', // [leagueId] of the Dashboard's league cards folded to their header (improvements S12)
         bestAvailableDismissed: 'mls_best_available_dismissed', // players dismissed from the Best Available card, per league, this NFL week (improvements S5)
         hasOptimized: 'mls_has_optimized',
@@ -94,7 +93,7 @@ export const KEYS = {
         syncLogs: 'mls_sync_logs',
         tradeSettings: 'mls_trade_settings',
         waiverScanSettings: 'mls_waiver_scan_settings',
-        keyNamesVersion: 'mls_key_names_version', // set once keyMigration.js has copied the old names (6B)
+        keyNamesVersion: 'mls_key_names_version', // keyMigration.js sets '1' once the old names are copied (6B), '2' once deleted (6C)
     },
     // In neither app's backup.
     shared: {
@@ -109,7 +108,7 @@ export const KEYS = {
         cache: 'tscore_cache',
         cacheUpdated: 'tscore_cache_updated',
         pageCache: 'tscore_page_cache',
-        keyNamesVersion: 'tscore_key_names_version', // set once keyMigration.js has copied the old names (6B)
+        keyNamesVersion: 'tscore_key_names_version', // keyMigration.js sets '1' once the old names are copied (6B), '2' once deleted (6C)
     },
 };
 
@@ -131,13 +130,24 @@ export const IDB_DATABASES = {
     sleeperPlayerMap: { name: 'mls_sleeper_cache', stores: ['players'] },      // js/shared/api/sleeper.js (read by both apps since 2C)
 };
 
+// --- RETIRED KEYS ---
+// Keys nothing reads or writes any more, kept here only so the app that owned them can remove a
+// leftover copy on load (js/mls/init.js, STARTUP CLEANUP). Not in KEYS or STORAGE_KEYS.
+export const RETIRED_KEYS = {
+    mls: [
+        'mls_best_available_collapsed', // the Dashboard's Best Available card fold (improvements S5); unread since S12
+    ],
+};
+
 // --- OLD NAMES (before refactor chunk 6B) ---
 // Until 6B, MDS's keys started with ds_, MLS's with mds_season_ or mls_, and the hand-off and
 // T-Score cache keys with mds_. This is the permanent old -> new table: keyMigration.js copies
 // a browser's old keys to their new names on load, and Restore renames the keys in old backup
-// files. The old keys stay in localStorage until a later release deletes them (LOG, 6B), so the
-// filters below still have to tell them apart from today's mds_ keys. Apart from js/boot.js,
-// this is the only place an old name is spelled.
+// files. Since 6C each page deletes the old copies of the keys it renamed, but a browser that
+// hasn't opened a page since before 6B still holds that page's old keys, and old backup files
+// keep them for good. So the table is permanent, and the filters below still have to tell old
+// names apart from today's mds_ keys. Apart from js/boot.js, this is the only place an old name
+// is spelled.
 export const LEGACY_MDS_PREFIX = 'ds_';
 export const LEGACY_MLS_PREFIX = 'mds_season_';
 export const LEGACY_KEY_RENAMES = {
