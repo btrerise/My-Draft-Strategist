@@ -4393,6 +4393,19 @@ known (see above), so 6C keeps them and says so.
 
 **Owner's decision:** build it (recorded after 7B, 2026-10-05). Timing as above.
 
+**Also in 6C (owner's decision, 2026-10-17, after a review of everything merged since 6B):**
+- **`mls_best_available_collapsed`** (`KEYS.mls.bestAvailableCollapsed`) has been unread since improvements S12
+  folded the Dashboard's Best Available card into the league cards (docs/improvements/LOG.md, S12). Its comment in
+  keys.js says "kept until refactor 6C". Remove it: delete the stored value on load, once, alongside the old-key
+  deletion (Lineup Strategist's page), then drop the `KEYS` entry and the two comments in
+  `js/mls/scout/bestAvailable.js` that name it. Check with a grep of js/ and tests/ that nothing reads it first.
+  It's an `mls_` key, so it's in MLS backups: a backup made before 6C restores it once, and the next load deletes
+  it again. Say in LOG whether that's how you handled it.
+- **`test-results/.last-run.json` at the repo root** was committed by mistake in improvements S11 (commit
+  `16d3e01`, PR #194): Playwright run from the repo root instead of `tests/`. Delete it and add `/test-results/`
+  to `.gitignore` next to `tests/test-results/`. Test-only; it doesn't change what users see, but the site serves
+  the file, so it goes in the same deploy.
+
 ### 7C — One bye-week table for both apps, generated from nflverse (behavior change: Lineup Strategist only)
 
 Started from the 7B entry ("Bye weeks: what's wrong today", the 7C card under "Runbook cards proposed"). 7B was
