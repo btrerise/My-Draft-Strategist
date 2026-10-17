@@ -8,7 +8,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-    KEYS, STORAGE_KEYS, mdsDraftPoolKey, renamedKey, isLegacyKey,
+    KEYS, STORAGE_KEYS, RETIRED_KEYS, mdsDraftPoolKey, renamedKey, isLegacyKey,
     isMdsOwnedKey, isMlsOwnedKey, isMdsOwnedOrLegacyKey, isMlsOwnedOrLegacyKey,
 } from '../../js/shared/storage/keys.js';
 import { migrateKeyNames, deleteOldKeyNames, keepKeyNamesMarker, renameLegacyKeys } from '../../js/shared/storage/keyMigration.js';
@@ -84,6 +84,17 @@ describe('old -> new key table (keys.js)', () => {
     test('no two old names get the same new name', () => {
         const news = renamedOldNames.map(renamedKey);
         assert.equal(new Set(news).size, news.length);
+    });
+});
+
+describe('retired keys', () => {
+    test('are no longer in the registry, carry their app\'s prefix, and are not old names', () => {
+        const all = [...STORAGE_KEYS.mds, ...STORAGE_KEYS.mls, ...STORAGE_KEYS.unowned];
+        for (const k of RETIRED_KEYS.mls) {
+            assert.ok(!all.includes(k), k);
+            assert.ok(isMlsOwnedKey(k), k);
+            assert.equal(isLegacyKey(k), false, k);
+        }
     });
 });
 

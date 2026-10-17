@@ -14,7 +14,7 @@ import { initTradePicker } from './trade/picker.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
 import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs, showTab, lookupSimPlayer } from './main.js';
-import { KEYS } from '../shared/storage/keys.js';
+import { KEYS, RETIRED_KEYS } from '../shared/storage/keys.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/ui/setupChecklist.js';
 
@@ -226,6 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // can no longer clear a stale copy -- hence removing it directly. Idempotent, so it needs
     // no "already migrated" flag; safe to delete once existing installs have loaded once.
     try { localStorage.removeItem(KEYS.shared.sleeperLeagueId); } catch (e) {}
+
+    // Same for keys MLS no longer uses (RETIRED_KEYS in keys.js), so a leftover copy doesn't stay in
+    // this browser or ride along in every backup. Idempotent too.
+    RETIRED_KEYS.mls.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
 
     // Tooltip tap/keyboard handling moved to js/shared/ui/tooltips.js, shared with MDS
     // and T-Score. The per-icon listeners that lived here only covered icons present at load.

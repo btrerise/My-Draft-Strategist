@@ -75,7 +75,6 @@ export const KEYS = {
         weeklyUpdated: 'mls_weekly_updated',
         autolockOverridesMap: 'mls_autolock_overrides_map',
         lineupNeedsCollapsed: 'mls_lineup_needs_collapsed', // '1' while the Lineup tab's "This lineup needs you" box is folded (improvements S11)
-        bestAvailableCollapsed: 'mls_best_available_collapsed', // '1' while the Dashboard's Best Available card was collapsed (improvements S5); unread since S12 folded the card into the league cards, kept until refactor 6C
         leagueCardsCollapsed: 'mls_league_cards_collapsed', // [leagueId] of the Dashboard's league cards folded to their header (improvements S12)
         bestAvailableDismissed: 'mls_best_available_dismissed', // players dismissed from the Best Available card, per league, this NFL week (improvements S5)
         hasOptimized: 'mls_has_optimized',
@@ -129,6 +128,15 @@ export const STORAGE_KEYS = {
 export const IDB_DATABASES = {
     lineupStrategist: { name: 'LineupStrategistDB', stores: ['sleeperData'] }, // js/shared/storage/idb.js
     sleeperPlayerMap: { name: 'mls_sleeper_cache', stores: ['players'] },      // js/shared/api/sleeper.js (read by both apps since 2C)
+};
+
+// --- RETIRED KEYS ---
+// Keys nothing reads or writes any more, kept here only so the app that owned them can remove a
+// leftover copy on load (js/mls/init.js, STARTUP CLEANUP). Not in KEYS or STORAGE_KEYS.
+export const RETIRED_KEYS = {
+    mls: [
+        'mls_best_available_collapsed', // the Dashboard's Best Available card fold (improvements S5); unread since S12
+    ],
 };
 
 // --- OLD NAMES (before refactor chunk 6B) ---

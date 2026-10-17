@@ -167,4 +167,15 @@ test.describe('pre-6B storage', () => {
         expect(pick(s, isMdsKey), "MDS's keys untouched").toEqual(pick(beforeMls, isMdsKey));
         for (const k of ['mds_handoff_roster', 'mds_tscore_cache', 'mds_tscore_cache_updated', 'tscore_cache', 'tscore_page_cache']) expect(s[k], k).toBe(beforeMls[k]);
     });
+
+    test('Lineup Strategist removes a retired key left in storage (mls_best_available_collapsed)', async ({ page }) => {
+        await page.addInitScript(() => {
+            if (sessionStorage.getItem('retired-seeded')) return;
+            localStorage.setItem('mls_best_available_collapsed', '1');
+            sessionStorage.setItem('retired-seeded', '1');
+        });
+        const state = await openApp(page, '/lineup/');
+        expect(await page.evaluate(() => localStorage.getItem('mls_best_available_collapsed'))).toBeNull();
+        await expectClean(page, state);
+    });
 });

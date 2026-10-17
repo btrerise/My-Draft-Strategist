@@ -5646,5 +5646,21 @@ until that app is opened), and its next load is what copies them. So they stay, 
   `deleteOldKeyNames`. No test or tooling code became unneeded in 6C (the pre-6B fixtures still drive both specs).
 - **Bridging app code for 10B's list:** `deleteOldKeyNames` (and `migrateKeyNames`) only bridge pre-6B installs,
   but per "Kept permanently" there's no date after which they're safe to drop; listing them is enough.
-  `KEYS.mls.bestAvailableCollapsed` says "unread since S12 … kept until refactor 6C": 6C renames and removes no
-  key (card), so it's still there, for the owner to decide.
+  Add the RETIRED_KEYS cleanup in js/mls/init.js (follow-up below) to that list too.
+
+#### Follow-up (owner's request): retire `mls_best_available_collapsed`
+
+The Dashboard's Best Available card fold key (improvements S5) has been unread since S12 folded the card into
+the league cards, and was "kept until refactor 6C". The owner asked to remove it in this branch.
+
+- **`js/shared/storage/keys.js`:** `KEYS.mls.bestAvailableCollapsed` removed. New section
+  `// --- RETIRED KEYS ---`: `RETIRED_KEYS.mls = ['mls_best_available_collapsed']`, keys nothing reads or writes,
+  listed only so the owning app can remove a leftover copy. Not in `KEYS` or `STORAGE_KEYS`; the name is still
+  spelled only in keys.js. A future retired key goes here too.
+- **`js/mls/init.js`** STARTUP CLEANUP: removes each `RETIRED_KEYS.mls` key on load, next to the existing
+  `shared_sleeper_league_id` cleanup (idempotent, no marker). So the leftover leaves the browser and stops riding
+  along in MLS backups. A backup file that still holds it restores it, and the next load removes it again.
+- `js/mls/scout/bestAvailable.js`: two comments no longer name the KEYS entry. Same CACHE_NAME bump (v2.8.95).
+- Tests: a unit test (retired keys aren't in the registry, carry their app's prefix, aren't old names) and a
+  `key-migration.spec.mjs` test (a planted `mls_best_available_collapsed` is gone after `/lineup/` loads; checked
+  it fails without the cleanup line). Nothing users see changes.
