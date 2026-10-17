@@ -4554,7 +4554,13 @@ the trade rows have shown since S14 without one; see Screenshots.
   verdict and not the box. (The tests that prune rosters turn the waiver adjustment off: its auto value comes from the
   best free agents, which pruned players become.)
 
-**Checks.** See the S19 entry's last paragraph (filled in before pushing).
+**Checks.** Precache OK; 380 unit tests and 397 Playwright tests pass (1 skipped, the phone-only emulation test on
+desktop). visual.spec fails here as it does on main (this container can't render CI's baselines).
+
+**Screenshots.** Rendered here on main and on this branch: only **`mls-league-guide.png`** changes, at both widths
+(`desktop/` 1280×6792 → 1280×6854, `phone/` 390×14539 → 390×14761), from the Pick badge's legend line and Guide step
+9's new sentence. The other 38 are pixel-identical (the screenshot league has no rankings and an empty trade form). To be
+taken from the pull request's CI renders ("Accepting an intended visual change").
 
 **Left over.**
 - Picks assume nobody has traded theirs: Sleeper's `traded_picks` isn't synced. Syncing it would make pick suggestions
