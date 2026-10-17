@@ -1,8 +1,8 @@
 # Testing and working in this repo
 
 How to run the checks, how they work, and the conventions that keep the three pages working. Written in
-refactor chunk 10A from the lasting parts of [`docs/refactor/LOG.md`](refactor/LOG.md), which still has the full
-history (look up an entry by its chunk ID when this guide points to one).
+refactor chunk 10A (updated for 6C in 10B) from the lasting parts of [`docs/refactor/LOG.md`](refactor/LOG.md),
+which still has the full history (look up an entry by its chunk ID when this guide points to one).
 
 ## The checks
 
@@ -180,6 +180,23 @@ shot and S10 took four runs for 14.)
   Strategist, `mls_` for Lineup Strategist) or it silently drops out of that app's backups. Never rename or remove a
   key casually: users' saved data lives under those exact strings. `js/boot.js` keeps its own copy of the
   ownership filters (checked by `tests/unit/bootKeyFilters.test.mjs`).
+- **Old key names** (6B, 6C): before 6B, MDS's keys started with `ds_` and MLS's with `mds_season_`. On every load
+  each page runs `migrateKeyNames(page)` then `deleteOldKeyNames(page)` (`js/shared/storage/keyMigration.js`, called
+  from `js/mds/migrateKeys.js`, `js/mls/migrateKeys.js` and `js/tscore/main.js`, the first thing each page does).
+  The first copies that page's old keys to their new names, the second deletes the old copies. Each page's marker
+  (`KEYS.<page>.keyNamesVersion`) says how far it got: unset = not renamed yet (or deferred, storage full), `'1'` =
+  copied (6B), `'2'` = old copies deleted (6C). A page only touches its own old keys, so the other app's stay until
+  that app is opened. Restore wraps its clear-and-write in `keepKeyNamesMarker` so this browser's marker survives,
+  and `renameLegacyKeys` gives an old backup file today's names. **Keep all of it, permanently:** the OLD NAMES
+  table in `keys.js`, `renameLegacyKeys`, the `*OrLegacy` filters and boot.js's old-name clauses. A browser not
+  opened since before 6B, or an old backup file, can turn up at any time.
+  Tests: `tests/unit/keyMigration.test.mjs` (copy, delete, markers, the other app's keys, storage full),
+  `tests/key-migration.spec.mjs` (opens the three pages on the pre-6B snapshot in `tests/fixtures/pre-6b/`),
+  `backup.spec.mjs` (old-format restores) and `bootKeyFilters.test.mjs`.
+- **Retiring a key:** when nothing reads or writes a key any more, remove it from `KEYS` and list it in
+  `RETIRED_KEYS` (`keys.js`). The owning app removes the leftover copy on load (MLS: `js/mls/init.js`, STARTUP
+  CLEANUP; MDS has no such loop yet). Renaming a key means a new copy-then-delete migration like 6B/6C's, with its
+  own marker value, plus an entry in the OLD NAMES table so old backups still restore.
 - **Bye weeks** (7C): only from `getByeWeek` in `js/shared/data/byes.js`, regenerated each May with
   `node scripts/update-byes.mjs <season>` (see the README).
 - **Icons are SVG, never emoji** (owner's rule, improvements S1): any icon users see is an inline `<svg
