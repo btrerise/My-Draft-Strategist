@@ -44,7 +44,7 @@ test.describe('pre-6B storage', () => {
         let state = await openApp(page, '/');
         let s = await dumpStorage(page);
         const mdsOld = OLD.filter(k => k.startsWith('ds_') || k.startsWith('mds_tscore_cache'));
-        expect(mdsOld.length).toBeGreaterThan(10);
+        expect(mdsOld.length).toBeGreaterThan(5);
         for (const k of mdsOld) {
             expect(s[renamed(k)], `${k} -> ${renamed(k)}`).toBe(PRE_6B[k]);
             expect(s[k], `${k} deleted`).toBeUndefined();

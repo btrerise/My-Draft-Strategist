@@ -5629,7 +5629,16 @@ until that app is opened), and its next load is what copies them. So they stay, 
 
 #### Checks run
 
-CHECKS_PLACEHOLDER
+- `node scripts/check-precache.mjs` OK (136 precached). `node --test` 366/366 (11 new).
+- `cd tests && npm run check`: Playwright 391 tests, all pass except the 10 `visual.spec.mjs` screenshot tests
+  (both widths), which **fail the same way on main's code (8d599e9) in this cloud container**: text reflows by a
+  few pixels on every page (MLS empty setup renders 1903 px tall instead of 1871), though `node render-env.mjs`
+  matches (Playwright 1.56.1, Chromium 1194, Ubuntu 24.04). The baselines were last taken from CI, so this is the
+  container's fonts (10A noted the font packages aren't checked), not 6C. **No screenshot changed:** rendered
+  `visual.spec.mjs` with main's `js/` + `sw.js` and with this branch's in the same container, and `npm run pxdiff`
+  found all 40 PNGs pixel-identical. CI (on a PR) is the check that compares against the baselines.
+- `backup.spec.mjs` (old-format restores unchanged), `tscore-refresh.spec.mjs`, `key-migration.spec.mjs`: 20/20.
+  `bootKeyFilters.test.mjs` unchanged and passing.
 
 #### Left for later
 
