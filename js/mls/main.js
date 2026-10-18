@@ -45,7 +45,8 @@ import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './set
 import './trade/valueCurve.js';
 import './trade/waiverValue.js';
 import { copyLineupAsText, exportLineup, exportTrade } from './trade/export.js';
-import { addTradeNames, addTradePick, clearTradeSide, removeTradeToken, setTradePlayers, tradeTeamChanged } from './trade/picker.js';
+import { addTradeNames, addTradePick, clearTradeSide, removeTradeNames, removeTradeToken, restoreTrade, setTradePlayers, tradeNames, tradeTeamChanged } from './trade/picker.js';
+import { rememberFairChange, takeFairUndo } from './trade/fairSection.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
@@ -199,7 +200,21 @@ const clickActions = {
     addTradePick() { addTradePick(this.dataset.side); },
     // "To make it fair" (trade/fairSection.js, improvements S19): puts the suggested player(s) on the trade,
     // which re-runs it in place.
-    addFairSuggestion() { let names = []; try { names = JSON.parse(this.dataset.names || '[]'); } catch (e) { names = []; } addTradeNames(this.dataset.side, names); },
+    addFairSuggestion() {
+        let names = [];
+        try { names = JSON.parse(this.dataset.names || '[]'); } catch (e) { names = []; }
+        if (!names.length) return;
+        rememberFairChange(`Added ${names.join(' and ')}`, tradeNames());
+        addTradeNames(this.dataset.side, names);
+    },
+    // ... its "Or take off your side" Remove, and Undo for either (round 5).
+    removeFairPiece() {
+        const name = this.dataset.name;
+        if (!name) return;
+        rememberFairChange(`Took off ${name}`, tradeNames());
+        removeTradeNames(this.dataset.side, [name]);
+    },
+    undoFairChange() { const before = takeFairUndo(); if (before) restoreTrade(before); },
     goToPowerRankings() { goToPowerRankings(); },
     fetchMarketValue() { fetchMarketValue(this); },
     runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },

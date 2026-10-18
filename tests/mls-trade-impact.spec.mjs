@@ -115,6 +115,9 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expect(partner.locator('.mls-trade-impact-summary')).toHaveText(/Stronger at WR \(2nd → 1st\); weaker at RB \(1st → 2nd\)\./);
         await expect(s).toContainText('2027 1st is a draft pick: no lineup spot.');
         await expect(s).toContainText('Injuries and byes are left out');
+        // Explanations like this one sit behind "How this is worked out" (i), not in the bullets (improvements S19, round 5).
+        await expect(s.locator('.mls-trade-impact-notes')).not.toContainText('Injuries and byes');
+        await expect(s.locator('.mls-trade-impact-about .tooltip-text')).toContainText('Injuries and byes are left out');
         // The verdict is still above it, and the player cards below.
         await expect(page.locator('#tradeOutput .trade-verdict-banner').first()).toBeVisible();
         expect(await page.locator('#tradeOutput').evaluate(el => {
@@ -231,6 +234,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
         expect(clone.tooltips).toBe(0);
         expect(clone.text).toContain('2027 1st is a draft pick');
         expect(clone.text).not.toContain('Injuries and byes');
+        expect(clone.text).not.toContain('How this is worked out');
         // The page is unchanged, and the switch is remembered for the next trade.
         await expect(page.locator('#tradeOutput details')).not.toHaveAttribute('open', '');
         await expect(btn).toHaveText('Export Trade');

@@ -215,7 +215,8 @@ export const exportTrade = async function() {
                 // than the league (.mls-trade-impact-help: injuries left out, typos, ...).
                 clone.querySelectorAll('.tooltip-text, .tooltip-icon').forEach(el => el.remove());
                 clone.querySelectorAll('.mls-dotted-underline').forEach(el => el.classList.remove('mls-dotted-underline'));
-                clone.querySelectorAll('.mls-trade-impact-help').forEach(el => el.closest('li').remove());
+                clone.querySelectorAll('.mls-trade-impact-about').forEach(el => el.remove());
+                clone.querySelectorAll('li .mls-trade-impact-help').forEach(el => el.closest('li').remove());
                 clone.querySelectorAll('.mls-trade-impact-notes').forEach(ul => { if (!ul.children.length) ul.remove(); });
                 clone.style.width = '480px';
                 clone.style.maxWidth = 'none';

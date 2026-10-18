@@ -84,8 +84,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **The Trade Analyzer says what would make a trade fair.** When a trade is outside the fair band, a box under the
   verdict says who would have to add and about how much ("To make it fair, they'd add about 4,400"), by your ROS
   rankings (Market Consensus if you have none), and lists up to three players from that team's roster, or from yours,
-  whose value would bring it within 10%, closest to even first, each with an Add button that puts him on the trade and
-  re-runs it. In dynasty and keeper leagues that team's draft picks can be suggested too (market value). When no
+  whose value would bring it within 10%, from the one closest to even down to the least they'd have to give (and a pick
+  in dynasty leagues), each saying where it lands the trade ("Fair · 2% your way") and with an Add button that puts him
+  on the trade and re-runs it. Below them, "Or take off your side" (or "Or ask for less") lists the pieces whose
+  removal alone would make it fair, with Remove. After an Add or Remove, an Undo puts the trade back. In dynasty and keeper leagues that team's draft picks can be suggested too (market value). When no
   single player is enough, it suggests pairs ("Add both"); when nothing fits, it says so in one line. The waiver
   adjustment is counted as it would be after the add. In a manual league it suggests only what you'd add. It isn't
   part of Export Trade's image.
@@ -98,6 +100,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   you've pulled it, else by a set table (a 1st counts like the 48th-ranked player, a 2nd the 100th, a 3rd the 160th, a
   4th the 230th, later drafts a little less). The Future tooltip names a team's picks, and a trade's picks move between
   the teams, so a trade of picks only now shows how it changes your Future rank.
+- **Fewer notes under "Power Rankings after the trade".** The explanations (what Future means, picks, injuries left out)
+  are behind one "How this is worked out" (i); notes that need you, like a name that didn't match, stay as they were.
 - **Fixed: every draft pick of a round had the same market value.** A 2029 1st was valued like a 2027 1st (and every
   2nd like each other), whatever the market said. Each pick now gets its own year's value.
 - **The Trade Analyzer shows how your team changes.** Under the trade verdict, "Power Rankings after the trade"

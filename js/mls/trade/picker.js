@@ -148,6 +148,29 @@ export function setTradePlayers(side, names) {
     addNames(side, names || []);
 }
 
+// Both sides as they stand ({ get, give }: names), for "To make it fair"'s Undo (improvements S19, round 5).
+export function tradeNames() {
+    return { get: namesOf('get'), give: namesOf('give') };
+}
+
+// Takes names off a side ("To make it fair"'s Remove) and re-runs, without focusing the search: on a phone that
+// would open the keyboard over the result you're reading.
+export function removeTradeNames(side, names) {
+    if (!SIDES[side]) return;
+    const drop = new Set((names || []).map(n => String(n).trim().toLowerCase()));
+    writeNames(side, namesOf(side).filter(n => !drop.has(n.toLowerCase())));
+    rerunIfAnalyzed();
+}
+
+// Puts a whole trade back (Undo) and re-runs it.
+export function restoreTrade({ get = [], give = [] } = {}) {
+    writeNames('get', []);
+    addNames('get', get);
+    writeNames('give', []);
+    addNames('give', give);
+    rerunIfAnalyzed();
+}
+
 // The side's Clear button.
 export function clearTradeSide(side) {
     if (!SIDES[side]) return;

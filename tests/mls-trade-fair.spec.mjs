@@ -17,6 +17,10 @@ async function runTrade(page, get, give) {
 }
 
 const fair = (page) => page.locator('#tradeOutput [data-trade-fair]');
+// The suggestions to add, and (round 5) the pieces to take off; the names without the "Fair · ..." line under them.
+const adds = (page) => fair(page).locator('[data-fair-adds] .mls-trade-fair-item');
+const removals = (page) => fair(page).locator('[data-fair-removals] .mls-trade-fair-item');
+const undoLine = (page) => page.locator('#tradeOutput [data-trade-fair-undo]');
 const yourVerdict = (page) => page.locator('#tradeOutput .trade-verdict-banner').first();
 const at375 = (page) => test.info().project.name === 'phone' ? page.setViewportSize({ width: 375, height: 844 }) : null;
 const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
@@ -58,23 +62,26 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         const box = fair(page);
         await expect(box).toHaveCount(1);
         await expect(box).toContainText(/To make it fair, they'd add about [\d,]+/);
-        await expect(box).toContainText("By Your Rankings, from Rival's roster. Any one of these brings it within 10%.");
         // 1 for 2: one more player on your side ends the waiver credit, so the "about" figure is bigger than the gap.
-        await expect(box).toContainText('Counts the waiver adjustment, which changes with one more player.');
-        const items = box.locator('.mls-trade-fair-item');
+        await expect(box).toContainText("By Your Rankings, from Rival's roster (waiver adjustment included):");
+        const items = adds(page);
         const count = await items.count();
         expect(count).toBeGreaterThan(0);
         expect(count).toBeLessThanOrEqual(3);
 
         // Every suggestion is Rival's, ranked, and not already in the trade.
         const owners = await ownerMap(page);
-        const names = await box.locator('.mls-trade-fair-names').allInnerTexts();
+        const names = await items.locator('.mls-trade-fair-player').allInnerTexts();
         const byClean = Object.fromEntries(Object.entries(owners).map(([k, v]) => [clean(k), v]));
         names.forEach(n => {
             expect(byClean[clean(n)]).toBe('Rival');
             expect(n).not.toBe('Bijan Robinson');
         });
         await expect(items.first().locator('.mls-trade-fair-val')).toHaveText(/^[\d,]+$/);
+        // Each says where it lands the trade (round 5), and they read most valuable first.
+        for (const t of await items.locator('.mls-trade-fair-lands').allInnerTexts()) expect(t).toMatch(/^Fair · (even|\d+% (your|their) way)$/);
+        const vals = (await items.locator('.mls-trade-fair-val').allInnerTexts()).map(v => Number(v.replace(/,/g, '')));
+        expect(vals).toEqual([...vals].sort((a, b) => b - a));
 
         // Below the verdicts, above "Power Rankings after the trade".
         expect(await page.locator('#tradeOutput').evaluate(el => {
@@ -92,7 +99,7 @@ test.describe('Trade Analyzer: what would make it fair', () => {
                 const lh = parseFloat(getComputedStyle(name).lineHeight) || 20;
                 return { left: r.left, width: r.width, addRight: add.right, nameOneLine: name.getBoundingClientRect().height < lh * 1.5 };
             }));
-            const parentWidth = await box.locator('.mls-trade-fair-list').evaluate(ul => ul.getBoundingClientRect().width);
+            const parentWidth = await box.locator('[data-fair-adds]').evaluate(ul => ul.getBoundingClientRect().width);
             rows.forEach(r => {
                 expect(Math.round(r.width)).toBe(Math.round(parentWidth));
                 expect(r.addRight).toBeLessThanOrEqual(375);
@@ -109,6 +116,31 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await expect(page.locator('#tradeOutput .mls-trade-row')).toHaveCount(4);
         await expect(yourVerdict(page)).toContainText('Fair Trade');
         await expect(fair(page)).toHaveCount(0);
+
+        // Undo (round 5): a line where the box was puts the trade back as it was.
+        await expect(undoLine(page)).toContainText(`Added ${first}.`);
+        await undoLine(page).locator('[data-action="undoFairChange"]').click();
+        await expect(page.locator('#tradeGetTokens .mls-trade-token')).toHaveCount(1);
+        await expect(yourVerdict(page)).toContainText('Favors Them');
+        await expect(fair(page)).toHaveCount(1);
+        await expect(undoLine(page)).toHaveCount(0);
+
+        // Or take off your side: either of your two players alone makes it fair; Remove takes him off and re-runs.
+        await expect(fair(page)).toContainText('Or take off your side:');
+        await expect(removals(page)).toHaveCount(2);
+        const off = await removals(page).first().locator('.mls-trade-fair-player').innerText();
+        await removals(page).first().locator('[data-action="removeFairPiece"]').click();
+        await expect(page.locator('#tradeGiveTokens .mls-trade-token')).toHaveCount(1);
+        await expect(page.locator('#tradeGiveTokens')).not.toContainText(off);
+        await expect(yourVerdict(page)).toContainText('Fair Trade');
+        await expect(undoLine(page)).toContainText(`Took off ${off}.`);
+        // The search didn't take focus (a phone's keyboard would cover the result).
+        expect(await page.evaluate(() => document.activeElement && document.activeElement.id)).not.toBe('tradeGiveSearch');
+        // Any other change drops the Undo.
+        await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson', 'Jahmyr Gibbs']);
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        await expect(page.locator('#tradeOutput .mls-trade-row')).toHaveCount(3);
+        await expect(undoLine(page)).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -120,10 +152,12 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await expect(fair(page)).toContainText('from your roster');
         const owners = await ownerMap(page);
         const byClean = Object.fromEntries(Object.entries(owners).map(([k, v]) => [clean(k), v]));
-        const names = await fair(page).locator('.mls-trade-fair-names').allInnerTexts();
+        const names = await adds(page).locator('.mls-trade-fair-player').allInnerTexts();
         expect(names.length).toBeGreaterThan(0);
+        // Or ask for less: one of the two you'd get.
+        await expect(fair(page)).toContainText('Or ask for less:');
         names.forEach(n => { expect(byClean[clean(n)]).toBe('You'); expect(n).not.toBe("Ja'Marr Chase"); });
-        await fair(page).locator('[data-action="addFairSuggestion"]').first().click();
+        await adds(page).first().locator('[data-action="addFairSuggestion"]').click();
         await expect(page.locator('#tradeGiveTokens .mls-trade-token')).toHaveCount(2);
         await expect(yourVerdict(page)).toContainText('Fair Trade');
         await expect(fair(page)).toHaveCount(0);
@@ -153,7 +187,7 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson', 'CeeDee Lamb']);
         await expect(yourVerdict(page)).toContainText('Favors Them');
         await expect(fair(page)).toContainText(/No single player on Rival's roster closes a [\d,]+ gap\. By Your Rankings, these pairs would:/);
-        const pair = fair(page).locator('.mls-trade-fair-item').first();
+        const pair = adds(page).first();
         await expect(pair.locator('.mls-trade-fair-player')).toHaveCount(2);
         await expect(pair.locator('.pos-badge')).toHaveCount(2);
         await expect(pair.locator('button')).toHaveText('Add both');
@@ -178,7 +212,7 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson', 'CeeDee Lamb']);
         await expect(yourVerdict(page)).toContainText('Favors Them');
         await expect(fair(page)).toContainText(/No player or pair on Rival's roster closes a [\d,]+ gap by Your Rankings\./);
-        await expect(fair(page).locator('.mls-trade-fair-item')).toHaveCount(0);
+        await expect(adds(page)).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -194,10 +228,12 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson']);
         await expect(fair(page)).toContainText("they'd add about");
         await expect(fair(page)).toContainText("This is a manual league: the app knows only your roster, so it can't suggest what they'd add.");
-        await expect(fair(page).locator('.mls-trade-fair-item')).toHaveCount(0);
+        await expect(adds(page)).toHaveCount(0);
+        // Taking a piece off your side needs no other roster, so that still shows.
+        await expect(removals(page)).toHaveCount(2);
         await runTrade(page, ['Bijan Robinson', 'Jahmyr Gibbs'], ["Ja'Marr Chase"]);
         await expect(fair(page)).toContainText("you'd add about");
-        expect(await fair(page).locator('.mls-trade-fair-item').count()).toBeGreaterThan(0);
+        expect(await adds(page).count()).toBeGreaterThan(0);
         await expectClean(page, state);
     });
 
@@ -246,8 +282,8 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await runTrade(page, ['Bijan Robinson', 'Kyren Williams'], ["Ja'Marr Chase", 'Justin Jefferson']);
         await expect(yourVerdict(page)).toContainText('Favors Them');
         const box = fair(page);
-        await expect(box.locator('.mls-trade-fair-names')).toHaveText([/^2027 2nd\*/]);
-        await expect(box).toContainText("* Draft pick: market value. Picks Rival holds as of this league's last sync.");
+        await expect(adds(page).locator('.mls-trade-fair-names')).toHaveText([/^2027 2nd\*/]);
+        await expect(box).toContainText('* Market value. Picks as of the last sync.');
         await expect(box).not.toContainText('2027 1st');
         await box.locator('[data-action="addFairSuggestion"]').click();
         await expect(page.locator('#tradeGetTokens')).toContainText('2027 2nd');

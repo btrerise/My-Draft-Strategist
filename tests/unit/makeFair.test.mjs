@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    fairCandidates, fairSuggestions, gapToClose, nextDraftYears, ownPickNames, roundGap, verdictFromValues
+    fairCandidates, fairRemovals, fairSuggestions, gapToClose, landing, nextDraftYears, ownPickNames, roundGap, verdictFromValues
 } from '../../js/mls/trade/makeFair.js';
 
 const OFF = { on: false, perSpot: 0 };
@@ -34,7 +34,7 @@ describe('fairSuggestions', () => {
         assert.equal(fairSuggestions({ getValues: [0], giveValues: [0], candidates: [p('A', 500)], waiver: OFF }), null);
     });
 
-    test('favors them: they add to what you get, closest to even first, at most 3', () => {
+    test('favors them: they add to what you get; 3 at most, spread from closest to even to the least they\'d give', () => {
         const r = fairSuggestions({
             getValues: [5000], giveValues: [9400], waiver: OFF,
             candidates: [p('Far', 3700), p('Exact', 4400), p('Near', 4300), p('Over', 5000), p('Big', 9000), p('Tiny', 100)]
@@ -42,7 +42,8 @@ describe('fairSuggestions', () => {
         assert.equal(r.adder, 'them');
         assert.equal(r.side, 'get');
         assert.equal(r.gap, 4400);
-        assert.deepEqual(names(r.singles), ['Exact', 'Near', 'Over']);
+        // Closest (Exact), least valuable (Far), then the next closest (Near); shown most valuable first.
+        assert.deepEqual(names(r.singles), ['Exact', 'Near', 'Far']);
         assert.ok(r.singles.every(f => f.after.verdict === 'fair'));
         assert.deepEqual(r.pairs, []);
     });
@@ -106,6 +107,39 @@ describe('fairSuggestions', () => {
         const r2 = fairSuggestions({ getValues: [3000], giveValues: [15000], waiver: OFF, candidates: [p('A', 6500), p('B', 5600), p('Star', 12000)] });
         assert.deepEqual(names(r2.singles), ['Star']);
         assert.deepEqual(r2.pairs, []);
+    });
+
+    test('in dynasty a fitting pick gets a place even when players are closer to even', () => {
+        const r = fairSuggestions({
+            getValues: [5000], giveValues: [9400], waiver: OFF,
+            candidates: [p('A', 4400), p('B', 4350), p('C', 4300), p('Least', 3700), p('2027 2nd', 3800, { isPick: true, pos: 'Pick' })]
+        });
+        assert.deepEqual(names(r.singles), ['A', '2027 2nd', 'Least']);
+    });
+
+    test('removals: a piece off the side with too much, never its last; the waiver adjustment recomputed', () => {
+        // Favors them: you give 9,000 + 4,000 for 9,000. Taking the 4,000 off makes it even.
+        const r = fairSuggestions({ getValues: [9000], giveValues: [9000, 4000], waiver: OFF, candidates: [] });
+        assert.deepEqual(r.removals.map(x => [x.side, x.index]), [['give', 1]]);
+        assert.equal(r.removals[0].after.diff, 0);
+        // Favors you: from what you get.
+        assert.deepEqual(fairRemovals({ getValues: [9000, 4000], giveValues: [9000], waiver: OFF }).map(x => [x.side, x.index]), [['get', 1]]);
+        // One piece only: nothing to take off.
+        assert.deepEqual(fairRemovals({ getValues: [5000], giveValues: [9000], waiver: OFF }), []);
+        // With the waiver credit: 9,000 + 1,000 credit vs 9,000 + 1,500 is fair already; vs 9,000 + 3,000 (12,000,
+        // 17%) taking the 3,000 off also ends the credit: 9,000 vs 9,000.
+        const w = fairRemovals({ getValues: [9000], giveValues: [9000, 3000], waiver: { on: true, perSpot: 1000 } });
+        assert.equal(w.length, 1);
+        assert.equal(w[0].after.bonusGet, 0);
+        assert.deepEqual(fairRemovals({ getValues: [9000], giveValues: [9400], waiver: OFF }), []);
+    });
+
+    test('landing: even, or which way and how far', () => {
+        assert.equal(landing(verdictFromValues([10000], [10020], OFF)), 'even');
+        assert.equal(landing(verdictFromValues([10000], [9800], OFF)), '2% your way');
+        assert.equal(landing(verdictFromValues([9700], [10000], OFF)), '3% their way');
+        // 9.6% is still fair: never "Fair · 10%".
+        assert.equal(landing(verdictFromValues([9040], [10000], OFF)), '9% their way');
     });
 
     test('nothing fits: empty lists with the gap, for the one-line note', () => {

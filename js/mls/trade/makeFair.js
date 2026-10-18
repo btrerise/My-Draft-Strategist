@@ -114,10 +114,14 @@ export function gapToClose(getValues, giveValues, waiver) {
 //     (a pick name like "2027 1st" on the other side is the other team's pick, so only the same side counts).
 //   waiver: { on, perSpot }, as the banner's.
 // Returns null when the trade is already fair (or has no values). Otherwise:
-//   { adder: 'them' | 'you', side: 'get' | 'give', gap, needed, singles: [fit], pairs: [fit] }
-//   fit: { players: [candidate], value, after: verdictFromValues(...) }, closest to even first.
-// pairs is filled only when no single candidate fits. Every fit is re-checked with the whole verdict, since an
-// added piece also changes the waiver adjustment (it credits the side with fewer pieces).
+//   { adder: 'them' | 'you', side: 'get' | 'give', gap, needed, singles: [fit], pairs: [fit], removals: [removal] }
+//   fit: { players: [candidate], value, after: verdictFromValues(...) }.
+// singles are spread across prices (round 5, after the owner's review: "closest to even" alone kept suggesting the
+// other team's stars): the fit closest to even, the least valuable fit (the least they'd have to give), and in
+// dynasty the pick closest to even, then the next closest; shown most valuable first. pairs (closest first) only
+// when no single candidate fits. removals: the pieces on the other side whose removal alone makes it fair (round 5:
+// "take Puka Nacua off"), closest to even first. Every fit is re-checked with the whole verdict, since a piece added
+// or taken off also changes the waiver adjustment (it credits the side with fewer pieces).
 export function fairSuggestions({ getValues, giveValues, candidates, inTrade = [], onAddingSide = [], waiver, limit = 3, pairLimit = 40 }) {
     const g = gapToClose(getValues, giveValues, waiver);
     if (!g) return null;
@@ -141,7 +145,7 @@ export function fairSuggestions({ getValues, giveValues, candidates, inTrade = [
         return v && v.verdict === 'fair' ? { players, value: values.reduce((s, x) => s + x, 0), after: v } : null;
     };
 
-    const singles = pool.map(c => fit([c])).filter(Boolean).sort(byCloseness).slice(0, limit);
+    const singles = spreadFits(pool.map(c => fit([c])).filter(Boolean).sort(byCloseness), limit);
     let pairs = [];
     if (singles.length === 0) {
         // Only players worth less than the gap can be half of a pair (anyone worth more already overshoots
@@ -157,5 +161,45 @@ export function fairSuggestions({ getValues, giveValues, candidates, inTrade = [
         }
         pairs = pairs.sort(byCloseness).slice(0, limit);
     }
-    return { adder, side, gap, needed, singles, pairs };
+    return { adder, side, gap, needed, singles, pairs, removals: fairRemovals({ getValues, giveValues, waiver }) };
+}
+
+// Up to limit of the fits (sorted closest to even first): the closest, the least valuable, the closest pick, then
+// the next closest; returned most valuable first, so the list reads as a price ladder.
+function spreadFits(sorted, limit) {
+    if (sorted.length <= limit) return sorted.slice().sort((a, b) => b.value - a.value);
+    const chosen = [];
+    const take = (f) => { if (f && !chosen.includes(f) && chosen.length < limit) chosen.push(f); };
+    take(sorted[0]);
+    take(sorted.reduce((min, f) => (f.value < min.value ? f : min), sorted[0]));
+    take(sorted.find(f => f.players.some(p => p.isPick)));
+    sorted.forEach(take);
+    return chosen.sort((a, b) => b.value - a.value);
+}
+
+// The pieces whose removal from the side that has too much makes a lopsided trade fair: from what you give when it
+// favors them, from what you get when it favors you. Never the side's last piece (that's no longer a trade).
+// Returns [{ side: 'get' | 'give', index, value, after }], closest to even first, at most limit; [] when fair.
+export function fairRemovals({ getValues, giveValues, waiver, limit = 2 }) {
+    const now = verdictFromValues(getValues, giveValues, waiver);
+    if (!now || now.verdict === 'fair') return [];
+    const side = now.verdict === 'them' ? 'give' : 'get';
+    const values = side === 'give' ? giveValues : getValues;
+    if (values.length < 2) return [];
+    const out = [];
+    values.forEach((value, index) => {
+        const rest = values.filter((_, i) => i !== index);
+        const after = side === 'give' ? verdictFromValues(getValues, rest, waiver) : verdictFromValues(rest, giveValues, waiver);
+        if (after && after.verdict === 'fair') out.push({ side, index, value, after });
+    });
+    return out.sort((a, b) => Math.abs(a.after.diff) - Math.abs(b.after.diff)).slice(0, limit);
+}
+
+// Where a change would land the trade, for the suggestion's line: "even", or which way it leans and by how much.
+// after: verdictFromValues' result. Returns 'even', '2% your way' or '3% their way'.
+export function landing(after) {
+    // Fair means under 10%, so a fair 9.6% reads "9%", never "Fair · 10%".
+    const pct = Math.round(after.swingPct) >= 10 && after.verdict === 'fair' ? 9 : Math.round(after.swingPct);
+    if (pct === 0) return 'even';
+    return `${pct}% ${after.diff > 0 ? 'your' : 'their'} way`;
 }

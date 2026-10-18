@@ -23,14 +23,26 @@ import {
 // Notes that explain the screen to you, not the trade to your league: Export Trade (trade/export.js) leaves
 // them out of the image. The rest (an empty slot, picks, unranked players) stay in it.
 const forYou = (text) => `<span class="mls-trade-impact-help">${text}</span>`;
-const INJURY_NOTE = forYou('Injuries and byes are left out: this compares your team for the rest of the season, not this week.');
+// How the numbers are worked out (what Future means, picks, injuries left out, a Market Consensus fallback): one
+// "How this is worked out" (i) under the notes instead of a bullet each (improvements S19, round 5: on a phone the
+// section ended in four bullets of explanation). Notes that need you (a typo, a player not yours) stay as bullets.
+const about = (text) => `<span class="mls-trade-impact-help" data-about>${text}</span>`;
+const INJURY_NOTE = about('Injuries and byes are left out: this compares your team for the rest of the season, not this week.');
 
 const section = (title, body) => `
     <section class="mls-trade-impact" data-trade-impact>
         <div class="mls-trade-impact-head">${title}</div>
         ${body}
     </section>`;
-const notesHTML = (notes) => notes.length ? `<ul class="mls-trade-impact-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '';
+const notesHTML = (notes) => {
+    const shown = notes.filter(n => !n.includes('data-about')), explained = notes.filter(n => n.includes('data-about'));
+    return (shown.length ? `<ul class="mls-trade-impact-notes">${shown.map(n => `<li>${n}</li>`).join('')}</ul>` : '')
+        + (explained.length ? `
+        <div class="mls-trade-impact-about">How this is worked out
+            <div class="tooltip-container"><div class="tooltip-icon" aria-label="How this is worked out">i</div>
+                <span class="tooltip-text">${explained.map(n => `<span class="mls-trade-impact-about-line">${n}</span>`).join('')}</span></div>
+        </div>` : '');
+};
 const oneLine = (title, text) => section(title, `<div class="mls-trade-impact-empty">${text}</div>`);
 
 const listNames = (names) => names.map(n => `<strong>${escapeHtml(n)}</strong>`).join(', ');
@@ -101,7 +113,7 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
         }
         rankings = State.marketRankings;
         via = 'by Market Consensus';
-        notes.unshift(forYou('No ROS rankings loaded, so this uses Market Consensus. Upload ROS rankings on the Roster tab for your own board.'));
+        notes.unshift(about('No ROS rankings loaded, so this uses Market Consensus. Upload ROS rankings on the Roster tab for your own board.'));
     }
     const idx = rankingIndex(rankings);
     const rosterMap = league.globalRosterMap || {};
@@ -127,13 +139,13 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     const hasFuture = Number.isFinite(impact.you.before.futureRank) && Number.isFinite(impact.you.after.futureRank);
     const columns = hasFuture ? [...POWER_COLUMNS, FUTURE_COLUMN] : POWER_COLUMNS;
     if (hasFuture) {
-        notes.push(forYou(futureInfo.label === 'market'
+        notes.push(about(futureInfo.label === 'market'
             ? "<strong>Future</strong> is each roster's dynasty Market Consensus value (player ages from Sleeper couldn't be loaded), as on the Roster tab."
             : "<strong>Future</strong> is each roster's value from these rankings, adjusted for player age (from Sleeper), as on the Roster tab: younger players count a bit more, older players less."));
         const picksNote = powerPicksNote(league, futureInfo.picks);
-        if (picksNote) notes.push(forYou(picksNote));
+        if (picksNote) notes.push(about(picksNote));
     } else if (dynasty) {
-        notes.push(forYou("Couldn't load player ages from Sleeper, so there's no Future column. Dynasty Market Consensus data (Trade Finder below) gives a fallback."));
+        notes.push(about("Couldn't load player ages from Sleeper, so there's no Future column. Dynasty Market Consensus data (Trade Finder below) gives a fallback."));
     }
 
     const unranked = give.concat(get).filter(p => !idx.get(p.cleanName)).map(p => p.name);

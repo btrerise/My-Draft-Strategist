@@ -4680,3 +4680,42 @@ needed in season. Written into `docs/TESTING.md`'s "Open follow-ups" (On a date:
 
 **Checks.** Precache OK; 391 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main). No
 screenshot effect (no visible text or layout changed).
+
+### S19, round 5: a review as a user; suggestions across prices, Remove, Undo, quieter notes (owner: "do all four")
+
+**My review** (on the fixture league as a phone user, dynasty, FantasyCalc-named picks): the loop works (lopsided → one
+tap → Fair), but (1) "closest to even" always suggested the other team's stars, (2) a suggestion didn't say where it
+lands the trade, (3) the only way back from an Add was the token's ✕ far up the page, (4) the Power Rankings section
+ended in four bullets of explanation; missing: (5) taking a piece off your own side, the usual counter, and (6) a pick
+when a player is closer to even. The owner asked for all four proposals (spread with a pick and landing, Remove, Undo,
+quieter notes).
+
+**User-visible effect.**
+- **Suggestions across prices:** the closest to even, the least valuable that still fits (the least they'd give), and in
+  dynasty the pick closest to even, then the next closest; shown most valuable first. Under each name, where it lands:
+  "Fair · even", "Fair · 2% your way", "Fair · 9% their way" (a fair 9.6% reads 9%, never "Fair · 10%"). Pairs unchanged.
+- **Remove:** "Or take off your side:" (favors them: from what you give) or "Or ask for less:" (favors you: from what you
+  get), up to two pieces whose removal alone makes it fair, closest first, each with its value, landing and **Remove**.
+  Never a side's last piece. It needs no other roster, so it shows in a manual league too, and wherever adding is
+  blocked (several teams, no team under From). Remove doesn't focus the search (a phone keyboard would cover the result).
+- **Undo:** after Add or Remove, "Added Bijan Robinson. Undo" / "Took off Ja'Marr Chase. Undo" under the verdict puts the
+  whole trade back and re-runs it. It stays while the trade is unchanged; any other change drops it. In memory only.
+- **Quieter notes:** in "Power Rankings after the trade", the explanations (Market Consensus fallback, what Future means,
+  picks in Future, no ages, injuries and byes left out) sit behind one "How this is worked out" (i) (tap on phones);
+  notes that need you (a name not matched, a player not yours, already yours) and the ones about the trade (an empty
+  slot, picks have no lineup spot, unranked players) stay as bullets. Export Trade leaves the (i) line out.
+- Shorter box text: "(waiver adjustment included)"; "* Market value. Picks as of the last sync."
+
+**What changed and where.** `js/mls/trade/makeFair.js` (`spreadFits`, `fairRemovals`, `landing`; `fairSuggestions`
+returns `removals`), `js/mls/trade/fairSection.js` (landing line, the removal list, the Undo state and line,
+`data-fair-adds` / `data-fair-removals`), `js/mls/trade/picker.js` (`tradeNames`, `removeTradeNames`, `restoreTrade`),
+`js/mls/main.js` (`removeFairPiece`, `undoFairChange`; Add remembers the trade), `js/mls/trade/lineupSection.js` (`about`
+notes and the (i) line), `js/mls/trade/export.js` (drops the (i) line; removes only `li` help notes), `css/mls.css`,
+`CHANGELOG.md`.
+
+**Tests.** Unit: the spread (closest, least, then next; most valuable first), a pick getting a place, removals (each side,
+never the last piece, the waiver credit recomputed, none when fair), `landing` (even, both ways, 9.6% → 9%). Spec: landing
+lines and the price order; Undo after Add (back to Favors Them, box back, line gone); Remove (token gone, Fair, "Took
+off …", search not focused); another change drops the Undo; "Or ask for less" when it favors you; removals in a manual
+league; the notes' (i) holding "Injuries and byes" and the bullets not; the export without the (i) line.
+
