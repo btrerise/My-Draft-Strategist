@@ -225,6 +225,11 @@ done or dropped, remove its line here in the same change. Background for each is
 **On a date**
 - **May 2027:** run `node scripts/update-byes.mjs 2027` once the NFL schedule is out (7C). Until then 2027 has no
   byes. Draft Strategist uses the calendar year for byes, not the draft's season.
+- **After the NFL regular season (early January 2027):** value draft picks by their slot. In season FantasyCalc
+  prices a plain "2027 1st" plus Early / Mid / Late versions; once the season ends it prices specific picks ("2027 Pick
+  1.05"), which `pickKey` in `js/mls/leagues/picks.js` doesn't recognize yet (no ordinal). Then give each synced pick its
+  slot (Sleeper's draft order, or the final standings until it's set) and look up that pick's market value, in the
+  Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Needs the owner's decision first**
 - Merge `dropTitleRows` and `findHeaderRowIndex` in `js/shared/rankings/parse.js` into one title-row finder. That

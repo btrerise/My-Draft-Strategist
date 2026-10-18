@@ -4674,8 +4674,9 @@ pick index keeps the first row per key (no more "best of several").
 1sts; Early and plain 2nds; a 2029 1st): run on round 3's commit first, it failed (the plain 2027 1st showed the Early 1st's
 9,299 for 8,492), then passed with the fix. Unit: `pickKey` with and without the tier, `pickHolders` ignoring it.
 
-**Left over.** The picker and Sleeper name picks plainly, so every pick is valued as FantasyCalc's plain one. Valuing a
-team's pick as Early, Mid or Late from its standings (or Sleeper's draft order once set) would be closer; not built.
+**Left over.** The picker and Sleeper name picks plainly, so every pick is valued as FantasyCalc's plain one. The owner
+wants specific pick values after the season, when FantasyCalc starts pricing specific picks ("2027 Pick 1.05"); not
+needed in season. Written into `docs/TESTING.md`'s "Open follow-ups" (On a date: after the regular season).
 
 **Checks.** Precache OK; 391 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main). No
 screenshot effect (no visible text or layout changed).
