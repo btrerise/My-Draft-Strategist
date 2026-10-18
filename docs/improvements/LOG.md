@@ -4676,3 +4676,6 @@ pick index keeps the first row per key (no more "best of several").
 
 **Left over.** The picker and Sleeper name picks plainly, so every pick is valued as FantasyCalc's plain one. Valuing a
 team's pick as Early, Mid or Late from its standings (or Sleeper's draft order once set) would be closer; not built.
+
+**Checks.** Precache OK; 391 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main). No
+screenshot effect (no visible text or layout changed).
