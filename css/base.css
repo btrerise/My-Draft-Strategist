@@ -1077,6 +1077,10 @@ label.toggle-title,
     border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
     pointer-events: none; line-height: 1.5;
     transform: translateY(-4px);
+    /* Kept inside the window (improvements S19, round 7): never wider than it, and slid sideways by --tt-dx, which
+       js/shared/ui/tooltips.js (place) sets when a tooltip would cross an edge. */
+    max-width: calc(100vw - 16px);
+    translate: var(--tt-dx, 0px) 0;
 }
 .tooltip:hover .tooltip-text, .tooltip-container:hover .tooltip-text { 
     visibility: visible; opacity: 1; transform: translateY(0);

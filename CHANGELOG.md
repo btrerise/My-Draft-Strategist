@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Tooltips stay on the screen.** A tooltip opened near the edge of a phone screen now slides back inside it instead of
+  running off the side.
 - **Smooth tab changes.** Switching tabs (tapping the tab bar, swiping, the menu, number keys, Back and Forward) now
   slides the page in the direction you're going on a phone, and fades softly (the new page rising a little) on a wider
   screen, while the header and tab bar stay put. A green bar above the tab bar's active tab slides to the new one. Browsers without View
@@ -92,6 +94,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   single player is enough, it suggests pairs ("Add both"); when nothing fits, it says so in one line. The waiver
   adjustment is counted as it would be after the add. In a manual league it suggests only what you'd add. It isn't
   part of Export Trade's image.
+- **Fixed: tooltips ran off the screen on phones.** An (i) near the left edge (the Lineup tab's optimizer settings, the
+  Trade Analyzer's Value settings and notes) opened its tooltip partly off-screen, so it couldn't be read. Every
+  tooltip on the site now slides back inside the screen when it opens.
 - **Traded draft picks from Sleeper.** Syncing a dynasty or keeper league now reads which team holds each rookie pick
   for the next three drafts, traded ones included. The Trade Analyzer suggests only picks the team really holds
   (marked "via Rival" when it came in a trade), and a pick's row says "Yours", "Rival's", "Not yours (you don't hold

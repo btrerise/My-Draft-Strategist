@@ -212,6 +212,10 @@ shot and S10 took four runs for 14.)
   `tests/unit/badgeLegend.test.mjs` collects the badge classes each app uses (class attributes with a badge-like
   class, the pill helpers' classes, and CSS compounds such as `.slot-badge.slot-FLEX`) and fails naming any the
   legend's HTML lacks; a class that isn't a symbol of its own (layout, sizing, filter state) goes in its `ALLOWED`.
+- **Tooltips** (improvements S19, round 7): any `.tooltip-text` opened by `js/shared/ui/tooltips.js` (tap, hover, keyboard)
+  is slid back inside the window (`place`, CSS `translate: var(--tt-dx)`), and capped at the window's width. Don't
+  give a tooltip its own `translate`. `tooltips-onscreen.spec.mjs` taps every tooltip on both apps' tabs at 375px and
+  1280px and fails on any that crosses an edge; a new tooltip in a state it doesn't reach should get a line there.
 - **User-visible changes** (8A): add a plain-language line under the app's **Unreleased** section in
   `CHANGELOG.md`. Bumping an app's footer version (the `APP VERSION` comment in `index.html` or
   `lineup/index.html`) turns those lines into that version's entry.

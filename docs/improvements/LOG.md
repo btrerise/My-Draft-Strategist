@@ -4735,7 +4735,24 @@ the market lacks, and Chase's on the removal.
 **Found while here (owner's report): tooltips run off the screen on phones, site-wide.** Every `.tooltip-text` is 260px
 wide at `right: -10px` from its trigger (css/base.css), so it always opens leftward; a trigger within ~250px of the left
 edge of a 375px screen puts it off-screen. Measured at 375px with every tooltip opened: 2 on the Lineup tab (the
-optimizer settings), 1 in the Trade Analyzer's Value settings, and round 5's "How this is worked out" (i). Proposed fix,
-not built yet: clamp each tooltip into the viewport when it opens (tooltips.js), cap its width, and a spec that opens
-every tooltip on the three pages at 375px.
+optimizer settings), 1 in the Trade Analyzer's Value settings, and round 5's "How this is worked out" (i). Fixed in round 7.
+
+### S19, round 7: tooltips stay on the screen, site-wide (owner's report; owner chose this branch)
+
+**Bug.** Every `.tooltip-text` is 260px wide at `right: -10px` from its trigger (css/base.css), so it always opens
+leftward, and nothing measured the window. **Test first:** `tests/tooltips-onscreen.spec.mjs` taps every tooltip trigger
+on every tab of both apps (folds opened; the Trade Analyzer with a lopsided trade analyzed) at 375px and 1280px and
+checks each box. On the code before the fix it failed with five: at 375px the Lineup tab's two optimizer settings
+(−32 and −79px off the left), the Trade Analyzer's Value settings (−37px) and round 5's "How this is worked out" (−59px);
+and at 1280px the optimizer setting again (−11px). Draft Strategist and T-Score (no tooltips) had none in the states
+reached.
+
+**Fix.** `js/shared/ui/tooltips.js`: `place(text)` measures a tooltip as it opens (a tap through `toggle`, a mouse
+through `mouseover`, the keyboard through `focusin`) and sets `--tt-dx` to slide it inside an 8px margin; `css/base.css`
+applies it with `translate` (so the fade's `transform` is untouched) and caps the width at `calc(100vw - 16px)`. A
+tooltip that already fits gets no shift, so nothing moves where things were fine; the Power Rankings tooltips' own
+left/right/center classes still apply first. `docs/TESTING.md` (Conventions) notes the rule and the spec.
+
+**User-visible effect.** Any tooltip opened near a screen edge slides back on screen (both apps). CHANGELOG lines under
+both apps.
 
