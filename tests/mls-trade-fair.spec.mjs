@@ -77,10 +77,10 @@ test.describe('Trade Analyzer: what would make it fair', () => {
             expect(byClean[clean(n)]).toBe('Rival');
             expect(n).not.toBe('Bijan Robinson');
         });
-        await expect(items.first().locator('.mls-trade-fair-val')).toHaveText(/^[\d,]+$/);
+        await expect(items.first().locator('.mls-trade-fair-num')).toHaveText(/^[\d,]+$/);
         // Each says where it lands the trade (round 5), and they read most valuable first.
         for (const t of await items.locator('.mls-trade-fair-lands').allInnerTexts()) expect(t).toMatch(/^Fair · (even|\d+% (your|their) way)$/);
-        const vals = (await items.locator('.mls-trade-fair-val').allInnerTexts()).map(v => Number(v.replace(/,/g, '')));
+        const vals = (await items.locator('.mls-trade-fair-num').allInnerTexts()).map(v => Number(v.replace(/,/g, '')));
         expect(vals).toEqual([...vals].sort((a, b) => b - a));
 
         // Below the verdicts, above "Power Rankings after the trade".
@@ -351,6 +351,26 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         const after = await futureCell.locator('.tooltip-text').evaluate(el => el.textContent.replace(/\s+/g, ' '));
         expect(after).toContain('+ 2027 2nd (via you)');
         expect(after).toContain('Leaving: 2027 1st');
+        await expectClean(page, state);
+    });
+
+    // Round 6 (owner's request): each suggestion and removal shows the market's value under yours, as the rows do.
+    test('suggestions show the market value under yours; none without market data', async ({ page }) => {
+        const state = await setup(page);
+        await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson']);
+        await expect(fair(page).locator('.mls-trade-row-mkt')).toHaveCount(0);
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            const { normalizeName } = await import('/js/shared/names.js');
+            State.marketRankings = [['Saquon Barkley', 3], ["Ja'Marr Chase", 1]].map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
+        });
+        await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson']);
+        const value = (rank) => Math.round(10000 * Math.pow(0.982, rank - 1)).toLocaleString('en-US');
+        const item = (list, name) => list.filter({ has: page.locator('.mls-trade-fair-player', { hasText: name }) });
+        await expect(item(adds(page), 'Saquon Barkley').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(3)}`);
+        const others = adds(page).filter({ hasNot: page.locator('.mls-trade-fair-player', { hasText: 'Saquon Barkley' }) });
+        for (const t of await others.locator('.mls-trade-row-mkt').allInnerTexts()) expect(t).toBe('Mkt –');
+        await expect(item(removals(page), "Ja'Marr Chase").locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(1)}`);
         await expectClean(page, state);
     });
 });

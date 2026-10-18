@@ -4722,3 +4722,20 @@ league; the notes' (i) holding "Injuries and byes" and the bullets not; the expo
 
 **Checks.** Precache OK; 394 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
 all 40 pixel-identical to round 3's renders; against main still only `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 6: the market's value on each suggestion (owner's request)
+
+**User-visible effect.** In "To make it fair", each suggestion and each "Or take off your side" piece shows "Mkt 8,500"
+under its value when Market Consensus is loaded (a pair: the sum; "Mkt –" when the market has no value for it), in the
+rows' own style. Not shown when Market Consensus is what decides (no ROS rankings), since the two numbers would match.
+**Where.** `js/mls/trade/fairSection.js` (`valueHTML`, `marketOf`), `css/mls.css` (`.mls-trade-fair-val` as a column),
+`CHANGELOG.md`. **Tests.** Spec: no Mkt line without market data; with it, Saquon's market value, "Mkt –" for players
+the market lacks, and Chase's on the removal.
+
+**Found while here (owner's report): tooltips run off the screen on phones, site-wide.** Every `.tooltip-text` is 260px
+wide at `right: -10px` from its trigger (css/base.css), so it always opens leftward; a trigger within ~250px of the left
+edge of a 375px screen puts it off-screen. Measured at 375px with every tooltip opened: 2 on the Lineup tab (the
+optimizer settings), 1 in the Trade Analyzer's Value settings, and round 5's "How this is worked out" (i). Proposed fix,
+not built yet: clamp each tooltip into the viewport when it opens (tooltips.js), cap its width, and a spec that opens
+every tooltip on the three pages at 375px.
+

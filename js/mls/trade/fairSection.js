@@ -158,7 +158,7 @@ function list(fits, side) {
         return `<li class="mls-trade-fair-item">
             <span class="mls-trade-fair-badges">${badges}</span>
             <span class="mls-trade-fair-names">${label}<span class="mls-trade-fair-lands">${landsText(f.after)}</span></span>
-            <span class="mls-trade-fair-val">${fmt(f.value)}</span>
+            ${valueHTML(f.value, marketOf(f.players))}
             <button type="button" class="btn btn-secondary mls-btn-sm mls-trade-fair-add" data-action="addFairSuggestion" data-side="${side}" data-names="${escapeHtml(JSON.stringify(names))}" aria-label="Add ${escapeHtml(names.join(' and '))} to ${where}">${names.length > 1 ? 'Add both' : 'Add'}</button>
         </li>`;
     }).join('')}</ul>`;
@@ -182,9 +182,29 @@ function removalsHTML(removals, names, results) {
         return `<li class="mls-trade-fair-item">
             <span class="mls-trade-fair-badges">${badge}</span>
             <span class="mls-trade-fair-names"><span class="mls-trade-fair-player">${escapeHtml(shown)}</span><span class="mls-trade-fair-lands">${landsText(r.after)}</span></span>
-            <span class="mls-trade-fair-val">${fmt(r.value)}</span>
+            ${valueHTML(r.value, row ? row.market : null)}
             <button type="button" class="btn btn-secondary mls-btn-sm mls-trade-fair-add" data-action="removeFairPiece" data-side="${side}" data-name="${escapeHtml(typed)}" aria-label="Take ${escapeHtml(shown)} off ${where}">Remove</button>
         </li>`;
     }).join('');
     return `<div class="mls-trade-fair-or">${side === 'give' ? 'Or take off your side:' : 'Or ask for less:'}</div><ul class="mls-trade-fair-list" data-fair-removals>${items}</ul>`;
+}
+
+// The value by the rankings that decide, and under it the market's when Market Consensus is loaded and isn't already
+// what decides (round 6, owner's request: the other manager is often reading FantasyCalc), as the trade's rows show it.
+// market: a number, or null when the market has no value for it ("Mkt –").
+function valueHTML(value, market) {
+    const showMkt = State.marketRankings.length > 0 && State.rosRankings.length > 0;
+    return `<span class="mls-trade-fair-val"><span class="mls-trade-fair-num">${fmt(value)}</span>${showMkt
+        ? `<span class="mls-trade-row-mkt">Mkt ${market == null ? '&ndash;' : fmt(market)}</span>` : ''}</span>`;
+}
+
+// The market's value of a suggestion (a pair's sum); null when any part of it has none.
+function marketOf(players) {
+    let sum = 0;
+    for (const p of players) {
+        const m = p.isPick ? getMarketValue(null, p.name) : getMarketValue(p.cleanName);
+        if (!m) return null;
+        sum += m.value;
+    }
+    return sum;
 }
