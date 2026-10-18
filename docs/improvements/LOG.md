@@ -4649,3 +4649,8 @@ original untouched); picks add to future value and rank and are listed with "via
 moves future ranks and marks the moved pick. Spec (fixture league synced as dynasty): the Roster tab's Future column,
 its note and the "Picks:" line; a 2027 1st for 2027 2nd trade shows the section with "+ 2027 2nd (via you)" and
 "Leaving: 2027 1st".
+
+**Checks.** Precache OK; 391 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main).
+Screenshots: against round 2's renders only `mls-league-guide.png` changes (desktop 1280×6854 → 1280×6877, phone
+390×14761 → 390×14830, the Guide sentence on picks); the Roster screenshots don't move (the screenshot league is redraft,
+and the card's (i) text is hidden). Against main, still only `mls-league-guide.png` at both widths, to take from CI.
