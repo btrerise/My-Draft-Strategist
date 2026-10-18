@@ -4605,6 +4605,10 @@ with `from`, none for a team holding none. Spec: the fixture league synced as dy
 with market values for a 2027 1st and 2nd, a gap only a pick closes suggests Rival's 2027 2nd (via you), never the 1st it
 traded away, and Add makes it Fair; the four row texts; and the pick-value bug (each pick its own Mkt value).
 
+**Checks.** Precache OK; 387 unit and 401 Playwright tests pass (1 skipped; visual.spec fails here as on main).
+Screenshots: rendered here, all 40 pixel-identical to round 1's (the screenshot league is redraft, so no traded picks are
+read); still only `mls-league-guide.png` at both widths differs from main.
+
 **Left over (other places traded picks could be used; not built):**
 - The picker's lists (tapping Give or a From team) could offer that team's picks along with its players.
 - Power Rankings' Future column and the Roster tab count players only; picks held could add to a team's future value.
