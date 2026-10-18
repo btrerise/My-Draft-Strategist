@@ -4719,3 +4719,6 @@ lines and the price order; Undo after Add (back to Favors Them, box back, line g
 off …", search not focused); another change drops the Undo; "Or ask for less" when it favors you; removals in a manual
 league; the notes' (i) holding "Injuries and byes" and the bullets not; the export without the (i) line.
 
+
+**Checks.** Precache OK; 394 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 3's renders; against main still only `mls-league-guide.png` at both widths, to take from CI.
