@@ -4756,3 +4756,7 @@ left/right/center classes still apply first. `docs/TESTING.md` (Conventions) not
 **User-visible effect.** Any tooltip opened near a screen edge slides back on screen (both apps). CHANGELOG lines under
 both apps.
 
+
+**Checks (rounds 6 and 7).** Precache OK; 394 unit and 409 Playwright tests pass (1 skipped; visual.spec fails here as on
+main). Screenshots: all 40 pixel-identical to round 5's renders (tooltips are closed in them); against main still only
+`mls-league-guide.png` at both widths, to take from CI.
