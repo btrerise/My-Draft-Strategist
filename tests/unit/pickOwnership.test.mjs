@@ -2,7 +2,7 @@
 // Sleeper's traded picks for dynasty and keeper leagues.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pickHolders, pickKey, pickName, pickOwnership } from '../../js/mls/leagues/picks.js';
+import { pickHolders, pickKey, pickName, pickOwnership, picksAfterTrade, tablePickRank } from '../../js/mls/leagues/picks.js';
 
 const rosters = [{ rosterId: 1, owner: 'You' }, { rosterId: 2, owner: 'Rival' }, { rosterId: 3, owner: 'Third' }];
 const names = (list) => list.map(p => p.from ? `${p.name} (${p.from})` : p.name);
@@ -52,4 +52,25 @@ test('pickKey: year and round, so 2027 and 2029 picks never match (player names 
     assert.notEqual(pickKey('2027 1st'), pickKey('2029 1st'));
     assert.notEqual(pickKey('2027 1st'), pickKey('2027 2nd'));
     assert.equal(pickKey('Bijan Robinson'), null);
+});
+
+test('tablePickRank: a 1st like the 48th player, later rounds and drafts further down', () => {
+    assert.equal(tablePickRank(1, 0), 48);
+    assert.equal(tablePickRank(2, 0), 100);
+    assert.equal(tablePickRank(4, 0), 230);
+    assert.equal(tablePickRank(1, 2), 62);
+    assert.ok(tablePickRank(1, 1) < tablePickRank(2, 0));
+});
+
+test('picksAfterTrade: picks you give go to the partner, picks you get come to you, marked moved', () => {
+    const picks = { You: [{ name: '2027 1st' }, { name: '2027 1st', from: 'Rival' }], Rival: [{ name: '2027 2nd' }], Third: [{ name: '2028 3rd' }] };
+    const after = picksAfterTrade(picks, { give: ['2027 1st'], get: ['2027 2nd'], partner: 'Rival' });
+    assert.deepEqual(after.You.map(p => p.name), ['2027 1st', '2027 2nd']);
+    assert.deepEqual(after.Rival.map(p => `${p.name}${p.moved ? '*' : ''}`), ['2027 1st*']);
+    assert.equal(picks.You.length, 2); // untouched
+    // No single partner: a pick you get comes from whoever holds one; a pick nobody holds is skipped.
+    const any = picksAfterTrade(picks, { get: ['2028 3rd', '2030 1st'] });
+    assert.deepEqual(any.You.map(p => p.name), ['2027 1st', '2027 1st', '2028 3rd']);
+    assert.deepEqual(any.Third, []);
+    assert.equal(picksAfterTrade(null, { give: ['2027 1st'] }), null);
 });

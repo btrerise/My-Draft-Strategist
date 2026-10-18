@@ -4,6 +4,9 @@
 import { State } from '../state.js';
 import { getSleeperMetaByName } from '../scout/waivers.js';
 import { refreshPowerRankings } from './rosterCard.js';
+import { tablePickRank } from '../leagues/picks.js';
+import { getMarketValue } from '../trade/valueCurve.js';
+import { nextDraftYears } from '../trade/makeFair.js';
 
 // --- FUTURE VALUE (dynasty / keeper) ---
 // Rough positional age curves: a multiplier on each player's rankings value, >1 before a
@@ -74,8 +77,53 @@ export function whenPowerAgesLoaded() {
 // Market Consensus values, else none. Market data only counts when it was pulled as Dynasty --
 // redraft market values say nothing about next year.
 export function resolvePowerFuture() {
-    if (_powerAgeState === 'ready') return { future: { mode: 'age', ages: _powerAgeIndex }, label: 'age' };
-    const dynastyMarket = State.marketRankings.length > 0 && State.marketSettings && State.marketSettings.type === 'dynasty';
-    if (_powerAgeState === 'failed' && dynastyMarket) return { future: { mode: 'market', rankings: State.marketRankings }, label: 'market' };
+    const dynastyMarket = isDynastyMarket();
+    if (_powerAgeState === 'ready') return { future: { mode: 'age', ages: _powerAgeIndex, pickRank: powerPickRank }, label: 'age', picks: picksLabel() };
+    if (_powerAgeState === 'failed' && dynastyMarket) return { future: { mode: 'market', rankings: State.marketRankings, pickRank: powerPickRank }, label: 'market', picks: picksLabel() };
     return { future: null, label: _powerAgeState === 'loading' ? 'loading' : 'none' };
+}
+
+const isDynastyMarket = () => State.marketRankings.length > 0 && State.marketSettings && State.marketSettings.type === 'dynasty';
+// 'market' when dynasty Market Consensus prices the picks, else 'table'; for the notes under the tables.
+const picksLabel = () => isDynastyMarket() ? 'market' : 'table';
+
+// A draft pick's worth in the Future column (improvements S19, round 3, owner's choice): the overall rank dynasty
+// Market Consensus gives that pick (its year and round), else the set table (leagues/picks.js tablePickRank).
+// pick: a league.picks entry ({ name, season, round }).
+export function powerPickRank(pick) {
+    if (isDynastyMarket()) {
+        const m = getMarketValue(null, pick.name);
+        if (m && m.rank > 0) return { rank: m.rank, source: 'market' };
+    }
+    const first = nextDraftYears(new Date())[0];
+    return { rank: tablePickRank(pick.round, (Number(pick.season) || first) - first), source: 'table' };
+}
+
+// The sentence under a Future column about picks, or '' when the league has none synced. label: resolvePowerFuture's
+// picks ('market' | 'table').
+export function powerPicksNote(league, label) {
+    if (!league || !league.picks) return '';
+    return label === 'market'
+        ? "Draft picks each team holds (from Sleeper) count too, at their dynasty Market Consensus value (a set table by round for any pick the market doesn't price)."
+        : "Draft picks each team holds (from Sleeper) count too, by a set table: a 1st like the 48th-ranked player, a 2nd the 100th, a 3rd the 160th, a 4th the 230th, later drafts a little less. Pull Dynasty Market Consensus (Trade Finder, Scout tab) to use market values.";
+}
+
+// The right-hand text of a Future tooltip row: "24 yrs · #2" for a player (age when known), "Pick · like #48" for a
+// draft pick (the rank of a player it counts like). Shared by the Roster tab's table and the Trade Analyzer's.
+export function futureRankText(p) {
+    if (p.isPick) return `Pick &middot; like #${p.rank}`;
+    return `${p.age != null ? `${p.age} yrs &middot; ` : ''}#${p.futureRank != null ? p.futureRank : p.rank}`;
+}
+
+// The lines under a Future tooltip's top rows: how many players aren't shown, and the picks that aren't, by name, so a
+// team's picks never hide behind "+ 10 more". list: team.futurePlayers; shown: how many rows the tooltip drew.
+// esc: the caller's HTML escaper.
+export function futureMoreHTML(list, shown, esc) {
+    const rest = (list || []).slice(shown);
+    const picks = rest.filter(p => p.isPick);
+    const players = rest.length - picks.length;
+    let html = '';
+    if (players > 0) html += `<div class="mls-power-tooltip-more">+ ${players} more player${players > 1 ? 's' : ''}</div>`;
+    if (picks.length) html += `<div class="mls-power-tooltip-more">Picks: ${picks.map(p => `${p.moved ? '+ ' : ''}${esc(p.name)}`).join(', ')}</div>`;
+    return html;
 }

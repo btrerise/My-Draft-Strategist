@@ -4613,3 +4613,39 @@ read); still only `mls-league-guide.png` at both widths differs from main.
 - The picker's lists (tapping Give or a From team) could offer that team's picks along with its players.
 - Power Rankings' Future column and the Roster tab count players only; picks held could add to a team's future value.
 - The Dashboard's league cards don't show picks.
+
+### S19, round 3: draft picks in the Future column (owner's request)
+
+**The owner asked** to include picks in the Power Rankings' Future column, since it bears on trade decisions.
+**Asked:** how to value a pick there. **Answer:** dynasty Market Consensus's value for that pick (its year and round)
+when loaded, else a set table.
+
+**User-visible effect.** In dynasty and keeper leagues whose picks were synced (round 2):
+- **Future** (Roster tab and "Power Rankings after the trade") adds each team's picks to its future value, on the same
+  power curve as players: a pick counts like a player of the market's rank for it, or, without dynasty market data (or
+  for a pick the market doesn't price), the table's rank: 1st = 48, 2nd = 100, 3rd = 160, 4th = 230, each draft further
+  out 15% further down (a 2029 1st counts like the 62nd player). No age factor. A note under the table says which.
+- **Tooltips:** picks sit among the top rows by value ("2027 1st (via Rival)", "Pick · like #48"); any that don't make the
+  top 8 are named on a "Picks:" line, so they never hide behind "+ 10 more" (now "+ 4 more players").
+- **Trades:** picks in a trade move between the teams before scoring (yours to the partner; theirs, or with Any team
+  whoever holds one, to you), marked "+" in the Future tooltip and listed under "Leaving:". A side of picks only is
+  now enough for the section in such a league (S14 skipped those, when picks had no lineup or future effect); with no
+  player to name the partner, the From team is it. Redraft and manual leagues, and dynasty leagues not synced since
+  round 2, are unchanged.
+- Guide (Power Rankings step) and the Roster card's (i) mention picks.
+
+**What changed and where.**
+- `js/mls/leagues/picks.js`: `tablePickRank`, `picksAfterTrade`.
+- `js/mls/power/shared.js`: `computePositionalPower` adds `league.picks` to `futurePlayers` / `futureScore` when
+  `opts.future.pickRank` is given (no change otherwise: All My Leagues passes no future).
+- `js/mls/power/futureValue.js`: `powerPickRank` (market, else table), attached to `resolvePowerFuture`'s sources with a
+  `picks` label; `powerPicksNote`, `futureRankText`, `futureMoreHTML` (shared by both tables).
+- `js/mls/power/rosterCard.js` (note, tooltip), `js/mls/trade/lineupImpact.js` (`leagueAfterTrade` / `powerTradeImpact`
+  take the traded picks), `js/mls/trade/lineupSection.js` (picks-only sides, partner from From, notes, tooltips).
+- `lineup/index.html` (Guide step, card tooltip), `CHANGELOG.md`.
+
+**Tests.** Unit: `tablePickRank`, `picksAfterTrade` (to the partner, from any holder, skipped when nobody holds it,
+original untouched); picks add to future value and rank and are listed with "via"; none without `pickRank`; a pick swap
+moves future ranks and marks the moved pick. Spec (fixture league synced as dynasty): the Roster tab's Future column,
+its note and the "Picks:" line; a 2027 1st for 2027 2nd trade shows the section with "+ 2027 2nd (via you)" and
+"Leaving: 2027 1st".

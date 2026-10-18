@@ -36,6 +36,19 @@ async function setup(page) {
     return state;
 }
 
+// The fixture league as a dynasty league, synced, so the sync reads its traded picks (Rival's 2027 1st is yours, your
+// 2027 2nd is Rival's: tests/fixtures/sleeper/make-fixtures.mjs), with two draft rounds.
+async function setupDynasty(page) {
+    await at375(page);
+    const state = await openApp(page, '/lineup/');
+    const league = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/sleeper/league.json', import.meta.url)), 'utf8'));
+    league.settings = { ...league.settings, type: 2, draft_rounds: 2 };
+    await page.route(/^https:\/\/api\.sleeper\.app\/v1\/league\/\d+$/, (route) => route.fulfill({ json: league }));
+    await seedMls(page);
+    await loadMlsRankings(page);
+    return state;
+}
+
 test.describe('Trade Analyzer: what would make it fair', () => {
     test('favors them: suggestions from Rival\'s roster; Add puts one on the trade and it turns Fair', async ({ page }) => {
         const state = await setup(page);
@@ -212,15 +225,7 @@ test.describe('Trade Analyzer: what would make it fair', () => {
     });
 
     test('dynasty league: picks synced from Sleeper decide which picks are suggested, and the rows say who holds them', async ({ page }) => {
-        await at375(page);
-        const state = await openApp(page, '/lineup/');
-        // The fixture league as a dynasty league, so the sync reads its traded picks (Rival's 2027 1st is yours,
-        // your 2027 2nd is Rival's: tests/fixtures/sleeper/make-fixtures.mjs).
-        const league = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/sleeper/league.json', import.meta.url)), 'utf8'));
-        league.settings = { ...league.settings, type: 2, draft_rounds: 2 };
-        await page.route(/^https:\/\/api\.sleeper\.app\/v1\/league\/\d+$/, (route) => route.fulfill({ json: league }));
-        await seedMls(page);
-        await loadMlsRankings(page);
+        const state = await setupDynasty(page);
         const picks = await page.evaluate(async () => {
             const { State } = await import('/js/mls/state.js');
             const league = State.leagues.find(l => l.leagueId === State.activeLeagueId);
@@ -276,6 +281,35 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await expect(row('2027 1st').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(10)}`);
         await expect(row('2029 1st').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(40)}`);
         await expect(row('2027 2nd').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(30)}`);
+        await expectClean(page, state);
+    });
+
+    // Round 3 (owner's choice): the picks each team holds count toward the Power Rankings' Future column, by the market's
+    // value when dynasty Market Consensus is loaded, else a set table (a 1st like the 48th player, a 2nd the 100th).
+    test('dynasty league: picks count in the Future column, on the Roster tab and after a trade', async ({ page }) => {
+        const state = await setupDynasty(page);
+        await showTab(page, 'roster');
+        const card = page.locator('#powerRankingsOutput');
+        await expect(card.locator('.mls-power-table th', { hasText: 'Future' })).toHaveCount(1);
+        await expect(card).toContainText('Draft picks each team holds (from Sleeper) count too, by a set table');
+        // Your Future tooltip lists your picks, Rival's 1st marked as coming from Rival, each "like" a player rank.
+        const youRow = card.locator('.mls-power-table tr.mls-power-you').first();
+        const futureTip = youRow.locator('td').last().locator('.tooltip-text');
+        const tipText = await futureTip.evaluate(el => el.textContent.replace(/\s+/g, ' '));
+        // The fixture's players are all top-24, so the picks are past the top 8 rows: named on their own line.
+        expect(tipText).toMatch(/\+ \d+ more players?\s*Picks: 2027 1st, 2027 1st \(via Rival\), 2028 1st/);
+
+        // A trade of picks only now has a section: your two 2027 1sts for their two 2027 2nds turns the Future column.
+        await showTab(page, 'scout');
+        await page.locator('#tradeGetTeam').selectOption('Rival');
+        await runTrade(page, ['2027 2nd'], ['2027 1st']);
+        const impact = page.locator('#tradeOutput [data-trade-impact]');
+        await expect(impact).toHaveCount(1);
+        await expect(impact).toContainText('Draft picks each team holds (from Sleeper) count too');
+        const futureCell = impact.locator('tr.mls-power-you td').last();
+        const after = await futureCell.locator('.tooltip-text').evaluate(el => el.textContent.replace(/\s+/g, ' '));
+        expect(after).toContain('+ 2027 2nd (via you)');
+        expect(after).toContain('Leaving: 2027 1st');
         await expectClean(page, state);
     });
 });

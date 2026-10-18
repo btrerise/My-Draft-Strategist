@@ -55,3 +55,41 @@ export function pickHolders(picks, name) {
     const key = pickKey(name);
     return Object.keys(picks).filter(owner => picks[owner].some(p => pickKey(p.name) === key));
 }
+
+// A pick's worth in the Power Rankings' Future column when the market has no value for it (round 3, owner's choice:
+// the market's value when dynasty Market Consensus is loaded, else this table): the overall rank of a player it
+// counts like, by round (a 1st like the 48th player, a 2nd the 100th, a 3rd the 160th, a 4th the 230th), each draft
+// further out 15% further down (yearsOut: 0 for the next draft).
+const PICK_TABLE_RANKS = [48, 100, 160, 230];
+export function tablePickRank(round, yearsOut = 0) {
+    const base = PICK_TABLE_RANKS[Math.min(Math.max(round, 1), 4) - 1];
+    return Math.round(base * (1 + 0.15 * Math.max(0, yearsOut)));
+}
+
+// league.picks after a trade (the Trade Analyzer's "Power Rankings after the trade"): each pick you give moves from
+// you to the partner (or off the board when there's no single partner), each pick you get from the partner (else
+// from whichever team holds one) to you. A pick nobody on that side holds is skipped. Moved picks carry moved: true,
+// so the Future tooltip can mark them. The original is untouched.
+export function picksAfterTrade(picks, { give = [], get = [], partner = null } = {}) {
+    if (!picks) return picks;
+    const out = Object.fromEntries(Object.entries(picks).map(([o, list]) => [o, list.slice()]));
+    const take = (owner, name) => {
+        const list = out[owner];
+        if (!list) return null;
+        const i = list.findIndex(p => pickKey(p.name) === pickKey(name));
+        return i === -1 ? null : list.splice(i, 1)[0];
+    };
+    give.forEach(name => {
+        const pk = take('You', name);
+        if (pk && partner) (out[partner] = out[partner] || []).push({ ...pk, moved: true });
+    });
+    get.forEach(name => {
+        let pk = partner ? take(partner, name) : null;
+        if (!pk && !partner) {
+            const holder = Object.keys(out).find(o => o !== 'You' && out[o].some(p => pickKey(p.name) === pickKey(name)));
+            pk = holder ? take(holder, name) : null;
+        }
+        if (pk) (out.You = out.You || []).push({ ...pk, moved: true });
+    });
+    return out;
+}

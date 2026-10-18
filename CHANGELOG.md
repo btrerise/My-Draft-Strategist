@@ -93,6 +93,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   for the next three drafts, traded ones included. The Trade Analyzer suggests only picks the team really holds
   (marked "via Rival" when it came in a trade), and a pick's row says "Yours", "Rival's", "Not yours (you don't hold
   it)" or "Rival doesn't hold it". Sync the league once to pick this up.
+- **Draft picks count in the Future column.** In dynasty and keeper leagues, the Power Rankings' Future column (Roster
+  tab, and "Power Rankings after the trade") now adds the picks each team holds, valued by dynasty Market Consensus when
+  you've pulled it, else by a set table (a 1st counts like the 48th-ranked player, a 2nd the 100th, a 3rd the 160th, a
+  4th the 230th, later drafts a little less). The Future tooltip names a team's picks, and a trade's picks move between
+  the teams, so a trade of picks only now shows how it changes your Future rank.
 - **Fixed: every draft pick of a round had the same market value.** A 2029 1st was valued like a 2027 1st (and every
   2nd like each other), whatever the market said. Each pick now gets its own year's value.
 - **The Trade Analyzer shows how your team changes.** Under the trade verdict, "Power Rankings after the trade"
