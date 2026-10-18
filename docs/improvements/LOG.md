@@ -4675,7 +4675,7 @@ pick index keeps the first row per key (no more "best of several").
 9,299 for 8,492), then passed with the fix. Unit: `pickKey` with and without the tier, `pickHolders` ignoring it.
 
 **Left over.** The picker and Sleeper name picks plainly, so every pick is valued as FantasyCalc's plain one. The owner
-wants specific pick values after the season, when FantasyCalc starts pricing specific picks ("2027 Pick 1.05"); not
+wants specific pick values after the season, when FantasyCalc starts pricing specific picks (names to check then); not
 needed in season. Written into `docs/TESTING.md`'s "Open follow-ups" (On a date: after the regular season).
 
 **Checks.** Precache OK; 391 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main). No
