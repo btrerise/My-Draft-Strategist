@@ -62,15 +62,22 @@ export function ownPickNames(now = new Date()) {
 }
 
 // The candidates for the side that adds: its roster's players with their values, and, in dynasty and keeper leagues
-// only, its own picks (pickValue: the market's, since rankings have no picks). roster: [{ cleanName, name, pos }];
-// valueOf / pickValue: clean name -> value (0 = none). Players and picks with no value are left out.
-export function fairCandidates({ roster, valueOf, dynasty = false, pickValue = null, normalize = (n) => n, now = new Date() }) {
+// only, its picks (pickValue: the market's, since rankings have no picks). roster: [{ cleanName, name, pos }];
+// valueOf: clean name -> value; pickValue: a pick's name -> value (0 = none). normalize: a pick's matching key. picks: the team's picks as synced from Sleeper
+// ([{ name, from }], leagues/picks.js), or null to assume it holds its own picks for the next three drafts
+// (assumed: true on those). Players and picks with no value are left out; a pick held twice is listed once.
+export function fairCandidates({ roster, valueOf, dynasty = false, pickValue = null, picks = null, normalize = (n) => n, now = new Date() }) {
     const out = (roster || []).filter(p => p && p.cleanName && p.name)
         .map(p => ({ name: p.name, cleanName: p.cleanName, pos: p.pos || '', value: valueOf(p.cleanName) || 0, isPick: false }));
     if (dynasty && pickValue) {
-        ownPickNames(now).forEach(name => {
-            const clean = normalize(name);
-            out.push({ name, cleanName: clean, pos: 'Pick', value: pickValue(clean) || 0, isPick: true });
+        const list = picks ? picks.map(p => ({ name: p.name, from: p.from || null, assumed: false }))
+            : ownPickNames(now).map(name => ({ name, from: null, assumed: true }));
+        const seen = new Set();
+        list.forEach(p => {
+            const clean = normalize(p.name);
+            if (seen.has(clean)) return;
+            seen.add(clean);
+            out.push({ name: p.name, cleanName: clean, pos: 'Pick', value: pickValue(p.name) || 0, isPick: true, from: p.from, assumed: p.assumed });
         });
     }
     return out.filter(c => c.value > 0);

@@ -101,12 +101,20 @@ const trendingAdd = [
     { player_id: '9997', count: 640 },    // Zay Flowers, free, ranked
 ];
 
+// Traded rookie picks (league/<id>/traded_picks, improvements S19 round 2), read only when the league is dynasty or
+// keeper (the fixture league is redraft; specs switch it): Rival's 2027 1st now yours, your 2027 2nd now Rival's.
+const tradedPicks = [
+    { season: '2027', round: 1, roster_id: 2, previous_owner_id: 2, owner_id: 1 },
+    { season: '2027', round: 2, roster_id: 1, previous_owner_id: 1, owner_id: 2 },
+];
+
 const out = {
     'players-nfl.json': players,
     'league.json': league,
     'league-users.json': USERS.map(u => ({ ...u, league_id: LEAGUE_ID, metadata: { team_name: `${u.display_name} Team` } })),
     'league-rosters.json': rosters,
     'league-matchups.json': matchups,
+    'league-traded-picks.json': tradedPicks,
     'user.json': USERS[0],
     'user-leagues.json': [league],
     'trending-add.json': trendingAdd,

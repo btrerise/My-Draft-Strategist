@@ -2,6 +2,7 @@
 // (rankToTradeValue, isDraftPickName, getMarketValue).
 import { State } from '../state.js';
 import { rankingIndex } from '../helpers.js';
+import { pickKey } from '../leagues/picks.js';
 
     // --- TRADE VALUE CURVE ---
     // Converts an overall rank -- either the user's own ROS ranking or a market-consensus rank
@@ -35,7 +36,27 @@ import { rankingIndex } from '../helpers.js';
     // Looks up a player's MARKET value by clean name (the optional/secondary lens -- see
     // rankToTradeValue above). Returns null if no Market Value data is loaded at all, or if this
     // specific player isn't in it (unranked/deep bench/rookie not yet valued).
-    export function getMarketValue(cleanName) {
+    // name: the name as entered, for a draft pick (improvements S19, round 2): a pick is looked up by its year and
+    // round (pickKey), since cleanName drops the digits and every "20xx 1st" would get the same value.
+    const _pickIndex = new WeakMap();
+    function marketPickIndex(rankings) {
+        let idx = _pickIndex.get(rankings);
+        if (!idx) {
+            idx = new Map();
+            rankings.forEach(m => {
+                const key = pickKey(m.name);
+                if (key && (!idx.has(key) || m.marketVal < idx.get(key).marketVal)) idx.set(key, m);
+            });
+            _pickIndex.set(rankings, idx);
+        }
+        return idx;
+    }
+    export function getMarketValue(cleanName, name = null) {
+        const key = name ? pickKey(name) : null;
+        if (key) {
+            const m = marketPickIndex(State.marketRankings).get(key);
+            return m ? { rank: m.marketVal, value: rankToTradeValue(m.marketVal) } : null;
+        }
         if (!cleanName) return null;
         // Unlike the other converted sites, this one can't hoist its index to a caller -- it's
         // a single-player helper called from several different loops. rankingIndex's WeakMap

@@ -1023,6 +1023,7 @@ button.close-chip {
 .mls-trade-fair-names { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 0.88rem; color: var(--text-main); display: flex; flex-wrap: wrap; column-gap: 0.35rem; }
 .mls-trade-fair-player { white-space: nowrap; }
 .mls-trade-fair-plus { color: var(--text-muted); font-weight: 600; }
+.mls-trade-fair-from { color: var(--text-muted); font-weight: 600; font-size: 0.75rem; }
 .mls-trade-fair-val { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-main); font-size: 0.88rem; }
 .mls-trade-fair-add { flex: 0 0 auto; }
 @media (min-width: 768px) {

@@ -210,4 +210,72 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await expect(fair(page)).toHaveCount(1);
         await expectClean(page, state);
     });
+
+    test('dynasty league: picks synced from Sleeper decide which picks are suggested, and the rows say who holds them', async ({ page }) => {
+        await at375(page);
+        const state = await openApp(page, '/lineup/');
+        // The fixture league as a dynasty league, so the sync reads its traded picks (Rival's 2027 1st is yours,
+        // your 2027 2nd is Rival's: tests/fixtures/sleeper/make-fixtures.mjs).
+        const league = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/sleeper/league.json', import.meta.url)), 'utf8'));
+        league.settings = { ...league.settings, type: 2, draft_rounds: 2 };
+        await page.route(/^https:\/\/api\.sleeper\.app\/v1\/league\/\d+$/, (route) => route.fulfill({ json: league }));
+        await seedMls(page);
+        await loadMlsRankings(page);
+        const picks = await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            const league = State.leagues.find(l => l.leagueId === State.activeLeagueId);
+            return Object.fromEntries(Object.entries(league.picks).map(([o, l]) => [o, l.map(p => p.from ? `${p.name} (${p.from})` : p.name)]));
+        });
+        expect(picks.You).toEqual(['2027 1st', '2027 1st (Rival)', '2028 1st', '2028 2nd', '2029 1st', '2029 2nd']);
+        expect(picks.Rival).toEqual(['2027 2nd (You)', '2027 2nd', '2028 1st', '2028 2nd', '2029 1st', '2029 2nd']);
+
+        // Market values for two picks, the 1st worth a little more: both would close the gap, but Rival has no 1st.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            const { normalizeName } = await import('/js/shared/names.js');
+            State.marketRankings = [['2027 1st', 62], ['2027 2nd', 64]].map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
+            State.tradeSettings.waiverAdjustment = false;
+        });
+        await showTab(page, 'scout');
+        // 2 for 2, Favors Them by about 3,200; Rival's other players are all worth too much to add alone.
+        await runTrade(page, ['Bijan Robinson', 'Kyren Williams'], ["Ja'Marr Chase", 'Justin Jefferson']);
+        await expect(yourVerdict(page)).toContainText('Favors Them');
+        const box = fair(page);
+        await expect(box.locator('.mls-trade-fair-names')).toHaveText([/^2027 2nd\*/]);
+        await expect(box).toContainText("* Draft pick: market value. Picks Rival holds as of this league's last sync.");
+        await expect(box).not.toContainText('2027 1st');
+        await box.locator('[data-action="addFairSuggestion"]').click();
+        await expect(page.locator('#tradeGetTokens')).toContainText('2027 2nd');
+        await expect(yourVerdict(page)).toContainText('Fair Trade');
+        await expect(fair(page)).toHaveCount(0);
+
+        // The rows: a pick you hold, one you traded away, and one Rival doesn't hold.
+        await page.locator('#tradeGetTeam').selectOption('Rival');
+        await runTrade(page, ['Bijan Robinson', '2027 1st'], ["Ja'Marr Chase", '2027 1st', '2027 2nd']);
+        const row = (side, name) => page.locator(`#tradeOutput .mls-trade-side:has(.mls-trade-side-${side}) .mls-trade-row`, { hasText: name });
+        await expect(row('give', '2027 1st')).toContainText('Yours');
+        await expect(row('give', '2027 2nd')).toContainText("Not yours (you don't hold it)");
+        await expect(row('get', '2027 1st')).toContainText("Rival doesn't hold it");
+        await runTrade(page, ['Bijan Robinson', '2027 2nd'], ["Ja'Marr Chase"]);
+        await expect(row('get', '2027 2nd')).toContainText("Rival's");
+        await expectClean(page, state);
+    });
+
+    // Bug found in S19 round 2: names are matched with digits stripped, so every "20xx 1st" was the same pick to the
+    // market lookup and got one value, whatever its year.
+    test('each draft pick has its own market value', async ({ page }) => {
+        const state = await setup(page);
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            const { normalizeName } = await import('/js/shared/names.js');
+            State.marketRankings = [['2027 1st', 10], ['2029 1st', 40], ['2027 2nd', 30]].map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
+        });
+        await runTrade(page, ['Bijan Robinson', '2027 1st', '2029 1st'], ["Ja'Marr Chase", '2027 2nd']);
+        const value = (rank) => Math.round(10000 * Math.pow(0.982, rank - 1)).toLocaleString('en-US');
+        const row = (name) => page.locator('#tradeOutput .mls-trade-row', { hasText: name });
+        await expect(row('2027 1st').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(10)}`);
+        await expect(row('2029 1st').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(40)}`);
+        await expect(row('2027 2nd').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(30)}`);
+        await expectClean(page, state);
+    });
 });

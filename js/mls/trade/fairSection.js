@@ -13,8 +13,11 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from './valueCurve.js';
 import { fairCandidates, fairSuggestions, gapToClose } from './makeFair.js';
+import { pickKey } from '../leagues/picks.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
+// Matching key: a pick by its year and round (normalizeName drops digits), a player by his clean name.
+const keyOf = (n) => pickKey(n) || normalizeName(n);
 
 // getNames / giveNames: the trade's two lists as typed; getResults / giveResults: runScout's rows for them.
 // Returns '' when there's nothing to suggest: a one-sided entry, no rankings, or a trade already fair.
@@ -48,7 +51,7 @@ export function buildMakeFairHTML(league, getNames, giveNames, getResults, giveR
 
     if (blocked) return section(adder, gap.gap, `<div class="mls-trade-fair-note">${blocked}</div>`);
 
-    // The candidates: that roster's ranked players (and its own picks in dynasty and keeper leagues), valued
+    // The candidates: that roster's ranked players (and its picks in dynasty and keeper leagues), valued
     // as the trade's rows are (rankToTradeValue of the ROS rank, or the market's; a pick borrows the market's).
     const rosIndex = rankingIndex(State.rosRankings);
     const marketIndex = rankingIndex(State.marketRankings);
@@ -70,15 +73,17 @@ export function buildMakeFairHTML(league, getNames, giveNames, getResults, giveR
             return ros ? rankToTradeValue(ros.rank) : 0;
         },
         dynasty: getPowerLeagueKind(league) === 'dynasty',
-        pickValue: State.marketRankings.length > 0 ? (clean) => getMarketValue(clean)?.value || 0 : null,
-        normalize: normalizeName
+        pickValue: State.marketRankings.length > 0 ? (name) => getMarketValue(null, name)?.value || 0 : null,
+        // The picks this team holds, as Sleeper had them at the last sync (round 2); null assumes its own.
+        picks: league.picks ? (league.picks[team] || []) : null,
+        normalize: keyOf
     });
 
     const addingNames = adder === 'them' ? getNames : giveNames;
     const result = fairSuggestions({
         getValues, giveValues, candidates, waiver,
         inTrade: getNames.concat(giveNames).filter(n => !isDraftPickName(n)).map(normalizeName),
-        onAddingSide: addingNames.map(normalizeName)
+        onAddingSide: addingNames.map(keyOf)
     });
     if (!result) return '';
 
@@ -98,8 +103,11 @@ export function buildMakeFairHTML(league, getNames, giveNames, getResults, giveR
         body = `<div class="mls-trade-fair-note">No player or pair on ${whose} closes a ${fmt(result.gap)} gap by ${label}.</div>`;
     }
     const shown = result.singles.concat(result.pairs);
-    if (shown.some(f => f.players.some(p => p.isPick))) {
-        body += `<div class="mls-trade-fair-note">* Draft pick: market value. Assumes ${team === 'You' ? 'you still have your' : `${escapeHtml(team)} still has its`} own picks (traded picks aren't synced).</div>`;
+    const shownPicks = shown.flatMap(f => f.players.filter(p => p.isPick));
+    if (shownPicks.length) {
+        body += shownPicks.some(p => p.assumed)
+            ? `<div class="mls-trade-fair-note">* Draft pick: market value. Assumes ${team === 'You' ? 'you still have your' : `${escapeHtml(team)} still has its`} own picks: sync this league to read its traded picks from Sleeper.</div>`
+            : `<div class="mls-trade-fair-note">* Draft pick: market value. Picks ${team === 'You' ? 'you hold' : `${escapeHtml(team)} holds`} as of this league's last sync.</div>`;
     }
     return section(adder, result.gap, body);
 }
@@ -121,7 +129,7 @@ function list(fits, side) {
             ? PICK_BADGE_HTML
             : `<span class="badge pos-badge ${escapeHtml(p.pos || 'FLEX')} mls-pos-badge-sizing">${escapeHtml(p.pos || 'FA')}</span>`).join('');
         // The second name carries the "+", so a pair wraps as "Gibbs" / "+ Barkley", never a "+" on its own line.
-        const label = f.players.map((p, i) => `<span class="mls-trade-fair-player">${i ? '<span class="mls-trade-fair-plus">+</span> ' : ''}${escapeHtml(p.name)}${p.isPick ? '<sup>*</sup>' : ''}</span>`).join('');
+        const label = f.players.map((p, i) => `<span class="mls-trade-fair-player">${i ? '<span class="mls-trade-fair-plus">+</span> ' : ''}${escapeHtml(p.name)}${p.isPick ? '<sup>*</sup>' : ''}${p.from ? ` <span class="mls-trade-fair-from">via ${escapeHtml(p.from === 'You' ? 'you' : p.from)}</span>` : ''}</span>`).join('');
         return `<li class="mls-trade-fair-item">
             <span class="mls-trade-fair-badges">${badges}</span>
             <span class="mls-trade-fair-names">${label}</span>

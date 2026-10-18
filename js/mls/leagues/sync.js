@@ -3,7 +3,9 @@
 // after LEAGUE-SCOPED SCOUT RESULTS (market defaults, loadActiveLeagueData, requirements, manual
 // league), and the Sleeper sync (processSleeperData and its roster diff, addAndSyncLeague,
 // syncActiveLeague), which sat under ADD PLAYER MANUALLY and IMPORT ALL LEAGUES.
-import { getSleeperLeague, getSleeperLeagueRosters, getSleeperLeagueUsers, getSleeperPlayerMap, getSleeperUser } from '../../shared/api/sleeper.js';
+import { getSleeperLeague, getSleeperLeagueRosters, getSleeperLeagueUsers, getSleeperPlayerMap, getSleeperTradedPicks, getSleeperUser } from '../../shared/api/sleeper.js';
+import { pickOwnership } from './picks.js';
+import { nextDraftYears } from '../trade/makeFair.js';
 import { clearSimResults } from '../sim/ui.js';
 import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG, fantasyPosition } from '../constants.js';
@@ -535,9 +537,28 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
             } : null;
             const rosterSize = Array.isArray(leagueData.roster_positions) ? leagueData.roster_positions.length : null;
 
+            // Who holds which rookie-draft pick (improvements S19, round 2), in dynasty and keeper leagues, where picks
+            // trade: each team's own picks for the next three drafts, moved by Sleeper's traded picks. The Trade
+            // Analyzer suggests and checks picks with it. null in redraft leagues, or when the request fails (the
+            // league still syncs, and the Trade Analyzer falls back to assuming every team has its own picks).
+            let picks = null;
+            if (leagueType !== 'redraft') {
+                try {
+                    const traded = await getSleeperTradedPicks(leagueId);
+                    if (Array.isArray(traded)) {
+                        picks = pickOwnership({
+                            rosters: rosters.map(r => ({ rosterId: r.roster_id, owner: r.owner_id === userId ? 'You' : (userMap[r.owner_id] || 'Unknown Team') })),
+                            tradedPicks: traded, seasons: nextDraftYears(new Date()), rounds: ls.draft_rounds
+                        });
+                    }
+                } catch (e) {
+                    console.warn(`Couldn't read traded picks for ${leagueName}.`, e);
+                }
+            }
+
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge, leagueType: leagueType,
-                irRules, rosterSize,
+                irRules, rosterSize, picks,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
                 // Needed by the Matchup Simulator: rosterId identifies "us" within this

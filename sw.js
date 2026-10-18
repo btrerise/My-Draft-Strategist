@@ -149,6 +149,7 @@ const PRECACHE_ASSETS = [
     '/js/mls/trade/lineupSection.js',
     '/js/mls/trade/makeFair.js',
     '/js/mls/trade/fairSection.js',
+    '/js/mls/leagues/picks.js',
     '/js/mls/trade/picker.js',
     '/js/mls/scout/engine.js',
     '/js/mls/scout/waivers.js',

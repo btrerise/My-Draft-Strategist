@@ -132,6 +132,19 @@ describe('fairCandidates', () => {
         assert.deepEqual(fairCandidates({ roster, valueOf, dynasty: true, pickValue: null, now }).map(c => c.name), ['Nico Collins']);
     });
 
+    test('synced picks: only the ones the team holds, each name once, with whose it was', () => {
+        const picks = [{ name: '2027 2nd', from: 'You' }, { name: '2027 2nd', from: null }, { name: '2028 1st', from: null }];
+        const value = (c) => ({ '2027 2nd': 2000, '2028 1st': 0 }[c] || 0);
+        const list = fairCandidates({ roster, valueOf, dynasty: true, pickValue: value, picks, now });
+        assert.deepEqual(list.map(c => c.name), ['Nico Collins', '2027 2nd']);
+        assert.equal(list[1].from, 'You');
+        assert.equal(list[1].assumed, false);
+        // A team that holds no picks: none (not its "own").
+        assert.deepEqual(fairCandidates({ roster, valueOf, dynasty: true, pickValue, picks: [], now }).map(c => c.name), ['Nico Collins']);
+        // Not synced: assumed.
+        assert.ok(fairCandidates({ roster, valueOf, dynasty: true, pickValue, now }).filter(c => c.isPick).every(c => c.assumed));
+    });
+
     test('the pick years are the picker\'s: from March on, next year\'s draft first', () => {
         assert.deepEqual(nextDraftYears(new Date('2026-09-15T16:00:00Z')), [2027, 2028, 2029]);
         assert.deepEqual(nextDraftYears(new Date('2027-01-10T12:00:00Z')), [2027, 2028, 2029]);

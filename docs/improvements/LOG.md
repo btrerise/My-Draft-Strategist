@@ -4562,6 +4562,50 @@ desktop). visual.spec fails here as it does on main (this container can't render
 9's new sentence. The other 38 are pixel-identical (the screenshot league has no rankings and an empty trade form). To be
 taken from the pull request's CI renders ("Accepting an intended visual change").
 
-**Left over.**
-- Picks assume nobody has traded theirs: Sleeper's `traded_picks` isn't synced. Syncing it would make pick suggestions
-  (and Power Rankings' Future) exact.
+**Left over.** Picks assumed nobody had traded theirs; round 2 syncs them.
+
+### S19, round 2: traded picks synced from Sleeper; a bug in pick values (owner's request)
+
+**The owner asked** to start syncing Sleeper's picks on rosters, within this card, so the suggestions use them.
+
+**User-visible effect.**
+- **Sync reads traded picks** (dynasty and keeper leagues only; redraft picks don't trade, so no extra request on Sync
+  All for them). Each team holds its own pick in each round (the league's `draft_rounds`, at most 4) of the next three
+  drafts (the picker's years), moved by Sleeper's `league/<id>/traded_picks`. Stored on the league object as
+  `league.picks` (`{ owner: [{ name, season, round, from }] }`, owners named as in `globalRosterMap`), so no new storage
+  key; Backup/Restore carries it with the league. If the request fails the league still syncs, with `picks: null`.
+- **"To make it fair"** suggests only the picks that team holds, once per name, marked "via Rival" (or "via you") when
+  it came in a trade; the note reads "Picks Rival holds as of this league's last sync." A dynasty league synced before
+  this keeps the old assumption, and the note says to sync it.
+- **The trade rows** say who holds a pick: on Give, "Yours" or, in red, "Not yours (you don't hold it)"; on Get, the From
+  team's ("Rival's") or "Rival doesn't hold it" in red, or with Any team "Held by A, B" ("Already yours" / "No team holds
+  it" in red). Without synced picks, "Pick" as before.
+- **Bug fixed: pick values.** Names are matched by `normalizeName`, which drops digits, so every "20xx 1st" was the same
+  key (`st`): the market lookup gave every 1st one value, whatever its year (and every 2nd another), and round 1's
+  suggestions would have deduplicated a team's 2027 and 2028 2nds into one. Found while writing this round's spec. A
+  spec showing it was run on main first (a 2029 1st ranked 40th by the market showed the 2027 1st's 8,492 instead of
+  4,924), then fixed: picks are matched by year and round (`pickKey`).
+
+**What changed and where.**
+- `js/mls/leagues/picks.js` (new, pure, in `PRECACHE_ASSETS`): `pickOwnership`, `pickHolders`, `pickKey`, `pickName`.
+- `js/shared/api/sleeper.js`: `getSleeperTradedPicks` (null on a non-ok response). `js/mls/leagues/sync.js`: reads it for
+  dynasty and keeper leagues and stores `picks` on the league.
+- `js/mls/trade/valueCurve.js`: `getMarketValue(cleanName, name)` looks a pick up by `pickKey` (an index of the market's
+  picks, cached per array); `js/mls/scout/engine.js` passes the name, and its pick rows use `pickOwnerText`.
+- `js/mls/trade/makeFair.js` (`fairCandidates` takes the synced `picks`, else assumes; picks valued by name) and
+  `js/mls/trade/fairSection.js` (the team's synced picks, "via", the note, picks keyed by `pickKey`). `css/mls.css`:
+  `.mls-trade-fair-from`.
+- Tests: `tests/fixtures/sleeper/make-fixtures.mjs` writes `league-traded-picks.json` (Rival's 2027 1st is yours, your
+  2027 2nd is Rival's; read only when a spec makes the league dynasty), routed in `tests/helpers.mjs`.
+- `CHANGELOG.md`: two lines. `CACHE_NAME` stays v2.8.96 (once per branch; main is v2.8.95).
+
+**Tests.** Unit (`tests/unit/pickOwnership.test.mjs`, 6): own picks, traded both ways and onward, the rounds cap,
+a pick traded to a roster nobody owns, `pickHolders`, `pickKey`; `makeFair.test.mjs`: synced picks only, once per name,
+with `from`, none for a team holding none. Spec: the fixture league synced as dynasty has the expected picks per team;
+with market values for a 2027 1st and 2nd, a gap only a pick closes suggests Rival's 2027 2nd (via you), never the 1st it
+traded away, and Add makes it Fair; the four row texts; and the pick-value bug (each pick its own Mkt value).
+
+**Left over (other places traded picks could be used; not built):**
+- The picker's lists (tapping Give or a From team) could offer that team's picks along with its players.
+- Power Rankings' Future column and the Roster tab count players only; picks held could add to a team's future value.
+- The Dashboard's league cards don't show picks.
