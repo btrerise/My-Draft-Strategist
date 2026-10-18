@@ -36,8 +36,9 @@ import { pickKey } from '../leagues/picks.js';
     // Looks up a player's MARKET value by clean name (the optional/secondary lens -- see
     // rankToTradeValue above). Returns null if no Market Value data is loaded at all, or if this
     // specific player isn't in it (unranked/deep bench/rookie not yet valued).
-    // name: the name as entered, for a draft pick (improvements S19, round 2): a pick is looked up by its year and
-    // round (pickKey), since cleanName drops the digits and every "20xx 1st" would get the same value.
+    // name: the name as entered, for a draft pick (improvements S19, round 2): a pick is looked up by its year, round
+    // and Early/Mid/Late if named (pickKey), since cleanName drops the digits and every "20xx 1st" would get the same
+    // value. A plain "2027 1st" gets the market's plain 2027 1st, not its Early 1st (round 4).
     const _pickIndex = new WeakMap();
     function marketPickIndex(rankings) {
         let idx = _pickIndex.get(rankings);
@@ -45,7 +46,7 @@ import { pickKey } from '../leagues/picks.js';
             idx = new Map();
             rankings.forEach(m => {
                 const key = pickKey(m.name);
-                if (key && (!idx.has(key) || m.marketVal < idx.get(key).marketVal)) idx.set(key, m);
+                if (key && !idx.has(key)) idx.set(key, m);
             });
             _pickIndex.set(rankings, idx);
         }

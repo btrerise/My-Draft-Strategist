@@ -4654,3 +4654,25 @@ its note and the "Picks:" line; a 2027 1st for 2027 2nd trade shows the section 
 Screenshots: against round 2's renders only `mls-league-guide.png` changes (desktop 1280×6854 → 1280×6877, phone
 390×14761 → 390×14830, the Guide sentence on picks); the Roster screenshots don't move (the screenshot league is redraft,
 and the card's (i) text is hidden). Against main, still only `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 4: a plain "2027 1st" took the market's Early 1st value (found by the owner)
+
+**The owner found** a 2027 1st worth about 6,100 on this branch against about 2,900 on main. Not the set table (round 3
+uses it only in the Future column, and only for picks the market doesn't price): round 2's `pickKey`. FantasyCalc prices
+each pick four ways: today, for 12-team 1QB PPR dynasty, "2027 1st (Early)" is ranked 26th, "(Mid)" 53rd, plain "2027 1st"
+63rd and "(Late)" 78th. `pickKey` ignored the "(Early)", so all four were one pick, and the market index kept the
+best-ranked, the Early 1st, for every plain "2027 1st" (rows, verdicts, "To make it fair", the Future column). Main gave
+the plain 2027 1st its right value, but only because its digit-less key ("st") happened to land on the 2027 1st first in
+FantasyCalc's order; it still gave a 2028 or 2029 1st the 2027 1st's value (round 2's fix).
+
+**Fix.** `pickKey` keeps Early / Mid / Late ("pick 2027 1st early"), so a plain pick gets the market's plain value and a
+pick typed "2027 1st (Early)" its Early value; `{ tier: false }` drops it where only the slot matters: who holds a pick
+(`pickHolders`, `picksAfterTrade`; Sleeper's picks are plain) and "already on this side" in `fairSection.js`. The market's
+pick index keeps the first row per key (no more "best of several").
+
+**Tests.** The spec "each draft pick has its own market value" now uses FantasyCalc's names (Early, plain, Late for 2027
+1sts; Early and plain 2nds; a 2029 1st): run on round 3's commit first, it failed (the plain 2027 1st showed the Early 1st's
+9,299 for 8,492), then passed with the fix. Unit: `pickKey` with and without the tier, `pickHolders` ignoring it.
+
+**Left over.** The picker and Sleeper name picks plainly, so every pick is valued as FantasyCalc's plain one. Valuing a
+team's pick as Early, Mid or Late from its standings (or Sleeper's draft order once set) would be closer; not built.

@@ -16,8 +16,9 @@ import { fairCandidates, fairSuggestions, gapToClose } from './makeFair.js';
 import { pickKey } from '../leagues/picks.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
-// Matching key: a pick by its year and round (normalizeName drops digits), a player by his clean name.
-const keyOf = (n) => pickKey(n) || normalizeName(n);
+// Matching key: a pick by its year and round, Early/Mid/Late ignored (normalizeName drops digits), a player by his
+// clean name.
+const keyOf = (n) => pickKey(n, { tier: false }) || normalizeName(n);
 
 // getNames / giveNames: the trade's two lists as typed; getResults / giveResults: runScout's rows for them.
 // Returns '' when there's nothing to suggest: a one-sided entry, no rankings, or a trade already fair.

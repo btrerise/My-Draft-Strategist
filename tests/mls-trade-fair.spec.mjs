@@ -273,14 +273,19 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await page.evaluate(async () => {
             const { State } = await import('/js/mls/state.js');
             const { normalizeName } = await import('/js/shared/names.js');
-            State.marketRankings = [['2027 1st', 10], ['2029 1st', 40], ['2027 2nd', 30]].map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
+            // Named as FantasyCalc names them: Early / Mid / Late and a plain pick, each priced on its own (round 4:
+            // the plain 2027 1st must not take the Early 1st's value).
+            State.marketRankings = [['2027 1st (Early)', 5], ['2027 1st', 10], ['2027 1st (Late)', 15], ['2027 2nd (Early)', 20], ['2027 2nd', 30], ['2029 1st', 40]]
+                .map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
         });
-        await runTrade(page, ['Bijan Robinson', '2027 1st', '2029 1st'], ["Ja'Marr Chase", '2027 2nd']);
+        await runTrade(page, ['Bijan Robinson', '2027 1st', '2029 1st', '2027 1st (Late)'], ["Ja'Marr Chase", '2027 2nd']);
         const value = (rank) => Math.round(10000 * Math.pow(0.982, rank - 1)).toLocaleString('en-US');
-        const row = (name) => page.locator('#tradeOutput .mls-trade-row', { hasText: name });
+        const exact = (name) => new RegExp(`^${name.replace(/[()]/g, '\\$&')}$`);
+        const row = (name) => page.locator('#tradeOutput .mls-trade-row').filter({ has: page.locator('.mls-trade-row-name', { hasText: exact(name) }) });
         await expect(row('2027 1st').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(10)}`);
         await expect(row('2029 1st').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(40)}`);
         await expect(row('2027 2nd').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(30)}`);
+        await expect(row('2027 1st (Late)').locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(15)}`);
         await expectClean(page, state);
     });
 

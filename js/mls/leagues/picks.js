@@ -8,13 +8,21 @@
 const ORDINALS = ['1st', '2nd', '3rd', '4th'];
 export const pickName = (season, round) => `${season} ${ORDINALS[round - 1]}`;
 
-// A pick's key for matching ("2027 1st" and "2027 1st (Early)" -> "pick 2027 1st"), or null when the name isn't a
-// pick. Player names are matched by normalizeName, which drops digits, so every "20xx 1st" would be one pick.
+// A pick's key for matching, or null when the name isn't a pick. Player names are matched by normalizeName, which
+// drops digits, so every "20xx 1st" would be one pick. Market Consensus (FantasyCalc) prices "2027 1st (Early)",
+// "(Mid)", "(Late)" and a plain "2027 1st" separately, so the key keeps that: "2027 1st" -> "pick 2027 1st",
+// "2027 1st (Early)" or "2027 Early 1st" -> "pick 2027 1st early". { tier: false } drops it, for who holds a pick
+// (Sleeper's picks are plain).
 const PICK_RE = /\b((?:19|20)\d{2})\b.*?\b(1st|2nd|3rd|4th)\b/i;
-export function pickKey(name) {
-    const m = PICK_RE.exec(String(name || ''));
-    return m ? `pick ${m[1]} ${m[2].toLowerCase()}` : null;
+const TIER_RE = /\b(early|mid|late)\b/i;
+export function pickKey(name, { tier = true } = {}) {
+    const text = String(name || '');
+    const m = PICK_RE.exec(text);
+    if (!m) return null;
+    const t = tier ? TIER_RE.exec(text) : null;
+    return `pick ${m[1]} ${m[2].toLowerCase()}${t ? ` ${t[1].toLowerCase()}` : ''}`;
 }
+const slotKey = (name) => pickKey(name, { tier: false });
 
 // rosters: [{ rosterId, owner }] (owner: the manager's name, "You" for you, as in globalRosterMap).
 // tradedPicks: Sleeper's list ({ season, round, roster_id: whose pick it was, owner_id: the roster that has it }).
@@ -52,8 +60,8 @@ export function pickOwnership({ rosters, tradedPicks, seasons, rounds = 4 }) {
 // synced picks (a redraft or manual league, or a sync from before this was read).
 export function pickHolders(picks, name) {
     if (!picks) return null;
-    const key = pickKey(name);
-    return Object.keys(picks).filter(owner => picks[owner].some(p => pickKey(p.name) === key));
+    const key = slotKey(name);
+    return Object.keys(picks).filter(owner => picks[owner].some(p => slotKey(p.name) === key));
 }
 
 // A pick's worth in the Power Rankings' Future column when the market has no value for it (round 3, owner's choice:
@@ -76,7 +84,7 @@ export function picksAfterTrade(picks, { give = [], get = [], partner = null } =
     const take = (owner, name) => {
         const list = out[owner];
         if (!list) return null;
-        const i = list.findIndex(p => pickKey(p.name) === pickKey(name));
+        const i = list.findIndex(p => slotKey(p.name) === slotKey(name));
         return i === -1 ? null : list.splice(i, 1)[0];
     };
     give.forEach(name => {
@@ -86,7 +94,7 @@ export function picksAfterTrade(picks, { give = [], get = [], partner = null } =
     get.forEach(name => {
         let pk = partner ? take(partner, name) : null;
         if (!pk && !partner) {
-            const holder = Object.keys(out).find(o => o !== 'You' && out[o].some(p => pickKey(p.name) === pickKey(name)));
+            const holder = Object.keys(out).find(o => o !== 'You' && out[o].some(p => slotKey(p.name) === slotKey(name)));
             pk = holder ? take(holder, name) : null;
         }
         if (pk) (out.You = out.You || []).push({ ...pk, moved: true });

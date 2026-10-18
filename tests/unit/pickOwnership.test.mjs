@@ -43,12 +43,18 @@ test('pickHolders: who holds a pick by name; null without synced picks', () => {
     const picks = pickOwnership({ rosters, tradedPicks: [{ season: '2027', round: 1, roster_id: 2, owner_id: 1 }], seasons: [2027], rounds: 1 });
     assert.deepEqual(pickHolders(picks, '2027 1st'), ['You', 'Third']);
     assert.deepEqual(pickHolders(picks, '2027 2nd'), []);
+    // Who holds a pick ignores Early / Mid / Late (Sleeper's picks are plain).
+    assert.deepEqual(pickHolders(picks, '2027 1st (Late)'), ['You', 'Third']);
     assert.equal(pickHolders(null, '2027 1st'), null);
 });
 
 test('pickKey: year and round, so 2027 and 2029 picks never match (player names are matched without digits)', () => {
     assert.equal(pickKey('2027 1st'), 'pick 2027 1st');
-    assert.equal(pickKey('2027 1st (Early)'), 'pick 2027 1st');
+    // Market Consensus prices Early / Mid / Late and plain picks apart (round 4): the key keeps the tier.
+    assert.equal(pickKey('2027 1st (Early)'), 'pick 2027 1st early');
+    assert.equal(pickKey('2027 Late 1st'), 'pick 2027 1st late');
+    assert.notEqual(pickKey('2027 1st'), pickKey('2027 1st (Mid)'));
+    assert.equal(pickKey('2027 1st (Early)', { tier: false }), 'pick 2027 1st');
     assert.notEqual(pickKey('2027 1st'), pickKey('2029 1st'));
     assert.notEqual(pickKey('2027 1st'), pickKey('2027 2nd'));
     assert.equal(pickKey('Bijan Robinson'), null);
