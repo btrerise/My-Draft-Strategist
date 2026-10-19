@@ -138,6 +138,16 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         }
     }
 
+    // Runs `fn` after the page has painted: start-up runs at the load event, when the stylesheets are in, so the frame
+    // after it is the first paint (or a later one); two frames later the browser has drawn it. A background tab draws no
+    // frames until it's shown, so it also runs after 3 s at the latest.
+    function afterFirstPaint(fn) {
+        let done = false;
+        const run = () => { if (!done) { done = true; fn(); } };
+        requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(run, 0)));
+        setTimeout(run, 3000);
+    }
+
     export const onload = function() {
         initManualAddForm();
         initTradePicker();
@@ -187,7 +197,10 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         applySimSettingsToUI();
         applyWaiverScanSettingsToUI();
         updatePulsePrompts();
-        refreshCurrentNflWeek();
+        // The NFL week from Sleeper, then the week's kickoff times from ESPN (refreshCurrentNflWeek chains them),
+        // only once the page has painted (owner's choice, improvements S17): on a first visit their ~22 KB and two new
+        // connections were competing with the stylesheets and the logo on a slow phone.
+        afterFirstPaint(refreshCurrentNflWeek);
         if (typeof renderSyncLogs === 'function') renderSyncLogs();
 
         if (State.leagues.length > 0 && !State.activeLeagueId) {

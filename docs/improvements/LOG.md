@@ -5040,5 +5040,18 @@ identical to main's.
 
 **Put to the owner** (they offered to revisit earlier decisions): the minify build step (PageSpeed: 148.5 of `/lineup/`'s
 277.7 KiB of JavaScript), loading the Scout / Trade / Simulator code on first use instead of at start-up, and deferring
-the start-up Sleeper/ESPN requests until after the first paint. Answer recorded below when given.
+the start-up Sleeper/ESPN requests until after the first paint.
+
+**Owner's answer:** only **delay the ESPN/Sleeper fetch**. Keep no build step; loading the Scout / Trade / Simulator code
+on first use (about 144 KB brotli, 39% of `/lineup/`'s start-up JavaScript) is not taken up now (noted in
+docs/TESTING.md's follow-ups with the measurement).
+
+**Built:** `js/mls/init.js` starts `refreshCurrentNflWeek` (Sleeper's NFL week, which then fetches ESPN's kickoff times)
+two frames after the load event (`afterFirstPaint`), with a 3 s fallback for a background tab, instead of from the load
+handler itself. On a fast first load the load event came before the logo's paint, so PageSpeed counted both requests
+(~22 KB and two new connections) against the largest paint. The paint-timing API wasn't used: the specs' fake clock
+leaves the page without paint entries, and every start-up would have waited for the fallback. Test first:
+`tests/mls-startup-requests.spec.mjs` counts the frames drawn after `load` when the request goes out (0 on main, at least
+1 now) and checks the week still arrives. **User-visible:** none to speak of; on a fresh load, bye badges and kickoff
+times can appear a fraction of a second later than before.
 

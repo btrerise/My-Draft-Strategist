@@ -230,7 +230,7 @@ export function applyLineupSettingsToUI() {
     };
 
     // Refreshes State.currentNflWeek from Sleeper's public NFL state endpoint. Fire-and-forget:
-    // called once from window.onload, with no loading indicator and no retry, since this only
+    // called once at start-up, after the page's first paint (init.js, improvements S17), with no loading indicator and no retry, since this only
     // upgrades the lineup optimizer's bye-week awareness -- if it's slow or fails, the app works
     // exactly as it did before this existed.
     export function refreshCurrentNflWeek() {

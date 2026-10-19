@@ -224,3 +224,5 @@ Preview `a58c7b72` (the branch with the scroll-shadow fix), mobile, Lighthouse 1
   itself during init (`placeTabMarker`). **Fixed after these runs:** the marker is first placed from the
   ResizeObserver's first report, after the browser's own layout (screenshots still identical).
 - **Not ours / not relevant:** Ko-fi's image cache life, SEO (preview `noindex`), `ai-catalog.json`.
+- **After these runs (owner's choice):** the start-up requests to Sleeper (NFL week) and ESPN (kickoff times) wait until
+  two frames after the load event, so they no longer start before the first paint. Not yet measured by PageSpeed.
