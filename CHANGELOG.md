@@ -97,6 +97,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Fixed: tooltips ran off the screen on phones.** An (i) near the left edge (the Lineup tab's optimizer settings, the
   Trade Analyzer's Value settings and notes) opened its tooltip partly off-screen, so it couldn't be read. Every
   tooltip on the site now slides back inside the screen when it opens.
+- **Fixed: a capital "I" on some info icons.** The (i) beside the Trade Analyzer's "By Your Rankings" and "By Market
+  Consensus" read "I", because the label around it is in capitals. Info icons are now always a lowercase i.
 - **Traded draft picks from Sleeper.** Syncing a dynasty or keeper league now reads which team holds each rookie pick
   for the next three drafts, traded ones included. The Trade Analyzer suggests only picks the team really holds
   (marked "via Rival" when it came in a trade), and a pick's row says "Yours", "Rival's", "Not yours (you don't hold

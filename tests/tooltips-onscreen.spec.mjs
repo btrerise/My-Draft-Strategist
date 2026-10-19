@@ -1,4 +1,4 @@
-// Every tooltip stays on the screen when it opens (bug found by the owner during improvements S19: on phones a tooltip
+// Every tooltip stays on the screen when it opens, and every (i) icon reads as a lowercase i (bug found by the owner during improvements S19: on phones a tooltip
 // opened off the left edge, unreadable). Each tooltip is 260px wide and opens leftward from its trigger, so a trigger
 // near the left edge put it off-screen. This opens every tooltip the way a person does, a tap on its trigger, on each
 // tab of both apps (folds opened, a trade analyzed so the Trade Analyzer's own tooltips exist), and checks its box.
@@ -24,6 +24,10 @@ async function offScreen(page) {
             trigger.click();
             await frame();
             const r = text.getBoundingClientRect();
+            // An (i) inside an uppercase label (the verdict's "BY YOUR RANKINGS") rendered as a capital I, and its
+            // tooltip would be uppercase too (owner's report, S19 round 8). innerText applies text-transform.
+            if (trigger.classList.contains('tooltip-icon') && trigger.innerText.trim() !== 'i') bad.push(`icon reads "${trigger.innerText.trim()}": ${text.textContent.trim().slice(0, 40)}`);
+            if (getComputedStyle(text).textTransform !== 'none') bad.push(`tooltip text is ${getComputedStyle(text).textTransform}: ${text.textContent.trim().slice(0, 40)}`);
             if (r.left < -0.5 || r.right > vw + 0.5) bad.push(`${Math.round(r.left)}..${Math.round(r.right)} of ${vw}: ${text.textContent.trim().replace(/\s+/g, ' ').slice(0, 60)}`);
             trigger.click(); // closes it again
             await frame();

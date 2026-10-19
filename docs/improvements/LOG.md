@@ -4760,3 +4760,13 @@ both apps.
 **Checks (rounds 6 and 7).** Precache OK; 394 unit and 409 Playwright tests pass (1 skipped; visual.spec fails here as on
 main). Screenshots: all 40 pixel-identical to round 5's renders (tooltips are closed in them); against main still only
 `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 8: a capital "I" on info icons (owner's report)
+
+**Bug.** `.tooltip-icon` (css/base.css) never set `text-transform`, so an (i) inside an uppercase label inherits it: the
+Trade Analyzer verdict's "BY YOUR RANKINGS" / "BY MARKET CONSENSUS" (`.trade-verdict-source-label`, css/mls.css) showed
+"I". **Test first:** `tooltips-onscreen.spec.mjs` now also fails on any (i) whose rendered text (innerText, which applies
+text-transform) isn't "i", and on any tooltip text that's transformed; before the fix it failed on the verdict's (i) at
+both widths, the only one in the states it reaches. **Fix:** `text-transform: none; letter-spacing: normal` on
+`.tooltip-icon` and `.tooltip-text` in css/base.css, so it holds for any (i) in any label, site-wide.
+
