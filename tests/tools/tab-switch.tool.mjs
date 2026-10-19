@@ -2,6 +2,7 @@
 //
 //   cd tests && npm run perf:tabs                       # the working tree
 //   PERF_REF=origin/main npm run perf:tabs              # a git ref, for a before/after
+//   PERF_PROFILE=1 npm run perf:tabs -- --project phone # also the functions that took the most time, per switch
 //
 // Lineup Strategist with the fixture league synced and ranked, then cloned 20 times in storage (21 leagues),
 // reloaded, and the CPU slowed 4x through the DevTools protocol. Each switch below is made ROUNDS times with
@@ -17,6 +18,7 @@ import { openApp, seedMls, loadMlsRankings, callApp, transitionsDone, FIXTURE_LE
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const REF = process.env.PERF_REF || null;
 const ROUNDS = Number(process.env.PERF_ROUNDS || 5);
+const PROFILE = !!process.env.PERF_PROFILE;
 const LEAGUES = 21;
 const SWITCHES = [['lineup', 'setup'], ['setup', 'lineup'], ['lineup', 'roster'], ['roster', 'setup'], ['setup', 'roster'], ['roster', 'lineup']];
 const TYPES = {
@@ -37,6 +39,19 @@ async function routeRef(page) {
             return route.fulfill({ status: 404, body: 'Not found' });
         }
     });
+}
+
+// Adds a CPU profile's self time per function (name and file:line) into `into` (ms).
+function addSelfTimes(into, profile) {
+    const byId = new Map(profile.nodes.map(n => [n.id, n]));
+    const dt = new Map();
+    profile.samples.forEach((id, i) => dt.set(id, (dt.get(id) || 0) + (profile.timeDeltas[i] || 0) / 1000));
+    for (const [id, ms] of dt) {
+        const f = byId.get(id).callFrame;
+        const where = f.url ? `${f.url.replace(/^.*?\/\/[^/]+/, '')}:${f.lineNumber + 1}` : '';
+        const key = `${f.functionName || '(anonymous)'} ${where}`.trim();
+        into.set(key, (into.get(key) || 0) + ms);
+    }
 }
 
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor((s.length - 1) / 2)]; };
@@ -79,11 +94,14 @@ test('tab switches with 21 leagues, 4x CPU', async ({ page }, testInfo) => {
     });
 
     const results = new Map(SWITCHES.map(s => [s.join(' → '), []]));
+    const profiles = new Map(SWITCHES.map(s => [s.join(' → '), new Map()]));
+    if (PROFILE) { await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 200 }); }
     for (let round = 0; round < ROUNDS; round++) {
         for (const [from, to] of SWITCHES) {
             await callApp(page, 'showTab', from, false, { instant: true });
             await transitionsDone(page);
             await page.waitForTimeout(300);
+            if (PROFILE) await cdp.send('Profiler.start');
             const r = await page.evaluate(async (to) => {
                 const mod = await import(document.querySelector('script[src*="mls/main.js"]').src);
                 window.__longTasks.length = 0;
@@ -98,11 +116,18 @@ test('tab switches with 21 leagues, 4x CPU', async ({ page }, testInfo) => {
                 return { update, total, longest: Math.max(0, ...tasks.map(t => t.dur)), longSum: tasks.reduce((s, t) => s + t.dur, 0) };
             }, to);
             results.get(`${from} → ${to}`).push(r);
+            if (PROFILE) addSelfTimes(profiles.get(`${from} → ${to}`), (await cdp.send('Profiler.stop')).profile);
         }
     }
     const lines = [`${REF || 'working tree'}, ${testInfo.project.name}: median of ${ROUNDS} (ms)`, 'switch              tap to new tab   longest task   long tasks total   tap to transition end'];
     for (const [name, rs] of results) {
         lines.push(`${name.padEnd(20)}${String(Math.round(median(rs.map(r => r.update)))).padStart(14)}${String(Math.round(median(rs.map(r => r.longest)))).padStart(12)}${String(Math.round(median(rs.map(r => r.longSum)))).padStart(19)}${String(Math.round(median(rs.map(r => r.total)))).padStart(24)}`);
+    }
+    if (PROFILE) {
+        for (const [name, times] of profiles) {
+            lines.push(`\n${name}: self time per function, ms per switch (top 15)`);
+            for (const [fn, ms] of [...times].sort((a, b) => b[1] - a[1]).slice(0, 15)) lines.push(`  ${(ms / ROUNDS).toFixed(1).padStart(7)}  ${fn}`);
+        }
     }
     console.log(lines.join('\n'));
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
