@@ -4803,3 +4803,23 @@ and stacked on the phone; the export with both verdicts and without the market l
 **Checks.** Precache OK; 395 unit and 411 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
 all 40 pixel-identical to round 8's (the screenshot league has no rankings, so no verdict); against main still only
 `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 10: my third review as a user; two fixes
+
+**Reviewed** (phone at 375px and desktop, market data for every player): a trade fair by both lenses; a 1-for-3 only pairs
+can close; a typo'd name with a player the market lacks; the verdicts side by side.
+
+**Fixed (both in this card's code, test first):**
+- **A pair's names ran over its value on phones** ("+ Christian McCaffrey" 73px past its column, over "17,962"). The
+  pairs spec now measures each name's text against its column at 375px (the column's box stays narrow, min-width 0,
+  while its text spills, so the first version of the check, on the box, passed); it failed on all three pairs, then
+  passed. Fix: below 768px a pair takes two lines (badges stacked, names across, the value and Add both under them on
+  the right); singles and desktop unchanged.
+- **Two numbers for one gap:** "No single player on Rival's roster closes a 19,100 gap" sat under "they'd add
+  16,220–22,340". Now "...is worth 16,220 or more" and "No player or pair on Rival's roster adds up to 16,220–22,340".
+
+**Seen, not changed (from S14, outside this card; for the owner):**
+- With a typo'd or unmatched name, the market banner reads "est. 0 ... Favors Them (100%)" when the market has none of
+  your side's players, and Your Rankings can say "Fair Trade" while a name counts as 0 ("1 player not found"). Holding
+  the verdict until every name matches (or muting the banner) would be clearer.
+

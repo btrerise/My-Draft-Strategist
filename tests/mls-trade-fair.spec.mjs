@@ -193,7 +193,28 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await page.evaluate(async () => { (await import('/js/mls/state.js')).State.tradeSettings.waiverAdjustment = false; });
         await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson', 'CeeDee Lamb']);
         await expect(yourVerdict(page)).toContainText('Favors Them');
-        await expect(fair(page)).toContainText(/No single player on Rival's roster closes a [\d,]+ gap\. By Your Rankings, these pairs would:/);
+        // The same numbers as the head's range (round 10: it said "closes a 19,100 gap" under "16,220–22,340").
+        const range = await fair(page).locator('.mls-trade-fair-head strong').innerText();
+        await expect(fair(page)).toContainText(`No single player on Rival's roster is worth ${range.split('–')[0]} or more. By Your Rankings, these pairs would:`);
+        // Round 10 (my review as a user): at 375px a pair's names ran over its value. Nothing in a line may overlap.
+        const overlaps = await adds(page).evaluateAll(lis => lis.flatMap(li => {
+            const boxes = ['.mls-trade-fair-badges', '.mls-trade-fair-names', '.mls-trade-fair-val', 'button'].map(sel => li.querySelector(sel).getBoundingClientRect());
+            const out = [];
+            for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+                const a = boxes[i], b = boxes[j];
+                if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) out.push(`${li.innerText.split('\n')[0]}: ${i} over ${j}`);
+            }
+            // Names stay whole (each player on one line) and inside their column: the column's own box stays narrow
+            // (min-width: 0) while its text spills over the value, so measure the text.
+            const col = li.querySelector('.mls-trade-fair-names').getBoundingClientRect();
+            li.querySelectorAll('.mls-trade-fair-player').forEach(p => {
+                if (p.getClientRects().length > 1) out.push(`${p.innerText} broken`);
+                const r = p.getBoundingClientRect();
+                if (r.right > col.right + 0.5) out.push(`${p.innerText} runs ${Math.round(r.right - col.right)}px past its column`);
+            });
+            return out;
+        }));
+        expect(overlaps).toEqual([]);
         const pair = adds(page).first();
         await expect(pair.locator('.mls-trade-fair-player')).toHaveCount(2);
         await expect(pair.locator('.pos-badge')).toHaveCount(2);
@@ -218,7 +239,7 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         });
         await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson', 'CeeDee Lamb']);
         await expect(yourVerdict(page)).toContainText('Favors Them');
-        await expect(fair(page)).toContainText(/No player or pair on Rival's roster closes a [\d,]+ gap by Your Rankings\./);
+        await expect(fair(page)).toContainText(/No player or pair on Rival's roster adds up to [\d,]+–[\d,]+ by Your Rankings\./);
         await expect(adds(page)).toHaveCount(0);
         await expectClean(page, state);
     });

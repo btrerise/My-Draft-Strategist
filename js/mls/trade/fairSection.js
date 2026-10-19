@@ -144,10 +144,10 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
     if (result.singles.length) {
         body = `<div class="mls-trade-fair-via">By ${label}, from ${whose}${waiverNote}:</div>` + list(result.singles, side);
     } else if (result.pairs.length) {
-        body = `<div class="mls-trade-fair-via">No single player on ${whose} closes a ${fmt(result.gap)} gap. By ${label}, these pairs would${waiverNote}:</div>`
+        body = `<div class="mls-trade-fair-via">No single player on ${whose} is worth ${fmt(rangeLow(gap))} or more. By ${label}, these pairs would${waiverNote}:</div>`
             + list(result.pairs, side);
     } else {
-        body = `<div class="mls-trade-fair-note">No player or pair on ${whose} closes a ${fmt(result.gap)} gap by ${label}.</div>`;
+        body = `<div class="mls-trade-fair-note">No player or pair on ${whose} adds up to ${rangeText(gap)} by ${label}.</div>`;
     }
     const shown = result.singles.concat(result.pairs);
     const shownPicks = shown.flatMap(f => f.players.filter(p => p.isPick));
@@ -162,6 +162,11 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
 // The head gives the fair range (round 9): every value one more piece could have and leave the trade within 10%,
 // so each suggestion visibly falls inside it ("about 3,000" next to a fair 1,950 pick read as a contradiction).
 // gap: gapToClose's result. market: marketLine's sentence, or ''.
+// The range in words, the same everywhere in the box (round 10: a note said "closes a 19,100 gap" under "16,220–22,340").
+const rangeLow = (gap) => (gap.range ? gap.range.low : gap.gap);
+const rangeText = (gap) => !gap.range ? `about ${fmt(gap.gap)}`
+    : gap.range.low <= 0 ? `up to ${fmt(gap.range.high)}` : `${fmt(gap.range.low)}&ndash;${fmt(gap.range.high)}`;
+
 function section(adder, gap, body, market = '') {
     const who = adder === 'them' ? "they'd" : "you'd";
     const r = gap.range;
@@ -186,7 +191,7 @@ function list(fits, side) {
             : `<span class="badge pos-badge ${escapeHtml(p.pos || 'FLEX')} mls-pos-badge-sizing">${escapeHtml(p.pos || 'FA')}</span>`).join('');
         // The second name carries the "+", so a pair wraps as "Gibbs" / "+ Barkley", never a "+" on its own line.
         const label = f.players.map((p, i) => `<span class="mls-trade-fair-player">${i ? '<span class="mls-trade-fair-plus">+</span> ' : ''}${escapeHtml(p.name)}${p.isPick ? '<sup>*</sup>' : ''}${p.from ? ` <span class="mls-trade-fair-from">via ${escapeHtml(p.from === 'You' ? 'you' : p.from)}</span>` : ''}</span>`).join('');
-        return `<li class="mls-trade-fair-item">
+        return `<li class="mls-trade-fair-item${f.players.length > 1 ? ' is-pair' : ''}">
             <span class="mls-trade-fair-badges">${badges}</span>
             <span class="mls-trade-fair-names">${label}<span class="mls-trade-fair-lands">${landsText(f.after)}</span></span>
             ${valueHTML(f.value, marketOf(f.players))}
