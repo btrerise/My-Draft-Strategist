@@ -268,6 +268,9 @@ done or dropped, remove its line here in the same change. Background for each is
 - What's left of a Dashboard switch with 21 leagues (~100 ms on a slow phone) is the browser laying out cards that
   `display: none` dropped. Hiding inactive tabs with `content-visibility: hidden` would keep their layout; it changes
   how every tab is hidden in both apps, so it needs its own careful card.
+- On Draft Strategist's `/`, PageSpeed's largest paint is the header's draft drop-down text, which the app's script
+  fills in about 2.3 s after the first paint on slow 4G. A name in the HTML would paint it sooner but flash "Main Draft"
+  for anyone whose draft is named otherwise; it would need the saved name before the script runs.
 - Minifying (no build step, owner's choice in S17) would cut the JS from 498 to 220 KB after brotli and Lineup's
   time-to-interactive by about 0.7 s on slow 4G, if a build step is ever wanted.
 

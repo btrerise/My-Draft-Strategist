@@ -167,5 +167,32 @@ First visit, score · FCP · LCP · TTI, against main's baseline above:
 - **Tab switches**, longest task (phone / desktop, ms): Dashboard → Lineup 152 → 95 / 123 → 90, Roster → Lineup 137 → 98 /
   123 → 91, Lineup → Dashboard 104 → 98 / 138 → 106; the Roster and Dashboard switches within the ±20–30 ms noise
   (Lineup → Roster on phones read 69 at baseline and 69–107 in later runs).
-- **PageSpeed Insights on the branch preview:** not run yet. The API's anonymous daily quota was used up and this container
-  can't reach the preview; to add here by the owner (https://pagespeed.web.dev/, mobile, the preview's `/lineup/`).
+## PageSpeed Insights on the branch preview (owner's run, 2026-10-19 11:13)
+
+`https://3a49fd9f.my-draft-strategist.pages.dev/` (the root page, Draft Strategist; the 2026-10-12 run was `/lineup/` on
+the live site, so the two pages differ), mobile, Lighthouse 13.5.0, HeadlessChromium 153:
+
+| | Live `/lineup/`, 2026-10-12 (before) | Preview `/`, 2026-10-19 (branch) |
+|---|---|---|
+| Performance | 69 | **88** |
+| First Contentful Paint | 3.7 s | **1.5 s** |
+| Largest Contentful Paint | 6.0 s | 3.4 s |
+| Speed Index | 4.3 s | 4.6 s |
+| Total Blocking Time / CLS | 0 ms / 0 | 0 ms / 0 |
+| Render-blocking requests | ~920 ms | **330 ms** (base.css and mds.css only; Google Fonts gone) |
+| Legacy JavaScript | 11 KiB | not listed |
+| Cache lifetimes | 9 KiB | 5 KiB (Ko-fi's image, a third party) |
+
+- **The filmstrip** still opens with three blank white frames (before the first paint at 1.5 s), then the dark page.
+- **Largest paint on `/` is the header's draft drop-down text ("Main Draft")**, not the hero logo it is locally, with
+  2,330 ms of render delay: the app's script fills the drop-down in. Writing a default name into the HTML would flash
+  "Main Draft" for anyone whose draft is named otherwise, so it's left (noted in docs/TESTING.md's follow-ups).
+- **Forced reflow:** `scrollShadows.js` 73 ms (the scroll-shadow check at DOMContentLoaded read `scrollWidth` before the
+  first layout) and `viewTransition.js` 6 ms (the tab-bar marker's first measurement, kept: measuring later would make the
+  marker slide in on load). **Fixed after this run:** the scroll-shadow check now runs from a ResizeObserver, after the
+  browser's own layout (below).
+- **Minify CSS 17 KiB / JS 34 KiB** (the owner chose no build step), **unused CSS 15 KiB** (base.css), a long-task note
+  for `feedbackForm.js` (57 ms), and "unused preconnect" to sleepercdn.com (the headshots load only once a draft has
+  players, so it is unused on a first visit; kept for the board).
+- Not relevant on a preview URL: SEO 69 (`x-robots-tag: noindex`, which Cloudflare sets on previews) and the
+  "Agentic Browsing" `ai-catalog.json` check (the site has none; the 404 answer is the HTML fallback).

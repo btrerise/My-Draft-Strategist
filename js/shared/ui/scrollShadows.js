@@ -18,20 +18,48 @@ function initScrollShadows() {
     }
 
     const containers = Array.from(document.querySelectorAll(SCROLL_SHADOW_SELECTOR));
+    if (containers.length === 0) return;
+
+    // Checked after the browser's own layout, never in the middle of one (improvements S17): a ResizeObserver on each
+    // container and on what's inside it reports once the sizes are known, so reading scrollWidth costs nothing. The
+    // old check ran at DOMContentLoaded and after every change inside, and each read made the browser lay the page out
+    // there and then (73 ms of forced layout before the first paint in PageSpeed's trace). It also covers a container
+    // that only gets a size when its tab is shown, which the old code didn't recheck.
+    const resizeObserver = typeof ResizeObserver === 'function'
+        ? new ResizeObserver(entries => {
+            const seen = new Set();
+            entries.forEach(e => {
+                const el = containers.find(c => c === e.target || c.contains(e.target));
+                if (el && !seen.has(el)) { seen.add(el); updateShadow(el); }
+            });
+        })
+        : null;
+    const watch = (el) => {
+        if (!resizeObserver) return;
+        resizeObserver.observe(el);
+        for (const child of el.children) resizeObserver.observe(child);
+    };
+
     containers.forEach(el => {
-        updateShadow(el);
         el.addEventListener('scroll', () => updateShadow(el), { passive: true });
+        watch(el);
 
         // Both containers' inner tables are (re)built dynamically after load -- the Command
         // Center table on league/week changes, the SoS grid whenever new SoS data is
         // uploaded -- which can change scrollWidth without ever firing a 'scroll' event.
-        // A MutationObserver re-checks whenever that inner content actually changes, rather
-        // than this needing every render call site to remember to re-run the check itself.
+        // A MutationObserver watches the new content with the ResizeObserver, rather than
+        // this needing every render call site to remember to re-run the check itself. A new
+        // element is reported once it's laid out; one that stays the same size changes nothing.
         if (window.MutationObserver) {
-            new MutationObserver(() => updateShadow(el)).observe(el, { childList: true, subtree: true });
+            new MutationObserver((records) => {
+                if (!resizeObserver) { updateShadow(el); return; }
+                records.forEach(r => r.removedNodes.forEach(n => { if (n.nodeType === 1) resizeObserver.unobserve(n); }));
+                watch(el);
+            }).observe(el, { childList: true, subtree: true });
         }
+        if (!resizeObserver) updateShadow(el);
     });
 
-    window.addEventListener('resize', () => containers.forEach(updateShadow));
+    if (!resizeObserver) window.addEventListener('resize', () => containers.forEach(updateShadow));
 }
 document.addEventListener('DOMContentLoaded', initScrollShadows);

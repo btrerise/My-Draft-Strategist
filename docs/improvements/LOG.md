@@ -5000,7 +5000,27 @@ shifts its layout (0.20) on a slow first visit when the app draws above the "Loa
 run's simulation can't see it); the rest of a Dashboard switch (~100 ms with 21 leagues) is layout that
 `content-visibility: hidden` could keep. No third-party forced reflow showed up in the traces.
 
-**Left over.**
-- **PageSpeed Insights on the branch preview:** the PageSpeed API refused (daily anonymous quota used up) and the
-  preview isn't reachable from this container. Owner: please run https://pagespeed.web.dev/ on the preview's `/lineup/`
-  (mobile) and send the numbers, or give a session a PageSpeed API key; they go in performance.md's last section.
+### S17, round 2: the owner's PageSpeed run on the preview, and the scroll-shadow reflow
+
+The owner ran PageSpeed Insights (mobile) on the branch preview's `/`: **Performance 88, First Contentful Paint 1.5 s,
+Largest Contentful Paint 3.4 s**, TBT 0, CLS 0; render-blocking down from ~920 ms to 330 ms (Google Fonts gone), no legacy
+JavaScript. Full comparison in performance.md's last section (their 2026-10-12 run was `/lineup/` on the live site).
+
+**Fixed from it: a forced reflow at load (73 ms).** `js/shared/ui/scrollShadows.js` checked its two wide tables
+(Draft Strategist's Roster Limits, Lineup Strategist's SoS grid) at DOMContentLoaded and after every change inside them
+by reading `scrollWidth`, which made the browser lay the page out on the spot, before its first paint. It now checks from
+a ResizeObserver on each container and its children (after the browser's own layout); the MutationObserver only hands new
+content to it and lets go of removed elements. **User-visible:** that also catches a table that only gets a size when
+it's shown: Lineup Strategist's SoS grid, opened from its folded "Edit Manual SoS Grid" on a phone, now shows the shadow
+on its right edge that says there's more to scroll (on main it never did until you scrolled). Test first:
+`tests/scroll-shadows.spec.mjs` failed on main (no shadow after opening the grid at 360px), passes now. Screenshots: all
+40 pixel-identical to main's, rendered here the same way. CHANGELOG line under Lineup Strategist.
+
+**Left alone, with reasons (performance.md):** the largest paint on `/` is the header's draft drop-down, which the script
+fills in (a default name in the HTML would flash the wrong name for some); the tab-bar marker's first measurement (6 ms);
+minify (no build step); unused CSS; Ko-fi's cache life (theirs); SEO 69 and the `ai-catalog.json` check (a preview's
+`noindex` header; the site has no such file).
+
+**Left over.** Nothing for S17. The speed follow-ups (T-Score's 1.1 s of blocking script at load, Draft Strategist's
+setup-card layout shift on slow first visits, the Dashboard's layout after `display: none`, the drop-down as largest
+paint, minifying if a build step is ever wanted) are under "Open follow-ups" in docs/TESTING.md.

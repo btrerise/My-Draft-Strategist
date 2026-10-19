@@ -91,6 +91,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   visit the page appears about a second sooner (blank for less time). It's on T-Score too.
 - **Quicker tab switches with many leagues.** Switching to the Lineup tab no longer redraws the Dashboard behind it,
   and the Dashboard keeps its league cards when nothing on them changed, so the pause before the slide is shorter.
+- **The SoS grid shows when there's more to scroll.** Opened from "Edit Manual SoS Grid" on a phone, the grid now has
+  the shadow on its right edge that tells you it scrolls sideways (it only appeared after you'd scrolled).
 - **The Trade Analyzer says what would make a trade fair.** When a trade is outside the fair band, a box under the
   verdict says who would have to add and how much ("To make it fair, they'd add 3,460–5,450", the range that keeps it
   within 10%), by your ROS
