@@ -4912,3 +4912,9 @@ names.
 
 **Checks.** Precache OK; 395 unit and 425 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
 all 40 pixel-identical to round 13's; against main still only `mls-league-guide.png` at both widths, to take from CI.
+
+**S19, pull request ([#200](https://github.com/btrerise/My-Draft-Strategist/pull/200)):** re-took the two screenshots
+from CI run 39208970674 (its `-actual.png`, after checking each `-expected.png` was byte-identical to the committed
+baseline and the first changed row is the Power Rankings Guide's picks sentence):
+`tests/baselines/linux/desktop/mls-league-guide.png` (1280×6599 → 1280×6731) and
+`tests/baselines/linux/phone/mls-league-guide.png` (390×13786 → 390×14191).
