@@ -1130,6 +1130,10 @@ button.close-chip {
 .verdict-favor-them { border-color: var(--avoid-border); background: var(--avoid-bg); }
 .verdict-favor-them .trade-verdict-result { color: #fca5a5; }
 
+/* No verdict (improvements S19, round 11): a name that matches no player, or a market total missing a piece. */
+.verdict-incomplete { border-color: var(--border); background: var(--card-bg); }
+.verdict-incomplete .trade-verdict-result { color: var(--text-muted); }
+
 .mls-stat-value { color: #fde047; }
 .mls-stat-market { color: #93c5fd; }
 

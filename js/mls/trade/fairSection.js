@@ -16,6 +16,7 @@ import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from './valueCurve.js';
 import { fairCandidates, fairRemovals, fairSuggestions, gapToClose, landing, verdictFromValues } from './makeFair.js';
 import { pickKey } from '../leagues/picks.js';
+import { unknownNames } from './verdict.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 // Matching key: a pick by its year and round, Early/Mid/Late ignored (normalizeName drops digits), a player by his
@@ -74,6 +75,10 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
     if (State.rosRankings.length > 0) { valueKey = 'userValue'; label = 'Your Rankings'; }
     else if (State.marketRankings.length > 0) { valueKey = 'marketValue'; label = 'Market Consensus'; }
     else return '';
+    // Nothing to suggest while the verdict waits (round 11): a name that matches no player, or, when the market is
+    // what decides, a piece it doesn't value.
+    if (unknownNames(getResults, giveResults).length) return '';
+    if (valueKey === 'marketValue' && !getResults.concat(giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick'))) return '';
 
     const waiver = { on: !!State.tradeSettings.waiverAdjustment, perSpot: State.tradeSettings.waiverAdjustmentValue };
     const getValues = getResults.map(r => r[valueKey]);

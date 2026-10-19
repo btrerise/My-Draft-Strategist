@@ -102,6 +102,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Fixed: tooltips ran off the screen on phones.** An (i) near the left edge (the Lineup tab's optimizer settings, the
   Trade Analyzer's Value settings and notes) opened its tooltip partly off-screen, so it couldn't be read. Every
   tooltip on the site now slides back inside the screen when it opens.
+- **Fixed: trade verdicts on a wrong total.** A misspelled name counted as 0, so the Trade Analyzer could still say
+  "Fair Trade" (or "Favors Them, 100%" by the market). Now a name that matches no player gets one "No verdict yet" banner
+  naming it, and the verdict comes once it's fixed (Did you mean is right below). A real player the market data doesn't
+  have makes its banner say "Incomplete" and who's missing, and a player missing from your ROS rankings is said to count
+  as 0 instead of "not found".
 - **Fixed: a capital "I" on some info icons.** The (i) beside the Trade Analyzer's "By Your Rankings" and "By Market
   Consensus" read "I", because the label around it is in capitals. Info icons are now always a lowercase i.
 - **Traded draft picks from Sleeper.** Syncing a dynasty or keeper league now reads which team holds each rookie pick

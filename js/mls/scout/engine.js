@@ -305,6 +305,9 @@ import { normalizeName } from '../../shared/names.js';
                     userMatched: !!userValueObj,
                     marketValue: marketValueObj ? marketValueObj.value : 0,
                     marketMatched: !!marketValueObj,
+                    // A name that matches no player at all (a typo), as opposed to a real player one source doesn't
+                    // value: the verdicts wait for it to be fixed (improvements S19, round 11; trade/verdict.js).
+                    known: isPick || pos !== "UNK",
                     availabilityOrder, rosSortRank, weekSortRank
                 };
             }

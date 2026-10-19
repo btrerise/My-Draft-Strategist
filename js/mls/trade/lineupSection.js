@@ -14,7 +14,7 @@ import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
 import { isDraftPickName } from './valueCurve.js';
-import { tradeVerdictNumbers } from './verdict.js';
+import { tradeVerdictNumbers, unknownNames } from './verdict.js';
 import {
     FUTURE_COLUMN, lineupSlotCount, lineupSummaryText, lineupTradeChanges, POWER_COLUMNS,
     powerSummaryText, powerTradeImpact, tradeHeadline, tradePartner
@@ -160,8 +160,12 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     const youIn = new Set(get.map(p => p.cleanName)), youOut = give.concat(pickRows(tradedPicks ? tradedPicks.give : []));
     // The value verdict by the same rankings as these ranks (yours, or the market's when that's what's
     // loaded), and the lineup change, in one sentence (round 4).
-    const value = cards.getResults && cards.giveResults
-        ? tradeVerdictNumbers(cards.getResults, cards.giveResults, rankings === State.rosRankings ? 'userValue' : 'marketValue') : null;
+    // No headline while a name matches no player, or while the market (when it's what's used) lacks a piece: the
+    // banner above has no verdict then either (round 11).
+    const valueKey = rankings === State.rosRankings ? 'userValue' : 'marketValue';
+    const settled = cards.getResults && cards.giveResults && !unknownNames(cards.getResults, cards.giveResults).length
+        && (valueKey === 'userValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
+    const value = settled ? tradeVerdictNumbers(cards.getResults, cards.giveResults, valueKey) : null;
     const headline = tradeHeadline(value, impact.you);
     let body = `
         <div class="mls-trade-impact-via">${via}</div>

@@ -4826,3 +4826,26 @@ can close; a typo'd name with a player the market lacks; the verdicts side by si
 
 **Checks.** Precache OK; 395 unit and 411 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
 all 40 pixel-identical to round 9's.
+
+### S19, round 11: verdicts wait for every name; "Incomplete" by the market (owner: fix them now, not as a card)
+
+**The bugs** (round 10's "seen, not changed"): a name that matches no player (a typo) counts as 0 in every total, so
+the Trade Analyzer still said "Fair Trade" (and built "To make it fair" and the value headline on it); and the market
+banner read "est. 0 ... Favors Them (100%)" when the market had none of one side's players.
+**Test first:** `tests/mls-trade-verdict-held.spec.mjs` (both widths): a typo'd Gibbs gets no Fair/Favors banner, no
+box and no headline, then the verdicts once fixed; Saquon missing from the market makes its banner "Incomplete" and
+names him while Your Rankings still decides; Tre Tucker (a real player, unranked) counts as 0 with a sentence saying so.
+All six failed before the fix.
+
+**Fix.**
+- `js/mls/scout/engine.js`: each trade row carries `known` (a pick, or a name with a position: Sleeper, the league or
+  market data). `js/mls/trade/verdict.js`: `unknownNames`; with any, one muted banner ("No verdict yet. Couldn't match X
+  to a player. Fix the name (Did you mean, below) to get a verdict.", `data-verdict-held`) instead of both verdicts.
+  Per source: a real player the market lacks makes that banner "Incomplete" (no diff, `verdict-incomplete`) with "X
+  isn't in the Market Consensus data, so this total is missing him."; one your ROS rankings lack keeps the verdict (an
+  unranked player is worth 0 on your board, the card's rule) with "X isn't in your ROS rankings, so he counts as 0."
+  (was "1 player not found, excluded from this total"). The market-age line moved into `marketAgeHTML`.
+- `js/mls/trade/fairSection.js` and `js/mls/trade/lineupSection.js`: no box and no value headline while a name is
+  unknown, or while the market decides and lacks a piece. The Power Rankings section itself still compares the players
+  it can match and notes the one it can't (S14). `css/mls.css`: `.verdict-incomplete`.
+
