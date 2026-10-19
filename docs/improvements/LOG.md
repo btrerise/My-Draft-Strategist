@@ -4823,3 +4823,6 @@ can close; a typo'd name with a player the market lacks; the verdicts side by si
   your side's players, and Your Rankings can say "Fair Trade" while a name counts as 0 ("1 player not found"). Holding
   the verdict until every name matches (or muting the banner) would be clearer.
 
+
+**Checks.** Precache OK; 395 unit and 411 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 9's.
