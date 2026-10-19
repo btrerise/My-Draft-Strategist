@@ -84,13 +84,18 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **The Trade Analyzer says what would make a trade fair.** When a trade is outside the fair band, a box under the
-  verdict says who would have to add and about how much ("To make it fair, they'd add about 4,400"), by your ROS
+  verdict says who would have to add and how much ("To make it fair, they'd add 3,460–5,450", the range that keeps it
+  within 10%), by your ROS
   rankings (Market Consensus if you have none), and lists up to three players from that team's roster, or from yours,
   whose value would bring it within 10%, from the one closest to even down to the least they'd have to give (and a pick
   in dynasty leagues), each with its value (and the market's under it, when loaded), saying where it lands the trade
   ("Fair · 2% your way"), and with an Add button that puts him
   on the trade and re-runs it. Below them, "Or take off your side" (or "Or ask for less") lists the pieces whose
-  removal alone would make it fair, with Remove. After an Add or Remove, an Undo puts the trade back. In dynasty and keeper leagues that team's draft picks can be suggested too (market value). When no
+  removal alone would make it fair, with Remove. After an Add or Remove, an Undo puts the trade back. When Market
+  Consensus disagrees with your rankings, one line says how the market sees the trade ("By Market Consensus this
+  favors you (15%): they may ask you to add about 1,500.").
+- **The two trade verdicts side by side on wider screens.** By Your Rankings and By Market Consensus now sit next to
+  each other from tablet width up instead of stacking; phones are unchanged. In dynasty and keeper leagues that team's draft picks can be suggested too (market value). When no
   single player is enough, it suggests pairs ("Add both"); when nothing fits, it says so in one line. The waiver
   adjustment is counted as it would be after the add. In a manual league it suggests only what you'd add. It isn't
   part of Export Trade's image.

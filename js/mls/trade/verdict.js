@@ -17,16 +17,19 @@ import { verdictFromValues } from './makeFair.js';
         // Roster tab), and one from market consensus if Market Value data has been loaded
         // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
         // user see "the market" and "how I personally value this" can disagree.
-        verdictHTML = renderTradeVerdict(
+        const yours = renderTradeVerdict(
             "Your Rankings",
             "This value isn't something you entered; it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
             getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
         );
-        verdictHTML += renderTradeVerdict(
+        const market = renderTradeVerdict(
             "Market Consensus",
             "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value - not the source's official number.",
             getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
         );
+        // Both lenses side by side from tablet width up (improvements S19, round 9: stacked, they filled the first
+        // screen on desktop); stacked on phones (css/mls.css .trade-verdict-pair).
+        verdictHTML = yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market;
 
         // How old the market values are (improvements S14, round 6, owner's choice): always dated, and amber with a
         // nudge once they're more than a day old, since trade values move with every injury and depth-chart change.

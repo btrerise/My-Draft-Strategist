@@ -14,7 +14,7 @@ import { rankingIndex } from '../helpers.js';
 import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from './valueCurve.js';
-import { fairCandidates, fairRemovals, fairSuggestions, gapToClose, landing } from './makeFair.js';
+import { fairCandidates, fairRemovals, fairSuggestions, gapToClose, landing, verdictFromValues } from './makeFair.js';
 import { pickKey } from '../leagues/picks.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
@@ -42,10 +42,32 @@ function undoHTML(getNames, giveNames) {
 // getNames / giveNames: the trade's two lists as typed; getResults / giveResults: runScout's rows for them.
 // Returns '' when there's nothing to show: a one-sided entry, no rankings, or a trade already fair (with no Undo).
 export function buildMakeFairHTML(league, getNames, giveNames, getResults, giveResults) {
-    return undoHTML(getNames, giveNames) + fairBoxHTML(league, getNames, giveNames, getResults, giveResults);
+    const market = marketLine(getResults, giveResults);
+    const box = fairBoxHTML(league, getNames, giveNames, getResults, giveResults, market);
+    // Fair by your rankings but not by the market's: no box, just the line (round 9).
+    const alone = !box && market ? `<div class="mls-trade-fair-market is-alone" data-trade-market-note>${market}</div>` : '';
+    return undoHTML(getNames, giveNames) + box + alone;
 }
 
-function fairBoxHTML(league, getNames, giveNames, getResults, giveResults) {
+// When Market Consensus disagrees with Your Rankings, which decide (round 9, after a review as a user: the other manager
+// is often reading FantasyCalc): one line saying how the market sees it and what that means for the talk. Only when
+// your rankings decide, the market is loaded, and it values every piece (else its total says little). '' otherwise.
+function marketLine(getResults, giveResults) {
+    if (!(State.rosRankings.length > 0 && State.marketRankings.length > 0)) return '';
+    if (!getResults.concat(giveResults).every(r => r.marketMatched)) return '';
+    const waiver = { on: !!State.tradeSettings.waiverAdjustment, perSpot: State.tradeSettings.waiverAdjustmentValue };
+    const yours = verdictFromValues(getResults.map(r => r.userValue), giveResults.map(r => r.userValue), waiver);
+    const mkt = verdictFromValues(getResults.map(r => r.marketValue), giveResults.map(r => r.marketValue), waiver);
+    if (!yours || !mkt || yours.verdict === mkt.verdict) return '';
+    const pct = Math.round(mkt.swingPct);
+    if (mkt.verdict === 'fair') return 'By Market Consensus it\'s already fair as it stands.';
+    const g = gapToClose(getResults.map(r => r.marketValue), giveResults.map(r => r.marketValue), waiver);
+    return mkt.verdict === 'you'
+        ? `By Market Consensus this favors you (${pct}%): they may ask you to add about ${fmt(g.gap)}.`
+        : `By Market Consensus this favors them (${pct}%): they may be open to adding about ${fmt(g.gap)}.`;
+}
+
+function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, market) {
     if (!league || getNames.length === 0 || giveNames.length === 0) return '';
     // Your Rankings decide (owner's choice); Market Consensus only when no ROS rankings are loaded.
     let valueKey, label;
@@ -76,7 +98,7 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults) {
         else if (!team) blocked = 'Choose their team under From to see what they could add.';
     }
 
-    if (blocked) return section(adder, gap.gap, `<div class="mls-trade-fair-note">${blocked}</div>${removals}`);
+    if (blocked) return section(adder, gap, `<div class="mls-trade-fair-note">${blocked}</div>${removals}`, market);
 
     // The candidates: that roster's ranked players (and its picks in dynasty and keeper leagues), valued
     // as the trade's rows are (rankToTradeValue of the ROS rank, or the market's; a pick borrows the market's).
@@ -134,13 +156,22 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults) {
             ? `<div class="mls-trade-fair-note">* Market value. Assumes ${team === 'You' ? 'you still have your' : `${escapeHtml(team)} still has its`} own picks (sync the league to check).</div>`
             : `<div class="mls-trade-fair-note">* Market value. Picks as of the last sync.</div>`;
     }
-    return section(adder, result.gap, body + removals);
+    return section(adder, gap, body + removals, market);
 }
 
-function section(adder, gap, body) {
+// The head gives the fair range (round 9): every value one more piece could have and leave the trade within 10%,
+// so each suggestion visibly falls inside it ("about 3,000" next to a fair 1,950 pick read as a contradiction).
+// gap: gapToClose's result. market: marketLine's sentence, or ''.
+function section(adder, gap, body, market = '') {
+    const who = adder === 'them' ? "they'd" : "you'd";
+    const r = gap.range;
+    const amount = !r ? `about <strong>${fmt(gap.gap)}</strong>`
+        : r.low <= 0 ? `up to <strong>${fmt(r.high)}</strong>`
+        : `<strong>${fmt(r.low)}&ndash;${fmt(r.high)}</strong>`;
     return `
     <section class="mls-trade-fair" data-trade-fair>
-        <div class="mls-trade-fair-head">To make it fair, ${adder === 'them' ? "they'd" : "you'd"} add about <strong>${fmt(gap)}</strong></div>
+        <div class="mls-trade-fair-head">To make it fair, ${who} add ${amount}</div>
+        ${market ? `<div class="mls-trade-fair-market" data-trade-market-note>${market}</div>` : ''}
         ${body}
     </section>`;
 }

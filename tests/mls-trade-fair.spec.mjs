@@ -61,7 +61,7 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await expect(yourVerdict(page)).toContainText('Favors Them');
         const box = fair(page);
         await expect(box).toHaveCount(1);
-        await expect(box).toContainText(/To make it fair, they'd add about [\d,]+/);
+        await expect(box).toContainText(/To make it fair, they'd add [\d,]+–[\d,]+/);
         // 1 for 2: one more player on your side ends the waiver credit, so the "about" figure is bigger than the gap.
         await expect(box).toContainText("By Your Rankings, from Rival's roster (waiver adjustment included):");
         const items = adds(page);
@@ -78,6 +78,13 @@ test.describe('Trade Analyzer: what would make it fair', () => {
             expect(n).not.toBe('Bijan Robinson');
         });
         await expect(items.first().locator('.mls-trade-fair-num')).toHaveText(/^[\d,]+$/);
+        // Round 9: the head gives the fair range, and every suggestion's value is inside it.
+        const [low, high] = (await box.locator('.mls-trade-fair-head strong').innerText()).split('–').map(v => Number(v.replace(/,/g, '')));
+        for (const v of await items.locator('.mls-trade-fair-num').allInnerTexts()) {
+            const n = Number(v.replace(/,/g, ''));
+            expect(n).toBeGreaterThanOrEqual(low);
+            expect(n).toBeLessThanOrEqual(high);
+        }
         // Each says where it lands the trade (round 5), and they read most valuable first.
         for (const t of await items.locator('.mls-trade-fair-lands').allInnerTexts()) expect(t).toMatch(/^Fair · (even|\d+% (your|their) way)$/);
         const vals = (await items.locator('.mls-trade-fair-num').allInnerTexts()).map(v => Number(v.replace(/,/g, '')));
@@ -148,7 +155,7 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         const state = await setup(page);
         await runTrade(page, ['Bijan Robinson', 'Jahmyr Gibbs'], ["Ja'Marr Chase"]);
         await expect(yourVerdict(page)).toContainText('Favors You');
-        await expect(fair(page)).toContainText(/To make it fair, you'd add about [\d,]+/);
+        await expect(fair(page)).toContainText(/To make it fair, you'd add [\d,]+–[\d,]+/);
         await expect(fair(page)).toContainText('from your roster');
         const owners = await ownerMap(page);
         const byClean = Object.fromEntries(Object.entries(owners).map(([k, v]) => [clean(k), v]));
@@ -226,13 +233,13 @@ test.describe('Trade Analyzer: what would make it fair', () => {
             league.globalRosterMap = Object.fromEntries(Object.entries(league.globalRosterMap).filter(([, o]) => o === 'You'));
         });
         await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson']);
-        await expect(fair(page)).toContainText("they'd add about");
+        await expect(fair(page)).toContainText("they'd add ");
         await expect(fair(page)).toContainText("This is a manual league: the app knows only your roster, so it can't suggest what they'd add.");
         await expect(adds(page)).toHaveCount(0);
         // Taking a piece off your side needs no other roster, so that still shows.
         await expect(removals(page)).toHaveCount(2);
         await runTrade(page, ['Bijan Robinson', 'Jahmyr Gibbs'], ["Ja'Marr Chase"]);
-        await expect(fair(page)).toContainText("you'd add about");
+        await expect(fair(page)).toContainText("you'd add ");
         expect(await adds(page).count()).toBeGreaterThan(0);
         await expectClean(page, state);
     });
@@ -248,14 +255,24 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await seedMls(page);
         await loadMlsRankings(page);
         await showTab(page, 'scout');
+        // Market values that see it as fair, so both verdicts show (side by side since round 9) and the market line too.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            const { normalizeName } = await import('/js/shared/names.js');
+            State.marketRankings = [['Bijan Robinson', 1], ["Ja'Marr Chase", 30], ['Justin Jefferson', 35]].map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
+        });
         await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson']);
         await expect(fair(page)).toHaveCount(1);
+        await expect(page.locator('#tradeOutput [data-trade-market-note]')).toHaveCount(1);
         const download = page.waitForEvent('download');
         await page.locator('#exportTradeBtn').click();
         await download;
         const text = await page.evaluate(() => window.__tradeCloneText);
         expect(text).toContain('Favors Them');
+        expect(text).toMatch(/by your rankings/i);
+        expect(text).toMatch(/by market consensus/i);
         expect(text).not.toContain('To make it fair');
+        expect(text).not.toContain('By Market Consensus it');
         await expect(fair(page)).toHaveCount(1);
         await expectClean(page, state);
     });
@@ -371,6 +388,40 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         const others = adds(page).filter({ hasNot: page.locator('.mls-trade-fair-player', { hasText: 'Saquon Barkley' }) });
         for (const t of await others.locator('.mls-trade-row-mkt').allInnerTexts()) expect(t).toBe('Mkt –');
         await expect(item(removals(page), "Ja'Marr Chase").locator('.mls-trade-row-mkt')).toHaveText(`Mkt ${value(1)}`);
+        await expectClean(page, state);
+    });
+
+    // Round 9: when Market Consensus disagrees with Your Rankings (which decide), one line says how the market sees it.
+    test('the market\'s view when it disagrees: alone under a fair verdict, inside the box otherwise', async ({ page }) => {
+        const state = await setup(page);
+        const setMarket = (rows) => page.evaluate(async (rows) => {
+            const { State } = await import('/js/mls/state.js');
+            const { normalizeName } = await import('/js/shared/names.js');
+            State.marketRankings = rows.map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
+        }, rows);
+        const note = page.locator('#tradeOutput [data-trade-market-note]');
+        // Bijan for Chase is fair by your rankings (9,820 vs 10,000); the market has Bijan 1st and Chase 20th.
+        await setMarket([['Bijan Robinson', 1], ["Ja'Marr Chase", 20], ['Justin Jefferson', 2]]);
+        await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase"]);
+        await expect(yourVerdict(page)).toContainText('Fair Trade');
+        await expect(fair(page)).toHaveCount(0);
+        await expect(note).toHaveText(/^By Market Consensus this favors you \(\d+%\): they may ask you to add about [\d,]+\.$/);
+        // Lopsided by yours, fair by the market: the line sits in the box.
+        await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson']);
+        await expect(yourVerdict(page)).toContainText('Favors Them');
+        await setMarket([['Bijan Robinson', 1], ["Ja'Marr Chase", 30], ['Justin Jefferson', 35]]);
+        await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson']);
+        await expect(fair(page).locator('[data-trade-market-note]')).toHaveText("By Market Consensus it's already fair as it stands.");
+        // The market can't price every piece: no line.
+        await setMarket([['Bijan Robinson', 1], ["Ja'Marr Chase", 20]]);
+        await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson']);
+        await expect(note).toHaveCount(0);
+
+        // Round 9: the two verdicts side by side on desktop, stacked on phones.
+        const tops = await page.locator('#tradeOutput .trade-verdict-pair > .trade-verdict-banner').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));
+        expect(tops.length).toBe(2);
+        if (test.info().project.name === 'phone') expect(tops[1]).toBeGreaterThan(tops[0]);
+        else expect(tops[1]).toBe(tops[0]);
         await expectClean(page, state);
     });
 });

@@ -134,6 +134,23 @@ describe('fairSuggestions', () => {
         assert.deepEqual(fairRemovals({ getValues: [9000], giveValues: [9400], waiver: OFF }), []);
     });
 
+    test('the fair range: every value one added piece can have and leave it within 10%', () => {
+        // 5,000 vs 9,400: even at 4,400; fair just above 3,460 up to just under 5,445. Rounded outward to 10s.
+        const g = gapToClose([5000], [9400], OFF);
+        assert.deepEqual(g.range, { low: 3460, high: 5450 });
+        assert.equal(verdictFromValues([5000 + g.range.low + 10], [9400], OFF).verdict, 'fair');
+        assert.equal(verdictFromValues([5000 + g.range.high - 10], [9400], OFF).verdict, 'fair');
+        assert.notEqual(verdictFromValues([5000 + g.range.low - 10], [9400], OFF).verdict, 'fair');
+        assert.notEqual(verdictFromValues([5000 + g.range.high + 10], [9400], OFF).verdict, 'fair');
+        // The 1,950 pick that read as short of "about 3,000" is inside the range (the dynasty case from the review):
+        // 7,656 vs 10,143 with a 500 credit to you that becomes 1,000 with one more piece on their side.
+        const d = gapToClose([6585, 1071], [9643], { on: true, perSpot: 500 });
+        assert.ok(d.range.low <= 1950 && 1950 <= d.range.high, JSON.stringify(d.range));
+        // The waiver change is in it: a 1-for-2 needs 5,000 to be even; the range is around that, not the raw 4,000.
+        const w = gapToClose([9000], [7000, 7000], { on: true, perSpot: 1000 });
+        assert.ok(w.range.low >= 3600 && w.range.high >= 5000);
+    });
+
     test('landing: even, or which way and how far', () => {
         assert.equal(landing(verdictFromValues([10000], [10020], OFF)), 'even');
         assert.equal(landing(verdictFromValues([10000], [9800], OFF)), '2% your way');

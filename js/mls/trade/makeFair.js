@@ -103,7 +103,30 @@ export function gapToClose(getValues, giveValues, waiver) {
         : verdictFromValues(getValues, giveValues.concat(added), waiver);
     const zero = after([0]);
     const needed = side === 'get' ? -zero.diff : zero.diff;
-    return { adder, side, diff: now.diff, needed, gap: roundGap(needed > 0 ? needed : now.diff), after };
+    return { adder, side, diff: now.diff, needed, gap: roundGap(needed > 0 ? needed : now.diff), after,
+        range: fairRange(after, needed) };
+}
+
+// The values one added piece could have and leave the trade fair (round 9: "about 3,000" next to a 1,950 suggestion
+// read as a contradiction; anything inside the 10% band is fair, not just the even amount). after(addedValues) as in
+// gapToClose; needed: the even amount, inside the range. Returns { low, high }, rounded outward to the nearest 10 (so
+// every fair suggestion falls inside what's shown; rounding to 100 put a fair 1,950 pick under "2,000"), or null when
+// needed isn't positive. Fairness is one interval in the added value, so each end is found by halving.
+export function fairRange(after, needed) {
+    if (!(needed > 0)) return null;
+    const fair = (v) => { const r = after([v]); return !!r && r.verdict === 'fair'; };
+    const edge = (inside, outside) => {
+        for (let i = 0; i < 40; i++) {
+            const mid = (inside + outside) / 2;
+            if (fair(mid)) inside = mid; else outside = mid;
+        }
+        return inside;
+    };
+    const lowRaw = fair(0) ? 0 : edge(needed, 0);
+    let hi = needed * 2 + 1000;
+    while (fair(hi) && hi < 1e7) hi *= 2;
+    const highRaw = edge(needed, hi);
+    return { low: Math.floor(lowRaw / 10) * 10, high: Math.ceil(highRaw / 10) * 10 };
 }
 
 // What would bring a lopsided trade within the fair band.
@@ -114,7 +137,7 @@ export function gapToClose(getValues, giveValues, waiver) {
 //     (a pick name like "2027 1st" on the other side is the other team's pick, so only the same side counts).
 //   waiver: { on, perSpot }, as the banner's.
 // Returns null when the trade is already fair (or has no values). Otherwise:
-//   { adder: 'them' | 'you', side: 'get' | 'give', gap, needed, singles: [fit], pairs: [fit], removals: [removal] }
+//   { adder: 'them' | 'you', side: 'get' | 'give', gap, needed, range, singles: [fit], pairs: [fit], removals: [removal] }
 //   fit: { players: [candidate], value, after: verdictFromValues(...) }.
 // singles are spread across prices (round 5, after the owner's review: "closest to even" alone kept suggesting the
 // other team's stars): the fit closest to even, the least valuable fit (the least they'd have to give), and in
@@ -125,7 +148,7 @@ export function gapToClose(getValues, giveValues, waiver) {
 export function fairSuggestions({ getValues, giveValues, candidates, inTrade = [], onAddingSide = [], waiver, limit = 3, pairLimit = 40 }) {
     const g = gapToClose(getValues, giveValues, waiver);
     if (!g) return null;
-    const { adder, side, needed, gap, after } = g;
+    const { adder, side, needed, gap, after, range } = g;
 
     const taken = new Set(inTrade);
     const sameSide = new Set(onAddingSide);
@@ -161,7 +184,7 @@ export function fairSuggestions({ getValues, giveValues, candidates, inTrade = [
         }
         pairs = pairs.sort(byCloseness).slice(0, limit);
     }
-    return { adder, side, gap, needed, singles, pairs, removals: fairRemovals({ getValues, giveValues, waiver }) };
+    return { adder, side, gap, needed, range, singles, pairs, removals: fairRemovals({ getValues, giveValues, waiver }) };
 }
 
 // Up to limit of the fits (sorted closest to even first): the closest, the least valuable, the closest pick, then

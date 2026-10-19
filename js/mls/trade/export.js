@@ -187,7 +187,7 @@ export const exportTrade = async function() {
         return;
     }
     const pick = (sel) => [...out.querySelectorAll(sel)].map(el => el.outerHTML).join('');
-    const verdictHTML = pick(':scope > .trade-verdict-banner, :scope > .trade-verdict-note');
+    const verdictHTML = pick(':scope > .trade-verdict-banner, :scope > .trade-verdict-note, :scope > .trade-verdict-pair > *');
     const powerHTML = State.tradeSettings.exportPower ? pick(':scope > [data-trade-impact]') : '';
     const imageHTML = tradeExportHTML(_tradeExport, verdictHTML, powerHTML);
 

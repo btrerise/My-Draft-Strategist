@@ -4773,3 +4773,29 @@ both widths, the only one in the states it reaches. **Fix:** `text-transform: no
 
 **Checks.** Precache OK; 394 unit and 409 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
 all 40 pixel-identical to round 7's (no (i) in a capitalized label is on them).
+
+### S19, round 9: the fair range, the market's view, verdicts side by side (owner: "do 1, 2 and 3" of my second review)
+
+**My second review as a user** (round 8): (1) "about 3,000" next to a 1,950 pick marked Fair read as a contradiction;
+(2) nothing said when the market disagrees with Your Rankings; (3) on desktop the two verdicts stacked full-width filled
+the first screen; (4) the desktop list reads across, not down (skipped, the owner's choice).
+
+**User-visible effect.**
+- **The fair range:** "To make it fair, they'd add 7,650–11,590": every value one more piece could have and leave the
+  trade within 10%, waiver change included, rounded outward to 10s so every fair suggestion falls inside it (rounding to
+  100 put the review's fair 1,950 pick under "2,000"). "up to N" when even nothing added is fair; "about N" if no range.
+- **The market's view:** when Your Rankings decide, Market Consensus is loaded and values every piece, and its verdict
+  differs: one amber line. Inside the box when the trade is lopsided by yours ("By Market Consensus it's already fair as
+  it stands."), on its own under a verdict that's fair by yours ("By Market Consensus this favors you (29%): they may ask
+  you to add about 2,900." / "...favors them (12%): they may be open to adding about 1,200."). On screen only.
+- **Verdicts side by side** from 768px (`.trade-verdict-pair`, a grid); stacked on phones. Export Trade still copies both.
+
+**What changed and where.** `js/mls/trade/makeFair.js` (`fairRange`; `gapToClose` and `fairSuggestions` return
+`range`), `js/mls/trade/fairSection.js` (the range head, `marketLine`), `js/mls/trade/verdict.js` (the pair wrapper),
+`js/mls/trade/export.js` (its selector reaches into the pair), `css/mls.css`, `CHANGELOG.md`.
+
+**Tests.** Unit: the range's ends (just inside fair, just outside not), the review's 1,950 pick inside its range, the
+waiver change in it. Spec: every suggestion's value inside the range shown; the market line alone under a fair verdict,
+inside the box when only yours is lopsided, absent when the market lacks a piece; the verdicts' tops equal on desktop
+and stacked on the phone; the export with both verdicts and without the market line.
+
