@@ -4852,3 +4852,24 @@ All six failed before the fix.
 
 **Checks.** Precache OK; 395 unit and 417 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
 all 40 pixel-identical to round 10's; against main still only `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 12: my fourth review as a user; gaps after numbers in exported images
+
+**Reviewed** (phone and desktop): building a trade with the picker, the Roster tab's Future column with picks (its
+tooltip on screen at 375px, picks named), the saved Export Trade image, a manual league. Proposed (1) the picker offering
+the picks each side holds and (2) the export's odd spacing.
+
+**The owner's decisions.** (1) **No**: restricting or steering the pick row to held picks would make hypotheticals
+harder, and the owner's devy league tracks devy picks separately; the picker stays open to any pick. (2) **Yes.**
+
+**Bug and fix.** Every page sets `font-variant-numeric: tabular-nums` on body (css/base.css). html2canvas 1.4.1 places
+each word at the browser's position but draws it with the canvas's text, which ignores that, so words with digits came
+out narrower than their slots and left gaps: Export Trade showed "(0- 10,000 )" and "(- 868 pts, 9%)", values stopped
+short of the right edge, and Export Lineup and Draft Strategist's Export Team had the same after ranks ("RB1"). Confirmed
+by exporting with the setting off in the image only (the gaps went away). **Test first:** `tests/export-numerals.spec.mjs`
+records the clone html2canvas draws from, after each export's own onclone, and fails on any text with digits still
+asking for tabular digits; it failed on all three exports, then passed. **Fix:** `js/shared/ui/exportImage.js` (new, in
+`PRECACHE_ASSETS`) `useProportionalDigits(root)` adds a style to the clone; called by Export Trade and Export Lineup
+(`js/mls/trade/export.js`) and Export Team (`js/mds/export.js`). The page keeps its tabular digits. I looked at all three
+images. `docs/TESTING.md` (Conventions) notes it for new exports; CHANGELOG lines under both apps.
+

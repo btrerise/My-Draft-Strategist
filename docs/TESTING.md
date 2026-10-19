@@ -216,6 +216,9 @@ shot and S10 took four runs for 14.)
   is slid back inside the window (`place`, CSS `translate: var(--tt-dx)`), and capped at the window's width. Don't
   give a tooltip its own `translate`. `tooltips-onscreen.spec.mjs` taps every tooltip on both apps' tabs at 375px and
   1280px and fails on any that crosses an edge; a new tooltip in a state it doesn't reach should get a line there.
+- **Image exports** (improvements S19, round 12): html2canvas draws text without the page's `tabular-nums`, so a new
+  export calls `useProportionalDigits(clonedRoot)` (`js/shared/ui/exportImage.js`) in its `onclone`;
+  `export-numerals.spec.mjs` checks all three exports' clones.
 - **User-visible changes** (8A): add a plain-language line under the app's **Unreleased** section in
   `CHANGELOG.md`. Bumping an app's footer version (the `APP VERSION` comment in `index.html` or
   `lineup/index.html`) turns those lines into that version's entry.

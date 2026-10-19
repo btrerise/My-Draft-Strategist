@@ -7,6 +7,7 @@ import { getActiveLeague } from '../helpers.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { flashButton } from '../../shared/ui/flashButton.js';
 import { ensureHtml2Canvas } from '../../shared/ui/scriptLoader.js';
+import { useProportionalDigits } from '../../shared/ui/exportImage.js';
 
 // The FLEX, SFLEX, W/T and W/R slot badges draw a blended border with two background layers: the dark fill
 // clipped to the padding box over the gradient clipped to the border box (css/mls.css, --*-blend in
@@ -104,6 +105,7 @@ function splitBlendedBorders(root) {
             onclone: (clonedDoc) => {
                 const clonedContainer = clonedDoc.getElementById('optimalLineupContainer');
                 if (clonedContainer) {
+                    useProportionalDigits(clonedContainer); // no gaps after numbers in the image (S19, round 12)
                     // Headshots stay out of the exported image: Sleeper's CDN doesn't allow
                     // cross-origin canvas reads, so html2canvas would leave them blank anyway,
                     // and keeping third-party photos out of a PNG that gets passed around
@@ -201,6 +203,7 @@ export const exportTrade = async function() {
             onclone: (clonedDoc) => {
                 const clone = clonedDoc.getElementById('tradeOutput');
                 if (!clone) return;
+                useProportionalDigits(clone); // no gaps after numbers in the image (S19, round 12)
                 clone.innerHTML = imageHTML;
                 clone.classList.add('mls-trade-export-image');
                 clone.querySelectorAll('details').forEach(el => el.setAttribute('open', ''));

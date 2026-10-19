@@ -106,6 +106,7 @@ const PRECACHE_ASSETS = [
     '/js/shared/ui/focusTrap.js',
     '/js/shared/ui/prompt.js',     // S2: text-input dialog (renaming a ranking set)
     '/js/shared/ui/scriptLoader.js',
+    '/js/shared/ui/exportImage.js',
     '/js/shared/ui/scrollShadows.js',
     '/js/shared/ui/setupChecklist.js',
     '/js/shared/ui/statusFeedback.js', // 8B: "Processing…" / success lines, both apps

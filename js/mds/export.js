@@ -1,6 +1,7 @@
 // Moved from js/mds/legacy.js (the second half of the old js/mds.js) in refactor chunk 2B:
 // TEAM EXPORT LOGIC.
 import { ensureHtml2Canvas } from '../shared/ui/scriptLoader.js';
+import { useProportionalDigits } from '../shared/ui/exportImage.js';
 import { showToast } from '../shared/ui/toast.js';
 
 // html2canvas draws the image at this scale; the flex labels' canvases below match it so they stay sharp.
@@ -87,6 +88,7 @@ async function drawFlexLabelsOnCanvas(clonedDoc) {
                 allowTaint: true,
                 onclone: async (clonedDoc) => {
                     const clonedContainer = clonedDoc.getElementById('exportableTeamContainer');
+                    useProportionalDigits(clonedContainer); // no gaps after numbers in the image (improvements S19, round 12)
                     const includeRecap = clonedDoc.getElementById('includeRecapInExport')?.checked;
                     const branding = clonedDoc.getElementById('exportBranding');
                     

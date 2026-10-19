@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Export Team draws numbers without gaps.** Numbers in the exported image could be followed by a stray space
+  ("RB1 " or "Bye: 8 "); they now read as on the page.
 - **Tooltips stay on the screen.** A tooltip opened near the edge of a phone screen now slides back inside it instead of
   running off the side.
 - **Smooth tab changes.** Switching tabs (tapping the tab bar, swiping, the menu, number keys, Back and Forward) now
@@ -102,6 +104,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Fixed: tooltips ran off the screen on phones.** An (i) near the left edge (the Lineup tab's optimizer settings, the
   Trade Analyzer's Value settings and notes) opened its tooltip partly off-screen, so it couldn't be read. Every
   tooltip on the site now slides back inside the screen when it opens.
+- **Fixed: stray gaps after numbers in exported images.** Export Trade read "(0- 10,000 )" and "(- 868 pts, 9%)", and
+  Export Lineup had the same gaps after ranks; numbers in both images now read as on the page.
 - **Fixed: trade verdicts on a wrong total.** A misspelled name counted as 0, so the Trade Analyzer could still say
   "Fair Trade" (or "Favors Them, 100%" by the market). Now a name that matches no player gets one "No verdict yet" banner
   naming it, and the verdict comes once it's fixed (Did you mean is right below). A real player the market data doesn't
