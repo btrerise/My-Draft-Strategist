@@ -147,3 +147,25 @@ Longest task, median ms, phone / desktop (main → branch):
 - What's left of a Dashboard switch (~100 ms) is mostly the browser laying out 21 cards that `display: none` had
   dropped. Keeping hidden tabs laid out (`content-visibility: hidden` instead of `display: none`) could remove it, but
   it changes how every tab is hidden; a possible follow-up, not done here.
+
+## The branch at the end (f3e51f1: self-hosted font, smaller logos, the tab-switch changes)
+
+First visit, score · FCP · LCP · TTI, against main's baseline above:
+
+| Page | cf server | plain server |
+|---|---|---|
+| `/` | 84 → **88** · 2.46 → **1.05 s** · 3.95 → **3.38 s** · 3.97 → 3.39 s | 73 → 72 · 2.83 → 2.80 s · 6.68 → 6.78 s |
+| `/lineup/` | 92 → **99** · 2.46 → **1.20 s** · 2.61 → **1.95 s** · 4.38 → 4.41 s | 82 → 86 · 3.15 → 2.85 s · 3.83 → 3.53 s |
+| `/t-score/` | 94 → **98** · 2.31 → **1.18 s** · 2.69 → **2.10 s** · 2.69 → 2.10 s | 85 → 89 · 2.91 → 2.33 s · 3.53 → 3.38 s |
+
+- With the plain server (no compression) the 1.6 Mbps link is the limit and the font change matters less: the uncompressed
+  CSS and JS take most of the time either way.
+- **Cold visit** (real throttling, where third parties cost nothing here): first paint `/` 1.89 s, `/lineup/` 1.77 s,
+  `/t-score/` 1.66 s, as before; the gain is the two Google connections, which only the simulation (and a real phone)
+  pays. **Repeat visit:** `/` 100, `/lineup/` 98, `/t-score/` 76, transferring 19 KB instead of 54 KB (Google's font
+  stylesheet was the only thing fetched again).
+- **Tab switches**, longest task (phone / desktop, ms): Dashboard → Lineup 152 → 95 / 123 → 90, Roster → Lineup 137 → 98 /
+  123 → 91, Lineup → Dashboard 104 → 98 / 138 → 106; the Roster and Dashboard switches within the ±20–30 ms noise
+  (Lineup → Roster on phones read 69 at baseline and 69–107 in later runs).
+- **PageSpeed Insights on the branch preview:** not run yet. The API's anonymous daily quota was used up and this container
+  can't reach the preview; to add here by the owner (https://pagespeed.web.dev/, mobile, the preview's `/lineup/`).
