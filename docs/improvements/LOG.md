@@ -4957,6 +4957,10 @@ to add there (below).
 - `js/shared/ui/viewTransition.js`: `placeTabMarker` measures the tab bar's buttons once and again only when the bar
   changes size (a ResizeObserver, which also catches a desktop scrollbar coming or going), instead of reading
   `offsetWidth`/`offsetLeft` right after showTab had shown the new tab, which forced a layout of it mid-switch.
+- `js/boot.js`: a failed `<link>` raises the "Something went wrong loading the app" banner only when it's a stylesheet.
+  Found by the full check: the specs block the font, and its failed preload (a same-origin `<link>`) raised the banner
+  whenever it failed after boot.js was listening, which a real phone on a flaky connection could hit too. Test first:
+  `fonts.spec.mjs`, "a font that fails to load is not a fatal error", failed before the fix.
 - `js/mls/render/lineup.js`: `renderLineupUI` redraws the Dashboard's league cards only while the Dashboard shows
   (showing it redraws them anyway, through showTab's `refreshLeagueDropdown`).
 - `js/mls/render/leagueCards.js`: `renderLeagueCards` keeps the cards when the new HTML is identical and the list still

@@ -36,3 +36,19 @@ for (const path of ['/', '/lineup/', '/t-score/']) {
         expect(google).toEqual([]);
     });
 }
+
+// A font that doesn't arrive (a flaky connection, a blocker) costs only the font: text stays in the fallback, and boot.js's
+// "Something went wrong loading the app" banner, which a failed script or stylesheet raises, stays away. The font fails
+// here only after the page has loaded, when boot.js is listening, so the check doesn't depend on timing.
+test('a font that fails to load is not a fatal error', async ({ page }) => {
+    const state = await preparePage(page);
+    let release;
+    const loaded = new Promise((r) => { release = r; });
+    await page.route(/^http:\/\/localhost(:\d+)?\/fonts\/[^/]+\.woff2$/, async (route) => { await loaded; await route.abort(); });
+    // The held font keeps the load event waiting, so only the parse is waited for (boot.js runs before it ends).
+    await page.goto('/lineup/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.markAppReady === 'function');
+    release();
+    await page.waitForTimeout(500);
+    await expectClean(page, state);
+});
