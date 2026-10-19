@@ -4799,3 +4799,7 @@ waiver change in it. Spec: every suggestion's value inside the range shown; the 
 inside the box when only yours is lopsided, absent when the market lacks a piece; the verdicts' tops equal on desktop
 and stacked on the phone; the export with both verdicts and without the market line.
 
+
+**Checks.** Precache OK; 395 unit and 411 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 8's (the screenshot league has no rankings, so no verdict); against main still only
+`mls-league-guide.png` at both widths, to take from CI.
