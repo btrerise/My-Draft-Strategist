@@ -4892,3 +4892,20 @@ on Add, Undo, Remove). **Found and fixed:**
 **Checks.** Precache OK; 395 unit and 423 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
 against round 12 only `mls-league-guide.png` (desktop 1280×6877 → 1280×6923, phone 390×14830 → 390×14969, the Guide
 sentence); against main still only that PNG at both widths, to take from CI.
+
+### S19, round 14: my sixth review as a user; a 12-team league, long names on phones
+
+**Reviewed:** a realistically sized league built in memory (12 teams of 25, a 300-player board, market values for all,
+real-length names): Analyze takes ~0.1s, Add to re-run ~0.4s (0.25s of it the deliberate debounce), "To make it fair"
+and Power Rankings for 12 teams read fine. No light theme exists to check.
+
+**Found and fixed:** at 375px a single long name ran over its value, worst on a Remove row (the wider button):
+"Marcus Henderson M12" over "8,042"; with a fixture player, "Amon-Ra St. Brown" 4px past its column. Round 10 had only
+fixed pairs. **Test first:** the overlap check became `rowOverlaps` in `mls-trade-fair.spec.mjs`, run on suggestions
+and removals, and also fails when a value and its button end up on different lines; the new test "long names on single
+rows fit at 375px" failed on the phone, then passed. **Fix** (`css/mls.css`, `js/mls/trade/fairSection.js`): every row
+may wrap, names never shrink below their own width (`min-width: min-content`, each player nowrap), and the value and
+its button sit in one `.mls-trade-fair-act` group pushed right, so when a name doesn't fit beside them they move
+together to a second line; rows that fit stay on one line. The pair rule keeps only its stacked badges and full-width
+names.
+

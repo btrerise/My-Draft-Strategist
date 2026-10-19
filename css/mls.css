@@ -1026,10 +1026,13 @@ button.close-chip {
 .mls-trade-fair-head { font-size: 0.92rem; font-weight: 600; color: var(--text-main); }
 .mls-trade-fair-via, .mls-trade-fair-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; line-height: 1.45; }
 .mls-trade-fair-list { list-style: none; margin: 0.4rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.5rem; }
-.mls-trade-fair-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-top: 1px solid var(--border); }
+/* A row wraps only when it must (round 14: a long single name, "Amon-Ra St. Brown" beside a Remove button, ran over its
+   value at 375px): the names never shrink below their own width (min-content; each player is nowrap), so when they
+   don't fit beside the value and button, those two move to a second line, on the right. */
+.mls-trade-fair-item { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; padding: 0.4rem 0; border-top: 1px solid var(--border); }
 .mls-trade-fair-badges { flex: 0 0 auto; display: inline-flex; gap: 4px; }
 .mls-trade-fair-badges .badge { min-width: 3.3em; justify-content: center; text-align: center; }
-.mls-trade-fair-names { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 0.88rem; color: var(--text-main); display: flex; flex-wrap: wrap; column-gap: 0.35rem; }
+.mls-trade-fair-names { flex: 1 1 0; min-width: min-content; font-weight: 700; font-size: 0.88rem; color: var(--text-main); display: flex; flex-wrap: wrap; column-gap: 0.35rem; }
 .mls-trade-fair-player { white-space: nowrap; }
 .mls-trade-fair-plus { color: var(--text-muted); font-weight: 600; }
 .mls-trade-fair-from { color: var(--text-muted); font-weight: 600; font-size: 0.75rem; }
@@ -1043,15 +1046,15 @@ button.close-chip {
 /* Round 10: on phones a pair's two names ran over its value (found in my review as a user). There a pair takes two
    lines: badges stacked and the names across, then the value and Add both under them on the right. */
 @media (max-width: 767px) {
-    .mls-trade-fair-item.is-pair { flex-wrap: wrap; row-gap: 0.25rem; }
     .mls-trade-fair-item.is-pair .mls-trade-fair-badges { flex-direction: column; }
     .mls-trade-fair-item.is-pair .mls-trade-fair-names { flex: 1 1 calc(100% - 4.5rem); }
-    .mls-trade-fair-item.is-pair .mls-trade-fair-val { margin-left: auto; }
 }
 .mls-trade-fair-undo { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.82rem; color: var(--text-muted); margin: -0.35rem 0 0.75rem; }
 .mls-trade-fair-undo-btn { color: var(--primary-green); font-weight: 700; text-decoration: underline; cursor: pointer; font-size: inherit; padding: 0.2rem 0.1rem; }
 .mls-trade-fair-val { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-main); font-size: 0.88rem; }
 .mls-trade-fair-add { flex: 0 0 auto; }
+/* The value and its button move together, to the right of the second line when the row wraps (round 14). */
+.mls-trade-fair-act { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
 @media (min-width: 768px) {
     .mls-trade-fair-list { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }

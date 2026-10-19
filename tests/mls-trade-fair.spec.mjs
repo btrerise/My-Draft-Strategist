@@ -21,6 +21,30 @@ const fair = (page) => page.locator('#tradeOutput [data-trade-fair]');
 const adds = (page) => fair(page).locator('[data-fair-adds] .mls-trade-fair-item');
 const removals = (page) => fair(page).locator('[data-fair-removals] .mls-trade-fair-item');
 const undoLine = (page) => page.locator('#tradeOutput [data-trade-fair-undo]');
+// Round 10 and 14: on a row of the box nothing overlaps (badges, names, value, button), and each name stays whole and
+// inside its column. The column's box stays narrow (min-width 0) while its text spills, so the names' text is measured.
+const rowOverlaps = (rows) => rows.evaluateAll(lis => lis.flatMap(li => {
+            const boxes = ['.mls-trade-fair-badges', '.mls-trade-fair-names', '.mls-trade-fair-val', 'button'].map(sel => li.querySelector(sel).getBoundingClientRect());
+            const out = [];
+            for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+                const a = boxes[i], b = boxes[j];
+                if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) out.push(`${li.innerText.split('\n')[0]}: ${i} over ${j}`);
+            }
+            // The value and its button stay together on one line (round 14: the button alone wrapped, to the left).
+            const v = li.querySelector('.mls-trade-fair-val').getBoundingClientRect(), btn = li.querySelector('button').getBoundingClientRect();
+            if (Math.abs((v.top + v.bottom) / 2 - (btn.top + btn.bottom) / 2) > 8) out.push(`${li.innerText.split('\n')[0]}: value and button on different lines`);
+            if (btn.right > li.getBoundingClientRect().right + 0.5) out.push(`${li.innerText.split('\n')[0]}: button past the row`);
+            // Names stay whole (each player on one line) and inside their column: the column's own box stays narrow
+            // (min-width: 0) while its text spills over the value, so measure the text.
+            const col = li.querySelector('.mls-trade-fair-names').getBoundingClientRect();
+            li.querySelectorAll('.mls-trade-fair-player').forEach(p => {
+                if (p.getClientRects().length > 1) out.push(`${p.innerText} broken`);
+                const r = p.getBoundingClientRect();
+                if (r.right > col.right + 0.5) out.push(`${p.innerText} runs ${Math.round(r.right - col.right)}px past its column`);
+            });
+            return out;
+        }));
+
 const yourVerdict = (page) => page.locator('#tradeOutput .trade-verdict-banner').first();
 const at375 = (page) => test.info().project.name === 'phone' ? page.setViewportSize({ width: 375, height: 844 }) : null;
 const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
@@ -197,24 +221,7 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         const range = await fair(page).locator('.mls-trade-fair-head strong').innerText();
         await expect(fair(page)).toContainText(`No single player on Rival's roster is worth ${range.split('–')[0]} or more. By Your Rankings, these pairs would:`);
         // Round 10 (my review as a user): at 375px a pair's names ran over its value. Nothing in a line may overlap.
-        const overlaps = await adds(page).evaluateAll(lis => lis.flatMap(li => {
-            const boxes = ['.mls-trade-fair-badges', '.mls-trade-fair-names', '.mls-trade-fair-val', 'button'].map(sel => li.querySelector(sel).getBoundingClientRect());
-            const out = [];
-            for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
-                const a = boxes[i], b = boxes[j];
-                if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) out.push(`${li.innerText.split('\n')[0]}: ${i} over ${j}`);
-            }
-            // Names stay whole (each player on one line) and inside their column: the column's own box stays narrow
-            // (min-width: 0) while its text spills over the value, so measure the text.
-            const col = li.querySelector('.mls-trade-fair-names').getBoundingClientRect();
-            li.querySelectorAll('.mls-trade-fair-player').forEach(p => {
-                if (p.getClientRects().length > 1) out.push(`${p.innerText} broken`);
-                const r = p.getBoundingClientRect();
-                if (r.right > col.right + 0.5) out.push(`${p.innerText} runs ${Math.round(r.right - col.right)}px past its column`);
-            });
-            return out;
-        }));
-        expect(overlaps).toEqual([]);
+        expect(await rowOverlaps(adds(page))).toEqual([]);
         const pair = adds(page).first();
         await expect(pair.locator('.mls-trade-fair-player')).toHaveCount(2);
         await expect(pair.locator('.pos-badge')).toHaveCount(2);
@@ -463,6 +470,17 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         await page.keyboard.press('Enter');
         await expect.poll(focused).toBe('undoFairChange');
         // Nothing scrolled the page to get there (focus moves without scrolling).
+        await expectClean(page, state);
+    });
+
+    // Round 14 (my review as a user, a 12-team league): a single long name ran over its value on phones, worst on a
+    // Remove row (the wider button). Real names: Amon-Ra St. Brown is on your side here.
+    test('long names on single rows fit at 375px, suggestions and removals alike', async ({ page }) => {
+        const state = await setup(page);
+        await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Amon-Ra St. Brown']);
+        await expect(removals(page).filter({ hasText: 'Amon-Ra St. Brown' })).toHaveCount(1);
+        expect(await rowOverlaps(adds(page))).toEqual([]);
+        expect(await rowOverlaps(removals(page))).toEqual([]);
         await expectClean(page, state);
     });
 });
