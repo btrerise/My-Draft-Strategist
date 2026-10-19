@@ -4873,3 +4873,6 @@ asking for tabular digits; it failed on all three exports, then passed. **Fix:**
 (`js/mls/trade/export.js`) and Export Team (`js/mds/export.js`). The page keeps its tabular digits. I looked at all three
 images. `docs/TESTING.md` (Conventions) notes it for new exports; CHANGELOG lines under both apps.
 
+
+**Checks.** Precache OK; 395 unit and 421 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 11's; against main still only `mls-league-guide.png` at both widths, to take from CI.
