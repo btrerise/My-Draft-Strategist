@@ -4849,3 +4849,6 @@ All six failed before the fix.
   unknown, or while the market decides and lacks a piece. The Power Rankings section itself still compares the players
   it can match and notes the one it can't (S14). `css/mls.css`: `.verdict-incomplete`.
 
+
+**Checks.** Precache OK; 395 unit and 417 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 10's; against main still only `mls-league-guide.png` at both widths, to take from CI.
