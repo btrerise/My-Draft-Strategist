@@ -9,12 +9,15 @@
     "precache": "node ../scripts/check-precache.mjs",
     "unit": "node --test",
     "check": "node ../scripts/check-precache.mjs && node --test && playwright test",
-    "compare-css": "playwright test -c tools/playwright.config.mjs",
-    "pxdiff": "node tools/pxdiff.mjs"
+    "compare-css": "playwright test -c tools/playwright.config.mjs css-compare",
+    "pxdiff": "node tools/pxdiff.mjs",
+    "perf": "node tools/perf.mjs",
+    "perf:tabs": "playwright test -c tools/playwright.config.mjs tab-switch"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",
     "html2canvas": "1.4.1",
+    "lighthouse": "13.5.0",
     "papaparse": "5.4.1"
   }
 }
