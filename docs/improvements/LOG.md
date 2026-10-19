@@ -4909,3 +4909,6 @@ its button sit in one `.mls-trade-fair-act` group pushed right, so when a name d
 together to a second line; rows that fit stay on one line. The pair rule keeps only its stacked badges and full-width
 names.
 
+
+**Checks.** Precache OK; 395 unit and 425 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 13's; against main still only `mls-league-guide.png` at both widths, to take from CI.
