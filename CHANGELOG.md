@@ -104,6 +104,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Fixed: tooltips ran off the screen on phones.** An (i) near the left edge (the Lineup tab's optimizer settings, the
   Trade Analyzer's Value settings and notes) opened its tooltip partly off-screen, so it couldn't be read. Every
   tooltip on the site now slides back inside the screen when it opens.
+- **The Trade Analyzer's fair-trade box works from the keyboard.** After Add, Remove or Undo, focus stays with the
+  box (on Undo, or the first suggestion) instead of jumping to the top of the page. The Guide's Trade Analyzer step
+  describes the range, Remove, Undo and the market line.
 - **Fixed: stray gaps after numbers in exported images.** Export Trade read "(0- 10,000 )" and "(- 868 pts, 9%)", and
   Export Lineup had the same gaps after ranks; numbers in both images now read as on the page.
 - **Fixed: trade verdicts on a wrong total.** A misspelled name counted as 0, so the Trade Analyzer could still say

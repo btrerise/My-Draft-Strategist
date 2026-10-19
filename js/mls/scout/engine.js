@@ -14,7 +14,7 @@ import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valu
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML } from '../trade/verdict.js';
 import { buildTradeImpactHTML } from '../trade/lineupSection.js';
-import { buildMakeFairHTML } from '../trade/fairSection.js';
+import { buildMakeFairHTML, placeFairFocus } from '../trade/fairSection.js';
 import { pickHolders } from '../leagues/picks.js';
 import { setTradeExport } from '../trade/export.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -417,6 +417,7 @@ import { normalizeName } from '../../shared/names.js';
             }
 
             outputEl.innerHTML = html;
+            placeFairFocus(outputEl);
             return;
         }
 

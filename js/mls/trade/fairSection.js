@@ -28,8 +28,20 @@ const keyOf = (n) => pickKey(n, { tier: false }) || normalizeName(n);
 // next run; while the trade still matches it, the Undo line shows. Any other change (a token added or removed, a
 // league switch) drops it. In memory only.
 let _undo = null; // { label, before: { get, give }, after: { get, give } | null }
-export function rememberFairChange(label, before) { _undo = { label, before, after: null }; }
-export function takeFairUndo() { const u = _undo; _undo = null; return u ? u.before : null; }
+// Where focus goes once the trade re-runs after the box's own Add, Remove or Undo (round 13): the re-run replaces the
+// box, which dropped keyboard focus to the top of the page. 'undo' after a change, 'box' (its first button) after Undo.
+let _focusNext = null;
+export function rememberFairChange(label, before) { _undo = { label, before, after: null }; _focusNext = 'undo'; }
+export function takeFairUndo() { const u = _undo; _undo = null; _focusNext = u ? 'box' : null; return u ? u.before : null; }
+// Called by runScout once the trade's results are on the page. Without scrolling: the page stays where it is.
+export function placeFairFocus(outputEl) {
+    if (!_focusNext || !outputEl) return;
+    const target = _focusNext === 'undo'
+        ? outputEl.querySelector('[data-action="undoFairChange"]')
+        : outputEl.querySelector('[data-action="addFairSuggestion"], [data-action="removeFairPiece"]');
+    _focusNext = null;
+    if (target) target.focus({ preventScroll: true });
+}
 const sameList = (a, b) => a.length === b.length && a.every((n, i) => n === b[i]);
 function undoHTML(getNames, giveNames) {
     if (!_undo) return '';

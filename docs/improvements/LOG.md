@@ -4876,3 +4876,15 @@ images. `docs/TESTING.md` (Conventions) notes it for new exports; CHANGELOG line
 
 **Checks.** Precache OK; 395 unit and 421 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
 all 40 pixel-identical to round 11's; against main still only `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 13: my fifth review as a user; keyboard focus, the Guide
+
+**Reviewed:** the Guide against what the feature does now, the Pick legend line, the box from the keyboard (Tab, Enter
+on Add, Undo, Remove). **Found and fixed:**
+- **Focus fell to the top of the page** after Add, Remove or Undo by keyboard: the re-run replaces the box, and the
+  focused button with it. Test first (`mls-trade-fair.spec.mjs`, "keyboard: focus stays with the box", failed on BODY):
+  `js/mls/trade/fairSection.js` remembers the next focus (`_focusNext`: Undo after a change, the first suggestion after
+  Undo) and `placeFairFocus`, called by `runScout` once the results are in, moves it there with `preventScroll`.
+- **The Guide was stale** (step 9 still said "about how much", with no Remove, Undo, range, market line or held
+  verdict). Rewritten; `mls-league-guide.png` was already on the CI re-take list for this branch.
+

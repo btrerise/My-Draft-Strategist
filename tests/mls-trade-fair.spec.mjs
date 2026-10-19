@@ -445,4 +445,24 @@ test.describe('Trade Analyzer: what would make it fair', () => {
         else expect(tops[1]).toBe(tops[0]);
         await expectClean(page, state);
     });
+
+    // Round 13 (my review as a user): the re-run after Add, Remove or Undo replaced the box, and keyboard focus fell to
+    // the top of the page. Focus now lands where the next step is: Undo after a change, the first suggestion after Undo.
+    test('keyboard: focus stays with the box through Add, Undo and Remove', async ({ page }) => {
+        const state = await setup(page);
+        await runTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", 'Justin Jefferson']);
+        const focused = () => page.evaluate(() => document.activeElement && (document.activeElement.dataset.action || document.activeElement.tagName));
+        await adds(page).first().locator('button').focus();
+        await page.keyboard.press('Enter');
+        await expect(undoLine(page)).toHaveCount(1);
+        await expect.poll(focused).toBe('undoFairChange');
+        await page.keyboard.press('Enter');
+        await expect(fair(page)).toHaveCount(1);
+        await expect.poll(focused).toBe('addFairSuggestion');
+        await removals(page).first().locator('button').focus();
+        await page.keyboard.press('Enter');
+        await expect.poll(focused).toBe('undoFairChange');
+        // Nothing scrolled the page to get there (focus moves without scrolling).
+        await expectClean(page, state);
+    });
 });
