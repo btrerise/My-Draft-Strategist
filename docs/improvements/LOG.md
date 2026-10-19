@@ -4888,3 +4888,7 @@ on Add, Undo, Remove). **Found and fixed:**
 - **The Guide was stale** (step 9 still said "about how much", with no Remove, Undo, range, market line or held
   verdict). Rewritten; `mls-league-guide.png` was already on the CI re-take list for this branch.
 
+
+**Checks.** Precache OK; 395 unit and 423 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+against round 12 only `mls-league-guide.png` (desktop 1280×6877 → 1280×6923, phone 390×14830 → 390×14969, the Guide
+sentence); against main still only that PNG at both widths, to take from CI.
