@@ -175,8 +175,16 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
             </li>`;
     }
 
+    // The cards' HTML as last written, and the list's first card and size just after: when a redraw comes out the
+    // same and nothing else has replaced the cards since, the list is left as it is (improvements S17). Showing
+    // the Dashboard redraws it, and with 21 leagues rebuilding identical cards was most of a switch's time on a slow
+    // phone. Best Available's sections and the folds are filled in after each write, and the next draw carries both
+    // (ctx below), so an unchanged draw matches what's on screen.
+    let lastCards = null;
+
     // The Command Center's league list, the strip above it, and the toolbar. Called by renderLeagueManager
-    // (leagues/sync.js) on every Dashboard render, after every lineup render, sync, switch, reorder and delete.
+    // (leagues/sync.js) on every Dashboard render, after a lineup render while the Dashboard shows, sync, switch,
+    // reorder and delete.
     export function renderLeagueCards() {
         const cmdCenter = document.getElementById('dashboardCommandCenter');
         const list = document.getElementById('leagueCards');
@@ -188,6 +196,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         if (State.leagues.length === 0) {
             cmdCenter.style.display = 'none';
             list.innerHTML = '';
+            lastCards = null;
             return;
         }
         cmdCenter.style.display = 'block';
@@ -203,8 +212,14 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         // the page after every switch or reorder. Put focus back on the same control for the same league (or its
         // name, if that control is now disabled, e.g. ▲ on a league that just moved to the top).
         const focusKey = list.contains(document.activeElement) ? document.activeElement.getAttribute('data-focus-key') : null;
-        list.innerHTML = State.leagues.map((l, i) => cardHTML(l, i, needs.byLeague.get(l.leagueId) || {}, ctx)).join('');
-        if (focusKey) {
+        const html = State.leagues.map((l, i) => cardHTML(l, i, needs.byLeague.get(l.leagueId) || {}, ctx)).join('');
+        const unchanged = lastCards && lastCards.html === html && lastCards.first === list.firstElementChild
+            && lastCards.count === list.childElementCount;
+        if (!unchanged) {
+            list.innerHTML = html;
+            lastCards = { html, first: list.firstElementChild, count: list.childElementCount };
+        }
+        if (focusKey && !unchanged) {
             const leagueId = focusKey.slice(focusKey.indexOf(':') + 1);
             const same = list.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
             const target = (same && !same.disabled) ? same : list.querySelector(`[data-focus-key="${CSS.escape('row:' + leagueId)}"]`);

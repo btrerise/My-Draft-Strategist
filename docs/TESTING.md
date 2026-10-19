@@ -23,6 +23,8 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
 | `npm run test:update` | Playwright, rewriting screenshots that fail | no |
 | `npm run compare-css` | computed-style comparison against `origin/main` (~7 min) | no, opt-in |
 | `npm run pxdiff` | pixel comparison of PNG folders, or of repeated screenshot runs | no, opt-in |
+| `npm run perf` | Lighthouse load numbers for the three pages, PageSpeed's mobile setup (~15 s a run) | no, opt-in |
+| `npm run perf:tabs` | tab-switch timing with 21 leagues on a 4x-slowed CPU | no, opt-in |
 
 - **CI:** `.github/workflows/check.yml` runs `npm run check` on every pull request and every push to `main`
   (ubuntu-24.04, Node 22, Playwright's own Chromium). When it fails, the run's `playwright-results` artifact has the
@@ -52,7 +54,9 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
     with six free agents and week-2 matchups. **Edit the generator, not the JSON.** A Sleeper URL with no fixture
     gets a 404 and is recorded in `unmocked`; the MLS sync test asserts that list is empty, so a new endpoint fails
     loudly until you add a route in `SLEEPER_FIXTURES` and a file in the generator.
-  - Everything else (Google Fonts, MathJax, Ko-fi, FantasyCalc, Google Sheets, headshots) is aborted.
+  - Everything else (MathJax, Ko-fi, FantasyCalc, Google Sheets, headshots) is aborted, and so is the site's own font
+    (`fonts/*.woff2`, self-hosted since improvements S17, as Google Fonts was blocked before it). `fonts.spec.mjs` lets
+    it load and checks it.
     `/api/ffc/*` (the Pages Function in `functions/`) isn't run by `serve.mjs`, so it 404s unless a spec stubs it
     (`stubFfc` in `mds-sync.spec.mjs`).
 - **Fixed clock:** 2026-09-15T16:00Z, so "Updated 3 days ago" labels and season logic don't drift.
@@ -91,7 +95,7 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
     put a new element under the pointer, and whether its `:hover` style makes it into the PNG depends on timing.
   - `tests/hide-transient.css` hides what depends on timing rather than on the code (the toast); animations are
     disabled and the caret hidden.
-- **Baselines are Linux only.** Google Fonts is blocked, so text uses the OS's fallback fonts, and only the Linux
+- **Baselines are Linux only.** The site's font (Outfit) is blocked, so text uses the OS's fallback fonts, and only the Linux
   ones are committed (`baselines/linux/`). On Windows (or macOS), Playwright finds no baselines for that OS: run
   `npx playwright test --ignore-snapshots` there, which still runs every test and skips only the pixel comparisons,
   and leave screenshots to CI and the cloud sessions. A plain run fails and writes `baselines/win32/` (or
@@ -154,7 +158,17 @@ shot and S10 took four runs for 14.)
   the pixels whose RGB differs between two folders of PNGs, with the bounding box. `npm run pxdiff -- --runs 5`
   renders `visual.spec.mjs` five times, keeps each run's PNGs, puts the baselines back, and reports any run that
   differs. Use it when a screenshot fails unexpectedly, to tell a real change from flakiness.
-- `tests/tools/playwright.config.mjs` matches `*.tool.mjs`, so the default config never runs these.
+- **`npm run perf`** (`tests/tools/perf.mjs`, improvements S17): Lighthouse 13.5 (PageSpeed's version) on `/`, `/lineup/`
+  and `/t-score/` in PageSpeed's mobile setup (slow 4G, 4x CPU), for a first visit (simulated, as PageSpeed does), a
+  cold visit (real throttling, with the filmstrip) and a repeat visit (service worker in control), served like
+  tests/serve.mjs and like Cloudflare (brotli, its default caching, the repo's `_headers` if any). `--ref <git ref>` or
+  `--root <dir>` measures something other than the working tree; `--server`, `--visit`, `--pages` and `--runs` narrow
+  it. Prints the median per page. **`npm run perf:tabs`** (`tests/tools/tab-switch.tool.mjs`): the fixture league cloned
+  to 21, the CPU slowed 4x, each tab switch timed five times; `PERF_REF=<ref>` for another commit, `PERF_PROFILE=1` for
+  the functions that took the time. Both are how `docs/improvements/performance.md` was measured: rerun them the same
+  way for a before/after.
+- `tests/tools/playwright.config.mjs` matches `*.tool.mjs`, so the default config never runs these (each `npm run`
+  script names its own file).
 
 ## Conventions
 
@@ -245,6 +259,24 @@ done or dropped, remove its line here in the same change. Background for each is
   not the league's own. Owner chose to leave both until IDP leagues or custom scoring matter (9B).
 - Save the name → position lookup (`window.sleeperPosByName`) so a new page doesn't rebuild it from the player map.
   Only a speed-up, and it needs a new storage key (3G).
+
+**Speed (improvements S17, details in docs/improvements/performance.md)**
+- T-Score blocks the main thread for about 1.1 s on every load (Total Blocking Time 1,102 ms on a 4x-slowed CPU, cached
+  or not), which caps its PageSpeed score near 77. Worth a profile of `js/tscore/main.js`'s start-up.
+- On a slow first visit Draft Strategist's setup page shifts its layout (0.20 with real throttling): the "Load Rankings"
+  card moves down when the app draws what's above it. Reserving that space would end it, but changes the first frame.
+- What's left of a Dashboard switch with 21 leagues (~100 ms on a slow phone) is the browser laying out cards that
+  `display: none` dropped. Hiding inactive tabs with `content-visibility: hidden` would keep their layout; it changes
+  how every tab is hidden in both apps, so it needs its own careful card.
+- On Draft Strategist's `/`, PageSpeed's largest paint is the header's draft drop-down text, which the app's script
+  fills in about 2.3 s after the first paint on slow 4G. A name in the HTML would paint it sooner but flash "Main Draft"
+  for anyone whose draft is named otherwise; it would need the saved name before the script runs.
+- Lineup Strategist loads all its code at start-up. The Scout, Trade Analyzer, Simulator and Power Rankings modules are
+  about 144 KB brotli (39%) of it; loading them on first use (dynamic `import()`) would cut what a first visit downloads
+  before its first paint, which is what PageSpeed's largest paint on `/lineup/` tracks (S17, round 3). A refactor, its
+  own card; the owner passed on it for now.
+- Minifying (no build step, owner's choice in S17) would cut the JS from 498 to 220 KB after brotli and Lineup's
+  time-to-interactive by about 0.7 s on slow 4G, if a build step is ever wanted.
 
 **Small polish, one session each**
 - Draft Strategist's setup checklist doesn't say when rankings or ADP are stale; `getSetupState()` in

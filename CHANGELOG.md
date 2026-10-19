@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A faster first visit.** The page's font now comes from this site instead of Google Fonts, so on a phone's first
+  visit the page appears about a second sooner (blank for less time). The logos download smaller and look the same.
 - **Export Team draws numbers without gaps.** Numbers in the exported image could be followed by a stray space
   ("RB1 " or "Bye: 8 "); they now read as on the page.
 - **Tooltips stay on the screen.** A tooltip opened near the edge of a phone screen now slides back inside it instead of
@@ -85,6 +87,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A faster first visit.** The page's font now comes from this site instead of Google Fonts, so on a phone's first
+  visit the page appears about a second sooner (blank for less time). It's on T-Score too.
+- **Quicker tab switches with many leagues.** Switching to the Lineup tab no longer redraws the Dashboard behind it,
+  and the Dashboard keeps its league cards when nothing on them changed, so the pause before the slide is shorter.
+- **The SoS grid shows when there's more to scroll.** Opened from "Edit Manual SoS Grid" on a phone, the grid now has
+  the shadow on its right edge that tells you it scrolls sideways (it only appeared after you'd scrolled).
 - **The Trade Analyzer says what would make a trade fair.** When a trade is outside the fair band, a box under the
   verdict says who would have to add and how much ("To make it fair, they'd add 3,460–5,450", the range that keeps it
   within 10%), by your ROS

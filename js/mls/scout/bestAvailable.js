@@ -131,6 +131,8 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
     // Renders are async (the player map), and Sync All asks for one per league it syncs; only the
     // newest one writes.
     let renderGen = 0;
+    // Each league's section element -> the HTML last written into it. A redrawn card has a new section, so it's written.
+    const writtenSections = new WeakMap();
 
     const dashboardShown = () => {
         const tab = document.getElementById('setupTab');
@@ -382,11 +384,17 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
             const count = list.querySelector(`.mls-lc-count-upgrades${sel}`);
             const a = analyses.get(l.leagueId);
             if (section) {
-                section.innerHTML = a
+                const html = a
                     ? leagueSectionHTML(a, !!a.upgrade || !anyRanked, section.querySelector(':scope > details.mls-ba-fold'))
                     : `<p class="mls-ba-excluded">No best available here: in a manual league the app only knows your own roster, not who's on the waiver wire.</p>`;
+                // The same section as last time, and the same HTML: left as it is (improvements S17).
+                if (writtenSections.get(section) !== html) {
+                    section.innerHTML = html;
+                    writtenSections.set(section, html);
+                }
             }
-            if (count) count.textContent = a && a.upgradeCount ? plural(a.upgradeCount, 'upgrade') : '';
+            const upgrades = a && a.upgradeCount ? plural(a.upgradeCount, 'upgrade') : '';
+            if (count && count.textContent !== upgrades) count.textContent = upgrades;
         });
         // Now the upgrades are known: cards with nothing to do fold (the ones you haven't folded or opened yourself).
         applyDefaultFolds();

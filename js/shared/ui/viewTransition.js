@@ -85,19 +85,48 @@ export function vtName(prefix, id) {
     return prefix + String(id).replace(/[^a-zA-Z0-9-]/g, c => '_' + c.charCodeAt(0).toString(16).padStart(4, '0'));
 }
 
+// Where the marker sits under each tab-bar button: half the button's width, centered. Measured once, then
+// again only when the bar changes size (a ResizeObserver, which also sees a desktop scrollbar come or go,
+// which no resize event reports). The buttons don't move otherwise, and measuring on every switch read the
+// layout just after showTab had shown the new tab, so the browser laid the whole new tab out an extra time in
+// the middle of the switch (improvements S17).
+let markerSpots = null;
+function measureMarkerSpots(bar) {
+    markerSpots = new Map();
+    for (const btn of bar.querySelectorAll('.nav-btn')) {
+        const w = Math.round(btn.offsetWidth * 0.5);
+        markerSpots.set(btn, { w, x: Math.round(btn.offsetLeft + (btn.offsetWidth - w) / 2) });
+    }
+}
+
 // The tab bar's marker (owner's choice, S16): a short green bar above the active tab, which slides to
 // the new one (css/base.css, .nav-marker). Both apps' showTab call this after moving .active; it's
-// built on first use, so neither page's HTML carries it.
-export function placeTabMarker() {
+// built on first use, so neither page's HTML carries it. With a ResizeObserver it's first placed from the
+// observer's first report, after the browser's own first layout: measuring when the page's init first called
+// this forced that layout early (74 ms in PageSpeed's trace of Draft Strategist, improvements S17).
+let markerObserved = false;
+export function placeTabMarker(measureNow = false) {
     const bar = document.querySelector('.nav-bar');
     if (!bar) return;
+    if (!markerObserved) {
+        markerObserved = true;
+        if (typeof ResizeObserver === 'function') {
+            // Runs after the browser's own layout, so reading the sizes there costs nothing extra.
+            new ResizeObserver(() => { markerSpots = null; placeTabMarker(true); }).observe(bar);
+            return;
+        }
+        window.addEventListener('resize', () => { markerSpots = null; placeTabMarker(true); });
+        measureNow = true;
+    }
     const active = bar.querySelector('.nav-btn.active');
-    // Measured before a new marker is added, so the first one starts in place instead of sliding in.
-    const w = active ? Math.round(active.offsetWidth * 0.5) : 0;
-    const x = active ? Math.round(active.offsetLeft + (active.offsetWidth - w) / 2) : 0;
+    if (!markerSpots || (active && !markerSpots.has(active))) {
+        if (!measureNow) return; // not measured yet: the observer's first report places it
+        measureMarkerSpots(bar);
+    }
+    const { w, x } = (active && markerSpots.get(active)) || { w: 0, x: 0 };
     let marker = bar.querySelector('.nav-marker');
     if (!marker) {
-        window.addEventListener('resize', () => placeTabMarker());
+        // Positioned before it's added, so the first one starts in place instead of sliding in.
         marker = document.createElement('span');
         marker.className = 'nav-marker';
         marker.setAttribute('aria-hidden', 'true');

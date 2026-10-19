@@ -5,7 +5,9 @@
 //   * PapaParse (cdnjs) is served from tests/node_modules, same pinned version as the pages.
 //   * Sleeper API calls are answered from tests/fixtures/sleeper/ (see SLEEPER_FIXTURES);
 //     any Sleeper URL without a fixture gets a 404 and is recorded in `unmocked`.
-//   * Everything else (Google Fonts, MathJax, Ko-fi image, FantasyCalc, Google Sheets) is aborted.
+//   * Everything else (MathJax, Ko-fi image, FantasyCalc, Google Sheets) is aborted.
+//   * The site's own font (fonts/*.woff2, self-hosted since improvements S17) is aborted too, as Google Fonts was
+//     before it: the screenshots are drawn in the OS's fallback fonts. fonts.spec.mjs checks the font itself.
 //     /api/ffc/ (a Cloudflare Pages Function, not run by serve.mjs) 404s unless a spec stubs it.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -67,6 +69,8 @@ export async function preparePage(page) {
         }
         return route.abort();
     });
+
+    await page.route(/^http:\/\/localhost(:\d+)?\/fonts\/[^/]+\.woff2$/, (route) => route.abort());
 
     page.on('pageerror', (err) => errors.push(`uncaught: ${err.message}`));
     page.on('console', (msg) => {

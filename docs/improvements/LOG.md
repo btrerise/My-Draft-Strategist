@@ -4918,3 +4918,147 @@ from CI run 39208970674 (its `-actual.png`, after checking each `-expected.png` 
 baseline and the first changed row is the Power Rankings Guide's picks sentence):
 `tests/baselines/linux/desktop/mls-league-guide.png` (1280×6599 → 1280×6731) and
 `tests/baselines/linux/phone/mls-league-guide.png` (390×13786 → 390×14191).
+
+## S17 — Faster first load and tab switches
+
+**User-visible effect.** On a phone's first visit every page (Draft Strategist, Lineup Strategist, T-Score) appears about a
+second sooner: the font comes from this site, so the browser no longer waits on two connections to Google before the
+first paint, and the blank white screen before it is that much shorter. Draft Strategist's logos download smaller
+(5775.svg and logo.svg) and look the same. In Lineup Strategist with many leagues, switching to the Lineup tab pauses
+less before it slides in (on a 4x-slowed CPU with 21 leagues, its longest task went from ~125–150 ms to ~80–105 ms),
+because it no longer redraws the hidden Dashboard, and the Dashboard keeps its league cards when nothing on them changed.
+Nothing looks different once loaded.
+
+**Measured first.** Two opt-in tools, both in docs/TESTING.md: `npm run perf` (`tests/tools/perf.mjs`: Lighthouse 13.5,
+the version PageSpeed ran, as a devDependency in tests/package.json; PageSpeed's mobile setup; first, cold and repeat
+visits; a serve.mjs-like and a Cloudflare-like server; any git ref or folder) and `npm run perf:tabs`
+(`tests/tools/tab-switch.tool.mjs`: S16's 21 leagues at 4x CPU, with an optional profile). Every number, the baseline and
+each change measured on its own commit are in **docs/improvements/performance.md**. The PageSpeed API's anonymous quota
+was used up and this container can't reach the live site, so the owner's PageSpeed run on the branch preview is still
+to add there (below).
+
+**Owner's decisions (asked with the measurements).**
+1. **Minifying:** keep no build step. Measured: JS 498 → 220 KB after brotli, `/lineup/` time-to-interactive −0.7 s, first
+   paint unchanged. Noted under "Open follow-ups" in docs/TESTING.md in case a build step is wanted one day.
+2. **The font:** self-host Outfit (over Google Fonts loaded without blocking; both measured ~1.1 s sooner first paint,
+   self-hosting slightly more and offline too).
+3. **Keep:** the smaller logos and the tab-switch changes. **Dropped:** the inline page background (built, measured no
+   effect, reverted).
+
+**What changed and where.**
+- `fonts/outfit-latin.woff2`, `fonts/outfit-latin-ext.woff2` (Google's own Outfit v15 files, one variable font per
+  subset), `fonts/OFL.txt`. `css/base.css` starts with their `@font-face` (weights 400–700, `font-display: swap`,
+  Google's subsets); each page's `<head>` preloads the latin file instead of linking Google Fonts' stylesheet and its two
+  preconnects. Both files are in `PRECACHE_ASSETS`. `CACHE_NAME` v2.8.96 → v2.8.97.
+- `images/5775.svg` (226 → 125 KB; 134 → 81 KB brotli) and `images/logo.svg` (191 → 160 KB; 79 → 68 KB): the editor's
+  content-credentials manifest (`<metadata>`) removed and the embedded PNG masks re-encoded losslessly, with a one-off
+  script (not kept: Python + Pillow, verified by rendering old and new at 16–500 px and 1x–3x in Chromium, 0 pixels
+  different). Rounding the path numbers would have saved more but moved anti-aliased pixels, so it isn't done.
+- `js/shared/ui/viewTransition.js`: `placeTabMarker` measures the tab bar's buttons once and again only when the bar
+  changes size (a ResizeObserver, which also catches a desktop scrollbar coming or going), instead of reading
+  `offsetWidth`/`offsetLeft` right after showTab had shown the new tab, which forced a layout of it mid-switch.
+- `js/boot.js`: a failed `<link>` raises the "Something went wrong loading the app" banner only when it's a stylesheet.
+  Found by the full check: the specs block the font, and its failed preload (a same-origin `<link>`) raised the banner
+  whenever it failed after boot.js was listening, which a real phone on a flaky connection could hit too. Test first:
+  `fonts.spec.mjs`, "a font that fails to load is not a fatal error", failed before the fix.
+- `js/mls/render/lineup.js`: `renderLineupUI` redraws the Dashboard's league cards only while the Dashboard shows
+  (showing it redraws them anyway, through showTab's `refreshLeagueDropdown`).
+- `js/mls/render/leagueCards.js`: `renderLeagueCards` keeps the cards when the new HTML is identical and the list still
+  holds the cards it last wrote. `js/mls/scout/bestAvailable.js`: a Best Available section whose HTML is unchanged isn't
+  rewritten. S16's rules hold: the work after a switch runs once, rapid taps end on the last tab
+  (view-transitions.spec passes unchanged).
+- Tests: `fonts.spec.mjs` (new: each page loads the self-hosted Outfit at 400–700 and asks nothing of Google Fonts);
+  `mls-tab-redraws.spec.mjs` (new: an unchanged Dashboard keeps its card elements, a change redraws them, a Lineup render
+  leaves the hidden Dashboard alone and showing it brings it up to date; the first test fails on main). `helpers.mjs`
+  blocks `fonts/*.woff2` as it blocked Google Fonts, so screenshots keep the fallback fonts; `serve.mjs` serves `.woff2`
+  as `font/woff2`; `css-compare` keeps the font blocked on both sides; `compare-css`'s npm script names its own file now
+  that `tests/tools/` has another `*.tool.mjs`.
+- CHANGELOG: lines under both apps. docs/TESTING.md: the two tools, the font stub, and four speed follow-ups.
+
+**Tried and not kept (measured, in performance.md).**
+- **modulepreload lists** for every module a page imports, generated from the import graph and checked by
+  check-precache (`--write`): slower everywhere. `/lineup/`'s largest paint went from 2.61 s to 5.38 s simulated and from
+  1.70 s to 10.93 s with real throttling: ~95 downloads started with the stylesheets and the hero logo share slow 4G's
+  bandwidth with them. At the end of `<body>` still slower simulated. The chain of imports (5 levels) isn't the
+  bottleneck; the bytes are. Reverted; the generator is in commit 7a320e7.
+- **Inline page background** in each `<head>`: no effect. Chrome paints nothing until the blocking stylesheets arrive,
+  so the white frames are the empty page before the first paint (a `<meta name="color-scheme" content="dark">` didn't
+  change them either). The way to shorten them was an earlier first paint, which the font change gives.
+- **Critical CSS inline:** its upper bound (no stylesheet blocking at all) gains only 0.2–0.5 s over the font change,
+  for a flash of unstyled page and a second copy of the CSS. Not built.
+- **PapaParse on first use:** removing it entirely changed nothing measurable (it's `defer`, 7 KB brotli). Lighthouse
+  finds no legacy JavaScript locally; the live run's 11 KiB is most likely a script Cloudflare adds to the live pages.
+  The owner can check the URL in PageSpeed's "Legacy JavaScript" section.
+- **`_headers`:** can't help a first visit, the service worker already covers repeat visits, and a long cache life on
+  images would hold back a changed logo for anyone without it. Not added.
+- **Unused CSS:** 66–98% of each file is unused at a first visit's load (styles for tabs and states not yet opened);
+  a split would save at most part of the critical-CSS bound above. Not worth a card.
+
+**Third-party and other findings, left for later** (also under "Open follow-ups" in docs/TESTING.md): T-Score blocks the
+main thread ~1.1 s on every load (its PageSpeed score stays near 77 on repeat visits); Draft Strategist's setup page
+shifts its layout (0.20) on a slow first visit when the app draws above the "Load Rankings" card (the live PageSpeed
+run's simulation can't see it); the rest of a Dashboard switch (~100 ms with 21 leagues) is layout that
+`content-visibility: hidden` could keep. No third-party forced reflow showed up in the traces.
+
+### S17, round 2: the owner's PageSpeed run on the preview, and the scroll-shadow reflow
+
+The owner ran PageSpeed Insights (mobile) on the branch preview's `/`: **Performance 88, First Contentful Paint 1.5 s,
+Largest Contentful Paint 3.4 s**, TBT 0, CLS 0; render-blocking down from ~920 ms to 330 ms (Google Fonts gone), no legacy
+JavaScript. Full comparison in performance.md's last section (their 2026-10-12 run was `/lineup/` on the live site).
+
+**Fixed from it: a forced reflow at load (73 ms).** `js/shared/ui/scrollShadows.js` checked its two wide tables
+(Draft Strategist's Roster Limits, Lineup Strategist's SoS grid) at DOMContentLoaded and after every change inside them
+by reading `scrollWidth`, which made the browser lay the page out on the spot, before its first paint. It now checks from
+a ResizeObserver on each container and its children (after the browser's own layout); the MutationObserver only hands new
+content to it and lets go of removed elements. **User-visible:** that also catches a table that only gets a size when
+it's shown: Lineup Strategist's SoS grid, opened from its folded "Edit Manual SoS Grid" on a phone, now shows the shadow
+on its right edge that says there's more to scroll (on main it never did until you scrolled). Test first:
+`tests/scroll-shadows.spec.mjs` failed on main (no shadow after opening the grid at 360px), passes now. Screenshots: all
+40 pixel-identical to main's, rendered here the same way. CHANGELOG line under Lineup Strategist.
+
+**Left alone, with reasons (performance.md):** the largest paint on `/` is the header's draft drop-down, which the script
+fills in (a default name in the HTML would flash the wrong name for some); the tab-bar marker's first measurement (6 ms);
+minify (no build step); unused CSS; Ko-fi's cache life (theirs); SEO 69 and the `ai-catalog.json` check (a preview's
+`noindex` header; the site has no such file).
+
+**Left over.** Nothing for S17. The speed follow-ups (T-Score's 1.1 s of blocking script at load, Draft Strategist's
+setup-card layout shift on slow first visits, the Dashboard's layout after `display: none`, the drop-down as largest
+paint, minifying if a build step is ever wanted) are under "Open follow-ups" in docs/TESTING.md.
+
+### S17, round 3: PageSpeed on `/lineup/` and `/` of the final preview; the marker's first measurement
+
+The owner re-ran PageSpeed on the preview for both pages: **`/lineup/` 74** (FCP 2.6 s, LCP 5.7 s; live was 69 / 3.7 s /
+6.0 s) and **`/` 86** (FCP 1.6 s, LCP 3.3 s). Details and why `/lineup/`'s largest paint barely moved are in
+performance.md's last section: PageSpeed counts every request started before the logo paints, and on `/lineup/` that's
+~100 modules (277 KB of JavaScript) plus Sleeper's and ESPN's start-up requests, so the bytes loaded before the first
+paint, not the logo, set it.
+
+**Fixed:** the remaining forced reflow on `/` (74 ms): `placeTabMarker` (js/shared/ui/viewTransition.js) measured the tab
+bar during init. With a ResizeObserver, the marker is now first placed from its first report, after the browser's own
+layout; later calls use the stored spots as before. view-transitions, keyboard and setup specs pass; screenshots
+identical to main's.
+
+**Put to the owner** (they offered to revisit earlier decisions): the minify build step (PageSpeed: 148.5 of `/lineup/`'s
+277.7 KiB of JavaScript), loading the Scout / Trade / Simulator code on first use instead of at start-up, and deferring
+the start-up Sleeper/ESPN requests until after the first paint.
+
+**Owner's answer:** only **delay the ESPN/Sleeper fetch**. Keep no build step; loading the Scout / Trade / Simulator code
+on first use (about 144 KB brotli, 39% of `/lineup/`'s start-up JavaScript) is not taken up now (noted in
+docs/TESTING.md's follow-ups with the measurement).
+
+**Built:** `js/mls/init.js` starts `refreshCurrentNflWeek` (Sleeper's NFL week, which then fetches ESPN's kickoff times)
+two frames after the load event (`afterFirstPaint`), with a 3 s fallback for a background tab, instead of from the load
+handler itself. On a fast first load the load event came before the logo's paint, so PageSpeed counted both requests
+(~22 KB and two new connections) against the largest paint. The paint-timing API wasn't used: the specs' fake clock
+leaves the page without paint entries, and every start-up would have waited for the fallback. Test first:
+`tests/mls-startup-requests.spec.mjs` counts the frames drawn after `load` when the request goes out (0 on main, at least
+1 now) and checks the week still arrives. **User-visible:** none to speak of; on a fresh load, bye badges and kickoff
+times can appear a fraction of a second later than before.
+
+### S17: PageSpeed on the last preview (188a0a73)
+
+The owner ran both pages again after round 3: **`/lineup/` 87** (FCP 2.3 s, LCP 3.8 s, Speed Index 2.3 s; the live run
+before S17 was 69 / 3.7 s / 6.0 s / 4.3 s) and **`/` 89** (FCP 1.6 s, LCP 3.3 s, Speed Index 4.4 s). On `/lineup/` the
+filmstrip has no white frames any more and the logo's render delay fell from 1,020 ms to 110 ms now that the start-up
+requests wait for the paint. `/` lists no forced reflow. Details in performance.md's last section. Nothing left for S17.
+

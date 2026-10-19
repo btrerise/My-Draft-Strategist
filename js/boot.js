@@ -266,7 +266,7 @@
         const target = e.target;
         const tag = target && target.tagName ? target.tagName.toUpperCase() : '';
 
-        // A failed resource load rather than a thrown error. Two filters here, both load-
+        // A failed resource load rather than a thrown error. Three filters here, all load-
         // bearing:
         //
         // Only scripts and stylesheets can be fatal. Images 404 routinely in this app --
@@ -279,7 +279,11 @@
         // "the app didn't load" because an ad blocker ate a CDN would be a false alarm on a
         // page that works. A same-origin script failing is the real case this exists for --
         // that's any file in js/mds/'s, js/mls/'s or js/tscore/'s module graph.
-        if (tag === 'SCRIPT' || tag === 'LINK') {
+        //
+        // And only a <link> that IS a stylesheet. A preload (the self-hosted font, improvements S17) that fails costs
+        // only what it was fetching early: the font's own @font-face just falls back.
+        const isStylesheet = tag === 'LINK' && /(^|\s)stylesheet(\s|$)/i.test(target.rel || '');
+        if (tag === 'SCRIPT' || isStylesheet) {
             const url = target.src || target.href || '';
             if (!isSameOrigin(url)) {
                 console.warn('Optional third-party resource failed to load:', url);

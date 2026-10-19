@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.8.96';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.97';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -59,6 +59,8 @@ const PRECACHE_ASSETS = [
     '/css/mds.css',
     '/css/mls.css',
     '/css/tscore.css',
+    '/fonts/outfit-latin.woff2',      // improvements S17: the site's font, self-hosted (css/base.css)
+    '/fonts/outfit-latin-ext.woff2',
     '/js/mds/main.js',               // the root page's app script (a module)
     // main.js's static imports (one missing file and the whole module graph fails):
     '/js/mds/migrateKeys.js',        // first import: the 6B storage-key rename
