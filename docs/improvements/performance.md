@@ -225,4 +225,26 @@ Preview `a58c7b72` (the branch with the scroll-shadow fix), mobile, Lighthouse 1
   ResizeObserver's first report, after the browser's own layout (screenshots still identical).
 - **Not ours / not relevant:** Ko-fi's image cache life, SEO (preview `noindex`), `ai-catalog.json`.
 - **After these runs (owner's choice):** the start-up requests to Sleeper (NFL week) and ESPN (kickoff times) wait until
-  two frames after the load event, so they no longer start before the first paint. Not yet measured by PageSpeed.
+  two frames after the load event, so they no longer start before the first paint.
+
+## PageSpeed Insights on the last preview (owner's runs, 2026-10-19 11:57)
+
+Preview `188a0a73` (everything above, including the marker and start-up request changes), mobile, Lighthouse 13.5.0:
+
+| | Live `/lineup/` 2026-10-12 | `/lineup/` a58c7b72 | **`/lineup/` 188a0a73** | `/` a58c7b72 | **`/` 188a0a73** |
+|---|---|---|---|---|---|
+| Performance | 69 | 74 | **87** | 86 | **89** |
+| First Contentful Paint | 3.7 s | 2.6 s | **2.3 s** | 1.6 s | **1.6 s** |
+| Largest Contentful Paint | 6.0 s | 5.7 s | **3.8 s** | 3.3 s | **3.3 s** |
+| Speed Index | 4.3 s | 3.9 s | **2.3 s** | 6.0 s | **4.4 s** |
+| TBT / CLS | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 10 ms / 0 |
+| White frames in the filmstrip | 3 | 2 | **0** | 4 | 3 |
+
+- **`/lineup/`:** the logo's render delay fell from 1,020 ms to 110 ms, and the Sleeper and ESPN requests now start at
+  613 and 714 ms of the trace, after the first paint (critical path 1,123 → 714 ms). The filmstrip is dark from the first
+  frame. Left: render-blocking CSS (mls.css 750 ms, base.css 450 ms; minifying, which the owner declined, would take
+  22 KiB off them), 149 KiB of JavaScript minifying could remove, and 59 ms of forced reflow PageSpeed can't attribute to
+  a file (no script named; not one of ours that the earlier runs listed).
+- **`/`:** no forced reflow listed any more (both of ours fixed). Largest paint is still the draft drop-down (render delay
+  2,230 ms, filled in by the script; left, see follow-ups).
+- PageSpeed's numbers vary from run to run (the same build can move a few points), so compare trends, not single points.

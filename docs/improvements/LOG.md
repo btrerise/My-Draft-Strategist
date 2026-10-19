@@ -5055,3 +5055,10 @@ leaves the page without paint entries, and every start-up would have waited for 
 1 now) and checks the week still arrives. **User-visible:** none to speak of; on a fresh load, bye badges and kickoff
 times can appear a fraction of a second later than before.
 
+### S17: PageSpeed on the last preview (188a0a73)
+
+The owner ran both pages again after round 3: **`/lineup/` 87** (FCP 2.3 s, LCP 3.8 s, Speed Index 2.3 s; the live run
+before S17 was 69 / 3.7 s / 6.0 s / 4.3 s) and **`/` 89** (FCP 1.6 s, LCP 3.3 s, Speed Index 4.4 s). On `/lineup/` the
+filmstrip has no white frames any more and the logo's render delay fell from 1,020 ms to 110 ms now that the start-up
+requests wait for the paint. `/` lists no forced reflow. Details in performance.md's last section. Nothing left for S17.
+
