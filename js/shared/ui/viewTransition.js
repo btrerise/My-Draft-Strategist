@@ -101,22 +101,32 @@ function measureMarkerSpots(bar) {
 
 // The tab bar's marker (owner's choice, S16): a short green bar above the active tab, which slides to
 // the new one (css/base.css, .nav-marker). Both apps' showTab call this after moving .active; it's
-// built on first use, so neither page's HTML carries it.
-export function placeTabMarker() {
+// built on first use, so neither page's HTML carries it. With a ResizeObserver it's first placed from the
+// observer's first report, after the browser's own first layout: measuring when the page's init first called
+// this forced that layout early (74 ms in PageSpeed's trace of Draft Strategist, improvements S17).
+let markerObserved = false;
+export function placeTabMarker(measureNow = false) {
     const bar = document.querySelector('.nav-bar');
     if (!bar) return;
+    if (!markerObserved) {
+        markerObserved = true;
+        if (typeof ResizeObserver === 'function') {
+            // Runs after the browser's own layout, so reading the sizes there costs nothing extra.
+            new ResizeObserver(() => { markerSpots = null; placeTabMarker(true); }).observe(bar);
+            return;
+        }
+        window.addEventListener('resize', () => { markerSpots = null; placeTabMarker(true); });
+        measureNow = true;
+    }
     const active = bar.querySelector('.nav-btn.active');
-    // Measured before a new marker is added, so the first one starts in place instead of sliding in.
-    if (!markerSpots || (active && !markerSpots.has(active))) measureMarkerSpots(bar);
+    if (!markerSpots || (active && !markerSpots.has(active))) {
+        if (!measureNow) return; // not measured yet: the observer's first report places it
+        measureMarkerSpots(bar);
+    }
     const { w, x } = (active && markerSpots.get(active)) || { w: 0, x: 0 };
     let marker = bar.querySelector('.nav-marker');
     if (!marker) {
-        // Runs after the browser's own layout, so reading the sizes here costs nothing extra.
-        if (typeof ResizeObserver === 'function') {
-            new ResizeObserver(() => { markerSpots = null; placeTabMarker(); }).observe(bar);
-        } else {
-            window.addEventListener('resize', () => { markerSpots = null; placeTabMarker(); });
-        }
+        // Positioned before it's added, so the first one starts in place instead of sliding in.
         marker = document.createElement('span');
         marker.className = 'nav-marker';
         marker.setAttribute('aria-hidden', 'true');

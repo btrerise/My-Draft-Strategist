@@ -5024,3 +5024,21 @@ minify (no build step); unused CSS; Ko-fi's cache life (theirs); SEO 69 and the 
 **Left over.** Nothing for S17. The speed follow-ups (T-Score's 1.1 s of blocking script at load, Draft Strategist's
 setup-card layout shift on slow first visits, the Dashboard's layout after `display: none`, the drop-down as largest
 paint, minifying if a build step is ever wanted) are under "Open follow-ups" in docs/TESTING.md.
+
+### S17, round 3: PageSpeed on `/lineup/` and `/` of the final preview; the marker's first measurement
+
+The owner re-ran PageSpeed on the preview for both pages: **`/lineup/` 74** (FCP 2.6 s, LCP 5.7 s; live was 69 / 3.7 s /
+6.0 s) and **`/` 86** (FCP 1.6 s, LCP 3.3 s). Details and why `/lineup/`'s largest paint barely moved are in
+performance.md's last section: PageSpeed counts every request started before the logo paints, and on `/lineup/` that's
+~100 modules (277 KB of JavaScript) plus Sleeper's and ESPN's start-up requests, so the bytes loaded before the first
+paint, not the logo, set it.
+
+**Fixed:** the remaining forced reflow on `/` (74 ms): `placeTabMarker` (js/shared/ui/viewTransition.js) measured the tab
+bar during init. With a ResizeObserver, the marker is now first placed from its first report, after the browser's own
+layout; later calls use the stored spots as before. view-transitions, keyboard and setup specs pass; screenshots
+identical to main's.
+
+**Put to the owner** (they offered to revisit earlier decisions): the minify build step (PageSpeed: 148.5 of `/lineup/`'s
+277.7 KiB of JavaScript), loading the Scout / Trade / Simulator code on first use instead of at start-up, and deferring
+the start-up Sleeper/ESPN requests until after the first paint. Answer recorded below when given.
+

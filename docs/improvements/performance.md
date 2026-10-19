@@ -196,3 +196,31 @@ the live site, so the two pages differ), mobile, Lighthouse 13.5.0, HeadlessChro
   players, so it is unused on a first visit; kept for the board).
 - Not relevant on a preview URL: SEO 69 (`x-robots-tag: noindex`, which Cloudflare sets on previews) and the
   "Agentic Browsing" `ai-catalog.json` check (the site has none; the 404 answer is the HTML fallback).
+
+## PageSpeed Insights on the final preview (owner's runs, 2026-10-19 11:38–11:39)
+
+Preview `a58c7b72` (the branch with the scroll-shadow fix), mobile, Lighthouse 13.5.0:
+
+| | Live `/lineup/` 2026-10-12 | Preview `/lineup/` | Preview `/` |
+|---|---|---|---|
+| Performance | 69 | **74** | **86** |
+| First Contentful Paint | 3.7 s | **2.6 s** | **1.6 s** |
+| Largest Contentful Paint | 6.0 s | 5.7 s | 3.3 s |
+| Speed Index | 4.3 s | 3.9 s | 6.0 s |
+| TBT / CLS | 0 / 0 | 0 / 0 | 0 / 0 |
+| Render-blocking | ~920 ms | 1,310 ms (mls.css 820, base.css 490) | 850 ms (mds.css 510, base.css 340) |
+| JS transferred (PageSpeed's "minify" list) | | 277.7 KiB, 148.5 KiB of it removable by minifying | 60.2 KiB, 34.3 removable |
+
+- **Why `/lineup/`'s largest paint barely moved.** Its largest paint is the hero logo (9 KB, loaded in 130 ms), but
+  PageSpeed's simulation counts every request that had started before the logo painted, and all ~100 of the page's
+  JavaScript modules (277 KB compressed), both stylesheets and two third-party requests had: Sleeper's NFL state and
+  ESPN's scoreboard (21 KB), which the app's start-up fetches for kickoff times even before any league exists. On a
+  1.6 Mbps link those bytes, not the logo, set the 5.7 s. The local tool blocked the third parties and its localhost
+  timing put the logo before most modules, so it predicted ~2 s; the real lever on `/lineup/` is how many bytes load
+  before the first paint.
+- **`/`:** largest paint is the header's draft drop-down (3,400 ms render delay, waiting on the app's script);
+  Speed Index 6.0 s because the filmstrip stays blank for its first four frames and the setup page is drawn by script.
+- **Forced reflow on `/`:** the scroll-shadow one is gone; the remaining 74 ms was the tab bar's marker measuring
+  itself during init (`placeTabMarker`). **Fixed after these runs:** the marker is first placed from the
+  ResizeObserver's first report, after the browser's own layout (screenshots still identical).
+- **Not ours / not relevant:** Ko-fi's image cache life, SEO (preview `noindex`), `ai-catalog.json`.
