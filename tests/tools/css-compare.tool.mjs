@@ -63,6 +63,8 @@ function refFile(pathname) {
 async function routeLocal(page, fromRef) {
     await page.route((url) => url.origin === ORIGIN, async (route) => {
         const { pathname } = new URL(route.request().url());
+        // The font stays blocked on both sides (preparePage), so both render in the same fallback fonts.
+        if (pathname.startsWith('/fonts/')) return route.fallback();
         let body, contentType;
         if (fromRef) {
             const f = refFile(pathname);
