@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.8.95';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.8.96';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -106,6 +106,7 @@ const PRECACHE_ASSETS = [
     '/js/shared/ui/focusTrap.js',
     '/js/shared/ui/prompt.js',     // S2: text-input dialog (renaming a ranking set)
     '/js/shared/ui/scriptLoader.js',
+    '/js/shared/ui/exportImage.js',
     '/js/shared/ui/scrollShadows.js',
     '/js/shared/ui/setupChecklist.js',
     '/js/shared/ui/statusFeedback.js', // 8B: "Processing…" / success lines, both apps
@@ -147,6 +148,9 @@ const PRECACHE_ASSETS = [
     '/js/mls/trade/verdict.js',
     '/js/mls/trade/lineupImpact.js',
     '/js/mls/trade/lineupSection.js',
+    '/js/mls/trade/makeFair.js',
+    '/js/mls/trade/fairSection.js',
+    '/js/mls/leagues/picks.js',
     '/js/mls/trade/picker.js',
     '/js/mls/scout/engine.js',
     '/js/mls/scout/waivers.js',

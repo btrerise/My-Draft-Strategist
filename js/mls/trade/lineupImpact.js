@@ -12,6 +12,7 @@
 //     Lineup tab's optimizer rules (bestLineup in js/mls/scout/waiverScanner.js), slot by slot.
 // Injuries and byes are left out of both: a trade is for the rest of the season, not this week.
 import { bestLineup } from '../scout/waiverScanner.js';
+import { picksAfterTrade } from '../leagues/picks.js';
 
 // The starting slots the Power Rankings fill (pickPowerStarters in power/shared.js; K and DEF aren't scored).
 export const POWER_LINEUP_SLOTS = ['QB', 'RB', 'WR', 'TE', 'WRRB', 'WRTE', 'FLEX', 'SFLEX'];
@@ -35,8 +36,10 @@ export function tradePartner(rosterMap, getCleanNames) {
 
 // A copy of the league with the trade made: the players you give leave your roster (to the partner
 // when there is one, else off every roster), and the players you get join yours with their position.
-// give: [cleanName] (on your roster); get: [{ cleanName, pos }]. The original league is untouched.
-export function leagueAfterTrade(league, give, get, partner) {
+// give: [cleanName] (on your roster); get: [{ cleanName, pos }]. picks: the draft picks traded ({ give, get }: names),
+// moved in league.picks when the league has them (improvements S19, round 3: picks count toward Future value).
+// The original league is untouched.
+export function leagueAfterTrade(league, give, get, partner, picks = null) {
     const rosterMap = { ...(league.globalRosterMap || {}) };
     const posMap = { ...(league.globalPosMap || {}) };
     give.forEach(c => {
@@ -47,7 +50,9 @@ export function leagueAfterTrade(league, give, get, partner) {
         rosterMap[p.cleanName] = 'You';
         if (!posMap[p.cleanName]) posMap[p.cleanName] = p.pos;
     });
-    return { ...league, globalRosterMap: rosterMap, globalPosMap: posMap };
+    const after = { ...league, globalRosterMap: rosterMap, globalPosMap: posMap };
+    if (league.picks && picks) after.picks = picksAfterTrade(league.picks, { give: picks.give || [], get: picks.get || [], partner });
+    return after;
 }
 
 // The Power Rankings' starting slots a team can't fill ("RB", "FLEX"), one entry per empty slot.
@@ -64,9 +69,9 @@ export function openPowerSlots(team, reqs) {
 
 // Before and after for you and the partner. computePower(league) -> computePositionalPower's teams.
 // Returns null when the league can't be scored (no teams, or you aren't in it).
-export function powerTradeImpact(league, { give, get, partner, reqs }, computePower) {
+export function powerTradeImpact(league, { give, get, partner, reqs, picks = null }, computePower) {
     const before = computePower(league);
-    const after = computePower(leagueAfterTrade(league, give, get, partner));
+    const after = computePower(leagueAfterTrade(league, give, get, partner, picks));
     const find = (teams, owner) => (teams || []).find(t => t.owner === owner) || null;
     const you = { owner: 'You', before: find(before, 'You'), after: find(after, 'You') };
     if (!you.before || !you.after) return null;

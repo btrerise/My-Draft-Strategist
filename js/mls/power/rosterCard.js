@@ -9,7 +9,7 @@ import { getActiveLeague } from '../helpers.js';
 import { ordinal } from './allLeagues.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { POWER_POSITIONS, computePositionalPower, POWER_STARTER_CARRY_CAP, powerTier } from './shared.js';
-import { ensurePowerAgeIndex, resolvePowerFuture } from './futureValue.js';
+import { ensurePowerAgeIndex, futureRankText, futureMoreHTML, powerPicksNote, resolvePowerFuture } from './futureValue.js';
 import { getPowerLeagueKind, assignPowerLabels, powerLabelAdvice } from './directionLabels.js';
 import { renderRosterPowerStrip, scrollToPowerRankings } from './snapshot.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -83,7 +83,7 @@ export function refreshPowerRankings() {
     }
     assignPowerLabels(teams, kind);
     teams.forEach(t => { t.starterTier = powerTier(t.starterRank, teams.length); });
-    renderPowerRankingsTable(teams, { league, source: src, kind, futureLabel: futureInfo.label });
+    renderPowerRankingsTable(teams, { league, source: src, kind, futureLabel: futureInfo.label, picksLabel: futureInfo.picks });
     renderRosterPowerStrip(teams, { source: src });
 }
 
@@ -179,9 +179,9 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
         html += players.map(p => `
             <div class="mls-power-tooltip-row">
                 <span class="mls-power-tooltip-name">${escapeHtml(p.name)}</span>
-                <span class="mls-power-tooltip-rank">${p.age != null ? `${p.age} yrs &middot; ` : ''}#${p.futureRank != null ? p.futureRank : p.rank}</span>
+                <span class="mls-power-tooltip-rank">${futureRankText(p)}</span>
             </div>`).join('');
-        if ((t.futurePlayers || []).length > players.length) html += `<div class="mls-power-tooltip-more">+ ${t.futurePlayers.length - players.length} more</div>`;
+        html += futureMoreHTML(t.futurePlayers, players.length, escapeHtml);
         return html + `</div>`;
     };
 
@@ -238,6 +238,11 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
     if (ctx.kind === 'dynasty') {
         if (ctx.futureLabel === 'age') notes.push(`<strong>Future</strong> is each roster's future value: its value from these rankings, adjusted for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less.`);
         else if (ctx.futureLabel === 'market') notes.push(`<strong>Future</strong> is each roster's future value. Couldn't load player ages from Sleeper, so it uses dynasty Market Consensus values instead.`);
+        // Draft picks in the Future column (improvements S19, round 3), when this league's picks were synced.
+        if (ctx.futureLabel === 'age' || ctx.futureLabel === 'market') {
+            const picksNote = powerPicksNote(ctx.league, ctx.picksLabel);
+            if (picksNote) notes.push(picksNote);
+        }
         else if (ctx.futureLabel === 'loading') notes.push(`Loading player ages from Sleeper for the Future column…`);
         else notes.push(`Couldn't load player ages from Sleeper, so there's no Future column; labels use the starting lineup alone. Pulling Dynasty Market Consensus data (Trade Finder on the Scout tab) gives a fallback.`);
         notes.push(`Labels: <strong>Contender</strong> = top-third starting lineup; <strong>Retool</strong> = mid-pack lineup with a decent future; <strong>Rebuild</strong> = bottom-third lineup, or mid-pack with a bottom-third future.`);

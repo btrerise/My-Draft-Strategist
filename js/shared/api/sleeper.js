@@ -70,6 +70,17 @@ export async function getSleeperLeagueRosters(leagueId) {
     return res.json();
 }
 
+/**
+ * Every rookie-draft pick that has changed hands in a league ({ season, round, roster_id, previous_owner_id,
+ * owner_id }). Lineup Strategist reads it for dynasty and keeper leagues (improvements S19). Returns null on a
+ * non-ok response, so a league still syncs without it.
+ */
+export async function getSleeperTradedPicks(leagueId) {
+    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/traded_picks`);
+    if (!res.ok) return null;
+    return res.json();
+}
+
 /** Throws "Could not fetch leagues for this user." on a non-ok response. */
 export async function getSleeperUserLeagues(userId, season) {
     const res = await mdsFetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${season}`);

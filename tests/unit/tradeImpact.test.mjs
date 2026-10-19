@@ -228,3 +228,41 @@ describe('the headline: value and lineup in one sentence', () => {
             'Starting lineup stays 5th of 12, but stronger. No position room changes rank.');
     });
 });
+
+describe('dynasty: draft picks in future value (improvements S19, round 3)', () => {
+    // Even rosters by players' future value; picks decide it. pickRank: every pick counts like a player ranked 50th
+    // (a 1st) or 100th (a 2nd).
+    const pickRank = (pk) => ({ rank: pk.round === 1 ? 50 : 100, source: 'table' });
+    const players = [['a1', 'RB', 'You', 10], ['a2', 'WR', 'You', 20], ['b1', 'RB', 'Rival', 10], ['b2', 'WR', 'Rival', 20]];
+    const withPicks = (picks) => { const { league, rankings } = makeLeague(players, ONE_QB); league.picks = picks; return { league, rankings }; };
+    const own = (owner) => [{ name: '2027 1st', season: 2027, round: 1, from: null }, { name: '2027 2nd', season: 2027, round: 2, from: null }];
+    const score = (league, rankings) => computePositionalPower(league, rankings, { future: { mode: 'market', rankings, pickRank } });
+
+    test('a team\'s picks add to its future value, listed with its players', () => {
+        const { league, rankings } = withPicks({ You: [...own('You'), { name: '2027 1st', season: 2027, round: 1, from: 'Rival' }], Rival: [own('Rival')[1]] });
+        const teams = score(league, rankings);
+        const you = teams.find(t => t.owner === 'You'), rival = teams.find(t => t.owner === 'Rival');
+        assert.equal(you.futureRank, 1);
+        assert.equal(rival.futureRank, 2);
+        const picks = you.futurePlayers.filter(p => p.isPick);
+        assert.deepEqual(picks.map(p => p.name).sort(), ['2027 1st', '2027 1st (via Rival)', '2027 2nd']);
+        assert.ok(picks.every(p => p.pos === 'Pick' && p.futureValue === Math.round(100000 / (p.rank + 5))));
+        // Without pickRank (or without synced picks) nothing changes: players only.
+        const plain = computePositionalPower(league, rankings, { future: { mode: 'market', rankings } });
+        assert.equal(plain.find(t => t.owner === 'You').futurePlayers.filter(p => p.isPick).length, 0);
+    });
+
+    test('a trade of picks moves them, and future value with them', () => {
+        const { league, rankings } = withPicks({ You: own('You'), Rival: own('Rival') });
+        const before = score(league, rankings);
+        assert.equal(before.find(t => t.owner === 'You').futureScore, before.find(t => t.owner === 'Rival').futureScore);
+        // Your 2027 1st for nothing but their 2nd: their future goes up, yours down.
+        const imp = powerTradeImpact(league, { give: [], get: [], partner: 'Rival', reqs: ONE_QB, picks: { give: ['2027 1st'], get: ['2027 2nd'] } },
+            (l) => score(l, rankings));
+        assert.equal(imp.you.after.futureRank, 2);
+        assert.equal(imp.partner.after.futureRank, 1);
+        const moved = imp.you.after.futurePlayers.filter(p => p.isPick && p.moved).map(p => p.name);
+        assert.deepEqual(moved, ['2027 2nd']);
+        assert.equal(league.picks.You.length, 2); // the original is untouched
+    });
+});

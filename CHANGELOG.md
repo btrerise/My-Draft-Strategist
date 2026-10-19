@@ -15,6 +15,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Export Team draws numbers without gaps.** Numbers in the exported image could be followed by a stray space
+  ("RB1 " or "Bye: 8 "); they now read as on the page.
+- **Tooltips stay on the screen.** A tooltip opened near the edge of a phone screen now slides back inside it instead of
+  running off the side.
 - **Smooth tab changes.** Switching tabs (tapping the tab bar, swiping, the menu, number keys, Back and Forward) now
   slides the page in the direction you're going on a phone, and fades softly (the new page rising a little) on a wider
   screen, while the header and tab bar stay put. A green bar above the tab bar's active tab slides to the new one. Browsers without View
@@ -81,6 +85,50 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The Trade Analyzer says what would make a trade fair.** When a trade is outside the fair band, a box under the
+  verdict says who would have to add and how much ("To make it fair, they'd add 3,460–5,450", the range that keeps it
+  within 10%), by your ROS
+  rankings (Market Consensus if you have none), and lists up to three players from that team's roster, or from yours,
+  whose value would bring it within 10%, from the one closest to even down to the least they'd have to give (and a pick
+  in dynasty leagues), each with its value (and the market's under it, when loaded), saying where it lands the trade
+  ("Fair · 2% your way"), and with an Add button that puts him
+  on the trade and re-runs it. Below them, "Or take off your side" (or "Or ask for less") lists the pieces whose
+  removal alone would make it fair, with Remove. After an Add or Remove, an Undo puts the trade back. When Market
+  Consensus disagrees with your rankings, one line says how the market sees the trade ("By Market Consensus this
+  favors you (15%): they may ask you to add about 1,500.").
+- **The two trade verdicts side by side on wider screens.** By Your Rankings and By Market Consensus now sit next to
+  each other from tablet width up instead of stacking; phones are unchanged. In dynasty and keeper leagues that team's draft picks can be suggested too (market value). When no
+  single player is enough, it suggests pairs ("Add both"); when nothing fits, it says so in one line. The waiver
+  adjustment is counted as it would be after the add. In a manual league it suggests only what you'd add. It isn't
+  part of Export Trade's image.
+- **Fixed: tooltips ran off the screen on phones.** An (i) near the left edge (the Lineup tab's optimizer settings, the
+  Trade Analyzer's Value settings and notes) opened its tooltip partly off-screen, so it couldn't be read. Every
+  tooltip on the site now slides back inside the screen when it opens.
+- **The Trade Analyzer's fair-trade box works from the keyboard.** After Add, Remove or Undo, focus stays with the
+  box (on Undo, or the first suggestion) instead of jumping to the top of the page. The Guide's Trade Analyzer step
+  describes the range, Remove, Undo and the market line.
+- **Fixed: stray gaps after numbers in exported images.** Export Trade read "(0- 10,000 )" and "(- 868 pts, 9%)", and
+  Export Lineup had the same gaps after ranks; numbers in both images now read as on the page.
+- **Fixed: trade verdicts on a wrong total.** A misspelled name counted as 0, so the Trade Analyzer could still say
+  "Fair Trade" (or "Favors Them, 100%" by the market). Now a name that matches no player gets one "No verdict yet" banner
+  naming it, and the verdict comes once it's fixed (Did you mean is right below). A real player the market data doesn't
+  have makes its banner say "Incomplete" and who's missing, and a player missing from your ROS rankings is said to count
+  as 0 instead of "not found".
+- **Fixed: a capital "I" on some info icons.** The (i) beside the Trade Analyzer's "By Your Rankings" and "By Market
+  Consensus" read "I", because the label around it is in capitals. Info icons are now always a lowercase i.
+- **Traded draft picks from Sleeper.** Syncing a dynasty or keeper league now reads which team holds each rookie pick
+  for the next three drafts, traded ones included. The Trade Analyzer suggests only picks the team really holds
+  (marked "via Rival" when it came in a trade), and a pick's row says "Yours", "Rival's", "Not yours (you don't hold
+  it)" or "Rival doesn't hold it". Sync the league once to pick this up.
+- **Draft picks count in the Future column.** In dynasty and keeper leagues, the Power Rankings' Future column (Roster
+  tab, and "Power Rankings after the trade") now adds the picks each team holds, valued by dynasty Market Consensus when
+  you've pulled it, else by a set table (a 1st counts like the 48th-ranked player, a 2nd the 100th, a 3rd the 160th, a
+  4th the 230th, later drafts a little less). The Future tooltip names a team's picks, and a trade's picks move between
+  the teams, so a trade of picks only now shows how it changes your Future rank.
+- **Fewer notes under "Power Rankings after the trade".** The explanations (what Future means, picks, injuries left out)
+  are behind one "How this is worked out" (i); notes that need you, like a name that didn't match, stay as they were.
+- **Fixed: every draft pick of a round had the same market value.** A 2029 1st was valued like a 2027 1st (and every
+  2nd like each other), whatever the market said. Each pick now gets its own year's value.
 - **The Trade Analyzer shows how your team changes.** Under the trade verdict, "Power Rankings after the trade"
   shows your Positional Power Rankings (Start, Ovr, QB, RB, WR, TE) before and after the trade, by your ROS rankings
   (Market Consensus if you have none). A headline puts value and lineup together ("You pay in value (−4,389 pts) to

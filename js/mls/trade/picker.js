@@ -26,6 +26,7 @@ import { attachPlayerAutocomplete } from '../players.js';
 import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { runScout } from '../main.js';
+import { nextDraftYears } from './makeFair.js';
 
 const SIDES = {
     get: { textarea: 'buyInput', tokens: 'tradeGetTokens', search: 'tradeGetSearch', year: 'tradeGetPickYear', round: 'tradeGetPickRound', pickRow: 'tradeGetPickRow' },
@@ -147,6 +148,29 @@ export function setTradePlayers(side, names) {
     addNames(side, names || []);
 }
 
+// Both sides as they stand ({ get, give }: names), for "To make it fair"'s Undo (improvements S19, round 5).
+export function tradeNames() {
+    return { get: namesOf('get'), give: namesOf('give') };
+}
+
+// Takes names off a side ("To make it fair"'s Remove) and re-runs, without focusing the search: on a phone that
+// would open the keyboard over the result you're reading.
+export function removeTradeNames(side, names) {
+    if (!SIDES[side]) return;
+    const drop = new Set((names || []).map(n => String(n).trim().toLowerCase()));
+    writeNames(side, namesOf(side).filter(n => !drop.has(n.toLowerCase())));
+    rerunIfAnalyzed();
+}
+
+// Puts a whole trade back (Undo) and re-runs it.
+export function restoreTrade({ get = [], give = [] } = {}) {
+    writeNames('get', []);
+    addNames('get', get);
+    writeNames('give', []);
+    addNames('give', give);
+    rerunIfAnalyzed();
+}
+
 // The side's Clear button.
 export function clearTradeSide(side) {
     if (!SIDES[side]) return;
@@ -204,14 +228,12 @@ export function syncTradePicker() {
 }
 
 export function initTradePicker() {
-    // Pick years: the next three drafts. A season's rookie draft is held before it starts, so from
-    // March on the next draft is next year's.
-    const now = new Date();
-    const first = now.getFullYear() + (now.getMonth() >= 2 ? 1 : 0);
+    // Pick years: the next three drafts (nextDraftYears; "what would make it fair" offers the same picks).
+    const years = nextDraftYears(new Date());
     Object.entries(SIDES).forEach(([side, s]) => {
         const year = el(s.year);
         if (year && !year.options.length) {
-            year.innerHTML = [first, first + 1, first + 2].map(y => `<option value="${y}">${y}</option>`).join('');
+            year.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
         }
         const search = el(s.search);
         const ta = el(s.textarea);

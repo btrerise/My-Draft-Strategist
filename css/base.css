@@ -1066,6 +1066,9 @@ label.toggle-title,
     border-radius: 50%; width: 18px; height: 18px; display: inline-flex; justify-content: center; 
     align-items: center; font-size: 11px; font-weight: bold; line-height: 1; font-family: monospace;
     transition: color 0.2s ease, background-color 0.2s ease;
+    /* Always a lowercase "i": inside an uppercase label (the Trade Analyzer verdict's "BY YOUR RANKINGS") it used to
+       inherit text-transform and read "I" (improvements S19, round 8). */
+    text-transform: none; letter-spacing: normal;
 }
 .tooltip-container:hover .tooltip-icon { background: var(--border); color: var(--text-main); }
 .tooltip .tooltip-text, .tooltip-container .tooltip-text { 
@@ -1077,6 +1080,11 @@ label.toggle-title,
     border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
     pointer-events: none; line-height: 1.5;
     transform: translateY(-4px);
+    /* Kept inside the window (improvements S19, round 7): never wider than it, and slid sideways by --tt-dx, which
+       js/shared/ui/tooltips.js (place) sets when a tooltip would cross an edge. */
+    max-width: calc(100vw - 16px);
+    translate: var(--tt-dx, 0px) 0;
+    text-transform: none; letter-spacing: normal;
 }
 .tooltip:hover .tooltip-text, .tooltip-container:hover .tooltip-text { 
     visibility: visible; opacity: 1; transform: translateY(0);

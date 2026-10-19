@@ -11,6 +11,10 @@
 // buttons on the rows).
 import { escapeHtml } from '../shared/html.js';
 
+// --- DRAFT PICK (the Trade Analyzer's rows, scout/engine.js, and "To make it fair", trade/fairSection.js) ---
+// A position badge in the FLEX color reading "Pick" (improvements S14; a helper since S19, with its legend line).
+export const PICK_BADGE_HTML = `<span class="badge pos-badge FLEX mls-pos-badge-sizing">Pick</span>`;
+
 // --- STRENGTH OF SCHEDULE (sos.js, getSoSBadgeHTML) ---
 // Feather calendar: shown instead of "SoS: " on phones and touch screens (css/mls.css).
 export const SOS_CALENDAR_ICON = `<svg class="sos-badge-icon" aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;

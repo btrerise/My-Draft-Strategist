@@ -26,6 +26,7 @@ const SLEEPER_FIXTURES = [
     [/^\/v1\/league\/\d+\/users$/, 'league-users.json'],
     [/^\/v1\/league\/\d+\/rosters$/, 'league-rosters.json'],
     [/^\/v1\/league\/\d+\/matchups\/\d+$/, 'league-matchups.json'],
+    [/^\/v1\/league\/\d+\/traded_picks$/, 'league-traded-picks.json'],
     [/^\/v1\/user\/\d+\/leagues\/nfl\/\d+$/, 'user-leagues.json'],
     [/^\/v1\/user\/[^/]+$/, 'user.json'],
     [/^\/v1\/projections\/nfl\/regular\/2026\/2$/, 'projections-2026-2.json'],

@@ -13,7 +13,7 @@
 // tests/unit/badgeLegend.test.mjs fails when a badge class used in js/mls or lineup/index.html isn't in
 // the HTML this builds. Imports only modules with no app state, so that test can load it in Node.
 import {
-    BYE_BADGE_HTML, DISMISS_ICON, STARTS_ICON, UPGRADE_ICON,
+    BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
     moveChipMarkup, posCountChipMarkup, rankBadgeParts, scoutPillMarkup,
     sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup
@@ -39,6 +39,7 @@ const GROUPS = [
         [['BN', 'TX', 'IR'].map(slotBadge).join(''),
             'Bench, taxi squad and Sleeper IR spots, at the bottom of the Lineup tab. Players in TX and IR can\'t start.'],
         ['<span class="badge">KC</span>', 'His NFL team.'],
+        [PICK_BADGE_HTML, 'A draft pick, in the Trade Analyzer (dynasty and keeper leagues).'],
         [posCountChipMarkup('ALL', 'All', 17, [], 'badge-all', SAMPLE) + posCountChipMarkup('RB', 'RB', 6, ['1 IR', '1 taxi'], 'pos-badge RB', SAMPLE),
             'On the Roster tab: how many players you have at each position, with how many of them are on IR or the taxi squad. Tap one there to show only that position.'],
     ]],

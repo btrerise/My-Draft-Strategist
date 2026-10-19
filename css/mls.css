@@ -881,6 +881,12 @@ button.close-chip {
     background: var(--card-bg);
 }
 
+/* Your Rankings and Market Consensus side by side from tablet width up (improvements S19, round 9). */
+.trade-verdict-pair { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 0.75rem; }
+@media (min-width: 768px) {
+    .trade-verdict-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
 .trade-verdict-source-label {
     text-align: center;
     font-size: 0.7rem;
@@ -991,6 +997,9 @@ button.close-chip {
 .mls-trade-impact-summary { font-size: 0.85rem; color: var(--text-main); margin: 0.45rem 0 0.5rem; line-height: 1.45; }
 .mls-trade-impact-empty { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem; }
 .mls-trade-impact-notes { margin: 0.55rem 0 0; padding-left: 1.1rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; }
+.mls-trade-impact-about { display: flex; align-items: center; gap: 6px; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); }
+.mls-trade-impact-about-line { display: block; }
+.mls-trade-impact-about-line + .mls-trade-impact-about-line { margin-top: 0.5em; }
 .mls-trade-impact-table td { white-space: nowrap; }
 .mls-trade-rank-up { color: #4ade80; }
 .mls-trade-rank-down { color: #fca5a5; }
@@ -1009,6 +1018,46 @@ button.close-chip {
 .mls-trade-lineup-line.mls-trade-out { color: #fca5a5; }
 .mls-trade-lineup-line.mls-trade-in { color: #4ade80; }
 .mls-trade-lineup-line em { color: var(--text-muted); }
+
+/* Trade Analyzer -- "To make it fair" under a lopsided verdict (improvements S19, js/mls/trade/fairSection.js): the gap
+   and up to three suggestions, one per line on phones with names kept whole and Add at the right edge; two columns from
+   tablet width up, like the trade's two sides. */
+.mls-trade-fair { border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); padding: 0.85rem 1rem; margin-bottom: 1rem; }
+.mls-trade-fair-head { font-size: 0.92rem; font-weight: 600; color: var(--text-main); }
+.mls-trade-fair-via, .mls-trade-fair-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; line-height: 1.45; }
+.mls-trade-fair-list { list-style: none; margin: 0.4rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.5rem; }
+/* A row wraps only when it must (round 14: a long single name, "Amon-Ra St. Brown" beside a Remove button, ran over its
+   value at 375px): the names never shrink below their own width (min-content; each player is nowrap), so when they
+   don't fit beside the value and button, those two move to a second line, on the right. */
+.mls-trade-fair-item { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; padding: 0.4rem 0; border-top: 1px solid var(--border); }
+.mls-trade-fair-badges { flex: 0 0 auto; display: inline-flex; gap: 4px; }
+.mls-trade-fair-badges .badge { min-width: 3.3em; justify-content: center; text-align: center; }
+.mls-trade-fair-names { flex: 1 1 0; min-width: min-content; font-weight: 700; font-size: 0.88rem; color: var(--text-main); display: flex; flex-wrap: wrap; column-gap: 0.35rem; }
+.mls-trade-fair-player { white-space: nowrap; }
+.mls-trade-fair-plus { color: var(--text-muted); font-weight: 600; }
+.mls-trade-fair-from { color: var(--text-muted); font-weight: 600; font-size: 0.75rem; }
+/* Round 5: where a suggestion lands the trade, under its name; "Or take off your side"; the Undo line. */
+.mls-trade-fair-lands { flex-basis: 100%; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+.mls-trade-fair-or { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.6rem; }
+/* Round 9: how Market Consensus sees it, when it disagrees with Your Rankings (amber, like other "check this" notes);
+   on its own under a verdict that's fair by your rankings. */
+.mls-trade-fair-market { font-size: 0.8rem; color: #fbbf24; margin-top: 0.3rem; line-height: 1.45; }
+.mls-trade-fair-market.is-alone { margin: -0.25rem 0 0.9rem; }
+/* Round 10: on phones a pair's two names ran over its value (found in my review as a user). There a pair takes two
+   lines: badges stacked and the names across, then the value and Add both under them on the right. */
+@media (max-width: 767px) {
+    .mls-trade-fair-item.is-pair .mls-trade-fair-badges { flex-direction: column; }
+    .mls-trade-fair-item.is-pair .mls-trade-fair-names { flex: 1 1 calc(100% - 4.5rem); }
+}
+.mls-trade-fair-undo { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.82rem; color: var(--text-muted); margin: -0.35rem 0 0.75rem; }
+.mls-trade-fair-undo-btn { color: var(--primary-green); font-weight: 700; text-decoration: underline; cursor: pointer; font-size: inherit; padding: 0.2rem 0.1rem; }
+.mls-trade-fair-val { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-main); font-size: 0.88rem; }
+.mls-trade-fair-add { flex: 0 0 auto; }
+/* The value and its button move together, to the right of the second line when the row wraps (round 14). */
+.mls-trade-fair-act { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+@media (min-width: 768px) {
+    .mls-trade-fair-list { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
 
 /* Trade Analyzer (improvements S14, round 5): the player picker (js/mls/trade/picker.js) and the compact rows the
    analysis lists each player in (js/mls/scout/engine.js). */
@@ -1083,6 +1132,10 @@ button.close-chip {
 
 .verdict-favor-them { border-color: var(--avoid-border); background: var(--avoid-bg); }
 .verdict-favor-them .trade-verdict-result { color: #fca5a5; }
+
+/* No verdict (improvements S19, round 11): a name that matches no player, or a market total missing a piece. */
+.verdict-incomplete { border-color: var(--border); background: var(--card-bg); }
+.verdict-incomplete .trade-verdict-result { color: var(--text-muted); }
 
 .mls-stat-value { color: #fde047; }
 .mls-stat-market { color: #93c5fd; }

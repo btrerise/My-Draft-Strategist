@@ -3,6 +3,7 @@
 // but are the shared math that marker describes (power/allLeagues.js uses them too).
 import { rankingIndex } from '../helpers.js';
 import { powerAgeFactor } from './futureValue.js';
+import { pickKey } from '../leagues/picks.js';
 
 // --- POSITIONAL POWER RANKINGS: SHARED MATH ---
 // Scores every manager's QB/RB/WR/TE room in one league from a rankings list, then ranks the
@@ -63,6 +64,8 @@ function pickPowerStarters(players, reqs) {
 // opts.future (optional) adds a futureScore/futureRank per team:
 //   { mode: 'age', ages: { [cleanName]: age } } -- this league's rankings value x age curve
 //   { mode: 'market', rankings: [...] }          -- dynasty Market Consensus value, no age
+// Either can carry pickRank(pick) -> { rank, source } | null: then the picks in league.picks (improvements S19)
+// count toward each team's future value too.
 // Without it, teams carry no future fields -- the All My Leagues search doesn't use them.
 export function computePositionalPower(league, rankings, opts = {}) {
     if (!league || !league.globalRosterMap || !league.globalPosMap) return [];
@@ -157,7 +160,20 @@ export function computePositionalPower(league, rankings, opts = {}) {
                 }
                 const age = future.ages ? future.ages[p.cleanName] : undefined;
                 return { ...p, age: Number.isFinite(age) ? age : null, futureValue: Math.round(p.value * powerAgeFactor(p.pos, age)) };
-            }).sort((a, b) => b.futureValue - a.futureValue);
+            });
+            // The draft picks Sleeper says this team holds (improvements S19, round 3), on the same curve: each counts
+            // like a player of the rank future.pickRank gives it (the market's value, else a set table).
+            if (future.pickRank && league.picks) {
+                (league.picks[team.owner] || []).forEach((pk, i) => {
+                    const r = future.pickRank(pk);
+                    if (!r || !(r.rank > 0)) return;
+                    const via = pk.from ? ` (via ${pk.from === 'You' ? 'you' : pk.from})` : '';
+                    const value = powerValueForRank(r.rank);
+                    team.futurePlayers.push({ name: `${pk.name}${via}`, cleanName: `${pickKey(pk.name)}#${i}`, pos: 'Pick', isPick: true,
+                        rank: r.rank, futureRank: r.rank, value, futureValue: value, age: null, moved: !!pk.moved, pickSource: r.source });
+                });
+            }
+            team.futurePlayers.sort((a, b) => b.futureValue - a.futureValue);
             team.futureScore = team.futurePlayers.reduce((sum, p) => sum + p.futureValue, 0);
         });
     }

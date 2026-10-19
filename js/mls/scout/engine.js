@@ -2,7 +2,7 @@
 // (runScout, incl. dynamic waiver adjustment and the position resolver). The trade fairness verdicts
 // and renderTradeVerdict (with its waiver adjustment) moved to trade/verdict.js in 3G.
 import { escapeHtml } from '../../shared/html.js';
-import { injuryBadgeMarkup } from '../badges.js';
+import { injuryBadgeMarkup, PICK_BADGE_HTML } from '../badges.js';
 import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';
@@ -14,6 +14,8 @@ import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valu
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML } from '../trade/verdict.js';
 import { buildTradeImpactHTML } from '../trade/lineupSection.js';
+import { buildMakeFairHTML, placeFairFocus } from '../trade/fairSection.js';
+import { pickHolders } from '../leagues/picks.js';
 import { setTradeExport } from '../trade/export.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
@@ -131,7 +133,7 @@ import { normalizeName } from '../../shared/names.js';
             let clean = normalizeName(name);
             let rosObj = rosIndex.get(clean);
             let weekObj = weeklyIndex.get(clean);
-            let marketValueObj = type === 'trade' ? getMarketValue(clean) : null;
+            let marketValueObj = type === 'trade' ? getMarketValue(clean, name) : null;
 
             // Rookie draft picks (2027 1st, 2026 2nd, etc.) are dynasty trade assets that a
             // Rest-of-Season rankings file has no reason to include -- ROS rankings project
@@ -255,8 +257,12 @@ import { normalizeName } from '../../shared/names.js';
             // has him, and his value on the right (the market's under it when loaded).
             if (type === 'trade') {
                 const isPick = isDraftPickName(name);
+                // Who holds a pick, in a league whose traded picks were synced (improvements S19, round 2).
+                const pickOwns = isPick ? pickOwnerText(league, name, roleLabel) : null;
                 let owns;
-                if (roleLabel === 'GIVE') {
+                if (pickOwns) {
+                    owns = pickOwns;
+                } else if (roleLabel === 'GIVE') {
                     owns = owner === 'You' ? { text: 'Yours', cls: '' }
                         : isPick ? { text: 'Pick', cls: '' }
                         : { text: owner ? `Not yours (${owner})` : 'Not on your roster', cls: 'mls-trade-row-warn' };
@@ -280,7 +286,7 @@ import { normalizeName } from '../../shared/names.js';
                 return {
                     html: `
                 <div class="mls-trade-row">
-                    <span class="badge pos-badge ${isPick ? 'FLEX' : badgeClass} mls-pos-badge-sizing">${isPick ? 'Pick' : displayPos}</span>
+                    ${isPick ? PICK_BADGE_HTML : `<span class="badge pos-badge ${badgeClass} mls-pos-badge-sizing">${displayPos}</span>`}
                     <div class="mls-trade-row-main">
                         <div class="mls-trade-row-name">${escapeHtml(displayName)}${tradeMeta && tradeMeta[clean] && tradeMeta[clean].inj ? injuryBadgeMarkup(tradeMeta[clean].inj) : ''}${sosBadge}</div>
                         <div class="mls-trade-row-meta">${rankBits.map(b => `<span>${b}</span>`).join('')}<span class="${owns.cls}">${escapeHtml(owns.text)}</span></div>
@@ -299,6 +305,9 @@ import { normalizeName } from '../../shared/names.js';
                     userMatched: !!userValueObj,
                     marketValue: marketValueObj ? marketValueObj.value : 0,
                     marketMatched: !!marketValueObj,
+                    // A name that matches no player at all (a typo), as opposed to a real player one source doesn't
+                    // value: the verdicts wait for it to be fixed (improvements S19, round 11; trade/verdict.js).
+                    known: isPick || pos !== "UNK",
                     availabilityOrder, rosSortRank, weekSortRank
                 };
             }
@@ -359,7 +368,16 @@ import { normalizeName } from '../../shared/names.js';
             } catch (e) {
                 console.warn('Trade Analyzer: lineup comparison unavailable.', e);
             }
-            html += verdictHTML + impactHTML;
+            // What would make a lopsided trade fair (improvements S19), right under the verdicts. Same guard.
+            let fairHTML = '';
+            if (!isOneSided) {
+                try {
+                    fairHTML = buildMakeFairHTML(league, targetNames, sellNames, getResults, giveResults);
+                } catch (e) {
+                    console.warn('Trade Analyzer: fair-trade suggestions unavailable.', e);
+                }
+            }
+            html += verdictHTML + fairHTML + impactHTML;
 
             // The two sides side by side on wider screens, stacked on phones (round 8; css/mls.css .mls-trade-sides).
             html += `<div class="mls-trade-sides">`;
@@ -399,6 +417,7 @@ import { normalizeName } from '../../shared/names.js';
             }
 
             outputEl.innerHTML = html;
+            placeFairFocus(outputEl);
             return;
         }
 
@@ -436,3 +455,19 @@ import { normalizeName } from '../../shared/names.js';
         waiverResults.forEach(r => html += r.html);
         outputEl.innerHTML = html;
     };
+
+    // A Trade Analyzer row's ownership text for a draft pick, from the league's synced picks (league.picks,
+    // leagues/picks.js); null when there are none (redraft and manual leagues, older syncs), and the row says "Pick".
+    // You give: yours, or not (you traded it away). You get: the From team's, or who holds one.
+    function pickOwnerText(league, name, roleLabel) {
+        const holders = pickHolders(league && league.picks, name);
+        if (!holders) return null;
+        if (roleLabel === 'GIVE') {
+            return holders.includes('You') ? { text: 'Yours', cls: '' } : { text: "Not yours (you don't hold it)", cls: 'mls-trade-row-warn' };
+        }
+        const others = holders.filter(o => o !== 'You');
+        const team = document.getElementById('tradeGetTeam')?.value || '';
+        if (team) return others.includes(team) ? { text: `${team}'s`, cls: '' } : { text: `${team} doesn't hold it`, cls: 'mls-trade-row-warn' };
+        if (others.length === 0) return { text: holders.length ? 'Already yours' : 'No team holds it', cls: 'mls-trade-row-warn' };
+        return { text: `Held by ${others.join(', ')}`, cls: '' };
+    }

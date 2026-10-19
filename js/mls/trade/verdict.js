@@ -4,38 +4,47 @@
 import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { getFreshness } from '../../shared/freshness.js';
+import { verdictFromValues } from './makeFair.js';
 
     // --- TRADE FAIRNESS VERDICT(S) ---
     // Returns the verdict banner(s) runScout puts above the Trade Analyzer's player cards, for a trade
     // with players on both sides. getResults/giveResults are runScout's buildCard results.
     export function buildTradeVerdictHTML(getResults, giveResults) {
         let verdictHTML;
+        // A name that matches no player (a typo) counts as 0 in every total, so any verdict would be about a different
+        // trade (improvements S19, round 11: "Fair Trade" with a misspelled Gibbs). One banner saying which name to fix,
+        // and no verdict until it is; "Did you mean" is on its row below.
+        const unknown = unknownNames(getResults, giveResults);
+        if (unknown.length) {
+            const names = unknown.map(n => `<strong>${escapeHtml(n)}</strong>`).join(', ');
+            verdictHTML = `
+        <div class="trade-verdict-banner verdict-incomplete" data-verdict-held>
+            <div class="trade-verdict-result">No verdict yet</div>
+            <div class="trade-verdict-note">Couldn't match ${names} to a player. Fix the name (Did you mean, below) to get a verdict.</div>
+        </div>`;
+            return verdictHTML + marketAgeHTML();
+        }
         // Renders up to two independent verdicts ahead of the player lists: one from the
         // user's own custom ROS rankings (the default/primary lens -- no third-party API
         // needed, since ROS rankings are a core input most users already have from the
         // Roster tab), and one from market consensus if Market Value data has been loaded
         // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
         // user see "the market" and "how I personally value this" can disagree.
-        verdictHTML = renderTradeVerdict(
+        const yours = renderTradeVerdict(
             "Your Rankings",
             "This value isn't something you entered; it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
             getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
         );
-        verdictHTML += renderTradeVerdict(
+        const market = renderTradeVerdict(
             "Market Consensus",
             "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value - not the source's official number.",
             getResults, giveResults, "marketValue", "marketMatched", State.marketRankings.length > 0
         );
+        // Both lenses side by side from tablet width up (improvements S19, round 9: stacked, they filled the first
+        // screen on desktop); stacked on phones (css/mls.css .trade-verdict-pair).
+        verdictHTML = yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market;
 
-        // How old the market values are (improvements S14, round 6, owner's choice): always dated, and amber with a
-        // nudge once they're more than a day old, since trade values move with every injury and depth-chart change.
-        // On screen only: Export Trade copies the banners and notes, not this line.
-        if (State.marketRankings.length > 0) {
-            const fresh = getFreshness(State.marketUpdatedAt, 0);
-            if (fresh) {
-                verdictHTML += `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">Market values: ${fresh.label}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`;
-            }
-        }
+        verdictHTML += marketAgeHTML();
 
         if (!verdictHTML) {
             verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
@@ -43,42 +52,32 @@ import { getFreshness } from '../../shared/freshness.js';
         return verdictHTML;
     }
 
+    // How old the market values are (improvements S14, round 6, owner's choice): always dated, and amber with a
+    // nudge once they're more than a day old, since trade values move with every injury and depth-chart change.
+    // On screen only: Export Trade copies the banners and notes, not this line.
+    function marketAgeHTML() {
+        if (State.marketRankings.length === 0) return '';
+        const fresh = getFreshness(State.marketUpdatedAt, 0);
+        return fresh
+            ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">Market values: ${fresh.label}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`
+            : '';
+    }
+
+    // The names in a trade that match no player at all (runScout's rows mark them known: false), as shown on their rows.
+    export function unknownNames(getResults, giveResults) {
+        return getResults.concat(giveResults).filter(r => r.known === false).map(r => (r.exportRow && r.exportRow.name) || '?');
+    }
+
     // The verdict's numbers, for the banner below and for the Trade Analyzer's headline under it (improvements
     // S14, js/mls/trade/lineupSection.js), so the two never disagree. getTotal/giveTotal include the waiver
     // adjustment (bonusGet/bonusGive). verdict: 'fair' | 'you' | 'them'. Returns null when nothing on either side
     // has a value.
     export function tradeVerdictNumbers(getResults, giveResults, valueKey) {
-        let getTotal = getResults.reduce((sum, r) => sum + r[valueKey], 0);
-        let giveTotal = giveResults.reduce((sum, r) => sum + r[valueKey], 0);
-        if (getTotal === 0 && giveTotal === 0) return null;
-
-        // --- WAIVER ADJUSTMENT ---
-        // Credits whichever side of the trade includes FEWER total players. A straight sum of
-        // player values overvalues the many-piece side of an uneven trade: consolidating value
-        // into fewer roster spots is worth something on its own, since the newly-freed bench
-        // spot(s) can be refilled off waivers. This mirrors the "waiver adjustment" concept sites
-        // like FantasyCalc apply to their own trade calculators, though the credit amount here is
-        // a flat, user-configurable estimate (see the Trade Analyzer's settings above) rather
-        // than one derived from real trade data.
-        let bonusGet = 0, bonusGive = 0;
-        if (State.tradeSettings.waiverAdjustment) {
-            let spotDiff = giveResults.length - getResults.length; // >0 = you're sending more pieces than you receive
-            let perSpot = parseFloat(State.tradeSettings.waiverAdjustmentValue) || 0;
-            if (spotDiff !== 0 && perSpot > 0) {
-                let bonus = Math.abs(spotDiff) * perSpot;
-                if (spotDiff > 0) { getTotal += bonus; bonusGet = bonus; }
-                else { giveTotal += bonus; bonusGive = bonus; }
-            }
-        }
-
-        let diff = getTotal - giveTotal;
-        let biggerSide = Math.max(getTotal, giveTotal, 1); // avoid div-by-zero
-        let swingPct = (Math.abs(diff) / biggerSide) * 100;
-
-        // Within 10% of the larger side's value counts as a fair trade -- outside that, it
-        // clearly favors whoever's receiving more value.
-        const verdict = swingPct < 10 ? 'fair' : (diff > 0 ? 'you' : 'them');
-        return { getTotal, giveTotal, bonusGet, bonusGive, diff, swingPct, verdict };
+        // The math is verdictFromValues (trade/makeFair.js, improvements S19), so "what would make it fair"
+        // checks each suggestion with exactly the banner's numbers.
+        return verdictFromValues(getResults.map(r => r[valueKey]), giveResults.map(r => r[valueKey]), {
+            on: !!State.tradeSettings.waiverAdjustment, perSpot: State.tradeSettings.waiverAdjustmentValue
+        });
     }
 
     // Builds one verdict banner (label + totals + Fair/Favors-You/Favors-Them) from a set of
@@ -102,8 +101,33 @@ import { getFreshness } from '../../shared/freshness.js';
         let waiverSubnoteGet = nums.bonusGet ? `<span class="trade-verdict-subnote">+${nums.bonusGet.toLocaleString()} waiver adj.</span>` : "";
         let waiverSubnoteGive = nums.bonusGive ? `<span class="trade-verdict-subnote">+${nums.bonusGive.toLocaleString()} waiver adj.</span>` : "";
 
+        // A draft pick only ever has a market value (your ROS rankings have no picks), so one without a value
+        // isn't a typo: say why instead of "not found" (improvements S14, round 6). exportRow is the Trade
+        // Analyzer's (scout/engine.js).
+        const isPick = (r) => !!(r.exportRow && r.exportRow.pos === 'Pick');
+        const picks = unmatched.filter(isPick).map(r => r.exportRow.name);
+        const missing = unmatched.filter(r => !isPick(r)).map(r => `<strong>${escapeHtml(r.exportRow ? r.exportRow.name : '?')}</strong>`);
+        const plural = missing.length > 1;
+        // Real players this source has no value for (round 11; typos never get this far). By your rankings an unranked
+        // player is worth 0, by your own board (the Trade Analyzer's rule), so the verdict stands and says so. The market
+        // simply doesn't know him, so its total is missing a piece: no verdict from it ("Incomplete").
+        const incomplete = matchedKey === 'marketMatched' && missing.length > 0;
+        let unmatchedNote = !missing.length ? ""
+            : incomplete
+                ? `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in the Market Consensus data, so this total is missing ${plural ? 'them' : 'him'}.</div>`
+                : `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in your ROS rankings, so ${plural ? 'they count' : 'he counts'} as 0.</div>`;
+        if (picks.length) {
+            const names = picks.map(n => escapeHtml(n)).join(', ');
+            unmatchedNote += State.marketRankings.length > 0
+                ? `<div class="trade-verdict-note">${names} ${picks.length > 1 ? "aren't" : "isn't"} in the Market Consensus data, so ${picks.length > 1 ? "they're" : "it's"} left out of this total.</div>`
+                : `<div class="trade-verdict-note">${names} ${picks.length > 1 ? 'have' : 'has'} no value without Market Consensus data (Trade Finder below), so ${picks.length > 1 ? "they're" : "it's"} left out of this total.</div>`;
+        }
+
         let verdictClass, verdictText;
-        if (nums.verdict === 'fair') {
+        if (incomplete) {
+            verdictClass = "verdict-incomplete";
+            verdictText = "Incomplete";
+        } else if (nums.verdict === 'fair') {
             verdictClass = "verdict-fair";
             verdictText = "Fair Trade";
         } else if (nums.verdict === 'you') {
@@ -112,22 +136,6 @@ import { getFreshness } from '../../shared/freshness.js';
         } else {
             verdictClass = "verdict-favor-them";
             verdictText = "Favors Them";
-        }
-
-        // A draft pick only ever has a market value (your ROS rankings have no picks), so one without a value
-        // isn't a typo: say why instead of "not found" (improvements S14, round 6). exportRow is the Trade
-        // Analyzer's (scout/engine.js).
-        const isPick = (r) => !!(r.exportRow && r.exportRow.pos === 'Pick');
-        const picks = unmatched.filter(isPick).map(r => r.exportRow.name);
-        const playersMissing = unmatched.length - picks.length;
-        let unmatchedNote = playersMissing > 0
-            ? `<div class="trade-verdict-note">${playersMissing} player${playersMissing > 1 ? 's' : ''} not found, excluded from this total.</div>`
-            : "";
-        if (picks.length) {
-            const names = picks.map(n => escapeHtml(n)).join(', ');
-            unmatchedNote += State.marketRankings.length > 0
-                ? `<div class="trade-verdict-note">${names} ${picks.length > 1 ? "aren't" : "isn't"} in the Market Consensus data, so ${picks.length > 1 ? "they're" : "it's"} left out of this total.</div>`
-                : `<div class="trade-verdict-note">${names} ${picks.length > 1 ? 'have' : 'has'} no value without Market Consensus data (Trade Finder below), so ${picks.length > 1 ? "they're" : "it's"} left out of this total.</div>`;
         }
 
         return `
@@ -154,7 +162,7 @@ import { getFreshness } from '../../shared/freshness.js';
             </div>
             <div class="trade-verdict-result">
                 ${verdictText}
-                <span class="trade-verdict-diff">(${diff >= 0 ? '+' : ''}${diff.toLocaleString()} pts, ${swingPct.toFixed(0)}%)</span>
+                ${incomplete ? '' : `<span class="trade-verdict-diff">(${diff >= 0 ? '+' : ''}${diff.toLocaleString()} pts, ${swingPct.toFixed(0)}%)</span>`}
             </div>
             ${unmatchedNote}
         </div>`;

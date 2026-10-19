@@ -212,6 +212,13 @@ shot and S10 took four runs for 14.)
   `tests/unit/badgeLegend.test.mjs` collects the badge classes each app uses (class attributes with a badge-like
   class, the pill helpers' classes, and CSS compounds such as `.slot-badge.slot-FLEX`) and fails naming any the
   legend's HTML lacks; a class that isn't a symbol of its own (layout, sizing, filter state) goes in its `ALLOWED`.
+- **Tooltips** (improvements S19, round 7): any `.tooltip-text` opened by `js/shared/ui/tooltips.js` (tap, hover, keyboard)
+  is slid back inside the window (`place`, CSS `translate: var(--tt-dx)`), and capped at the window's width. Don't
+  give a tooltip its own `translate`. `tooltips-onscreen.spec.mjs` taps every tooltip on both apps' tabs at 375px and
+  1280px and fails on any that crosses an edge; a new tooltip in a state it doesn't reach should get a line there.
+- **Image exports** (improvements S19, round 12): html2canvas draws text without the page's `tabular-nums`, so a new
+  export calls `useProportionalDigits(clonedRoot)` (`js/shared/ui/exportImage.js`) in its `onclone`;
+  `export-numerals.spec.mjs` checks all three exports' clones.
 - **User-visible changes** (8A): add a plain-language line under the app's **Unreleased** section in
   `CHANGELOG.md`. Bumping an app's footer version (the `APP VERSION` comment in `index.html` or
   `lineup/index.html`) turns those lines into that version's entry.
@@ -225,6 +232,11 @@ done or dropped, remove its line here in the same change. Background for each is
 **On a date**
 - **May 2027:** run `node scripts/update-byes.mjs 2027` once the NFL schedule is out (7C). Until then 2027 has no
   byes. Draft Strategist uses the calendar year for byes, not the draft's season.
+- **After the NFL regular season (early January 2027):** value draft picks by their slot. In season FantasyCalc
+  prices a plain "2027 1st" plus Early / Mid / Late versions; once the season ends it prices specific picks (check the names
+  in its API then, probably like "2027 Pick 1.05"), which `pickKey` in `js/mls/leagues/picks.js` doesn't recognize yet. Then give each synced pick its
+  slot (Sleeper's draft order, or the final standings until it's set) and look up that pick's market value, in the
+  Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Needs the owner's decision first**
 - Merge `dropTitleRows` and `findHeaderRowIndex` in `js/shared/rankings/parse.js` into one title-row finder. That

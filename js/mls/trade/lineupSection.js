@@ -8,13 +8,13 @@ import { slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { rankingIndex } from '../helpers.js';
 import { computePositionalPower, POWER_DEFAULT_REQS, POWER_POSITIONS } from '../power/shared.js';
-import { resolvePowerFuture, whenPowerAgesLoaded } from '../power/futureValue.js';
+import { futureRankText, futureMoreHTML, powerPicksNote, resolvePowerFuture, whenPowerAgesLoaded } from '../power/futureValue.js';
 import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
 import { isDraftPickName } from './valueCurve.js';
-import { tradeVerdictNumbers } from './verdict.js';
+import { tradeVerdictNumbers, unknownNames } from './verdict.js';
 import {
     FUTURE_COLUMN, lineupSlotCount, lineupSummaryText, lineupTradeChanges, POWER_COLUMNS,
     powerSummaryText, powerTradeImpact, tradeHeadline, tradePartner
@@ -23,26 +23,43 @@ import {
 // Notes that explain the screen to you, not the trade to your league: Export Trade (trade/export.js) leaves
 // them out of the image. The rest (an empty slot, picks, unranked players) stay in it.
 const forYou = (text) => `<span class="mls-trade-impact-help">${text}</span>`;
-const INJURY_NOTE = forYou('Injuries and byes are left out: this compares your team for the rest of the season, not this week.');
+// How the numbers are worked out (what Future means, picks, injuries left out, a Market Consensus fallback): one
+// "How this is worked out" (i) under the notes instead of a bullet each (improvements S19, round 5: on a phone the
+// section ended in four bullets of explanation). Notes that need you (a typo, a player not yours) stay as bullets.
+const about = (text) => `<span class="mls-trade-impact-help" data-about>${text}</span>`;
+const INJURY_NOTE = about('Injuries and byes are left out: this compares your team for the rest of the season, not this week.');
 
 const section = (title, body) => `
     <section class="mls-trade-impact" data-trade-impact>
         <div class="mls-trade-impact-head">${title}</div>
         ${body}
     </section>`;
-const notesHTML = (notes) => notes.length ? `<ul class="mls-trade-impact-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '';
+const notesHTML = (notes) => {
+    const shown = notes.filter(n => !n.includes('data-about')), explained = notes.filter(n => n.includes('data-about'));
+    return (shown.length ? `<ul class="mls-trade-impact-notes">${shown.map(n => `<li>${n}</li>`).join('')}</ul>` : '')
+        + (explained.length ? `
+        <div class="mls-trade-impact-about">How this is worked out
+            <div class="tooltip-container"><div class="tooltip-icon" aria-label="How this is worked out">i</div>
+                <span class="tooltip-text">${explained.map(n => `<span class="mls-trade-impact-about-line">${n}</span>`).join('')}</span></div>
+        </div>` : '');
+};
 const oneLine = (title, text) => section(title, `<div class="mls-trade-impact-empty">${text}</div>`);
 
 const listNames = (names) => names.map(n => `<strong>${escapeHtml(n)}</strong>`).join(', ');
 
 // getNames / giveNames: the Trade Analyzer's two lists as typed. Returns '' when there's nothing
-// to show: no league, or a side with no players (draft picks only, or empty).
+// to show: no league, or a side with no players (draft picks only, or empty). In a Sleeper league whose picks
+// were synced, picks count toward Future value (improvements S19, round 3), so a side of picks only is enough.
 export async function buildTradeImpactHTML(league, getNames, giveNames, { getResults = null, giveResults = null } = {}) {
     if (!league) return '';
     const getTyped = getNames.filter(n => !isDraftPickName(n));
     const giveTyped = giveNames.filter(n => !isDraftPickName(n));
-    if (getTyped.length === 0 || giveTyped.length === 0) return '';
-    const picks = getNames.concat(giveNames).filter(n => isDraftPickName(n));
+    const getPicks = getNames.filter(n => isDraftPickName(n));
+    const givePicks = giveNames.filter(n => isDraftPickName(n));
+    const picksCount = !!league.picks && isFullyMappedLeague(league);
+    const hasSide = (players, picks) => players.length > 0 || (picksCount && picks.length > 0);
+    if (!hasSide(getTyped, getPicks) || !hasSide(giveTyped, givePicks)) return '';
+    const picks = getPicks.concat(givePicks);
 
     const fullLeague = isFullyMappedLeague(league) && !!league.globalPosMap;
     const title = fullLeague ? 'Power Rankings after the trade' : 'Your lineup after the trade';
@@ -78,17 +95,17 @@ export async function buildTradeImpactHTML(league, getNames, giveNames, { getRes
     if (alreadyYours.length) notes.push(forYou(`${listNames(alreadyYours)} ${alreadyYours.length > 1 ? 'are' : 'is'} already on your roster.`));
     if (picks.length) notes.push(`${listNames(picks)} ${picks.length > 1 ? 'are draft picks' : 'is a draft pick'}: no lineup spot.`);
 
-    if (give.length === 0 || get.length === 0) {
+    if (!hasSide(give, givePicks) || !hasSide(get, getPicks)) {
         return section(title, `<div class="mls-trade-impact-empty">No players on one side of this trade could be matched, so there's nothing to compare.</div>${notesHTML(notes)}`);
     }
 
     return fullLeague
-        ? await powerSection(league, title, give, get, notes, { getResults, giveResults })
+        ? await powerSection(league, title, give, get, notes, { getResults, giveResults }, picksCount ? { give: givePicks, get: getPicks } : null)
         : manualSection(league, title, give, get, notes, getPos);
 }
 
 // --- Sleeper leagues: Power Rankings before and after ---
-async function powerSection(league, title, give, get, notes, cards) {
+async function powerSection(league, title, give, get, notes, cards, tradedPicks) {
     let rankings = State.rosRankings, via = 'by your ROS rankings';
     if (rankings.length === 0) {
         if (State.marketRankings.length === 0) {
@@ -96,11 +113,13 @@ async function powerSection(league, title, give, get, notes, cards) {
         }
         rankings = State.marketRankings;
         via = 'by Market Consensus';
-        notes.unshift(forYou('No ROS rankings loaded, so this uses Market Consensus. Upload ROS rankings on the Roster tab for your own board.'));
+        notes.unshift(about('No ROS rankings loaded, so this uses Market Consensus. Upload ROS rankings on the Roster tab for your own board.'));
     }
     const idx = rankingIndex(rankings);
     const rosterMap = league.globalRosterMap || {};
-    const partner = tradePartner(rosterMap, get.map(p => p.cleanName));
+    // A trade for picks only has no player to name the partner: the From drop-down's team, then.
+    const partner = tradePartner(rosterMap, get.map(p => p.cleanName))
+        || (get.length === 0 && tradedPicks ? (document.getElementById('tradeGetTeam')?.value || null) : null);
     const owners = new Set(get.map(p => rosterMap[p.cleanName]).filter(o => o && o !== 'You'));
     if (owners.size > 1) notes.push('The players you get come from more than one team, so only your team is shown.');
 
@@ -114,17 +133,19 @@ async function powerSection(league, title, give, get, notes, cards) {
     }
 
     const reqs = Object.assign({}, POWER_DEFAULT_REQS, league.reqs || {});
-    const impact = powerTradeImpact(league, { give: give.map(p => p.cleanName), get, partner, reqs },
+    const impact = powerTradeImpact(league, { give: give.map(p => p.cleanName), get, partner, reqs, picks: tradedPicks },
         (l) => computePositionalPower(l, rankings, { future: futureInfo.future }));
     if (!impact) return oneLine(title, 'Not enough roster data to score this league yet. Try re-syncing it.');
     const hasFuture = Number.isFinite(impact.you.before.futureRank) && Number.isFinite(impact.you.after.futureRank);
     const columns = hasFuture ? [...POWER_COLUMNS, FUTURE_COLUMN] : POWER_COLUMNS;
     if (hasFuture) {
-        notes.push(forYou(futureInfo.label === 'market'
+        notes.push(about(futureInfo.label === 'market'
             ? "<strong>Future</strong> is each roster's dynasty Market Consensus value (player ages from Sleeper couldn't be loaded), as on the Roster tab."
             : "<strong>Future</strong> is each roster's value from these rankings, adjusted for player age (from Sleeper), as on the Roster tab: younger players count a bit more, older players less."));
+        const picksNote = powerPicksNote(league, futureInfo.picks);
+        if (picksNote) notes.push(about(picksNote));
     } else if (dynasty) {
-        notes.push(forYou("Couldn't load player ages from Sleeper, so there's no Future column. Dynasty Market Consensus data (Trade Finder below) gives a fallback."));
+        notes.push(about("Couldn't load player ages from Sleeper, so there's no Future column. Dynasty Market Consensus data (Trade Finder below) gives a fallback."));
     }
 
     const unranked = give.concat(get).filter(p => !idx.get(p.cleanName)).map(p => p.name);
@@ -134,11 +155,17 @@ async function powerSection(league, title, give, get, notes, cards) {
     notes.unshift(...holes(impact.you, 'your'));
     notes.push(INJURY_NOTE);
 
-    const youIn = new Set(get.map(p => p.cleanName)), youOut = give;
+    // Picks leaving show under the Future column's room only (roomTooltip); picks coming in are marked there by moved.
+    const pickRows = (names) => (tradedPicks ? names : []).map(n => ({ name: n, pos: 'Pick' }));
+    const youIn = new Set(get.map(p => p.cleanName)), youOut = give.concat(pickRows(tradedPicks ? tradedPicks.give : []));
     // The value verdict by the same rankings as these ranks (yours, or the market's when that's what's
     // loaded), and the lineup change, in one sentence (round 4).
-    const value = cards.getResults && cards.giveResults
-        ? tradeVerdictNumbers(cards.getResults, cards.giveResults, rankings === State.rosRankings ? 'userValue' : 'marketValue') : null;
+    // No headline while a name matches no player, or while the market (when it's what's used) lacks a piece: the
+    // banner above has no verdict then either (round 11).
+    const valueKey = rankings === State.rosRankings ? 'userValue' : 'marketValue';
+    const settled = cards.getResults && cards.giveResults && !unknownNames(cards.getResults, cards.giveResults).length
+        && (valueKey === 'userValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
+    const value = settled ? tradeVerdictNumbers(cards.getResults, cards.giveResults, valueKey) : null;
     const headline = tradeHeadline(value, impact.you);
     let body = `
         <div class="mls-trade-impact-via">${via}</div>
@@ -148,7 +175,7 @@ async function powerSection(league, title, give, get, notes, cards) {
         <div class="mls-trade-impact-key">Ranks of ${impact.teams} teams: 1 = strongest. <span class="mls-trade-rank-up">Green</span> = better after the trade, <span class="mls-trade-rank-down">red</span> = worse.</div>`;
     if (impact.partner) {
         const pIn = new Set(give.map(p => p.cleanName));
-        const pOut = get.filter(p => rosterMap[p.cleanName] === partner);
+        const pOut = get.filter(p => rosterMap[p.cleanName] === partner).concat(pickRows(tradedPicks ? tradedPicks.get : []));
         const pHoles = holes(impact.partner, 'their');
         body += `
         <details class="mls-trade-impact-partner">
@@ -203,7 +230,7 @@ function roomTooltip(team, label, room, incoming, leaving, opensRight) {
             <span class="mls-power-tooltip-name">${slotted ? `<span class="mls-power-tooltip-slot">${p.slot === 'SFLEX' ? 'SF' : slotDisplayName(p.slot)}</span>` : ''}${incoming.has(p.cleanName) ? '+ ' : ''}${escapeHtml(p.name)}</span>
             <span class="mls-power-tooltip-rank">#${p.rank}${tierTag(p.tier)}</span>
         </div>`).join('');
-    const out = room ? leaving.filter(p => p.pos === room) : leaving;
+    const out = room ? leaving.filter(p => p.pos === room) : leaving.filter(p => p.pos !== 'Pick');
     if (out.length) html += `<div class="mls-power-tooltip-more mls-trade-out">Leaving: ${out.map(p => escapeHtml(p.name)).join(', ')}</div>`;
     return html + `</div>`;
 }
@@ -215,11 +242,11 @@ function futureTooltip(team, incoming, leaving) {
     let html = `<div class="tooltip-text mls-power-tooltip mls-power-tooltip-right">`;
     html += `<div class="mls-power-tooltip-title">Future value after</div>`;
     html += players.map(p => `
-        <div class="mls-power-tooltip-row${incoming.has(p.cleanName) ? ' mls-trade-in' : ''}">
-            <span class="mls-power-tooltip-name">${incoming.has(p.cleanName) ? '+ ' : ''}${escapeHtml(p.name)}</span>
-            <span class="mls-power-tooltip-rank">${p.age != null ? `${p.age} yrs &middot; ` : ''}#${p.futureRank != null ? p.futureRank : p.rank}</span>
+        <div class="mls-power-tooltip-row${incoming.has(p.cleanName) || p.moved ? ' mls-trade-in' : ''}">
+            <span class="mls-power-tooltip-name">${incoming.has(p.cleanName) || p.moved ? '+ ' : ''}${escapeHtml(p.name)}</span>
+            <span class="mls-power-tooltip-rank">${futureRankText(p)}</span>
         </div>`).join('');
-    if ((team.futurePlayers || []).length > players.length) html += `<div class="mls-power-tooltip-more">+ ${team.futurePlayers.length - players.length} more</div>`;
+    html += futureMoreHTML(team.futurePlayers, players.length, escapeHtml);
     if (leaving.length) html += `<div class="mls-power-tooltip-more mls-trade-out">Leaving: ${leaving.map(p => escapeHtml(p.name)).join(', ')}</div>`;
     return html + `</div>`;
 }

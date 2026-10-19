@@ -15,6 +15,10 @@
 //             Escape hides it.
 //   Touch/mouse: tap to toggle; tap anywhere else to close. Taps inside an open tooltip
 //             leave it open (Power Rankings tooltips are long enough to scroll or read).
+// On screen: each tooltip opens leftward from its trigger (css/base.css), so near the left edge of a phone it ran off
+// the screen. Whenever one is about to show (tap, hover, keyboard focus), place() measures it and slides it sideways
+// to keep an 8px margin inside the window (improvements S19, round 7: found by the owner, site-wide); its width is
+// capped at the window's in CSS.
 // Everything is delegated from document, and a MutationObserver enhances triggers rendered
 // after load. Triggers stay <div>/<span>s rather than becoming <button>s on purpose: several
 // icons sit inside a <label>, where a button would become the label's control (tapping the
@@ -77,6 +81,26 @@
     document.querySelectorAll(`.tooltip-icon:not([data-tt]), .tooltip-container[data-tt-self]:not([data-tt])`).forEach(enhance);
   }
 
+  // Slides a tooltip back inside the window. Measured with any earlier shift undone; a hidden tooltip still has its
+  // box (visibility: hidden), so this works before it fades in. CSS applies --tt-dx with `translate`, which doesn't
+  // touch the fade's `transform`.
+  const MARGIN = 8;
+  function place(text) {
+    if (!text) return;
+    text.style.removeProperty('--tt-dx');
+    const r = text.getBoundingClientRect();
+    if (!r.width) return;
+    const vw = document.documentElement.clientWidth;
+    let dx = 0;
+    if (r.left < MARGIN) dx = MARGIN - r.left;
+    else if (r.right > vw - MARGIN) dx = (vw - MARGIN) - r.right;
+    if (dx) text.style.setProperty('--tt-dx', `${Math.round(dx)}px`);
+  }
+  const tipsOf = (el) => {
+    const container = el.closest && el.closest('.tooltip-container, .tooltip');
+    return container ? container.querySelectorAll(':scope > .tooltip-text, :scope > .tooltip-icon + .tooltip-text') : [];
+  };
+
   function closeAll(except) {
     document.querySelectorAll('.tooltip-text.mobile-visible').forEach(t => {
       if (t !== except) t.classList.remove('mobile-visible');
@@ -92,6 +116,7 @@
     // "already open" and close it instead.
     const open = text.classList.contains('mobile-visible') ||
       (trigger.matches(':focus-visible') && !text.classList.contains('tt-dismissed'));
+    if (!open) place(text);
     text.classList.toggle('mobile-visible', !open);
     text.classList.toggle('tt-dismissed', open);
   }
@@ -126,6 +151,12 @@
       // Only this Escape: keep it from also closing a menu or dialog behind the tooltip.
       e.stopPropagation();
     }
+  }, true);
+
+  // Hover (a mouse) and keyboard focus show a tooltip through CSS; place it as that starts.
+  document.addEventListener('mouseover', e => { tipsOf(e.target).forEach(place); }, true);
+  document.addEventListener('focusin', e => {
+    if (e.target.matches && e.target.matches(TRIGGER)) place(textFor(e.target));
   }, true);
 
   // Leaving a trigger resets it, so the next visit (focus or tap) starts from "closed".

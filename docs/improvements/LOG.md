@@ -4486,3 +4486,435 @@ four PNGs listed above; 389 tests passed. For each, CI's `-expected.png` was byt
 the height change from main matched this container's main-vs-branch comparison (desktop scout −252 both; phone guide +576
 both; desktop guide +161 vs +185 and phone scout −169 vs −166, from text wrapping under CI's fonts). Committed CI's
 `-actual.png` renders as the baselines: `{desktop,phone}/mls-league-guide.png` and `{desktop,phone}/mls-league-scout.png`.
+
+## S19 — Trade Analyzer: what would make it fair
+
+**User-visible effect.** When the Trade Analyzer's verdict is Favors Them or Favors You, a box between the verdict
+banners and "Power Rankings after the trade" says who would have to add and about how much: **"To make it fair, they'd
+add about 9,800"** (or "you'd add"), then "By Your Rankings, from Rival's roster. Any one of these brings it within
+10%." and up to three suggestions, closest to even first, one per line: position badge, name, value, **Add**. Add puts
+the player on the right side of the trade through the picker (a token appears) and the trade re-runs in place; the
+box then updates, or disappears when the trade is Fair. When no single player is enough: "No single player on Rival's
+roster closes a 19,100 gap. By Your Rankings, these pairs would:" and up to three pairs with **Add both**. When nothing
+fits: "No player or pair on Rival's roster closes a 18,600 gap by Your Rankings." When one more player on that side
+moves the waiver adjustment (so "about" differs from the banner's gap), the line adds "Counts the waiver adjustment,
+which changes with one more player." In dynasty and keeper leagues with Market Consensus loaded, that team's own picks
+("2027 2nd", marked *) can be suggested, with "* Draft pick: market value. Assumes Rival still has its own picks (traded
+picks aren't synced)." No box for a Fair Trade, a one-sided entry or no rankings. Other cases say why in one line: a
+manual league when they'd add ("the app knows only your roster"), players from more than one team, or only free agents
+or picks on your side with "Any team" under From ("Choose their team under From"). Phones: one suggestion per line,
+names kept whole (a pair wraps as "Gibbs" / "+ Barkley"), Add at the right edge; from 768px the suggestions sit in two
+columns, like the trade's two sides. Export Trade's image leaves the box out.
+
+Also: the Guide's badge legend has a line for the **Pick** badge (a FLEX-colored position badge reading "Pick"), which
+the trade rows have shown since S14 without one; see Screenshots.
+
+**The owner's decisions (Asks you).**
+1. **Values: Your Rankings** (the first verdict); Market Consensus only when no ROS rankings are loaded (as S14's
+   headline). The line names which.
+2. **Pool: the adding side's roster plus its own picks** in dynasty and keeper leagues: the From team's roster when
+   the trade favors them (Sleeper leagues), yours when it favors you. No free agents. Pick ownership isn't synced, so
+   each team is assumed to hold its own next three drafts' picks, rounds 1-4 (the picker's years), valued by the market.
+3. **3 suggestions, pairs as a fallback**: up to 3 single players; only when none fits, up to 3 pairs with one "Add
+   both".
+4. **Ignore the lineup**: closest fit first, starter or not (the Power Rankings section shows the lineup effect after
+   the add).
+
+**What changed and where.**
+- `js/mls/trade/makeFair.js` (new, pure, in `PRECACHE_ASSETS`): `verdictFromValues` (the verdict's math, moved from
+  `tradeVerdictNumbers` unchanged, so a suggestion is checked with exactly the banner's numbers, waiver adjustment
+  included), `gapToClose` (who adds, and the value one more piece would need, waiver change included), `fairSuggestions`
+  (each candidate re-checked with the whole verdict as if added; singles closest to even first; pairs from the 40 most
+  valuable candidates under the gap when no single fits), `fairCandidates` (ranked roster players; picks only in
+  dynasty), `nextDraftYears`, `ownPickNames`, `roundGap`.
+- `js/mls/trade/fairSection.js` (new, in `PRECACHE_ASSETS`): `buildMakeFairHTML` picks the values, the adding team (the
+  one team the players you'd get come from, else the From drop-down), its roster from `globalRosterMap` (yours also
+  from `league.roster`), and draws the box. Never suggests a player already in the trade, an unranked player, or a pick
+  already on the adding side.
+- `js/mls/trade/verdict.js`: `tradeVerdictNumbers` calls `verdictFromValues`; the banners' output is unchanged.
+- `js/mls/scout/engine.js`: the box between the verdicts and the impact section (try/catch, like the section); the Pick
+  badge from `PICK_BADGE_HTML`. `js/mls/badges.js`: `PICK_BADGE_HTML`. `js/mls/legend.js`: its line.
+- `js/mls/trade/picker.js`: the pick years from `nextDraftYears` (same years). `js/mls/main.js`: the
+  `addFairSuggestion` action (`addTradeNames`). `css/mls.css`: `.mls-trade-fair*`.
+- `lineup/index.html`: Guide step 9 gets a sentence on "To make it fair" (the legend line already changes that screenshot).
+- `sw.js`: the two files; `CACHE_NAME` v2.8.95 → v2.8.96. `CHANGELOG.md`: a line under Lineup Strategist.
+- No storage key.
+
+**Tests.**
+- Unit (`tests/unit/makeFair.test.mjs`, 13): the moved verdict math and waiver credit; fair or valueless trades get
+  nothing; favors them adds to Get and favors you to Give; closest to even first, at most 3; the waiver adjustment
+  recomputed (a 1-for-2 needs 5,000, not the raw 4,000, and a candidate that looks fair with the old credit isn't);
+  players in the trade skipped, a pick only on the same side; unranked never suggested; pairs only when no single fits;
+  nothing fits; picks only in dynasty and only with market values; the pick years; rounding.
+- Spec (`tests/mls-trade-fair.spec.mjs`, both widths, the phone at 375px): Bijan for Chase + Jefferson shows up to 3 of
+  Rival's players (none in the trade), between the verdicts and Power Rankings, one per line with names whole and Add on
+  screen, no sideways scroll; Add makes a token, re-runs (4 rows) and the verdict turns Fair with no box. Favors you:
+  from your roster, Add on Give, Fair. A pair with "Add both". Nobody fits: the one line. Fair, one-sided and no
+  rankings: no box. A manual league: the note when they'd add, suggestions when you'd add. Export Trade's clone has the
+  verdict and not the box. (The tests that prune rosters turn the waiver adjustment off: its auto value comes from the
+  best free agents, which pruned players become.)
+
+**Checks.** Precache OK; 380 unit tests and 397 Playwright tests pass (1 skipped, the phone-only emulation test on
+desktop). visual.spec fails here as it does on main (this container can't render CI's baselines).
+
+**Screenshots.** Rendered here on main and on this branch: only **`mls-league-guide.png`** changes, at both widths
+(`desktop/` 1280×6792 → 1280×6854, `phone/` 390×14539 → 390×14761), from the Pick badge's legend line and Guide step
+9's new sentence. The other 38 are pixel-identical (the screenshot league has no rankings and an empty trade form). To be
+taken from the pull request's CI renders ("Accepting an intended visual change").
+
+**Left over.** Picks assumed nobody had traded theirs; round 2 syncs them.
+
+### S19, round 2: traded picks synced from Sleeper; a bug in pick values (owner's request)
+
+**The owner asked** to start syncing Sleeper's picks on rosters, within this card, so the suggestions use them.
+
+**User-visible effect.**
+- **Sync reads traded picks** (dynasty and keeper leagues only; redraft picks don't trade, so no extra request on Sync
+  All for them). Each team holds its own pick in each round (the league's `draft_rounds`, at most 4) of the next three
+  drafts (the picker's years), moved by Sleeper's `league/<id>/traded_picks`. Stored on the league object as
+  `league.picks` (`{ owner: [{ name, season, round, from }] }`, owners named as in `globalRosterMap`), so no new storage
+  key; Backup/Restore carries it with the league. If the request fails the league still syncs, with `picks: null`.
+- **"To make it fair"** suggests only the picks that team holds, once per name, marked "via Rival" (or "via you") when
+  it came in a trade; the note reads "Picks Rival holds as of this league's last sync." A dynasty league synced before
+  this keeps the old assumption, and the note says to sync it.
+- **The trade rows** say who holds a pick: on Give, "Yours" or, in red, "Not yours (you don't hold it)"; on Get, the From
+  team's ("Rival's") or "Rival doesn't hold it" in red, or with Any team "Held by A, B" ("Already yours" / "No team holds
+  it" in red). Without synced picks, "Pick" as before.
+- **Bug fixed: pick values.** Names are matched by `normalizeName`, which drops digits, so every "20xx 1st" was the same
+  key (`st`): the market lookup gave every 1st one value, whatever its year (and every 2nd another), and round 1's
+  suggestions would have deduplicated a team's 2027 and 2028 2nds into one. Found while writing this round's spec. A
+  spec showing it was run on main first (a 2029 1st ranked 40th by the market showed the 2027 1st's 8,492 instead of
+  4,924), then fixed: picks are matched by year and round (`pickKey`).
+
+**What changed and where.**
+- `js/mls/leagues/picks.js` (new, pure, in `PRECACHE_ASSETS`): `pickOwnership`, `pickHolders`, `pickKey`, `pickName`.
+- `js/shared/api/sleeper.js`: `getSleeperTradedPicks` (null on a non-ok response). `js/mls/leagues/sync.js`: reads it for
+  dynasty and keeper leagues and stores `picks` on the league.
+- `js/mls/trade/valueCurve.js`: `getMarketValue(cleanName, name)` looks a pick up by `pickKey` (an index of the market's
+  picks, cached per array); `js/mls/scout/engine.js` passes the name, and its pick rows use `pickOwnerText`.
+- `js/mls/trade/makeFair.js` (`fairCandidates` takes the synced `picks`, else assumes; picks valued by name) and
+  `js/mls/trade/fairSection.js` (the team's synced picks, "via", the note, picks keyed by `pickKey`). `css/mls.css`:
+  `.mls-trade-fair-from`.
+- Tests: `tests/fixtures/sleeper/make-fixtures.mjs` writes `league-traded-picks.json` (Rival's 2027 1st is yours, your
+  2027 2nd is Rival's; read only when a spec makes the league dynasty), routed in `tests/helpers.mjs`.
+- `CHANGELOG.md`: two lines. `CACHE_NAME` stays v2.8.96 (once per branch; main is v2.8.95).
+
+**Tests.** Unit (`tests/unit/pickOwnership.test.mjs`, 6): own picks, traded both ways and onward, the rounds cap,
+a pick traded to a roster nobody owns, `pickHolders`, `pickKey`; `makeFair.test.mjs`: synced picks only, once per name,
+with `from`, none for a team holding none. Spec: the fixture league synced as dynasty has the expected picks per team;
+with market values for a 2027 1st and 2nd, a gap only a pick closes suggests Rival's 2027 2nd (via you), never the 1st it
+traded away, and Add makes it Fair; the four row texts; and the pick-value bug (each pick its own Mkt value).
+
+**Checks.** Precache OK; 387 unit and 401 Playwright tests pass (1 skipped; visual.spec fails here as on main).
+Screenshots: rendered here, all 40 pixel-identical to round 1's (the screenshot league is redraft, so no traded picks are
+read); still only `mls-league-guide.png` at both widths differs from main.
+
+**Left over (other places traded picks could be used; not built):**
+- The picker's lists (tapping Give or a From team) could offer that team's picks along with its players.
+- Power Rankings' Future column and the Roster tab count players only; picks held could add to a team's future value.
+- The Dashboard's league cards don't show picks.
+
+### S19, round 3: draft picks in the Future column (owner's request)
+
+**The owner asked** to include picks in the Power Rankings' Future column, since it bears on trade decisions.
+**Asked:** how to value a pick there. **Answer:** dynasty Market Consensus's value for that pick (its year and round)
+when loaded, else a set table.
+
+**User-visible effect.** In dynasty and keeper leagues whose picks were synced (round 2):
+- **Future** (Roster tab and "Power Rankings after the trade") adds each team's picks to its future value, on the same
+  power curve as players: a pick counts like a player of the market's rank for it, or, without dynasty market data (or
+  for a pick the market doesn't price), the table's rank: 1st = 48, 2nd = 100, 3rd = 160, 4th = 230, each draft further
+  out 15% further down (a 2029 1st counts like the 62nd player). No age factor. A note under the table says which.
+- **Tooltips:** picks sit among the top rows by value ("2027 1st (via Rival)", "Pick · like #48"); any that don't make the
+  top 8 are named on a "Picks:" line, so they never hide behind "+ 10 more" (now "+ 4 more players").
+- **Trades:** picks in a trade move between the teams before scoring (yours to the partner; theirs, or with Any team
+  whoever holds one, to you), marked "+" in the Future tooltip and listed under "Leaving:". A side of picks only is
+  now enough for the section in such a league (S14 skipped those, when picks had no lineup or future effect); with no
+  player to name the partner, the From team is it. Redraft and manual leagues, and dynasty leagues not synced since
+  round 2, are unchanged.
+- Guide (Power Rankings step) and the Roster card's (i) mention picks.
+
+**What changed and where.**
+- `js/mls/leagues/picks.js`: `tablePickRank`, `picksAfterTrade`.
+- `js/mls/power/shared.js`: `computePositionalPower` adds `league.picks` to `futurePlayers` / `futureScore` when
+  `opts.future.pickRank` is given (no change otherwise: All My Leagues passes no future).
+- `js/mls/power/futureValue.js`: `powerPickRank` (market, else table), attached to `resolvePowerFuture`'s sources with a
+  `picks` label; `powerPicksNote`, `futureRankText`, `futureMoreHTML` (shared by both tables).
+- `js/mls/power/rosterCard.js` (note, tooltip), `js/mls/trade/lineupImpact.js` (`leagueAfterTrade` / `powerTradeImpact`
+  take the traded picks), `js/mls/trade/lineupSection.js` (picks-only sides, partner from From, notes, tooltips).
+- `lineup/index.html` (Guide step, card tooltip), `CHANGELOG.md`.
+
+**Tests.** Unit: `tablePickRank`, `picksAfterTrade` (to the partner, from any holder, skipped when nobody holds it,
+original untouched); picks add to future value and rank and are listed with "via"; none without `pickRank`; a pick swap
+moves future ranks and marks the moved pick. Spec (fixture league synced as dynasty): the Roster tab's Future column,
+its note and the "Picks:" line; a 2027 1st for 2027 2nd trade shows the section with "+ 2027 2nd (via you)" and
+"Leaving: 2027 1st".
+
+**Checks.** Precache OK; 391 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main).
+Screenshots: against round 2's renders only `mls-league-guide.png` changes (desktop 1280×6854 → 1280×6877, phone
+390×14761 → 390×14830, the Guide sentence on picks); the Roster screenshots don't move (the screenshot league is redraft,
+and the card's (i) text is hidden). Against main, still only `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 4: a plain "2027 1st" took the market's Early 1st value (found by the owner)
+
+**The owner found** a 2027 1st worth about 6,100 on this branch against about 2,900 on main. Not the set table (round 3
+uses it only in the Future column, and only for picks the market doesn't price): round 2's `pickKey`. FantasyCalc prices
+each pick four ways: today, for 12-team 1QB PPR dynasty, "2027 1st (Early)" is ranked 26th, "(Mid)" 53rd, plain "2027 1st"
+63rd and "(Late)" 78th. `pickKey` ignored the "(Early)", so all four were one pick, and the market index kept the
+best-ranked, the Early 1st, for every plain "2027 1st" (rows, verdicts, "To make it fair", the Future column). Main gave
+the plain 2027 1st its right value, but only because its digit-less key ("st") happened to land on the 2027 1st first in
+FantasyCalc's order; it still gave a 2028 or 2029 1st the 2027 1st's value (round 2's fix).
+
+**Fix.** `pickKey` keeps Early / Mid / Late ("pick 2027 1st early"), so a plain pick gets the market's plain value and a
+pick typed "2027 1st (Early)" its Early value; `{ tier: false }` drops it where only the slot matters: who holds a pick
+(`pickHolders`, `picksAfterTrade`; Sleeper's picks are plain) and "already on this side" in `fairSection.js`. The market's
+pick index keeps the first row per key (no more "best of several").
+
+**Tests.** The spec "each draft pick has its own market value" now uses FantasyCalc's names (Early, plain, Late for 2027
+1sts; Early and plain 2nds; a 2029 1st): run on round 3's commit first, it failed (the plain 2027 1st showed the Early 1st's
+9,299 for 8,492), then passed with the fix. Unit: `pickKey` with and without the tier, `pickHolders` ignoring it.
+
+**Left over.** The picker and Sleeper name picks plainly, so every pick is valued as FantasyCalc's plain one. The owner
+wants specific pick values after the season, when FantasyCalc starts pricing specific picks (names to check then); not
+needed in season. Written into `docs/TESTING.md`'s "Open follow-ups" (On a date: after the regular season).
+
+**Checks.** Precache OK; 391 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main). No
+screenshot effect (no visible text or layout changed).
+
+### S19, round 5: a review as a user; suggestions across prices, Remove, Undo, quieter notes (owner: "do all four")
+
+**My review** (on the fixture league as a phone user, dynasty, FantasyCalc-named picks): the loop works (lopsided → one
+tap → Fair), but (1) "closest to even" always suggested the other team's stars, (2) a suggestion didn't say where it
+lands the trade, (3) the only way back from an Add was the token's ✕ far up the page, (4) the Power Rankings section
+ended in four bullets of explanation; missing: (5) taking a piece off your own side, the usual counter, and (6) a pick
+when a player is closer to even. The owner asked for all four proposals (spread with a pick and landing, Remove, Undo,
+quieter notes).
+
+**User-visible effect.**
+- **Suggestions across prices:** the closest to even, the least valuable that still fits (the least they'd give), and in
+  dynasty the pick closest to even, then the next closest; shown most valuable first. Under each name, where it lands:
+  "Fair · even", "Fair · 2% your way", "Fair · 9% their way" (a fair 9.6% reads 9%, never "Fair · 10%"). Pairs unchanged.
+- **Remove:** "Or take off your side:" (favors them: from what you give) or "Or ask for less:" (favors you: from what you
+  get), up to two pieces whose removal alone makes it fair, closest first, each with its value, landing and **Remove**.
+  Never a side's last piece. It needs no other roster, so it shows in a manual league too, and wherever adding is
+  blocked (several teams, no team under From). Remove doesn't focus the search (a phone keyboard would cover the result).
+- **Undo:** after Add or Remove, "Added Bijan Robinson. Undo" / "Took off Ja'Marr Chase. Undo" under the verdict puts the
+  whole trade back and re-runs it. It stays while the trade is unchanged; any other change drops it. In memory only.
+- **Quieter notes:** in "Power Rankings after the trade", the explanations (Market Consensus fallback, what Future means,
+  picks in Future, no ages, injuries and byes left out) sit behind one "How this is worked out" (i) (tap on phones);
+  notes that need you (a name not matched, a player not yours, already yours) and the ones about the trade (an empty
+  slot, picks have no lineup spot, unranked players) stay as bullets. Export Trade leaves the (i) line out.
+- Shorter box text: "(waiver adjustment included)"; "* Market value. Picks as of the last sync."
+
+**What changed and where.** `js/mls/trade/makeFair.js` (`spreadFits`, `fairRemovals`, `landing`; `fairSuggestions`
+returns `removals`), `js/mls/trade/fairSection.js` (landing line, the removal list, the Undo state and line,
+`data-fair-adds` / `data-fair-removals`), `js/mls/trade/picker.js` (`tradeNames`, `removeTradeNames`, `restoreTrade`),
+`js/mls/main.js` (`removeFairPiece`, `undoFairChange`; Add remembers the trade), `js/mls/trade/lineupSection.js` (`about`
+notes and the (i) line), `js/mls/trade/export.js` (drops the (i) line; removes only `li` help notes), `css/mls.css`,
+`CHANGELOG.md`.
+
+**Tests.** Unit: the spread (closest, least, then next; most valuable first), a pick getting a place, removals (each side,
+never the last piece, the waiver credit recomputed, none when fair), `landing` (even, both ways, 9.6% → 9%). Spec: landing
+lines and the price order; Undo after Add (back to Favors Them, box back, line gone); Remove (token gone, Fair, "Took
+off …", search not focused); another change drops the Undo; "Or ask for less" when it favors you; removals in a manual
+league; the notes' (i) holding "Injuries and byes" and the bullets not; the export without the (i) line.
+
+
+**Checks.** Precache OK; 394 unit and 403 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 3's renders; against main still only `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 6: the market's value on each suggestion (owner's request)
+
+**User-visible effect.** In "To make it fair", each suggestion and each "Or take off your side" piece shows "Mkt 8,500"
+under its value when Market Consensus is loaded (a pair: the sum; "Mkt –" when the market has no value for it), in the
+rows' own style. Not shown when Market Consensus is what decides (no ROS rankings), since the two numbers would match.
+**Where.** `js/mls/trade/fairSection.js` (`valueHTML`, `marketOf`), `css/mls.css` (`.mls-trade-fair-val` as a column),
+`CHANGELOG.md`. **Tests.** Spec: no Mkt line without market data; with it, Saquon's market value, "Mkt –" for players
+the market lacks, and Chase's on the removal.
+
+**Found while here (owner's report): tooltips run off the screen on phones, site-wide.** Every `.tooltip-text` is 260px
+wide at `right: -10px` from its trigger (css/base.css), so it always opens leftward; a trigger within ~250px of the left
+edge of a 375px screen puts it off-screen. Measured at 375px with every tooltip opened: 2 on the Lineup tab (the
+optimizer settings), 1 in the Trade Analyzer's Value settings, and round 5's "How this is worked out" (i). Fixed in round 7.
+
+### S19, round 7: tooltips stay on the screen, site-wide (owner's report; owner chose this branch)
+
+**Bug.** Every `.tooltip-text` is 260px wide at `right: -10px` from its trigger (css/base.css), so it always opens
+leftward, and nothing measured the window. **Test first:** `tests/tooltips-onscreen.spec.mjs` taps every tooltip trigger
+on every tab of both apps (folds opened; the Trade Analyzer with a lopsided trade analyzed) at 375px and 1280px and
+checks each box. On the code before the fix it failed with five: at 375px the Lineup tab's two optimizer settings
+(−32 and −79px off the left), the Trade Analyzer's Value settings (−37px) and round 5's "How this is worked out" (−59px);
+and at 1280px the optimizer setting again (−11px). Draft Strategist and T-Score (no tooltips) had none in the states
+reached.
+
+**Fix.** `js/shared/ui/tooltips.js`: `place(text)` measures a tooltip as it opens (a tap through `toggle`, a mouse
+through `mouseover`, the keyboard through `focusin`) and sets `--tt-dx` to slide it inside an 8px margin; `css/base.css`
+applies it with `translate` (so the fade's `transform` is untouched) and caps the width at `calc(100vw - 16px)`. A
+tooltip that already fits gets no shift, so nothing moves where things were fine; the Power Rankings tooltips' own
+left/right/center classes still apply first. `docs/TESTING.md` (Conventions) notes the rule and the spec.
+
+**User-visible effect.** Any tooltip opened near a screen edge slides back on screen (both apps). CHANGELOG lines under
+both apps.
+
+
+**Checks (rounds 6 and 7).** Precache OK; 394 unit and 409 Playwright tests pass (1 skipped; visual.spec fails here as on
+main). Screenshots: all 40 pixel-identical to round 5's renders (tooltips are closed in them); against main still only
+`mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 8: a capital "I" on info icons (owner's report)
+
+**Bug.** `.tooltip-icon` (css/base.css) never set `text-transform`, so an (i) inside an uppercase label inherits it: the
+Trade Analyzer verdict's "BY YOUR RANKINGS" / "BY MARKET CONSENSUS" (`.trade-verdict-source-label`, css/mls.css) showed
+"I". **Test first:** `tooltips-onscreen.spec.mjs` now also fails on any (i) whose rendered text (innerText, which applies
+text-transform) isn't "i", and on any tooltip text that's transformed; before the fix it failed on the verdict's (i) at
+both widths, the only one in the states it reaches. **Fix:** `text-transform: none; letter-spacing: normal` on
+`.tooltip-icon` and `.tooltip-text` in css/base.css, so it holds for any (i) in any label, site-wide.
+
+
+**Checks.** Precache OK; 394 unit and 409 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 7's (no (i) in a capitalized label is on them).
+
+### S19, round 9: the fair range, the market's view, verdicts side by side (owner: "do 1, 2 and 3" of my second review)
+
+**My second review as a user** (round 8): (1) "about 3,000" next to a 1,950 pick marked Fair read as a contradiction;
+(2) nothing said when the market disagrees with Your Rankings; (3) on desktop the two verdicts stacked full-width filled
+the first screen; (4) the desktop list reads across, not down (skipped, the owner's choice).
+
+**User-visible effect.**
+- **The fair range:** "To make it fair, they'd add 7,650–11,590": every value one more piece could have and leave the
+  trade within 10%, waiver change included, rounded outward to 10s so every fair suggestion falls inside it (rounding to
+  100 put the review's fair 1,950 pick under "2,000"). "up to N" when even nothing added is fair; "about N" if no range.
+- **The market's view:** when Your Rankings decide, Market Consensus is loaded and values every piece, and its verdict
+  differs: one amber line. Inside the box when the trade is lopsided by yours ("By Market Consensus it's already fair as
+  it stands."), on its own under a verdict that's fair by yours ("By Market Consensus this favors you (29%): they may ask
+  you to add about 2,900." / "...favors them (12%): they may be open to adding about 1,200."). On screen only.
+- **Verdicts side by side** from 768px (`.trade-verdict-pair`, a grid); stacked on phones. Export Trade still copies both.
+
+**What changed and where.** `js/mls/trade/makeFair.js` (`fairRange`; `gapToClose` and `fairSuggestions` return
+`range`), `js/mls/trade/fairSection.js` (the range head, `marketLine`), `js/mls/trade/verdict.js` (the pair wrapper),
+`js/mls/trade/export.js` (its selector reaches into the pair), `css/mls.css`, `CHANGELOG.md`.
+
+**Tests.** Unit: the range's ends (just inside fair, just outside not), the review's 1,950 pick inside its range, the
+waiver change in it. Spec: every suggestion's value inside the range shown; the market line alone under a fair verdict,
+inside the box when only yours is lopsided, absent when the market lacks a piece; the verdicts' tops equal on desktop
+and stacked on the phone; the export with both verdicts and without the market line.
+
+
+**Checks.** Precache OK; 395 unit and 411 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 8's (the screenshot league has no rankings, so no verdict); against main still only
+`mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 10: my third review as a user; two fixes
+
+**Reviewed** (phone at 375px and desktop, market data for every player): a trade fair by both lenses; a 1-for-3 only pairs
+can close; a typo'd name with a player the market lacks; the verdicts side by side.
+
+**Fixed (both in this card's code, test first):**
+- **A pair's names ran over its value on phones** ("+ Christian McCaffrey" 73px past its column, over "17,962"). The
+  pairs spec now measures each name's text against its column at 375px (the column's box stays narrow, min-width 0,
+  while its text spills, so the first version of the check, on the box, passed); it failed on all three pairs, then
+  passed. Fix: below 768px a pair takes two lines (badges stacked, names across, the value and Add both under them on
+  the right); singles and desktop unchanged.
+- **Two numbers for one gap:** "No single player on Rival's roster closes a 19,100 gap" sat under "they'd add
+  16,220–22,340". Now "...is worth 16,220 or more" and "No player or pair on Rival's roster adds up to 16,220–22,340".
+
+**Seen, not changed (from S14, outside this card; for the owner):**
+- With a typo'd or unmatched name, the market banner reads "est. 0 ... Favors Them (100%)" when the market has none of
+  your side's players, and Your Rankings can say "Fair Trade" while a name counts as 0 ("1 player not found"). Holding
+  the verdict until every name matches (or muting the banner) would be clearer.
+
+
+**Checks.** Precache OK; 395 unit and 411 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 9's.
+
+### S19, round 11: verdicts wait for every name; "Incomplete" by the market (owner: fix them now, not as a card)
+
+**The bugs** (round 10's "seen, not changed"): a name that matches no player (a typo) counts as 0 in every total, so
+the Trade Analyzer still said "Fair Trade" (and built "To make it fair" and the value headline on it); and the market
+banner read "est. 0 ... Favors Them (100%)" when the market had none of one side's players.
+**Test first:** `tests/mls-trade-verdict-held.spec.mjs` (both widths): a typo'd Gibbs gets no Fair/Favors banner, no
+box and no headline, then the verdicts once fixed; Saquon missing from the market makes its banner "Incomplete" and
+names him while Your Rankings still decides; Tre Tucker (a real player, unranked) counts as 0 with a sentence saying so.
+All six failed before the fix.
+
+**Fix.**
+- `js/mls/scout/engine.js`: each trade row carries `known` (a pick, or a name with a position: Sleeper, the league or
+  market data). `js/mls/trade/verdict.js`: `unknownNames`; with any, one muted banner ("No verdict yet. Couldn't match X
+  to a player. Fix the name (Did you mean, below) to get a verdict.", `data-verdict-held`) instead of both verdicts.
+  Per source: a real player the market lacks makes that banner "Incomplete" (no diff, `verdict-incomplete`) with "X
+  isn't in the Market Consensus data, so this total is missing him."; one your ROS rankings lack keeps the verdict (an
+  unranked player is worth 0 on your board, the card's rule) with "X isn't in your ROS rankings, so he counts as 0."
+  (was "1 player not found, excluded from this total"). The market-age line moved into `marketAgeHTML`.
+- `js/mls/trade/fairSection.js` and `js/mls/trade/lineupSection.js`: no box and no value headline while a name is
+  unknown, or while the market decides and lacks a piece. The Power Rankings section itself still compares the players
+  it can match and notes the one it can't (S14). `css/mls.css`: `.verdict-incomplete`.
+
+
+**Checks.** Precache OK; 395 unit and 417 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 10's; against main still only `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 12: my fourth review as a user; gaps after numbers in exported images
+
+**Reviewed** (phone and desktop): building a trade with the picker, the Roster tab's Future column with picks (its
+tooltip on screen at 375px, picks named), the saved Export Trade image, a manual league. Proposed (1) the picker offering
+the picks each side holds and (2) the export's odd spacing.
+
+**The owner's decisions.** (1) **No**: restricting or steering the pick row to held picks would make hypotheticals
+harder, and the owner's devy league tracks devy picks separately; the picker stays open to any pick. (2) **Yes.**
+
+**Bug and fix.** Every page sets `font-variant-numeric: tabular-nums` on body (css/base.css). html2canvas 1.4.1 places
+each word at the browser's position but draws it with the canvas's text, which ignores that, so words with digits came
+out narrower than their slots and left gaps: Export Trade showed "(0- 10,000 )" and "(- 868 pts, 9%)", values stopped
+short of the right edge, and Export Lineup and Draft Strategist's Export Team had the same after ranks ("RB1"). Confirmed
+by exporting with the setting off in the image only (the gaps went away). **Test first:** `tests/export-numerals.spec.mjs`
+records the clone html2canvas draws from, after each export's own onclone, and fails on any text with digits still
+asking for tabular digits; it failed on all three exports, then passed. **Fix:** `js/shared/ui/exportImage.js` (new, in
+`PRECACHE_ASSETS`) `useProportionalDigits(root)` adds a style to the clone; called by Export Trade and Export Lineup
+(`js/mls/trade/export.js`) and Export Team (`js/mds/export.js`). The page keeps its tabular digits. I looked at all three
+images. `docs/TESTING.md` (Conventions) notes it for new exports; CHANGELOG lines under both apps.
+
+
+**Checks.** Precache OK; 395 unit and 421 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 11's; against main still only `mls-league-guide.png` at both widths, to take from CI.
+
+### S19, round 13: my fifth review as a user; keyboard focus, the Guide
+
+**Reviewed:** the Guide against what the feature does now, the Pick legend line, the box from the keyboard (Tab, Enter
+on Add, Undo, Remove). **Found and fixed:**
+- **Focus fell to the top of the page** after Add, Remove or Undo by keyboard: the re-run replaces the box, and the
+  focused button with it. Test first (`mls-trade-fair.spec.mjs`, "keyboard: focus stays with the box", failed on BODY):
+  `js/mls/trade/fairSection.js` remembers the next focus (`_focusNext`: Undo after a change, the first suggestion after
+  Undo) and `placeFairFocus`, called by `runScout` once the results are in, moves it there with `preventScroll`.
+- **The Guide was stale** (step 9 still said "about how much", with no Remove, Undo, range, market line or held
+  verdict). Rewritten; `mls-league-guide.png` was already on the CI re-take list for this branch.
+
+
+**Checks.** Precache OK; 395 unit and 423 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+against round 12 only `mls-league-guide.png` (desktop 1280×6877 → 1280×6923, phone 390×14830 → 390×14969, the Guide
+sentence); against main still only that PNG at both widths, to take from CI.
+
+### S19, round 14: my sixth review as a user; a 12-team league, long names on phones
+
+**Reviewed:** a realistically sized league built in memory (12 teams of 25, a 300-player board, market values for all,
+real-length names): Analyze takes ~0.1s, Add to re-run ~0.4s (0.25s of it the deliberate debounce), "To make it fair"
+and Power Rankings for 12 teams read fine. No light theme exists to check.
+
+**Found and fixed:** at 375px a single long name ran over its value, worst on a Remove row (the wider button):
+"Marcus Henderson M12" over "8,042"; with a fixture player, "Amon-Ra St. Brown" 4px past its column. Round 10 had only
+fixed pairs. **Test first:** the overlap check became `rowOverlaps` in `mls-trade-fair.spec.mjs`, run on suggestions
+and removals, and also fails when a value and its button end up on different lines; the new test "long names on single
+rows fit at 375px" failed on the phone, then passed. **Fix** (`css/mls.css`, `js/mls/trade/fairSection.js`): every row
+may wrap, names never shrink below their own width (`min-width: min-content`, each player nowrap), and the value and
+its button sit in one `.mls-trade-fair-act` group pushed right, so when a name doesn't fit beside them they move
+together to a second line; rows that fit stay on one line. The pair rule keeps only its stacked badges and full-width
+names.
+
+
+**Checks.** Precache OK; 395 unit and 425 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 13's; against main still only `mls-league-guide.png` at both widths, to take from CI.
+
+**S19, pull request ([#200](https://github.com/btrerise/My-Draft-Strategist/pull/200)):** re-took the two screenshots
+from CI run 39208970674 (its `-actual.png`, after checking each `-expected.png` was byte-identical to the committed
+baseline and the first changed row is the Power Rankings Guide's picks sentence):
+`tests/baselines/linux/desktop/mls-league-guide.png` (1280×6599 → 1280×6731) and
+`tests/baselines/linux/phone/mls-league-guide.png` (390×13786 → 390×14191).
