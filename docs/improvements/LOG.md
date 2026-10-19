@@ -4770,3 +4770,6 @@ text-transform) isn't "i", and on any tooltip text that's transformed; before th
 both widths, the only one in the states it reaches. **Fix:** `text-transform: none; letter-spacing: normal` on
 `.tooltip-icon` and `.tooltip-text` in css/base.css, so it holds for any (i) in any label, site-wide.
 
+
+**Checks.** Precache OK; 394 unit and 409 Playwright tests pass (1 skipped; visual.spec fails here as on main). Screenshots:
+all 40 pixel-identical to round 7's (no (i) in a capitalized label is on them).
