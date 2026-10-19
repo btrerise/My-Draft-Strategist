@@ -779,8 +779,11 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         fitRankBadges([container, benchContainer]);
         watchRankBadgeWidths([container, benchContainer]);
 
-        // Auto-update the dashboard matrix in the background so status icons stay live
-        if (typeof renderLeagueManager === 'function') renderLeagueManager();
+        // Keeps the Dashboard's league cards (this league's status and to-dos) in step with the lineup, while the
+        // Dashboard is showing. When it's hidden the redraw waits: showing the Dashboard redraws the cards anyway
+        // (showTab's refreshLeagueDropdown), and redrawing 21 hidden cards on every Lineup render cost a switch to
+        // the Lineup tab about 20 ms on a slow phone (improvements S17).
+        if (typeof renderLeagueManager === 'function' && document.getElementById('setupTab')?.classList.contains('active')) renderLeagueManager();
 
         // Fills in projections/final scores/opponents if they're missing or stale; a no-op
         // (and no re-render) when everything's already fresh. See refreshLineupStats.

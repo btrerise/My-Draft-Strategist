@@ -112,7 +112,9 @@ test('tab switches with 21 leagues, 4x CPU', async ({ page }, testInfo) => {
                 while (document.documentElement.hasAttribute('data-vt-busy')) await new Promise(r => requestAnimationFrame(r));
                 await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
                 const total = performance.now() - t0;
-                const tasks = window.__longTasks.filter(t => t.start >= t0);
+                // Every long task since the reset above (the specs' fake clock also fakes performance.now(), so the
+                // entries' timestamps can't be compared with t0).
+                const tasks = window.__longTasks;
                 return { update, total, longest: Math.max(0, ...tasks.map(t => t.dur)), longSum: tasks.reduce((s, t) => s + t.dur, 0) };
             }, to);
             results.get(`${from} → ${to}`).push(r);
