@@ -5191,3 +5191,80 @@ win, with a note suggesting something like "If this does not match your Sleeper 
   - The Lineup tab: Bowers on the bench, McBride at TE, the same note, "Nothing needs you before kickoff", and the same
     changes in the fold.
 - `mls-flex-choice`, `mls-best-available`, `mls-waiver-insights`, `mls-weakest-player` and `mls-weekly-locks` pass.
+
+## F8 — Auto-Find calls a ranked player "unranked" when he isn't in the FLEX list
+
+**The owner's case** (week 6, REDRAFT Late Round Board of Directors, Auto-Find, Starting Lineup, Weekly, FLEX):
+Treylon Burks was WR69 (T13) in the Weekly rankings but not in their FLEX list. DeMario Douglas read "Wk Flex: Douglas
+#98, Burks unranked". Jake Ferguson (TE19, T7, no FLEX rank) read "Replaces Treylon Burks · 6 tiers up". The verdicts
+were right (S12 round 2's rule: FLEX rank, then any rank, then projections). The words weren't.
+
+**Where "6 tiers up" came from** (the card's guess was right). The parser stores a player who isn't in the FLEX file
+with `rank`/`tier` from his position file. `buildRankDisplayIndex` (S8 round 3's fallback) filled a missing FLEX tier
+with `tier`. So Burks's "FLEX tier" was his WR tier (13) and Ferguson's was his TE tier (7). `comparedTiers` read both
+for a Flex comparison, and `tierGapHTML` printed 13 − 7 = 6. That compared two different lists.
+
+**Owner's decisions (asked after reproducing):**
+1. **Wording (a):** "Wk Flex: Douglas #98, Burks not in Flex list (WR69 T13)". It names what decided the slot and still
+   shows his rank. ROS's cross number reads "not in Overall list" the same way.
+2. **The row's own "Wk Flex: UR" cell: keep "UR".** His position rank sits beside it on the same row.
+3. **Whole Roster's header too, the same way:** "Your weakest RB/WR/TE is CeeDee Lamb (Wk Flex: not in list · WR30 ·
+   T8)". Before, it read "(unranked by Weekly)".
+
+**User-visible effect.**
+- In Auto-Find and Check a List, a FLEX comparison names a player who has a position rank but no FLEX rank as "not in
+  Flex list (WR69 T13)", both on the free agent's side and on your player's side. It still says "unranked" only for a
+  player who's in none of the file's lists.
+- Whole Roster's "Your weakest" and "Next weakest" use "Wk Flex: not in list · WR69 · T13" for the same case.
+- A tier gap ("· N tiers up") shows only when both numbers come from the same list. Ferguson's line now has no gap.
+- Display only. Who's listed, their order, the verdicts, the pills, Auto-Find's counts, `isTierUpgrade` and `upgradeGap`
+  are unchanged. The spec pins each listing as it reads on main, and it passes on main.
+
+**What changed and where.**
+- `js/mls/scout/waiverScanner.js` `buildRankDisplayIndex`: `flexTier` is set only beside a FLEX rank, so it's null for a
+  player outside the FLEX list. A single file still gets its overall tier on every FLEX rank, as in S8 round 3.
+- `js/mls/scout/waivers.js`:
+  - `comparedTiers`: a tier only beside the number it belongs to. This holds even if a future display index carries a
+    stray tier. `isTierUpgrade` already returned before reading tiers whenever either number was missing, so its
+    results can't change.
+  - `waiverCompareLine`'s `fmt`: "not in Flex list (WR69 T13)" when the line shows Flex/Overall and the player has a
+    position rank. `plainTier` draws the tier span without `tierTag`'s parentheses, since the parenthesis is already
+    open.
+  - `renderRosterGroup`'s `rankText`: the header form, inside one `.mls-nowrap`.
+- `sw.js`: `CACHE_NAME` v2.8.98 → v2.8.99. CHANGELOG has two lines under Lineup Strategist.
+
+**Checked and left as they are** (other places that print "unranked" or "UR"):
+- **Top Available rows:** the chip is the position rank. A missing Flex number shows "–", not "UR".
+- **Top Available's Trending "UR":** used only when the player is in none of your lists.
+- **Dashboard Best Available** (`bestAvailable.js`): "over X WR30" uses the position rank. "(unranked)" appears only
+  without one. Its FLEX upgrade check (`flexTierOf`) reads tiers only when both players have a FLEX rank (`upgradeGap`
+  returns before tiers otherwise), so there was nothing cross-list to fix.
+- **The Waiver Wire row's "Wk Flex: UR" and "ROS: UR" cells:** kept (decision 2).
+- **Trade Analyzer's UR:** it means no value at all. Not touched.
+- **Lineup tab:** `render/lineup.js` still falls back `flexTier ?? tier` for its own badge. That badge shows a Flex
+  part only beside a FLEX rank, so a stray tier never shows. Not in this card's scope.
+
+**Tests** (rule 4: they fail on main and pass now).
+- `tests/mls-waiver-flex-unranked.spec.mjs` (both widths) uses the fixture league with one FLEX slot. Its Weekly rankings
+  are shaped as per-position files plus a short FLEX file with no tiers. CeeDee Lamb (WR30, T8) is outside the FLEX
+  list and is your FLEX. Smith-Njigba (FLEX #5) replaces him by FLEX rank. LaPorta (TE5, T2, no FLEX rank) replaces him
+  by projection. The spec checks:
+  - Auto-Find and Check a List show the new numbers lines, no `.mls-tier-gap`, no "unranked", and "Wk Flex: UR" on
+    LaPorta's row.
+  - Each `.mls-nowrap` in the numbers line is on one line, at 390px and 1280px.
+  - Whole Roster FLEX, with the rest of your roster added to the FLEX list, shows the new header in one `.mls-nowrap`.
+  - Every listing (names, order, verdict text, pills) equals the one pinned from main. With the code reverted, a copy
+    of the spec without the wording checks passes, which shows the listings match main.
+- `tests/unit/waiverScanner.test.mjs`: a player outside the FLEX list has a null `flexTier` and keeps his `posTier`.
+  This fails on main.
+
+**Screenshots.** None changed or re-taken. The screenshot league has no Auto-Find or Check a List result, and its
+rankings are a single file.
+
+**Checks run.** `npm run check`: check-precache OK, 398 unit tests pass, and 455 Playwright tests pass, the new spec
+included. The 10 screenshot comparisons that fail in this cloud session (`visual.spec.mjs`, the font environment noted
+in earlier entries) fail on main too. I rendered all 40 screenshots on main and on this branch here, and `npm run
+pxdiff` found them all pixel-identical.
+
+**Left over.** None. The legend needed no line: the wording is plain text, not a badge or chip. Its "· 1 tier up" line
+still holds.
