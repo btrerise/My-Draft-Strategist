@@ -241,6 +241,19 @@ describe('lineupIssueItems wording', () => {
     });
 });
 
+// Improvements F7 (owner's choice): a kickoff that left a player you locked on your Sleeper bench outranks the lock.
+describe('a lock the kickoff outranked', () => {
+    test('one muted note per player, not counted; none in Best Ball', () => {
+        const bowers = pl('Brock Bowers', 'TE', { started: true });
+        const c = ctx({ roster: [bowers, pl('Other', 'WR')], lockEnded: (p) => p === bowers });
+        const list = items(lineupIssues([s('QB1', pl('A', 'QB'))], c));
+        assert.deepEqual(list.map(i => [i.kind, i.muted, i.note, i.text.replace(/\u00a0/g, ' ')]),
+            [['kept', true, true, "Your lock on Brock Bowers no longer applies: his game started with him on your Sleeper bench. If that's not your Sleeper lineup, sync again to update."]]);
+        assert.equal(needsYou(list), false);
+        assert.deepEqual(items(lineupIssues([s('QB1', pl('A', 'QB'))], { ...c, bestBall: true })), []);
+    });
+});
+
 describe('manual leagues: names Sleeper does not know', () => {
     test('one note, not counted', () => {
         const list = items(lineupIssues([s('QB1', pl('A', 'QB'))], ctx({ unmatched: ['Zack Nobody', 'Kenneth Walker'] })));
@@ -254,5 +267,17 @@ describe('sleeperLineupChanges', () => {
     test('who to start and bench on Sleeper; none when they match', () => {
         assert.deepEqual(sleeperLineupChanges(['1', '2', '3'], ['3', '2', '4']), { start: ['1'], bench: ['4'] });
         assert.deepEqual(sleeperLineupChanges(['1', '2'], ['2', '1']), { start: [], bench: [] });
+    });
+    // Improvements F7: a player whose game has started can't be moved on Sleeper, whichever side he's on.
+    test('a player whose game has started is never a change, on either side', () => {
+        // App starts 1 and 5, Sleeper starts 3 and 4 (with 2 on both). 1 and 4 have kicked off.
+        const frozen = (id) => ['1', '4'].includes(id);
+        assert.deepEqual(sleeperLineupChanges(['1', '2', '5'], ['3', '2', '4'], frozen), { start: ['5'], bench: ['3'] });
+        // Only kicked-off differences: they match.
+        assert.deepEqual(sleeperLineupChanges(['1', '2'], ['2', '4'], frozen), { start: [], bench: [] });
+        // A kicked-off player who's in both lineups changes nothing.
+        assert.deepEqual(sleeperLineupChanges(['1', '6'], ['1', '7'], frozen), { start: ['6'], bench: ['7'] });
+        // Without the check (before kickoff), as before.
+        assert.deepEqual(sleeperLineupChanges(['1', '2', '5'], ['3', '2', '4']), { start: ['1', '5'], bench: ['3', '4'] });
     });
 });

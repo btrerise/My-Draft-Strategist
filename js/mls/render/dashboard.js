@@ -11,7 +11,7 @@ import { loadRosterTab } from './roster.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { setToastsSuppressed, showToast } from '../../shared/ui/toast.js';
 import { optimizeLineup } from './lineup.js';
-import { ensureLineupProjections, formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, sleeperChangesHTML } from '../lineup/gameInfo.js';
+import { ensureLineupProjections, formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, lineupBuiltBeforeKickoff, sleeperChangesHTML } from '../lineup/gameInfo.js';
 import { findChips, lineupIssueItems, needsLineupButton, needsYou } from '../lineup/issues.js';
 import { updateWaiverScanSetting } from '../scout/waivers.js';
 import { isManualLeague, refreshManualInjuries } from '../leagues/manualInjuries.js';
@@ -359,6 +359,34 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             }
         }, 50);
     };
+
+// Leagues whose saved lineup was built before a kickoff that now pins someone where it didn't put him
+// (lineupBuiltBeforeKickoff, lineup/gameInfo.js; improvements F7), re-optimized so each card's Sleeper changes name the
+// best change still allowed: the answer you'd get from the Lineup tab (owner's choice). Run on every Dashboard render
+// (renderLeagueCards); it costs a check per league, and a re-optimize only for a league a kickoff caught. Quiet (no
+// toast), locks and auto-lock overrides kept, the active league included. The active league and its rankings are
+// restored without switchActiveLeague, which would redraw the Dashboard from inside its own render.
+export function reoptimizeKickedOffLeagues() {
+    const leagues = (State.leagues || []).filter(lineupBuiltBeforeKickoff);
+    if (leagues.length === 0) return;
+    const originalActiveId = State.activeLeagueId;
+    setToastsSuppressed(true);
+    try {
+        leagues.forEach(l => {
+            State.activeLeagueId = l.leagueId;
+            hydrateRankingsForLeague(l);
+            optimizeLineup(true, false, { batch: true });
+        });
+        localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+        localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
+    } catch (err) {
+        console.warn('Re-optimizing after a kickoff did not finish; the cards still leave out locked players.', err);
+    } finally {
+        setToastsSuppressed(false);
+        State.activeLeagueId = originalActiveId;
+        hydrateRankingsForLeague((State.leagues || []).find(x => x.leagueId === originalActiveId));
+    }
+}
 
 // Leagues whose lineup was optimized before this week's projections loaded (State.projectionlessLineups), other than the
 // active one, re-optimized once they're here (S12 round 5; refreshLineupStats calls this when it loads them). Before,

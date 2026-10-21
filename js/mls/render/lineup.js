@@ -9,7 +9,7 @@ import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
 import { pickForSlot } from '../lineup/flexChoice.js';
-import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, kickoffFreeze, lineupProjectionsLoaded, refreshLineupStats } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, kickoffFreeze, lineupBuiltBeforeKickoff, lineupProjectionsLoaded, noteLineupOptimized, refreshLineupStats } from '../lineup/gameInfo.js';
 import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { rankBadgeParts, sleeperLineupBadgeMarkup } from '../badges.js';
@@ -293,7 +293,10 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // A saved lineup with an empty slot is rebuilt too, in case someone can fill it now (improvements S12 round 9: a
         // bug in Best Ball saved empty slots, and Optimize All skips Best Ball, so they'd have stayed until a sync).
         const savedHasHole = (State.manualStartersMap[State.activeLeagueId] || []).some(s => s && !s.player);
-        if (!forceReset && savedLineupCurrent && !savedHasHole && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
+        // And one saved before a kickoff that now pins someone elsewhere (improvements F7: started at 1 pm on your
+        // Sleeper bench), so the lineup and its Sleeper changes name the best change still allowed.
+        const savedBeforeKickoff = lineupBuiltBeforeKickoff(league);
+        if (!forceReset && savedLineupCurrent && !savedHasHole && !savedBeforeKickoff && State.manualStartersMap[State.activeLeagueId] && State.manualBenchMap[State.activeLeagueId]) {
             renderLineupUI(); 
             return;
         }
@@ -343,9 +346,12 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         const benchedAtKickoff = new Set();
         let scoredRoster = league.roster.map(p => {
             let rObj = rankIdx.get(p.cleanName);
-            let manualLocked = lockSet.has(p.id);
-            const freeze = manualLocked ? null : kickoffFreeze(league, p);
-            let autoLocked = freeze === 'in';
+            // A lock gives way to a kickoff that left him on your Sleeper bench (improvements F7, owner's choice): Sleeper
+            // won't let him in now, so the lineup mustn't start him. The lock itself stays, and the lineup's box says so
+            // (lockEnded in lineup/issues.js).
+            const freeze = kickoffFreeze(league, p);
+            let manualLocked = lockSet.has(p.id) && freeze !== 'out';
+            let autoLocked = !manualLocked && freeze === 'in';
             if (freeze === 'out') benchedAtKickoff.add(p.id);
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? (rObj.posTier ?? rObj.tier ?? null) : null, flexTier: rObj ? (rObj.flexTier ?? rObj.tier ?? null) : null, isLocked: manualLocked || autoLocked, autoLocked };
         });
@@ -447,6 +453,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 
         State.manualStartersMap[State.activeLeagueId] = starters;
         State.manualBenchMap[State.activeLeagueId] = pool;
+        noteLineupOptimized(league);
         // Written even in batch mode: it's one short string per league, not the full lineup
         // maps the batch caller defers.
         State.lineupRankingsStamps[State.activeLeagueId] = rankingsStamp;

@@ -5062,3 +5062,132 @@ before S17 was 69 / 3.7 s / 6.0 s / 4.3 s) and **`/` 89** (FCP 1.6 s, LCP 3.3 s,
 filmstrip has no white frames any more and the logo's render delay fell from 1,020 ms to 110 ms now that the start-up
 requests wait for the paint. `/` lists no forced reflow. Details in performance.md's last section. Nothing left for S17.
 
+
+## F7 — The League Command Center stops asking for changes once games have kicked off
+
+**The bug** (found by the owner on Sunday of week 6). The League Command Center asked for Sleeper changes after the early
+games had finished, for players Sleeper had already locked. Each card's Sleeper changes, its red Lineup chip, "N to set"
+and the strip's count all come from `collectLineupNeeds` → `getSleeperLineupChanges` → `sleeperLineupChanges`. That
+chain compares the lineup the app saved with Sleeper's starters as of the last sync, and nothing in it checked
+kickoff. A lineup saved at Optimize All on Sunday morning still started the 1 pm player the app preferred after Sleeper
+had locked him on your bench. A league is only re-optimized when it's synced, or optimized on its own or by Optimize
+All. Opening the Lineup tab re-shows the saved lineup if its rankings haven't changed.
+
+**Reproduced on main first** (`tests/mls-lineup-needs.spec.mjs`, "Sleeper changes after kickoff (F7)"). The lineup is
+optimized before any kickoff and starts Ja'Marr Chase (CIN) and Brock Bowers (LV), where the Sleeper fixture starts
+Garrett Wilson (NYJ) and George Kittle (SF). Then the four games are moved into the past (`State.gameTimesByTeam`, as
+the auto-lock specs do). On main the card still said "Set on Sleeper · Start Ja'Marr Chase, Brock Bowers · Bench George
+Kittle, Garrett Wilson", with a red Lineup chip and the strip's "1 lineup to set on Sleeper". 8 of the new spec's 10
+runs fail on main. The "still to play" test passes on both, as it should.
+
+**Owner's decisions (asked after reproducing, with a sketch of each).**
+1. A league whose remaining differences are all locked shows **nothing at all**: green Lineup chip, no Sleeper item, no
+   "1 to set", and it leaves the strip's count (not a muted "N changes locked by kickoff" line).
+2. A change that pairs a player still to play with a locked one is **re-optimized**, so the card names the best swap
+   still allowed, the same as the Lineup tab (not just dropped). In the fixture, with only Cincinnati kicked off,
+   that's "Start Puka Nacua, Brock Bowers · Bench George Kittle, Garrett Wilson". Nacua (LAR, still to play) takes
+   Chase's place. Dropping the pair would have said "Start Brock Bowers · Bench George Kittle".
+
+**What changed and where.**
+- `js/mls/lineup/issues.js`: `sleeperLineupChanges(optimizedIds, sleeperIds, frozen)` leaves out any id `frozen` says
+  has kicked off, on either side.
+- `js/mls/lineup/gameInfo.js`:
+  - `getSleeperLineupChanges` passes `kickoffFreeze(league, player) !== null`: the auto-lock's rule, not a second one.
+    It already handles Best Ball (null), an auto-lock you overrode (null: shown, since that's you saying the kickoff
+    data is wrong) and leagues with no Sleeper lineup (no comparison). This is the guard: whatever the saved lineup
+    says, a kicked-off player is never a change. The cards and the Lineup tab's fold both read it.
+  - `lineupBuiltBeforeKickoff(league)` is true when the saved lineup has a starter `kickoffFreeze` calls 'out' (his game
+    started while he was on your Sleeper bench) or a bench player it calls 'in'. Players you locked are skipped (the
+    optimizer keeps them where they are). `noteLineupOptimized` records, per league, which teams had kicked off at its
+    last optimize, and a lineup optimized since the last kickoff isn't flagged again. That keeps a lineup that can't
+    match the freeze (say, someone Sleeper started who is now on your taxi squad) from re-running on every render. In
+    memory, no storage key.
+- `js/mls/render/lineup.js`: `optimizeLineup` calls `noteLineupOptimized`. A saved lineup that
+  `lineupBuiltBeforeKickoff` flags is rebuilt when shown (like round 9's empty slot), so the Lineup tab names the same
+  change the card does.
+- `js/mls/render/dashboard.js`: `reoptimizeKickedOffLeagues()` follows `reoptimizeProjectionlessLeagues`'s pattern:
+  `optimizeLineup(true, false, { batch: true })` per flagged league, the active one included, then one write of each
+  lineup map, with toasts suppressed. It restores the active league and its rankings directly (`State.activeLeagueId`,
+  `hydrateRankingsForLeague`), not with `switchActiveLeague`, which would redraw the Dashboard from inside its own
+  render. The active league, scroll position, manual locks and `isAutoLockOverridden` are unchanged.
+- `js/mls/render/leagueCards.js`: `renderLeagueCards` calls it before `collectLineupNeeds`, only while the Dashboard is
+  the active tab (on another tab it runs after that tab's own lineup render, whose lineup mustn't be replaced under
+  it).
+- **When it runs:** on every Dashboard render, not when `refreshGameTimes` sees a new kickoff. Time passing doesn't
+  fetch anything (the kickoff times are cached for the week), so a fetch-time hook would miss most kickoffs. The check
+  is a `kickoffFreeze` per rostered player per league, and a re-optimize happens only for a league a kickoff caught.
+- **EARLY chip:** `leagueStatus` counts a starter's early game only while it's still to come (`!hasKickedOff`). The
+  Lineup tab's per-player EARLY tags are unchanged: those rows already say "Started" or "Final".
+- **Urgent Sleeper changes:** an Out player still in your Sleeper lineup is frozen 'in' once his game starts, so the
+  guard drops him and the card stops needing you. A player on bye has no game, so `hasKickedOff` never fires for him.
+  Sleeper keeps him movable all week, so "Bench X (on bye)" stays until you set it, as before.
+- CHANGELOG line under Lineup Strategist. `CACHE_NAME` v2.8.97 → v2.8.98. No new badge, file or key.
+
+**Measured** (`npm run perf:tabs`, 21 leagues, 4x CPU, median of 5, main → this branch). The Dashboard switches are the
+same within noise: lineup → setup 280 → 314 ms on phone and 326 → 350 on desktop, roster → setup 290 → 224 and
+371 → 276. A one-off copy of the tool timed the worst case: all 21 leagues caught by a kickoff and re-optimized in one
+lineup → setup switch. Phone median 346 ms against 302 ms with nothing to redo, and run-to-run noise is about ±50 ms.
+The copy was deleted, not committed.
+
+**Tests.**
+- `tests/unit/lineupIssues.test.mjs`: kicked-off players on either side, a league whose only differences are frozen, a
+  frozen player in both lineups, and the old behavior without the check.
+- `tests/mls-lineup-needs.spec.mjs`, "Sleeper changes after kickoff (F7)", both widths:
+  - all four locked: no Sleeper item, both chips green, no "1 to set", the strip hidden, no fold on the Lineup tab;
+  - between players still to play: the change shown as before, red chip;
+  - one side locked: re-optimized to "Start Puka Nacua, Brock Bowers · …", saved, the same on the Lineup tab's fold, the
+    active league unchanged;
+  - the Lineup tab rebuilds a lineup saved before a kickoff, and your locks stay as they were;
+  - an Out Kittle in your Sleeper lineup stops needing you once his game starts (Bowers has no TE slot left: only the
+    WR change remains), and EARLY goes once Buffalo's game starts.
+- Best Ball is unchanged: `kickoffFreeze` and `lineupBuiltBeforeKickoff` both return early there.
+  `mls-flex-choice.spec.mjs`'s Best Ball test passes.
+
+**Screenshots:** none changed. The screenshot league has no Sleeper lineup and no kicked-off games. This container can't
+render CI-matching baselines (F1, S9). Rendered here the same way, main and this branch give 40 pixel-identical PNGs
+(`npm run pxdiff`).
+
+**Checks.** `npm run check`: precache OK, 396 unit tests pass, 451 Playwright tests pass. The 10 failures are only
+`visual.spec.mjs` (MDS and T-Score too), which this container can't match to CI's renderer.
+
+**Known limit, not this card.** Kicked-off players are frozen where Sleeper's lineup had them at your last sync. If you
+changed it on Sleeper after syncing, the app's idea of who is locked in can be wrong until the next sync. A per-league
+sync is S13, parked.
+
+**Found while testing, then fixed in round 2:** a lock on a player whose game started while he was on your Sleeper
+bench kept him in the app's lineup, so the card showed half a swap.
+
+### F7, round 2: a kickoff outranks your lock (owner's choice)
+
+**Asked.** In round 1 a manual lock kept its player in the app's lineup even after his game started with him on your
+Sleeper bench. The guard hid him, so the card showed only the other half of the swap. You locked Bowers in, Las Vegas
+kicked off with Kittle starting on Sleeper, and the card said "Bench George Kittle" with nobody named for his slot.
+Following it on Sleeper would leave the TE slot empty. I listed the pros and cons. The owner chose to let the kickoff
+win, with a note suggesting something like "If this does not match your Sleeper lineup, sync again to update."
+
+**What changed.**
+- `js/mls/render/lineup.js` (`optimizeLineup`): `kickoffFreeze` is worked out for every player. A lock counts only when
+  the freeze isn't 'out', so a locked player whose game started on your Sleeper bench is held out of the starter pool
+  like anyone else. The lock stays in `State.lockedPlayersMap`, so an auto-lock override or a sync that shows he started
+  brings it back. The override itself only exists on auto-locked starters' rows, which is why the note points to a sync.
+- `js/mls/scout/waivers.js` (`lineupCheckDeps`): the same precedence, so best available and the Waiver Wire read the
+  same lineup.
+- `js/mls/lineup/gameInfo.js`: `lineupBuiltBeforeKickoff` no longer skips locked players. `getLineupIssues` passes
+  `lockEnded` (locked, and `kickoffFreeze` 'out').
+- `js/mls/lineup/issues.js`: `issues.lockEnded`, and one muted note per player (a note: not counted, no amber): "Your lock
+  on Brock Bowers no longer applies: his game started with him on your Sleeper bench. If that's not your Sleeper lineup,
+  sync again to update." It shows in the card's to-dos (with "Notes" as the label when it's the only item) and in the
+  Lineup tab's box.
+- A swap you make after a kickoff stays until the next kickoff re-optimizes the lineup (`kickoffKey`): a swap doesn't
+  count as an optimize.
+- CHANGELOG: the F7 line says so.
+
+**Tests.**
+- `tests/unit/lineupIssues.test.mjs`: the note's kind, wording and muted note status, not counted, none in Best Ball.
+- `tests/mls-lineup-needs.spec.mjs`, "a locked player whose game started on your Sleeper bench is benched, with a note":
+  - The card shows the note plus "Start Ja'Marr Chase, Trey McBride · Bench George Kittle, Garrett Wilson". McBride (ARI,
+    still to play) is the rankings' next TE ahead of Kittle.
+  - No "to do" count, no amber, and the lock list unchanged.
+  - The Lineup tab: Bowers on the bench, McBride at TE, the same note, "Nothing needs you before kickoff", and the same
+    changes in the fold.
+- `mls-flex-choice`, `mls-best-available`, `mls-waiver-insights`, `mls-weakest-player` and `mls-weekly-locks` pass.

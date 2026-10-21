@@ -104,7 +104,8 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     // started (Sleeper's last-synced lineup; with none, this app's saved lineup, as optimizeLineup's auto-lock reads
     // it), 'out' if he didn't, null before kickoff or when you overrode his auto-lock. One rule for the optimizer (which
     // keeps an 'in' player in his slot and an 'out' one on the bench) and the waiver checks (lineupCheckDeps,
-    // scout/waivers.js). Before round 3 the Dashboard's Best Available counted every kicked-off player as locked in,
+    // scout/waivers.js), and since improvements F7 the Sleeper changes (getSleeperLineupChanges: such a player is
+    // never a change) and lineupBuiltBeforeKickoff. Before round 3 the Dashboard's Best Available counted every kicked-off player as locked in,
     // bench players too, so a benched Thursday player took a starting spot in the lineup it compared against.
     // Never in Best Ball (round 9): nobody sets a lineup there (Sleeper counts your best scores), so there's no "started"
     // to read. This app's own saved lineup stood in for it, and once a kicked-off player was missing from it he counted
@@ -117,6 +118,29 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
             ? sleeperIds.includes(p.id)
             : (State.manualStartersMap[league.leagueId] || []).some(s => s && s.player && s.player.id === p.id);
         return started ? 'in' : 'out';
+    }
+
+    // Whether a league's saved lineup was built before a kickoff that now pins someone where it didn't put him
+    // (improvements F7): a starter whose game started while he was on your Sleeper bench, or a bench player whose game
+    // started while he was in your Sleeper lineup. Optimize All on Sunday morning saves the 1 pm player the app
+    // preferred; at 1 pm Sleeper locks him on your bench. The Dashboard re-optimizes such leagues
+    // (reoptimizeKickedOffLeagues, render/dashboard.js) and the Lineup tab rebuilds one when it's shown, so each names
+    // the best change still allowed. A player you locked in counts too: the kickoff outranks his lock (owner's choice).
+    // A lineup optimized since the last kickoff isn't redone (kickoffKey), so one that can't match the freeze
+    // (someone Sleeper started who is now on your taxi squad) doesn't re-run on every render, and a swap you make after
+    // a kickoff stays until the next one.
+    const kickoffOptimizedAt = new Map();
+    const kickoffKey = () => Object.keys(State.gameTimesByTeam).filter(team => hasKickedOff({ team })).sort().join(',');
+    export function noteLineupOptimized(league) {
+        if (league && league.leagueId) kickoffOptimizedAt.set(league.leagueId, kickoffKey());
+    }
+    export function lineupBuiltBeforeKickoff(league) {
+        if (!league || isBestBallLeague(league)) return false;
+        const starters = State.manualStartersMap[league.leagueId], bench = State.manualBenchMap[league.leagueId];
+        if (!starters || !bench) return false;
+        if (kickoffOptimizedAt.get(league.leagueId) === kickoffKey()) return false;
+        return starters.some(s => s && s.player && kickoffFreeze(league, s.player) === 'out')
+            || bench.some(p => kickoffFreeze(league, p) === 'in');
     }
 
     // True only when ESPN says the team's game is over -- unlike hasKickedOff, which is just
@@ -468,9 +492,12 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         const sleeperIds = getValidSleeperStarterIds(league);
         const optimized = (starters || []).filter(s => s && s.player);
         if (sleeperIds.length === 0 || optimized.length === 0) return null;
-        const changes = sleeperLineupChanges(optimized.map(s => s.player.id), sleeperIds);
-        if (changes.start.length === 0 && changes.bench.length === 0) return null;
         const playerOf = (id) => (optimized.find(s => s.player.id === id) || {}).player || ((league && league.roster) || []).find(p => p.id === id) || null;
+        // A player whose game has started stays where Sleeper had him (improvements F7): the auto-lock's rule, so a
+        // lineup saved before his kickoff never asks you to move him, and a league whose only differences are locked
+        // ones matches.
+        const changes = sleeperLineupChanges(optimized.map(s => s.player.id), sleeperIds, id => kickoffFreeze(league, playerOf(id)) !== null);
+        if (changes.start.length === 0 && changes.bench.length === 0) return null;
         const name = (id) => { const p = playerOf(id); return p ? p.name : 'Unknown player'; };
         // Why a benched player shouldn't be starting on Sleeper: his status when he's unlikely to play ("Out"), or "on
         // bye" (S12 round 6). Either makes the change urgent: you'd get zero from him.
@@ -532,6 +559,8 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
                 return iso ? new Date(iso).getTime() : NaN;
             },
             kept: p => isKeptStarter(league, p),
+            // A lock the kickoff outranked (improvements F7): his game started with him on your Sleeper bench.
+            lockEnded: p => isKeptStarter(league, p) && kickoffFreeze(league, p) === 'out',
             projOf: p => getLineupProjection(p.id, league),
             irRules: league ? league.irRules || null : null,
             rosterSize: league ? league.rosterSize : null,
