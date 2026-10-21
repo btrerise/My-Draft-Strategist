@@ -87,6 +87,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **No more "Set on Sleeper" for players whose game has started.** Once a player's game kicks off, Sleeper won't let
+  you move him, so the League Command Center no longer asks you to start or bench him: not in the card's Sleeper
+  changes, its red Lineup chip, "1 to set", the count at the top, or the Lineup tab's "Differs from your Sleeper
+  lineup". A league whose only differences are locked ones now reads as matching Sleeper. A lineup saved before a
+  kickoff (say, at Optimize All on Sunday morning) is re-optimized when you look at it, so the card names the best
+  change still allowed. An Out player still in your Sleeper lineup stops counting as urgent once his game has started,
+  and the EARLY chip goes once the early game has started.
 - **A faster first visit.** The page's font now comes from this site instead of Google Fonts, so on a phone's first
   visit the page appears about a second sooner (blank for less time). It's on T-Score too.
 - **Quicker tab switches with many leagues.** Switching to the Lineup tab no longer redraws the Dashboard behind it,

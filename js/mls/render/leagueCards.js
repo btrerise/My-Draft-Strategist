@@ -35,10 +35,10 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
-import { getValidSleeperStarterIds } from '../lineup/gameInfo.js';
+import { getValidSleeperStarterIds, hasKickedOff } from '../lineup/gameInfo.js';
 import { needsYouCount } from '../lineup/issues.js';
 import { bestBallBadgeMarkup, leagueStatusChipMarkup } from '../badges.js';
-import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
+import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, reoptimizeKickedOffLeagues, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
 import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/viewTransition.js';
 
@@ -89,7 +89,8 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         else if (getValidSleeperStarterIds(l).length > 0 || isOffSleeper(l)) lineup = 'matches';
         else lineup = 'unknown';
 
-        const early = isSetup && starters.some(s => s.player && isEarlyPlayer(s.player.team));
+        // Only while that game is still to come (improvements F7): after Thursday's game it no longer needs a look.
+        const early = isSetup && starters.some(s => s.player && isEarlyPlayer(s.player.team) && !hasKickedOff(s.player));
 
         // Roster age. Manual and Draft Strategist hand-off leagues are never synced from Sleeper, so they get
         // no label. A Sleeper league with no lastSyncedAt was last synced before this was tracked: flagged
@@ -190,6 +191,10 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         const list = document.getElementById('leagueCards');
         if (!cmdCenter || !list) return;
 
+        // Lineups saved before a kickoff that caught them are redone first (improvements F7), while the Dashboard shows:
+        // on another tab this runs after that tab's own lineup render, which mustn't have its lineup replaced under it.
+        const dashboard = document.getElementById('setupTab');
+        if (dashboard && dashboard.classList.contains('active')) reoptimizeKickedOffLeagues();
         const needs = collectLineupNeeds();
         renderLineupNeeds(needs);
 

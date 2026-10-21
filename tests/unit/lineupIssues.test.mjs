@@ -255,4 +255,16 @@ describe('sleeperLineupChanges', () => {
         assert.deepEqual(sleeperLineupChanges(['1', '2', '3'], ['3', '2', '4']), { start: ['1'], bench: ['4'] });
         assert.deepEqual(sleeperLineupChanges(['1', '2'], ['2', '1']), { start: [], bench: [] });
     });
+    // Improvements F7: a player whose game has started can't be moved on Sleeper, whichever side he's on.
+    test('a player whose game has started is never a change, on either side', () => {
+        // App starts 1 and 5, Sleeper starts 3 and 4 (with 2 on both). 1 and 4 have kicked off.
+        const frozen = (id) => ['1', '4'].includes(id);
+        assert.deepEqual(sleeperLineupChanges(['1', '2', '5'], ['3', '2', '4'], frozen), { start: ['5'], bench: ['3'] });
+        // Only kicked-off differences: they match.
+        assert.deepEqual(sleeperLineupChanges(['1', '2'], ['2', '4'], frozen), { start: [], bench: [] });
+        // A kicked-off player who's in both lineups changes nothing.
+        assert.deepEqual(sleeperLineupChanges(['1', '6'], ['1', '7'], frozen), { start: ['6'], bench: ['7'] });
+        // Without the check (before kickoff), as before.
+        assert.deepEqual(sleeperLineupChanges(['1', '2', '5'], ['3', '2', '4']), { start: ['1', '5'], bench: ['3', '4'] });
+    });
 });

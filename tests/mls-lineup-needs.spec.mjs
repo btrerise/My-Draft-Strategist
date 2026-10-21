@@ -559,3 +559,115 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 });
+
+// Improvements F7 (found by the owner on Sunday of week 6): once a player's game has started, Sleeper won't let you
+// move him, so no card, chip, count or the Lineup tab's fold asks you to. The lineup here was optimized before any
+// kickoff (no kickoff times yet), so it starts Ja'Marr Chase (CIN) and Brock Bowers (LV) where your Sleeper lineup
+// starts Garrett Wilson (NYJ) and George Kittle (SF). Then the clock passes kickoffs.
+test.describe('Sleeper changes after kickoff (F7)', () => {
+    const SLEEPER = [ALLEN, HENRY, BIJAN, '6794', '6786', KITTLE, '7523', '17', 'BAL'];
+    const PAST = '2026-09-15T12:00:00Z', LATER = '2026-09-16T00:20:00Z';
+    // Kickoff times by team (PAST: already started at the fixed clock), then the Dashboard drawn again.
+    const kickoffs = (page, times) => page.evaluate(async (times) => {
+        const { State } = await import('/js/mls/state.js');
+        const { renderLeagueCards } = await import('/js/mls/main.js');
+        State.gameTimesByTeam = { ...State.gameTimesByTeam, ...times };
+        renderLeagueCards();
+    }, times);
+
+    test('every difference locked by kickoff: the card matches Sleeper and leaves the count', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, sleeperStarters: SLEEPER });
+        await seedTwoLeagues(page);
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup to set on Sleeper');
+        // All four games have started: nobody in the change can move.
+        await kickoffs(page, { CIN: PAST, LV: PAST, NYJ: PAST, SF: PAST });
+        expect(await lineSummaries(page)).toEqual([]);
+        await expect(card(page, 'Fixture League').locator('.mls-lc-chip.is-good .mls-lc-chip-label')).toHaveText(['Rankings', 'Lineup']);
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveCount(0);
+        await expect(box(page)).toBeHidden();
+        // Nor the Lineup tab's fold.
+        await page.locator('#headerLeagueSelect').selectOption(FIXTURE_LEAGUE_ID);
+        await showTab(page, 'lineup');
+        await expect(lineupBox(page).locator('.lineup-needs-sleeper')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    test('changes between players still to play show as before', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, sleeperStarters: SLEEPER });
+        await seedTwoLeagues(page);
+        // Other teams' games (Buffalo's, Baltimore's) have started; these four are tonight.
+        await kickoffs(page, { BUF: PAST, BAL: PAST, CIN: LATER, LV: LATER, NYJ: LATER, SF: LATER });
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
+        await expect(card(page, 'Fixture League').locator('.mls-lc-chip.is-danger .mls-lc-chip-label')).toHaveText('Lineup');
+        await expectClean(page, state);
+    });
+    // Owner's choice (F7): a change that pairs a player still to play with a locked one is re-optimized, so the card
+    // names the best swap still allowed, as the Lineup tab does. Only Cincinnati has kicked off: Chase, on your Sleeper
+    // bench, can't come in, and Puka Nacua (LAR, tonight) takes his place.
+    test('a change with one side locked names the best swap still allowed; the active league stays', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, sleeperStarters: SLEEPER });
+        await seedTwoLeagues(page);
+        const active = await page.locator('#headerLeagueSelect').inputValue();
+        await kickoffs(page, { CIN: PAST, LV: LATER, NYJ: LATER, SF: LATER, LAR: LATER });
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Puka Nacua, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
+        await expect(page.locator('#headerLeagueSelect')).toHaveValue(active);
+        // The saved lineup was redone (and saved), so the Lineup tab agrees.
+        const saved = await page.evaluate(async (key) => JSON.parse(localStorage.getItem(key)), (await page.evaluate(async () => (await import('/js/shared/storage/keys.js')).KEYS.mls.manualStarters)));
+        expect(saved[FIXTURE_LEAGUE_ID].map(s => s.player && s.player.name)).not.toContain("Ja'Marr Chase");
+        await page.locator('#headerLeagueSelect').selectOption(FIXTURE_LEAGUE_ID);
+        await showTab(page, 'lineup');
+        await lineupBox(page).locator('.lineup-needs-sleeper summary').click();
+        await expect(lineupBox(page).locator('.lineup-needs-sleeper-text')).toHaveText('Start Puka Nacua, Brock Bowers · Bench George Kittle, Garrett Wilson');
+        await expectClean(page, state);
+    });
+
+    // A lineup opened on the Lineup tab after the kickoff is rebuilt too, and your locks stay as they were.
+    test('the Lineup tab rebuilds a lineup saved before the kickoff; your locks stay', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, sleeperStarters: SLEEPER });
+        await seedTwoLeagues(page);
+        await page.locator('#headerLeagueSelect').selectOption(FIXTURE_LEAGUE_ID);
+        // You locked Bowers in; then Cincinnati kicks off.
+        await page.evaluate(async ({ leagueId, past, later }) => {
+            const { State } = await import('/js/mls/state.js');
+            State.lockedPlayersMap[leagueId] = ['11604'];
+            State.gameTimesByTeam = { ...State.gameTimesByTeam, CIN: past, LV: later, NYJ: later, SF: later, LAR: later };
+        }, { leagueId: FIXTURE_LEAGUE_ID, past: PAST, later: LATER });
+        await showTab(page, 'lineup');
+        const lineup = (await page.locator('#optimalLineupContainer .lineup-slot').allTextContents()).join(' ');
+        expect(lineup).toContain('Brock Bowers');
+        expect(lineup).not.toContain("Ja'Marr Chase");
+        expect(await page.evaluate(async (id) => (await import('/js/mls/state.js')).State.lockedPlayersMap[id], FIXTURE_LEAGUE_ID)).toEqual(['11604']);
+        await lineupBox(page).locator('.lineup-needs-sleeper summary').click();
+        await expect(lineupBox(page).locator('.lineup-needs-sleeper-text')).toHaveText('Start Puka Nacua, Brock Bowers · Bench George Kittle, Garrett Wilson');
+        await expectClean(page, state);
+    });
+    // The other kickoff-blind parts of a card: an Out player still in your Sleeper lineup stops being urgent once his
+    // game has started (Sleeper has locked him in), and EARLY goes once the early game has started.
+    test('after his game starts, an Out player on Sleeper no longer needs you, and EARLY goes', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, injuries: { [KITTLE]: 'Out' }, sleeperStarters: SLEEPER });
+        await seedTwoLeagues(page);
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.earlyTeams = ['BUF'];
+        });
+        await kickoffs(page, { BUF: LATER, SF: LATER });
+        const fixture = card(page, 'Fixture League');
+        await expect(fixture).toHaveClass(/\bneeds-you\b/);
+        await expect(fixture.locator('.early-badge')).toHaveCount(1);
+        // Buffalo's (Josh Allen's) and San Francisco's (Kittle's) games have started.
+        await kickoffs(page, { BUF: PAST, SF: PAST });
+        await expect(fixture).not.toHaveClass(/\bneeds-you\b/);
+        await expect(fixture.locator('.mls-needs-hurt')).toHaveCount(0);
+        await expect(fixture.locator('.early-badge')).toHaveCount(0);
+        // Kittle is locked into the TE slot now, so Bowers no longer has one: only the WR change is left.
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase · Bench Garrett Wilson"]);
+        await expectClean(page, state);
+    });
+});

@@ -190,7 +190,9 @@ export const findChips = (items) => [...new Set(items.filter(i => i.find && !i.m
 
 // Your lineup against the one on Sleeper (as of the last sync): who to start there and who to bench.
 // optimizedIds, sleeperIds: starter id lists. Empty lists both ways means they match.
-export function sleeperLineupChanges(optimizedIds, sleeperIds) {
+// frozen(id): true for a player whose game has started (kickoffFreeze, lineup/gameInfo.js). Sleeper won't let you
+// move him, so he's never a change, on either side (improvements F7).
+export function sleeperLineupChanges(optimizedIds, sleeperIds, frozen = () => false) {
     const opt = new Set(optimizedIds), slp = new Set(sleeperIds);
-    return { start: [...opt].filter(id => !slp.has(id)), bench: [...slp].filter(id => !opt.has(id)) };
+    return { start: [...opt].filter(id => !slp.has(id) && !frozen(id)), bench: [...slp].filter(id => !opt.has(id) && !frozen(id)) };
 }
