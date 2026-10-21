@@ -1058,8 +1058,9 @@
             </div>
         </header>
         
-        <!-- The two sides: side by side on wider screens, stacked on phones (improvements S14, round 8). -->
-        <div class="mls-trade-sides">
+        <!-- The two sides: side by side on wider screens, stacked on phones (improvements S14, round 8). Side by side,
+             their rows line up (From, players, search, draft picks; improvements F9, css/mls.css .mls-trade-form-sides). -->
+        <div class="mls-trade-sides mls-trade-form-sides">
             <div class="mls-trade-side">
             <!-- Players You Receive: picked with the search below (improvements S14, js/mls/trade/picker.js). The textarea
                  stays as the list runScout reads (one name per line), hidden; the picker keeps it in step. -->
@@ -1094,6 +1095,12 @@
                 <button class="btn btn-secondary mls-btn-sm" data-action="clearSellInput">Clear</button>
             </div>
             <div class="mls-trade-picker" data-side="give">
+                <!-- Whose players these are, level with Receive's From drop-down: Sleeper leagues, side by side only
+                     (trade/picker.js, improvements F9). -->
+                <div class="mls-trade-team mls-trade-team-you" id="tradeGiveTeam" hidden>
+                    <span>From</span>
+                    <span class="form-input mls-trade-team-name" id="tradeGiveTeamName"></span>
+                </div>
                 <ul id="tradeGiveTokens" class="mls-trade-tokens" aria-label="Players You Give Up"></ul>
                 <input type="text" id="tradeGiveSearch" class="form-input" placeholder="Tap to pick from your roster, or search…" autocomplete="off">
                 <div class="mls-trade-pick-row" id="tradeGivePickRow">

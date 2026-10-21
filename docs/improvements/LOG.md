@@ -5268,3 +5268,43 @@ pxdiff` found them all pixel-identical.
 
 **Left over.** None. The legend needed no line: the wording is plain text, not a badge or chip. Its "· 1 tier up" line
 still holds.
+
+## F9 — Trade Analyzer: Receive and Give line up on desktop
+
+**The problem.** Since S14 round 8 the form's two sides sit side by side from 768px, but only Receive has a row above its
+players (the From drop-down, Sleeper leagues), so Give's players and search box sat a row higher than Receive's, and an
+uneven number of players moved the search boxes apart again.
+
+**The owner's decisions.** I showed mockups of (a) a "From" row on Give, (b) shared rows with no new text, (a)+(b), and
+(c) "Trading with" above both columns, at 1280px and 768px (and 375px for (c)). The owner picked **(a)+(b)**; Give's row
+reads **"From  You (username)"** (the app keeps only the Sleeper username a league was synced with, no team name; Power
+Rankings says just "You"); in **manual and hand-off leagues neither side has a From row**.
+
+**User-visible effect.**
+- From 768px, the two sides' rows line up: From with From, players with players, search box with search box, draft-pick
+  row with draft-pick row, whatever the number of players on each side (each row is as tall as the taller side's).
+- In Sleeper leagues, Give shows "From  You (mds_test)" as plain text, the drop-down's height, across from Receive's
+  drop-down; a long username ends in "…" on one line (full name on hover).
+- Manual and hand-off leagues: no From row on either side, rows still level.
+- Phones (stacked, under 768px): unchanged; Give's From row is hidden there.
+
+**What changed and where.**
+- `lineup/index.html`: the form's `.mls-trade-sides` also has `.mls-trade-form-sides` (the results' two columns keep
+  their own layout), and Give's picker has `#tradeGiveTeam` (`.mls-trade-team.mls-trade-team-you`, hidden until synced)
+  with `#tradeGiveTeamName`.
+- `js/mls/trade/picker.js` `syncTradePicker`: fills the name with `textContent` (so it's escaped) from
+  `league.username` and shows the row only when Receive's From row shows.
+- `css/mls.css`: `.mls-trade-team-name` (plain text with the drop-down's padding and height, ellipsis), hidden under
+  768px; from 768px, inside `@supports (grid-template-rows: subgrid)`, the sides share five rows (header, From, players,
+  search, picks) through nested subgrids, each item placed in its row, the picker's 0.45rem flex gap turned into
+  margins so a hidden or empty row takes no space. A browser without subgrid gets the old flex columns (plus the From
+  row on Give).
+- `sw.js`: `CACHE_NAME` v2.8.99 → v2.8.100. No new files. CHANGELOG line under Lineup Strategist. The Guide's step 9 is
+  unchanged (it already explains From); no legend line (no new badge).
+
+**Tests.** `tests/mls-trade-sides-align.spec.mjs` (fails on main, passes now): at 1280px in the fixture Sleeper league,
+Give's From row says "You (mds_test)", is level with and as tall as Receive's, and `#tradeGetSearch` / `#tradeGiveSearch`
+share a top edge (and so do the first players) with both sides empty, one player each, two on one side, one side empty,
+and five on Give (wrapping to two lines); in dynasty, the pick rows too. A long username with markup in it shows as text,
+cut with "…" on one line, no sideways scroll. A manual league: no From on either side, rows level. At 375px: stacked,
+no From row on Give, Give's players right under its title as before.

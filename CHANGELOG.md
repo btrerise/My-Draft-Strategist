@@ -87,6 +87,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The Trade Analyzer's two sides line up on wider screens.** Side by side (tablets and computers), Players You
+  Receive and Players You Give Up now keep their search boxes, players and draft-pick rows level, even when one side
+  has more players. In Sleeper leagues, Give has its own From line ("From  You (your username)") across from Receive's
+  team drop-down. Phones look as before.
 - **"Not in Flex list" instead of "unranked".** When your Weekly rankings rank a player at his position but leave him
   out of their FLEX list, the Waiver Wire Assistant's FLEX comparisons now say so and still show his rank ("Wk Flex:
   Douglas #98, Burks not in Flex list (WR69 T13)"), in Auto-Find and Check a List, and in Whole Roster's "Your weakest"

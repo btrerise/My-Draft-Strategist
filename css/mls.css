@@ -1083,6 +1083,26 @@ button.close-chip {
 .mls-trade-team { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
 .mls-trade-team select { flex: 1 1 auto; min-width: 0; }
 .mls-trade-team[hidden], .mls-trade-pick-row[hidden] { display: none; }
+/* Give's From row (improvements F9): your name as plain text, the drop-down's height, one line ending in "…".
+   Side by side only: phones stay as they were. */
+.mls-trade-team-you { min-width: 0; }
+.mls-trade-team-name { flex: 1 1 auto; min-width: 0; width: auto; border-color: transparent; background: transparent; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 767px) { .mls-trade-team-you { display: none; } }
+/* Side by side, the form's two sides share rows (F9): header | From | players | search | draft picks, each as tall as
+   the taller side's, so search lines up with search however many players each side has. The flex column's 0.45rem gap
+   becomes margins, so an empty or hidden row takes no space. */
+@media (min-width: 768px) {
+    @supports (grid-template-rows: subgrid) {
+        .mls-trade-form-sides { grid-template-rows: repeat(5, auto); }
+        .mls-trade-form-sides > .mls-trade-side { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: subgrid; grid-row: 1 / span 5; min-width: 0; }
+        .mls-trade-form-sides > .mls-trade-side > .trade-group-header { grid-row: 1; }
+        .mls-trade-form-sides .mls-trade-picker { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: subgrid; grid-row: 2 / span 4; gap: 0; min-width: 0; }
+        .mls-trade-form-sides .mls-trade-team { grid-row: 1; margin-bottom: 0.45rem; }
+        .mls-trade-form-sides .mls-trade-tokens { grid-row: 2; align-self: start; margin-bottom: 0.45rem; }
+        .mls-trade-form-sides .mls-trade-picker > .autocomplete-wrap { grid-row: 3; }
+        .mls-trade-form-sides .mls-trade-pick-row { grid-row: 4; margin-top: 0.45rem; }
+    }
+}
 .mls-trade-pick-row { display: flex; gap: 6px; align-items: center; }
 .mls-trade-pick-row select { width: auto; flex: 0 0 auto; padding-top: 0.4rem; padding-bottom: 0.4rem; }
 .mls-trade-value-settings { margin-top: 0.75rem; }

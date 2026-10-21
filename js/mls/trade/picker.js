@@ -223,6 +223,16 @@ export function syncTradePicker() {
         select.value = owners.includes(keep) ? keep : '';
         select.closest('.mls-trade-team')?.toggleAttribute('hidden', !full);
     }
+    // Give's From row (improvements F9): you, by the Sleeper username the league was synced with, so both sides say
+    // whose players they are. Only beside the drop-down (Sleeper leagues), and css/mls.css hides it on phones.
+    const giveTeam = el('tradeGiveTeam');
+    if (giveTeam) {
+        const shown = !!select && !select.closest('.mls-trade-team')?.hidden;
+        const name = el('tradeGiveTeamName');
+        const label = league?.username ? `You (${league.username})` : 'You';
+        if (name) { name.textContent = label; name.title = label; }
+        giveTeam.toggleAttribute('hidden', !shown);
+    }
     const dynasty = !!league && getPowerLeagueKind(league) === 'dynasty';
     Object.values(SIDES).forEach(s => el(s.pickRow)?.toggleAttribute('hidden', !dynasty));
 }
