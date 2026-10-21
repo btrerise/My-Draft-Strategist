@@ -5308,3 +5308,16 @@ share a top edge (and so do the first players) with both sides empty, one player
 and five on Give (wrapping to two lines); in dynasty, the pick rows too. A long username with markup in it shows as text,
 cut with "…" on one line, no sideways scroll. A manual league: no From on either side, rows level. At 375px: stacked,
 no From row on Give, Give's players right under its title as before.
+
+**Screenshots.** One changes, by design: `desktop/mls-league-scout.png` (Give's From line added; Give's search box moves
+down level with Receive's; pixels differ only in Give's column, x 652–1190, y 691–787). The other 39, all 20 phone PNGs
+included, are pixel-identical to main: I rendered all 40 on main and on this branch in this container and compared them
+with `npm run pxdiff`. This container can't reproduce CI's renders (the font environment noted in earlier entries), so the
+PNG isn't re-taken yet. Take it from the pull request's CI run (`playwright-results` artifact, "Accepting an intended
+visual change" in docs/TESTING.md), with the usual checks that its `-expected.png` matches the committed baseline.
+
+**Checks run.** check-precache OK; 398 unit tests pass; 459 Playwright tests pass, the new spec included. The 10
+`visual.spec.mjs` comparisons that fail here fail on main too (this container's fonts).
+
+**Left over.** Re-take `desktop/mls-league-scout.png` from CI once a PR is open. No open follow-up in docs/TESTING.md
+touches this area.
