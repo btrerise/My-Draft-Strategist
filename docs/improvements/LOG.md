@@ -5319,5 +5319,13 @@ visual change" in docs/TESTING.md), with the usual checks that its `-expected.pn
 **Checks run.** check-precache OK; 398 unit tests pass; 459 Playwright tests pass, the new spec included. The 10
 `visual.spec.mjs` comparisons that fail here fail on main too (this container's fonts).
 
-**Left over.** Re-take `desktop/mls-league-scout.png` from CI once a PR is open. No open follow-up in docs/TESTING.md
+**Left over.** The re-take is done (below). No open follow-up in docs/TESTING.md
 touches this area.
+
+### F9, pull request (btrerise/My-Draft-Strategist#204): the screenshot from CI
+
+CI run 39681637605 (commit 30fb1fd) failed only `visual.spec.mjs` "MLS synced league tabs" on desktop, on
+`mls-league-scout.png`; every other test passed. CI's `-expected.png` was byte-identical to the committed baseline, and its
+`-actual.png` (still 1280×1971) differs only in Give's column (x 652–1190, y 680–772: the From line and the search box one
+row lower), matching this container's main-vs-branch comparison. Committed CI's `-actual.png` as
+`desktop/mls-league-scout.png`. Nothing is left over.
