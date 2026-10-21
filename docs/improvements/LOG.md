@@ -5418,3 +5418,37 @@ headline "1–1 · 1 still live", Provisional, the splits (hint, then "Paid 1–
 Paid survives Sync All; the fold survives a reload; Final and 2–0 after Refresh once every game is `post`; a league
 whose matchups fail is named and the other still shows; a guillotine league and a median league; one line per league
 at 375px, names whole, scores right-aligned; the Roster tab's record.
+Also `tests/mls-league-cards.spec.mjs`: its "each league's name shows once in the Command Center" check (S12) now leaves
+out the This week card, which lists every league by design.
+
+**Screenshots.** Six change, by design (the screenshot league's default matchups are at 0 points, so the card shows
+its before-kickoff state, "Week 2 starts soon", with the opponent line):
+- `desktop/mls-league-setup.png`, `phone/mls-league-setup.png`: the This week card above the league cards.
+- `desktop/mls-league-roster.png`, `phone/mls-league-roster.png`: the record line under the league name ("0–1 · Points
+  for 1st of 2 (120.0) · Points against 1st of 2 (110.0)").
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: three new lines in the badge legend ($, W/L/T,
+  Provisional/Final).
+The other 34 are pixel-identical to main: I rendered all 40 on main and on this branch in this container and compared
+them with `npm run pxdiff`. This container can't reproduce CI's renders (its fonts, as in earlier entries), so the six
+aren't re-taken yet: take them from the pull request's CI run ("Accepting an intended visual change" in
+docs/TESTING.md), checking each `-expected.png` matches the committed baseline.
+
+**Checks run.** check-precache OK; 408 unit tests pass; Playwright: 467 passed, the new spec's 12 included; the 10
+`visual.spec.mjs` comparisons fail here as they do on main (this container's fonts); `mls-league-cards.spec.mjs` failed
+until the change above, then passed (10/10).
+
+**Left over.**
+- Re-take the six PNGs from CI (above).
+- **S20:** `js/mls/sim/winChance.js` imports the Simulator's `stats.js` and starts `sim/worker.js`. When S20 loads the
+  Simulator on first use, load `winChance.js` through its loader from `week/thisWeek.js` (`addWinChances`), after the
+  scores are drawn, as now: the card must never wait on it.
+- **S22** builds on this card: each league's matchups (`players`, `starters`, `players_points`) are in
+  `State.lineupActualPoints[leagueId].matchups`, and `buildRows()` in `week/thisWeek.js` has every league's result.
+- The owner wants an image export of this card and an Export for the Roster tab (both under "Open follow-ups" in
+  docs/TESTING.md).
+- In-progress games: like the Simulator, a player whose game is under way counts as his points so far (no spread), so
+  a win chance mid-game understates the trailing side. The owner runs it between game windows, where that doesn't
+  arise; a change would be to the Simulator's math, out of scope here.
+- Sleeper moves `week` to the next week some time after MNF; a run after that shows the new week before kickoff. The
+  skill's post-MNF run is Monday night, before the switch.
+- Open follow-ups this touched: none of the existing ones.
