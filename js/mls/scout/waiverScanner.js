@@ -86,7 +86,10 @@ export function buildRankDisplayIndex(rankings, getPos) {
             posTier: r.posTier ?? r.tier ?? null,
             posDerived: false,
             flexRank: (FLEX_POSITIONS.includes(pos) && isRanked(r.flexRank)) ? r.flexRank : null,
-            flexTier: FLEX_POSITIONS.includes(pos) ? (r.flexTier ?? r.tier ?? null) : null,
+            // Only beside a FLEX rank (improvements F8): for a player outside a FLEX list, `tier` is his
+            // position list's tier (the parser sets rank and tier from his position file), so filling a
+            // missing FLEX tier with it put a TE tier and a WR tier side by side as if they were one list.
+            flexTier: (FLEX_POSITIONS.includes(pos) && isRanked(r.flexRank)) ? (r.flexTier ?? r.tier ?? null) : null,
             flexDerived: false
         };
     });

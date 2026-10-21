@@ -78,6 +78,23 @@ describe('buildRankDisplayIndex', () => {
         assert.deepEqual(idx.kunranked, { pos: 'K', rank: null, tier: null, posRank: null, posTier: null, posDerived: false, flexRank: null, flexTier: null, flexDerived: false });
     });
 
+    test('a player outside the FLEX list has no FLEX tier, not his position tier (improvements F8)', () => {
+        // Per-position files plus a FLEX file without tiers, as the parser stores them: a FLEX-list player's rank and
+        // tier are his FLEX rank and (empty) FLEX tier; anyone else's are his position file's. Before F8 the missing
+        // FLEX tier was filled with `tier`, so a WR outside the list carried his WR tier as a FLEX tier and a TE his
+        // TE tier, and Auto-Find compared the two ("6 tiers up").
+        const rankings = [
+            { cleanName: 'wrinflex', rank: 5, tier: null, posRank: 20, posTier: 5, flexRank: 5, flexTier: null },
+            { cleanName: 'wrnotinflex', rank: 30, tier: 8, posRank: 30, posTier: 8, flexRank: 999, flexTier: null },
+            { cleanName: 'tenotinflex', rank: 5, tier: 2, posRank: 5, posTier: 2, flexRank: 999, flexTier: null }
+        ];
+        const pos = { wrinflex: 'WR', wrnotinflex: 'WR', tenotinflex: 'TE' };
+        const idx = buildRankDisplayIndex(rankings, c => pos[c]);
+        assert.deepEqual([idx.wrnotinflex.flexRank, idx.wrnotinflex.flexTier, idx.wrnotinflex.posTier], [null, null, 8]);
+        assert.deepEqual([idx.tenotinflex.flexRank, idx.tenotinflex.flexTier, idx.tenotinflex.posTier], [null, null, 2]);
+        assert.deepEqual([idx.wrinflex.flexRank, idx.wrinflex.flexTier], [5, null]);
+    });
+
     test('a non-FLEX player with a flexRank marks the FLEX group as backfilled', () => {
         // posRanks are genuine (differ from rank), so only the FLEX group is re-derived.
         const rankings = [

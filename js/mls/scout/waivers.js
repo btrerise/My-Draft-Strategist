@@ -505,6 +505,10 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
     // choice): the free agent's tier against his, from the same list as the numbers under it, said in
     // words so a tier jump reads at a glance. Display only: the verdict itself doesn't change. "" unless
     // both are tiered.
+    // " T13" inside a parenthesis that's already open ("not in Flex list (WR69 T13)"), the same tier span
+    // without tierTag's own parentheses. "" without a tier.
+    const plainTier = (tier) => isTiered(tier) ? ` <span class="mls-tier" title="Tier ${tier}">T${tier}</span>` : '';
+
     function tierGapHTML(faTier, otherTier) {
         if (!isTiered(faTier) || !isTiered(otherTier)) return '';
         const n = Math.abs(otherTier - faTier);
@@ -523,7 +527,12 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
         const crossField = crossKind === 'overall' ? 'rank' : 'flexRank';
         const faD = display[faPlayer.cleanName] || {};
         const oD = display[other.cleanName] || {};
-        const tierOf = (d) => useFlex ? d[DISPLAY_TIER_FIELD[crossField]] : d.posTier;
+        // A tier only beside the number it belongs to (improvements F8): a player with no number in the list
+        // shown has no tier in it either, so no tier gap is ever drawn between two different lists.
+        const tierOf = (d) => {
+            const field = useFlex ? crossField : 'posRank';
+            return d[field] ? d[DISPLAY_TIER_FIELD[field]] : null;
+        };
         return { useFlex, crossField, faD, oD, faTier: tierOf(faD), oTier: tierOf(oD) };
     }
 
@@ -556,7 +565,12 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
         // row: Overall -> tier, Flex -> flexTier, position -> posTier. Untiered files add nothing.
         const { useFlex, crossField, faD, oD, faTier, oTier } = comparedTiers(faPlayer, other, slotType, display, basis, crossKind);
         const crossName = crossKind === 'overall' ? 'Overall' : 'Flex';
-        const fmt = (v, pos, tier) => (v === null || v === undefined) ? 'unranked' : `${useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`}${tierTag(tier)}`;
+        // No number in this list: "unranked" only when he's in none of the file's lists. A player with a
+        // position rank but no Flex (or Overall) rank reads "not in Flex list (WR69 T13)" (improvements F8,
+        // owner's choice): it names what decided the FLEX slot and still shows his rank.
+        const fmt = (v, pos, tier, d) => (v === null || v === undefined)
+            ? (useFlex && d.posRank ? `not in ${crossName} list (${escapeHtml(pos)}${d.posRank}${plainTier(d.posTier)})` : 'unranked')
+            : `${useFlex ? `#${v}` : `${escapeHtml(pos)}${v}`}${tierTag(tier)}`;
         const faVal = useFlex ? faD[crossField] : faD.posRank;
         const oVal = useFlex ? oD[crossField] : oD.posRank;
         const slotText = slotType ? ` <span class="mls-nowrap">(your ${slotType === 'SFLEX' ? 'SUPERFLEX' : slotDisplayName(slotType)})</span>` : '';
@@ -564,8 +578,8 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
         // label/name+rank pair is kept unbreakable -- at phone width this line otherwise wrapped
         // mid-phrase ("Wk" on one line, "Flex: Dobbins #58" on the next), which read as garbled.
         const nums = `<span class="mls-nowrap">${label} ${useFlex ? crossName : 'Pos'}:</span> `
-            + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos, faTier)}</span>, `
-            + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos, oTier)}</span>`;
+            + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos, faTier, faD)}</span>, `
+            + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos, oTier, oD)}</span>`;
         // His SoS badge beside his name (improvements S7), so both schedules sit side by side.
         return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}${tierGapHTML(faTier, oTier)}<span class="mls-verdict-nums">${nums}</span>`;
     }
@@ -808,6 +822,12 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
                     const crossOverall = ctx.scanCross === 'overall';
                     const field = basisKind === 'flex' ? (crossOverall ? 'rank' : 'flexRank') : 'posRank';
                     const v = d[field];
+                    // Ranked at his position but not in the Flex (or Overall) list (improvements F8, owner's choice):
+                    // "Wk Flex: not in list · WR30 · T8", the line's "not in Flex list" in the header's form.
+                    if (!v && field !== 'posRank' && d.posRank) {
+                        const tier = d.posTier;
+                        return `<span class="mls-nowrap">${basisLabel} ${crossOverall ? 'Overall' : 'Flex'}: not in list <span class="mls-rank-sep">&middot;</span> ${escapeHtml(p.pos)}${d.posRank}${isTiered(tier) ? ` <span class="mls-rank-sep">&middot;</span> <span class="mls-tier" title="Tier ${tier}">T${tier}</span>` : ''}</span>`;
+                    }
                     if (!v) return `unranked by ${basisName}`;
                     const text = `${basisLabel} ${basisKind === 'flex' ? `${crossOverall ? 'Overall' : 'Flex'} #${v}` : `${escapeHtml(p.pos)}${v}`}`;
                     // His tier for that number (improvements S8), kept on one line with it: "ROS RB8 · T4"

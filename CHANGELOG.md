@@ -87,6 +87,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **"Not in Flex list" instead of "unranked".** When your Weekly rankings rank a player at his position but leave him
+  out of their FLEX list, the Waiver Wire Assistant's FLEX comparisons now say so and still show his rank ("Wk Flex:
+  Douglas #98, Burks not in Flex list (WR69 T13)"), in Auto-Find and Check a List, and in Whole Roster's "Your weakest"
+  line ("Wk Flex: not in list · WR69 · T13"). "Unranked" now means he's in none of your lists. The verdicts are
+  unchanged: a FLEX rank still beats none.
+- **No tier gap between two different lists.** A FLEX comparison no longer reads "· 6 tiers up" for a TE against a WR
+  when neither is in the FLEX list: that compared his TE tier with the other's WR tier. The tier gap now shows only
+  when both numbers come from the same list.
 - **No more "Set on Sleeper" for players whose game has started.** Once a player's game kicks off, Sleeper won't let
   you move him, so the League Command Center no longer asks you to start or bench him: not in the card's Sleeper
   changes, its red Lineup chip, "1 to set", the count at the top, or the Lineup tab's "Differs from your Sleeper
