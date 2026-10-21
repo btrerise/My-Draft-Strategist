@@ -121,6 +121,9 @@ export function lineupIssues(starters, ctx, bench = []) {
         }
     }
     issues.unmatched = ctx.unmatched || [];
+    // Players you locked in whose game started while they were on your Sleeper bench (improvements F7): the lineup
+    // benches them, since Sleeper won't let them in now, and says so in a note.
+    issues.lockEnded = ctx.lockEnded ? roster.filter(p => ctx.lockEnded(p)) : [];
     if (Number.isFinite(ctx.rosterSize) && ctx.rosterSize > 0) {
         issues.rosterFull = roster.filter(p => !p.isReserve && !p.isTaxi).length >= ctx.rosterSize;
     }
@@ -171,6 +174,9 @@ export function lineupIssueItems(issues) {
         ? ` (${issues.irSlotsOpen} IR slot${issues.irSlotsOpen === 1 ? '' : 's'} open)` : '';
     issues.moveToIr.forEach(p => items.push({ kind: 'ir', note: true, text: `Move ${name(p)} to IR to free a spot${more}` }));
     issues.kept.forEach(k => items.push({ kind: 'kept', muted: true, text: `${name(k.player)} ${k.what} (you locked him in)` }));
+    // A note, not a job (improvements F7). The lineup reads who started from your last sync, hence the second sentence.
+    (issues.lockEnded || []).forEach(p => items.push({ kind: 'kept', muted: true, note: true,
+        text: `Your lock on ${name(p)} no longer applies: his game started with him on your Sleeper bench. If that's not your Sleeper lineup, sync again to update.` }));
     // A note, not a job: a manual league's player Sleeper doesn't know (S11 round 7).
     const unmatched = issues.unmatched || [];
     if (unmatched.length) items.push({ kind: 'unmatched', note: true,

@@ -241,6 +241,19 @@ describe('lineupIssueItems wording', () => {
     });
 });
 
+// Improvements F7 (owner's choice): a kickoff that left a player you locked on your Sleeper bench outranks the lock.
+describe('a lock the kickoff outranked', () => {
+    test('one muted note per player, not counted; none in Best Ball', () => {
+        const bowers = pl('Brock Bowers', 'TE', { started: true });
+        const c = ctx({ roster: [bowers, pl('Other', 'WR')], lockEnded: (p) => p === bowers });
+        const list = items(lineupIssues([s('QB1', pl('A', 'QB'))], c));
+        assert.deepEqual(list.map(i => [i.kind, i.muted, i.note, i.text.replace(/\u00a0/g, ' ')]),
+            [['kept', true, true, "Your lock on Brock Bowers no longer applies: his game started with him on your Sleeper bench. If that's not your Sleeper lineup, sync again to update."]]);
+        assert.equal(needsYou(list), false);
+        assert.deepEqual(items(lineupIssues([s('QB1', pl('A', 'QB'))], { ...c, bestBall: true })), []);
+    });
+});
+
 describe('manual leagues: names Sleeper does not know', () => {
     test('one note, not counted', () => {
         const list = items(lineupIssues([s('QB1', pl('A', 'QB'))], ctx({ unmatched: ['Zack Nobody', 'Kenneth Walker'] })));

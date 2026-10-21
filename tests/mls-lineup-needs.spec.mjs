@@ -670,4 +670,36 @@ test.describe('Sleeper changes after kickoff (F7)', () => {
         expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase · Bench Garrett Wilson"]);
         await expectClean(page, state);
     });
+    // Owner's choice (F7, after the first round): a kickoff that left a player you locked on your Sleeper bench outranks
+    // the lock. Sleeper won't let him in, so the lineup benches him and names the change still allowed (before, the
+    // card said "Bench George Kittle" with nobody for his slot). The lock stays in your list, and a note says why it no longer applies.
+    test('a locked player whose game started on your Sleeper bench is benched, with a note', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, sleeperStarters: SLEEPER });
+        await seedTwoLeagues(page);
+        const NOTE = "Your lock on Brock Bowers no longer applies: his game started with him on your Sleeper bench. If that's not your Sleeper lineup, sync again to update.";
+        // You locked Bowers in; then Las Vegas kicks off, with Kittle (SF) starting on Sleeper.
+        await page.evaluate(async (leagueId) => {
+            const { State } = await import('/js/mls/state.js');
+            State.lockedPlayersMap[leagueId] = ['11604'];
+        }, FIXTURE_LEAGUE_ID);
+        await kickoffs(page, { LV: PAST, CIN: LATER, NYJ: LATER, SF: LATER });
+        const fixture = card(page, 'Fixture League');
+        // Trey McBride (ARI, still to play) is the rankings' next TE, ahead of Kittle.
+        expect(await lineSummaries(page)).toEqual([`Fixture League: ${NOTE} · Start Ja'Marr Chase, Trey McBride · Bench George Kittle, Garrett Wilson`]);
+        await expect(fixture.locator('.mls-lc-count-todo')).toHaveCount(0);
+        await expect(fixture).not.toHaveClass(/\bneeds-you\b/);
+        expect(await page.evaluate(async (id) => (await import('/js/mls/state.js')).State.lockedPlayersMap[id], FIXTURE_LEAGUE_ID)).toEqual(['11604']);
+        // The Lineup tab: Bowers on the bench, McBride at TE, the same note and changes.
+        await page.locator('#headerLeagueSelect').selectOption(FIXTURE_LEAGUE_ID);
+        await showTab(page, 'lineup');
+        await expect(page.locator('#optimalLineupContainer .lineup-slot').filter({ hasText: 'Brock Bowers' })).toHaveCount(0);
+        await expect(page.locator('#optimalLineupContainer .lineup-slot').filter({ hasText: 'Trey McBride' })).toHaveCount(1);
+        await expect(page.locator('#benchContainer .lineup-slot').filter({ hasText: 'Brock Bowers' })).toHaveCount(1);
+        expect(await lineupItems(page)).toEqual([NOTE]);
+        await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveText('Nothing needs you before kickoff');
+        await lineupBox(page).locator('.lineup-needs-sleeper summary').click();
+        await expect(lineupBox(page).locator('.lineup-needs-sleeper-text')).toHaveText("Start Ja'Marr Chase, Trey McBride · Bench George Kittle, Garrett Wilson");
+        await expectClean(page, state);
+    });
 });

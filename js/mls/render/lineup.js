@@ -346,9 +346,12 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         const benchedAtKickoff = new Set();
         let scoredRoster = league.roster.map(p => {
             let rObj = rankIdx.get(p.cleanName);
-            let manualLocked = lockSet.has(p.id);
-            const freeze = manualLocked ? null : kickoffFreeze(league, p);
-            let autoLocked = freeze === 'in';
+            // A lock gives way to a kickoff that left him on your Sleeper bench (improvements F7, owner's choice): Sleeper
+            // won't let him in now, so the lineup mustn't start him. The lock itself stays, and the lineup's box says so
+            // (lockEnded in lineup/issues.js).
+            const freeze = kickoffFreeze(league, p);
+            let manualLocked = lockSet.has(p.id) && freeze !== 'out';
+            let autoLocked = !manualLocked && freeze === 'in';
             if (freeze === 'out') benchedAtKickoff.add(p.id);
             return { ...p, posRank: rObj ? rObj.posRank : 999, flexRank: rObj ? rObj.flexRank : 999, posTier: rObj ? (rObj.posTier ?? rObj.tier ?? null) : null, flexTier: rObj ? (rObj.flexTier ?? rObj.tier ?? null) : null, isLocked: manualLocked || autoLocked, autoLocked };
         });

@@ -5154,9 +5154,40 @@ render CI-matching baselines (F1, S9). Rendered here the same way, main and this
 changed it on Sleeper after syncing, the app's idea of who is locked in can be wrong until the next sync. A per-league
 sync is S13, parked.
 
-**Left over / noticed.**
-- A manual lock on a player whose game started while he was on your Sleeper bench keeps him in the app's lineup (the
-  optimizer respects locks, and the card said not to touch them). The guard hides him, so the card shows only the
-  other side of that swap: you locked Bowers in, Las Vegas kicked off with Kittle starting on Sleeper, and the card says
-  "Bench George Kittle" with nobody named for his slot. Rare, since locks clear each week. A fix would be to let
-  `kickoffFreeze` outrank a manual lock in the optimizer, which changes what a lock means. Put to the owner, not built.
+**Found while testing, then fixed in round 2:** a lock on a player whose game started while he was on your Sleeper
+bench kept him in the app's lineup, so the card showed half a swap.
+
+### F7, round 2: a kickoff outranks your lock (owner's choice)
+
+**Asked.** In round 1 a manual lock kept its player in the app's lineup even after his game started with him on your
+Sleeper bench. The guard hid him, so the card showed only the other half of the swap. You locked Bowers in, Las Vegas
+kicked off with Kittle starting on Sleeper, and the card said "Bench George Kittle" with nobody named for his slot.
+Following it on Sleeper would leave the TE slot empty. I listed the pros and cons. The owner chose to let the kickoff
+win, with a note suggesting something like "If this does not match your Sleeper lineup, sync again to update."
+
+**What changed.**
+- `js/mls/render/lineup.js` (`optimizeLineup`): `kickoffFreeze` is worked out for every player. A lock counts only when
+  the freeze isn't 'out', so a locked player whose game started on your Sleeper bench is held out of the starter pool
+  like anyone else. The lock stays in `State.lockedPlayersMap`, so an auto-lock override or a sync that shows he started
+  brings it back. The override itself only exists on auto-locked starters' rows, which is why the note points to a sync.
+- `js/mls/scout/waivers.js` (`lineupCheckDeps`): the same precedence, so best available and the Waiver Wire read the
+  same lineup.
+- `js/mls/lineup/gameInfo.js`: `lineupBuiltBeforeKickoff` no longer skips locked players. `getLineupIssues` passes
+  `lockEnded` (locked, and `kickoffFreeze` 'out').
+- `js/mls/lineup/issues.js`: `issues.lockEnded`, and one muted note per player (a note: not counted, no amber): "Your lock
+  on Brock Bowers no longer applies: his game started with him on your Sleeper bench. If that's not your Sleeper lineup,
+  sync again to update." It shows in the card's to-dos (with "Notes" as the label when it's the only item) and in the
+  Lineup tab's box.
+- A swap you make after a kickoff stays until the next kickoff re-optimizes the lineup (`kickoffKey`): a swap doesn't
+  count as an optimize.
+- CHANGELOG: the F7 line says so.
+
+**Tests.**
+- `tests/unit/lineupIssues.test.mjs`: the note's kind, wording and muted note status, not counted, none in Best Ball.
+- `tests/mls-lineup-needs.spec.mjs`, "a locked player whose game started on your Sleeper bench is benched, with a note":
+  - The card shows the note plus "Start Ja'Marr Chase, Trey McBride · Bench George Kittle, Garrett Wilson". McBride (ARI,
+    still to play) is the rankings' next TE ahead of Kittle.
+  - No "to do" count, no amber, and the lock list unchanged.
+  - The Lineup tab: Bowers on the bench, McBride at TE, the same note, "Nothing needs you before kickoff", and the same
+    changes in the fold.
+- `mls-flex-choice`, `mls-best-available`, `mls-waiver-insights`, `mls-weakest-player` and `mls-weekly-locks` pass.

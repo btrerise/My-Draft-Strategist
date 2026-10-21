@@ -125,9 +125,10 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     // started while he was in your Sleeper lineup. Optimize All on Sunday morning saves the 1 pm player the app
     // preferred; at 1 pm Sleeper locks him on your bench. The Dashboard re-optimizes such leagues
     // (reoptimizeKickedOffLeagues, render/dashboard.js) and the Lineup tab rebuilds one when it's shown, so each names
-    // the best change still allowed. Players you locked are left alone (the optimizer keeps them where they are), and
-    // a lineup optimized since the last kickoff isn't redone (kickoffKey), so one that can't match the freeze
-    // (someone Sleeper started who is now on your taxi squad) doesn't re-run on every render.
+    // the best change still allowed. A player you locked in counts too: the kickoff outranks his lock (owner's choice).
+    // A lineup optimized since the last kickoff isn't redone (kickoffKey), so one that can't match the freeze
+    // (someone Sleeper started who is now on your taxi squad) doesn't re-run on every render, and a swap you make after
+    // a kickoff stays until the next one.
     const kickoffOptimizedAt = new Map();
     const kickoffKey = () => Object.keys(State.gameTimesByTeam).filter(team => hasKickedOff({ team })).sort().join(',');
     export function noteLineupOptimized(league) {
@@ -138,10 +139,8 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         const starters = State.manualStartersMap[league.leagueId], bench = State.manualBenchMap[league.leagueId];
         if (!starters || !bench) return false;
         if (kickoffOptimizedAt.get(league.leagueId) === kickoffKey()) return false;
-        const locks = State.lockedPlayersMap[league.leagueId] || [];
-        const free = (p) => !!p && !locks.includes(p.id);
-        return starters.some(s => s && free(s.player) && kickoffFreeze(league, s.player) === 'out')
-            || bench.some(p => free(p) && kickoffFreeze(league, p) === 'in');
+        return starters.some(s => s && s.player && kickoffFreeze(league, s.player) === 'out')
+            || bench.some(p => kickoffFreeze(league, p) === 'in');
     }
 
     // True only when ESPN says the team's game is over -- unlike hasKickedOff, which is just
@@ -560,6 +559,8 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
                 return iso ? new Date(iso).getTime() : NaN;
             },
             kept: p => isKeptStarter(league, p),
+            // A lock the kickoff outranked (improvements F7): his game started with him on your Sleeper bench.
+            lockEnded: p => isKeptStarter(league, p) && kickoffFreeze(league, p) === 'out',
             projOf: p => getLineupProjection(p.id, league),
             irRules: league ? league.irRules || null : null,
             rosterSize: league ? league.rosterSize : null,

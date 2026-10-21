@@ -271,10 +271,11 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
         // Once his game has kicked off, a player stays where he is on Sleeper (kickoffFreeze, the optimizer's rule):
         // locked in if he started, unable to start if he didn't. Before S12 round 3 every kicked-off player counted as
         // locked in, bench players too, so the Dashboard's fresh best lineup put a benched Thursday player in it.
-        const freeze = (p) => (locks.includes(p.id) ? null : kickoffFreeze(league, p));
+        // A lock gives way only to a kickoff that left him on your Sleeper bench, as in the optimizer (improvements F7).
+        const freeze = (p) => kickoffFreeze(league, p);
         return {
             rankOf: (p) => byName[p.cleanName] || null,
-            isLocked: (p) => locks.includes(p.id) || freeze(p) === 'in',
+            isLocked: (p) => (locks.includes(p.id) && freeze(p) !== 'out') || freeze(p) === 'in',
             isUnavailable: (p) => isUnavailableThisWeek(p),
             cannotStart: (p) => freeze(p) === 'out',
             // Sleeper's projection, the FLEX rule's tiebreak between positions, as the optimizer uses it (S12).
