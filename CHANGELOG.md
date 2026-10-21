@@ -87,6 +87,19 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **This week: every league's matchup, live.** A new card at the top of the Dashboard's League Command Center shows
+  this week's score in every Sleeper league: your W-L as it stands, split paid / free and redraft / dynasty (keeper and
+  chopped leagues count with redraft), the matchups still in play first (both scores, the margin, your win chance from
+  the Matchup Simulator, and who's still to play on each side), the effectively decided ones on one line, then a line
+  per league. It says Provisional until every game of the week is final, then Final. A guillotine league shows your
+  place and how far you are from the chop line instead of a W-L; a league that also plays the median says where you
+  stand against it; a league whose matchups didn't load is named, with the rest still shown. It loads when you open
+  the Dashboard and when you tap Refresh (before SNF, before MNF, after MNF), never in the background, and folds to
+  one line ("Week 7 1–1 · 1 still live").
+- **Mark the leagues you pay for.** Reorder on the League Command Center now has a "$ Paid" switch on each Sleeper
+  league. A paid league shows a "$" badge on its card and in This week, and a sync or a backup keeps it.
+- **Your record on the Roster tab.** Under the league's name: your W-L this season and where your points for and
+  against rank in the league ("Points for 3rd of 12"), as of your last sync. A league shows it after its next sync.
 - **The Trade Analyzer's two sides line up on wider screens.** Side by side (tablets and computers), Players You
   Receive and Players You Give Up now keep their search boxes, players and draft-pick rows level, even when one side
   has more players. In Sleeper leagues, Give has its own From line ("From  You (your username)") across from Receive's

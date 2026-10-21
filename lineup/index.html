@@ -248,6 +248,10 @@
              need you, ✕ and "Sync All again"); the to-dos themselves are in the league cards below. -->
         <div id="lineupNeedsBox" class="mls-needs-box" role="status" hidden></div>
 
+        <!-- This week (js/mls/week/thisWeek.js, improvements S21): every Sleeper league's matchup, live, the W-L and
+             the matchups still in play. Folds to its header; Refresh reloads it. -->
+        <section id="thisWeekCard" class="mls-week" aria-label="This week's matchups" hidden></section>
+
         <!-- One card per league (js/mls/render/leagueCards.js, improvements S12): status, to-dos, Sleeper changes and
              best available. Above them, best available's Weekly | ROS switch and summary, and Fold all. -->
         <div class="mls-lc-toolbar">
@@ -583,6 +587,10 @@
             </div>
         </header>
         
+        <!-- Your season record and points for / against ranks, from the last sync (js/mls/render/roster.js,
+             improvements S21). Hidden for manual leagues and before anyone has played. -->
+        <p id="rosterRecord" class="mls-roster-record" hidden></p>
+
         <!-- Your row of the Positional Power Rankings (full table further down this tab), filled
              by renderRosterPowerStrip in js/mls/power/snapshot.js. Hidden when there's nothing to rank. -->
         <div id="rosterPowerStrip" class="mls-roster-power" style="display: none;" aria-live="polite"></div>

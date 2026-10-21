@@ -244,10 +244,10 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         const projVal = typeof projRaw === 'number' ? projRaw : null;
 
         // Only trust the cached points for a team whose game was already final when they were
-        // fetched (finalKey) -- otherwise a game that finished afterwards would show a partial
+        // fetched (finalTeams) -- otherwise a game that finished afterwards would show a partial
         // score as if it were the final one, until the next refetch.
         const actualEntry = State.lineupActualPoints[State.activeLeagueId];
-        const actualRaw = isGameFinal(p.team) && actualEntry && actualEntry.week === week && actualEntry.finalKey.split(',').includes(p.team)
+        const actualRaw = isGameFinal(p.team) && actualEntry && actualEntry.week === week && actualEntry.finalTeams.includes(p.team)
             ? actualEntry.points[p.id] : undefined;
 
         if (typeof actualRaw === 'number') {
@@ -261,6 +261,22 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
             return `<div class="mls-pts mls-pts-none" title="Sleeper doesn't have a projection for this player."><span class="mls-pts-main">&mdash;</span><span class="mls-pts-sub">proj</span></div>`;
         }
         return "";
+    }
+
+    // State.lineupActualPoints, one entry per league: { week, matchups (Sleeper's whole response), points (your
+    // roster's players_points), fetchedAt, finalTeams }. Filled by the Lineup tab below and, for every Sleeper league,
+    // by the Dashboard's This week card (week/thisWeek.js, improvements S21), so a fetch by either serves both.
+    // finalTeams: the teams whose games were final when it was fetched; a player's points count as his final score
+    // only for those (before S21 the Lineup tab kept only its own lineup's final teams, as finalKey).
+    export function finalTeamsNow() {
+        return Object.keys(State.gamesByTeam).filter(t => State.gamesByTeam[t] && State.gamesByTeam[t].state === 'post').sort();
+    }
+    export function storeLeagueMatchups(league, week, matchups) {
+        const list = Array.isArray(matchups) ? matchups : [];
+        const mine = list.find(m => m.roster_id === league.rosterId);
+        State.lineupActualPoints[league.leagueId] = {
+            week, matchups: list, points: (mine && mine.players_points) || {}, fetchedAt: Date.now(), finalTeams: finalTeamsNow(),
+        };
     }
 
     // Loads what the Lineup tab's projected/final points and opponent display needs, then
@@ -315,16 +331,16 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
                     ...(State.manualStartersMap[league.leagueId] || []).map(s => s.player).filter(Boolean),
                     ...(State.manualBenchMap[league.leagueId] || [])
                 ];
-                const finalKey = [...new Set(lineupPlayers.map(p => p.team).filter(isGameFinal))].sort().join(',');
+                const finalTeams = [...new Set(lineupPlayers.map(p => p.team).filter(isGameFinal))];
                 const cached = State.lineupActualPoints[league.leagueId];
-                const actualsStale = !cached || cached.week !== week || cached.finalKey !== finalKey
+                const actualsStale = !cached || cached.week !== week || finalTeams.some(t => !cached.finalTeams.includes(t))
                     || Date.now() - cached.fetchedAt > LINEUP_STATS_TTL_MS;
-                if (finalKey && actualsStale) {
+                if (finalTeams.length && actualsStale) {
                     try {
                         const matchups = await getSleeperMatchups(league.leagueId, week);
                         const mine = matchups.find(m => m.roster_id === league.rosterId);
                         if (mine && mine.players_points) {
-                            State.lineupActualPoints[league.leagueId] = { week, points: mine.players_points, fetchedAt: Date.now(), finalKey };
+                            storeLeagueMatchups(league, week, matchups);
                             changed = true;
                         }
                     } catch (err) {

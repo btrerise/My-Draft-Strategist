@@ -15,8 +15,8 @@
 import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
-    moveChipMarkup, posCountChipMarkup, rankBadgeParts, scoutPillMarkup,
-    sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup
+    moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, scoutPillMarkup,
+    sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
 
@@ -105,6 +105,12 @@ const GROUPS = [
             'Amber: this information is a few days old, so refresh it (Sync All Leagues for rosters). Red: the last sync failed.'],
         [leagueStatusChipMarkup('good', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('warn', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('danger', 'Lineup', '', SAMPLE) + leagueStatusChipMarkup('pending', 'Lineup', '', SAMPLE) + bestBallBadgeMarkup(),
             'On each league\'s card on the Dashboard. Rankings: green, its Weekly rankings are fresh (this week\'s); amber, they\'re stale or missing. Lineup: green, it matches your Sleeper lineup; red, it differs (the changes are in the card); amber, there\'s no Sleeper lineup to compare yet; grey, not optimized yet. BB: a Best Ball league, with no lineup to set. Tap a chip for more.'],
+        [paidBadgeMarkup({ sample: true }),
+            'A league you pay for. Mark it with "$ Paid" in the League Command Center\'s Reorder mode; the This week card splits your W-L into paid and free.'],
+        [weekResultMarkup('W') + weekResultMarkup('L') + weekResultMarkup('T'),
+            'In the Dashboard\'s This week card: each matchup as it stands now, winning, losing or tied. Until every game is final it can still change.'],
+        [weekStatusMarkup(false) + weekStatusMarkup(true),
+            'This week\'s scores: Provisional while any game of the week is still to finish, then Final (Sleeper can still correct stats for a few days).'],
     ]],
     ['Schedule', [
         [sosBadgeMarkup(1, '', { compact: true, sample: true }) + sosBadgeMarkup(16, '', { compact: true, sample: true }) + sosBadgeMarkup(32, '', { compact: true, sample: true }),

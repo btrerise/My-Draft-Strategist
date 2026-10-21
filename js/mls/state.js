@@ -6,7 +6,7 @@ import { getNflState } from '../shared/api/sleeper.js';
 // readJSON is js/boot.js's window.readJSON (boot.js is a plain script, so it can't be imported).
 import { ESPN_TEAM_ALIASES } from './constants.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
-import { clearLocksForNewWeek, loadRosterTab, renderBestAvailable, renderLineupUI, optimizeLineup } from './main.js';
+import { clearLocksForNewWeek, loadRosterTab, refreshThisWeek, renderBestAvailable, renderLineupUI, optimizeLineup } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { showToast } from '../shared/ui/toast.js';
 import { mdsFetch } from '../shared/net.js';
@@ -130,9 +130,10 @@ import { mdsFetch } from '../shared/net.js';
         // Whether the Lineup tab's "This lineup needs you" box is folded to its title line (lineup/gameInfo.js,
         // improvements S11 round 6). Remembered, like the Best Available card's.
         lineupNeedsCollapsed: localStorage.getItem(KEYS.mls.lineupNeedsCollapsed) === '1',
-        // Not persisted -- leagueId ->{ week, points, fetchedAt, finalKey }: this roster's
-        // players_points from Sleeper's matchups endpoint. finalKey records which teams' games
-        // were final when it was fetched, so a game finishing afterwards forces a refetch.
+        // Not persisted -- leagueId ->{ week, matchups, points, fetchedAt, finalTeams }: Sleeper's matchups
+        // response for the week and this roster's players_points from it. finalTeams records which teams' games
+        // were final when it was fetched, so a game finishing afterwards forces a refetch. Shared by the Lineup
+        // tab and the Dashboard's This week card since improvements S21 (storeLeagueMatchups, lineup/gameInfo.js).
         lineupActualPoints: {},
         lineupStatsRefreshing: false,
         // Not persisted -- undo/redo history for lineup edits (swaps, lock toggles, and
@@ -251,6 +252,8 @@ export function applyLineupSettingsToUI() {
                     // The Dashboard's Best Available card clears last week's dismissed players
                     // (improvements S5), so it redraws once the week is known.
                     if (activeTab && activeTab.id === 'setupTab') renderBestAvailable();
+                    // The This week card loads for Sleeper's current week, so it waits for it (improvements S21).
+                    if (activeTab && activeTab.id === 'setupTab') refreshThisWeek();
                     // Kickoff times are keyed by week, so we can't fetch them until we know
                     // which week we're on -- chain it here rather than firing both requests
                     // independently at page load.

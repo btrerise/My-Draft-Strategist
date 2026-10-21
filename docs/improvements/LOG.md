@@ -5329,3 +5329,92 @@ CI run 39681637605 (commit 30fb1fd) failed only `visual.spec.mjs` "MLS synced le
 `-actual.png` (still 1280×1971) differs only in Give's column (x 652–1190, y 680–772: the From line and the search box one
 row lower), matching this container's main-vs-branch comparison. Committed CI's `-actual.png` as
 `desktop/mls-league-scout.png`. Nothing is left over.
+
+## S21 — This week: every league's matchup, live, with the swing matchups
+
+**User-visible effect.** A **This week** card at the top of the Dashboard's League Command Center (under Sync All /
+Optimize All, above the league cards), from the owner's sleeper-weekly-recap skill:
+- **Header** (it folds to this line, remembered): "Week 7", your W-L as it stands across every head-to-head Sleeper
+  matchup, "N still live", a **Provisional** chip (amber) until every game of the week is final, then **Final**, and
+  **Refresh**.
+- **Splits:** "Paid 4–2 · Free 5–4" (or, until a league is marked paid, a hint to mark them) and "Redraft 3–2 · Dynasty
+  6–4", with "(keeper counts with redraft)" when a keeper league is in it. Guillotine leagues are redraft (owner's note:
+  a chopped league is a redraft league of a specific kind, like Best Ball), but have no W-L of their own.
+- **Still in play:** the swing matchups, most uncertain first, each with both scores, the margin, "**38% to win**" from
+  the Matchup Simulator's math, and the live players on each side ("You: Justin Jefferson WR", "Them: nobody left").
+- **Effectively decided: 11 (8 W, 3 L)** on one line ("Done" once every game is final).
+- **All leagues:** one line per league: W / L / T, the name ("$" if paid), "vs Opponent" (plus "median: 4th of 12
+  (above)" in a league that also plays the median, "Best Ball"), your points–theirs and the margin, right-aligned.
+- **Notes:** a guillotine league's place ("Chop Shop · Guillotine (no opponent): 98.4, 7th of 10 alive, 4.2 above the
+  lowest · 3 live", or "lowest of 10 alive, 1.2 behind the next team", or "your team has been chopped"); leagues with
+  no matchup this week; manual leagues ("2 manual leagues: no Sleeper matchup to show"); and "Couldn't load from
+  Sleeper: X. Tap Refresh to try again." for a league whose fetch failed, with every other league still shown.
+- Before the week's first kickoff it reads "Week 7 starts Thu 8:15 PM" and lists each opponent without scores.
+- **Reorder** on the League Command Center has a **"$ Paid"** switch per Sleeper league; a paid league shows a "$" badge
+  on its card and in This week.
+- **Roster tab:** under the league name, your record ("5–2"), "Points for 3rd of 12 (812.4)" and "Points against 9th of
+  12 (760.1)", as of the last sync (shown after a league's next sync; hidden for manual leagues and before anyone has
+  played).
+
+**Owner's decisions (asked before building).**
+1. Where: a **Dashboard card that folds**, above the league cards.
+2. Paid vs free: a **"Paid league" switch in Reorder mode**, saved on the league; plus the owner's idea of a **"$" badge**
+   (shown on the league card and in This week, at every width).
+3. Ranking swings: the **Simulator's win chance**, shown as a percent ("I like the interconnectedness of features").
+   The skill's rule of thumb still decides what counts as in play; the percent orders them.
+4. Refresh: **when the Dashboard opens plus a Refresh button, no timer** (run it before SNF, before MNF, after MNF).
+5. Season records: **not on each line; on the Roster tab instead**, next to the league name, with points for and
+   against ranks (built here, the owner's long-standing ask).
+6. Image export: **not now, but wanted**; the owner also wants an **Export on the Roster tab**. Both noted under "Open
+   follow-ups" in docs/TESTING.md.
+
+**What changed, and where.**
+- `js/mls/week/scoreboard.js` (new, no app state): the skill's rules. `starterState` (live / done / dead: live until his
+  team's game is `post`; bye, no team or Out (`SIM_EXCLUDE_STATUSES`) is dead), `reachOf` (QB 20, RB/WR 15, TE/K/DEF 8,
+  less what he has scored), `sideSummary` (Best Ball counts live bench players, the best `starters.length` reaches),
+  `classifyMatchup` (done when nobody is live; decided when the trailing side has nobody live, or its reach is short of
+  a gap of 25+; otherwise a swing), `medianPlace`, `guillotinePlace`, `summarize`, `swingOrder` (the underdog's chance,
+  min(p, 100 − p), highest first; then the smaller gap), and the sync helpers `teamNamesFrom`, `playsMedian`,
+  `isGuillotine`, `seasonRecord`, `ordinal`.
+- `js/mls/week/thisWeek.js` (new): the card. `refreshThisWeek` fetches `GET /v1/league/<id>/matchups/<week>` for each
+  Sleeper league, five at a time, for Sleeper's `week` (`State.currentNflWeek`), after the scoreboard, projections and
+  player map; it reuses anything fetched in the last 2 minutes unless forced (Refresh) and fetches a league added since.
+  Draws scores first, then adds win chances. Your entry by `league.rosterId`, the opponent by `matchup_id`; points are
+  `custom_points` when Sleeper sets it, else `points`. Guillotine: `league.guillotine`, or, for a league synced before
+  S21 whose meta didn't load, every roster having its own `matchup_id`.
+- `js/mls/sim/winChance.js` (new): the Simulator's inputs gathered as `runMatchupSim` does (actual points once a
+  player's game has kicked off, projection plus his history's spread before, Doubtful/Out/IR left out) and run through
+  its own `sim/worker.js` instance (so it never answers the Lineup tab's Simulator run), returning each matchup's win
+  chance. One difference from the Simulator card: a player whose game has kicked off counts even with no game history
+  (the card drops him, losing real points). No change to the math.
+- The cache: `State.lineupActualPoints[leagueId]` (the Lineup tab's, `js/mls/lineup/gameInfo.js`) now holds the whole
+  matchups response and `finalTeams` (every team final at fetch time) in place of the lineup-only `finalKey`;
+  `storeLeagueMatchups` writes it for both the Lineup tab and the card. In memory only, as before.
+- `js/mls/leagues/sync.js`: the league object gains `teamNames` ({ roster_id: display name }), `medianMatch`,
+  `guillotine`, `record` (from the rosters a sync already fetches) and `paid` (carried over like `rosRankingSetId`).
+  Backup/Restore copies `mls_leagues` whole, so `paid` round-trips. A league synced before S21 reads its names and
+  flags from Sleeper once per visit (league, users, rosters) until its next sync.
+- `js/mls/render/leagueCards.js`: "$ Paid" in Reorder (`toggleLeaguePaid`), the "$" badge on the name, and the card's
+  load when the Dashboard is shown (redrawn otherwise). `js/mls/state.js`: loads it once Sleeper's week is known.
+- `js/mls/render/roster.js`, `lineup/index.html`: `#rosterRecord`. `#thisWeekCard` in the Command Center.
+- `js/mls/badges.js` + `js/mls/legend.js`: `paidBadgeMarkup`, `weekResultMarkup` (W/L/T), `weekStatusMarkup`
+  (Provisional/Final), each with a legend line. `css/mls.css`: the card, the badge, the record.
+- `js/shared/storage/keys.js`: `mls_this_week_folded` ('1' while folded). `sw.js`: the three new modules in
+  `PRECACHE_ASSETS`, `CACHE_NAME` v2.8.100 → v2.8.101. CHANGELOG lines under Lineup Strategist.
+
+**What I found in the owner's leagues (Sleeper API, week 7).** LOOG - Chop Shop is `settings.type` 3; every roster has
+its own `matchup_id`; chopped teams stay in the matchups with 0 points and no players (and 0 wins in the rosters). Eight
+leagues have `league_average_match` 1. `week` and `leg` agreed (7).
+
+**Measured.** 21 leagues, every one a swing, CPU slowed 4x (local server, so no network latency): from a reload, the
+scores were up in about 1.1 s and all 21 win chances 0.1–0.45 s after (the week stats come from IndexedDB after the
+first visit). The Dashboard never waits on the Simulator.
+
+**Tests.** `tests/unit/weekScoreboard.test.mjs` (the rules, median, guillotine, Best Ball, splits, order, record).
+`tests/mls-this-week.spec.mjs` (both widths): Sunday of week 2 with ESPN's scoreboard stubbed, two Sleeper leagues
+(the generator now writes "Second Fixture League", id …021, dynasty, and the mid-Sunday and final matchups): the
+headline "1–1 · 1 still live", Provisional, the splits (hint, then "Paid 1–0 · Free 0–1" after "$ Paid"), the swing
+(−12.0, "Justin Jefferson WR", "Them: nobody left", a percent), "Effectively decided: 1 (1 W, 0 L)", each line's scores;
+Paid survives Sync All; the fold survives a reload; Final and 2–0 after Refresh once every game is `post`; a league
+whose matchups fail is named and the other still shows; a guillotine league and a median league; one line per league
+at 375px, names whole, scores right-aligned; the Roster tab's record.

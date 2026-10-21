@@ -1826,6 +1826,63 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     .mls-lc-status, .mls-lc-synced { margin-left: 0; }
 }
 
+/* --- THIS WEEK (Dashboard, js/mls/week/thisWeek.js, improvements S21) ---
+   Every Sleeper league's matchup above the league cards: a header that folds (week, W-L, still live, Provisional /
+   Final, Refresh), the splits, the matchups still in play, then a line per league with the scores right-aligned. */
+.mls-week { margin-bottom: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.45rem 0.7rem 0.55rem; min-width: 0; }
+.mls-week[hidden] { display: none; }
+.mls-week-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.5rem; }
+.mls-week-fold { flex: 1 1 auto; min-width: 0; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.2rem 0.5rem; padding: 0.2rem 0; color: var(--text-main); cursor: pointer; text-align: left; border-radius: 4px; }
+.mls-week-fold .mls-lc-chevron { color: var(--text-muted); flex-shrink: 0; }
+.mls-week.is-collapsed .mls-lc-chevron { transform: rotate(-90deg); }
+.mls-week-title { font-weight: 700; font-size: 0.95rem; }
+.mls-week-summary { font-size: 0.85rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mls-week-refresh { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--primary-green); font-size: 0.8rem; font-weight: 600; cursor: pointer; padding: 0.2rem 0.1rem; }
+.mls-week-refresh:disabled { opacity: 0.6; cursor: default; }
+.mls-week-status { font-size: 0.7rem; padding: 2px 7px; border-radius: 999px; border: 1px solid; }
+.mls-week-status.is-provisional { color: #f59e0b; border-color: rgba(245, 158, 11, 0.6); background: rgba(245, 158, 11, 0.12); }
+.mls-week-status.is-final { color: var(--text-muted); border-color: var(--border); background: rgba(255, 255, 255, 0.04); }
+.mls-week-body { border-top: 1px solid var(--border); margin-top: 0.4rem; padding-top: 0.45rem; font-size: 0.85rem; }
+.mls-week-splits { margin: 0 0 0.2rem; font-variant-numeric: tabular-nums; }
+.mls-week-sub { margin: 0.6rem 0 0.3rem; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.mls-week-swings, .mls-week-lines, .mls-week-notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.mls-week-swings { gap: 0.45rem; }
+.mls-week-swing { border-left: 3px solid #f59e0b; padding: 0.15rem 0 0.15rem 0.55rem; }
+.mls-week-swing-head, .mls-week-line { display: flex; align-items: baseline; gap: 0.5rem; }
+.mls-week-line-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.mls-week-swing-head .mls-week-line-main { display: block; }
+.mls-week-name { color: var(--text-main); font-weight: 600; overflow-wrap: break-word; }
+.mls-week-title-row { display: block; }
+.mls-week-line-notes { font-size: 0.75rem; color: var(--text-muted); }
+.mls-week-line-score { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right; font-variant-numeric: tabular-nums; }
+.mls-week-pts { color: var(--text-main); white-space: nowrap; }
+.mls-week-margin { flex-shrink: 0; font-size: 0.78rem; color: var(--primary-green); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mls-week-margin.is-behind { color: #ef4444; }
+.mls-week-swing-score { color: var(--text-main); font-variant-numeric: tabular-nums; }
+.mls-week-chance { margin-left: 0.5rem; font-weight: 700; color: var(--primary-green); white-space: nowrap; }
+.mls-week-swing-live { font-size: 0.8rem; color: var(--text-muted); }
+.mls-week-side { font-weight: 600; color: var(--text-main); }
+.mls-week-pos { font-size: 0.7rem; color: var(--text-muted); }
+.mls-week-swing-note { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
+.mls-week-decided { margin: 0.5rem 0 0; }
+.mls-week-lines { gap: 0.35rem; }
+.mls-week-line { padding: 0.15rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
+.mls-week-line:last-child { border-bottom: none; }
+.mls-week-result { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; font-size: 0.7rem; font-weight: 700; border-radius: 4px; padding: 1px 0; }
+.mls-week-result.is-win { color: #10b981; background: rgba(16, 185, 129, 0.15); }
+.mls-week-result.is-loss { color: #ef4444; background: rgba(239, 68, 68, 0.15); }
+.mls-week-result.is-tie { color: var(--text-muted); background: rgba(255, 255, 255, 0.06); }
+.mls-week-notes { margin-top: 0.6rem; gap: 0.25rem; font-size: 0.8rem; color: var(--text-muted); }
+.mls-week-failed { color: #f87171; }
+.mls-week-foot { margin: 0.5rem 0 0; font-size: 0.75rem; }
+/* "$" on a paid league (Reorder's "$ Paid"): on its league card's name and its This week lines. */
+.mls-paid-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.05rem; padding: 0 4px; font-size: 0.7rem; font-weight: 700; line-height: 1.35; color: #fbbf24; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.5); border-radius: 4px; vertical-align: 1px; }
+.mls-lc-paid.is-on { color: #fbbf24; border-color: rgba(251, 191, 36, 0.6); }
+/* The Roster tab's season record under the league name (S21). */
+.mls-roster-record { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.9rem; margin: -0.25rem 0 0.75rem; font-size: 0.85rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mls-roster-record[hidden] { display: none; }
+.mls-roster-record-wl { color: var(--text-main); font-size: 0.95rem; }
+
 /* --- ALL-LEAGUES PLAYER SEARCH (Scout tab, Scan Pasted List -> "All My Leagues") ---
    One card per player, with a per-league ownership row beneath the header. Markup comes from
    runAllLeaguesSearch in js/mls/scout/allLeaguesSearch.js. The card is deliberately its own box rather than a

@@ -14,6 +14,7 @@ import { refreshPowerRankings } from '../main.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { posCountChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
+import { ordinal } from '../week/scoreboard.js';
 
     // --- POSITION COUNTS (improvements S9) ---
     // The strip of chips above the roster list: one per position with how many you roster, a
@@ -98,6 +99,7 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
         if (headerFormatEl) {
             headerFormatEl.innerText = league && league.formatBadge ? `(${league.formatBadge})` : "(Sorted by ROS)";
         }
+        renderRosterRecord(league);
 
         if (syncBtn) {
             if (league && league.leagueId && !league.leagueId.startsWith('manual_') && league.username) syncBtn.style.display = 'block';
@@ -219,3 +221,20 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
         });
         rosterListEl.innerHTML = html;
     }
+
+// Your season record under the Roster tab's league name (improvements S21, the owner's ask): W-L, and where your
+// points for and against rank in the league (1st = the most), as of the league's last sync (league.record, set by
+// processSleeperData). Hidden for manual leagues, a league synced before S21, and before anyone has played.
+function renderRosterRecord(league) {
+    const el = document.getElementById('rosterRecord');
+    if (!el) return;
+    const r = league && league.record;
+    if (!r) { el.hidden = true; el.textContent = ''; return; }
+    const wl = `${r.wins}\u2013${r.losses}${r.ties ? `\u2013${r.ties}` : ''}`;
+    el.innerHTML = `<strong class="mls-roster-record-wl">${wl}</strong>`
+        + `<span class="mls-roster-record-part">Points for ${ordinal(r.pfRank)} of ${r.of} <span class="text-helper">(${r.pf.toFixed(1)})</span></span>`
+        + `<span class="mls-roster-record-part">Points against ${ordinal(r.paRank)} of ${r.of} <span class="text-helper">(${r.pa.toFixed(1)})</span></span>`;
+    el.title = 'This season, as of your last sync. 1st = the most points in your league.';
+    el.hidden = false;
+}
+
