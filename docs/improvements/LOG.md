@@ -5143,8 +5143,12 @@ The copy was deleted, not committed.
 - Best Ball is unchanged: `kickoffFreeze` and `lineupBuiltBeforeKickoff` both return early there.
   `mls-flex-choice.spec.mjs`'s Best Ball test passes.
 
-**Screenshots:** none should change. The screenshot league has no Sleeper lineup and no kicked-off games (see the
-checks below).
+**Screenshots:** none changed. The screenshot league has no Sleeper lineup and no kicked-off games. This container can't
+render CI-matching baselines (F1, S9). Rendered here the same way, main and this branch give 40 pixel-identical PNGs
+(`npm run pxdiff`).
+
+**Checks.** `npm run check`: precache OK, 396 unit tests pass, 451 Playwright tests pass. The 10 failures are only
+`visual.spec.mjs` (MDS and T-Score too), which this container can't match to CI's renderer.
 
 **Known limit, not this card.** Kicked-off players are frozen where Sleeper's lineup had them at your last sync. If you
 changed it on Sleeper after syncing, the app's idea of who is locked in can be wrong until the next sync. A per-league
