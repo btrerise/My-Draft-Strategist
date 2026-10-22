@@ -51,7 +51,8 @@ document.addEventListener('keydown', (e) => {
         case '1': showTab('setup'); break;
         case '2': showTab('roster'); break;
         case '3': showTab('lineup'); break;
-        case '4': showTab('scout'); break;
-        case '5': showTab('guide'); break;
+        case '4': showTab('scoreboard'); break;
+        case '5': showTab('scout'); break;
+        case '6': showTab('guide'); break;
     }
 });

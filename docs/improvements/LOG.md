@@ -5530,3 +5530,43 @@ mls-league-cards.
   instead, with the recap as a summary. Not built yet; my recommendation went back to the owner (see the summary).
 - Tests: the new cases above, the before-kickoff fold (and 'open-2026-2' surviving a reload), and the view-transitions
   test now checks the fold toggles whichever way it started.
+
+### S21, round 6: a Scoreboard tab (the owner's choice after weighing the options)
+
+After my review as a user (the recap made the Dashboard long), the owner asked for the options' pros and cons and for
+others. I offered: a result on each league card plus the recap (A), cards only (B), recap only (C), a Lineups | Scores
+switch on the Command Center (D), a grid of tiles instead of a list (E), and per-league detail on the Lineup tab (F); then
+a Scoreboard tab, which keeps D's benefit without a mode you can forget is on. The owner chose: **a Scoreboard tab with
+E's tiles, a one-line summary on the Dashboard, a matchup strip on the Lineup tab, and the league cards unchanged**; plus
+**labels only under the active tab** in the bottom bar (owner's idea, pointing to Material 3's navigation bar guidance;
+m3.material.io is blocked from this container, so I went by what I know of it: 3–5 destinations, active-only labels
+allowed for 4–5). Merging Roster and Lineup to make room: not needed (five tabs fit) and not done.
+
+- **Scoreboard tab** (`#scoreboardTab`, between Lineup and Scout; Feather-style trophy icon; drawer entry; swipe order;
+  number keys 4 Scoreboard, 5 Scout, 6 Guide; `#scoreboard` in the address). `#thisWeekCard` lives there: the header,
+  splits, Still in play and the decided line as before, then **every league as a tile**, closest first (still in play
+  first, by uncertainty; then by the gap): the W/L chip, the "$", the name whole, "You" and your score, "vs <opponent>"
+  and theirs, then the margin and notes (median, Best Ball, guillotine place). A colored edge: green ahead, red behind,
+  grey tied or before kickoff, blue guillotine. Two across at 375px, five at 1280px. A tile opens that league's Lineup
+  tab (`openLeagueLineup`). Before kickoff the tiles name the opponent only, in your league order.
+- **Dashboard**: `#weekSummaryLine`, one button ("Week 7 Recap · Record 9–6 · 4 still live · Final · Scoreboard ›").
+  The fold is gone (round 2–5's fold, its view-transition naming in `nameCards` and the round-4 test are removed), and
+  with it `mls_this_week_folded`, which never reached main, so it isn't in RETIRED_KEYS.
+- **Lineup tab**: `#lineupMatchupStrip` above the rankings card: W/L, the week, "vs <opponent>", both scores, the margin,
+  then the win chance and who's still to play (or "Effectively decided" / "Final"); before kickoff, "starts Thu 8:15 PM";
+  a guillotine league, its place. It redraws with the lineup (render/lineup.js asks for this week's data, at most every
+  2 minutes) and opens the Scoreboard.
+- One render, three places: `renderThisWeek` builds the model once and draws the tab, the line and the strip.
+  `refreshThisWeek` runs when the Scoreboard, the Dashboard or the Lineup tab shows, and once Sleeper's week is known on
+  the Dashboard or Scoreboard.
+- **Bottom bar** (css/mls.css, phones only, Lineup Strategist only): inactive labels fade out but keep their space and
+  stay readable by screen readers; the active one fades in. Wider screens keep every label (there's room, and Material
+  3 prefers labels when they fit). Draft Strategist's bar is unchanged.
+- Tests: `MLS_TABS` includes the Scoreboard (smoke, screenshots and the CSS tool visit it); `mls-keyboard` checks keys
+  1–6; `mls-this-week` rewritten for the tab, the tiles, the Dashboard line (opens the tab), a tile opening the league's
+  Lineup with its strip (and the strip following a league switch), the pre-kickoff tiles and strip, two tiles across
+  at 375px and 1280px. 73 passed and 1 skipped (as on main) across this-week, smoke, startup requests,
+  view-transitions, league cards, tooltips and SVG icons.
+- **Screenshots**: every Lineup Strategist phone PNG changes (the bar: five icons, one label), the desktop ones with the
+  bar's fifth tab, and `mls-league-scoreboard.png` is new at both widths; Dashboard, Lineup, Roster and Guide also change
+  for their content. All to take from CI.

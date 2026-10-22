@@ -236,8 +236,8 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         renderToolbarButtons();
         // Each card's Best Available section and the toolbar's switch and summary (only while the Dashboard is shown).
         renderBestAvailable();
-        // The This week card above the cards (improvements S21): loaded when the Dashboard shows (at most every 2
-        // minutes, and with its Refresh), otherwise just redrawn from what it has.
+        // The Dashboard's Week Recap line (improvements S21): loaded when the Dashboard shows (at most every 2 minutes),
+        // otherwise just redrawn from what it has.
         if (dashboard && dashboard.classList.contains('active')) refreshThisWeek();
         else renderThisWeek();
     }
@@ -308,10 +308,6 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
     let namedCards = new Set();
     let namedAfter = new Set();
     let namedCenter = null; // decided once per run of transitions, from the box's height before the change
-    // The Week Recap card above the cards and the toolbar under it (improvements S21): named like a card, so folding the
-    // recap animates as a league card's fold does (its box grows or shrinks, its chevron turns) and the toolbar and
-    // cards below move with it. In every cards transition, so a league card's fold leaves them still.
-    let namedTop = new Set();
     function nameEl(el, name) {
         el.style.setProperty('view-transition-name', name || '');
         el.style.setProperty('view-transition-class', name ? 'vt-card' : '');
@@ -333,13 +329,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
     // on: name what's near the screen now, keeping the names given before the change (so each pairs up with its
     // new self). off: clear every name.
     function nameCards(on) {
-        if (!on) { namedCards = new Set(); namedAfter = new Set(); namedTop = new Set(); }
-        [['thisWeekCard', 'vt-lc-week'], ['leagueCardsToolbar', 'vt-lc-toolbar']].forEach(([id, name]) => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            if (on && (namedTop.has(id) || nearScreen(el))) namedTop.add(id);
-            nameEl(el, on && namedTop.has(id) && name);
-        });
+        if (!on) { namedCards = new Set(); namedAfter = new Set(); }
         document.querySelectorAll('#leagueCards .mls-lc-card').forEach(card => {
             const id = card.dataset.leagueId;
             if (on && (namedCards.has(id) || nearScreen(card))) namedCards.add(id);

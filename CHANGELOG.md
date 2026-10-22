@@ -87,18 +87,22 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **Week Recap: every league's matchup, live.** A new card at the top of the Dashboard's League Command Center shows
-  this week's score in every Sleeper league ("Week 7 Recap", with an info tip): your record as it stands, split paid /
-  free and redraft / dynasty (keeper and chopped leagues count with redraft), the matchups still in play first (both
-  scores, the margin, your win chance from the Matchup Simulator, and who's still to play on each side), the
-  effectively decided ones on one line, then a line per league: your score beside your league's name, your opponent's
-  beside theirs, and the margin. It says Provisional until every game of the week is final, then Final. A guillotine
-  league's line shows your score against the chop line and your place among the teams still alive; a league that also
-  plays the median says where you stand against it; a league whose matchups didn't load is named, with the rest still
-  shown. It loads when you open the Dashboard and when you tap Refresh (before SNF, before MNF, after MNF), never in
-  the background, and folds to one line ("Week 7 Recap · Record 9–6 · 4 still live"); before the week's first kickoff
-  it starts folded. A matchup the Simulator gives under 1% either way counts as decided, not "still in play". The
-  "mark the leagues you pay for" hint can be closed with its ✕. The User Guide explains it.
+- **A Scoreboard tab: every league's matchup, live.** A new tab (the trophy in the tab bar, between Lineup and Scout)
+  shows this week's score in every Sleeper league ("Week 7 Recap", with an info tip): your record as it stands, split
+  paid / free and redraft / dynasty (keeper and chopped leagues count with redraft), the matchups still in play first
+  (both scores, the margin, your win chance from the Matchup Simulator, and who's still to play on each side), the
+  effectively decided ones on one line (a matchup the Simulator gives under 1% either way counts as decided), then a
+  tile for every league, closest first, with your score and your opponent's. Tap a tile to open that league's lineup.
+  It says Provisional until every game of the week is final, then Final. A guillotine league's tile shows your score
+  against the chop line and your place among the teams still alive; a league that also plays the median says where you
+  stand against it; a league whose matchups didn't load is named, with the rest still shown. It loads when you open
+  the Scoreboard, the Dashboard or the Lineup tab and when you tap Refresh (before SNF, before MNF, after MNF), never in
+  the background. The "mark the leagues you pay for" hint can be closed with its ✕. The User Guide explains it.
+- **The week on the Dashboard and the Lineup tab.** Above your league cards, one line ("Week 7 Recap · Record 9–6 · 4
+  still live") opens the Scoreboard. Above the lineup, the league's own matchup: your opponent, both scores, the
+  margin, your win chance and who's still to play.
+- **A quieter tab bar on phones.** Only the tab you're on shows its name; the others show their icon. Number keys on a
+  computer: 4 is now the Scoreboard, 5 Scout and 6 the Guide.
 - **Mark the leagues you pay for.** Reorder on the League Command Center now has a "$ Paid" switch on each Sleeper
   league. A paid league shows a "$" badge on its card and in This week, and a sync or a backup keeps it.
 - **Your record on the Roster tab.** With the league's name, above the header's line: your record this season and where

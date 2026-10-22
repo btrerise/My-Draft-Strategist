@@ -252,8 +252,9 @@ export function applyLineupSettingsToUI() {
                     // The Dashboard's Best Available card clears last week's dismissed players
                     // (improvements S5), so it redraws once the week is known.
                     if (activeTab && activeTab.id === 'setupTab') renderBestAvailable();
-                    // The This week card loads for Sleeper's current week, so it waits for it (improvements S21).
-                    if (activeTab && activeTab.id === 'setupTab') refreshThisWeek();
+                    // The Week Recap (the Dashboard's line, the Scoreboard tab) loads for Sleeper's current week, so it
+                    // waits for it (improvements S21). The Lineup tab's strip loads with the lineup's redraw above.
+                    if (activeTab && (activeTab.id === 'setupTab' || activeTab.id === 'scoreboardTab')) refreshThisWeek();
                     // Kickoff times are keyed by week, so we can't fetch them until we know
                     // which week we're on -- chain it here rather than firing both requests
                     // independently at page load.

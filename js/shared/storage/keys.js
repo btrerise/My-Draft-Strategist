@@ -76,8 +76,7 @@ export const KEYS = {
         autolockOverridesMap: 'mls_autolock_overrides_map',
         lineupNeedsCollapsed: 'mls_lineup_needs_collapsed', // '1' while the Lineup tab's "This lineup needs you" box is folded (improvements S11)
         leagueCardsCollapsed: 'mls_league_cards_collapsed', // [leagueId] of the Dashboard's league cards folded to their header (improvements S12)
-        thisWeekFolded: 'mls_this_week_folded', // the Dashboard's Week Recap: '1' folded by you, 'open-<season>-<week>' opened by you before that week's kickoff (improvements S21)
-        paidHintDismissed: 'mls_paid_hint_dismissed', // '1' once the Week Recap's "mark the leagues you pay for" hint is dismissed (improvements S21)
+        paidHintDismissed: 'mls_paid_hint_dismissed', // '1' once the Scoreboard's "mark the leagues you pay for" hint is dismissed (improvements S21)
         bestAvailableDismissed: 'mls_best_available_dismissed', // players dismissed from the Best Available card, per league, this NFL week (improvements S5)
         hasOptimized: 'mls_has_optimized',
         hasSeenRankingsToast: 'mls_has_seen_rankings_toast',

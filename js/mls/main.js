@@ -52,7 +52,7 @@ import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
-import { dismissPaidHint, refreshThisWeek, renderThisWeek, toggleThisWeek } from './week/thisWeek.js';
+import { dismissPaidHint, refreshThisWeek, renderThisWeek } from './week/thisWeek.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
@@ -128,10 +128,9 @@ const clickActions = {
     toggleLeagueCard() { toggleLeagueCard(this.dataset.leagueId); },
     foldAllLeagueCards() { foldAllLeagueCards(); },
     toggleLeagueReorder() { toggleLeagueReorder(); },
-    // Reorder mode's Paid switch, and the This week card (week/thisWeek.js, improvements S21)
+    // Reorder mode's Paid switch, and the Scoreboard tab (week/thisWeek.js, improvements S21)
     toggleLeaguePaid() { toggleLeaguePaid(this.dataset.leagueId); },
     refreshThisWeek() { refreshThisWeek({ force: true }); },
-    toggleThisWeek() { toggleThisWeek(); },
     dismissPaidHint() { dismissPaidHint(); },
     jumpToLeagueNeeds() { jumpToLeagueNeeds(); },
     // Best available in your leagues (scout/bestAvailable.js, improvements S5; a section of each league card since S12)
