@@ -81,6 +81,10 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   `view-transitions.spec.mjs` covers the transitions themselves.
 - **Unit tests** (`tests/unit/`) import app modules by relative path. MLS modules that pull in the whole page can
   be loaded with the resolve-hook stubs in `tests/unit/helpers/playersEnv.mjs` (LOG 9C).
+- **Another week on the Dashboard's Week Recap** (improvements S21): open `/lineup/?week=6` to see week 6 there, with
+  that week's scoreboard and projections (a notice on the card says so; the rest of the app stays on Sleeper's week).
+  Handy midweek, before any games, to check the card against last week's real results. `mls-this-week.spec.mjs`
+  covers it.
 - **Widths:** every Playwright test runs twice, as `desktop` (1280×900) and `phone` (390×844, touch).
 
 ### Screenshots

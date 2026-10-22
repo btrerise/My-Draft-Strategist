@@ -83,8 +83,9 @@ export function medianPlace(myPoints, allPoints) {
 
 // A guillotine league (Sleeper type 3): no opponent, the lowest score among the teams still alive is chopped.
 // teams: [{ points, alive }] for every roster, mine included (alive: it still has players). Returns null when your
-// team is out, else { rank, of, cushion }: your place among the alive teams and how far you are above the lowest
-// of them (or, when you're the lowest, how far behind the next team: negative).
+// team is out, else { rank, of, against, cushion }: your place among the alive teams, the score you're measured
+// against (the lowest of the others: the chop line, or when you're the lowest, the next team up) and how far you are
+// above it (negative: below).
 export function guillotinePlace(myPoints, teams, myAlive = true) {
     if (!myAlive) return null;
     const alive = teams.filter(t => t.alive).map(t => Number(t.points) || 0);
@@ -95,7 +96,7 @@ export function guillotinePlace(myPoints, teams, myAlive = true) {
     const i = others.indexOf(myPoints);
     if (i !== -1) others.splice(i, 1);
     const lowestOther = others.length ? others[0] : myPoints;
-    return { rank, of, cushion: round1(myPoints - lowestOther) };
+    return { rank, of, against: round1(lowestOther), cushion: round1(myPoints - lowestOther) };
 }
 
 // The headline: the W-L as it stands across head-to-head matchups, split paid / free and redraft / dynasty.
@@ -126,6 +127,15 @@ export function swingOrder(a, b) {
     if (ua != null && ub == null) return -1;
     if (ua == null && ub != null) return 1;
     return Math.abs(a.margin) - Math.abs(b.margin);
+}
+
+// The week in the address, for testing the card on another week: /lineup/?week=6 (improvements S21; the owner's
+// choice: unlikely anyone finds it, handy for checking a past week's recap). 1-18, else null.
+export function weekFromSearch(search) {
+    const raw = new URLSearchParams(search || '').get('week');
+    if (raw == null || !/^\d{1,2}$/.test(raw)) return null;
+    const n = Number(raw);
+    return n >= 1 && n <= 18 ? n : null;
 }
 
 // --- FROM A SLEEPER SYNC (leagues/sync.js) ---

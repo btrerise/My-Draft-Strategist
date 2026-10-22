@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    starterState, reachOf, sideSummary, classifyMatchup, resultOf, medianPlace, guillotinePlace, summarize, recordText,
+    weekFromSearch, starterState, reachOf, sideSummary, classifyMatchup, resultOf, medianPlace, guillotinePlace, summarize, recordText,
     swingOrder, teamNamesFrom, playsMedian, isGuillotine, seasonRecord, ordinal,
 } from '../../js/mls/week/scoreboard.js';
 
@@ -67,8 +67,8 @@ test('the league median: your place among every team\'s points', () => {
 
 test('guillotine: your place among the teams still alive and the cushion over the lowest', () => {
     const teams = [{ points: 100, alive: true }, { points: 90, alive: true }, { points: 80, alive: true }, { points: 0, alive: false }];
-    assert.deepEqual(guillotinePlace(90, teams), { rank: 2, of: 3, cushion: 10 });
-    assert.deepEqual(guillotinePlace(80, teams), { rank: 3, of: 3, cushion: -10 }); // lowest: behind the next team
+    assert.deepEqual(guillotinePlace(90, teams), { rank: 2, of: 3, against: 80, cushion: 10 });
+    assert.deepEqual(guillotinePlace(80, teams), { rank: 3, of: 3, against: 90, cushion: -10 }); // lowest: behind the next team
     assert.equal(guillotinePlace(0, teams, false), null); // chopped
 });
 
@@ -115,4 +115,14 @@ test('from a sync: team names, median, guillotine and your season record', () =>
     assert.equal(seasonRecord([{ roster_id: 1, settings: { wins: 0, losses: 0, ties: 0 } }], 1), null);
     assert.equal(seasonRecord(rosters, 9), null);
     assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22].map(ordinal), ['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd']);
+});
+
+test('?week= in the address picks the week to show (for testing); anything else is ignored', () => {
+    assert.equal(weekFromSearch('?week=6'), 6);
+    assert.equal(weekFromSearch('?foo=1&week=18'), 18);
+    assert.equal(weekFromSearch(''), null);
+    assert.equal(weekFromSearch('?week=0'), null);
+    assert.equal(weekFromSearch('?week=19'), null);
+    assert.equal(weekFromSearch('?week=six'), null);
+    assert.equal(weekFromSearch('?week=6.5'), null);
 });

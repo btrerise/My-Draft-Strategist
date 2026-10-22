@@ -5452,3 +5452,33 @@ until the change above, then passed (10/10).
 - Sleeper moves `week` to the next week some time after MNF; a run after that shows the new week before kickoff. The
   skill's post-MNF run is Monday night, before the switch.
 - Open follow-ups this touched: none of the existing ones.
+
+### S21, round 2: the owner's review (real week 6 data, phone and desktop)
+
+The owner looked at the card with their own leagues (week 6, through the console) and asked for these; all built:
+- **`?week=` in the address** (owner: yes, if it helps later sessions and users are unlikely to find it; both hold).
+  `/lineup/?week=6` shows week 6 in this card only: its own ESPN scoreboard (`parseEspnScoreboard`, now shared from
+  `js/mls/state.js`) and Sleeper projections, with a notice on the card ("Showing week 6 because the address has
+  ?week=6"). The rest of the app stays on Sleeper's week. `weekFromSearch` (scoreboard.js) accepts 1–18 only.
+  docs/TESTING.md mentions it under "How the tests work".
+- **Header:** "Week 6 Recap" ("Week 7 Matchups" before the first kickoff), an (i) tooltip saying what the card shows and
+  that the win chance is the Matchup Simulator's, and "**Record 14–6**" (labeled, owner's ask; the splits under it stay
+  unlabeled). On phones Refresh is its icon and the record wraps under the title, so the controls stay on one row.
+- **User Guide:** step 2 (League Command Center) gains "Week Recap" and "Paid leagues"; step 6 (Matchup Simulator) says
+  the Week Recap uses the same simulation.
+- **Lines:** the owner asked whether "115.7–97.6" reads as you–them. Probably, next to the W/L, but not certainly, so each
+  line now has your score beside your league's name and your opponent's beside "vs <opponent>", the margin to the right
+  of both, and "You / Them" over the column. The median and Best Ball go on a note line of their own (they made the
+  opponent line wrap on phones). On wide screens the lines keep a 720px reading width.
+- **Guillotine:** a line like the others (owner: less muted), in league order: no W/L, your score against the chop line
+  (the lowest of the other teams still alive, or the next team up when you're the lowest), the cushion as the margin,
+  and "Guillotine: 1st of 11 alive · 3 still to play". `guillotinePlace` returns `against` for it.
+- **Turning it off:** I suggested the fold is enough (one line when folded, remembered; nothing to turn off for anyone
+  without Sleeper leagues, who never see it). A setting can come later if the one line bothers anyone.
+- **Roster tab:** the record moved into the card's header, above its line, labeled "Record 4–2". On phones the league's
+  name takes the card's width, the format goes on the line below, then the record (owner's order; I agreed: the format
+  describes the name, so it stays next to it). On desktop I suggested leaving name and format on one line with the
+  record under them rather than all on one line: long league names would push the record off the end.
+
+Spec updates: the header and line selectors, the guillotine line, the Roster record's place, and a new test for
+`?week=1` (its own scoreboard request, the notice, Final, `State.currentNflWeek` unchanged).

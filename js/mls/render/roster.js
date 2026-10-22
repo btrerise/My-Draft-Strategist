@@ -231,7 +231,7 @@ function renderRosterRecord(league) {
     const r = league && league.record;
     if (!r) { el.hidden = true; el.textContent = ''; return; }
     const wl = `${r.wins}\u2013${r.losses}${r.ties ? `\u2013${r.ties}` : ''}`;
-    el.innerHTML = `<strong class="mls-roster-record-wl">${wl}</strong>`
+    el.innerHTML = `<span class="mls-roster-record-part">Record <strong class="mls-roster-record-wl">${wl}</strong></span>`
         + `<span class="mls-roster-record-part">Points for ${ordinal(r.pfRank)} of ${r.of} <span class="text-helper">(${r.pf.toFixed(1)})</span></span>`
         + `<span class="mls-roster-record-part">Points against ${ordinal(r.paRank)} of ${r.of} <span class="text-helper">(${r.pa.toFixed(1)})</span></span>`;
     el.title = 'This season, as of your last sync. 1st = the most points in your league.';

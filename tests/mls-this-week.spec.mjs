@@ -65,8 +65,8 @@ test.describe('This week: every league\'s matchup', () => {
     test('mid-Sunday: the W-L, the splits, the swing with its live players, the decided line, Provisional', async ({ page }) => {
         const { state } = await setup(page);
         const head = card(page).locator('.mls-week-head');
-        await expect(head).toContainText('Week 2');
-        await expect(head).toContainText('1–1 · 1 still live');
+        await expect(head.locator('.mls-week-title')).toHaveText('Week 2 Recap');
+        await expect(head).toContainText('Record 1–1 · 1 still live');
         await expect(head.locator('.mls-week-status')).toHaveText('Provisional');
 
         // No league is marked paid yet: a hint in place of the split.
@@ -88,10 +88,12 @@ test.describe('This week: every league\'s matchup', () => {
         const lines = card(page).locator('.mls-week-line');
         await expect(lines).toHaveCount(2);
         await expect(lines.nth(0)).toContainText('L');
-        await expect(lines.nth(0).locator('.mls-week-pts')).toHaveText('98.0–110.0');
+        await expect(lines.nth(0).locator('.mls-week-line-mine')).toHaveText('98.0');
+        await expect(lines.nth(0).locator('.mls-week-line-theirs')).toHaveText('110.0');
         await expect(lines.nth(1)).toContainText('Second Fixture League');
-        await expect(lines.nth(1).locator('.mls-week-pts')).toHaveText('130.4–95.2');
-        await expect(lines.nth(1).locator('.mls-week-margin')).toHaveText('+35.2');
+        await expect(lines.nth(1).locator('.mls-week-line-mine')).toHaveText('130.4');
+        await expect(lines.nth(1).locator('.mls-week-line-theirs')).toHaveText('95.2');
+        await expect(lines.nth(1).locator('.mls-week-line-margin')).toHaveText('+35.2');
         await expect(lines.nth(1)).toContainText('vs Rival');
 
         // Mark the dynasty league paid (Reorder, then $ Paid): the split and the $ badge appear.
@@ -112,10 +114,10 @@ test.describe('This week: every league\'s matchup', () => {
         // It folds to its header, and that's remembered.
         await card(page).locator('[data-action="toggleThisWeek"]').click();
         await expect(card(page).locator('.mls-week-body')).toHaveCount(0);
-        await expect(card(page).locator('.mls-week-head')).toContainText('1–1 · 1 still live');
+        await expect(card(page).locator('.mls-week-head')).toContainText('Record 1–1 · 1 still live');
         await page.reload();
         await page.waitForLoadState('networkidle');
-        await expect(card(page).locator('.mls-week-head')).toContainText('Week 2');
+        await expect(card(page).locator('.mls-week-head')).toContainText('Week 2 Recap');
         await expect(card(page).locator('.mls-week-body')).toHaveCount(0);
         await expectClean(page, state);
     });
@@ -130,7 +132,7 @@ test.describe('This week: every league\'s matchup', () => {
         await routeWeek(page, { matchups: 'final', league2: 'ok', minFinal: true });
         await refresh(page);
         await expect(card(page).locator('.mls-week-status')).toHaveText('Final');
-        await expect(card(page).locator('.mls-week-head')).toContainText('2–0');
+        await expect(card(page).locator('.mls-week-head')).toContainText('Record 2–0');
         await expect(card(page).locator('.mls-week-head')).not.toContainText('still live');
         await expect(card(page).locator('.mls-week-swing')).toHaveCount(0);
         await expect(card(page).locator('.mls-week-decided')).toHaveText('Done: 2 (2 W, 0 L)');
@@ -143,7 +145,7 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(card(page).locator('.mls-week-line')).toHaveCount(1);
         await expect(card(page).locator('.mls-week-line')).toContainText('Fixture League');
         await expect(card(page).locator('.mls-week-failed')).toContainText("Couldn't load from Sleeper: Second Fixture League");
-        await expect(card(page).locator('.mls-week-head')).toContainText('0–1');
+        await expect(card(page).locator('.mls-week-head')).toContainText('Record 0–1');
         await expectClean(page, state);
     });
 
@@ -168,21 +170,31 @@ test.describe('This week: every league\'s matchup', () => {
         });
         await refresh(page);
         // Only Fixture League counts toward the W-L.
-        await expect(card(page).locator('.mls-week-head')).toContainText('0–1 · 1 still live');
-        await expect(card(page).locator('.mls-week-line')).toHaveCount(1);
-        await expect(card(page).locator('.mls-week-line')).toContainText('median: 2nd of 2 (below)');
-        await expect(card(page).locator('.mls-week-notes')).toContainText('Chop Shop · Guillotine (no opponent): 130.4, 1st of 2 alive, 35.2 above the lowest · 1 live');
+        await expect(card(page).locator('.mls-week-head')).toContainText('Record 0–1 · 1 still live');
+        // Both are lines of the list; the guillotine one has no W/L and reads against the chop line.
+        const lines = card(page).locator('.mls-week-line');
+        await expect(lines).toHaveCount(2);
+        await expect(lines.nth(0).locator('.mls-week-line-notes')).toHaveText('Median: 2nd of 2 (below)');
+        const chop = lines.nth(1);
+        await expect(chop).toHaveClass(/\bis-guillotine\b/);
+        await expect(chop.locator('.mls-week-result')).toHaveCount(0);
+        await expect(chop.locator('.mls-week-name')).toHaveText('Chop Shop');
+        await expect(chop.locator('.mls-week-line-opp')).toHaveText('vs the chop line');
+        await expect(chop.locator('.mls-week-line-mine')).toHaveText('130.4');
+        await expect(chop.locator('.mls-week-line-theirs')).toHaveText('95.2');
+        await expect(chop.locator('.mls-week-line-margin')).toHaveText('+35.2');
+        await expect(chop.locator('.mls-week-line-notes')).toHaveText('Guillotine: 1st of 2 alive · 1 still to play');
         await expectClean(page, state);
     });
 
-    test('at phone width each league is one line: name whole, scores right-aligned, nothing past the edge', async ({ page }) => {
+    test('at phone width: every league name whole, its scores and margin right-aligned, nothing past the edge', async ({ page }) => {
         await page.setViewportSize({ width: 375, height: 800 });
         const { state } = await setup(page);
         const lines = card(page).locator('.mls-week-line');
         await expect(lines).toHaveCount(2);
         for (let i = 0; i < 2; i++) {
             const box = await lines.nth(i).evaluate(li => {
-                const r = li.getBoundingClientRect(), s = li.querySelector('.mls-week-line-score').getBoundingClientRect();
+                const r = li.getBoundingClientRect(), s = li.querySelector('.mls-week-line-margin').getBoundingClientRect();
                 const n = li.querySelector('.mls-week-name');
                 return { right: r.right, scoreRight: s.right, nameWhole: n.scrollWidth <= n.clientWidth + 1 };
             });
@@ -193,6 +205,28 @@ test.describe('This week: every league\'s matchup', () => {
         await expectClean(page, state);
     });
 
+    test('?week= in the address shows that week, with its own scoreboard, and says so', async ({ page }) => {
+        const { state } = await setup(page);
+        // Week 1's scoreboard: every game final. The fixture serves the same matchups for any week.
+        let asked = null;
+        await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => {
+            asked = new URL(route.request().url()).searchParams.get('week');
+            return route.fulfill({ json: scoreboard({ minFinal: true }) });
+        });
+        // Week 1's projections: the fixture's week 2 file will do.
+        await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/1$/, route =>
+            route.fulfill({ contentType: 'application/json', body: fixture('projections-2026-2.json') }));
+        await page.goto('/lineup/?week=1');
+        await page.waitForLoadState('networkidle');
+        await expect(card(page).locator('.mls-week-title')).toHaveText('Week 1 Recap');
+        await expect(card(page).locator('.mls-week-override')).toContainText('Showing week 1 because the address has ?week=1');
+        await expect(card(page).locator('.mls-week-status')).toHaveText('Final');
+        expect(asked).toBe('1');
+        // The rest of the app stays on Sleeper's week.
+        expect(await page.evaluate(async () => (await import('/js/mls/state.js')).State.currentNflWeek)).toBe(2);
+        await expectClean(page, state);
+    });
+
     test('the Roster tab shows your season record and points for / against ranks', async ({ page }) => {
         const { state } = await setup(page);
         await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
@@ -200,6 +234,9 @@ test.describe('This week: every league\'s matchup', () => {
         const rec = page.locator('#rosterRecord');
         await expect(rec).toBeVisible();
         await expect(rec.locator('.mls-roster-record-wl')).toHaveText('0–1');
+        await expect(rec).toContainText('Record 0–1');
+        // Above the header's line, with the league's name.
+        expect(await rec.evaluate(el => !!el.closest('header.card-header'))).toBe(true);
         await expect(rec).toContainText('Points for 1st of 2');
         await expect(rec).toContainText('Points against 1st of 2');
         await expectClean(page, state);

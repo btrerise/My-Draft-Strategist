@@ -278,6 +278,37 @@ export function applyLineupSettingsToUI() {
     // Calls made while a fetch for the same week is on its way share it (Optimize All, Sync All and the Dashboard's
     // best available all wait for it now; S12).
     let gameTimesInFlight = null;
+
+    // ESPN's scoreboard response -> { map: team -> ISO kickoff, games: team -> { opp, home, state } }, or null for an
+    // empty or malformed one. Shared with the This week card (week/thisWeek.js), which reads another week's scoreboard
+    // when the address asks for one (?week=, improvements S21).
+    export function parseEspnScoreboard(data) {
+        if (!data || !Array.isArray(data.events)) return null;
+        const map = {};
+        const games = {};
+        data.events.forEach(evt => {
+            const iso = evt.date; // ISO 8601 UTC kickoff, shared by both competitors in the event
+            const comp = evt.competitions && evt.competitions[0];
+            if (!iso || !comp || !Array.isArray(comp.competitors)) return;
+            const abbrs = comp.competitors.map(c => {
+                const abbr = c.team && c.team.abbreviation;
+                return abbr ? (ESPN_TEAM_ALIASES[abbr] || abbr) : null;
+            });
+            const gameState = (evt.status && evt.status.type && evt.status.type.state)
+                || (comp.status && comp.status.type && comp.status.type.state) || null;
+            comp.competitors.forEach((c, i) => {
+                const abbr = abbrs[i];
+                if (!abbr) return;
+                map[abbr] = iso;
+                // The game has exactly two competitors, so the opponent is whichever
+                // entry isn't this one.
+                const opp = abbrs.find((_, j) => j !== i) || null;
+                games[abbr] = { opp, home: c.homeAway === 'home', state: gameState };
+            });
+        });
+        return Object.keys(map).length ? { map, games } : null;
+    }
+
     export function refreshGameTimes() {
         const week = State.currentNflWeek;
         if (week == null) return Promise.resolve();
@@ -292,30 +323,9 @@ export function applyLineupSettingsToUI() {
         const promise = mdsFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`)
             .then(res => res.ok ? res.json() : null)
             .then(data => {
-                if (!data || !Array.isArray(data.events)) return;
-                const map = {};
-                const games = {};
-                data.events.forEach(evt => {
-                    const iso = evt.date; // ISO 8601 UTC kickoff, shared by both competitors in the event
-                    const comp = evt.competitions && evt.competitions[0];
-                    if (!iso || !comp || !Array.isArray(comp.competitors)) return;
-                    const abbrs = comp.competitors.map(c => {
-                        const abbr = c.team && c.team.abbreviation;
-                        return abbr ? (ESPN_TEAM_ALIASES[abbr] || abbr) : null;
-                    });
-                    const gameState = (evt.status && evt.status.type && evt.status.type.state)
-                        || (comp.status && comp.status.type && comp.status.type.state) || null;
-                    comp.competitors.forEach((c, i) => {
-                        const abbr = abbrs[i];
-                        if (!abbr) return;
-                        map[abbr] = iso;
-                        // The game has exactly two competitors, so the opponent is whichever
-                        // entry isn't this one.
-                        const opp = abbrs.find((_, j) => j !== i) || null;
-                        games[abbr] = { opp, home: c.homeAway === 'home', state: gameState };
-                    });
-                });
-                if (Object.keys(map).length === 0) return; // treat an empty/malformed response as a failed fetch
+                const parsed = parseEspnScoreboard(data);
+                if (!parsed) return;
+                const { map, games } = parsed;
                 State.gameTimesByTeam = map;
                 State.gamesByTeam = games;
                 State.gameTimesFetchedForWeek = week;

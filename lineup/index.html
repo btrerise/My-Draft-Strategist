@@ -577,20 +577,21 @@
 
     <!-- ACTIVE ROSTER -->
     <section class="settings-card">
-        <header class="card-header">
-            <h3>
-                <span id="rosterLeagueHeader">Active Roster</span> <span id="rosterFormatBadge" class="header-subtitle">(Sorted by ROS)</span>
-            </h3>
+        <!-- The league's name, its format, and (improvements S21) your season record, all above the header's line. On
+             phones the name takes the card's width and the format and record go on lines of their own (css/mls.css). -->
+        <header class="card-header mls-roster-head">
+            <div class="mls-roster-titles">
+                <h3>
+                    <span id="rosterLeagueHeader">Active Roster</span> <span id="rosterFormatBadge" class="header-subtitle">(Sorted by ROS)</span>
+                </h3>
+                <p id="rosterRecord" class="mls-roster-record" hidden></p>
+            </div>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
                 <span class="tooltip-text">Displays all players currently rostered in your active league. The chips above the list count them by position, taxi and IR players included; tap one to show only that position, or All to show everyone. Upload ROS Rankings above, or a Strength of Schedule (SoS) matrix below, to unlock trade/roster analysis.</span>
             </div>
         </header>
         
-        <!-- Your season record and points for / against ranks, from the last sync (js/mls/render/roster.js,
-             improvements S21). Hidden for manual leagues and before anyone has played. -->
-        <p id="rosterRecord" class="mls-roster-record" hidden></p>
-
         <!-- Your row of the Positional Power Rankings (full table further down this tab), filled
              by renderRosterPowerStrip in js/mls/power/snapshot.js. Hidden when there's nothing to rank. -->
         <div id="rosterPowerStrip" class="mls-roster-power" style="display: none;" aria-live="polite"></div>
@@ -1323,6 +1324,8 @@
                 <ul class="guide-list">
                     <li><strong class="text-main">Sync All Leagues:</strong> Refreshes rosters, waivers, and trades for all of your Sleeper leagues at once (manual leagues are skipped).</li>
                     <li><strong class="text-main">Optimize All Lineups:</strong> Re-runs the Lineup Optimizer for every league using your latest Weekly rankings.</li>
+                    <li><strong class="text-main">Week Recap:</strong> The card above your leagues shows your matchup in every Sleeper league this week, from Sleeper's live scores: your record as it stands (split paid / free and redraft / dynasty; keeper and guillotine leagues count with redraft), the matchups <em>still in play</em> with who's left to play on each side and your chance to win from the <strong class="text-main">Matchup Simulator</strong> (step 6), the ones that are effectively decided, and a line per league with your score and your opponent's. It says <em>Provisional</em> until the week's last game is final, then <em>Final</em>. A guillotine league shows your score against the chop line instead of an opponent. It loads when you open the Dashboard; tap Refresh for the latest (no background updates). Tap its header to fold it to one line.</li>
+                    <li><strong class="text-main">Paid leagues:</strong> Tap Reorder, then "$ Paid" on each league you pay for. Paid leagues get a "$" badge and their own record in the Week Recap.</li>
                     <li><strong class="text-main">Active League Requirements:</strong> The number of starting slots at each position for the active league. These auto-populate during Sleeper sync; for manual leagues, set them yourself and tap "Save Requirements".</li>
                 </ul>
             </div>
@@ -1362,6 +1365,7 @@
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">6</span> Matchup Simulator</h4>
                 <p class="step-desc">Found on the <strong class="text-main">Lineup</strong> tab, this runs 10,000 simulated matchups between your starting lineup and your current Sleeper opponent's, using each player's own week-to-week variance rather than just their season average. If you swap a player in the Lineup Optimizer before running it, the simulation reflects your in-app lineup - even if you haven't made that change in Sleeper yet - so you can test "what if I started X instead of Y" before committing to it.</p>
+                <p class="step-desc mt-2">The Dashboard's <strong class="text-main">Week Recap</strong> uses the same simulation for each matchup still in play, with your Sleeper lineup, to show your chance to win and to put the closest ones first.</p>
                 <p class="step-desc mt-2">Each player's expected score comes from whichever of these is available, in order: their actual score if their game has already started, Sleeper's own weekly projection for this specific matchup (factors in opponent, injury designation, etc.), then their scoring history. That history is this season's scores, plus last season's for players who have played fewer than 3 games this season; once a player reaches 3 games, last season's scores are no longer used for him.</p>
                 <p class="step-desc mt-2"><strong class="text-main">Boom/Bust thresholds</strong> are fixed point totals, not relative to any one player's own average, so "boom" means the same real accomplishment whether it's your WR1 or your flex streamer:</p>
                 <ul class="guide-list" style="list-style-type: none;">
