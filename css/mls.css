@@ -1842,9 +1842,8 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-status { font-size: 0.7rem; padding: 2px 7px; border-radius: 999px; border: 1px solid; }
 .mls-week-status.is-provisional { color: #f59e0b; border-color: rgba(245, 158, 11, 0.6); background: rgba(245, 158, 11, 0.12); }
 .mls-week-status.is-final { color: var(--text-muted); border-color: var(--border); background: rgba(255, 255, 255, 0.04); }
+.mls-week-body[hidden] { display: none; }
 .mls-week-body { border-top: 1px solid var(--border); margin-top: 0.4rem; padding-top: 0.45rem; font-size: 0.85rem; }
-/* On wide screens the lines keep a reading width, so a score sits near its league's name. */
-.mls-week-body > * { max-width: 720px; }
 .mls-week-splits { margin: 0 0 0.2rem; font-variant-numeric: tabular-nums; }
 .mls-week-sub { margin: 0.6rem 0 0.3rem; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
 .mls-week-swings, .mls-week-lines, .mls-week-notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -1864,7 +1863,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-decided { margin: 0.5rem 0 0; }
 /* "You / Them" over the score column of All leagues. */
 .mls-week-sub { display: flex; align-items: baseline; }
-.mls-week-sub-cols { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.mls-week-sub-cols { margin-left: auto; margin-right: 3.45rem; text-transform: none; letter-spacing: 0; font-weight: 500; }
 /* One league: your score beside your league's name, theirs beside theirs, the margin to the right of both, and a note
    line (median, Best Ball, a guillotine place) under the opponent. Every kind of league has this shape. */
 .mls-week-lines { gap: 0.4rem; }

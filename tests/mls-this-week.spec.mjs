@@ -112,13 +112,18 @@ test.describe('This week: every league\'s matchup', () => {
         expect(await paidSaved()).toBe(true);
 
         // It folds to its header, and that's remembered.
+        // In place, like a league card: the same chevron element turns (its CSS transition), the body is hidden.
+        await card(page).locator('.mls-lc-chevron').evaluate(el => { el.dataset.same = '1'; });
         await card(page).locator('[data-action="toggleThisWeek"]').click();
-        await expect(card(page).locator('.mls-week-body')).toHaveCount(0);
+        await expect(card(page)).toHaveClass(/\bis-collapsed\b/);
+        await expect(card(page).locator('.mls-week-body')).toBeHidden();
+        await expect(card(page).locator('.mls-lc-chevron[data-same="1"]')).toHaveCount(1);
+        expect(await card(page).locator('.mls-lc-chevron').evaluate(el => getComputedStyle(el).transitionProperty)).toContain('transform');
         await expect(card(page).locator('.mls-week-head')).toContainText('Record 1–1 · 1 still live');
         await page.reload();
         await page.waitForLoadState('networkidle');
         await expect(card(page).locator('.mls-week-head')).toContainText('Week 2 Recap');
-        await expect(card(page).locator('.mls-week-body')).toHaveCount(0);
+        await expect(card(page).locator('.mls-week-body')).toBeHidden();
         await expectClean(page, state);
     });
 
@@ -187,23 +192,28 @@ test.describe('This week: every league\'s matchup', () => {
         await expectClean(page, state);
     });
 
-    test('at phone width: every league name whole, its scores and margin right-aligned, nothing past the edge', async ({ page }) => {
-        await page.setViewportSize({ width: 375, height: 800 });
-        const { state } = await setup(page);
-        const lines = card(page).locator('.mls-week-line');
-        await expect(lines).toHaveCount(2);
-        for (let i = 0; i < 2; i++) {
-            const box = await lines.nth(i).evaluate(li => {
-                const r = li.getBoundingClientRect(), s = li.querySelector('.mls-week-line-margin').getBoundingClientRect();
-                const n = li.querySelector('.mls-week-name');
-                return { right: r.right, scoreRight: s.right, nameWhole: n.scrollWidth <= n.clientWidth + 1 };
-            });
-            expect(box.right).toBeLessThanOrEqual(375);
-            expect(Math.abs(box.right - box.scoreRight)).toBeLessThan(2);
-            expect(box.nameWhole).toBe(true);
-        }
-        await expectClean(page, state);
-    });
+    for (const width of [375, 1280]) {
+        test(`at ${width}px: every league name whole, the margin at the card's right edge, nothing past the edge`, async ({ page }) => {
+            await page.setViewportSize({ width, height: 800 });
+            const { state } = await setup(page);
+            const lines = card(page).locator('.mls-week-line');
+            await expect(lines).toHaveCount(2);
+            const bodyRight = await card(page).locator('.mls-week-body').evaluate(b => b.getBoundingClientRect().right);
+            for (let i = 0; i < 2; i++) {
+                const box = await lines.nth(i).evaluate(li => {
+                    const r = li.getBoundingClientRect(), s = li.querySelector('.mls-week-line-margin').getBoundingClientRect();
+                    const n = li.querySelector('.mls-week-name');
+                    return { right: r.right, marginRight: s.right, nameWhole: n.scrollWidth <= n.clientWidth + 1 };
+                });
+                expect(box.right).toBeLessThanOrEqual(width);
+                // The numbers sit at the card's right edge, not partway across (owner, round 3).
+                expect(Math.abs(bodyRight - box.marginRight)).toBeLessThan(2);
+                expect(box.nameWhole).toBe(true);
+            }
+            await expectClean(page, state);
+        });
+    }
+
 
     test('?week= in the address shows that week, with its own scoreboard, and says so', async ({ page }) => {
         const { state } = await setup(page);

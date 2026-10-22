@@ -5487,3 +5487,16 @@ Checks after round 2: check-precache OK; 409 unit tests pass; Playwright 473 pas
 failing here as on main (this container's fonts). Rendered main and this branch here again: the same six PNGs change
 (Dashboard, Roster and Guide at both widths, now with round 2's layout) and the other 34 match main. Still to do: take
 the six from the pull request's CI run.
+
+### S21, round 3: the owner's review
+
+- **The card's chevron turns like a league card's.** The fold redrew the whole card, so the chevron's CSS turn never
+  played. It now folds in place (`toggleThisWeek` → `applyFold`, inside `withCardsTransition` from
+  render/leagueCards.js, the league cards' own helper): same element, same speed, and the cards below move with the
+  same view transition. The body is always drawn, `hidden` when folded.
+- **Desktop: the numbers at the card's right edge.** Round 2's 720px reading width left the scores partway across the
+  card; that cap is gone, and "You / Them" sits over the score column.
+- Spec: the fold keeps the same chevron element and hides the body; at 375px and 1280px each line's margin ends at the
+  card body's right edge. Ran `mls-this-week`, `mls-league-cards`, `view-transitions` and `tooltips-onscreen`
+  (47 passed, 1 skipped as on main), check-precache and the unit tests. The six screenshot PNGs listed above still
+  change (the Dashboard one with this round's layout) and still need taking from CI.

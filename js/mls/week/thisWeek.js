@@ -33,6 +33,7 @@ import { fantasyPosition } from '../constants.js';
 import { ensureLineupProjections, formatKickoffLabel, getLeagueScoringKey, storeLeagueMatchups } from '../lineup/gameInfo.js';
 import { paidBadgeMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
 import { matchupWinChances } from '../sim/winChance.js';
+import { withCardsTransition } from '../render/leagueCards.js';
 import {
     classifyMatchup, guillotinePlace, isGuillotine, medianPlace, ordinal, playsMedian, recordText, resultOf,
     sideSummary, summarize, swingOrder, teamNamesFrom, weekFromSearch,
@@ -262,13 +263,26 @@ async function resolveForDraw() {
 function isFolded() {
     try { return localStorage.getItem(KEYS.mls.thisWeekFolded) === '1'; } catch (e) { return false; }
 }
+// In place, like a league card's chevron (render/leagueCards.js): the same view transition moves the cards below, and
+// the chevron turns (its CSS transition needs the same element, so the card isn't redrawn).
 export function toggleThisWeek() {
-    const folded = !isFolded();
-    try {
-        if (folded) localStorage.setItem(KEYS.mls.thisWeekFolded, '1');
-        else localStorage.removeItem(KEYS.mls.thisWeekFolded);
-    } catch (e) { /* storage blocked: the fold just isn't remembered */ }
-    renderThisWeek();
+    const el = document.getElementById('thisWeekCard');
+    return withCardsTransition(() => {
+        const folded = !isFolded();
+        try {
+            if (folded) localStorage.setItem(KEYS.mls.thisWeekFolded, '1');
+            else localStorage.removeItem(KEYS.mls.thisWeekFolded);
+        } catch (e) { /* storage blocked: the fold just isn't remembered */ }
+        if (!el || !el.querySelector('.mls-week-body')) { renderThisWeek(); return; }
+        applyFold(el, folded);
+    });
+}
+function applyFold(el, folded) {
+    el.classList.toggle('is-collapsed', folded);
+    const body = el.querySelector('.mls-week-body');
+    if (body) body.hidden = folded;
+    const btn = el.querySelector('.mls-week-fold');
+    if (btn) btn.setAttribute('aria-expanded', folded ? 'false' : 'true');
 }
 
 // --- Drawing ---
@@ -383,8 +397,6 @@ export function renderThisWeek() {
         ${started && listed.length ? weekStatusMarkup(final) : ''}
         ${refreshBtn}
     </div>`;
-    if (folded) { el.innerHTML = head; el.classList.add('is-collapsed'); return; }
-    el.classList.remove('is-collapsed');
 
     const parts = [];
     if (ctx.asked) parts.push(`<p class="mls-week-override">Showing week ${week} because the address has <code>?week=${week}</code>. Remove it to go back to this week (${State.currentNflWeek}).</p>`);
@@ -422,5 +434,7 @@ export function renderThisWeek() {
     if (started && listed.length && !Object.keys(ctx.games).length) parts.push(`<p class="text-helper mls-week-foot">Game status didn't load, so everyone still counts as live.</p>`);
     else if (final) parts.push(`<p class="text-helper mls-week-foot">Every game is final. Sleeper can still correct stats in the next few days.</p>`);
 
-    el.innerHTML = `${head}<div class="mls-week-body" id="thisWeekBody">${parts.join('')}</div>`;
+    // The body is drawn folded too (hidden), so the chevron can fold and unfold it in place.
+    el.innerHTML = `${head}<div class="mls-week-body" id="thisWeekBody"${folded ? ' hidden' : ''}>${parts.join('')}</div>`;
+    el.classList.toggle('is-collapsed', folded);
 }
