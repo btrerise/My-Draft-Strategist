@@ -5482,3 +5482,8 @@ The owner looked at the card with their own leagues (week 6, through the console
 
 Spec updates: the header and line selectors, the guillotine line, the Roster record's place, and a new test for
 `?week=1` (its own scoreboard request, the notice, Final, `State.currentNflWeek` unchanged).
+
+Checks after round 2: check-precache OK; 409 unit tests pass; Playwright 473 passed, the 10 `visual.spec.mjs` comparisons
+failing here as on main (this container's fonts). Rendered main and this branch here again: the same six PNGs change
+(Dashboard, Roster and Guide at both widths, now with round 2's layout) and the other 34 match main. Still to do: take
+the six from the pull request's CI run.
