@@ -5621,3 +5621,22 @@ same branch.
   answers). Not built here.
 - Screenshots: the tab bar change also changes Draft Strategist's PNGs (every one shows the bar). To take from CI with
   the rest.
+
+### S21, round 9: the owner's answers to the second user-hat review
+
+- **Median, in words** (owner: "show Median: L (4th of 6)"): tiles say "Median: W/L (Nth of M)", or "Plays the median"
+  before kickoff. The record gains a **Median** split: the W-L of the median games in the leagues that play one, with a
+  note that Record itself is head-to-head.
+- **The splits as chips** (owner: "the stack of text is plain-looking"): Paid / Free (once a league is marked paid),
+  Redraft, Dynasty and Median, each a small rounded chip, with one helper line under them for keeper and the median.
+  The "Done: N" line is gone once every game is final (it only repeated the record); "Effectively decided" stays while
+  games are on.
+- **Lineup strip: status inline.** "Final", "Effectively decided", the win chance and the median now sit on the strip's
+  main line, which wraps on a phone; only a swing's live players get a second line.
+- **Tiles**: no "You" label on desktop (every width now uses the phone layout: name and your score on the first line,
+  opponent and theirs on the second); a chevron in the bottom-right corner (it opens the lineup); the W/L chip moved
+  from before the name to the foot, beside the margin, and the "$" badge now runs as text after the name's last word.
+  That was the owner's "cards look a little off": a badge before the name (W/L) or in a flex column beside it ("$")
+  started paid and result names at different places.
+- **Order**: closest first while games are on; league order (as on the Dashboard) before kickoff and once every game
+  is final.

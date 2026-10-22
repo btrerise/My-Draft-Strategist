@@ -82,7 +82,7 @@ test.describe('This week: every league\'s matchup', () => {
 
         // No league is marked paid yet: a hint in place of the split.
         await expect(card(page)).toContainText('Mark the leagues you pay for');
-        await expect(card(page)).toContainText('Redraft 0–1 · Dynasty 1–0');
+        await expect(card(page).locator('.mls-week-split')).toHaveText(['Redraft 0–1', 'Dynasty 1–0']);
 
         // The swing: Fixture League, behind by 12, Jefferson still to play, Rival has nobody, and a win chance.
         const swing = card(page).locator('.mls-week-swing');
@@ -106,6 +106,8 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(swingTile.locator('.mls-week-name')).toHaveText('Fixture League');
         await expect(pts(swingTile)).toHaveText(['98.0', '110.0']);
         await expect(swingTile.locator('.mls-week-tile-margin')).toHaveText('−12.0');
+        await expect(swingTile.locator('.mls-week-tile-foot .mls-week-result')).toHaveText('L');
+        await expect(swingTile.locator('.mls-week-tile-go')).toHaveCount(1);
         await expect(wonTile).toHaveClass(/\bis-win\b/);
         await expect(wonTile.locator('.mls-week-name')).toHaveText('Second Fixture League');
         await expect(pts(wonTile)).toHaveText(['130.4', '95.2']);
@@ -126,7 +128,7 @@ test.describe('This week: every league\'s matchup', () => {
         await page.locator(`[data-action="toggleLeaguePaid"][data-league-id="${FIXTURE_LEAGUE2_ID}"]`).click();
         await expect(page.locator(`[data-action="toggleLeaguePaid"][data-league-id="${FIXTURE_LEAGUE2_ID}"]`)).toHaveAttribute('aria-pressed', 'true');
         await showTab(page, 'scoreboard');
-        await expect(card(page)).toContainText('Paid 1–0 · Free 0–1');
+        await expect(card(page).locator('.mls-week-split')).toHaveText(['Paid 1–0', 'Free 0–1', 'Redraft 0–1', 'Dynasty 1–0']);
         await expect(tiles(page).nth(1).locator('.mls-paid-badge')).toHaveCount(1);
         await expect(page.locator('#leagueCards .mls-lc-card').filter({ hasText: 'Second Fixture League' }).locator('.mls-paid-badge')).toHaveCount(1);
 
@@ -175,7 +177,7 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(hint).toHaveCount(0);
         await page.reload();
         await page.waitForLoadState('networkidle');
-        await expect(card(page).locator('.mls-week-splits').first()).toContainText('Redraft');
+        await expect(card(page).locator('.mls-week-splits-row')).toContainText('Redraft');
         await expect(card(page).locator('.mls-week-hint')).toHaveCount(0);
         await expectClean(page, state);
     });
@@ -212,7 +214,10 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(card(page).locator('.mls-week-head')).toContainText('Record 2–0');
         await expect(card(page).locator('.mls-week-head')).not.toContainText('still live');
         await expect(card(page).locator('.mls-week-swing')).toHaveCount(0);
-        await expect(card(page).locator('.mls-week-decided')).toHaveText('Done: 2 (2 W, 0 L)');
+        // No "Done: 2" line (it only repeated the record), and the tiles go back to league order, as on the Dashboard.
+        await expect(card(page).locator('.mls-week-decided')).toHaveCount(0);
+        await expect(card(page).locator('.mls-week-sub').last()).toHaveText('Every league');
+        await expect(tiles(page).locator('.mls-week-name')).toHaveText(['Fixture League', 'Second Fixture League']);
         await expect(card(page)).toContainText('Every game is final');
         await expectClean(page, state);
     });
@@ -250,12 +255,12 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(card(page).locator('.mls-week-head')).toContainText('Record 0–1 · 1 still live');
         // Both are tiles; the guillotine one has no W/L and reads against the chop line.
         await expect(tiles(page)).toHaveCount(2);
-        await expect(tiles(page).nth(0).locator('.mls-week-tile-foot')).toHaveText('−12.0 · Median: 2nd of 2');
+        await expect(tiles(page).nth(0).locator('.mls-week-tile-foot')).toHaveText('L −12.0 · Median: L (2nd of 2)');
         const chop = tiles(page).nth(1);
         await expect(chop).toHaveClass(/\bis-guillotine\b/);
         await expect(chop.locator('.mls-week-result')).toHaveCount(0);
         await expect(chop.locator('.mls-week-name')).toHaveText('Chop Shop');
-        await expect(chop.locator('.mls-week-tile-who').nth(1)).toHaveText('Chop line');
+        await expect(chop.locator('.mls-week-tile-who')).toHaveText('Chop line');
         await expect(pts(chop)).toHaveText(['130.4', '95.2']);
         await expect(chop.locator('.mls-week-tile-foot')).toHaveText('+35.2 · Guillotine: 1st of 2 alive · 1 still to play');
         await expectClean(page, state);

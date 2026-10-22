@@ -1841,6 +1841,11 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-status.is-final { color: var(--text-muted); border-color: var(--border); background: rgba(255, 255, 255, 0.04); }
 .mls-week-body { padding-top: 0.6rem; font-size: 0.85rem; }
 .mls-week-splits { margin: 0 0 0.2rem; font-variant-numeric: tabular-nums; }
+/* The record's splits as chips (round 9: a line of text per split read as a plain stack). */
+.mls-week-splits-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 0.35rem; }
+.mls-week-split { display: inline-flex; align-items: baseline; gap: 0.35rem; padding: 2px 9px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255, 255, 255, 0.04); font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mls-week-split-label { font-weight: 500; color: var(--text-muted); }
+.mls-week-splits-note { margin: 0 0 0.3rem; }
 .mls-week-hint { display: flex; align-items: flex-start; gap: 0.5rem; }
 .mls-week-hint-close { flex-shrink: 0; color: var(--text-muted); cursor: pointer; padding: 0 0.25rem; line-height: 1.4; }
 .mls-week-hint-close:hover { color: var(--text-main); }
@@ -1866,7 +1871,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-tile { min-width: 0; display: flex; }
 .mls-week-tile-btn {
     flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.5rem; row-gap: 0.1rem; align-items: baseline;
-    grid-template-areas: "top top" "youl you" "opp theirs" "foot foot";
+    grid-template-areas: "top you" "opp theirs" "foot foot";
     text-align: left; padding: 0.45rem 0.55rem 0.5rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px;
     background: rgba(0, 0, 0, 0.15); color: inherit; font: inherit; cursor: pointer;
 }
@@ -1875,20 +1880,23 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-tile.is-win .mls-week-tile-btn { border-left-color: #10b981; }
 .mls-week-tile.is-loss .mls-week-tile-btn { border-left-color: #ef4444; }
 .mls-week-tile.is-guillotine .mls-week-tile-btn { border-left-color: #60a5fa; }
-.mls-week-tile-top { grid-area: top; display: flex; align-items: flex-start; gap: 0.35rem; margin-bottom: 0.15rem; min-width: 0; }
-.mls-week-tile-top .mls-week-name { font-size: 0.85rem; line-height: 1.25; min-width: 0; }
+/* The name runs as text with the "$" badge after its last word, so a paid league's name starts where every other
+   one does (round 9: a badge before it, or a flex column beside it, made the names look uneven). */
+.mls-week-tile-top { grid-area: top; min-width: 0; line-height: 1.25; }
+.mls-week-tile-top .mls-week-name { font-size: 0.85rem; }
+.mls-week-tile-top .mls-paid-badge { vertical-align: 1px; }
 .mls-week-tile-who { min-width: 0; font-size: 0.78rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mls-week-tile-who.is-you-label { grid-area: youl; }
-.mls-week-tile-who:not(.is-you-label) { grid-area: opp; }
+.mls-week-tile-who { grid-area: opp; }
 .mls-week-tile-pts { grid-area: theirs; text-align: right; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .mls-week-tile-pts.is-you { grid-area: you; color: var(--text-main); font-weight: 700; font-size: 0.9rem; }
-.mls-week-tile-foot { grid-area: foot; padding-top: 0.15rem; font-size: 0.72rem; color: var(--text-muted); }
-/* Phones: one league per row, your score beside its name. */
+/* The foot: the result chip and margin, then the notes, and a chevron in the bottom-right corner (it opens the lineup). */
+.mls-week-tile-foot { grid-area: foot; display: flex; align-items: flex-end; gap: 0.5rem; padding-top: 0.2rem; font-size: 0.72rem; color: var(--text-muted); }
+.mls-week-tile-notes { min-width: 0; display: inline-flex; flex-wrap: wrap; align-items: center; column-gap: 0.3rem; }
+.mls-week-tile-go { margin-left: auto; flex-shrink: 0; color: var(--text-muted); }
+.mls-week-tile-btn:hover .mls-week-tile-go { color: var(--text-main); }
+/* Phones: one league per row. */
 @media (max-width: 600px) {
     .mls-week-tiles { grid-template-columns: minmax(0, 1fr); }
-    .mls-week-tile-btn { grid-template-areas: "top you" "opp theirs" "foot foot"; }
-    .mls-week-tile-who.is-you-label { display: none; }
-    .mls-week-tile-top { margin-bottom: 0; }
 }
 .mls-week-tile-margin { color: var(--primary-green); font-variant-numeric: tabular-nums; font-weight: 600; }
 .mls-week-tile-margin.is-behind { color: #ef4444; }
@@ -1917,6 +1925,8 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-strip-opp { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .mls-strip-score { font-variant-numeric: tabular-nums; }
 .mls-strip-sub { font-size: 0.78rem; color: var(--text-muted); }
+.mls-strip-status { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+.mls-strip-main .mls-week-chance { margin-left: 0; }
 @media (max-width: 600px) { .mls-week-refresh-label { display: none; } .mls-week-refresh { padding: 0.3rem; } }
 /* "$" on a paid league (Edit mode's "$ Paid"): on its league card's name and its This week lines. */
 .mls-paid-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.05rem; padding: 0 4px; font-size: 0.7rem; font-weight: 700; line-height: 1.35; color: #fbbf24; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.5); border-radius: 4px; vertical-align: 1px; }
