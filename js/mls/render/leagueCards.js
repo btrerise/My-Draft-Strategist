@@ -65,7 +65,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         } catch (e) { /* storage blocked: it still folds for this visit */ }
     }
 
-    // Reorder mode (the toolbar's Reorder / Done): ▲ ▼ ✕ on each card. In memory: it starts off on every visit.
+    // Edit mode (the toolbar's Edit / Done; Reorder until S21): ▲ ▼ ✕ and "$ Paid" on each card. In memory: it starts off on every visit.
     let reordering = false;
 
     // A league's status, as the Command Center's table worked it out before S12 (its Rankings and Lineup columns,
@@ -242,7 +242,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         else renderThisWeek();
     }
 
-    // Reorder mode's "$ Paid" (improvements S21): marks a league you pay for, saved on the league (so Backup keeps it
+    // Edit mode's "$ Paid" (improvements S21): marks a league you pay for, saved on the league (so Backup keeps it
     // and a sync carries it over), for the This week card's paid / free W-L and the "$" badge.
     export function toggleLeaguePaid(leagueId) {
         const l = (State.leagues || []).find(x => x.leagueId === leagueId);
@@ -276,13 +276,14 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         }
         const re = document.getElementById('reorderLeagueCards');
         if (re) {
-            re.textContent = reordering ? 'Done' : 'Reorder';
+            re.textContent = reordering ? 'Done' : 'Edit';
             re.setAttribute('aria-pressed', reordering ? 'true' : 'false');
-            re.setAttribute('aria-label', reordering ? 'Done reordering' : 'Reorder or remove leagues');
+            re.setAttribute('aria-label', reordering ? 'Done editing leagues' : 'Edit leagues: move, mark paid or remove');
         }
     }
 
-    // The toolbar's Reorder / Done: shows or hides ▲ ▼ ✕ on every card.
+    // The toolbar's Edit / Done ("Reorder" until improvements S21 added "$ Paid" to it): shows or hides ▲ ▼ ✕ and
+    // "$ Paid" on every card.
     export function toggleLeagueReorder() {
         withCardsTransition(() => {
             reordering = !reordering;

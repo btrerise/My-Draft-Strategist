@@ -611,10 +611,14 @@ html { scroll-padding-top: 5rem; }
     gap: 0.3rem;
     font-size: 0.75rem; /* Smaller text for mobile tabs */
     color: var(--text-muted); 
-    font-weight: 600; 
-    padding: 0.5rem; 
+    font-weight: 500; 
+    /* Little padding at the sides: with five tabs a label like "Scoreboard" needs nearly the whole fifth of a phone,
+       and Material 3 says not to wrap, cut or shrink labels (improvements S21). The whole fifth is still the tap area. */
+    padding: 0.5rem 2px; 
+    white-space: nowrap;
     cursor: pointer; 
     flex: 1; 
+    min-width: 0; /* equal widths whatever the labels (improvements S21: a bold label must not widen its tab, or the marker misses it) */
     border-radius: 8px;
     transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
     -webkit-tap-highlight-color: transparent; /* Removes blue flash on mobile tap */
@@ -642,7 +646,11 @@ html { scroll-padding-top: 5rem; }
 
 .nav-bar .nav-btn.active { 
     color: var(--primary-green); 
+    font-weight: 700; /* Material 3: a bold label for the selected tab, medium for the rest (improvements S21) */
 }
+/* Material 3: a filled icon for the selected tab, or a heavier one where there's no filled version (our icons are
+   strokes). Every tab keeps its label (improvements S21; round 6 tried showing only the active one, which M3 rules out). */
+.nav-bar .nav-btn.active svg { stroke-width: 2.6; }
 
 .nav-bar .nav-btn.active svg {
     transform: translateY(-2px); /* Lifts the icon slightly instead of using a hard border */

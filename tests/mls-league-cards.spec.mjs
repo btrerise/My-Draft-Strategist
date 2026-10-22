@@ -178,10 +178,10 @@ test.describe('League Command Center: one card per league', () => {
         await routeLeagues(page);
         await seedTwoLeagues(page);
         await expect(cardNames(page)).toHaveText(['Fixture League', SECOND]);
-        // ▲ ▼ ✕ only in Reorder mode (round 4).
+        // ▲ ▼ ✕ only in Edit mode (round 4; "Reorder" until S21 added "$ Paid" to it).
         await expect(page.locator('#leagueCards .mls-lc-controls')).toHaveCount(0);
         const reorder = page.locator('#reorderLeagueCards');
-        await expect(reorder).toHaveText('Reorder');
+        await expect(reorder).toHaveText('Edit');
         await reorder.click();
         await expect(reorder).toHaveText('Done');
         await expect(reorder).toHaveAttribute('aria-pressed', 'true');

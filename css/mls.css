@@ -1918,7 +1918,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-strip-score { font-variant-numeric: tabular-nums; }
 .mls-strip-sub { font-size: 0.78rem; color: var(--text-muted); }
 @media (max-width: 600px) { .mls-week-refresh-label { display: none; } .mls-week-refresh { padding: 0.3rem; } }
-/* "$" on a paid league (Reorder's "$ Paid"): on its league card's name and its This week lines. */
+/* "$" on a paid league (Edit mode's "$ Paid"): on its league card's name and its This week lines. */
 .mls-paid-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.05rem; padding: 0 4px; font-size: 0.7rem; font-weight: 700; line-height: 1.35; color: #fbbf24; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.5); border-radius: 4px; vertical-align: 1px; }
 .mls-lc-paid.is-on { color: #fbbf24; border-color: rgba(251, 191, 36, 0.6); }
 /* The Roster tab's season record under the league name (S21). */
@@ -2348,16 +2348,4 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
     .header .header-controls > .cluster { flex: 1 1 auto; min-width: 0; }
     .league-select-wrap { flex: 1 1 auto; max-width: none; }
     #headerLeagueSelect { width: 100%; }
-}
-
-/* --- BOTTOM BAR: the label only under the active tab (improvements S21, owner's request, with the Scoreboard as a fifth
-   tab) --- On phones the other labels fade out but keep their space, so no icon moves; they stay in the page for screen
-   readers (opacity, not display or visibility). Wider screens keep every label. Material 3's navigation bar allows
-   this for 4–5 destinations. */
-@media (max-width: 767px) {
-    .nav-bar .nav-btn span { opacity: 0; transform: translateY(3px); transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-    .nav-bar .nav-btn.active span { opacity: 1; transform: none; }
-}
-@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
-    .nav-bar .nav-btn span { transition: none; }
 }

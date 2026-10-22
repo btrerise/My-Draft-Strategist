@@ -2,7 +2,7 @@
 // From the owner's weekly recap skill, drawn in three places (owner's plan, round 6):
 // - the Scoreboard tab (#thisWeekCard): "Week 7 Recap" ("Week 7 Matchups" before kickoff), "Record 9–6", how many
 //   matchups are still in play, Provisional / Final, an info tooltip and Refresh; the record split paid / free (the
-//   "$ Paid" switch in Reorder, saved on the league) and redraft / dynasty (keeper and guillotine count with redraft);
+//   "$ Paid" switch in the Dashboard's Edit mode, saved on the league) and redraft / dynasty (keeper and guillotine count with redraft);
 //   "Still in play": the swing matchups, most uncertain first, with both scores, the margin, your win chance from the
 //   Matchup Simulator's math (sim/winChance.js) and the live players on each side; "Effectively decided" on one line;
 //   then every league as a tile, closest first (a guillotine league's tile: your score against the chop line), and
@@ -41,7 +41,7 @@ const FRESH_MS = 2 * 60 * 1000;
 const PARALLEL = 5;
 const isSleeperLeague = (l) => l && l.leagueId && !/^(manual|handoff)_/.test(l.leagueId);
 const REFRESH_ICON = (spin) => `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"${spin ? ' class="sync-spinner"' : ''}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>`;
-const TOOLTIP = 'Your matchup in every Sleeper league this week, from Sleeper\'s live scores. Record is how each matchup stands right now (Paid / Free: mark paid leagues with "$ Paid" in the Dashboard\'s Reorder; keeper and guillotine leagues count with Redraft). Still in play: matchups the side that\'s behind can still turn around, with who\'s left to play on each side and your chance to win from the Matchup Simulator (Lineup tab), which plays the rest of the week out 10,000 times from Sleeper\'s projections and each player\'s past scores. Effectively decided: the side that\'s behind has nobody left, or too little to close the gap. Provisional until the week\'s last game is final. Tap a league to open its lineup. It loads when you open the Dashboard, the Scoreboard or the Lineup tab; tap Refresh for the latest.';
+const TOOLTIP = 'Your matchup in every Sleeper league this week, from Sleeper\'s live scores. Record is how each matchup stands right now (Paid / Free: mark paid leagues with "$ Paid" after tapping Edit on the Dashboard; keeper and guillotine leagues count with Redraft). Still in play: matchups the side that\'s behind can still turn around, with who\'s left to play on each side and your chance to win from the Matchup Simulator (Lineup tab), which plays the rest of the week out 10,000 times from Sleeper\'s projections and each player\'s past scores. Effectively decided: the side that\'s behind has nobody left, or too little to close the gap. Provisional until the week\'s last game is final. Tap a league to open its lineup. It loads when you open the Dashboard, the Scoreboard or the Lineup tab; tap Refresh for the latest.';
 
 // --- What this card last loaded (in memory) ---
 const view = { week: null, loadedAt: 0, loading: null, failed: new Map(), chances: new Map(), chancesKey: '' };
@@ -423,7 +423,7 @@ function renderScoreboard(m) {
     if (started && h2h.length) {
         const anyPaid = sleeperLeagues.some(l => l.paid);
         if (anyPaid) parts.push(`<p class="mls-week-splits">Paid ${recordText(sum.paid)} · Free ${recordText(sum.free)}</p>`);
-        else if (!paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Reorder, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
+        else if (!paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Edit, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
         parts.push(`<p class="mls-week-splits">Redraft ${recordText(sum.redraft)} · Dynasty ${recordText(sum.dynasty)}${sum.keeper ? ' <span class="text-helper">(keeper counts with redraft)</span>' : ''}</p>`);
         const swings = h2h.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null }))
             .sort(swingOrder);

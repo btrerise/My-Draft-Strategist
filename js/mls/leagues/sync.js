@@ -586,7 +586,7 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
                 weeklyRankingsUpdatedAt: existingLeague ? existingLeague.weeklyRankingsUpdatedAt : null,
                 rosRankingSetId: existingLeague ? existingLeague.rosRankingSetId : null,
                 weeklyRankingSetId: existingLeague ? existingLeague.weeklyRankingSetId : null,
-                // Yours, like the rankings assignment: whether you pay for this league (Reorder's "$ Paid", S21).
+                // Yours, like the rankings assignment: whether you pay for this league (Edit mode's "$ Paid", S21).
                 paid: existingLeague ? !!existingLeague.paid : false,
                 // Set only here, i.e. only once every Sleeper fetch above has succeeded. A league
                 // that fails during Sync All keeps its previous object, and with it its previous

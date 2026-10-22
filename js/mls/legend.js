@@ -106,7 +106,7 @@ const GROUPS = [
         [leagueStatusChipMarkup('good', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('warn', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('danger', 'Lineup', '', SAMPLE) + leagueStatusChipMarkup('pending', 'Lineup', '', SAMPLE) + bestBallBadgeMarkup(),
             'On each league\'s card on the Dashboard. Rankings: green, its Weekly rankings are fresh (this week\'s); amber, they\'re stale or missing. Lineup: green, it matches your Sleeper lineup; red, it differs (the changes are in the card); amber, there\'s no Sleeper lineup to compare yet; grey, not optimized yet. BB: a Best Ball league, with no lineup to set. Tap a chip for more.'],
         [paidBadgeMarkup({ sample: true }),
-            'A league you pay for. Mark it with "$ Paid" in the League Command Center\'s Reorder mode; the This week card splits your W-L into paid and free.'],
+            'A league you pay for. Mark it with "$ Paid" after tapping Edit on the League Command Center; the Scoreboard splits your record into paid and free.'],
         [weekResultMarkup('W') + weekResultMarkup('L') + weekResultMarkup('T'),
             'In the Dashboard\'s This week card: each matchup as it stands now, winning, losing or tied. Until every game is final it can still change.'],
         [weekStatusMarkup(false) + weekStatusMarkup(true),

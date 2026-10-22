@@ -5599,3 +5599,25 @@ same branch.
   heavier) icon, a bold label and an active-indicator pill for the selected tab; 3–5 destinations (5 is the limit);
   labels 1–2 words, never truncated or shrunk; the bar is for phones and tablets only, with a navigation rail on wider
   windows, and on tablets horizontal items (icon beside label).
+
+### S21, round 8: the owner's answers on Material 3, and "Edit"
+
+- **Labels on every tab again** (owner: "I must have misremembered"; Material 3: don't remove labels). Round 6's
+  active-only labels are gone.
+- **Active tab**: a **bold label** (700; the others 500) and a **heavier icon** (stroke 2.6, Material 3's rule for icons
+  without a filled version), in css/base.css, so Draft Strategist's bar matches. **No pill**: the owner asked whether
+  the pill and the green marker should both show; I recommended the marker alone (the pill would be a fourth cue
+  saying the same thing, and the marker's slide is the nicer motion), and the owner agreed.
+- **Equal tab widths**: `.nav-btn` got `min-width: 0`, and its side padding went from 0.5rem to 2px with
+  `white-space: nowrap`. With five tabs a bold "Scoreboard" no longer fit its fifth of a phone, so the active tab grew,
+  the marker (measured once) missed it, and `view-transitions.spec.mjs` caught it. Measured with the test fonts: labels
+  fit from 375px; at 360px bold "Scoreboard" is 2px over its space and at 320px a few more, spilling (not cut) into the
+  gap between tabs; Outfit, the site's font, is narrower.
+- **"Reorder" is now "Edit"** (owner asked whether the word still fit, since it also marks paid leagues and removes
+  leagues): the button's text and aria-label, the tooltip, the Guide, the legend line, the Scoreboard's paid hint.
+  Ids and function names (`#reorderLeagueCards`, `toggleLeagueReorder`) stay.
+- **New card S26** (owner: "write up the navigation rail as a new card, and add to the runbook"): a navigation rail on
+  computers and horizontal tab items on tablets, per Material 3; added to the runbook (cards, plan step 7, lanes,
+  answers). Not built here.
+- Screenshots: the tab bar change also changes Draft Strategist's PNGs (every one shows the bar). To take from CI with
+  the rest.

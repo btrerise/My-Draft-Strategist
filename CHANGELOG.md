@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A clearer tab bar.** The tab you're on now has a bold name and a heavier icon, with the green bar above it as
+  before.
 - **A faster first visit.** The page's font now comes from this site instead of Google Fonts, so on a phone's first
   visit the page appears about a second sooner (blank for less time). The logos download smaller and look the same.
 - **Export Team draws numbers without gaps.** Numbers in the exported image could be followed by a stray space
@@ -101,8 +103,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **The week on the Dashboard and the Lineup tab.** Above your league cards, one line ("Week 7 Recap · Record 9–6 · 4
   still live") opens the Scoreboard. Above the lineup, the league's own matchup: your opponent, both scores, the
   margin, your win chance and who's still to play.
-- **A quieter tab bar on phones.** Only the tab you're on shows its name; the others show their icon. Number keys on a
-  computer: 4 is now the Scoreboard, 5 Scout and 6 the Guide.
+- **A clearer tab bar.** With five tabs, the tab you're on has a bold name and a heavier icon (with the green bar
+  above it, as before), and every tab keeps its name. Number keys on a computer: 4 is now the Scoreboard, 5 Scout and 6
+  the Guide.
+- **Edit instead of Reorder.** The League Command Center's Reorder button is now Edit: it moves leagues, marks the ones
+  you pay for ("$ Paid") and removes them.
 - **Mark the leagues you pay for.** Reorder on the League Command Center now has a "$ Paid" switch on each Sleeper
   league. A paid league shows a "$" badge on its card and in This week, and a sync or a backup keeps it.
 - **Your record on the Roster tab.** With the league's name, above the header's line: your record this season and where

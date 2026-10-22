@@ -120,7 +120,7 @@ test.describe('This week: every league\'s matchup', () => {
         await line.click();
         await expect(page.locator('#scoreboardTab')).toHaveClass(/\bactive\b/);
 
-        // Mark the dynasty league paid (Dashboard, Reorder, then $ Paid): the split and the $ badge appear.
+        // Mark the dynasty league paid (Dashboard, Edit, then $ Paid): the split and the $ badge appear.
         await showTab(page, 'setup');
         await page.click('#reorderLeagueCards');
         await page.locator(`[data-action="toggleLeaguePaid"][data-league-id="${FIXTURE_LEAGUE2_ID}"]`).click();

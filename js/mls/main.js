@@ -128,7 +128,7 @@ const clickActions = {
     toggleLeagueCard() { toggleLeagueCard(this.dataset.leagueId); },
     foldAllLeagueCards() { foldAllLeagueCards(); },
     toggleLeagueReorder() { toggleLeagueReorder(); },
-    // Reorder mode's Paid switch, and the Scoreboard tab (week/thisWeek.js, improvements S21)
+    // Edit mode's Paid switch, and the Scoreboard tab (week/thisWeek.js, improvements S21)
     toggleLeaguePaid() { toggleLeaguePaid(this.dataset.leagueId); },
     refreshThisWeek() { refreshThisWeek({ force: true }); },
     dismissPaidHint() { dismissPaidHint(); },
