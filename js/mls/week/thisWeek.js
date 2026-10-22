@@ -428,16 +428,19 @@ function renderScoreboard(m) {
         const anyPaid = sleeperLeagues.some(l => l.paid);
         const medians = h2h.filter(r => r.res.median);
         const medRec = { W: medians.filter(r => r.res.median.above).length, L: medians.filter(r => !r.res.median.above).length, T: 0 };
+        // Grouped (owner, round 10: five loose chips read as five kinds of league): each group is one segmented pill whose
+        // parts add up to every league (Paid + Free, Redraft + Dynasty); Median stands apart, with how many leagues play it.
         const split = (label, rec) => `<span class="mls-week-split"><span class="mls-week-split-label">${label}</span> ${recordText(rec)}</span>`;
-        const splits = [
-            ...(anyPaid ? [split('Paid', sum.paid), split('Free', sum.free)] : []),
-            split('Redraft', sum.redraft), split('Dynasty', sum.dynasty),
-            ...(medians.length ? [split('Median', medRec)] : []),
+        const group = (name, chips, extra = '') => `<span class="mls-week-split-group" role="group" aria-label="${name}">${chips.join('')}${extra ? ' ' + extra : ''}</span>`;
+        const groups = [
+            ...(anyPaid ? [group('By stakes', [split('Paid', sum.paid), split('Free', sum.free)])] : []),
+            group('By format', [split('Redraft', sum.redraft), split('Dynasty', sum.dynasty)]),
+            ...(medians.length ? [group('Against the median', [split('Median', medRec)], `<span class="mls-week-split-of">${medians.length} of ${h2h.length} league${h2h.length === 1 ? '' : 's'}</span>`)] : []),
         ];
-        parts.push(`<div class="mls-week-splits-row">${splits.join('')}</div>`);
+        parts.push(`<div class="mls-week-splits-row">${groups.join('')}</div>`);
         const notes2 = [];
         if (sum.keeper) notes2.push('Keeper counts with redraft.');
-        if (medians.length) notes2.push(`Record is head-to-head; Median is the ${medians.length} league${medians.length === 1 ? '' : 's'} that also play the league median.`);
+        if (medians.length) notes2.push('Record is head-to-head only; Median is your record against the league median where it\'s played.');
         if (notes2.length) parts.push(`<p class="text-helper mls-week-splits-note">${notes2.join(' ')}</p>`);
         if (!anyPaid && !paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Edit, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
         const swings = h2h.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null }))
@@ -495,7 +498,7 @@ function renderMatchupStrip(m) {
     if (!r || (r.res.kind !== 'h2h' && r.res.kind !== 'guillotine')) { el.hidden = true; el.innerHTML = ''; return; }
     const res = r.res;
     const week = `<span class="mls-strip-week">Week ${m.ctx.week}</span>`;
-    let main, sub = '';
+    let main, meta = '', sub = '';
     if (res.kind === 'guillotine') {
         const g = res.place;
         main = `${week}<span class="mls-strip-opp">Guillotine</span>${g && m.started ? `<span class="mls-strip-score"><strong>${fmt(res.me.points)}</strong> · ${ordinal(g.rank)} of ${g.of} alive</span><span class="mls-week-margin${g.cushion < 0 ? ' is-behind' : ''}">${signed(g.cushion)}</span>` : ''}`;
@@ -505,18 +508,19 @@ function renderMatchupStrip(m) {
         main = `${week}<span class="mls-strip-opp">vs ${escapeHtml(res.oppName)}</span><span class="mls-strip-score text-helper">starts ${firstKickoffLabel(m.ctx) || 'soon'}</span>`;
     } else {
         const chance = view.chances.get(r.league.leagueId);
-        // The status sits on the main line (the owner's call, round 9: a second line just for "Final" wrapped badly on
-        // phones); only a swing's live players get a line of their own.
+        // The status, win chance and median: beside the score on wider screens, a line of their own on phones (the
+        // owner, round 10: inline, they wrapped unevenly). A swing's live players get the line after.
         const status = res.status === 'swing'
             ? (chance != null ? `<span class="mls-week-chance">${Math.round(chance)}% to win</span>` : '')
             : `<span class="mls-strip-status">${m.final ? 'Final' : 'Effectively decided'}</span>`;
         main = `${weekResultMarkup(res.result)}${week}<span class="mls-strip-opp">vs ${escapeHtml(res.oppName)}</span>`
             + `<span class="mls-strip-score"><strong>${fmt(res.me.points)}</strong>&ndash;${fmt(res.them.points)}</span>`
-            + `<span class="mls-week-margin${res.margin < 0 ? ' is-behind' : ''}">${signed(res.margin)}</span>`
-            + status + (res.median ? `<span class="mls-strip-status">${medianText(res.median, true)}</span>` : '');
+            + `<span class="mls-week-margin${res.margin < 0 ? ' is-behind' : ''}">${signed(res.margin)}</span>`;
+        meta = status + (res.median ? `<span class="mls-strip-status">${medianText(res.median, true)}</span>` : '');
         if (res.status === 'swing') sub = `<span class="mls-week-side">You:</span> ${playerList(liveOf(res.me))} <span class="mls-week-side">Them:</span> ${playerList(liveOf(res.them))}`;
     }
     el.hidden = false;
-    el.innerHTML = `<span class="mls-strip-main">${main}${ARROW_ICON}</span>${sub ? `<span class="mls-strip-sub">${sub}</span>` : ''}`;
+    el.innerHTML = `<span class="mls-strip-main">${main}</span>${meta ? ` <span class="mls-strip-meta">${meta}</span>` : ''}${ARROW_ICON}`
+        + (sub ? `<span class="mls-strip-sub">${sub}</span>` : '');
     el.setAttribute('aria-label', `${el.textContent.replace(/\s+/g, ' ').trim()}. Open the Scoreboard`);
 }

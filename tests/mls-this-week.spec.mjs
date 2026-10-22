@@ -129,6 +129,9 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(page.locator(`[data-action="toggleLeaguePaid"][data-league-id="${FIXTURE_LEAGUE2_ID}"]`)).toHaveAttribute('aria-pressed', 'true');
         await showTab(page, 'scoreboard');
         await expect(card(page).locator('.mls-week-split')).toHaveText(['Paid 1–0', 'Free 0–1', 'Redraft 0–1', 'Dynasty 1–0']);
+        // Two groups, each adding up to every league: stakes and format.
+        await expect(card(page).locator('.mls-week-split-group').first()).toHaveAttribute('aria-label', 'By stakes');
+        await expect(card(page).locator('.mls-week-split-group')).toHaveCount(2);
         await expect(tiles(page).nth(1).locator('.mls-paid-badge')).toHaveCount(1);
         await expect(page.locator('#leagueCards .mls-lc-card').filter({ hasText: 'Second Fixture League' }).locator('.mls-paid-badge')).toHaveCount(1);
 
@@ -253,6 +256,8 @@ test.describe('This week: every league\'s matchup', () => {
         await refresh(page);
         // Only Fixture League counts toward the W-L.
         await expect(card(page).locator('.mls-week-head')).toContainText('Record 0–1 · 1 still live');
+        // The median stands apart, with how many leagues play it.
+        await expect(card(page).locator('.mls-week-split-group').last()).toHaveText('Median 0–1 1 of 1 league');
         // Both are tiles; the guillotine one has no W/L and reads against the chop line.
         await expect(tiles(page)).toHaveCount(2);
         await expect(tiles(page).nth(0).locator('.mls-week-tile-foot')).toHaveText('L −12.0 · Median: L (2nd of 2)');

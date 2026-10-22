@@ -5640,3 +5640,14 @@ same branch.
   started paid and result names at different places.
 - **Order**: closest first while games are on; league order (as on the Dashboard) before kickoff and once every game
   is final.
+
+### S21, round 10: grouped splits, the strip's second line on phones, four across
+
+- **Splits grouped** (owner: five loose chips read as if Paid + Free + Redraft + Dynasty + Median were all leagues):
+  each group is one segmented pill whose parts add up to every league (Paid | Free, Redraft | Dynasty), with more space
+  between groups; Median stands apart with "N of M leagues". Groups carry `role="group"` and an aria-label.
+- **Lineup strip on phones**: the status (Final, Effectively decided or the win chance) and the median get a line of
+  their own under the score; the chevron stays on the first line. On wider screens they stay beside the score.
+- **At most four tiles across** (owner asked whether five felt crowded; I agreed: league names like "Second Fixture
+  League" wrapped at five, and four keeps rows of a 12-league set to three): `minmax(max(200px, (100% - 3 gaps) / 4), 1fr)`.
+  Narrower screens still drop to three, two, then one.

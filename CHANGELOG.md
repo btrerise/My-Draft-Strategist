@@ -91,12 +91,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **A Scoreboard tab: every league's matchup, live.** A new tab (a scoreboard icon in the tab bar, between Lineup and Scout)
   shows this week's score in every Sleeper league ("Week 7 Recap", with an info tip): your record as it stands, split
-  paid / free and redraft / dynasty as chips (keeper and chopped leagues count with redraft), plus your record against
-  the median in leagues that play one, the matchups still in play first
+  paid / free and redraft / dynasty, each pair grouped (keeper and chopped leagues count with redraft), plus your record
+  against the median in the leagues that play one, the matchups still in play first
   (both scores, the margin, your win chance from the Matchup Simulator, and who's still to play on each side), the
   effectively decided ones on one line (a matchup the Simulator gives under 1% either way counts as decided), then a
-  tile for every league, closest first while games are on and in your league order before and after (one per row on
-  phones), with your score and your opponent's, the result and margin, and "Median: W (3rd of 12)" where it applies. Tap a tile to open that league's lineup.
+  tile for every league, closest first while games are on and in your league order before and after (up to four across,
+  one per row on phones), with your score and your opponent's, the result and margin, and "Median: W (3rd of 12)" where it applies. Tap a tile to open that league's lineup.
   It says Provisional until every game of the week is final, then Final. A guillotine league's tile shows your score
   against the chop line and your place among the teams still alive; a league that also plays the median says where you
   stand against it; a league whose matchups didn't load is named, with the rest still shown. It loads when you open
@@ -104,7 +104,7 @@ What changed for users in each version of the two apps, in plain language. Newes
   the background. The "mark the leagues you pay for" hint can be closed with its ✕. The User Guide explains it.
 - **The week on the Dashboard and the Lineup tab.** Above your league cards, one line ("Week 7 Recap · Record 9–6 · 4
   still live") opens the Scoreboard. Above the lineup, the league's own matchup: your opponent, both scores, the
-  margin, your win chance (or Final) on one line, and who's still to play.
+  margin, your win chance (or Final) beside the score (under it on phones), and who's still to play.
 - **A clearer tab bar.** With five tabs, the tab you're on has a bold name and a heavier icon (with the green bar
   above it, as before), and every tab keeps its name. Number keys on a computer: 4 is now the Scoreboard, 5 Scout and 6
   the Guide.
