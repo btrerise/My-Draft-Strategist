@@ -5512,3 +5512,21 @@ exactly as a league card does, and the toolbar and cards below move with it. Che
 speed on a phone, beside a league card's fold. `view-transitions.spec.mjs` has a test for it (the names during, the
 `cards` kind, the names gone after). 45 passed, 1 skipped (as on main) across view-transitions, mls-this-week and
 mls-league-cards.
+
+### S21, round 5: the owner's answers to my review as a user
+
+- **Folded before kickoff** (my suggestion 2, yes): until the week's first kickoff the card starts folded ("Week 7
+  Matchups · starts Thu 8:15 PM"), unless you opened it yourself that week. `mls_this_week_folded` now holds '1'
+  (folded by you, as before) or 'open-<season>-<week>' (opened by you before that week's kickoff); after kickoff an
+  untouched card is open. The screenshot league is before kickoff, so `mls-league-setup.png` shows it folded.
+- **"0% to win" under Still in play** (suggestion 3): the owner asked how 12 points could be 0%. It was the fixture: its
+  invented history gives "Jefferson" 9.4 a game with a spread of about 1.3 and a projection of 8.3, so 12 is nearly
+  three spreads out (about 0.2%, shown as 0%). The real Jefferson (about 15.9, spread around 7) would be about 65-70%.
+  The spec now sets his projection to 12.5 for the swing case (a percent between 15 and 95) and keeps 8.3 for a new
+  case: a swing by the rule of thumb that the Simulator puts under 0.5% (or over 99.5%) counts as effectively decided
+  (owner: "where there is genuinely a 0% chance"). Done at draw time, after the chances arrive.
+- **The paid hint's ✕** (suggestion 4, yes): `mls_paid_hint_dismissed` = '1'; data-action `dismissPaidHint`.
+- **Suggestion 1 (fold "All leagues")**: the owner asked whether each league's score should live on its league card
+  instead, with the recap as a summary. Not built yet; my recommendation went back to the owner (see the summary).
+- Tests: the new cases above, the before-kickoff fold (and 'open-2026-2' surviving a reload), and the view-transitions
+  test now checks the fold toggles whichever way it started.

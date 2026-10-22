@@ -185,6 +185,7 @@ test.describe('Lineup Strategist', () => {
         await transitionsDone(page);
         const recap = page.locator('#thisWeekCard');
         await expect(recap.locator('.mls-week-head')).toBeVisible();
+        const wasFolded = await recap.evaluate(c => c.classList.contains('is-collapsed')); // folded before kickoff
         const before = (await vt(page)).starts;
         const during = await recap.evaluate((c) => {
             c.querySelector('[data-action="toggleThisWeek"]').click();
@@ -193,7 +194,7 @@ test.describe('Lineup Strategist', () => {
         });
         expect(during).toEqual(['vt-lc-week', 'vt-card', 'vt-lc-toolbar']);
         await transitionsDone(page);
-        await expect(recap).toHaveClass(/\bis-collapsed\b/);
+        await expect(recap).toHaveClass(wasFolded ? /^(?!.*\bis-collapsed\b)/ : /\bis-collapsed\b/);
         const after = await vt(page);
         expect(after.starts).toBe(before + 1);
         expect(after.kinds.at(-1)).toBe('cards');

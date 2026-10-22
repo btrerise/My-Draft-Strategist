@@ -259,18 +259,38 @@ async function resolveForDraw() {
     }));
 }
 
+// The "mark the leagues you pay for" hint, until you dismiss it (owner, round 5) or mark one.
+function paidHintDismissed() {
+    try { return localStorage.getItem(KEYS.mls.paidHintDismissed) === '1'; } catch (e) { return false; }
+}
+export function dismissPaidHint() {
+    try { localStorage.setItem(KEYS.mls.paidHintDismissed, '1'); } catch (e) { /* hidden for this visit only */ }
+    renderThisWeek();
+}
+
 // --- Folding (remembered) ---
-function isFolded() {
-    try { return localStorage.getItem(KEYS.mls.thisWeekFolded) === '1'; } catch (e) { return false; }
+// Folded when you folded it ('1'). Before the week's first kickoff it starts folded too (owner, round 5: a list of
+// opponents with no scores isn't worth the space), unless you opened it yourself during that week.
+const openedKey = (ctx) => `open-${ctx.season}-${ctx.week}`;
+function readFold() {
+    try { return localStorage.getItem(KEYS.mls.thisWeekFolded); } catch (e) { return null; }
+}
+function isFolded(ctx, started) {
+    const v = readFold();
+    if (v === '1') return true;
+    return !started && v !== openedKey(ctx);
 }
 // In place, like a league card's chevron (render/leagueCards.js): the same view transition moves the cards below, and
 // the chevron turns (its CSS transition needs the same element, so the card isn't redrawn).
 export function toggleThisWeek() {
     const el = document.getElementById('thisWeekCard');
     return withCardsTransition(() => {
-        const folded = !isFolded();
+        const folded = !(el && el.classList.contains('is-collapsed'));
+        const ctx = weekCtx();
+        const started = weekStarted(buildRows(ctx).rows, ctx);
         try {
             if (folded) localStorage.setItem(KEYS.mls.thisWeekFolded, '1');
+            else if (!started) localStorage.setItem(KEYS.mls.thisWeekFolded, openedKey(ctx));
             else localStorage.removeItem(KEYS.mls.thisWeekFolded);
         } catch (e) { /* storage blocked: the fold just isn't remembered */ }
         if (!el || !el.querySelector('.mls-week-body')) { renderThisWeek(); return; }
@@ -367,7 +387,6 @@ export function renderThisWeek() {
     const ctx = weekCtx();
     const week = ctx.week;
     const loading = !!view.loading;
-    const folded = isFolded();
     const refreshBtn = `<button type="button" class="btn-bare mls-week-refresh" data-action="refreshThisWeek"${loading ? ' disabled aria-busy="true"' : ''} aria-label="Refresh this week's scores">${REFRESH_ICON(loading)}<span class="mls-week-refresh-label">Refresh</span></button>`;
     const info = `<span class="tooltip-container mls-week-info"><span class="tooltip-icon">i</span><span class="tooltip-text">${TOOLTIP}</span></span>`;
 
@@ -377,9 +396,17 @@ export function renderThisWeek() {
     }
 
     const { rows } = buildRows(ctx);
+    // A swing by the rule of thumb that the Simulator calls settled (under 0.5% or over 99.5%: it rounds to 0% or 100%)
+    // counts as effectively decided (owner, round 5): "0% to win" under "Still in play" contradicted itself.
+    rows.forEach(r => {
+        if (r.res.kind !== 'h2h' || r.res.status !== 'swing') return;
+        const c = view.chances.get(r.league.leagueId);
+        if (c != null && (c < 0.5 || c > 99.5)) r.res = { ...r.res, status: 'decided', settledBySim: true };
+    });
     const h2h = rows.filter(r => r.res.kind === 'h2h');
     const listed = rows.filter(r => r.res.kind === 'h2h' || r.res.kind === 'guillotine');
     const started = weekStarted(rows, ctx);
+    const folded = isFolded(ctx, started);
     const final = started && weekFinal(ctx);
     const sum = summarize(h2h.map(r => ({ result: r.res.result, paid: !!r.league.paid, group: r.league.leagueType === 'dynasty' ? 'dynasty' : 'redraft', keeper: r.league.leagueType === 'keeper', status: r.res.status })));
     const pending = rows.some(r => r.res.kind === 'pending');
@@ -402,7 +429,8 @@ export function renderThisWeek() {
     if (ctx.asked) parts.push(`<p class="mls-week-override">Showing week ${week} because the address has <code>?week=${week}</code>. Remove it to go back to this week (${State.currentNflWeek}).</p>`);
     if (started && h2h.length) {
         const anyPaid = sleeperLeagues.some(l => l.paid);
-        parts.push(`<p class="mls-week-splits">${anyPaid ? `Paid ${recordText(sum.paid)} · Free ${recordText(sum.free)}` : '<span class="text-helper">Mark the leagues you pay for (Reorder, then $ Paid) to split paid and free.</span>'}</p>`);
+        if (anyPaid) parts.push(`<p class="mls-week-splits">Paid ${recordText(sum.paid)} · Free ${recordText(sum.free)}</p>`);
+        else if (!paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Reorder, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
         parts.push(`<p class="mls-week-splits">Redraft ${recordText(sum.redraft)} · Dynasty ${recordText(sum.dynasty)}${sum.keeper ? ' <span class="text-helper">(keeper counts with redraft)</span>' : ''}</p>`);
         const swings = h2h.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null }))
             .sort(swingOrder);

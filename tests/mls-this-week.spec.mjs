@@ -38,10 +38,19 @@ async function routeWeek(page, opts) {
         route.fulfill({ contentType: 'application/json', body: fixture(opts.matchups === 'final' ? 'league-matchups-final.json' : 'league-matchups-live.json') }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}/matchups/\\d+$`), route =>
         opts.league2 === 'fail' ? route.fulfill({ status: 500, body: '' }) : route.fulfill({ contentType: 'application/json', body: fixture('league2-matchups.json') }));
+    // Jefferson's projection. The fixture's invented history gives him a narrow spread (about 9.4 a game, give or take
+    // 1.3), so at its own projection (8.3) catching up 12 is a 0% chance. 12.5 makes it a real contest.
+    if (opts.jefferson != null) {
+        await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/2$/, route => {
+            const proj = JSON.parse(fixture('projections-2026-2.json'));
+            proj['6794'] = { ...proj['6794'], pts_ppr: opts.jefferson };
+            return route.fulfill({ json: proj });
+        });
+    }
 }
 
 async function setup(page, opts = {}) {
-    const o = { matchups: 'live', league2: 'ok', minFinal: false, ...opts };
+    const o = { matchups: 'live', league2: 'ok', minFinal: false, jefferson: 12.5, ...opts };
     await page.clock.setFixedTime(SUNDAY);
     const state = await openApp(page, '/lineup/');
     await page.clock.setFixedTime(SUNDAY);
@@ -82,6 +91,9 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(swing.locator('.mls-week-swing-live').first()).toContainText('Justin Jefferson WR');
         await expect(swing.locator('.mls-week-swing-live').nth(1)).toContainText('Them: nobody left');
         await expect(swing.locator('.mls-week-chance')).toHaveText(/^\d+% to win$/, { timeout: 15000 });
+        const pct = Number((await swing.locator('.mls-week-chance').textContent()).match(/\d+/)[0]);
+        expect(pct).toBeGreaterThan(15);
+        expect(pct).toBeLessThan(95);
 
         // The decided one on one line, and each league's line with both scores and the margin.
         await expect(card(page).locator('.mls-week-decided')).toHaveText('Effectively decided: 1 (1 W, 0 L)');
@@ -124,6 +136,47 @@ test.describe('This week: every league\'s matchup', () => {
         await page.waitForLoadState('networkidle');
         await expect(card(page).locator('.mls-week-head')).toContainText('Week 2 Recap');
         await expect(card(page).locator('.mls-week-body')).toBeHidden();
+        await expectClean(page, state);
+    });
+
+    test('a swing the Simulator settles at 0% counts as effectively decided', async ({ page }) => {
+        // The fixture's own projection (8.3, with its narrow spread): Jefferson won't make up 12.
+        const { state } = await setup(page, { jefferson: null });
+        await expect(card(page).locator('.mls-week-swing')).toHaveCount(0, { timeout: 15000 });
+        await expect(card(page).locator('.mls-week-head')).toContainText('Record 1–1');
+        await expect(card(page).locator('.mls-week-head')).not.toContainText('still live');
+        await expect(card(page).locator('.mls-week-decided')).toHaveText('Effectively decided: 2 (1 W, 1 L)');
+        await expectClean(page, state);
+    });
+
+    test('the paid hint goes away with its ✕, and stays away', async ({ page }) => {
+        const { state } = await setup(page);
+        const hint = card(page).locator('.mls-week-hint');
+        await expect(hint).toContainText('Mark the leagues you pay for');
+        await hint.locator('[data-action="dismissPaidHint"]').click();
+        await expect(hint).toHaveCount(0);
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await expect(card(page).locator('.mls-week-splits').first()).toContainText('Redraft');
+        await expect(card(page).locator('.mls-week-hint')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    test('before the first kickoff it starts folded, and opening it yourself keeps it open that week', async ({ page }) => {
+        // The default fixture: Tuesday of week 2, nobody has scored.
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await showTab(page, 'setup');
+        await expect(card(page).locator('.mls-week-title')).toHaveText('Week 2 Matchups');
+        await expect(card(page)).toHaveClass(/\bis-collapsed\b/);
+        await expect(card(page).locator('.mls-week-body')).toBeHidden();
+        await card(page).locator('[data-action="toggleThisWeek"]').click();
+        await expect(card(page).locator('.mls-week-body')).toBeVisible();
+        await expect(card(page).locator('.mls-week-line')).toContainText('vs Rival');
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await expect(card(page).locator('.mls-week-body')).toBeVisible();
+        expect(await page.evaluate(() => localStorage.getItem('mls_this_week_folded'))).toBe('open-2026-2');
         await expectClean(page, state);
     });
 

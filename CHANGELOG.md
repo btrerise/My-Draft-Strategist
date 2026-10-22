@@ -96,7 +96,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   league's line shows your score against the chop line and your place among the teams still alive; a league that also
   plays the median says where you stand against it; a league whose matchups didn't load is named, with the rest still
   shown. It loads when you open the Dashboard and when you tap Refresh (before SNF, before MNF, after MNF), never in
-  the background, and folds to one line ("Week 7 Recap · Record 9–6 · 4 still live"). The User Guide explains it.
+  the background, and folds to one line ("Week 7 Recap · Record 9–6 · 4 still live"); before the week's first kickoff
+  it starts folded. A matchup the Simulator gives under 1% either way counts as decided, not "still in play". The
+  "mark the leagues you pay for" hint can be closed with its ✕. The User Guide explains it.
 - **Mark the leagues you pay for.** Reorder on the League Command Center now has a "$ Paid" switch on each Sleeper
   league. A paid league shows a "$" badge on its card and in This week, and a sync or a backup keeps it.
 - **Your record on the Roster tab.** With the league's name, above the header's line: your record this season and where
