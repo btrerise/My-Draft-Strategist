@@ -5583,3 +5583,19 @@ and refreshed in the background (sw.js), and the fix commit kept the same `CACHE
 the broken file could keep serving it. `CACHE_NAME` v2.8.101 → v2.8.102, so every browser that saw the bad build takes
 a fresh copy. Lesson for later cards: bump `CACHE_NAME` again in a fix commit that follows a broken push, even on the
 same branch.
+
+### S21, round 7: one league per row on phones, a scoreboard icon, and Material 3
+
+- **Phones: one league per row** (owner: two across was crowded, worst with the "$"). Below 600px each tile is one row:
+  the W/L, "$" and name with your score at the right, "vs <opponent>" with theirs, then the margin and notes; "You" is
+  dropped. Wider screens keep several across. The tile's parts are now siblings in one grid (`.mls-week-tile-btn`), so
+  CSS alone switches the layout. Spec: one per row at 375px, side by side at 1280px.
+- **Icon** (owner didn't like the trophy and asked for a literal scoreboard): Feather and Lucide have none; Material
+  Symbols' "scoreboard" is a filled glyph that wouldn't match the bar. I drew one in the bar's style (Feather stroke,
+  24px grid): a board showing "0:0" on two posts. Used in the tab bar, the drawer and the Dashboard's line.
+- **Material 3** (m3.material.io opened for this session; read the navigation bar's Guidelines, Specs and Accessibility
+  pages): what it says, against what the app does, went to the owner (see the summary). In short: labels on every item
+  ("Don't remove the labels from navigation items"), so round 6's active-only labels go against it; a filled (or
+  heavier) icon, a bold label and an active-indicator pill for the selected tab; 3–5 destinations (5 is the limit);
+  labels 1–2 words, never truncated or shrunk; the bar is for phones and tablets only, with a navigation rail on wider
+  windows, and on tablets horizontal items (icon beside label).

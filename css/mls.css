@@ -1862,22 +1862,34 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-decided { margin: 0.5rem 0 0; }
 /* Every league as a tile: two across on phones, more on wider screens, rows as tall as their tallest tile. A colored
    edge for the result (green ahead, red behind, grey tied or before kickoff, blue guillotine). */
-.mls-week-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 0.5rem; }
-@media (min-width: 768px) { .mls-week-tiles { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); } }
+.mls-week-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; }
 .mls-week-tile { min-width: 0; display: flex; }
-.mls-week-tile-btn { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; text-align: left; padding: 0.45rem 0.55rem 0.5rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); color: inherit; font: inherit; cursor: pointer; }
+.mls-week-tile-btn {
+    flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.5rem; row-gap: 0.1rem; align-items: baseline;
+    grid-template-areas: "top top" "youl you" "opp theirs" "foot foot";
+    text-align: left; padding: 0.45rem 0.55rem 0.5rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px;
+    background: rgba(0, 0, 0, 0.15); color: inherit; font: inherit; cursor: pointer;
+}
 .mls-week-tile-btn:hover { background: rgba(255, 255, 255, 0.04); }
 .mls-week-tile-btn:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
 .mls-week-tile.is-win .mls-week-tile-btn { border-left-color: #10b981; }
 .mls-week-tile.is-loss .mls-week-tile-btn { border-left-color: #ef4444; }
 .mls-week-tile.is-guillotine .mls-week-tile-btn { border-left-color: #60a5fa; }
-.mls-week-tile-top { display: flex; align-items: flex-start; gap: 0.35rem; margin-bottom: 0.15rem; }
+.mls-week-tile-top { grid-area: top; display: flex; align-items: flex-start; gap: 0.35rem; margin-bottom: 0.15rem; min-width: 0; }
 .mls-week-tile-top .mls-week-name { font-size: 0.85rem; line-height: 1.25; min-width: 0; }
-.mls-week-tile-row { display: flex; align-items: baseline; gap: 0.4rem; font-size: 0.78rem; color: var(--text-muted); }
-.mls-week-tile-who { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mls-week-tile-pts { flex-shrink: 0; font-variant-numeric: tabular-nums; }
-.mls-week-tile-pts.is-you { color: var(--text-main); font-weight: 700; font-size: 0.9rem; }
-.mls-week-tile-foot { margin-top: auto; padding-top: 0.15rem; font-size: 0.72rem; color: var(--text-muted); }
+.mls-week-tile-who { min-width: 0; font-size: 0.78rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mls-week-tile-who.is-you-label { grid-area: youl; }
+.mls-week-tile-who:not(.is-you-label) { grid-area: opp; }
+.mls-week-tile-pts { grid-area: theirs; text-align: right; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mls-week-tile-pts.is-you { grid-area: you; color: var(--text-main); font-weight: 700; font-size: 0.9rem; }
+.mls-week-tile-foot { grid-area: foot; padding-top: 0.15rem; font-size: 0.72rem; color: var(--text-muted); }
+/* Phones: one league per row, your score beside its name. */
+@media (max-width: 600px) {
+    .mls-week-tiles { grid-template-columns: minmax(0, 1fr); }
+    .mls-week-tile-btn { grid-template-areas: "top you" "opp theirs" "foot foot"; }
+    .mls-week-tile-who.is-you-label { display: none; }
+    .mls-week-tile-top { margin-bottom: 0; }
+}
 .mls-week-tile-margin { color: var(--primary-green); font-variant-numeric: tabular-nums; font-weight: 600; }
 .mls-week-tile-margin.is-behind { color: #ef4444; }
 .mls-week-result { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; font-size: 0.7rem; font-weight: 700; border-radius: 4px; padding: 1px 0; }

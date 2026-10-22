@@ -318,10 +318,14 @@ function summaryText(m) {
 }
 
 // One league's tile in the Scoreboard's grid (owner's pick, round 6: tiles, closest games first). Tapping it opens that
-// league's Lineup tab, whose strip has the matchup's detail.
+// league's Lineup tab, whose strip has the matchup's detail. On wider screens (several across):
 //     [W] League name (whole)
 //     You            115.7
 //     vs tbuckler93   97.6
+//     +18.1 · Median: 4th of 12
+// On phones one per row (owner, round 7: two across was crowded), "You" dropped and your score beside the name:
+//     [W] League name                  115.7
+//     vs tbuckler93                     97.6
 //     +18.1 · Median: 4th of 12
 function tileHTML(r, started) {
     const l = r.league, res = r.res;
@@ -349,8 +353,8 @@ function tileHTML(r, started) {
     return `<li class="mls-week-tile is-${tone}">
         <button type="button" class="mls-week-tile-btn" data-action="openLeagueLineup" data-league-id="${escapeHtml(l.leagueId)}" aria-label="${leagueName(l)}: open its lineup">
             <span class="mls-week-tile-top">${chip}${l.paid ? paidBadgeMarkup() : ''}<span class="mls-week-name">${leagueName(l)}</span></span>
-            <span class="mls-week-tile-row"><span class="mls-week-tile-who">You</span><span class="mls-week-tile-pts is-you">${youPts}</span></span>
-            <span class="mls-week-tile-row"><span class="mls-week-tile-who">${oppLabel}</span><span class="mls-week-tile-pts">${oppPts}</span></span>
+            <span class="mls-week-tile-who is-you-label">You</span><span class="mls-week-tile-pts is-you">${youPts}</span>
+            <span class="mls-week-tile-who">${oppLabel}</span><span class="mls-week-tile-pts">${oppPts}</span>
             ${foot ? `<span class="mls-week-tile-foot">${foot}</span>` : ''}
         </button>
     </li>`;
@@ -454,7 +458,7 @@ function renderScoreboard(m) {
     el.innerHTML = `${head}<div class="mls-week-body">${parts.join('')}</div>`;
 }
 
-const TROPHY_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>`;
+const SCOREBOARD_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"></rect><path d="M6.5 6.5h2.5v5H6.5z"></path><path d="M15 6.5h2.5v5H15z"></path><line x1="12" y1="8" x2="12" y2="8.01"></line><line x1="12" y1="10" x2="12" y2="10.01"></line><line x1="8" y1="15" x2="8" y2="21"></line><line x1="16" y1="15" x2="16" y2="21"></line></svg>`;
 const ARROW_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
 
 // The Dashboard's one line: "Week 7 Recap · Record 9–6 · 4 still live", opening the Scoreboard.
@@ -463,7 +467,7 @@ function renderSummaryLine(m) {
     if (!el) return;
     if (!m.sleeperLeagues.length || m.ctx.week == null) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
-    el.innerHTML = `${TROPHY_ICON}<span class="mls-week-summary-title">${titleText(m)}</span><span class="mls-week-summary">${summaryText(m)}</span>`
+    el.innerHTML = `${SCOREBOARD_ICON}<span class="mls-week-summary-title">${titleText(m)}</span><span class="mls-week-summary">${summaryText(m)}</span>`
         + `${m.started && m.listed.length ? weekStatusMarkup(m.final) : ''}<span class="mls-week-summary-go">Scoreboard ${ARROW_ICON}</span>`;
     el.setAttribute('aria-label', `${titleText(m)}: ${summaryText(m)}. Open the Scoreboard`);
 }

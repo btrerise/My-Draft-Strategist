@@ -87,12 +87,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **A Scoreboard tab: every league's matchup, live.** A new tab (the trophy in the tab bar, between Lineup and Scout)
+- **A Scoreboard tab: every league's matchup, live.** A new tab (a scoreboard icon in the tab bar, between Lineup and Scout)
   shows this week's score in every Sleeper league ("Week 7 Recap", with an info tip): your record as it stands, split
   paid / free and redraft / dynasty (keeper and chopped leagues count with redraft), the matchups still in play first
   (both scores, the margin, your win chance from the Matchup Simulator, and who's still to play on each side), the
   effectively decided ones on one line (a matchup the Simulator gives under 1% either way counts as decided), then a
-  tile for every league, closest first, with your score and your opponent's. Tap a tile to open that league's lineup.
+  tile for every league, closest first (one per row on phones), with your score and your opponent's. Tap a tile to open that league's lineup.
   It says Provisional until every game of the week is final, then Final. A guillotine league's tile shows your score
   against the chop line and your place among the teams still alive; a league that also plays the median says where you
   stand against it; a league whose matchups didn't load is named, with the rest still shown. It loads when you open

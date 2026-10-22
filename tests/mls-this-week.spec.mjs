@@ -262,7 +262,7 @@ test.describe('This week: every league\'s matchup', () => {
     });
 
     for (const width of [375, 1280]) {
-        test(`at ${width}px: tiles side by side, every league name whole, nothing past the edge`, async ({ page }) => {
+        test(`at ${width}px: ${width < 600 ? 'one league per row' : 'tiles side by side'}, every league name whole, nothing past the edge`, async ({ page }) => {
             await page.setViewportSize({ width, height: 800 });
             const { state } = await setup(page);
             await expect(tiles(page)).toHaveCount(2);
@@ -270,8 +270,9 @@ test.describe('This week: every league\'s matchup', () => {
                 const r = t.getBoundingClientRect(), n = t.querySelector('.mls-week-name');
                 return { top: r.top, right: r.right, nameWhole: n.scrollWidth <= n.clientWidth + 1 };
             }));
-            // Two across even on a phone (owner's pick: a grid you can scan).
-            expect(Math.abs(boxes[0].top - boxes[1].top)).toBeLessThan(1);
+            // Side by side on wide screens; one per row on phones (owner, round 7: two across was crowded).
+            if (width < 600) expect(boxes[1].top).toBeGreaterThan(boxes[0].top + 20);
+            else expect(Math.abs(boxes[0].top - boxes[1].top)).toBeLessThan(1);
             for (const b of boxes) {
                 expect(b.right).toBeLessThanOrEqual(width);
                 expect(b.nameWhole).toBe(true);
