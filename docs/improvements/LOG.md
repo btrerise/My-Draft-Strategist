@@ -5567,6 +5567,11 @@ allowed for 4–5). Merging Roster and Lineup to make room: not needed (five tab
   Lineup with its strip (and the strip following a league switch), the pre-kickoff tiles and strip, two tiles across
   at 375px and 1280px. 73 passed and 1 skipped (as on main) across this-week, smoke, startup requests,
   view-transitions, league cards, tooltips and SVG icons.
-- **Screenshots**: every Lineup Strategist phone PNG changes (the bar: five icons, one label), the desktop ones with the
-  bar's fifth tab, and `mls-league-scoreboard.png` is new at both widths; Dashboard, Lineup, Roster and Guide also change
-  for their content. All to take from CI.
+- **Screenshots** (main and this branch rendered here and compared with `npm run pxdiff`): 14 differ, all by design, the
+  other 28 (Draft Strategist and T-Score) are identical. New: `mls-league-scoreboard.png` (desktop, phone). Changed:
+  `mls-empty-setup` and `mls-league-scout` (only the tab bar: the fifth tab, and on phones one label), `mls-league-setup`
+  (the Week Recap line), `mls-league-lineup` (the matchup strip), `mls-league-roster` (the record above the header's
+  line), `mls-league-guide` (the Guide's new lines and the legend), each at both widths. All to take from CI.
+- **Checks**: check-precache OK, 409 unit tests, Playwright 481 passed, 5 skipped; the 10 `visual.spec.mjs` comparisons
+  fail here as on main (this container's fonts). A first full run caught a syntax error I'd added to the Scoreboard's
+  tooltip (an unescaped apostrophe that stopped the page loading), pushed for a few minutes; fixed in the next commit.
