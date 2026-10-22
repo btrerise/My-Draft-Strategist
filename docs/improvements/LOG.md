@@ -5500,3 +5500,15 @@ the six from the pull request's CI run.
   card body's right edge. Ran `mls-this-week`, `mls-league-cards`, `view-transitions` and `tooltips-onscreen`
   (47 passed, 1 skipped as on main), check-precache and the unit tests. The six screenshot PNGs listed above still
   change (the Dashboard one with this round's layout) and still need taking from CI.
+
+### S21, round 4: the same fold animation as a league card
+
+The recap's chevron still turned differently, and its body just appeared (owner). The cause: a league card's fold
+animates because `nameCards` (render/leagueCards.js) gives each card a view-transition name for the transition, so the
+browser grows its box (`.vt-card`, css/base.css) and shows its chevron turning live; the recap had no name, so it was
+part of the page's crossfade. `nameCards` now names `#thisWeekCard` (`vt-lc-week`) and the toolbar under it
+(`#leagueCardsToolbar`, `vt-lc-toolbar`) like cards, near the screen only, in every cards transition: the recap folds
+exactly as a league card does, and the toolbar and cards below move with it. Checked frame by frame at a tenth of the
+speed on a phone, beside a league card's fold. `view-transitions.spec.mjs` has a test for it (the names during, the
+`cards` kind, the names gone after). 45 passed, 1 skipped (as on main) across view-transitions, mls-this-week and
+mls-league-cards.

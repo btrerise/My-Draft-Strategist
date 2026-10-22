@@ -176,6 +176,31 @@ test.describe('Lineup Strategist', () => {
         await expectClean(page, state);
     });
 
+    // The Week Recap card (improvements S21) folds the way a league card does (owner, round 4): named like a card for
+    // the transition, as is the toolbar under it, so its box grows or shrinks, its chevron turns, and what's below moves.
+    test('the Week Recap folds in a "cards" transition like a league card, named until it ends', async ({ page }) => {
+        await countTransitions(page);
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await transitionsDone(page);
+        const recap = page.locator('#thisWeekCard');
+        await expect(recap.locator('.mls-week-head')).toBeVisible();
+        const before = (await vt(page)).starts;
+        const during = await recap.evaluate((c) => {
+            c.querySelector('[data-action="toggleThisWeek"]').click();
+            return [c.style.getPropertyValue('view-transition-name'), c.style.getPropertyValue('view-transition-class'),
+                document.getElementById('leagueCardsToolbar').style.getPropertyValue('view-transition-name')];
+        });
+        expect(during).toEqual(['vt-lc-week', 'vt-card', 'vt-lc-toolbar']);
+        await transitionsDone(page);
+        await expect(recap).toHaveClass(/\bis-collapsed\b/);
+        const after = await vt(page);
+        expect(after.starts).toBe(before + 1);
+        expect(after.kinds.at(-1)).toBe('cards');
+        expect(await recap.evaluate(c => c.style.getPropertyValue('view-transition-name'))).toBe('');
+        await expectClean(page, state);
+    });
+
     test('with Reduce Motion nothing animates and a switch is immediate', async ({ page }) => {
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await countTransitions(page);
