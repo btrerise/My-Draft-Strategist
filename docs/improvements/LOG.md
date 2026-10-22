@@ -5575,3 +5575,11 @@ allowed for 4–5). Merging Roster and Lineup to make room: not needed (five tab
 - **Checks**: check-precache OK, 409 unit tests, Playwright 481 passed, 5 skipped; the 10 `visual.spec.mjs` comparisons
   fail here as on main (this container's fonts). A first full run caught a syntax error I'd added to the Scoreboard's
   tooltip (an unescaped apostrophe that stopped the page loading), pushed for a few minutes; fixed in the next commit.
+
+**After the syntax error (round 6).** The owner opened the branch's preview in a private window and got Lineup
+Strategist's "Something went wrong loading the app" banner (`SyntaxError: Unexpected identifier 's'`): that preview was
+still serving commit b339938's `js/mls/week/thisWeek.js`. JS and CSS are served from the service worker's cache first
+and refreshed in the background (sw.js), and the fix commit kept the same `CACHE_NAME`, so a browser that had cached
+the broken file could keep serving it. `CACHE_NAME` v2.8.101 → v2.8.102, so every browser that saw the bad build takes
+a fresh copy. Lesson for later cards: bump `CACHE_NAME` again in a fix commit that follows a broken push, even on the
+same branch.
