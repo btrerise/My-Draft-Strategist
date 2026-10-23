@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     weekFromSearch, starterState, reachOf, sideSummary, classifyMatchup, resultOf, medianPlace, guillotinePlace, summarize, recordText,
-    swingOrder, teamNamesFrom, playsMedian, isGuillotine, seasonRecord, ordinal,
+    swingOrder, teamNamesFrom, playsMedian, isGuillotine, seasonRecord, ordinal, playedCount, tooEarlyToCall, MIN_PLAYED,
 } from '../../js/mls/week/scoreboard.js';
 
 const p = (pos, points, gameState, extra = {}) => ({ id: `${pos}${points}${gameState}`, name: pos, pos, team: 'MIN', points, gameState, onBye: false, out: false, ...extra });
@@ -125,4 +125,24 @@ test('?week= in the address picks the week to show (for testing); anything else 
     assert.equal(weekFromSearch('?week=19'), null);
     assert.equal(weekFromSearch('?week=six'), null);
     assert.equal(weekFromSearch('?week=6.5'), null);
+});
+
+test('too early to call: a matchup in play counts only once 4 players a side have played', () => {
+    assert.equal(MIN_PLAYED, 4);
+    const played = (n, live) => [...Array(n)].map((_, i) => p('WR', i, i % 2 ? 'post' : 'in')).concat([...Array(live)].map(() => p('WR', 0, 'pre')));
+    const three = side(20, played(3, 6)), four = side(30, played(4, 5)), five = side(40, played(5, 4));
+    assert.equal(playedCount(three), 3);
+    assert.equal(tooEarlyToCall(four, three, 'swing'), true); // one side short
+    assert.equal(tooEarlyToCall(four, five, 'swing'), false);
+    assert.equal(tooEarlyToCall(three, three, 'decided'), false); // a known result is never too early
+    assert.equal(tooEarlyToCall(three, three, 'done'), false);
+    // Without game states, a starter with points has played; one on 0 hasn't.
+    assert.equal(playedCount(side(10, [p('WR', 5, null), p('WR', 0, null)])), 1);
+    // Left out of the record, counted on their own.
+    const s = summarize([
+        { result: 'W', group: 'redraft', status: 'swing' },
+        { result: 'T', group: 'redraft', status: 'swing', early: true },
+        { result: 'L', group: 'dynasty', status: 'swing', early: true, keeper: true },
+    ]);
+    assert.deepEqual([recordText(s.all), s.tooEarly, s.stillLive, s.keeper], ['1–0', 2, 1, true]);
 });

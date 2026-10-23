@@ -204,6 +204,39 @@ test.describe('This week: every league\'s matchup', () => {
         await expectClean(page, state);
     });
 
+    // Thursday night: one game on, so neither lineup has 4 players who've played (owner: a W or L before then is a guess).
+    test('too early to call: no W-L until 4 players a side have played, scores still shown', async ({ page }) => {
+        const { state } = await setup(page, { routes: async (page) => {
+            await page.unroute(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/);
+            await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => {
+                const sb = scoreboard();
+                sb.events.forEach(e => { e.status.type.state = e.competitions[0].competitors[0].team.abbreviation === 'BUF' ? 'in' : 'pre'; });
+                return route.fulfill({ json: sb });
+            });
+        } });
+        await refresh(page);
+        const head = card(page).locator('.mls-week-head');
+        // Fixture League (98 to 110, Jefferson to play) is too early; Second Fixture League is decided (Rival has
+        // nobody left), and a known result counts however early.
+        await expect(head).toContainText('Record 1–0 · 1 too early to call');
+        await expect(card(page).locator('.mls-week-split')).toHaveText(['Redraft 0–0', 'Dynasty 1–0']);
+        await expect(card(page).locator('.mls-week-swing')).toHaveCount(0);
+        await expect(card(page).locator('.mls-week-decided').last()).toContainText('Too early to call: 1');
+        // Too early: last, scores but no W/L or margin.
+        const early = tiles(page).nth(1);
+        await expect(early.locator('.mls-week-name')).toHaveText('Fixture League');
+        await expect(early.locator('.mls-week-result')).toHaveCount(0);
+        await expect(early.locator('.mls-week-tile-margin')).toHaveCount(0);
+        await expect(early.locator('.mls-week-tile-foot')).toHaveText('Too early to call');
+        await expect(pts(early)).toHaveText(['98.0', '110.0']);
+        await expect(tiles(page).nth(0).locator('.mls-week-result')).toHaveText('W');
+        await early.locator('button').click();
+        await expect(page.locator('#lineupTab')).toHaveClass(/\bactive\b/);
+        await expect(page.locator('#lineupMatchupStrip .mls-strip-meta')).toHaveText('Too early to call');
+        await expect(page.locator('#lineupMatchupStrip .mls-week-result')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
     test('once every game is final: Final, and the W-L with Jefferson\'s points', async ({ page }) => {
         const { state } = await setup(page);
         await expect(card(page).locator('.mls-week-status')).toHaveText('Provisional');

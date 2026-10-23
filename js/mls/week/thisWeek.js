@@ -33,15 +33,23 @@ import { ensureLineupProjections, formatKickoffLabel, getLeagueScoringKey, store
 import { paidBadgeMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
 import { matchupWinChances } from '../sim/winChance.js';
 import {
-    classifyMatchup, guillotinePlace, isGuillotine, medianPlace, ordinal, playsMedian, recordText, resultOf,
-    sideSummary, summarize, swingOrder, teamNamesFrom, weekFromSearch,
+    MIN_PLAYED, classifyMatchup, guillotinePlace, isGuillotine, medianPlace, ordinal, playsMedian, recordText, resultOf,
+    sideSummary, summarize, swingOrder, teamNamesFrom, tooEarlyToCall, weekFromSearch,
 } from './scoreboard.js';
 
 const FRESH_MS = 2 * 60 * 1000;
 const PARALLEL = 5;
 const isSleeperLeague = (l) => l && l.leagueId && !/^(manual|handoff)_/.test(l.leagueId);
 const REFRESH_ICON = (spin) => `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"${spin ? ' class="sync-spinner"' : ''}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>`;
-const TOOLTIP = 'Your matchup in every Sleeper league this week, from Sleeper\'s live scores. Record is how each head-to-head matchup stands right now, grouped two ways: Paid / Free (mark paid leagues with "$ Paid" after tapping Edit on the Dashboard) and Redraft / Dynasty (keeper leagues count with Redraft). Median is your record against the league median, only in the leagues that play one. A guillotine league has no opponent, so it isn\'t in the Record. Still in play: matchups the side that\'s behind can still turn around, with who\'s left to play on each side and your chance to win from the Matchup Simulator (Lineup tab), which plays the rest of the week out 10,000 times from Sleeper\'s projections and each player\'s past scores. Effectively decided: the side that\'s behind has nobody left, or too little to close the gap. Provisional until the week\'s last game is final. Tap a league to open its lineup. It loads when you open the Dashboard, the Scoreboard or the Lineup tab; tap Refresh for the latest.';
+// Short labelled lines, not one paragraph (owner, after the Thursday-night pass: on a phone it filled the screen).
+const TOOLTIP = [
+    'Your matchup in every Sleeper league this week, from Sleeper\'s live scores.',
+    '<strong>Record:</strong> how each head-to-head matchup stands, once at least 4 players a side have played. Grouped Paid / Free (mark paid leagues with "$ Paid" under Edit on the Dashboard) and Redraft / Dynasty (keeper counts as Redraft). A guillotine league has no opponent, so it isn\'t in it.',
+    '<strong>Median:</strong> your record against the league median, in the leagues that play one.',
+    '<strong>Still in play:</strong> the side that\'s behind can still turn it around. Your chance to win comes from the Matchup Simulator (Lineup tab).',
+    '<strong>Effectively decided:</strong> the side that\'s behind has nobody left, or too little.',
+    '<strong>Provisional</strong> until the week\'s last game is final. Tap a league to open its lineup; tap Refresh for the latest.',
+].join('<br><br>');
 
 // --- What this card last loaded (in memory) ---
 const view = { week: null, loadedAt: 0, loading: null, failed: new Map(), chances: new Map(), chancesKey: '' };
@@ -148,7 +156,7 @@ function leagueResult(l, matchups, meta, base) {
     const me = side(mine), them = side(opp);
     const m = classifyMatchup(me, them);
     return {
-        kind: 'h2h', me, them, ...m, result: resultOf(m), bestBall, scoringKey: ctx.scoringKey,
+        kind: 'h2h', me, them, ...m, result: resultOf(m), early: tooEarlyToCall(me, them, m.status), bestBall, scoringKey: ctx.scoringKey,
         oppName: (meta.teamNames && meta.teamNames[opp.roster_id]) || 'Opponent',
         median: meta.median ? medianPlace(me.points, matchups.map(pointsOf)) : null,
     };
@@ -212,7 +220,8 @@ async function addWinChances() {
     const ctx = weekCtx();
     const built = buildRows(ctx);
     if (!weekStarted(built.rows, ctx)) return;
-    const swings = built.rows.filter(r => r.res.kind === 'h2h' && r.res.status === 'swing');
+    // Not for a matchup too early to call: a chance from one or two players' games says little (and saves the work).
+    const swings = built.rows.filter(r => r.res.kind === 'h2h' && r.res.status === 'swing' && !r.res.early);
     const key = `${ctx.week}|` + swings.map(r => `${r.league.leagueId}:${r.res.me.points}:${r.res.them.points}:${r.res.me.live.length}:${r.res.them.live.length}`).join('|');
     if (!swings.length || key === view.chancesKey) return;
     view.chancesKey = key;
@@ -273,6 +282,10 @@ const playerList = (players) => players.length
     ? players.map(p => `${escapeHtml(p.name)} <span class="mls-week-pos">${escapeHtml(p.pos)}</span>`).join(', ')
     : 'nobody left';
 const liveOf = (side) => [...side.live, ...side.liveBench];
+// Who's left, by name only when it's a few (owner, after the Thursday-night pass: every name on both sides, early in the
+// week, made the Scoreboard a wall of text). More than this many: just how many.
+const NAMES_UP_TO = 4;
+const liveText = (players) => players.length > NAMES_UP_TO ? `${players.length} to play` : playerList(players);
 // "Median: L (4th of 6)": the median game's result as it stands, and your place among every team's score (owner,
 // round 9). Before kickoff, just that the league plays it.
 const medianText = (med, started) => started ? `Median: ${med.above ? 'W' : 'L'} (${ordinal(med.rank)} of ${med.of})` : 'Plays the median';
@@ -302,13 +315,13 @@ function buildModel() {
     rows.forEach(r => {
         if (r.res.kind !== 'h2h' || r.res.status !== 'swing') return;
         const c = view.chances.get(r.league.leagueId);
-        if (c != null && (c < 0.5 || c > 99.5)) r.res = { ...r.res, status: 'decided', settledBySim: true };
+        if (c != null && (c < 0.5 || c > 99.5)) r.res = { ...r.res, status: 'decided', early: false, settledBySim: true };
     });
     const h2h = rows.filter(r => r.res.kind === 'h2h');
     const listed = rows.filter(r => r.res.kind === 'h2h' || r.res.kind === 'guillotine');
     const started = weekStarted(rows, ctx);
     const final = started && weekFinal(ctx);
-    const sum = summarize(h2h.map(r => ({ result: r.res.result, paid: !!r.league.paid, group: r.league.leagueType === 'dynasty' ? 'dynasty' : 'redraft', keeper: r.league.leagueType === 'keeper', status: r.res.status })));
+    const sum = summarize(h2h.map(r => ({ result: r.res.result, paid: !!r.league.paid, group: r.league.leagueType === 'dynasty' ? 'dynasty' : 'redraft', keeper: r.league.leagueType === 'keeper', status: r.res.status, early: r.res.early })));
     const pending = rows.some(r => r.res.kind === 'pending');
     return { ctx, sleeperLeagues, rows, h2h, listed, started, final, sum, pending };
 }
@@ -318,7 +331,12 @@ const titleText = (m) => `Week ${m.ctx.week} ${m.started ? 'Recap' : 'Matchups'}
 function summaryText(m) {
     if (m.pending && !m.listed.length) return view.loading ? 'Loading matchups…' : 'Open to load your matchups';
     if (!m.started) return `starts ${firstKickoffLabel(m.ctx) || 'soon'}`;
-    return `${m.h2h.length ? `Record ${recordText(m.sum.all)}` : ''}${m.sum.stillLive ? ` · ${m.sum.stillLive} still live` : ''}`;
+    const counted = m.h2h.length - m.sum.tooEarly;
+    return [
+        counted ? `Record ${recordText(m.sum.all)}` : '',
+        m.sum.stillLive ? `${m.sum.stillLive} still live` : '',
+        m.sum.tooEarly ? `${m.sum.tooEarly} too early to call` : '',
+    ].filter(Boolean).join(' · ');
 }
 
 // One league's tile in the Scoreboard's grid (owner's pick, round 6: tiles, closest games first). Tapping it opens that
@@ -344,12 +362,17 @@ function tileHTML(r, started) {
         // Best Ball on the opponent's line, not in the foot, where it wrapped onto a line of its own (owner, round 11).
         // The opponent's name gives way (ellipsis) before it does.
         oppLabel = `<span class="mls-week-tile-opp">vs ${escapeHtml(res.oppName)}</span>${res.bestBall ? '<span class="mls-week-tile-fmt">· Best Ball</span>' : ''}`;
-        if (res.median) notes.push(medianText(res.median, started));
-        if (started) {
+        if (started && res.early) {
+            // Scores, but no W/L or margin yet (owner: a W or L before 4 players a side have played is a guess).
+            youPts = fmt(res.me.points); oppPts = fmt(res.them.points);
+            notes.push('Too early to call');
+            if (res.median) notes.push(medianText(res.median, false));
+        } else if (started) {
+            if (res.median) notes.push(medianText(res.median, started));
             tone = res.result === 'W' ? 'win' : (res.result === 'L' ? 'loss' : 'tie');
             chip = weekResultMarkup(res.result);
             youPts = fmt(res.me.points); oppPts = fmt(res.them.points); margin = res.margin;
-        }
+        } else if (res.median) notes.push(medianText(res.median, started));
     }
     const marginHTML = margin != null ? `<span class="mls-week-tile-margin${margin < 0 ? ' is-behind' : ''}">${signed(margin)}</span>` : '';
     const lead = [chip, marginHTML].filter(Boolean).join(' ');
@@ -373,9 +396,8 @@ function swingHTML(r) {
             <span class="mls-week-margin${res.margin < 0 ? ' is-behind' : ''}">${signed(res.margin)}</span>
         </div>
         <div class="mls-week-swing-score">You ${fmt(res.me.points)} &middot; ${escapeHtml(res.oppName)} ${fmt(res.them.points)}${chance != null ? `<span class="mls-week-chance">${Math.round(chance)}% to win</span>` : ''}</div>
-        <div class="mls-week-swing-live"><span class="mls-week-side">You:</span> ${playerList(liveOf(res.me))}</div>
-        <div class="mls-week-swing-live"><span class="mls-week-side">Them:</span> ${playerList(liveOf(res.them))}</div>
-        ${res.bestBall ? '<div class="mls-week-swing-note">Best Ball: anyone on the roster with a game left can still count.</div>' : ''}
+        <div class="mls-week-swing-live"><span class="mls-week-side">You:</span> ${liveText(liveOf(res.me))}</div>
+        <div class="mls-week-swing-live"><span class="mls-week-side">Them:</span> ${liveText(liveOf(res.them))}</div>
     </li>`;
 }
 
@@ -386,9 +408,11 @@ function tileOrder(rows, started, final) {
     const gap = (r) => r.res.kind === 'guillotine' ? (r.res.place ? Math.abs(r.res.place.cushion) : Infinity) : Math.abs(r.res.margin);
     const swing = (r) => r.res.kind === 'h2h' && r.res.status === 'swing';
     const withChance = (r) => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null });
-    const swings = rows.filter(swing).map(withChance).sort(swingOrder);
+    const early = (r) => r.res.kind === 'h2h' && r.res.early;
+    const swings = rows.filter(r => swing(r) && !early(r)).map(withChance).sort(swingOrder);
     const rest = rows.filter(r => !swing(r)).sort((a, b) => gap(a) - gap(b));
-    return [...swings, ...rest];
+    // Too early to call: last, in your league order.
+    return [...swings, ...rest, ...rows.filter(early)];
 }
 
 export function renderThisWeek() {
@@ -418,17 +442,17 @@ function renderScoreboard(m) {
     const head = `<header class="mls-week-head">
         <div class="mls-week-heading"><h3 class="mls-week-title">${titleText(m)}</h3><span class="mls-week-summary">${summaryText(m)}</span></div>
         ${info}
-        ${started && listed.length ? weekStatusMarkup(final) : ''}
-        ${refreshBtn}
+        <span class="mls-week-actions">${started && listed.length ? weekStatusMarkup(final) : ''}${refreshBtn}</span>
     </header>`;
 
     const parts = [];
     if (ctx.asked) parts.push(`<p class="mls-week-override">Showing week ${ctx.week} because the address has <code>?week=${ctx.week}</code>. Remove it to go back to this week (${State.currentNflWeek}).</p>`);
-    if (started && h2h.length) {
+    const callable = h2h.filter(r => !r.res.early);
+    if (started && callable.length) {
         // The splits as one row of small stat chips (owner, round 9: the stacked lines looked plain), plus the median
         // games' own record in the leagues that play it (Sleeper's record counts them; the headline is head-to-head).
         const anyPaid = sleeperLeagues.some(l => l.paid);
-        const medians = h2h.filter(r => r.res.median);
+        const medians = callable.filter(r => r.res.median);
         const medRec = { W: medians.filter(r => r.res.median.above).length, L: medians.filter(r => !r.res.median.above).length, T: 0 };
         // Grouped (owner, round 10: five loose chips read as five kinds of league): each group is one segmented pill whose
         // parts add up to every league (Paid + Free, Redraft + Dynasty); Median stands apart, with how many leagues play it.
@@ -443,10 +467,14 @@ function renderScoreboard(m) {
         // What the groups mean (keeper with redraft, Median only where it's played) is in the header's info tip
         // (owner, round 11: four lines of helper text on a phone before the first tile).
         if (!anyPaid && !paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Edit, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
-        const swings = h2h.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null }))
+        const swings = callable.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null }))
             .sort(swingOrder);
-        if (swings.length) parts.push(`<h4 class="mls-week-sub">Still in play</h4><ul class="mls-week-swings">${swings.map(swingHTML).join('')}</ul>`);
-        const decided = h2h.filter(r => r.res.status !== 'swing');
+        if (swings.length) {
+            parts.push(`<h4 class="mls-week-sub">Still in play</h4><ul class="mls-week-swings">${swings.map(swingHTML).join('')}</ul>`);
+            // Once for the list, not under every Best Ball league (owner, after the Thursday-night pass).
+            if (swings.some(r => r.res.bestBall)) parts.push('<p class="mls-week-swing-note">Best Ball: anyone on the roster with a game left can still count.</p>');
+        }
+        const decided = callable.filter(r => r.res.status !== 'swing');
         // Once every game is final, "Done: N" only repeated the record (owner, round 9).
         if (decided.length && !final) {
             const w = decided.filter(r => r.res.result === 'W').length, ls = decided.filter(r => r.res.result === 'L').length;
@@ -454,6 +482,9 @@ function renderScoreboard(m) {
         }
     } else if (!started && listed.length) {
         parts.push(`<p class="text-helper mls-week-splits">No games have kicked off yet. The scores fill in once they do.</p>`);
+    }
+    if (started && sum.tooEarly) {
+        parts.push(`<p class="mls-week-decided"><strong>Too early to call:</strong> ${sum.tooEarly} (fewer than ${MIN_PLAYED} players a side have played, so they're not in the Record yet)</p>`);
     }
     if (listed.length) {
         parts.push(`<h4 class="mls-week-sub">${!started ? 'Your matchups' : (final ? 'Every league' : 'Every league, closest first')}</h4><ul class="mls-week-tiles">${tileOrder(listed, started, final).map(r => tileHTML(r, started)).join('')}</ul>`);
@@ -503,9 +534,13 @@ function renderMatchupStrip(m) {
         const g = res.place;
         main = `${week}<span class="mls-strip-opp">Guillotine</span>${g && m.started ? `<span class="mls-strip-score"><strong>${fmt(res.me.points)}</strong> · ${ordinal(g.rank)} of ${g.of} alive</span><span class="mls-week-margin${g.cushion < 0 ? ' is-behind' : ''}">${signed(g.cushion)}</span>` : ''}`;
         if (!g) sub = 'Your team has been chopped.';
-        else if (m.started && res.me.live.length) sub = `<span class="mls-week-side">Still to play:</span> ${playerList(res.me.live)}`;
+        else if (m.started && res.me.live.length) sub = `<span class="mls-week-side">Still to play:</span> ${liveText(res.me.live)}`;
     } else if (!m.started) {
         main = `${week}<span class="mls-strip-opp">vs ${escapeHtml(res.oppName)}</span><span class="mls-strip-score text-helper">starts ${firstKickoffLabel(m.ctx) || 'soon'}</span>`;
+    } else if (res.early) {
+        main = `${week}<span class="mls-strip-opp">vs ${escapeHtml(res.oppName)}</span>`
+            + `<span class="mls-strip-score"><strong>${fmt(res.me.points)}</strong>&ndash;${fmt(res.them.points)}</span>`;
+        meta = `<span class="mls-strip-status">Too early to call</span>`;
     } else {
         const chance = view.chances.get(r.league.leagueId);
         // The status, win chance and median: beside the score on wider screens, a line of their own on phones (the
@@ -517,7 +552,7 @@ function renderMatchupStrip(m) {
             + `<span class="mls-strip-score"><strong>${fmt(res.me.points)}</strong>&ndash;${fmt(res.them.points)}</span>`
             + `<span class="mls-week-margin${res.margin < 0 ? ' is-behind' : ''}">${signed(res.margin)}</span>`;
         meta = status + (res.median ? `<span class="mls-strip-status">${medianText(res.median, true)}</span>` : '');
-        if (res.status === 'swing') sub = `<span class="mls-week-side">You:</span> ${playerList(liveOf(res.me))} <span class="mls-week-side">Them:</span> ${playerList(liveOf(res.them))}`;
+        if (res.status === 'swing') sub = `<span class="mls-week-side">You:</span> ${liveText(liveOf(res.me))} <span class="mls-week-side">Them:</span> ${liveText(liveOf(res.them))}`;
     }
     el.hidden = false;
     el.innerHTML = `<span class="mls-strip-main">${main}</span>${meta ? ` <span class="mls-strip-meta">${meta}</span>` : ''}${ARROW_ICON}`

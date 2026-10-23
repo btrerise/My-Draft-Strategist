@@ -70,6 +70,17 @@ export function classifyMatchup(me, opp) {
     return { margin, lead, status: swing ? 'swing' : 'decided' };
 }
 
+// A matchup counts toward the W-L only once at least this many starters on each side have played (their game has
+// kicked off). Before that a W or L is a guess (owner, after the Thursday-night pass: "Predicting W-L before then is
+// pointless"; 4 rather than 5 or 6 because some leagues start only 8). It's "too early to call" until then.
+export const MIN_PLAYED = 4;
+// Without the game states (ESPN's scoreboard didn't load), a starter with points has played.
+export const playedCount = (side) => side.starters.filter(p => p.gameState === 'in' || p.gameState === 'post'
+    || (p.gameState == null && (Number(p.points) || 0) !== 0)).length;
+// Still in play, and a side has fewer than MIN_PLAYED who have played. A matchup that's done or effectively decided is
+// never too early: its result is known.
+export const tooEarlyToCall = (me, them, status) => status === 'swing' && Math.min(playedCount(me), playedCount(them)) < MIN_PLAYED;
+
 // 'W' | 'L' | 'T' for the matchup as it stands.
 export const resultOf = (m) => m.lead === 'me' ? 'W' : (m.lead === 'opp' ? 'L' : 'T');
 
@@ -100,16 +111,18 @@ export function guillotinePlace(myPoints, teams, myAlive = true) {
 }
 
 // The headline: the W-L as it stands across head-to-head matchups, split paid / free and redraft / dynasty.
-// rows: [{ result: 'W' | 'L' | 'T', paid, group: 'redraft' | 'dynasty', keeper, status }]. Keeper counts with redraft.
+// rows: [{ result: 'W' | 'L' | 'T', paid, group: 'redraft' | 'dynasty', keeper, status, early }]. Keeper counts with
+// redraft. A matchup too early to call (early) is left out of every count and counted in tooEarly instead.
 export function summarize(rows) {
     const blank = () => ({ W: 0, L: 0, T: 0 });
-    const out = { all: blank(), paid: blank(), free: blank(), redraft: blank(), dynasty: blank(), stillLive: 0, keeper: false };
+    const out = { all: blank(), paid: blank(), free: blank(), redraft: blank(), dynasty: blank(), stillLive: 0, tooEarly: 0, keeper: false };
     rows.forEach(r => {
+        if (r.keeper) out.keeper = true;
+        if (r.early) { out.tooEarly++; return; }
         out.all[r.result]++;
         out[r.paid ? 'paid' : 'free'][r.result]++;
         out[r.group === 'dynasty' ? 'dynasty' : 'redraft'][r.result]++;
         if (r.status === 'swing') out.stillLive++;
-        if (r.keeper) out.keeper = true;
     });
     return out;
 }

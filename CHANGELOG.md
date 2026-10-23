@@ -90,10 +90,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **A Scoreboard tab: every league's matchup, live.** A new tab (a scoreboard icon in the tab bar, between Lineup and Scout)
-  shows this week's score in every Sleeper league ("Week 7 Recap", with an info tip): your record as it stands, split
+  shows this week's score in every Sleeper league ("Week 7 Recap", with an info tip): your record as it stands (a
+  matchup joins it once at least 4 players a side have played; before that it's "too early to call"), split
   paid / free and redraft / dynasty, each pair grouped (keeper leagues count with redraft; a guillotine league, with no opponent, isn't in the record), plus your record
   against the median in the leagues that play one, the matchups still in play first
-  (both scores, the margin, your win chance from the Matchup Simulator, and who's still to play on each side), the
+  (both scores, the margin, your win chance from the Matchup Simulator, and who's still to play on each side: names
+  once it's down to 4 or fewer, a count before), the
   effectively decided ones on one line (a matchup the Simulator gives under 1% either way counts as decided), then a
   tile for every league, closest first while games are on and in your league order before and after (up to four across,
   one per row on phones), with your score and your opponent's, the result and margin, and "Median: W (3rd of 12)" where it applies. Tap a tile to open that league's lineup.

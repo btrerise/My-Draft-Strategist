@@ -1834,6 +1834,8 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-title { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
 .mls-week-summary { font-size: 0.85rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .mls-week-info { flex-shrink: 0; }
+/* Provisional / Final and Refresh wrap together, so Refresh never sits on a line alone. */
+.mls-week-actions { flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.6rem; }
 .mls-week-refresh { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--primary-green); font-size: 0.8rem; font-weight: 600; cursor: pointer; padding: 0.2rem 0.1rem; }
 .mls-week-refresh:disabled { opacity: 0.6; cursor: default; }
 .mls-week-status { font-size: 0.7rem; padding: 2px 7px; border-radius: 999px; border: 1px solid; white-space: nowrap; }

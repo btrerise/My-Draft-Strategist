@@ -5672,3 +5672,25 @@ lines on desktop, four on a phone) could move into the header's info tip.
   Dynasty mean, keeper with redraft, Median only where it's played. Only the paid hint (closable) stays. The tip, the
   Guide and the CHANGELOG also said guillotine leagues "count with redraft"; they're not in the Record at all (no
   opponent), and now say so.
+
+### S21, user-hat pass 4 (live: Thursday night of week 7) and the owner's answers
+
+The first look at a live week with real leagues. With one game on, all 20 head-to-head matchups were "still in play"
+and each listed every player left on both sides: the phone Scoreboard was about 6,000px tall, and four 0.0–0.0
+matchups made the record "7–9–4". The owner agreed to all three proposals, with one change to the second:
+
+- **Too early to call** (owner: "only show a W-L record when at least 4 players on both sides have points. Predicting
+  W-L before then is pointless"; 4, not 5 or 6, because some leagues start only 8). `MIN_PLAYED`, `playedCount` and
+  `tooEarlyToCall` in scoreboard.js: a matchup still in play counts toward the record only once at least 4 starters on
+  each side have played (game under way or final; without game states, a starter with points). A decided or done
+  matchup always counts (its result is known). Too-early matchups: out of the record, the splits and the median
+  record; the header says "N too early to call" (no "Record" while none count); a line under the swings; tiles
+  last, with both scores but no W/L chip or margin; the strip says "Too early to call"; no win chance worked out
+  for them.
+- **Names only when it's a few**: "You: 9 to play" until a side has 4 or fewer left, then the names (swings and the
+  strip). The Best Ball note appears once under the swings, not under each Best Ball league.
+- **The info tip in short labelled lines** (Record, Median, Still in play, Effectively decided, Provisional), and the
+  Guide's one long "Week Recap" item split into "Week Recap" (the Dashboard line, when it loads) and "Scoreboard" with
+  a nested list (css/base.css: `.guide-list ul`).
+- Also: the header's Provisional pill and Refresh wrap together, so Refresh no longer sits on a line alone on a phone.
+- Checked live with the owner's leagues: "Week 7 Recap · 20 too early to call", phone page about 2,000px.

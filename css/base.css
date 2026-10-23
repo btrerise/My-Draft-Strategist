@@ -1454,6 +1454,16 @@ label.toggle-title,
     margin-bottom: 0.75rem;
 }
 
+/* A list inside a guide item (the Scoreboard's parts): indented under it, tighter. */
+.guide-list ul {
+    margin: 0.4rem 0 0;
+    padding-left: 1.1rem;
+}
+
+.guide-list ul li {
+    margin-bottom: 0.35rem;
+}
+
 .text-main {
     color: var(--text-main);
     font-weight: 600;
