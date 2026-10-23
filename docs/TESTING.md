@@ -263,6 +263,9 @@ done or dropped, remove its line here in the same change. Background for each is
   changes how some rankings files are read, so do it only if a file parses wrong (2C).
 - IDP positions (LB, DL, DB) get K/DEF's Boom/Bust floor of 4, and the simulator uses Sleeper's default scoring,
   not the league's own. Owner chose to leave both until IDP leagues or custom scoring matter (9B).
+- The Matchup Simulator plays one fixed lineup, so in Best Ball (where the bench can still replace a starter's
+  score) its chance can be well off. Simulating the whole roster and keeping the best lineup in each run would fix it
+  (the worker picks per iteration); until then the Scoreboard shows no chance for Best Ball (S21, mid-game replay).
 - Save the name → position lookup (`window.sleeperPosByName`) so a new page doesn't rebuild it from the player map.
   Only a speed-up, and it needs a new storage key (3G).
 

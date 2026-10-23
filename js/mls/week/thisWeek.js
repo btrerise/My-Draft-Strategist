@@ -48,7 +48,7 @@ const TOOLTIP = [
     'Your matchup in every Sleeper league this week, from Sleeper\'s live scores.',
     '<strong>Record:</strong> how each head-to-head matchup stands, once at least 4 players a side have played. Grouped Paid / Free (mark paid leagues with "$ Paid" under Edit on the Dashboard) and Redraft / Dynasty (keeper counts as Redraft). A guillotine league has no opponent, so it isn\'t in it.',
     '<strong>Median:</strong> your record against the league median, in the leagues that play one.',
-    '<strong>Still in play:</strong> the side that\'s behind can still turn it around. Your chance to win comes from the Matchup Simulator (Lineup tab).',
+    '<strong>Still in play:</strong> the side that\'s behind can still turn it around. Your chance to win comes from the Matchup Simulator (Lineup tab); none for Best Ball, where the bench can still count.',
     '<strong>Effectively decided:</strong> the side that\'s behind has nobody left, or too little.',
     '<strong>Provisional</strong> until the week\'s last game is final. Tap a league to open its lineup; tap Refresh for the latest.',
 ].join('<br><br>');
@@ -225,7 +225,10 @@ async function addWinChances() {
     const built = buildRows(ctx);
     if (!weekStarted(built.rows, ctx)) return;
     // Not for a matchup too early to call: a chance from one or two players' games says little (and saves the work).
-    const swings = built.rows.filter(r => r.res.kind === 'h2h' && r.res.status === 'swing' && !r.res.early);
+    // Nor for Best Ball (round 12 replay): the Simulator plays the lineup Sleeper shows now, but in Best Ball anyone on
+    // the bench with a game left can still replace a starter's score, so its number could be far off (49% here beside
+    // 79.5% on the Lineup tab's card, for the same matchup). Those are ordered by the gap left instead (swingOrder).
+    const swings = built.rows.filter(r => r.res.kind === 'h2h' && r.res.status === 'swing' && !r.res.early && !r.res.bestBall);
     const key = `${ctx.week}|` + swings.map(r => `${r.league.leagueId}:${r.res.me.points}:${r.res.them.points}:${r.res.me.live.length}:${r.res.them.live.length}`).join('|');
     if (!swings.length || key === view.chancesKey) return;
     view.chancesKey = key;
@@ -291,6 +294,8 @@ const playerList = (players) => players.length
     ? players.map(p => `${escapeHtml(p.name)} <span class="mls-week-pos">${escapeHtml(p.pos)}</span>`).join(', ')
     : 'nobody left';
 const liveOf = (side) => [...side.live, ...side.liveBench];
+// What the side behind can still add (both sides' when level), for ordering a matchup with no win chance (swingOrder).
+const trailReachOf = (res) => res.margin < 0 ? res.me.reach : (res.margin > 0 ? res.them.reach : Math.max(res.me.reach, res.them.reach));
 // "54%", or "<1%" / ">99%" for a chance that rounds to 0 or 100 while it's still in play (someone mid-game: round 12).
 const pctText = (c) => c < 0.5 ? '<1%' : (c > 99.5 ? '>99%' : `${Math.round(c)}%`);
 // Who's left, by name only when it's a few (owner, after the Thursday-night pass: every name on both sides, early in the
@@ -429,7 +434,7 @@ function tileOrder(rows, started, final) {
     if (!started || final) return rows;
     const gap = (r) => r.res.kind === 'guillotine' ? (r.res.place ? Math.abs(r.res.place.cushion) : Infinity) : Math.abs(r.res.margin);
     const swing = (r) => r.res.kind === 'h2h' && r.res.status === 'swing';
-    const withChance = (r) => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null });
+    const withChance = (r) => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) });
     const early = (r) => r.res.kind === 'h2h' && r.res.early;
     const swings = rows.filter(r => swing(r) && !early(r)).map(withChance).sort(swingOrder);
     const rest = rows.filter(r => !swing(r)).sort((a, b) => gap(a) - gap(b));
@@ -489,7 +494,7 @@ function renderScoreboard(m) {
         // What the groups mean (keeper with redraft, Median only where it's played) is in the header's info tip
         // (owner, round 11: four lines of helper text on a phone before the first tile).
         if (!anyPaid && !paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Edit, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
-        const swings = callable.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null }))
+        const swings = callable.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) }))
             .sort(swingOrder);
         if (swings.length) {
             // The most uncertain few, with "Show all" for the rest (owner, round 12: on a busy Sunday 14 of 20 were in

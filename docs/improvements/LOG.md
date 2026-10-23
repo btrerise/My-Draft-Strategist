@@ -5722,3 +5722,16 @@ set back to "not started" and those players' points removed (a review script, no
 - Also from the pass: a tile's foot is two lines, the result and how it stands, then the league's context (median,
   guillotine place), instead of one wrapping line that left a "·" at the end of a line on desktop; the in-play list's
   margin sits by the league's name instead of at the far edge of a wide screen.
+
+### S21, mid-game replay (round 12's Simulator change, checked)
+
+Week 7 faked at two moments of Sunday afternoon (halftime of the 1pm games, then 7:00 left in their 4th quarter),
+with points from Sleeper's projections scaled to the time played, the London game final and the later games not
+started. The Simulator change held up: players mid-game read "(19.9 so far)" with a range, leaders' chances firmed
+up as the clock ran down, and nothing read 0% or 100% while games were on. Two fixes:
+- **No win chance for Best Ball on the Scoreboard.** It simulated the lineup Sleeper shows now, but in Best Ball the
+  bench can still replace a starter's score: Slow Mock Draft read 49% on its strip and 79.5% on the Simulator card
+  just below. Best Ball swings are ordered among the others by a rough chance from the gap and what the side behind
+  can still add (`swingOrder`'s `trailReach`). The Simulator card has the same Best Ball limit (it simulates one
+  fixed lineup); not changed here, a follow-up in TESTING.md.
+- **A mid-game player's range starts at his points so far** ("4.05-6.31 (3.9 so far)" read oddly).

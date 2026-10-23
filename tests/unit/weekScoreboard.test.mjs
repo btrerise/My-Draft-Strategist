@@ -96,6 +96,13 @@ test('swings: the most uncertain first by win chance, then the smallest gap', ()
         { name: 'd', margin: -1, winChance: null },
     ];
     assert.deepEqual(rows.sort(swingOrder).map(r => r.name), ['b', 'a', 'd', 'c']);
+    // No chance (Best Ball) but what the side behind can still add: a rough one from the gap, so it sorts in among them.
+    const bb = [
+        { name: 'chance20', margin: -5, winChance: 20 },
+        { name: 'bbClose', margin: -3, winChance: null, trailReach: 30 }, // 50 x (1 - 3/30) = 45
+        { name: 'bbFar', margin: -27, winChance: null, trailReach: 30 },  // 5
+    ];
+    assert.deepEqual(bb.sort(swingOrder).map(r => r.name), ['bbClose', 'chance20', 'bbFar']);
 });
 
 test('from a sync: team names, median, guillotine and your season record', () => {

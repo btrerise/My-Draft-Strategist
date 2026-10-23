@@ -103,7 +103,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   most uncertain five ("Show all" for the rest), the effectively decided ones on one line (a matchup the Simulator
   gives under 1% either way counts as decided, once nobody on either side is mid-game), then a
   tile for every league, closest first while games are on and in your league order before and after (up to four across,
-  one per row on phones), with your score and your opponent's, the result and margin, the win chance while it's in play, and "Median: W (3rd
+  one per row on phones), with your score and your opponent's, the result and margin, the win chance while it's in play (none for Best Ball, where the bench can still
+  count), and "Median: W (3rd
   of 12)" where it applies. Tap a tile to open that league's lineup.
   It says Provisional until every game of the week is final, then Final. A guillotine league's tile shows your score
   against the chop line and your place among the teams still alive; a league that also plays the median says where you

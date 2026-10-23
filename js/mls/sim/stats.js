@@ -320,7 +320,8 @@ export const getPlayerVarianceProfile = (weeklyScores, options = {}) => {
         return {
             mean: Number((actualScore + restMean).toFixed(2)),
             stdDev: Number(restSd.toFixed(2)),
-            floor: Number((actualScore + Math.max(0, restMean - restSd)).toFixed(2)),
+            // The range starts at what he has (a floor above it read oddly: "4.05-6.31 (3.9 so far)").
+            floor: Number(actualScore.toFixed(2)),
             ceiling: Number((actualScore + restMean + restSd).toFixed(2)),
             floorAt: actualScore,
             gamesPlayed: full.gamesPlayed,

@@ -133,8 +133,11 @@ export const recordText = (r) => `${r.W}–${r.L}${r.T ? `–${r.T}` : ''}`;
 // The order of the matchups still in play: the most uncertain first, by the Simulator's win chance when it has one
 // (the underdog side's chance: a comeback when you trail, a collapse when you lead), else by the gap left once the
 // trailing side's reach is counted.
+// A matchup with no win chance (Best Ball, or before the Simulator answers) but with trailReach (what the side behind
+// can still add) gets a rough one from the gap: 50 when the gap is nothing, 0 when it takes everything they have left.
 export function swingOrder(a, b) {
-    const upset = (m) => m.winChance == null ? null : Math.min(m.winChance, 100 - m.winChance);
+    const upset = (m) => m.winChance != null ? Math.min(m.winChance, 100 - m.winChance)
+        : (m.trailReach > 0 ? 50 * Math.max(0, 1 - Math.abs(m.margin) / m.trailReach) : null);
     const ua = upset(a), ub = upset(b);
     if (ua != null && ub != null && ua !== ub) return ub - ua;
     if (ua != null && ub == null) return -1;
