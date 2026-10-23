@@ -108,6 +108,26 @@ const tradedPicks = [
     { season: '2027', round: 2, roster_id: 1, previous_owner_id: 1, owner_id: 2 },
 ];
 
+// The Dashboard's This week card (improvements S21, tests/mls-this-week.spec.mjs): Sunday of week 2, with only the
+// MIN game (Justin Jefferson, yours in both leagues) still to play. Fixture League (redraft): you trail Rival 98.0 to
+// 110.0, a swing (Jefferson can close 12). Second Fixture League (LEAGUE2_ID, dynasty, same teams): you lead 130.4 to
+// 95.2 and Rival has nobody left, so it's decided. "Final" is the same Sunday after the MIN game: Jefferson 20.0.
+// The default league-matchups.json above stays at 0 points (before kickoff), which is what the screenshots show.
+export const LEAGUE2_ID = '1000000000000000021';
+const league2 = { ...league, league_id: LEAGUE2_ID, name: 'Second Fixture League', settings: { ...league.settings, type: 2 } };
+const withPoints = (pts) => matchups.map(m => {
+    const players_points = Object.fromEntries(m.players.map(id => [id, pts[id] ?? 0]));
+    const points = Math.round(m.starters.filter(id => id !== '0').reduce((s, id) => s + (pts[id] ?? 0), 0) * 100) / 100;
+    return { ...m, points, players_points, starters_points: m.starters.map(id => pts[id] ?? 0) };
+});
+// [Allen, Henry, Chase, Jefferson, Bowers, Lamb, Tucker, BAL] for you; [Lamar, Bijan, Gibbs, Nabers, Collins, Saquon, Butker, PHI] for Rival.
+const pointsFor = (mine, theirs) => Object.fromEntries([
+    ...['4984', '3198', '4866', '6794', '11604', '6786', '17', 'BAL'].map((id, i) => [id, mine[i]]),
+    ...['4881', '9509', '9221', '11632', '7569', '4892', '5095', 'PHI'].map((id, i) => [id, theirs[i]]),
+]);
+const live1 = pointsFor([22, 18, 20, 0, 10, 16, 7, 5], [24, 19, 17, 14, 12, 13, 6, 5]);
+const live2 = pointsFor([28.4, 22, 25, 0, 12, 25, 10, 8], [20.2, 15, 14, 11, 10, 12, 7, 6]);
+
 const out = {
     'players-nfl.json': players,
     'league.json': league,
@@ -115,6 +135,10 @@ const out = {
     'league-rosters.json': rosters,
     'league-matchups.json': matchups,
     'league-traded-picks.json': tradedPicks,
+    'league-matchups-live.json': withPoints(live1),
+    'league-matchups-final.json': withPoints({ ...live1, 6794: 20 }),
+    'league2.json': league2,
+    'league2-matchups.json': withPoints(live2),
     'user.json': USERS[0],
     'user-leagues.json': [league],
     'trending-add.json': trendingAdd,

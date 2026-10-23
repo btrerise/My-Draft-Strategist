@@ -101,7 +101,8 @@ function simulateTeamScore(players, stackGroups) {
             : randomNormal();
         // Clamp the lowest possible SIMULATED score to 0 so players don't end up with -15
         // points unless you use leagues with extreme negative penalties.
-        total += Math.max(0, p.mean + p.stdDev * z);
+        // A player mid-game (floorAt: his points so far) can't simulate below what he's already scored.
+        total += Math.max(typeof p.floorAt === 'number' ? p.floorAt : 0, p.mean + p.stdDev * z);
     }
     return total;
 }

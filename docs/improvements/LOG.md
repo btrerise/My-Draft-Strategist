@@ -5329,3 +5329,409 @@ CI run 39681637605 (commit 30fb1fd) failed only `visual.spec.mjs` "MLS synced le
 `-actual.png` (still 1280×1971) differs only in Give's column (x 652–1190, y 680–772: the From line and the search box one
 row lower), matching this container's main-vs-branch comparison. Committed CI's `-actual.png` as
 `desktop/mls-league-scout.png`. Nothing is left over.
+
+## S21 — This week: every league's matchup, live, with the swing matchups
+
+**User-visible effect.** A **This week** card at the top of the Dashboard's League Command Center (under Sync All /
+Optimize All, above the league cards), from the owner's sleeper-weekly-recap skill:
+- **Header** (it folds to this line, remembered): "Week 7", your W-L as it stands across every head-to-head Sleeper
+  matchup, "N still live", a **Provisional** chip (amber) until every game of the week is final, then **Final**, and
+  **Refresh**.
+- **Splits:** "Paid 4–2 · Free 5–4" (or, until a league is marked paid, a hint to mark them) and "Redraft 3–2 · Dynasty
+  6–4", with "(keeper counts with redraft)" when a keeper league is in it. Guillotine leagues are redraft (owner's note:
+  a chopped league is a redraft league of a specific kind, like Best Ball), but have no W-L of their own.
+- **Still in play:** the swing matchups, most uncertain first, each with both scores, the margin, "**38% to win**" from
+  the Matchup Simulator's math, and the live players on each side ("You: Justin Jefferson WR", "Them: nobody left").
+- **Effectively decided: 11 (8 W, 3 L)** on one line ("Done" once every game is final).
+- **All leagues:** one line per league: W / L / T, the name ("$" if paid), "vs Opponent" (plus "median: 4th of 12
+  (above)" in a league that also plays the median, "Best Ball"), your points–theirs and the margin, right-aligned.
+- **Notes:** a guillotine league's place ("Chop Shop · Guillotine (no opponent): 98.4, 7th of 10 alive, 4.2 above the
+  lowest · 3 live", or "lowest of 10 alive, 1.2 behind the next team", or "your team has been chopped"); leagues with
+  no matchup this week; manual leagues ("2 manual leagues: no Sleeper matchup to show"); and "Couldn't load from
+  Sleeper: X. Tap Refresh to try again." for a league whose fetch failed, with every other league still shown.
+- Before the week's first kickoff it reads "Week 7 starts Thu 8:15 PM" and lists each opponent without scores.
+- **Reorder** on the League Command Center has a **"$ Paid"** switch per Sleeper league; a paid league shows a "$" badge
+  on its card and in This week.
+- **Roster tab:** under the league name, your record ("5–2"), "Points for 3rd of 12 (812.4)" and "Points against 9th of
+  12 (760.1)", as of the last sync (shown after a league's next sync; hidden for manual leagues and before anyone has
+  played).
+
+**Owner's decisions (asked before building).**
+1. Where: a **Dashboard card that folds**, above the league cards.
+2. Paid vs free: a **"Paid league" switch in Reorder mode**, saved on the league; plus the owner's idea of a **"$" badge**
+   (shown on the league card and in This week, at every width).
+3. Ranking swings: the **Simulator's win chance**, shown as a percent ("I like the interconnectedness of features").
+   The skill's rule of thumb still decides what counts as in play; the percent orders them.
+4. Refresh: **when the Dashboard opens plus a Refresh button, no timer** (run it before SNF, before MNF, after MNF).
+5. Season records: **not on each line; on the Roster tab instead**, next to the league name, with points for and
+   against ranks (built here, the owner's long-standing ask).
+6. Image export: **not now, but wanted**; the owner also wants an **Export on the Roster tab**. Both noted under "Open
+   follow-ups" in docs/TESTING.md.
+
+**What changed, and where.**
+- `js/mls/week/scoreboard.js` (new, no app state): the skill's rules. `starterState` (live / done / dead: live until his
+  team's game is `post`; bye, no team or Out (`SIM_EXCLUDE_STATUSES`) is dead), `reachOf` (QB 20, RB/WR 15, TE/K/DEF 8,
+  less what he has scored), `sideSummary` (Best Ball counts live bench players, the best `starters.length` reaches),
+  `classifyMatchup` (done when nobody is live; decided when the trailing side has nobody live, or its reach is short of
+  a gap of 25+; otherwise a swing), `medianPlace`, `guillotinePlace`, `summarize`, `swingOrder` (the underdog's chance,
+  min(p, 100 − p), highest first; then the smaller gap), and the sync helpers `teamNamesFrom`, `playsMedian`,
+  `isGuillotine`, `seasonRecord`, `ordinal`.
+- `js/mls/week/thisWeek.js` (new): the card. `refreshThisWeek` fetches `GET /v1/league/<id>/matchups/<week>` for each
+  Sleeper league, five at a time, for Sleeper's `week` (`State.currentNflWeek`), after the scoreboard, projections and
+  player map; it reuses anything fetched in the last 2 minutes unless forced (Refresh) and fetches a league added since.
+  Draws scores first, then adds win chances. Your entry by `league.rosterId`, the opponent by `matchup_id`; points are
+  `custom_points` when Sleeper sets it, else `points`. Guillotine: `league.guillotine`, or, for a league synced before
+  S21 whose meta didn't load, every roster having its own `matchup_id`.
+- `js/mls/sim/winChance.js` (new): the Simulator's inputs gathered as `runMatchupSim` does (actual points once a
+  player's game has kicked off, projection plus his history's spread before, Doubtful/Out/IR left out) and run through
+  its own `sim/worker.js` instance (so it never answers the Lineup tab's Simulator run), returning each matchup's win
+  chance. One difference from the Simulator card: a player whose game has kicked off counts even with no game history
+  (the card drops him, losing real points). No change to the math.
+- The cache: `State.lineupActualPoints[leagueId]` (the Lineup tab's, `js/mls/lineup/gameInfo.js`) now holds the whole
+  matchups response and `finalTeams` (every team final at fetch time) in place of the lineup-only `finalKey`;
+  `storeLeagueMatchups` writes it for both the Lineup tab and the card. In memory only, as before.
+- `js/mls/leagues/sync.js`: the league object gains `teamNames` ({ roster_id: display name }), `medianMatch`,
+  `guillotine`, `record` (from the rosters a sync already fetches) and `paid` (carried over like `rosRankingSetId`).
+  Backup/Restore copies `mls_leagues` whole, so `paid` round-trips. A league synced before S21 reads its names and
+  flags from Sleeper once per visit (league, users, rosters) until its next sync.
+- `js/mls/render/leagueCards.js`: "$ Paid" in Reorder (`toggleLeaguePaid`), the "$" badge on the name, and the card's
+  load when the Dashboard is shown (redrawn otherwise). `js/mls/state.js`: loads it once Sleeper's week is known.
+- `js/mls/render/roster.js`, `lineup/index.html`: `#rosterRecord`. `#thisWeekCard` in the Command Center.
+- `js/mls/badges.js` + `js/mls/legend.js`: `paidBadgeMarkup`, `weekResultMarkup` (W/L/T), `weekStatusMarkup`
+  (Provisional/Final), each with a legend line. `css/mls.css`: the card, the badge, the record.
+- `js/shared/storage/keys.js`: `mls_this_week_folded` ('1' while folded). `sw.js`: the three new modules in
+  `PRECACHE_ASSETS`, `CACHE_NAME` v2.8.100 → v2.8.101. CHANGELOG lines under Lineup Strategist.
+
+**What I found in the owner's leagues (Sleeper API, week 7).** LOOG - Chop Shop is `settings.type` 3; every roster has
+its own `matchup_id`; chopped teams stay in the matchups with 0 points and no players (and 0 wins in the rosters). Eight
+leagues have `league_average_match` 1. `week` and `leg` agreed (7).
+
+**Measured.** 21 leagues, every one a swing, CPU slowed 4x (local server, so no network latency): from a reload, the
+scores were up in about 1.1 s and all 21 win chances 0.1–0.45 s after (the week stats come from IndexedDB after the
+first visit). The Dashboard never waits on the Simulator.
+
+**Tests.** `tests/unit/weekScoreboard.test.mjs` (the rules, median, guillotine, Best Ball, splits, order, record).
+`tests/mls-this-week.spec.mjs` (both widths): Sunday of week 2 with ESPN's scoreboard stubbed, two Sleeper leagues
+(the generator now writes "Second Fixture League", id …021, dynasty, and the mid-Sunday and final matchups): the
+headline "1–1 · 1 still live", Provisional, the splits (hint, then "Paid 1–0 · Free 0–1" after "$ Paid"), the swing
+(−12.0, "Justin Jefferson WR", "Them: nobody left", a percent), "Effectively decided: 1 (1 W, 0 L)", each line's scores;
+Paid survives Sync All; the fold survives a reload; Final and 2–0 after Refresh once every game is `post`; a league
+whose matchups fail is named and the other still shows; a guillotine league and a median league; one line per league
+at 375px, names whole, scores right-aligned; the Roster tab's record.
+Also `tests/mls-league-cards.spec.mjs`: its "each league's name shows once in the Command Center" check (S12) now leaves
+out the This week card, which lists every league by design.
+
+**Screenshots.** Six change, by design (the screenshot league's default matchups are at 0 points, so the card shows
+its before-kickoff state, "Week 2 starts soon", with the opponent line):
+- `desktop/mls-league-setup.png`, `phone/mls-league-setup.png`: the This week card above the league cards.
+- `desktop/mls-league-roster.png`, `phone/mls-league-roster.png`: the record line under the league name ("0–1 · Points
+  for 1st of 2 (120.0) · Points against 1st of 2 (110.0)").
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: three new lines in the badge legend ($, W/L/T,
+  Provisional/Final).
+The other 34 are pixel-identical to main: I rendered all 40 on main and on this branch in this container and compared
+them with `npm run pxdiff`. This container can't reproduce CI's renders (its fonts, as in earlier entries), so the six
+aren't re-taken yet: take them from the pull request's CI run ("Accepting an intended visual change" in
+docs/TESTING.md), checking each `-expected.png` matches the committed baseline.
+
+**Checks run.** check-precache OK; 408 unit tests pass; Playwright: 467 passed, the new spec's 12 included; the 10
+`visual.spec.mjs` comparisons fail here as they do on main (this container's fonts); `mls-league-cards.spec.mjs` failed
+until the change above, then passed (10/10).
+
+**Left over.**
+- Re-take the six PNGs from CI (above).
+- **S20:** `js/mls/sim/winChance.js` imports the Simulator's `stats.js` and starts `sim/worker.js`. When S20 loads the
+  Simulator on first use, load `winChance.js` through its loader from `week/thisWeek.js` (`addWinChances`), after the
+  scores are drawn, as now: the card must never wait on it.
+- **S22** builds on this card: each league's matchups (`players`, `starters`, `players_points`) are in
+  `State.lineupActualPoints[leagueId].matchups`, and `buildRows()` in `week/thisWeek.js` has every league's result.
+- The owner wants an image export of this card and an Export for the Roster tab (both under "Open follow-ups" in
+  docs/TESTING.md).
+- In-progress games: like the Simulator, a player whose game is under way counts as his points so far (no spread), so
+  a win chance mid-game understates the trailing side. The owner runs it between game windows, where that doesn't
+  arise; a change would be to the Simulator's math, out of scope here.
+- Sleeper moves `week` to the next week some time after MNF; a run after that shows the new week before kickoff. The
+  skill's post-MNF run is Monday night, before the switch.
+- Open follow-ups this touched: none of the existing ones.
+
+### S21, round 2: the owner's review (real week 6 data, phone and desktop)
+
+The owner looked at the card with their own leagues (week 6, through the console) and asked for these; all built:
+- **`?week=` in the address** (owner: yes, if it helps later sessions and users are unlikely to find it; both hold).
+  `/lineup/?week=6` shows week 6 in this card only: its own ESPN scoreboard (`parseEspnScoreboard`, now shared from
+  `js/mls/state.js`) and Sleeper projections, with a notice on the card ("Showing week 6 because the address has
+  ?week=6"). The rest of the app stays on Sleeper's week. `weekFromSearch` (scoreboard.js) accepts 1–18 only.
+  docs/TESTING.md mentions it under "How the tests work".
+- **Header:** "Week 6 Recap" ("Week 7 Matchups" before the first kickoff), an (i) tooltip saying what the card shows and
+  that the win chance is the Matchup Simulator's, and "**Record 14–6**" (labeled, owner's ask; the splits under it stay
+  unlabeled). On phones Refresh is its icon and the record wraps under the title, so the controls stay on one row.
+- **User Guide:** step 2 (League Command Center) gains "Week Recap" and "Paid leagues"; step 6 (Matchup Simulator) says
+  the Week Recap uses the same simulation.
+- **Lines:** the owner asked whether "115.7–97.6" reads as you–them. Probably, next to the W/L, but not certainly, so each
+  line now has your score beside your league's name and your opponent's beside "vs <opponent>", the margin to the right
+  of both, and "You / Them" over the column. The median and Best Ball go on a note line of their own (they made the
+  opponent line wrap on phones). On wide screens the lines keep a 720px reading width.
+- **Guillotine:** a line like the others (owner: less muted), in league order: no W/L, your score against the chop line
+  (the lowest of the other teams still alive, or the next team up when you're the lowest), the cushion as the margin,
+  and "Guillotine: 1st of 11 alive · 3 still to play". `guillotinePlace` returns `against` for it.
+- **Turning it off:** I suggested the fold is enough (one line when folded, remembered; nothing to turn off for anyone
+  without Sleeper leagues, who never see it). A setting can come later if the one line bothers anyone.
+- **Roster tab:** the record moved into the card's header, above its line, labeled "Record 4–2". On phones the league's
+  name takes the card's width, the format goes on the line below, then the record (owner's order; I agreed: the format
+  describes the name, so it stays next to it). On desktop I suggested leaving name and format on one line with the
+  record under them rather than all on one line: long league names would push the record off the end.
+
+Spec updates: the header and line selectors, the guillotine line, the Roster record's place, and a new test for
+`?week=1` (its own scoreboard request, the notice, Final, `State.currentNflWeek` unchanged).
+
+Checks after round 2: check-precache OK; 409 unit tests pass; Playwright 473 passed, the 10 `visual.spec.mjs` comparisons
+failing here as on main (this container's fonts). Rendered main and this branch here again: the same six PNGs change
+(Dashboard, Roster and Guide at both widths, now with round 2's layout) and the other 34 match main. Still to do: take
+the six from the pull request's CI run.
+
+### S21, round 3: the owner's review
+
+- **The card's chevron turns like a league card's.** The fold redrew the whole card, so the chevron's CSS turn never
+  played. It now folds in place (`toggleThisWeek` → `applyFold`, inside `withCardsTransition` from
+  render/leagueCards.js, the league cards' own helper): same element, same speed, and the cards below move with the
+  same view transition. The body is always drawn, `hidden` when folded.
+- **Desktop: the numbers at the card's right edge.** Round 2's 720px reading width left the scores partway across the
+  card; that cap is gone, and "You / Them" sits over the score column.
+- Spec: the fold keeps the same chevron element and hides the body; at 375px and 1280px each line's margin ends at the
+  card body's right edge. Ran `mls-this-week`, `mls-league-cards`, `view-transitions` and `tooltips-onscreen`
+  (47 passed, 1 skipped as on main), check-precache and the unit tests. The six screenshot PNGs listed above still
+  change (the Dashboard one with this round's layout) and still need taking from CI.
+
+### S21, round 4: the same fold animation as a league card
+
+The recap's chevron still turned differently, and its body just appeared (owner). The cause: a league card's fold
+animates because `nameCards` (render/leagueCards.js) gives each card a view-transition name for the transition, so the
+browser grows its box (`.vt-card`, css/base.css) and shows its chevron turning live; the recap had no name, so it was
+part of the page's crossfade. `nameCards` now names `#thisWeekCard` (`vt-lc-week`) and the toolbar under it
+(`#leagueCardsToolbar`, `vt-lc-toolbar`) like cards, near the screen only, in every cards transition: the recap folds
+exactly as a league card does, and the toolbar and cards below move with it. Checked frame by frame at a tenth of the
+speed on a phone, beside a league card's fold. `view-transitions.spec.mjs` has a test for it (the names during, the
+`cards` kind, the names gone after). 45 passed, 1 skipped (as on main) across view-transitions, mls-this-week and
+mls-league-cards.
+
+### S21, round 5: the owner's answers to my review as a user
+
+- **Folded before kickoff** (my suggestion 2, yes): until the week's first kickoff the card starts folded ("Week 7
+  Matchups · starts Thu 8:15 PM"), unless you opened it yourself that week. `mls_this_week_folded` now holds '1'
+  (folded by you, as before) or 'open-<season>-<week>' (opened by you before that week's kickoff); after kickoff an
+  untouched card is open. The screenshot league is before kickoff, so `mls-league-setup.png` shows it folded.
+- **"0% to win" under Still in play** (suggestion 3): the owner asked how 12 points could be 0%. It was the fixture: its
+  invented history gives "Jefferson" 9.4 a game with a spread of about 1.3 and a projection of 8.3, so 12 is nearly
+  three spreads out (about 0.2%, shown as 0%). The real Jefferson (about 15.9, spread around 7) would be about 65-70%.
+  The spec now sets his projection to 12.5 for the swing case (a percent between 15 and 95) and keeps 8.3 for a new
+  case: a swing by the rule of thumb that the Simulator puts under 0.5% (or over 99.5%) counts as effectively decided
+  (owner: "where there is genuinely a 0% chance"). Done at draw time, after the chances arrive.
+- **The paid hint's ✕** (suggestion 4, yes): `mls_paid_hint_dismissed` = '1'; data-action `dismissPaidHint`.
+- **Suggestion 1 (fold "All leagues")**: the owner asked whether each league's score should live on its league card
+  instead, with the recap as a summary. Not built yet; my recommendation went back to the owner (see the summary).
+- Tests: the new cases above, the before-kickoff fold (and 'open-2026-2' surviving a reload), and the view-transitions
+  test now checks the fold toggles whichever way it started.
+
+### S21, round 6: a Scoreboard tab (the owner's choice after weighing the options)
+
+After my review as a user (the recap made the Dashboard long), the owner asked for the options' pros and cons and for
+others. I offered: a result on each league card plus the recap (A), cards only (B), recap only (C), a Lineups | Scores
+switch on the Command Center (D), a grid of tiles instead of a list (E), and per-league detail on the Lineup tab (F); then
+a Scoreboard tab, which keeps D's benefit without a mode you can forget is on. The owner chose: **a Scoreboard tab with
+E's tiles, a one-line summary on the Dashboard, a matchup strip on the Lineup tab, and the league cards unchanged**; plus
+**labels only under the active tab** in the bottom bar (owner's idea, pointing to Material 3's navigation bar guidance;
+m3.material.io is blocked from this container, so I went by what I know of it: 3–5 destinations, active-only labels
+allowed for 4–5). Merging Roster and Lineup to make room: not needed (five tabs fit) and not done.
+
+- **Scoreboard tab** (`#scoreboardTab`, between Lineup and Scout; Feather-style trophy icon; drawer entry; swipe order;
+  number keys 4 Scoreboard, 5 Scout, 6 Guide; `#scoreboard` in the address). `#thisWeekCard` lives there: the header,
+  splits, Still in play and the decided line as before, then **every league as a tile**, closest first (still in play
+  first, by uncertainty; then by the gap): the W/L chip, the "$", the name whole, "You" and your score, "vs <opponent>"
+  and theirs, then the margin and notes (median, Best Ball, guillotine place). A colored edge: green ahead, red behind,
+  grey tied or before kickoff, blue guillotine. Two across at 375px, five at 1280px. A tile opens that league's Lineup
+  tab (`openLeagueLineup`). Before kickoff the tiles name the opponent only, in your league order.
+- **Dashboard**: `#weekSummaryLine`, one button ("Week 7 Recap · Record 9–6 · 4 still live · Final · Scoreboard ›").
+  The fold is gone (round 2–5's fold, its view-transition naming in `nameCards` and the round-4 test are removed), and
+  with it `mls_this_week_folded`, which never reached main, so it isn't in RETIRED_KEYS.
+- **Lineup tab**: `#lineupMatchupStrip` above the rankings card: W/L, the week, "vs <opponent>", both scores, the margin,
+  then the win chance and who's still to play (or "Effectively decided" / "Final"); before kickoff, "starts Thu 8:15 PM";
+  a guillotine league, its place. It redraws with the lineup (render/lineup.js asks for this week's data, at most every
+  2 minutes) and opens the Scoreboard.
+- One render, three places: `renderThisWeek` builds the model once and draws the tab, the line and the strip.
+  `refreshThisWeek` runs when the Scoreboard, the Dashboard or the Lineup tab shows, and once Sleeper's week is known on
+  the Dashboard or Scoreboard.
+- **Bottom bar** (css/mls.css, phones only, Lineup Strategist only): inactive labels fade out but keep their space and
+  stay readable by screen readers; the active one fades in. Wider screens keep every label (there's room, and Material
+  3 prefers labels when they fit). Draft Strategist's bar is unchanged.
+- Tests: `MLS_TABS` includes the Scoreboard (smoke, screenshots and the CSS tool visit it); `mls-keyboard` checks keys
+  1–6; `mls-this-week` rewritten for the tab, the tiles, the Dashboard line (opens the tab), a tile opening the league's
+  Lineup with its strip (and the strip following a league switch), the pre-kickoff tiles and strip, two tiles across
+  at 375px and 1280px. 73 passed and 1 skipped (as on main) across this-week, smoke, startup requests,
+  view-transitions, league cards, tooltips and SVG icons.
+- **Screenshots** (main and this branch rendered here and compared with `npm run pxdiff`): 14 differ, all by design, the
+  other 28 (Draft Strategist and T-Score) are identical. New: `mls-league-scoreboard.png` (desktop, phone). Changed:
+  `mls-empty-setup` and `mls-league-scout` (only the tab bar: the fifth tab, and on phones one label), `mls-league-setup`
+  (the Week Recap line), `mls-league-lineup` (the matchup strip), `mls-league-roster` (the record above the header's
+  line), `mls-league-guide` (the Guide's new lines and the legend), each at both widths. All to take from CI.
+- **Checks**: check-precache OK, 409 unit tests, Playwright 481 passed, 5 skipped; the 10 `visual.spec.mjs` comparisons
+  fail here as on main (this container's fonts). A first full run caught a syntax error I'd added to the Scoreboard's
+  tooltip (an unescaped apostrophe that stopped the page loading), pushed for a few minutes; fixed in the next commit.
+
+**After the syntax error (round 6).** The owner opened the branch's preview in a private window and got Lineup
+Strategist's "Something went wrong loading the app" banner (`SyntaxError: Unexpected identifier 's'`): that preview was
+still serving commit b339938's `js/mls/week/thisWeek.js`. JS and CSS are served from the service worker's cache first
+and refreshed in the background (sw.js), and the fix commit kept the same `CACHE_NAME`, so a browser that had cached
+the broken file could keep serving it. `CACHE_NAME` v2.8.101 → v2.8.102, so every browser that saw the bad build takes
+a fresh copy. Lesson for later cards: bump `CACHE_NAME` again in a fix commit that follows a broken push, even on the
+same branch.
+
+### S21, round 7: one league per row on phones, a scoreboard icon, and Material 3
+
+- **Phones: one league per row** (owner: two across was crowded, worst with the "$"). Below 600px each tile is one row:
+  the W/L, "$" and name with your score at the right, "vs <opponent>" with theirs, then the margin and notes; "You" is
+  dropped. Wider screens keep several across. The tile's parts are now siblings in one grid (`.mls-week-tile-btn`), so
+  CSS alone switches the layout. Spec: one per row at 375px, side by side at 1280px.
+- **Icon** (owner didn't like the trophy and asked for a literal scoreboard): Feather and Lucide have none; Material
+  Symbols' "scoreboard" is a filled glyph that wouldn't match the bar. I drew one in the bar's style (Feather stroke,
+  24px grid): a board showing "0:0" on two posts. Used in the tab bar, the drawer and the Dashboard's line.
+- **Material 3** (m3.material.io opened for this session; read the navigation bar's Guidelines, Specs and Accessibility
+  pages): what it says, against what the app does, went to the owner (see the summary). In short: labels on every item
+  ("Don't remove the labels from navigation items"), so round 6's active-only labels go against it; a filled (or
+  heavier) icon, a bold label and an active-indicator pill for the selected tab; 3–5 destinations (5 is the limit);
+  labels 1–2 words, never truncated or shrunk; the bar is for phones and tablets only, with a navigation rail on wider
+  windows, and on tablets horizontal items (icon beside label).
+
+### S21, round 8: the owner's answers on Material 3, and "Edit"
+
+- **Labels on every tab again** (owner: "I must have misremembered"; Material 3: don't remove labels). Round 6's
+  active-only labels are gone.
+- **Active tab**: a **bold label** (700; the others 500) and a **heavier icon** (stroke 2.6, Material 3's rule for icons
+  without a filled version), in css/base.css, so Draft Strategist's bar matches. **No pill**: the owner asked whether
+  the pill and the green marker should both show; I recommended the marker alone (the pill would be a fourth cue
+  saying the same thing, and the marker's slide is the nicer motion), and the owner agreed.
+- **Equal tab widths**: `.nav-btn` got `min-width: 0`, and its side padding went from 0.5rem to 2px with
+  `white-space: nowrap`. With five tabs a bold "Scoreboard" no longer fit its fifth of a phone, so the active tab grew,
+  the marker (measured once) missed it, and `view-transitions.spec.mjs` caught it. Measured with the test fonts: labels
+  fit from 375px; at 360px bold "Scoreboard" is 2px over its space and at 320px a few more, spilling (not cut) into the
+  gap between tabs; Outfit, the site's font, is narrower.
+- **"Reorder" is now "Edit"** (owner asked whether the word still fit, since it also marks paid leagues and removes
+  leagues): the button's text and aria-label, the tooltip, the Guide, the legend line, the Scoreboard's paid hint.
+  Ids and function names (`#reorderLeagueCards`, `toggleLeagueReorder`) stay.
+- **New card S26** (owner: "write up the navigation rail as a new card, and add to the runbook"): a navigation rail on
+  computers and horizontal tab items on tablets, per Material 3; added to the runbook (cards, plan step 7, lanes,
+  answers). Not built here.
+- Screenshots: the tab bar change also changes Draft Strategist's PNGs (every one shows the bar). To take from CI with
+  the rest.
+
+### S21, round 9: the owner's answers to the second user-hat review
+
+- **Median, in words** (owner: "show Median: L (4th of 6)"): tiles say "Median: W/L (Nth of M)", or "Plays the median"
+  before kickoff. The record gains a **Median** split: the W-L of the median games in the leagues that play one, with a
+  note that Record itself is head-to-head.
+- **The splits as chips** (owner: "the stack of text is plain-looking"): Paid / Free (once a league is marked paid),
+  Redraft, Dynasty and Median, each a small rounded chip, with one helper line under them for keeper and the median.
+  The "Done: N" line is gone once every game is final (it only repeated the record); "Effectively decided" stays while
+  games are on.
+- **Lineup strip: status inline.** "Final", "Effectively decided", the win chance and the median now sit on the strip's
+  main line, which wraps on a phone; only a swing's live players get a second line.
+- **Tiles**: no "You" label on desktop (every width now uses the phone layout: name and your score on the first line,
+  opponent and theirs on the second); a chevron in the bottom-right corner (it opens the lineup); the W/L chip moved
+  from before the name to the foot, beside the margin, and the "$" badge now runs as text after the name's last word.
+  That was the owner's "cards look a little off": a badge before the name (W/L) or in a flex column beside it ("$")
+  started paid and result names at different places.
+- **Order**: closest first while games are on; league order (as on the Dashboard) before kickoff and once every game
+  is final.
+
+### S21, round 10: grouped splits, the strip's second line on phones, four across
+
+- **Splits grouped** (owner: five loose chips read as if Paid + Free + Redraft + Dynasty + Median were all leagues):
+  each group is one segmented pill whose parts add up to every league (Paid | Free, Redraft | Dynasty), with more space
+  between groups; Median stands apart with "N of M leagues". Groups carry `role="group"` and an aria-label.
+- **Lineup strip on phones**: the status (Final, Effectively decided or the win chance) and the median get a line of
+  their own under the score; the chevron stays on the first line. On wider screens they stay beside the score.
+- **At most four tiles across** (owner asked whether five felt crowded; I agreed: league names like "Second Fixture
+  League" wrapped at five, and four keeps rows of a 12-league set to three): `minmax(max(200px, (100% - 3 gaps) / 4), 1fr)`.
+  Narrower screens still drop to three, two, then one.
+
+### S21, user-hat pass 3 (real leagues: week 7 before kickoff, week 6 final via ?week=6, phone and desktop)
+
+Fixed straight away:
+- **A guillotine tile before kickoff said "1st of 10 alive"**, with every team on 0. Before kickoff it now says
+  "Guillotine: 10 alive" and "Lowest score is chopped", with no "still to play".
+- **Tiles in a taller row spread their lines apart** (four across, a neighbour with a wrapped name or note made the
+  row taller and the grid shared the extra space between every line). The lines now stay together at the top and the
+  foot (result, notes, chevron) sits at the bottom, so feet line up across a row.
+
+Put to the owner: "Best Ball" wrapping onto a line of its own at four across; the helper text above the tiles (two
+lines on desktop, four on a phone) could move into the header's info tip.
+
+### S21, round 11: the owner's answers to pass 3
+
+- **Best Ball on the opponent's line** (owner chose (c): "my leagues may have Best Ball in the name, but that's not
+  the case for everyone"): "vs jakej80 · Best Ball". The opponent's name is cut short (ellipsis) before "Best Ball" is.
+- **The helper text above the tiles moved into the header's info tip** (owner agreed): what Paid / Free and Redraft /
+  Dynasty mean, keeper with redraft, Median only where it's played. Only the paid hint (closable) stays. The tip, the
+  Guide and the CHANGELOG also said guillotine leagues "count with redraft"; they're not in the Record at all (no
+  opponent), and now say so.
+
+### S21, user-hat pass 4 (live: Thursday night of week 7) and the owner's answers
+
+The first look at a live week with real leagues. With one game on, all 20 head-to-head matchups were "still in play"
+and each listed every player left on both sides: the phone Scoreboard was about 6,000px tall, and four 0.0–0.0
+matchups made the record "7–9–4". The owner agreed to all three proposals, with one change to the second:
+
+- **Too early to call** (owner: "only show a W-L record when at least 4 players on both sides have points. Predicting
+  W-L before then is pointless"; 4, not 5 or 6, because some leagues start only 8). `MIN_PLAYED`, `playedCount` and
+  `tooEarlyToCall` in scoreboard.js: a matchup still in play counts toward the record only once at least 4 starters on
+  each side have played (game under way or final; without game states, a starter with points). A decided or done
+  matchup always counts (its result is known). Too-early matchups: out of the record, the splits and the median
+  record; the header says "N too early to call" (no "Record" while none count); a line under the swings; tiles
+  last, with both scores but no W/L chip or margin; the strip says "Too early to call"; no win chance worked out
+  for them.
+- **Names only when it's a few**: "You: 9 to play" until a side has 4 or fewer left, then the names (swings and the
+  strip). The Best Ball note appears once under the swings, not under each Best Ball league.
+- **The info tip in short labelled lines** (Record, Median, Still in play, Effectively decided, Provisional), and the
+  Guide's one long "Week Recap" item split into "Week Recap" (the Dashboard line, when it loads) and "Scoreboard" with
+  a nested list (css/base.css: `.guide-list ul`).
+- Also: the header's Provisional pill and Refresh wrap together, so Refresh no longer sits on a line alone on a phone.
+- Checked live with the owner's leagues: "Week 7 Recap · 20 too early to call", phone page about 2,000px.
+
+### S21, user-hat pass 5 (a replayed Sunday afternoon) and round 12
+
+To see a Sunday afternoon with real leagues, week 6 was replayed with the late-afternoon, Sunday-night and Monday games
+set back to "not started" and those players' points removed (a review script, not in the repo).
+
+- **The Simulator during games** (owner: "make the change in the Simulator itself"). A player whose game had kicked
+  off counted as his points so far with no spread, as if final. During games that made win chances badly wrong, and
+  the round-5 rule (under 0.5% or over 99.5% counts as decided) could take a live matchup out of "Still in play".
+  Found when the replay counted the late games as kicked off: every late player froze on 0 and all 19 matchups read
+  as decided. Now:
+  - `gameShareLeft(status)` (sim/stats.js): the share of a game still to play, from ESPN's quarter and clock (1
+    before, 0 final, half at halftime or without a clock, overtime against a full game).
+  - `parseEspnScoreboard` stores it per team (`left`); `gameShareLeftFor(team)` (lineup/gameInfo.js) reads it.
+  - `getPlayerVarianceProfile`'s new `shareLeft`: points so far plus his usual distribution scaled to the share left
+    (spread by its square root); `floorAt` so the worker never draws below what he has scored; Boom/Bust from the
+    model around the live mean; `inProgress` and `actualSoFar` for the Simulator card ("(3 so far)").
+  - Used by the Simulator card (sim/matchup.js, sim/ui.js) and the Scoreboard's win chances (sim/winChance.js).
+  - The "settled by the Simulator" rule waits until nobody on either side is mid-game; a chance that rounds to 0 or
+    100 meanwhile reads "<1%" / ">99%".
+- **A shorter in-play list, with the chance on the tiles** (owner: combine (a) and (b)): "Still in play" lists the five
+  most uncertain, with "Show all N" (in memory, until the week changes); every in-play tile shows its win chance
+  next to the margin.
+- **"Effectively decided" only beside something still open** (owner agreed): with nothing in play or too early, it
+  repeated the record.
+- Also from the pass: a tile's foot is two lines, the result and how it stands, then the league's context (median,
+  guillotine place), instead of one wrapping line that left a "·" at the end of a line on desktop; the in-play list's
+  margin sits by the league's name instead of at the far edge of a wide screen.
+
+### S21, mid-game replay (round 12's Simulator change, checked)
+
+Week 7 faked at two moments of Sunday afternoon (halftime of the 1pm games, then 7:00 left in their 4th quarter),
+with points from Sleeper's projections scaled to the time played, the London game final and the later games not
+started. The Simulator change held up: players mid-game read "(19.9 so far)" with a range, leaders' chances firmed
+up as the clock ran down, and nothing read 0% or 100% while games were on. Two fixes:
+- **No win chance for Best Ball on the Scoreboard.** It simulated the lineup Sleeper shows now, but in Best Ball the
+  bench can still replace a starter's score: Slow Mock Draft read 49% on its strip and 79.5% on the Simulator card
+  just below. Best Ball swings are ordered among the others by a rough chance from the gap and what the side behind
+  can still add (`swingOrder`'s `trailReach`). The Simulator card has the same Best Ball limit (it simulates one
+  fixed lineup); not changed here, a follow-up in TESTING.md.
+- **A mid-game player's range starts at his points so far** ("4.05-6.31 (3.9 so far)" read oddly).

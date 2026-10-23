@@ -85,6 +85,8 @@ test.describe('League Command Center: one card per league', () => {
 
             // One card per league, in league order; the old table, box lines and Best Available card are gone, so
             // each league's name shows once in the Command Center (the Requirements card below names the active one).
+            // The This week card above the cards (improvements S21) lists every league's matchup by design, so it's
+            // left out of this count.
             await expect(cardNames(page)).toHaveText(['Fixture League', SECOND]);
             await expect(page.locator('#dashboardMatrixBody, #dashboardBestAvailable')).toHaveCount(0);
             for (const league of ['Fixture League', SECOND]) {
@@ -93,6 +95,7 @@ test.describe('League Command Center: one card per league', () => {
                     let n = 0;
                     while (walker.nextNode()) {
                         const el = walker.currentNode.parentElement;
+                        if (el.closest('#thisWeekCard')) continue;
                         if (walker.currentNode.textContent.includes(name) && el.getClientRects().length > 0) n++;
                     }
                     return n;
@@ -175,10 +178,10 @@ test.describe('League Command Center: one card per league', () => {
         await routeLeagues(page);
         await seedTwoLeagues(page);
         await expect(cardNames(page)).toHaveText(['Fixture League', SECOND]);
-        // ▲ ▼ ✕ only in Reorder mode (round 4).
+        // ▲ ▼ ✕ only in Edit mode (round 4; "Reorder" until S21 added "$ Paid" to it).
         await expect(page.locator('#leagueCards .mls-lc-controls')).toHaveCount(0);
         const reorder = page.locator('#reorderLeagueCards');
-        await expect(reorder).toHaveText('Reorder');
+        await expect(reorder).toHaveText('Edit');
         await reorder.click();
         await expect(reorder).toHaveText('Done');
         await expect(reorder).toHaveAttribute('aria-pressed', 'true');

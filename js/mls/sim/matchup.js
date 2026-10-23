@@ -10,7 +10,7 @@ import { State, refreshGameTimes } from '../state.js';
 import { getShortInjuryStatus, isExcludedFromSimulation, SIM_EXCLUDE_STATUSES, getActiveLeague, isConnectionError } from '../helpers.js';
 import { getCleanNameToIdIndex } from '../players.js';
 import { fantasyPosition } from '../constants.js';
-import { getLeagueScoringKey, hasKickedOff } from '../lineup/gameInfo.js';
+import { gameShareLeftFor, getLeagueScoringKey, hasKickedOff } from '../lineup/gameInfo.js';
 import { getWaiverInsights } from '../scout/waiverInsights.js';
 import { slotAcceptsPos } from '../render/lineup.js';
 import { normalizeName } from '../../shared/names.js';
@@ -192,7 +192,9 @@ export const runMatchupSim = async function() {
             return {
                 id, name, pos: fantasyPosition(p) || '', team: playerTeam, weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
                 isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id),
-                actualScore
+                actualScore,
+                // His game still under way: his points so far plus the rest of it (sim/stats.js).
+                shareLeft: actualScore !== null ? gameShareLeftFor(playerTeam) : 0,
             };
         };
 
@@ -242,7 +244,7 @@ export const runMatchupSim = async function() {
             .map(s => ({ id: s.player.id, slotType: s.slot.replace(/[0-9]/g, '') }));
 
         const team1ProfilesById = {};
-        team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean, actualScore: p.actualScore }); });
+        team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean, actualScore: p.actualScore, shareLeft: p.shareLeft }); });
 
         // Given a candidate's own variance profile and position, finds the weakest eligible
         // starter they could replace and returns the win probability against that starter --
@@ -277,7 +279,7 @@ export const runMatchupSim = async function() {
             const benchObjs = toPlayerObjs(benchIds, myEntry);
 
             benchObjs.forEach(benchPlayer => {
-                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores, { projectedMean: benchPlayer.projectedMean, actualScore: benchPlayer.actualScore });
+                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores, { projectedMean: benchPlayer.projectedMean, actualScore: benchPlayer.actualScore, shareLeft: benchPlayer.shareLeft });
                 const result = compareAgainstWeakestStarter(benchProfile, benchPlayer.pos);
                 if (!result) return;
 
