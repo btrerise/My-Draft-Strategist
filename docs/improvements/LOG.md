@@ -5663,3 +5663,12 @@ Fixed straight away:
 
 Put to the owner: "Best Ball" wrapping onto a line of its own at four across; the helper text above the tiles (two
 lines on desktop, four on a phone) could move into the header's info tip.
+
+### S21, round 11: the owner's answers to pass 3
+
+- **Best Ball on the opponent's line** (owner chose (c): "my leagues may have Best Ball in the name, but that's not
+  the case for everyone"): "vs jakej80 · Best Ball". The opponent's name is cut short (ellipsis) before "Best Ball" is.
+- **The helper text above the tiles moved into the header's info tip** (owner agreed): what Paid / Free and Redraft /
+  Dynasty mean, keeper with redraft, Median only where it's played. Only the paid hint (closable) stays. The tip, the
+  Guide and the CHANGELOG also said guillotine leagues "count with redraft"; they're not in the Record at all (no
+  opponent), and now say so.

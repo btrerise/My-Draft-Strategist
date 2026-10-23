@@ -1849,7 +1849,6 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-split + .mls-week-split { border-left: 1px solid var(--border); }
 .mls-week-split-of { display: inline-flex; align-items: center; padding: 2px 10px 2px 0; font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
 .mls-week-split-label { font-weight: 500; color: var(--text-muted); }
-.mls-week-splits-note { margin: 0 0 0.3rem; }
 .mls-week-hint { display: flex; align-items: flex-start; gap: 0.5rem; }
 .mls-week-hint-close { flex-shrink: 0; color: var(--text-muted); cursor: pointer; padding: 0 0.25rem; line-height: 1.4; }
 .mls-week-hint-close:hover { color: var(--text-main); }
@@ -1891,7 +1890,9 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-tile-top { grid-area: top; min-width: 0; line-height: 1.25; }
 .mls-week-tile-top .mls-week-name { font-size: 0.85rem; }
 .mls-week-tile-top .mls-paid-badge { vertical-align: 1px; }
-.mls-week-tile-who { min-width: 0; font-size: 0.78rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mls-week-tile-who { min-width: 0; display: flex; font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+.mls-week-tile-opp { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mls-week-tile-fmt { flex-shrink: 0; margin-left: 0.3em; }
 .mls-week-tile-who { grid-area: opp; }
 .mls-week-tile-pts { grid-area: theirs; text-align: right; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .mls-week-tile-pts.is-you { grid-area: you; color: var(--text-main); font-weight: 700; font-size: 0.9rem; }

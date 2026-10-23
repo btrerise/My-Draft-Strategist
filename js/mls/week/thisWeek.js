@@ -41,7 +41,7 @@ const FRESH_MS = 2 * 60 * 1000;
 const PARALLEL = 5;
 const isSleeperLeague = (l) => l && l.leagueId && !/^(manual|handoff)_/.test(l.leagueId);
 const REFRESH_ICON = (spin) => `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"${spin ? ' class="sync-spinner"' : ''}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>`;
-const TOOLTIP = 'Your matchup in every Sleeper league this week, from Sleeper\'s live scores. Record is how each matchup stands right now (Paid / Free: mark paid leagues with "$ Paid" after tapping Edit on the Dashboard; keeper and guillotine leagues count with Redraft). Still in play: matchups the side that\'s behind can still turn around, with who\'s left to play on each side and your chance to win from the Matchup Simulator (Lineup tab), which plays the rest of the week out 10,000 times from Sleeper\'s projections and each player\'s past scores. Effectively decided: the side that\'s behind has nobody left, or too little to close the gap. Provisional until the week\'s last game is final. Tap a league to open its lineup. It loads when you open the Dashboard, the Scoreboard or the Lineup tab; tap Refresh for the latest.';
+const TOOLTIP = 'Your matchup in every Sleeper league this week, from Sleeper\'s live scores. Record is how each head-to-head matchup stands right now, grouped two ways: Paid / Free (mark paid leagues with "$ Paid" after tapping Edit on the Dashboard) and Redraft / Dynasty (keeper leagues count with Redraft). Median is your record against the league median, only in the leagues that play one. A guillotine league has no opponent, so it isn\'t in the Record. Still in play: matchups the side that\'s behind can still turn around, with who\'s left to play on each side and your chance to win from the Matchup Simulator (Lineup tab), which plays the rest of the week out 10,000 times from Sleeper\'s projections and each player\'s past scores. Effectively decided: the side that\'s behind has nobody left, or too little to close the gap. Provisional until the week\'s last game is final. Tap a league to open its lineup. It loads when you open the Dashboard, the Scoreboard or the Lineup tab; tap Refresh for the latest.';
 
 // --- What this card last loaded (in memory) ---
 const view = { week: null, loadedAt: 0, loading: null, failed: new Map(), chances: new Map(), chancesKey: '' };
@@ -341,9 +341,10 @@ function tileHTML(r, started) {
         oppLabel = !g ? 'Your team has been chopped' : (!started ? 'Lowest score is chopped' : (g.rank === g.of ? 'Next team up' : 'Chop line'));
         if (g && started) { youPts = fmt(res.me.points); oppPts = fmt(g.against); margin = g.cushion; }
     } else {
-        oppLabel = `vs ${escapeHtml(res.oppName)}`;
+        // Best Ball on the opponent's line, not in the foot, where it wrapped onto a line of its own (owner, round 11).
+        // The opponent's name gives way (ellipsis) before it does.
+        oppLabel = `<span class="mls-week-tile-opp">vs ${escapeHtml(res.oppName)}</span>${res.bestBall ? '<span class="mls-week-tile-fmt">· Best Ball</span>' : ''}`;
         if (res.median) notes.push(medianText(res.median, started));
-        if (res.bestBall) notes.push('Best Ball');
         if (started) {
             tone = res.result === 'W' ? 'win' : (res.result === 'L' ? 'loss' : 'tie');
             chip = weekResultMarkup(res.result);
@@ -439,10 +440,8 @@ function renderScoreboard(m) {
             ...(medians.length ? [group('Against the median', [split('Median', medRec)], `<span class="mls-week-split-of">${medians.length} of ${h2h.length} league${h2h.length === 1 ? '' : 's'}</span>`)] : []),
         ];
         parts.push(`<div class="mls-week-splits-row">${groups.join('')}</div>`);
-        const notes2 = [];
-        if (sum.keeper) notes2.push('Keeper counts with redraft.');
-        if (medians.length) notes2.push('Record is head-to-head only; Median is your record against the league median where it\'s played.');
-        if (notes2.length) parts.push(`<p class="text-helper mls-week-splits-note">${notes2.join(' ')}</p>`);
+        // What the groups mean (keeper with redraft, Median only where it's played) is in the header's info tip
+        // (owner, round 11: four lines of helper text on a phone before the first tile).
         if (!anyPaid && !paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Edit, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
         const swings = h2h.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null }))
             .sort(swingOrder);
