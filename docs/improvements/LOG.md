@@ -5694,3 +5694,31 @@ matchups made the record "7–9–4". The owner agreed to all three proposals, w
   a nested list (css/base.css: `.guide-list ul`).
 - Also: the header's Provisional pill and Refresh wrap together, so Refresh no longer sits on a line alone on a phone.
 - Checked live with the owner's leagues: "Week 7 Recap · 20 too early to call", phone page about 2,000px.
+
+### S21, user-hat pass 5 (a replayed Sunday afternoon) and round 12
+
+To see a Sunday afternoon with real leagues, week 6 was replayed with the late-afternoon, Sunday-night and Monday games
+set back to "not started" and those players' points removed (a review script, not in the repo).
+
+- **The Simulator during games** (owner: "make the change in the Simulator itself"). A player whose game had kicked
+  off counted as his points so far with no spread, as if final. During games that made win chances badly wrong, and
+  the round-5 rule (under 0.5% or over 99.5% counts as decided) could take a live matchup out of "Still in play".
+  Found when the replay counted the late games as kicked off: every late player froze on 0 and all 19 matchups read
+  as decided. Now:
+  - `gameShareLeft(status)` (sim/stats.js): the share of a game still to play, from ESPN's quarter and clock (1
+    before, 0 final, half at halftime or without a clock, overtime against a full game).
+  - `parseEspnScoreboard` stores it per team (`left`); `gameShareLeftFor(team)` (lineup/gameInfo.js) reads it.
+  - `getPlayerVarianceProfile`'s new `shareLeft`: points so far plus his usual distribution scaled to the share left
+    (spread by its square root); `floorAt` so the worker never draws below what he has scored; Boom/Bust from the
+    model around the live mean; `inProgress` and `actualSoFar` for the Simulator card ("(3 so far)").
+  - Used by the Simulator card (sim/matchup.js, sim/ui.js) and the Scoreboard's win chances (sim/winChance.js).
+  - The "settled by the Simulator" rule waits until nobody on either side is mid-game; a chance that rounds to 0 or
+    100 meanwhile reads "<1%" / ">99%".
+- **A shorter in-play list, with the chance on the tiles** (owner: combine (a) and (b)): "Still in play" lists the five
+  most uncertain, with "Show all N" (in memory, until the week changes); every in-play tile shows its win chance
+  next to the margin.
+- **"Effectively decided" only beside something still open** (owner agreed): with nothing in play or too early, it
+  repeated the record.
+- Also from the pass: a tile's foot is two lines, the result and how it stands, then the league's context (median,
+  guillotine place), instead of one wrapping line that left a "·" at the end of a line on desktop; the in-play list's
+  margin sits by the league's name instead of at the far edge of a wide screen.

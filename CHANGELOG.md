@@ -89,6 +89,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The Matchup Simulator during games.** A player whose game is still being played used to count as finished on the
+  points he had so far (a receiver on 3 in the first quarter counted as 3), so win chances during games were badly
+  off. He now counts as his points so far plus his usual output for the part of the game that's left (from the
+  quarter and clock), and as a fixed score once his game is final. On the Lineup tab, his range reads "(3 so far)".
 - **A Scoreboard tab: every league's matchup, live.** A new tab (a scoreboard icon in the tab bar, between Lineup and Scout)
   shows this week's score in every Sleeper league ("Week 7 Recap", with an info tip): your record as it stands (a
   matchup joins it once at least 4 players a side have played; before that it's "too early to call"), split
@@ -96,9 +100,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   against the median in the leagues that play one, the matchups still in play first
   (both scores, the margin, your win chance from the Matchup Simulator, and who's still to play on each side: names
   once it's down to 4 or fewer, a count before), the
-  effectively decided ones on one line (a matchup the Simulator gives under 1% either way counts as decided), then a
+  most uncertain five ("Show all" for the rest), the effectively decided ones on one line (a matchup the Simulator
+  gives under 1% either way counts as decided, once nobody on either side is mid-game), then a
   tile for every league, closest first while games are on and in your league order before and after (up to four across,
-  one per row on phones), with your score and your opponent's, the result and margin, and "Median: W (3rd of 12)" where it applies. Tap a tile to open that league's lineup.
+  one per row on phones), with your score and your opponent's, the result and margin, the win chance while it's in play, and "Median: W (3rd
+  of 12)" where it applies. Tap a tile to open that league's lineup.
   It says Provisional until every game of the week is final, then Final. A guillotine league's tile shows your score
   against the chop line and your place among the teams still alive; a league that also plays the median says where you
   stand against it; a league whose matchups didn't load is named, with the rest still shown. It loads when you open

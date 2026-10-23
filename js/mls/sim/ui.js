@@ -202,7 +202,7 @@ export const runMatchupSimulation = (team1Players, team2Players, options = {}) =
     // getPlayerVarianceProfile itself -- see its own comment -- so it's just passed through
     // here alongside projectedMean rather than branched on in this module.
     const toProfile = (player) => {
-        const profile = { ...player, ...getPlayerVarianceProfile(player.weeklyScores, { projectedMean: player.projectedMean, actualScore: player.actualScore }) };
+        const profile = { ...player, ...getPlayerVarianceProfile(player.weeklyScores, { projectedMean: player.projectedMean, actualScore: player.actualScore, shareLeft: player.shareLeft }) };
         const boomBust = getBoomBustRates(profile, player.weeklyScores, {
             currentSeasonScores: player.currentSeasonScores, currentWeek
         });
@@ -274,7 +274,7 @@ function renderPlayerList(profiles) {
                 : `<span class="sim-player-boombust"><span class="sim-bust">Bust: ${p.bustRate}%</span> &nbsp;&bull;&nbsp; <span class="sim-boom">Boom: ${p.boomRate}%</span></span>`;
             const rangeHTML = p.isActual
                 ? `<span class="sim-player-range">${p.mean} <span class="sim-player-mean">pts (actual)</span></span>`
-                : `<span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.mean} ${p.usingProjection ? 'proj' : 'avg'})</span></span>`;
+                : `<span class="sim-player-range">${p.usedFallback ? '~' : ''}${p.floor}&ndash;${p.ceiling} <span class="sim-player-mean">(${p.inProgress ? `${p.actualSoFar} so far` : `${p.mean} ${p.usingProjection ? 'proj' : 'avg'}`})</span></span>`;
             return `
             <li class="sim-player-row">
                 <div class="sim-player-info">

@@ -5,6 +5,7 @@
 import { getNflState } from '../shared/api/sleeper.js';
 // readJSON is js/boot.js's window.readJSON (boot.js is a plain script, so it can't be imported).
 import { ESPN_TEAM_ALIASES } from './constants.js';
+import { gameShareLeft } from './sim/stats.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
 import { clearLocksForNewWeek, loadRosterTab, refreshThisWeek, renderBestAvailable, renderLineupUI, optimizeLineup } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
@@ -295,8 +296,10 @@ export function applyLineupSettingsToUI() {
                 const abbr = c.team && c.team.abbreviation;
                 return abbr ? (ESPN_TEAM_ALIASES[abbr] || abbr) : null;
             });
-            const gameState = (evt.status && evt.status.type && evt.status.type.state)
-                || (comp.status && comp.status.type && comp.status.type.state) || null;
+            const status = (evt.status && evt.status.type) ? evt.status : (comp.status || null);
+            const gameState = (status && status.type && status.type.state) || null;
+            // How much of the game is left, for the Simulator's players mid-game (sim/stats.js).
+            const left = gameState ? gameShareLeft(status) : null;
             comp.competitors.forEach((c, i) => {
                 const abbr = abbrs[i];
                 if (!abbr) return;
@@ -304,7 +307,7 @@ export function applyLineupSettingsToUI() {
                 // The game has exactly two competitors, so the opponent is whichever
                 // entry isn't this one.
                 const opp = abbrs.find((_, j) => j !== i) || null;
-                games[abbr] = { opp, home: c.homeAway === 'home', state: gameState };
+                games[abbr] = { opp, home: c.homeAway === 'home', state: gameState, left };
             });
         });
         return Object.keys(map).length ? { map, games } : null;

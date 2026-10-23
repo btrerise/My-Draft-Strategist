@@ -1859,7 +1859,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-swings { display: flex; flex-direction: column; gap: 0.45rem; }
 .mls-week-swing { border-left: 3px solid #f59e0b; padding: 0.15rem 0 0.15rem 0.55rem; }
 .mls-week-swing-head { display: flex; align-items: baseline; gap: 0.5rem; }
-.mls-week-swing-head .mls-week-line-name { flex: 1 1 auto; min-width: 0; }
+.mls-week-swing-head .mls-week-line-name { flex: 0 1 auto; min-width: 0; }
 .mls-week-name { color: var(--text-main); font-weight: 600; overflow-wrap: break-word; }
 .mls-week-margin { flex-shrink: 0; font-size: 0.78rem; color: var(--primary-green); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mls-week-margin.is-behind { color: #ef4444; }
@@ -1900,7 +1900,8 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-tile-pts.is-you { grid-area: you; color: var(--text-main); font-weight: 700; font-size: 0.9rem; }
 /* The foot: the result chip and margin, then the notes, and a chevron in the bottom-right corner (it opens the lineup). */
 .mls-week-tile-foot { grid-area: foot; align-self: end; display: flex; align-items: flex-end; gap: 0.5rem; padding-top: 0.2rem; font-size: 0.72rem; color: var(--text-muted); }
-.mls-week-tile-notes { min-width: 0; display: inline-flex; flex-wrap: wrap; align-items: center; column-gap: 0.3rem; }
+.mls-week-tile-notes { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.mls-week-tile-line { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.3rem; }
 .mls-week-tile-go { margin-left: auto; flex-shrink: 0; color: var(--text-muted); }
 .mls-week-tile-btn:hover .mls-week-tile-go { color: var(--text-main); }
 /* Phones: one league per row. */
@@ -1909,6 +1910,8 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 }
 .mls-week-tile-margin { color: var(--primary-green); font-variant-numeric: tabular-nums; font-weight: 600; }
 .mls-week-tile-margin.is-behind { color: #ef4444; }
+.mls-week-tile-chance { color: var(--primary-green); font-weight: 700; white-space: nowrap; }
+.mls-week-show-all { margin: 0.45rem 0 0; color: var(--primary-green); font-size: 0.8rem; font-weight: 600; cursor: pointer; padding: 0.2rem 0; }
 .mls-week-result { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; font-size: 0.7rem; font-weight: 700; border-radius: 4px; padding: 1px 0; }
 .mls-week-result.is-win { color: #10b981; background: rgba(16, 185, 129, 0.15); }
 .mls-week-result.is-loss { color: #ef4444; background: rgba(239, 68, 68, 0.15); }

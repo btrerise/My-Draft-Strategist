@@ -143,6 +143,14 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
             || bench.some(p => kickoffFreeze(league, p) === 'in');
     }
 
+    // The share of the team's game still to play while it's under way (ESPN's quarter and clock), else 0: before
+    // kickoff a player has no actual score to add to, and after the final whistle there's nothing left. For the
+    // Simulator's players mid-game (sim/stats.js, getPlayerVarianceProfile's shareLeft).
+    export function gameShareLeftFor(team) {
+        const g = team && State.gamesByTeam[team];
+        return g && g.state === 'in' && typeof g.left === 'number' ? g.left : 0;
+    }
+
     // True only when ESPN says the team's game is over -- unlike hasKickedOff, which is just
     // "kickoff time has passed" and stays true through the whole game. Unknown is false.
     function isGameFinal(team) {

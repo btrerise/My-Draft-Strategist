@@ -3,7 +3,8 @@
 // sim/worker.js), run for several leagues' matchups at once and returned as numbers instead of drawn into the
 // Simulator card. Nothing here changes how a matchup is simulated; it only gathers the inputs the way runMatchupSim
 // (sim/matchup.js) does:
-// - a player whose game has kicked off counts as his actual points so far (the Simulator's rule: zero variance);
+// - a player whose game has kicked off counts as his actual points so far, plus the rest of his game while it's still
+//   being played (shareLeft: the Simulator's rule, sim/stats.js), and as a fixed number once it's final;
 // - Doubtful, Out, IR and the like are left out (isExcludedFromSimulation), as is anyone with no game history;
 // - everyone else is his Sleeper projection, with the spread of his past weekly scores.
 // It has its own Worker, so a run here never answers (or cancels) the Simulator card's run on the Lineup tab.
@@ -35,7 +36,8 @@ function simulate(team1, team2) {
 
 /**
  * matchups: [{ key, scoringKey, mine: [player], theirs: [player] }], where a player is
- *   { id, pos, team, actual: number | null (set once his game has kicked off), projected: number | null, excluded }.
+ *   { id, pos, team, actual: number | null (set once his game has kicked off), shareLeft: 0-1 (of his game still to
+ *   play, while it's under way), projected: number | null, excluded }.
  * Returns Map key -> your win chance in percent (one decimal), for each matchup the worker answered.
  * season / week: this week's, for the score history (weeks before it).
  */
@@ -64,7 +66,7 @@ export async function matchupWinChances(matchups, { season, week }) {
             const actual = typeof p.actual === 'number' ? p.actual : null;
             if (p.excluded && actual === null) return arr;
             if (actual === null && scores.length === 0) return arr; // no history: left out, as the Simulator does
-            arr.push({ pos: p.pos, team: p.team, ...getPlayerVarianceProfile(scores, { projectedMean: p.projected, actualScore: actual }) });
+            arr.push({ pos: p.pos, team: p.team, ...getPlayerVarianceProfile(scores, { projectedMean: p.projected, actualScore: actual, shareLeft: p.shareLeft || 0 }) });
             return arr;
         }, []);
         const team1 = profiles(m.mine), team2 = profiles(m.theirs);

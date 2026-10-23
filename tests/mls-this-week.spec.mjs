@@ -108,6 +108,9 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(swingTile.locator('.mls-week-tile-margin')).toHaveText('−12.0');
         await expect(swingTile.locator('.mls-week-tile-foot .mls-week-result')).toHaveText('L');
         await expect(swingTile.locator('.mls-week-tile-go')).toHaveCount(1);
+        // A matchup still in play carries its win chance on its tile too.
+        await expect(swingTile.locator('.mls-week-tile-chance')).toHaveText(/^\d+% to win$/);
+        await expect(wonTile.locator('.mls-week-tile-chance')).toHaveCount(0);
         await expect(wonTile).toHaveClass(/\bis-win\b/);
         await expect(wonTile.locator('.mls-week-name')).toHaveText('Second Fixture League');
         await expect(pts(wonTile)).toHaveText(['130.4', '95.2']);
@@ -168,7 +171,28 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(card(page).locator('.mls-week-swing')).toHaveCount(0, { timeout: 15000 });
         await expect(card(page).locator('.mls-week-head')).toContainText('Record 1–1');
         await expect(card(page).locator('.mls-week-head')).not.toContainText('still live');
-        await expect(card(page).locator('.mls-week-decided')).toHaveText('Effectively decided: 2 (1 W, 1 L)');
+        // Nothing left in play, so no "Effectively decided" line: it would only repeat the record (round 12).
+        await expect(card(page).locator('.mls-week-decided')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    // Round 12: Jefferson's game under way (4th quarter, 5:00 left, 0 points so far). The Simulator counts the rest of
+    // his game, not 0 as final, and while anyone is mid-game a matchup isn't settled by the Simulator, however low.
+    test('mid-game: no settling by the Simulator, and the chance reads "<1%" rather than 0%', async ({ page }) => {
+        const { state } = await setup(page, { jefferson: null, routes: async (page) => {
+            await page.unroute(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/);
+            await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => {
+                const sb = scoreboard();
+                sb.events.forEach(e => { if (e.competitions[0].competitors[0].team.abbreviation === 'MIN') e.status = { type: { state: 'in' }, period: 4, clock: 300 }; });
+                return route.fulfill({ json: sb });
+            });
+        } });
+        await page.clock.setFixedTime(new Date('2026-09-21T03:00:00Z'));
+        await refresh(page);
+        const swing = card(page).locator('.mls-week-swing');
+        await expect(swing).toHaveCount(1);
+        await expect(swing.locator('.mls-week-chance')).toHaveText('<1% to win', { timeout: 15000 });
+        await expect(card(page).locator('.mls-week-head')).toContainText('1 still live');
         await expectClean(page, state);
     });
 
@@ -293,14 +317,14 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(card(page).locator('.mls-week-split-group').last()).toHaveText('Median 0–1 1 of 1 league');
         // Both are tiles; the guillotine one has no W/L and reads against the chop line.
         await expect(tiles(page)).toHaveCount(2);
-        await expect(tiles(page).nth(0).locator('.mls-week-tile-foot')).toHaveText('L −12.0 · Median: L (2nd of 2)');
+        await expect(tiles(page).nth(0).locator('.mls-week-tile-line')).toHaveText([/^L −12\.0 · \d+% to win$/, 'Median: L (2nd of 2)']);
         const chop = tiles(page).nth(1);
         await expect(chop).toHaveClass(/\bis-guillotine\b/);
         await expect(chop.locator('.mls-week-result')).toHaveCount(0);
         await expect(chop.locator('.mls-week-name')).toHaveText('Chop Shop');
         await expect(chop.locator('.mls-week-tile-who')).toHaveText('Chop line');
         await expect(pts(chop)).toHaveText(['130.4', '95.2']);
-        await expect(chop.locator('.mls-week-tile-foot')).toHaveText('+35.2 · Guillotine: 1st of 2 alive · 1 still to play');
+        await expect(chop.locator('.mls-week-tile-line')).toHaveText(['+35.2 · 1 still to play', 'Guillotine: 1st of 2 alive']);
         await expectClean(page, state);
     });
 

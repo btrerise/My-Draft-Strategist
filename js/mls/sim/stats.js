@@ -265,6 +265,20 @@ export function getProbabilityBeats(profileA, profileB) {
 export const MIN_RELIABLE_GAMES = 3;
 const FALLBACK_CV = 0.40;
 
+// The share of an NFL game still to play (0-1), from ESPN's scoreboard status for it: 1 before kickoff, 0 once
+// final, and in between from the quarter and the clock (four 15-minute quarters; at halftime, quarter 2 with 0:00
+// left, so half). Overtime counts as what's left of its 10 minutes against a full game. A game under way with no
+// clock: half. Used by getPlayerVarianceProfile's shareLeft (improvements S21, round 12).
+export function gameShareLeft(status) {
+    const state = status && status.type && status.type.state;
+    if (state === 'post') return 0;
+    if (state !== 'in') return 1;
+    const period = Number(status.period), clock = Number(status.clock);
+    if (!(period >= 1) || !(clock >= 0)) return 0.5;
+    const seconds = period <= 4 ? (4 - period) * 900 + Math.min(clock, 900) : Math.min(clock, 600);
+    return Math.min(Math.max(seconds / 3600, 0), 1);
+}
+
 /**
  * Generates the full variance profile for a player to be used in the Monte Carlo simulation.
  * @param {Array} weeklyScores - Array of fantasy points scored in each week (e.g., [14.2, 8.5, 22.1])
@@ -284,10 +298,41 @@ const FALLBACK_CV = 0.40;
  *   for comparison -- it's not still a live estimate at that point, and simulating a
  *   distribution around it would just be wrong once a real result exists. actualScore takes
  *   priority over BOTH projectedMean and the historical trailing average whenever it's
- *   present, short-circuiting the rest of this function entirely.
+ *   present, short-circuiting the rest of this function entirely -- unless shareLeft says
+ *   his game is still being played.
+ * @param {number} [options.shareLeft=0] - the share of his game still to play (0-1), while it's
+ *   under way: his points so far plus the rest of his usual game, scaled to that share.
  */
 export const getPlayerVarianceProfile = (weeklyScores, options = {}) => {
-    const { projectedMean = null, actualScore = null } = options;
+    const { projectedMean = null, actualScore = null, shareLeft = 0 } = options;
+
+    // A game still being played (improvements S21, round 12): his points so far are real, but they aren't his final
+    // score. A receiver on 3 points in the first quarter used to count as finished on 3, so win chances during games
+    // were badly off, and a matchup still wide open could read 0% or 100%. Now he's his points so far plus the rest of
+    // his game: his usual distribution (projection or history, as below) scaled to the share of the game left (from
+    // ESPN's quarter and clock, gameShareLeft in lineup/gameInfo.js). The spread scales with the square root of that
+    // share, as independent stretches of play add up. floorAt keeps a simulated draw from dropping below what he
+    // has already scored.
+    if (typeof actualScore === 'number' && shareLeft > 0) {
+        const share = Math.min(shareLeft, 1);
+        const full = getPlayerVarianceProfile(weeklyScores, { projectedMean });
+        const restMean = full.mean * share, restSd = full.stdDev * Math.sqrt(share);
+        return {
+            mean: Number((actualScore + restMean).toFixed(2)),
+            stdDev: Number(restSd.toFixed(2)),
+            floor: Number((actualScore + Math.max(0, restMean - restSd)).toFixed(2)),
+            ceiling: Number((actualScore + restMean + restSd).toFixed(2)),
+            floorAt: actualScore,
+            gamesPlayed: full.gamesPlayed,
+            usedFallback: full.usedFallback,
+            // Boom/Bust from the model (getBoomBustRates' tier 1), around this live mean: counting his old full games
+            // against a part-played one would mean nothing.
+            usingProjection: true,
+            isActual: false,
+            inProgress: true,
+            actualSoFar: Number(actualScore.toFixed(2)),
+        };
+    }
 
     // stdDev collapses to 0 here on purpose: there's no more uncertainty about a game that's
     // already been played. That single change is enough to make every downstream consumer --
