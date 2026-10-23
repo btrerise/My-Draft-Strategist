@@ -335,9 +335,10 @@ function tileHTML(r, started) {
     if (res.kind === 'guillotine') {
         const g = res.place;
         tone = 'guillotine';
-        notes.push(g ? `Guillotine: ${ordinal(g.rank)} of ${g.of} alive` : 'Guillotine');
-        if (g && res.me.live.length) notes.push(`${res.me.live.length} still to play`);
-        oppLabel = !g ? 'Your team has been chopped' : (g.rank === g.of ? 'Next team up' : 'Chop line');
+        // Before kickoff every team is on 0, so a place ("1st of 10") would mean nothing: just how many are alive.
+        notes.push(!g ? 'Guillotine' : (started ? `Guillotine: ${ordinal(g.rank)} of ${g.of} alive` : `Guillotine: ${g.of} alive`));
+        if (g && started && res.me.live.length) notes.push(`${res.me.live.length} still to play`);
+        oppLabel = !g ? 'Your team has been chopped' : (!started ? 'Lowest score is chopped' : (g.rank === g.of ? 'Next team up' : 'Chop line'));
         if (g && started) { youPts = fmt(res.me.points); oppPts = fmt(g.against); margin = g.cushion; }
     } else {
         oppLabel = `vs ${escapeHtml(res.oppName)}`;

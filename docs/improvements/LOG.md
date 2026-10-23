@@ -5651,3 +5651,15 @@ same branch.
 - **At most four tiles across** (owner asked whether five felt crowded; I agreed: league names like "Second Fixture
   League" wrapped at five, and four keeps rows of a 12-league set to three): `minmax(max(200px, (100% - 3 gaps) / 4), 1fr)`.
   Narrower screens still drop to three, two, then one.
+
+### S21, user-hat pass 3 (real leagues: week 7 before kickoff, week 6 final via ?week=6, phone and desktop)
+
+Fixed straight away:
+- **A guillotine tile before kickoff said "1st of 10 alive"**, with every team on 0. Before kickoff it now says
+  "Guillotine: 10 alive" and "Lowest score is chopped", with no "still to play".
+- **Tiles in a taller row spread their lines apart** (four across, a neighbour with a wrapped name or note made the
+  row taller and the grid shared the extra space between every line). The lines now stay together at the top and the
+  foot (result, notes, chevron) sits at the bottom, so feet line up across a row.
+
+Put to the owner: "Best Ball" wrapping onto a line of its own at four across; the helper text above the tiles (two
+lines on desktop, four on a phone) could move into the header's info tip.

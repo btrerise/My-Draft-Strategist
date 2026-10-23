@@ -1876,6 +1876,8 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-tile-btn {
     flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.5rem; row-gap: 0.1rem; align-items: baseline;
     grid-template-areas: "top you" "opp theirs" "foot foot";
+    /* A tile in a taller row keeps its lines together and its foot at the bottom, instead of spreading the gap out. */
+    grid-template-rows: auto auto 1fr;
     text-align: left; padding: 0.45rem 0.55rem 0.5rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px;
     background: rgba(0, 0, 0, 0.15); color: inherit; font: inherit; cursor: pointer;
 }
@@ -1894,7 +1896,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-tile-pts { grid-area: theirs; text-align: right; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .mls-week-tile-pts.is-you { grid-area: you; color: var(--text-main); font-weight: 700; font-size: 0.9rem; }
 /* The foot: the result chip and margin, then the notes, and a chevron in the bottom-right corner (it opens the lineup). */
-.mls-week-tile-foot { grid-area: foot; display: flex; align-items: flex-end; gap: 0.5rem; padding-top: 0.2rem; font-size: 0.72rem; color: var(--text-muted); }
+.mls-week-tile-foot { grid-area: foot; align-self: end; display: flex; align-items: flex-end; gap: 0.5rem; padding-top: 0.2rem; font-size: 0.72rem; color: var(--text-muted); }
 .mls-week-tile-notes { min-width: 0; display: inline-flex; flex-wrap: wrap; align-items: center; column-gap: 0.3rem; }
 .mls-week-tile-go { margin-left: auto; flex-shrink: 0; color: var(--text-muted); }
 .mls-week-tile-btn:hover .mls-week-tile-go { color: var(--text-main); }
