@@ -31,7 +31,7 @@ import { getActiveLeague, isConnectionError } from '../helpers.js';
 import { getByeBadgeHTML } from '../lineup/gameInfo.js';
 import { findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
-import { buildWaiverContext, resolveWaiverBasis, updateWaiverScanSetting, waiverDerivedNotes, WAIVER_MODES } from './waivers.js';
+import { applyWaiverScanSettingsToUI, buildWaiverContext, resolveWaiverBasis, updateWaiverScanSetting, waiverDerivedNotes, WAIVER_MODES } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
@@ -152,6 +152,7 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
 
     // The Scout tab was just shown (nav.js showTab).
     export function onScoutTabShown() {
+        applyWaiverScanSettingsToUI(); // Season Rank shows only in a league with a Season set (S23)
         if (!inTopMode()) return;
         pageLimit = PAGE;
         renderTopAvailable();
@@ -185,7 +186,7 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
             <span class="mls-ta-player">
                 <span class="mls-ta-name">${escapeHtml(fa.name)}</span>
                 ${player.team ? `<span class="mls-ta-team">${escapeHtml(player.team)}</span>` : ''}
-                <span class="badge pos-badge ${escapeHtml(player.pos)} mls-ta-pos">${posRank}${tier}</span>${rankMoveChip(ctx.scan.basis, fa.cleanName)}${adds ? trendBadgeHTML(adds) : ''}${injBadge}${getByeBadgeHTML(player.team)}
+                <span class="badge pos-badge ${escapeHtml(player.pos)} mls-ta-pos">${posRank}${tier}</span>${rankMoveChip(ctx.scan.season ? 'season' : ctx.scan.basis, fa.cleanName)}${adds ? trendBadgeHTML(adds) : ''}${injBadge}${getByeBadgeHTML(player.team)}
             </span>
             ${starts}
             <span class="mls-ta-num">${cross ? `#${cross}` : '&ndash;'}</span>
@@ -225,7 +226,7 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
             <span class="mls-ta-player">
                 <span class="mls-ta-name">${escapeHtml(t.name)}</span>
                 ${team ? `<span class="mls-ta-team">${escapeHtml(team)}</span>` : ''}
-                <span class="badge pos-badge ${escapeHtml(t.pos)} mls-ta-pos">${chip}</span>${ranked ? rankMoveChip(ctx.scan.basis, t.cleanName) : ''}${injBadge}${getByeBadgeHTML(team)}
+                <span class="badge pos-badge ${escapeHtml(t.pos)} mls-ta-pos">${chip}</span>${ranked ? rankMoveChip(ctx.scan.season ? 'season' : ctx.scan.basis, t.cleanName) : ''}${injBadge}${getByeBadgeHTML(team)}
             </span>
             ${starts}
             <span class="mls-ta-num" title="${addsText(t.count)}">${compactCount(t.count)}</span>

@@ -14,6 +14,7 @@ import { showToast } from '../../shared/ui/toast.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showPrompt } from '../../shared/ui/prompt.js';
 import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
+import { SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonOffer, seasonSetFor, setUsage } from './season.js';
 
     // --- NAMED RANKING SETS ---
     // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
@@ -156,6 +157,7 @@ import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
 
         updateRankingSetHeader(type);
         updateSetLeaguesRow(type);
+        if (type === 'ros') populateSeasonPicker();
     }
 
     // Rename and Delete act on a saved set, so they show only while one is selected: not for
@@ -181,6 +183,13 @@ import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
             el.removeAttribute('title');
             return;
         }
+        // A dynasty or keeper league names both slots (improvements S23): "Dynasty: … · Season: …".
+        const season = type === 'ros' && hasSeasonSlot(league) ? seasonSetFor(league, State.rankingSets.ros) : null;
+        if (season) {
+            el.innerHTML = `Dynasty: <strong>${escapeHtml(text)}</strong> <span class="mls-rank-sep">&middot;</span> Season: <strong>${escapeHtml(season.name)}</strong>`;
+            el.title = `Dynasty: ${text} · Season: ${season.name}`;
+            return;
+        }
         el.innerHTML = `Set: <strong>${escapeHtml(text)}</strong>`;
         el.title = text; // full name on hover when it's truncated
     }
@@ -195,9 +204,15 @@ import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
         const val = selectEl ? selectEl.value : '__new__';
         const isRealSet = val && val !== '__new__' && val !== '__legacy__';
         if (!isRealSet || State.leagues.length < 2) { row.style.display = 'none'; return; }
-        const used = State.leagues.filter(l => l[cfg.leagueSetIdKey] === val).length;
         const summary = document.getElementById(cfg.leaguesSummaryId);
-        if (summary) summary.textContent = `Used in ${used} of ${State.leagues.length} leagues`;
+        if (type === 'ros') {
+            // A ROS set can also be a dynasty league's Season set (improvements S23); both count.
+            const { used, asSeason } = setUsage(val, State.leagues);
+            if (summary) summary.textContent = `Used in ${used} of ${State.leagues.length} leagues${asSeason ? ` (${asSeason} as Season)` : ''}`;
+        } else {
+            const used = State.leagues.filter(l => l[cfg.leagueSetIdKey] === val).length;
+            if (summary) summary.textContent = `Used in ${used} of ${State.leagues.length} leagues`;
+        }
         row.style.display = '';
     }
 
@@ -270,19 +285,26 @@ import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
     // setId: the set being assigned, or null for one that doesn't exist yet (a new upload).
     // allowRemove: leagues already on the set can be unchecked (standalone dialog) rather than
     // shown locked on (upload preview).
-    export function renderLeaguePicker(container, type, { setId = null, allowRemove = false, heading = '' } = {}) {
+    // slot 'season' (improvements S23): the Season slot of dynasty and keeper leagues, which are the
+    // only ones listed.
+    export function renderLeaguePicker(container, type, { setId = null, allowRemove = false, heading = '', slot = null } = {}) {
         const cfg = RANKING_TYPE_CONFIG[type];
+        const isSeason = slot === 'season';
+        const key = isSeason ? SEASON_SET_KEY : cfg.leagueSetIdKey;
         const activeId = State.activeLeagueId;
-        const leagues = [...State.leagues].sort((a, b) => (b.leagueId === activeId) - (a.leagueId === activeId));
+        const leagues = [...State.leagues].filter(l => !isSeason || hasSeasonSlot(l))
+            .sort((a, b) => (b.leagueId === activeId) - (a.leagueId === activeId));
 
         let selectableCount = 0;
         const rows = leagues.map(l => {
             const isActive = l.leagueId === activeId;
-            const onSet = !!setId && l[cfg.leagueSetIdKey] === setId;
+            const onSet = !!setId && l[key] === setId;
             const locked = isActive || (onSet && !allowRemove);
             if (!locked) selectableCount++;
+            const seasonNow = isSeason ? seasonSetFor(l, State.rankingSets.ros) : null;
             const note = isActive ? 'This league'
-                : onSet ? 'Already using this set'
+                : onSet ? (isSeason ? 'Already using this set as Season' : 'Already using this set')
+                : isSeason ? (seasonNow ? `Season now: ${seasonNow.name}` : 'No Season set (uses its dynasty rankings)')
                 : `Currently: ${describeLeagueRankings(type, l)}`;
             return `
                 <label class="mls-league-picker-row${locked ? ' is-locked' : ''}">
@@ -329,22 +351,27 @@ import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
     // Removing a league leaves it with no set of this type (its legacy upload, if it still has
     // one, takes over -- same fallback hydrateRankingsForLeague already uses). Never touches the
     // active league: the picker locks that row, and this double-checks rather than trusting it.
-    export function assignSetToLeagues(type, setId, { add = [], remove = [] } = {}) {
+    // slot 'season': a ROS set as the Season set of dynasty and keeper leagues (improvements S23).
+    export function assignSetToLeagues(type, setId, { add = [], remove = [] } = {}, { slot = null } = {}) {
         const cfg = RANKING_TYPE_CONFIG[type];
+        const isSeason = slot === 'season';
+        const key = isSeason ? SEASON_SET_KEY : cfg.leagueSetIdKey;
         if (!setId || (add.length === 0 && remove.length === 0)) return;
         State.leagues.forEach(l => {
             if (l.leagueId === State.activeLeagueId) return;
-            if (add.includes(l.leagueId)) l[cfg.leagueSetIdKey] = setId;
-            else if (remove.includes(l.leagueId) && l[cfg.leagueSetIdKey] === setId) l[cfg.leagueSetIdKey] = null;
+            if (isSeason && !hasSeasonSlot(l)) return;
+            if (add.includes(l.leagueId)) l[key] = setId;
+            else if (remove.includes(l.leagueId) && l[key] === setId) l[key] = null;
         });
         localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
         updateSetLeaguesRow(type);
+        if (isSeason) populateSeasonPicker();
     }
 
     // Standalone picker dialog. Resolves { add, remove } on Save, or null on Cancel / Escape /
     // backdrop click. Same close behavior as showConfirm in js/shared/ui/confirm.js.
     let leaguePickerOpen = false;
-    export function openLeaguePickerDialog(type, set, { title, intro, allowRemove = false, confirmText = 'Save', cancelText = 'Cancel' } = {}) {
+    export function openLeaguePickerDialog(type, set, { title, intro, allowRemove = false, confirmText = 'Save', cancelText = 'Cancel', slot = null } = {}) {
         const overlay = document.getElementById('rankingLeaguesOverlay');
         if (!overlay || leaguePickerOpen) return Promise.resolve(null);
         const titleEl = document.getElementById('rankingLeaguesTitle');
@@ -357,7 +384,7 @@ import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
         if (introEl) introEl.textContent = intro || '';
         if (okBtn) okBtn.textContent = confirmText;
         if (cancelBtn) cancelBtn.textContent = cancelText;
-        renderLeaguePicker(listEl, type, { setId: set.id, allowRemove });
+        renderLeaguePicker(listEl, type, { setId: set.id, allowRemove, slot });
 
         leaguePickerOpen = true;
         overlay.style.display = 'flex';
@@ -429,13 +456,16 @@ import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
         const set = State.rankingSets[cfg.setsKey].find(s => s.id === setId);
         if (!set) return;
 
-        if (!await showConfirm("Any league using this set will need a new one selected. This can't be undone.", { title: `Delete "${set.name}"?`, confirmText: 'Delete Set', danger: true })) return;
+        const asSeason = type === 'ros' ? setUsage(setId, State.leagues).asSeason : 0;
+        const seasonLine = asSeason ? ` ${leagueCountText(asSeason)} using it as Season rankings will go back to their dynasty rankings.` : '';
+        if (!await showConfirm(`Any league using this set will need a new one selected.${seasonLine} This can't be undone.`, { title: `Delete "${set.name}"?`, confirmText: 'Delete Set', danger: true })) return;
 
         State.rankingSets[cfg.setsKey] = State.rankingSets[cfg.setsKey].filter(s => s.id !== setId);
         localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
 
         State.leagues.forEach(l => {
             if (l[cfg.leagueSetIdKey] === setId) l[cfg.leagueSetIdKey] = null;
+            if (type === 'ros' && l[SEASON_SET_KEY] === setId) l[SEASON_SET_KEY] = null; // S23
         });
         localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
 
@@ -447,6 +477,7 @@ import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
 
         showToast(`Deleted "${set.name}".`);
         updateRankingsMetaDisplay();
+        if (type === 'ros' && asSeason) refreshAfterSeasonChange();
     };
 
     // --- RENAMING A RANKING SET (improvements S2) ---
@@ -501,4 +532,109 @@ import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
         localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
         populateRankingSetDropdown(type);
         showToast(`Renamed to "${name}".`);
+    };
+
+    // --- SEASON RANKINGS IN DYNASTY AND KEEPER LEAGUES (improvements S23) ---
+    // A second picker in the ROS card, under the dynasty set: "None (use your dynasty rankings)" plus
+    // every saved ROS set. Shown only in dynasty and keeper leagues; a redraft league's card is exactly
+    // as before. The resolver and its rules are in rankings/season.js.
+    export function populateSeasonPicker() {
+        const row = document.getElementById('seasonRankingsRow');
+        const label = document.getElementById('rosRankingSetLabel');
+        const league = getActiveLeague();
+        const show = hasSeasonSlot(league);
+        if (label) label.textContent = show ? 'Dynasty rankings for this league' : 'Ranking Set for this League';
+        if (!row) return;
+        row.hidden = !show;
+        if (!show) return;
+
+        const sets = State.rankingSets.ros;
+        const current = seasonSetFor(league, sets);
+        const selectEl = document.getElementById('seasonRankingSetSelect');
+        if (selectEl) {
+            selectEl.innerHTML = `<option value="">None (use your dynasty rankings)</option>`
+                + sets.map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} (${s.data.length} players)</option>`).join('');
+            selectEl.value = current ? current.id : '';
+        }
+
+        // "Season rankings in 6 of 13 dynasty and keeper leagues · Choose leagues…", for a chosen set.
+        const leaguesRow = document.getElementById('seasonSetLeaguesRow');
+        const dynastyCount = State.leagues.filter(hasSeasonSlot).length;
+        if (leaguesRow) {
+            leaguesRow.hidden = !current || dynastyCount < 2;
+            const summary = document.getElementById('seasonSetLeaguesSummary');
+            if (current && summary) {
+                const n = State.leagues.filter(l => seasonSetFor(l, sets) === current).length;
+                summary.textContent = `Season rankings in ${n} of ${dynastyCount} dynasty and keeper leagues`;
+            }
+        }
+
+        // The offer for an empty slot: the ROS set your redraft leagues use.
+        const offerEl = document.getElementById('seasonOffer');
+        if (offerEl) {
+            const offer = seasonOffer(league, State.leagues, sets);
+            offerEl.hidden = !offer;
+            offerEl.innerHTML = offer
+                ? `<span>Your redraft leagues use <strong>${escapeHtml(offer.name)}</strong>.</span> <button type="button" class="mls-btn-sm btn-link-inline" data-action="useSeasonOffer" data-set-id="${escapeHtml(offer.id)}">Use it here</button>`
+                : '';
+        }
+    }
+
+    function setActiveSeason(setId) {
+        const league = getActiveLeague();
+        if (!league || !hasSeasonSlot(league)) return false;
+        league[SEASON_SET_KEY] = setId || null;
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        return true;
+    }
+
+    // Everything that shows the Season set: the card's header and rows, Power Rankings (on the Roster
+    // tab), and the lineup, whose rankings stamp includes it (it re-optimizes when next opened).
+    function refreshAfterSeasonChange() {
+        populateSeasonPicker();
+        updateRankingSetHeader('ros');
+        updateSetLeaguesRow('ros');
+        const activeTab = document.querySelector('.tab-content.active');
+        if (activeTab && activeTab.id === 'rosterTab' && typeof loadRosterTab === 'function') loadRosterTab();
+    }
+
+    export const onSeasonSetChange = function(selectEl) {
+        const val = selectEl.value;
+        if (val && !State.rankingSets.ros.some(s => s.id === val)) return;
+        if (!setActiveSeason(val)) return;
+        refreshAfterSeasonChange();
+    };
+
+    // "Choose leagues…" under the Season picker: the league picker, for the Season slot.
+    export const openSeasonSetLeagues = async function() {
+        const league = getActiveLeague();
+        const set = seasonSetFor(league, State.rankingSets.ros);
+        if (!set) { showToast('Choose a Season set first.', { isError: true }); return; }
+        const result = await openLeaguePickerDialog('ros', set, {
+            slot: 'season', allowRemove: true,
+            title: `Use "${set.name}" as Season rankings in…`,
+            intro: 'Check each dynasty or keeper league that should use this set for this season. Unchecking a league sends it back to its dynasty rankings.'
+        });
+        if (!result) return;
+        if (result.add.length === 0 && result.remove.length === 0) { showToast('No changes made.'); return; }
+        assignSetToLeagues('ros', set.id, result, { slot: 'season' });
+        const n = State.leagues.filter(l => seasonSetFor(l, State.rankingSets.ros) === set).length;
+        showToast(`"${set.name}" is now the Season set in ${leagueCountText(n)}.`);
+        refreshAfterSeasonChange();
+    };
+
+    // The empty slot's "Use it here", then the offer to do the same in every other dynasty and keeper
+    // league that has no Season set yet.
+    export const useSeasonOffer = async function(setId) {
+        const set = State.rankingSets.ros.find(s => s.id === setId);
+        if (!set || !setActiveSeason(set.id)) return;
+        refreshAfterSeasonChange();
+        const others = leaguesWithoutSeason(State.leagues, State.rankingSets.ros, State.activeLeagueId);
+        if (others.length === 0) { showToast(`"${set.name}" is now this league's Season set.`); return; }
+        const all = await showConfirm(`Also use "${set.name}" in the ${others.length === 1 ? 'other dynasty or keeper league' : `${others.length} other dynasty and keeper leagues`} without Season rankings?`,
+            { title: 'Season rankings', confirmText: others.length === 1 ? 'Use in that one too' : `Use in all ${others.length}`, cancelText: 'Just this league' });
+        if (!all) { showToast(`"${set.name}" is now this league's Season set.`); return; }
+        assignSetToLeagues('ros', set.id, { add: others.map(l => l.leagueId) }, { slot: 'season' });
+        showToast(`"${set.name}" is now the Season set in ${leagueCountText(others.length + 1)}.`);
+        refreshAfterSeasonChange();
     };

@@ -5329,3 +5329,121 @@ CI run 39681637605 (commit 30fb1fd) failed only `visual.spec.mjs` "MLS synced le
 `-actual.png` (still 1280×1971) differs only in Give's column (x 652–1190, y 680–772: the From line and the search box one
 row lower), matching this container's main-vs-branch comparison. Committed CI's `-actual.png` as
 `desktop/mls-league-scout.png`. Nothing is left over.
+
+## S23 — Dynasty leagues: a season rankings set beside the dynasty one
+
+**User-visible effect.** Only in dynasty and keeper leagues (`getPowerLeagueKind(league) === 'dynasty'`); redraft
+leagues look and work exactly as before.
+- **Roster tab, ROS card.** The set drop-down's label reads "Dynasty rankings for this league" (was "Ranking Set for
+  this League", which redraft leagues keep). Under its "Used in…" row a new **Season rankings** picker (with an (i)
+  tooltip): "None (use your dynasty rankings)" plus every saved ROS set. With a Season set chosen the card header reads
+  "Dynasty: <set> · Season: <set>", and "Season rankings in N of M dynasty and keeper leagues · Choose leagues…" opens the
+  existing league picker for the Season slot (only dynasty and keeper leagues listed; uncheck to send one back to its
+  dynasty set). With the slot empty and a redraft league on a ROS set, the row offers it: "Your redraft leagues use
+  <set>. **Use it here**"; after the tap, a dialog asks "Also use "<set>" in the N other dynasty and keeper leagues
+  without Season rankings?" (**Use in all N** / **Just this league**). A set's "Used in N of M leagues" line counts Season
+  use too: "(k as Season)".
+- **Power Rankings.** With a Season set: **Start** (and so the Contender / Retool / Rebuild labels, the Your Team card and
+  the Roster tab's power strip) is scored by the Season set; **Ovr** and the QB/RB/WR/TE columns by the dynasty set;
+  **Future** by the dynasty set × Sleeper age (or dynasty Market Consensus, unchanged). The Ovr tooltip lists the rooms
+  by the dynasty set then. A new note names the sets: "Start (and so the labels) uses your Season rankings (<set>). Ovr
+  and the position columns use your dynasty rankings (<set>). Future uses your dynasty rankings (<set>)." A new switch,
+  **I'm competing this year** ("Ovr and position rooms use your Season rankings."), shown only with a Season set and your
+  own rankings as the source, moves Ovr and the rooms to Season (Future stays dynasty); saved per league. A Contender with
+  the switch off whose dynasty set is 14+ days old (when the ROS freshness label turns amber) gets a note: "Your dynasty
+  rankings are 18 days old. Competing this year? Turn on I'm competing this year to read your rooms by your Season
+  rankings."
+- **The same numbers elsewhere:** the All My Leagues search's power ranks and the Trade Analyzer's "Power Rankings after
+  the trade" (S14) read each league the same way (its line says "by your dynasty rankings (Start by your Season
+  rankings)"). The Trade Analyzer's values ("Your rankings") are unchanged: that's S24.
+- **Lineup.** With no Weekly set, the lineup is optimized by the Season set (was the dynasty set), its rank badges and
+  rank-change chips follow it, and the Command Center's "not in …" reason names "your Season rankings". The Waiver Wire's
+  Starting Lineup check uses the same. A Season change changes the league's rankings stamp, so the lineup re-optimizes
+  when next opened.
+- **Waiver Wire Assistant.** Rank By gets **Season Rank** in a league with a Season set (hidden elsewhere); rows read
+  "Season Pos / Season Overall". The Dashboard's best-available switch (the same setting) gets a **Season** button while
+  any league has a Season set: dynasty leagues use their Season set, the others their ROS rankings.
+- With no Season set chosen, everything is exactly as before.
+
+**Owner's decisions (asked before building).**
+1. Names: **Dynasty** for today's ROS slot in these leagues, **Season** for the new one.
+2. No Season set: **as today**, plus an **offer** of the ROS set the redraft leagues use, and after accepting, one
+   question to use it in every other dynasty and keeper league without one. (The owner found my first version, an offer
+   with a separate "Choose leagues…", more than needed.)
+3. Where Season is used in this card: **all three** (Power Rankings' Start and labels, the lineup's fallback, Rank By).
+4. **No site-wide toggle**: a default per place (lineups, waivers and Start ask "now"; Future asks "later"); switches only
+   where both answers help (S24's Trade Analyzer and Roster rows).
+5. Bulk assigning: **in the existing league picker dialog**.
+6. Ovr and the position columns (my question; the card named only Start): **dynasty by default**, because dynasty
+   rankings are updated about monthly and the long view matters unless you're competing. The owner asked for a
+   "Competing / Rebuilding" toggle in dynasty language; I suggested one switch, **"I'm competing this year"**, because a
+   two-sided switch would label every team "Rebuilding" until flipped, plus the two-week hint. Built as suggested; the
+   owner can change the wording.
+
+**What changed and where.**
+- `js/mls/rankings/season.js` (new, pure, in `PRECACHE_ASSETS`): the slot (`seasonRankingSetId`, `hasSeasonSlot`,
+  `seasonSetFor`), the resolver `resolveSeasonRankings` (Season set, else the league's ROS rankings as they are),
+  `seasonStamp`, `roomsUseSeason` (`powerCompeting`), `setUsage`, `seasonOffer`, `leaguesWithoutSeason`.
+- `js/mls/leagues/sync.js`: `getLeagueSeasonRankings(league)`, `activeSeasonRankings()` (looked up on each call, so no ROS
+  change can leave it stale; State gains no field), `activePowerRankings()` ({ start, rooms, future }); the rankings
+  stamp appends `|season:<id>@<updatedAt>` only when a Season set is chosen (every other league's stamp is unchanged, so
+  no needless re-optimizing after the update); a sync carries `seasonRankingSetId` and `powerCompeting` over like
+  `rosRankingSetId`. `js/mls/main.js` re-exports the three; modules that `state.js` loads early (`lineup/gameInfo.js`,
+  `scout/waivers.js`, the power and trade modules) import them from `main.js`, as with `getLeagueRankings` (importing
+  `leagues/sync.js` directly from `gameInfo.js` broke the load order: State used before it was set).
+- `js/mls/power/shared.js`: `computePositionalPower(league, rankings, { startRankings, futureRankings })`. `rankings`
+  scores Ovr and the rooms, `startRankings` the lineup split (Start, bench), `futureRankings` the age mode's values. Both
+  default to `rankings`, which gives identical numbers (unit-tested). `team.startSeparate` marks a split.
+- `js/mls/power/rosterCard.js`: the sources, the switch (`setPowerCompeting`), the notes (`seasonSourceText`,
+  `competingHint`). `power/allLeagues.js`, `trade/lineupSection.js`: the same split.
+- `js/mls/rankings/sets.js`: `populateSeasonPicker`, `onSeasonSetChange`, `openSeasonSetLeagues`, `useSeasonOffer`;
+  `renderLeaguePicker` / `assignSetToLeagues` / `openLeaguePickerDialog` take `slot: 'season'`; the header and the
+  "Used in" row name Season use; **deleting a set clears every Season slot pointing at it** (the confirm says how many
+  leagues go back to their dynasty rankings). Rename needed nothing new: every place looks the set up by id when it draws.
+- `js/mls/render/lineup.js`, `js/mls/lineup/gameInfo.js`, `js/mls/scout/waivers.js` (Season Rank as a ROS-shaped basis,
+  `scan.season`), `js/mls/scout/topAvailable.js`, `js/mls/scout/bestAvailable.js`, `js/mls/rankings/moveChips.js`
+  (`rankMoveChip('season', …)`).
+- `lineup/index.html` (the Season row, the switch, the Season Rank option), `css/mls.css` (`.mls-season-row`,
+  `.mls-season-offer`; a `[hidden]` rule, since those rows set `display`), `js/mls/main.js` (actions:
+  `onSeasonSetChange`, `openSeasonSetLeagues`, `useSeasonOffer`, `setPowerCompeting`).
+- `sw.js`: `season.js` in `PRECACHE_ASSETS`; `CACHE_NAME` v2.8.100 → v2.8.101. CHANGELOG line under Lineup Strategist.
+- **No new storage key.** Both fields live on the league objects (`mls_leagues`), so Backup / Restore keeps them (spec)
+  and Factory Reset clears them with the leagues. No new badge, chip or pill, so no legend line.
+
+**Market source (asked to note, not build).** Power Rankings' Market Consensus option scores every column, Start
+included, from the one market loaded (`State.marketSettings.type`). In a dynasty league with Market as the source, Start
+should ideally read FantasyCalc's *redraft* values and Future the dynasty ones, the same split as Season / dynasty. That
+needs two markets held at once (today pulling one replaces the other), which fits S25's market snapshots better than
+this card. Until then, with Market as the source nothing about Season applies (the switch and the Season note hide).
+
+**Tests.**
+- Unit `tests/unit/seasonRankings.test.mjs`: the slot rule, the resolver (Season set; none; a deleted set; a league no
+  longer dynasty), the stamp part, `roomsUseSeason`, usage counts, the offer, and `computePositionalPower`'s split (Start
+  by one list, Ovr / rooms by another, Future by a third; and identical output when all three are the same list).
+- Spec `tests/mls-season-rankings.spec.mjs` (both widths, 12 runs), the fixture league marked dynasty with "Dynasty SF"
+  (rankings.csv) and "Redraft ROS" (the other team's players first): without a Season set no note and no switch; with
+  one, Start equals the Season set alone, Ovr / RB / Future equal the dynasty set alone, the note and header say so;
+  I'm competing moves Ovr, keeps Future; both survive a reload and a re-sync. The lineup with no Weekly set starts George
+  Kittle at TE by Season (Brock Bowers by dynasty); Season Rank in Rank By resolves to the Season set and falls back to
+  ROS without one. The offer and "Use in that one too", the Season leagues dialog (only dynasty and keeper leagues),
+  rename (a name with markup, shown as text), delete (confirm wording, slot cleared). The two-week hint. Backup /
+  Restore. A redraft league: no picker, no switch, no Season Rank.
+
+**Checks.** check-precache OK; 405 unit tests pass; the new spec passes at both widths. This container's Chromium is
+revision 1243, not the 1194 the repo pins (`tests/render-env.mjs`), so I ran Playwright with a scratchpad
+`PLAYWRIGHT_BROWSERS_PATH` that points 1194's paths at 1243's binaries (nothing committed). With it, the full run's only
+failures are `visual.spec.mjs` (baselines are for 1194), `view-transitions.spec.mjs` and some of
+`mls-lineup-needs.spec.mjs` (1243 rejects with "Transition was skipped. New ViewTransition started"); the same specs
+fail on unchanged main in this container (checked in a main worktree; which `mls-lineup-needs` tests fail varies by run).
+CI, on 1194, is the real check for those.
+
+**Screenshots: none change.** I rendered all 40 on main and on this branch in this container and compared them with
+`npm run pxdiff`: all pixel-identical (the screenshot league isn't dynasty and has no ROS set). No PNG re-taken.
+
+**Left over.**
+- The Guide's Roster step doesn't mention Season rankings yet (a sentence there re-takes `mls-league-guide.png` at both
+  widths); the (i) beside the picker explains it. Worth a line when S24 touches the Guide.
+- The card header truncates "Dynasty: … · Season: …" on phones with long names (its title shows both in full), as it
+  already did for one long name.
+- Market source split (above), for S25.
+- No open follow-up in docs/TESTING.md touches this area.

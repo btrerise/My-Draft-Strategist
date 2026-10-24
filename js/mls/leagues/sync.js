@@ -24,6 +24,7 @@ import { normalizeName } from '../../shared/names.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { withViewTransition } from '../../shared/ui/viewTransition.js';
+import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/season.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -153,7 +154,32 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
             const legacy = league[cfg.leagueLegacyDataKey];
             if (Array.isArray(legacy) && legacy.length > 0) return `legacy@${league[cfg.leagueLegacyUpdatedKey] || 0}:${legacy.length}`;
             return 'none';
-        }).join('|');
+        }).join('|') + seasonStamp(league, State.rankingSets.ros); // the lineup reads Season when there's no Weekly (S23)
+    }
+
+    // This season's rankings for one league (improvements S23): its Season set (dynasty and keeper
+    // leagues), else its ROS rankings as getLeagueRankings gives them. See rankings/season.js.
+    export function getLeagueSeasonRankings(league) {
+        return resolveSeasonRankings(league, State.rankingSets.ros, getLeagueRankings(league, 'ros'));
+    }
+
+    // The same for the active league, as the arrays the app reads: the Season set's data, else
+    // State.rosRankings (the active league's ROS rankings, which every ROS change keeps current). Looked
+    // up on each call rather than kept in State, so no ROS change can leave it stale.
+    export function activeSeasonRankings() {
+        const league = getActiveLeague();
+        const found = league ? resolveSeasonRankings(league, State.rankingSets.ros, null) : null;
+        return found ? found.data : State.rosRankings;
+    }
+
+    // Power Rankings' sources for the active league, with your own rankings: Start from this season's
+    // rankings, Ovr and the rooms from the dynasty (ROS) set unless "I'm competing" is on, and Future
+    // from the dynasty set. Each is State.rosRankings when there's no Season set, so nothing changes then.
+    export function activePowerRankings() {
+        const league = getActiveLeague();
+        const season = activeSeasonRankings();
+        const dynasty = State.rosRankings.length > 0 ? State.rosRankings : season;
+        return { start: season, rooms: roomsUseSeason(league, State.rankingSets.ros) ? season : dynasty, future: dynasty };
     }
 
     // `animate`: a switch you make yourself (the header's drop-down and arrows, a card's name, Switch on a
@@ -577,6 +603,9 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
                 weeklyRankingsUpdatedAt: existingLeague ? existingLeague.weeklyRankingsUpdatedAt : null,
                 rosRankingSetId: existingLeague ? existingLeague.rosRankingSetId : null,
                 weeklyRankingSetId: existingLeague ? existingLeague.weeklyRankingSetId : null,
+                // Dynasty and keeper leagues' Season set and "I'm competing" (improvements S23).
+                seasonRankingSetId: existingLeague ? (existingLeague.seasonRankingSetId || null) : null,
+                powerCompeting: existingLeague ? !!existingLeague.powerCompeting : false,
                 // Set only here, i.e. only once every Sleeper fetch above has succeeded. A league
                 // that fails during Sync All keeps its previous object, and with it its previous
                 // lastSyncedAt -- which is exactly what the dashboard row's age label surfaces.

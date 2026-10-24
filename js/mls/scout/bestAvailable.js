@@ -82,7 +82,8 @@
 import { escapeHtml } from '../../shared/html.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { refreshGameTimes, State } from '../state.js';
-import { getLeagueRankings } from '../leagues/sync.js';
+import { getLeagueRankings, getLeagueSeasonRankings } from '../leagues/sync.js';
+import { seasonSetFor } from '../rankings/season.js';
 import { bestLineup, buildRankDisplayIndex, checkAgainstLineup, findFreeAgents, FLEX_POSITIONS, upgradeGap } from './waiverScanner.js';
 import { freeAgentPlayer, getSleeperMetaByName, lineupCheckDeps, makeLeagueGetPos, rosterBenchmark, updateWaiverScanSetting } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
@@ -141,17 +142,28 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
 
     const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-    const NAMES = { weekly: 'Weekly', ros: 'ROS' };
-    const chosenBasis = () => (State.waiverScanSettings.basis === 'ros' ? 'ros' : 'weekly');
+    const NAMES = { weekly: 'Weekly', ros: 'ROS', season: 'Season' };
+    // Season (improvements S23) is offered only while some dynasty or keeper league has a Season set; a saved
+    // 'season' without one reads every league's ROS rankings, so the switch shows ROS then.
+    const anySeasonSet = () => State.leagues.some(l => seasonSetFor(l, State.rankingSets.ros));
+    const chosenBasis = () => {
+        const b = State.waiverScanSettings.basis;
+        if (b === 'season') return anySeasonSet() ? 'season' : 'ros';
+        return b === 'ros' ? 'ros' : 'weekly';
+    };
 
     // The rankings a league's line uses: the chosen type (the Weekly | ROS switch), else the
-    // other one, flagged as a fallback; else none.
+    // other one, flagged as a fallback; else none. Season: this season's rankings (a dynasty league's
+    // Season set, else its ROS), ROS-shaped, so `type` is 'ros'; `name` says which it was.
     function leagueBasis(league) {
         const wanted = chosenBasis();
-        const other = wanted === 'ros' ? 'weekly' : 'ros';
+        const other = wanted === 'weekly' ? 'ros' : 'weekly';
         for (const type of [wanted, other]) {
-            const found = getLeagueRankings(league, type);
-            if (found && found.data.length > 0) return { ...found, type, name: NAMES[type], fallback: type !== wanted };
+            const found = type === 'season' ? getLeagueSeasonRankings(league) : getLeagueRankings(league, type);
+            if (found && found.data.length > 0) {
+                const name = type === 'season' ? (found.fromSeason ? 'Season' : 'ROS') : NAMES[type];
+                return { ...found, type: type === 'season' ? 'ros' : type, name, fallback: type !== wanted };
+            }
         }
         return null;
     }
@@ -373,7 +385,7 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
         if (switchBox) {
             const basis = chosenBasis();
             const basisBtn = (b) => `<button type="button" class="mls-segmented-btn${b === basis ? ' active' : ''}" data-action="setBestAvailableBasis" data-basis="${b}" aria-pressed="${b === basis}">${NAMES[b]}</button>`;
-            switchBox.innerHTML = basisBtn('weekly') + basisBtn('ros');
+            switchBox.innerHTML = basisBtn('weekly') + basisBtn('ros') + (anySeasonSet() ? basisBtn('season') : '');
         }
 
         // With no league ranked yet, every section opens (each one's Upload is the to-do).
@@ -421,7 +433,7 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
 
     // The Weekly | ROS switch: the Waiver Wire Assistant's Rank By, shared with the Scout tab.
     export function setBestAvailableBasis(basis) {
-        updateWaiverScanSetting('basis', basis === 'ros' ? 'ros' : 'weekly');
+        updateWaiverScanSetting('basis', basis === 'ros' || basis === 'season' ? basis : 'weekly');
         renderBestAvailable();
     }
 

@@ -5,7 +5,8 @@ import { RANKING_TYPE_CONFIG } from '../constants.js';
 import { State } from '../state.js';
 import { rankingIndex } from '../helpers.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
-import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from '../main.js';
+import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
+import { activePowerRankings, computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from '../main.js';
 
     // --- ALL-LEAGUES POSITIONAL POWER RANKS ---
     // Each league's power ranks come from THAT league's own ROS rankings (its named set, else
@@ -16,16 +17,24 @@ import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, p
     // of its own falls back to Market Consensus (flagged "mkt" on its row, since market data
     // is priced for one format -- see State.marketSettings -- not necessarily this league's);
     // with neither, the league simply gets no power rank.
+    // A dynasty or keeper league with a Season set (improvements S23) reads it as its table does: Start
+    // from Season, the rooms from the dynasty set unless "I'm competing" is on (`start` beside `rankings`).
     function getLeaguePowerRankings(league) {
         if (league.leagueId === State.activeLeagueId && State.rosRankings.length > 0) {
-            return { rankings: State.rosRankings, source: 'ros' };
+            const own = activePowerRankings();
+            return { rankings: own.rooms, start: own.start, source: 'ros' };
         }
         const cfg = RANKING_TYPE_CONFIG.ros;
         const setId = league[cfg.leagueSetIdKey];
         const set = setId ? State.rankingSets[cfg.setsKey].find(rs => rs.id === setId) : null;
-        if (set && Array.isArray(set.data) && set.data.length > 0) return { rankings: set.data, source: 'ros' };
+        const season = seasonSetFor(league, State.rankingSets.ros);
+        const withSeason = (dynasty) => season && season.data.length > 0
+            ? { rankings: roomsUseSeason(league, State.rankingSets.ros) ? season.data : dynasty, start: season.data, source: 'ros' }
+            : { rankings: dynasty, source: 'ros' };
+        if (set && Array.isArray(set.data) && set.data.length > 0) return withSeason(set.data);
         const legacy = league[cfg.leagueLegacyDataKey];
-        if (Array.isArray(legacy) && legacy.length > 0) return { rankings: legacy, source: 'ros' };
+        if (Array.isArray(legacy) && legacy.length > 0) return withSeason(legacy);
+        if (season && season.data.length > 0) return { rankings: season.data, source: 'ros' };
         if (State.marketRankings.length > 0) return { rankings: State.marketRankings, source: 'market' };
         return null;
     }
@@ -38,7 +47,7 @@ import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, p
         if (!isFullyMappedLeague(league) || !league.globalPosMap) return null;
         const src = getLeaguePowerRankings(league);
         if (!src) return { league, missing: 'rankings' };
-        const teams = computePositionalPower(league, src.rankings);
+        const teams = computePositionalPower(league, src.rankings, { startRankings: src.start });
         const you = teams.find(t => t.owner === 'You');
         if (!you) return { league, missing: 'roster' };
         return { league, teams, you, totalTeams: teams.length, source: src.source, rankingsIdx: rankingIndex(src.rankings) };

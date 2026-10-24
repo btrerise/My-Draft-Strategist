@@ -448,7 +448,7 @@
         
         <div class="rankings-card-body" id="rosRankingsBody">
             <div class="input-group mb-0">
-                <label for="rosRankingSetSelect">Ranking Set for this League</label>
+                <label for="rosRankingSetSelect" id="rosRankingSetLabel">Ranking Set for this League</label>
                 <div class="cluster cluster-sm">
                     <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" data-action="onRankingSetSelectChange" data-type="ros" aria-label="Select ROS Ranking Set">
                     </select>
@@ -459,6 +459,25 @@
             <div id="rosSetLeaguesRow" class="mls-set-leagues-row mb-3">
                 <span id="rosSetLeaguesSummary" class="mls-set-leagues-summary"></span>
                 <button class="mls-btn-sm btn-link-inline" data-action="openRankingSetLeagues" data-type="ros">Choose leagues&hellip;</button>
+            </div>
+            <!-- Dynasty and keeper leagues only (improvements S23): a ROS set for this season's questions.
+                 Filled by populateSeasonPicker (js/mls/rankings/sets.js). -->
+            <div id="seasonRankingsRow" class="mls-season-row mb-3" hidden>
+                <div class="input-group mb-0">
+                    <div class="cluster cluster-sm">
+                        <label for="seasonRankingSetSelect" class="mb-0">Season rankings</label>
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Any saved ROS set, usually the one your redraft leagues use, for questions about this season: Power Rankings' Start column and labels, the lineup when no Weekly set is loaded, and Season Rank in the Waiver Wire Assistant. Future stays on your dynasty rankings. None keeps everything on your dynasty rankings.</span>
+                        </div>
+                    </div>
+                    <select id="seasonRankingSetSelect" class="form-input" data-action="onSeasonSetChange" aria-label="Select Season Ranking Set"></select>
+                </div>
+                <div id="seasonOffer" class="mls-season-offer" hidden></div>
+                <div id="seasonSetLeaguesRow" class="mls-set-leagues-row" hidden>
+                    <span id="seasonSetLeaguesSummary" class="mls-set-leagues-summary"></span>
+                    <button class="mls-btn-sm btn-link-inline" data-action="openSeasonSetLeagues">Choose leagues&hellip;</button>
+                </div>
             </div>
             <div id="rosNewSetNameWrap" class="input-group mb-3">
                 <label for="rosNewSetName">New Set Name (optional)</label>
@@ -627,6 +646,15 @@
                 <option value="custom" selected>My Rankings (uploaded above)</option>
                 <option value="market">Market Consensus (FantasyCalc)</option>
             </select>
+        </div>
+
+        <!-- Dynasty and keeper leagues with a Season set (improvements S23); js/mls/power/rosterCard.js. -->
+        <div id="powerCompetingWrap" class="toggle-row mb-3" style="display: none;">
+            <div class="toggle-info">
+                <label class="toggle-title" for="powerCompeting">I'm competing this year</label>
+                <span class="toggle-desc">Ovr and position rooms use your Season rankings.</span>
+            </div>
+            <input type="checkbox" id="powerCompeting" class="toggle-switch" data-action="setPowerCompeting">
         </div>
 
         <div id="powerRankingsOutput" class="mt-3" style="display: none;" aria-live="polite">
@@ -966,6 +994,7 @@
                 <select id="waiverScanBasis" class="form-input" data-action="updateWaiverScanSetting" data-setting="basis" aria-label="Sort available players by Weekly or ROS rank">
                     <option value="weekly">Weekly Rank</option>
                     <option value="ros">ROS Rank</option>
+                    <option value="season" hidden disabled>Season Rank</option>
                 </select>
             </div>
             <div class="input-group" data-waiver-modes="auto" hidden>

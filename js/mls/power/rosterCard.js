@@ -3,7 +3,7 @@
 // (goToPowerRankings, runPositionalStrength, renderPowerRankingsTable), which sat after ACTIVE
 // ROSTER: POWER RANKINGS SNAPSHOT.
 import { escapeHtml } from '../../shared/html.js';
-import { slotDisplayName, tierTag } from '../constants.js';
+import { RANKING_TYPE_CONFIG, slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { ordinal } from './allLeagues.js';
@@ -13,7 +13,9 @@ import { ensurePowerAgeIndex, futureRankText, futureMoreHTML, powerPicksNote, re
 import { getPowerLeagueKind, assignPowerLabels, powerLabelAdvice } from './directionLabels.js';
 import { renderRosterPowerStrip, scrollToPowerRankings } from './snapshot.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
 import { showTab } from '../nav.js';
+import { activePowerRankings } from '../main.js';
 
 // --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
 // Generated automatically (no Calculate button) every time the Roster tab renders -- see the
@@ -29,17 +31,73 @@ export const updatePowerSetting = function(key, value) {
 // Which rankings the card scores with: the person's pick, falling back to the other source
 // (with a note saying so) rather than showing nothing, the same way the All My Leagues search
 // falls back to Market Consensus for a league without rankings of its own.
+// With your own rankings, a dynasty league's Season set (improvements S23) gives Start, and Ovr and the
+// rooms when "I'm competing" is on; `rankings` is then the rooms' list, `start` and `future` the other two
+// (all three the same list without a Season set). Market Consensus scores every column alike.
 function resolvePowerRankingsSource() {
     const wantMarket = State.powerSettings.source === 'market';
-    const mine = State.rosRankings, market = State.marketRankings;
+    const own = activePowerRankings();
+    const mine = own.rooms, market = State.marketRankings;
+    const fromMine = (note) => ({ rankings: mine, start: own.start, future: own.future, source: 'custom', note });
     if (wantMarket) {
         if (market.length > 0) return { rankings: market, source: 'market', note: '' };
-        if (mine.length > 0) return { rankings: mine, source: 'custom', note: 'No Market Consensus data loaded yet, so this uses your own rankings instead.' };
+        if (mine.length > 0) return fromMine('No Market Consensus data loaded yet, so this uses your own rankings instead.');
     } else {
-        if (mine.length > 0) return { rankings: mine, source: 'custom', note: '' };
+        if (mine.length > 0) return fromMine('');
         if (market.length > 0) return { rankings: market, source: 'market', note: 'No rankings of your own loaded for this league, so this uses Market Consensus instead. Upload rankings above for a board built for this league.' };
     }
     return null;
+}
+
+// "I'm competing this year" (improvements S23): per league, saved on the league object.
+export const setPowerCompeting = function(checked) {
+    const league = getActiveLeague();
+    if (!league) return;
+    league.powerCompeting = !!checked;
+    localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+    refreshPowerRankings();
+};
+
+// The switch shows only in a dynasty or keeper league with a Season set, and only with your own rankings
+// as the source (Market Consensus scores every column alike).
+function renderCompetingSwitch(league, src) {
+    const wrap = document.getElementById('powerCompetingWrap');
+    if (!wrap) return;
+    const show = !!league && !!seasonSetFor(league, State.rankingSets.ros) && !!src && src.source === 'custom';
+    wrap.style.display = show ? '' : 'none'; // .toggle-row sets display, which would beat [hidden]
+    const box = document.getElementById('powerCompeting');
+    if (box) box.checked = !!(league && league.powerCompeting);
+}
+
+// Where each column came from, for the note under the table (S23). Null without a Season set.
+function seasonSourceText(league, src, futureLabel) {
+    if (!league || !src || src.source !== 'custom') return null;
+    const season = seasonSetFor(league, State.rankingSets.ros);
+    if (!season) return null;
+    const dynId = league.rosRankingSetId;
+    const dyn = dynId ? State.rankingSets.ros.find(s => s.id === dynId) : null;
+    const name = (s, fallback) => s && s.name ? `<strong>${escapeHtml(s.name)}</strong>` : fallback;
+    const hasDynasty = State.rosRankings.length > 0;
+    const dynName = name(dyn, 'your dynasty rankings');
+    const competing = roomsUseSeason(league, State.rankingSets.ros);
+    const seasonCols = competing ? '<strong>Start</strong>, <strong>Ovr</strong> and the position columns use' : '<strong>Start</strong> (and so the labels) uses';
+    let text = `${seasonCols} your Season rankings (${name(season, 'Season')}).`;
+    if (!hasDynasty) return text + ` No dynasty rankings are loaded, so every column uses them.`;
+    if (!competing) text += ` <strong>Ovr</strong> and the position columns use your dynasty rankings (${dynName}).`;
+    if (futureLabel === 'age') text += ` <strong>Future</strong> uses your dynasty rankings (${dynName}).`;
+    return text;
+}
+
+// The two-week hint (S23): a Contender whose dynasty rankings are 14+ days old (when the ROS freshness
+// label turns amber), with "I'm competing" off.
+function competingHint(league, src, you) {
+    if (!league || !src || src.source !== 'custom' || league.powerCompeting) return null;
+    if (!seasonSetFor(league, State.rankingSets.ros) || !you || you.label !== 'Contender') return null;
+    const updated = Number(State.rosRankingsUpdatedAt);
+    if (!(updated > 0) || State.rosRankings.length === 0) return null;
+    const days = Math.floor((Date.now() - updated) / 86400000);
+    if (days < RANKING_TYPE_CONFIG.ros.staleAfterDays) return null;
+    return `Your dynasty rankings are ${days} days old. Competing this year? Turn on <strong>I'm competing this year</strong> to read your rooms by your Season rankings.`;
 }
 
 export function refreshPowerRankings() {
@@ -64,6 +122,7 @@ export function refreshPowerRankings() {
         return;
     }
     const src = resolvePowerRankingsSource();
+    renderCompetingSwitch(league, src);
     if (!src) {
         showMessage('Upload your rankings above (or Auto-Fetch them) to see how every team in this league stacks up.');
         return;
@@ -76,7 +135,7 @@ export function refreshPowerRankings() {
         ensurePowerAgeIndex();
         futureInfo = resolvePowerFuture();
     }
-    const teams = computePositionalPower(league, src.rankings, { future: futureInfo.future });
+    const teams = computePositionalPower(league, src.rankings, { future: futureInfo.future, startRankings: src.start, futureRankings: src.future });
     if (teams.length === 0) {
         showMessage('Not enough roster data to evaluate yet. Try re-syncing this league.');
         return;
@@ -221,7 +280,7 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
             <tr class="${t.owner === 'You' ? 'mls-power-you' : ''}">
                 <td class="mls-power-manager"><span class="mls-power-owner">${escapeHtml(t.owner)}</span>${labelChip(t)}</td>
                 ${cell(t.starterRank, startTooltip(t), 'mls-power-strong-col')}
-                ${cell(t.overallRank, buildTooltip([...t.starters, ...t.bench].sort((a, b) => a.rank - b.rank), 'Top of the Roster', { limit: 8 }))}
+                ${cell(t.overallRank, buildTooltip((t.startSeparate ? POWER_POSITIONS.flatMap(pos => t.players[pos]) : [...t.starters, ...t.bench]).sort((a, b) => a.rank - b.rank), 'Top of the Roster', { limit: 8 }))}
                 ${cell(t.qbRank, buildTooltip(t.players.QB, 'QB Room'))}
                 ${cell(t.rbRank, buildTooltip(t.players.RB, 'RB Room', { rightEdge: true }))}
                 ${cell(t.wrRank, buildTooltip(t.players.WR, 'WR Room', { rightEdge: true }))}
@@ -234,9 +293,13 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
 
     const notes = [];
     if (ctx.source && ctx.source.note) notes.push(escapeHtml(ctx.source.note));
+    const seasonText = seasonSourceText(ctx.league, ctx.source, ctx.futureLabel);
+    if (seasonText) notes.push(seasonText);
+    const hint = competingHint(ctx.league, ctx.source, you);
+    if (hint) notes.push(hint);
     notes.push(`Ranked 1-${totalTeams} (1 = strongest). <strong>Start</strong> is each team's best legal lineup under this league's roster settings, with each position's starters measured against the league average and weighted by how many lineup spots it fills - so a stud at one position can't hide empty rooms at the others. <strong>Ovr</strong> is the whole roster, depth included.`);
     if (ctx.kind === 'dynasty') {
-        if (ctx.futureLabel === 'age') notes.push(`<strong>Future</strong> is each roster's future value: its value from these rankings, adjusted for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less.`);
+        if (ctx.futureLabel === 'age') notes.push(`<strong>Future</strong> is each roster's future value: its value from ${seasonText && State.rosRankings.length > 0 ? 'your dynasty rankings' : 'these rankings'}, adjusted for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less.`);
         else if (ctx.futureLabel === 'market') notes.push(`<strong>Future</strong> is each roster's future value. Couldn't load player ages from Sleeper, so it uses dynasty Market Consensus values instead.`);
         // Draft picks in the Future column (improvements S19, round 3), when this league's picks were synced.
         if (ctx.futureLabel === 'age' || ctx.futureLabel === 'market') {

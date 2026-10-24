@@ -10,7 +10,7 @@ import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
 import { pickForSlot } from '../lineup/flexChoice.js';
 import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, kickoffFreeze, lineupBuiltBeforeKickoff, lineupProjectionsLoaded, noteLineupOptimized, refreshLineupStats } from '../lineup/gameInfo.js';
-import { getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
+import { activeSeasonRankings, getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { rankBadgeParts, sleeperLineupBadgeMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
@@ -313,7 +313,8 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             pushLineupUndoSnapshot(State.activeLeagueId);
         }
 
-        let activeDataSet = State.weeklyRankings.length > 0 ? State.weeklyRankings : State.rosRankings;
+        // No Weekly set: this season's rankings (a dynasty league's Season set, else its ROS; improvements S23).
+        let activeDataSet = State.weeklyRankings.length > 0 ? State.weeklyRankings : activeSeasonRankings();
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
         let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 };
 
@@ -565,9 +566,10 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         let locksList = State.lockedPlayersMap[State.activeLeagueId] || [];
         // Mirrors optimizeLineup's activeDataSet choice, so the badges name the numbers the
         // lineup was actually built from.
-        const rankedByRos = State.weeklyRankings.length === 0 && State.rosRankings.length > 0;
+        const seasonRankings = activeSeasonRankings();
+        const rankedByRos = State.weeklyRankings.length === 0 && seasonRankings.length > 0;
         // Display position / FLEX ranks for those same rankings, built once per render (improvements F6).
-        const rankDisplay = leagueRankDisplayIndex(league, rankedByRos ? State.rosRankings : State.weeklyRankings, renderLineupUI);
+        const rankDisplay = leagueRankDisplayIndex(league, rankedByRos ? seasonRankings : State.weeklyRankings, renderLineupUI);
 
         let html = "";
 
@@ -676,7 +678,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                             ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 ${plainPos}
-                                <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'ros' : 'weekly', p.cleanName)}
+                                <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName)}
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
@@ -765,7 +767,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
                             ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 ${plainPos}
-                                <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'ros' : 'weekly', p.cleanName)}
+                                <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName)}
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>

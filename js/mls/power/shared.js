@@ -67,9 +67,21 @@ function pickPowerStarters(players, reqs) {
 // Either can carry pickRank(pick) -> { rank, source } | null: then the picks in league.picks (improvements S19)
 // count toward each team's future value too.
 // Without it, teams carry no future fields -- the All My Leagues search doesn't use them.
+// opts.startRankings / opts.futureRankings (improvements S23): a dynasty league's Season set scores the
+// starting lineup (Start) while `rankings` (its dynasty set) scores Ovr and the rooms, and Future's age
+// mode takes each player's value from futureRankings. Both default to `rankings`, which gives exactly the
+// numbers from before S23.
 export function computePositionalPower(league, rankings, opts = {}) {
     if (!league || !league.globalRosterMap || !league.globalPosMap) return [];
     const rankingsIdx = rankingIndex(rankings);
+    const startIdx = opts.startRankings && opts.startRankings !== rankings ? rankingIndex(opts.startRankings) : rankingsIdx;
+    const futureIdx = opts.futureRankings && opts.futureRankings !== rankings ? rankingIndex(opts.futureRankings) : rankingsIdx;
+    // A player valued by another rankings list: same shape as the room entries below.
+    const revalue = (p, idx) => {
+        if (idx === rankingsIdx) return p;
+        const { rank, data } = powerRankFor(idx, p.cleanName);
+        return { ...p, name: data ? data.name : p.name, rank, value: powerValueForRank(rank), tier: data?.tier };
+    };
     let teamScoresMap = {};
 
     // 1. Initialize scoring objects for every manager
@@ -108,10 +120,11 @@ export function computePositionalPower(league, rankings, opts = {}) {
         POWER_POSITIONS.forEach(pos => {
             team.players[pos].sort((a, b) => a.rank - b.rank);
         });
-        const all = POWER_POSITIONS.flatMap(pos => team.players[pos]);
+        const all = POWER_POSITIONS.flatMap(pos => team.players[pos]).map(p => revalue(p, startIdx));
         const { starters, bench } = pickPowerStarters(all, league.reqs);
         team.starters = starters;
         team.bench = bench;
+        team.startSeparate = startIdx !== rankingsIdx; // Start read another set (S23): the Ovr tooltip lists the rooms instead
         team.starterRaw = starters.reduce((sum, p) => sum + p.value, 0);
         team.benchScore = bench.reduce((sum, p) => sum + p.value, 0);
         // Starters grouped by their real position (a WR in FLEX counts as a WR), for the
@@ -152,7 +165,7 @@ export function computePositionalPower(league, rankings, opts = {}) {
     if (future) {
         const marketIdx = future.mode === 'market' ? rankingIndex(future.rankings) : null;
         teamScores.forEach(team => {
-            const all = POWER_POSITIONS.flatMap(pos => team.players[pos]);
+            const all = POWER_POSITIONS.flatMap(pos => team.players[pos]).map(p => revalue(p, futureIdx));
             team.futurePlayers = all.map(p => {
                 if (future.mode === 'market') {
                     const { rank } = powerRankFor(marketIdx, p.cleanName);
