@@ -380,6 +380,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expect(target.locator('.mls-upload-target-caption')).toHaveText("Saves a new In-\u2060Season set for this league. Auto-Fetch gets FantasyCalc's redraft values.");
         await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(SEASON_CSV) });
         await expect(page.locator('#rankingsPreviewOverlay')).toContainText("as this league's In-Season rankings");
+        await expect(page.locator('#rankingsPreviewTitle')).toHaveText('Preview: In-Season Rankings');
         await callApp(page, 'confirmRankingsPreview');
         await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
         const league = await fixture(page);
@@ -417,6 +418,34 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await openRosCard(page);
         await expect(page.locator('#seasonRankingSetSelect option:checked')).toHaveText(/^FantasyCalc Redraft – .* \(24 players\)$/);
         await expect(offer).toBeHidden();
+        // The Auto-Fetch button keeps its icon after a fetch.
+        await expect(page.locator('#autoFetchRosBtn svg')).toHaveCount(1);
+
+        // Fetching into In-Season again replaces that set, and the dialog says so.
+        await page.locator('#rosUploadTarget [data-slot="season"]').click();
+        await page.locator('#autoFetchRosBtn').click();
+        const confirm = page.locator('#mds-confirm-overlay');
+        await expect(confirm).toContainText('will replace your In-\u2060Season set "FantasyCalc Redraft');
+        await expect(confirm).toContainText("It's the In-\u2060Season set in 1 league.");
+        await confirm.getByRole('button', { name: 'Cancel' }).click();
+        await expect(page.locator('#autoFetchRosBtn svg')).toHaveCount(1);
+
+        // Rename and ✕ beside the In-Season picker act on the In-Season set, not the dynasty one.
+        await openRosCard(page);
+        await page.locator('#seasonRenameSetBtn').click();
+        await expect(page.locator('#mds-prompt-overlay')).toContainText('Rename In-\u2060Season set');
+        await page.locator('#mds-prompt-input').fill('My Redraft');
+        await page.locator('#mds-prompt-overlay').getByRole('button', { name: 'Rename' }).click();
+        await expect(page.locator('#seasonRankingSetSelect option:checked')).toHaveText('My Redraft (24 players)');
+        await expect(page.locator('#rosRankingSetSelect option:checked')).toHaveText('Dynasty SF (24 players)');
+        await page.locator('#seasonDeleteSetBtn').click();
+        await expect(confirm).toContainText('Delete "My Redraft"?');
+        await confirm.locator('[data-confirm-action="ok"]').click();
+        const after = await fixture(page);
+        expect(after.seasonRankingSetId).toBeNull();
+        expect(after.rosRankingSetId).toBe(ids.dynasty);
+        expect(await page.evaluate(async () => (await import('/js/mls/state.js')).State.rosRankings.length)).toBe(24);
+        await expect(page.locator('#seasonRenameSetBtn')).toBeHidden();
         await expectClean(page, state);
     });
 

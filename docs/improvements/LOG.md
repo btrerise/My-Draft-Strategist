@@ -6126,3 +6126,26 @@ control, Sleeper's count, redraft style dropping In-Season and Future; no League
 message. Main (unchanged since round 7) vs. this branch: only `mls-league-guide.png`, now `desktop/` 1280×7464 →
 1280×7834 and `phone/` 390×16244 → 390×17444 (the new Guide items). The Setup tab's League style and the Roster tab's
 keeper note are hidden in the screenshot league (redraft), so those PNGs are unchanged.
+
+### S23, round 11: my sixth review as a user (round 10's flows end to end), four fixes (owner: "do all four")
+
+Checked end to end with two more dynasty leagues: an upload into In-Season through its preview, the one-tap fetch and
+its "Also use … in "Second Dynasty" and "Keeper League" too?", replacing the In-Season set, and League style.
+1. **An In-Season set couldn't be renamed or deleted from its own picker**: Rename and ✕ act on the dynasty drop-down,
+   so a dynasty-only user would have had to pick "FantasyCalc Redraft – …" as the dynasty set first (which reassigns
+   it). The In-Season picker now has the same Rename and ✕ (`data-slot="season"`; `renameRankingSet` and
+   `deleteRankingSet` take a slot and act on the active league's In-Season set), shown while one is chosen. The delete
+   also now clears `State.rosRankings` only when it empties the active league's own slot (before, a league whose slot
+   was already empty had it cleared too).
+2. **Auto-Fetch ROS Rankings lost its refresh icon after any fetch** (on main too): it restored the button's text, not
+   its markup. It saves and restores the markup now. CHANGELOG line.
+3. **Replacing the In-Season set by Auto-Fetch** said "…will replace the saved set "…". It is used by 3 leagues."; it
+   reads "…will replace your In-Season set "…". It's the In-Season set in 3 leagues." (`seasonUseNote`; ", and the
+   dynasty set in N" when a league also uses it that way). The upload preview's replace line says the same.
+4. **The upload preview's title** reads "Preview: In-Season Rankings" for an In-Season upload.
+
+Not an app issue: one League style step looked broken because the test made two manual leagues in the same frozen
+millisecond (the same `manual_` id); the spec covers the real flow.
+
+**Checks (round 11).** 424 unit; Playwright 505 passed, only `visual.spec.mjs` on the environment message. Screenshots
+vs. main: as in round 10 (only `mls-league-guide.png`).

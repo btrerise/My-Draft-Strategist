@@ -461,10 +461,10 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
 
     // Deletes the currently-selected named set entirely. Any league referencing it (not just
     // the active one) falls back to unassigned, since the data it pointed to no longer exists.
-    export const deleteRankingSet = async function(type) {
+    // slot 'season' (S23, round 11): the active league's In-Season set, from the ✕ beside its picker.
+    export const deleteRankingSet = async function(type, slot = null) {
         const cfg = RANKING_TYPE_CONFIG[type];
-        const selectEl = document.getElementById(cfg.selectId);
-        const setId = selectEl ? selectEl.value : null;
+        const setId = pickedSetId(type, slot);
         if (!setId || setId === '__new__' || setId === '__legacy__') return;
 
         const set = State.rankingSets[cfg.setsKey].find(s => s.id === setId);
@@ -474,6 +474,9 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
         const seasonLine = asSeason ? ` ${leagueCountText(asSeason)} using it as ${IN_SEASON} rankings will go back to their dynasty rankings.` : '';
         if (!await showConfirm(`Any league using this set will need a new one selected.${seasonLine} This can't be undone.`, { title: `Delete "${set.name}"?`, confirmText: 'Delete Set', danger: true })) return;
 
+        // Only when this delete empties the active league's own slot (not one that was already empty).
+        const activeBefore = getActiveLeague();
+        const clearsActive = !!activeBefore && activeBefore[cfg.leagueSetIdKey] === setId;
         State.rankingSets[cfg.setsKey] = State.rankingSets[cfg.setsKey].filter(s => s.id !== setId);
         localStorage.setItem(cfg.localStorageSetsKey, JSON.stringify(State.rankingSets[cfg.setsKey]));
 
@@ -483,8 +486,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
         });
         localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
 
-        let league = getActiveLeague();
-        if (league && league[cfg.leagueSetIdKey] === null) {
+        if (clearsActive) {
             State[cfg.stateKey] = [];
             State[cfg.updatedAtKey] = null;
         }
@@ -520,17 +522,27 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
     }
 
     // Renames the set selected in the dropdown.
-    export const renameRankingSet = async function(type) {
+    // The set a Rename or ✕ acts on: the type's drop-down, or with slot 'season' the active league's In-Season set
+    // (S23, round 11: without its own buttons, renaming an In-Season set meant picking it as the dynasty set).
+    function pickedSetId(type, slot) {
+        if (type === 'ros' && slot === 'season') {
+            const set = seasonSetFor(getActiveLeague(), State.rankingSets.ros);
+            return set ? set.id : null;
+        }
+        const selectEl = document.getElementById(RANKING_TYPE_CONFIG[type].selectId);
+        return selectEl ? selectEl.value : null;
+    }
+
+    export const renameRankingSet = async function(type, slot = null) {
         const cfg = RANKING_TYPE_CONFIG[type];
-        const selectEl = document.getElementById(cfg.selectId);
-        const setId = selectEl ? selectEl.value : null;
+        const setId = pickedSetId(type, slot);
         if (!setId || setId === '__new__' || setId === '__legacy__') return;
 
         const set = State.rankingSets[cfg.setsKey].find(s => s.id === setId);
         if (!set) return;
 
         const name = await showPrompt('Set name', {
-            title: `Rename ${cfg.label} set`,
+            title: slot === 'season' ? `Rename ${IN_SEASON} set` : `Rename ${cfg.label} set`,
             value: set.name || '',
             maxLength: RANKING_SET_NAME_MAX,
             confirmText: 'Rename',
@@ -574,6 +586,11 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
                 + sets.filter(s => s.id !== league.rosRankingSetId).map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} (${s.data.length} players)</option>`).join('');
             selectEl.value = current ? current.id : '';
         }
+        // Rename and ✕ for the In-Season set itself, while one is chosen (round 11).
+        ['seasonRenameSetBtn', 'seasonDeleteSetBtn'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b) b.style.display = current ? (id === 'seasonRenameSetBtn' ? 'inline-flex' : 'inline-block') : 'none';
+        });
 
         // "In-Season rankings in 6 of 13 dynasty and keeper leagues · Choose leagues…", for a chosen set.
         const leaguesRow = document.getElementById('seasonSetLeaguesRow');
@@ -624,9 +641,18 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
     // Where an In-Season upload goes: the league's In-Season set (replaced in place), else a new set.
     function resolveSeasonTarget(name) {
         const set = seasonSetFor(getActiveLeague(), State.rankingSets.ros);
-        if (set) return { mode: 'replace', id: set.id, name: set.name, slot: 'season',
-            playerCount: Array.isArray(set.data) ? set.data.length : 0, leagueCount: setUsage(set.id, State.leagues).used };
+        if (set) {
+            const { used, asSeason } = setUsage(set.id, State.leagues);
+            return { mode: 'replace', id: set.id, name: set.name, slot: 'season', asSeason, asDynasty: used - asSeason,
+                playerCount: Array.isArray(set.data) ? set.data.length : 0, leagueCount: used };
+        }
         return { mode: 'new', name: name || `${IN_SEASON} Rankings – ${new Date().toLocaleDateString()}`, slot: 'season' };
+    }
+
+    // "It's the In-Season set in 3 leagues." (and ", the dynasty set in 1"), for replacing one (round 11).
+    export function seasonUseNote(target) {
+        const n = target.asSeason || 0, d = target.asDynasty || 0;
+        return `It's the ${IN_SEASON} set in ${leagueCountText(n)}${d ? ` and the dynasty set in ${leagueCountText(d)}` : ''}.`;
     }
 
     // saveRankingsAsSet for the In-Season slot: the league's dynasty set and State.rosRankings are left alone.

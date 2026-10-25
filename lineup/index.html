@@ -501,7 +501,11 @@
                             <span class="tooltip-text">Any saved ROS set, usually the one your redraft leagues use, for questions about this season: Power Rankings' Start column and labels, the lineup when no Weekly set is loaded, and In-Season Rank in the Waiver Wire Assistant. Future stays on your dynasty rankings. None keeps everything on your dynasty rankings.</span>
                         </div>
                     </div>
-                    <select id="seasonRankingSetSelect" class="form-input" data-action="onSeasonSetChange" aria-label="Select In-Season Ranking Set"></select>
+                    <div class="cluster cluster-sm">
+                        <select id="seasonRankingSetSelect" class="form-input" style="flex: 1;" data-action="onSeasonSetChange" aria-label="Select In-Season Ranking Set"></select>
+                        <button id="seasonRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="ros" data-slot="season" title="Rename this In-Season set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>Rename</button>
+                        <button id="seasonDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" data-action="deleteRankingSet" data-type="ros" data-slot="season" title="Delete this In-Season set" aria-label="Delete this In-Season set">✕</button>
+                    </div>
                 </div>
                 <div id="seasonOffer" class="mls-season-offer" hidden></div>
                 <div id="seasonSetLeaguesRow" class="mls-set-leagues-row" hidden>

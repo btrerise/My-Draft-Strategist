@@ -143,8 +143,8 @@ const clickActions = {
     restoreBestAvailable() { restoreBestAvailable(this.dataset.leagueId); },
     // ROS (Roster tab) and Weekly (Lineup tab) rankings cards
     toggleRankingsCard() { toggleRankingsCard(this.dataset.card); },
-    deleteRankingSet() { deleteRankingSet(this.dataset.type); },
-    renameRankingSet() { renameRankingSet(this.dataset.type); },
+    deleteRankingSet() { deleteRankingSet(this.dataset.type, this.dataset.slot || null); },
+    renameRankingSet() { renameRankingSet(this.dataset.type, this.dataset.slot || null); },
     // Season rankings in dynasty and keeper leagues (rankings/sets.js, improvements S23)
     openSeasonSetLeagues() { openSeasonSetLeagues(); },
     useSeasonOffer() { useSeasonOffer(this.dataset.setId); },

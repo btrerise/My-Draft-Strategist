@@ -10,7 +10,7 @@ import { SOS_SCALE_TEXT } from '../sosScale.js';
 import { analyzeRankingsFile, derivedRanksWording } from '../scout/waivers.js';
 import { createPreviewShell, formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { setRankingsCardExpanded } from './engine.js';
-import { resolveRankingsTarget, saveRankingsAsSet, renderLeaguePicker, readLeaguePicker, assignSetToLeagues, leagueCountText } from './sets.js';
+import { resolveRankingsTarget, saveRankingsAsSet, renderLeaguePicker, readLeaguePicker, assignSetToLeagues, leagueCountText, seasonUseNote } from './sets.js';
 import { isNewWeekReplace, showRankingsChange } from './changeSummary.js';
 import { loadRosterTab, optimizeLineup } from '../main.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -85,7 +85,8 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         const preview = sorted.slice(0, 5);
 
         const titleEl = document.getElementById('rankingsPreviewTitle');
-        if (titleEl) titleEl.textContent = `Preview: ${rankType} Rankings`;
+        // An upload into a dynasty league's In-Season slot says so (S23, round 11).
+        if (titleEl) titleEl.textContent = `Preview: ${!isWeekly && target && target.slot === 'season' ? 'In-Season' : rankType} Rankings`;
 
         const countEl = document.getElementById('rankingsPreviewCount');
         if (countEl) countEl.textContent = `${parsedData.length} player${parsedData.length === 1 ? '' : 's'} parsed`;
@@ -180,10 +181,10 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         const confirmBtn = document.getElementById('rankingsPreviewConfirmBtn');
         if (targetEl) {
             if (target && target.mode === 'replace') {
-                const leagueNote = target.leagueCount === 1
-                    ? 'Used by 1 league.'
-                    : `Used by ${target.leagueCount} leagues.`;
-                targetEl.innerHTML = `Replaces the saved set <strong>${escapeHtml(target.name)}</strong>` +
+                const leagueNote = target.slot === 'season'
+                    ? escapeHtml(seasonUseNote(target))
+                    : target.leagueCount === 1 ? 'Used by 1 league.' : `Used by ${target.leagueCount} leagues.`;
+                targetEl.innerHTML = `Replaces ${target.slot === 'season' ? 'your In-Season set' : 'the saved set'} <strong>${escapeHtml(target.name)}</strong>` +
                     `${target.playerCount ? ` (${target.playerCount} player${target.playerCount === 1 ? '' : 's'})` : ''}. ` +
                     `${leagueNote} This can't be undone.`;
                 targetEl.className = 'preview-target is-replace';

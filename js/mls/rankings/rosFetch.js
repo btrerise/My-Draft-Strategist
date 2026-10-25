@@ -5,7 +5,8 @@ import { fetchMarketConsensusData } from '../../shared/api/market.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { setRankingsCardExpanded } from './engine.js';
-import { resolveRankingsTarget, saveRankingsAsSet, assignSetToLeagues, openLeaguePickerDialog, leagueCountText, offerSeasonToOthers, rosUploadIntoSeason } from './sets.js';
+import { resolveRankingsTarget, saveRankingsAsSet, assignSetToLeagues, openLeaguePickerDialog, leagueCountText, offerSeasonToOthers, rosUploadIntoSeason, seasonUseNote } from './sets.js';
+import { IN_SEASON } from './season.js';
 import { loadRosterTab } from '../main.js';
 import { showRankingsChange } from './changeSummary.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
@@ -26,8 +27,10 @@ import { showToast } from '../../shared/ui/toast.js';
     // than guess at an unverified integration, Weekly Rankings stay upload-only for now.
     export const autoFetchRosRankings = async function(btn) {
         if (!btn) return;
-        const origText = btn.innerText;
-        btn.innerText = "Fetching…";
+        // The button's markup, icon included: restoring only its text dropped the refresh icon after every fetch
+        // (S23, round 11).
+        const origHTML = btn.innerHTML;
+        btn.textContent = "Fetching…";
         btn.style.opacity = "0.7";
         btn.disabled = true;
 
@@ -61,11 +64,12 @@ import { showToast } from '../../shared/ui/toast.js';
             // carries the same information. A new set overwrites nothing, so it saves silently.
             const target = resolveRankingsTarget('ros');
             if (target.mode === 'replace') {
-                const leagueNote = target.leagueCount === 1
-                    ? 'It is used by 1 league.'
-                    : `It is used by ${target.leagueCount} leagues.`;
+                const leagueNote = target.slot === 'season'
+                    ? seasonUseNote(target)
+                    : target.leagueCount === 1 ? 'It is used by 1 league.' : `It is used by ${target.leagueCount} leagues.`;
+                const what = target.slot === 'season' ? `your ${IN_SEASON} set` : 'the saved set';
                 const confirmed = await showConfirm(
-                    `The ${rosRankings.length} players just fetched (${formatText}) will replace the saved set "${target.name}".\n\n${leagueNote} This can't be undone.`,
+                    `The ${rosRankings.length} players just fetched (${formatText}) will replace ${what} "${target.name}".\n\n${leagueNote} This can't be undone.`,
                     { title: 'Replace saved set?', confirmText: 'Replace Set', danger: true }
                 );
                 if (!confirmed) {
@@ -91,14 +95,14 @@ import { showToast } from '../../shared/ui/toast.js';
             // leagues with it, so there's nothing to ask.
             const newSet = target.mode === 'new' && State.rankingSets.ros.find(s => s.id === savedSetId);
             if (newSet && intoSeason) {
-                btn.innerText = origText;
+                btn.innerHTML = origHTML;
                 btn.style.opacity = "1";
                 btn.disabled = false;
                 await offerSeasonToOthers(newSet); // the In-Season slot's own "use it in the others too"
             } else if (newSet && State.leagues.length > 1) {
                 // The fetch itself is done -- restore the button now rather than leaving it on
                 // "Fetching..." behind the dialog (finally below repeats this harmlessly).
-                btn.innerText = origText;
+                btn.innerHTML = origHTML;
                 btn.style.opacity = "1";
                 btn.disabled = false;
                 const choice = await openLeaguePickerDialog('ros', newSet, {
@@ -117,7 +121,7 @@ import { showToast } from '../../shared/ui/toast.js';
             console.error("Error auto-fetching ROS rankings:", error);
             showToast(`Could not auto-fetch ROS rankings.\n\n${error.message}`, { isError: true });
         } finally {
-            btn.innerText = origText;
+            btn.innerHTML = origHTML;
             btn.style.opacity = "1";
             btn.disabled = false;
         }
