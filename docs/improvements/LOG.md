@@ -6149,3 +6149,26 @@ millisecond (the same `manual_` id); the spec covers the real flow.
 
 **Checks (round 11).** 424 unit; Playwright 505 passed, only `visual.spec.mjs` on the environment message. Screenshots
 vs. main: as in round 10 (only `mls-league-guide.png`).
+
+### S23, round 12: my seventh review as a user (empty and edge cases), two fixes and a follow-up note
+
+Checked: a brand-new dynasty league with no rankings (one tap on "Get FantasyCalc's redraft values" and Power Rankings
+work, "Every column by In-Season (…)"), a league whose only rankings are its In-Season set, a keeper league switched to
+redraft, and a manual league.
+1. **A keeper league switched to "Plays like redraft" could lose all its rankings**: with only an In-Season set (say
+   from the FantasyCalc button), redraft has no In-Season slot, so Power Rankings, the lineup and the Waiver Wire had
+   nothing. Now `setLeagueStyle` moves that set into the ROS slot when the ROS slot is empty (no set, no old upload),
+   marks the league (`seasonMovedToRos`, carried over by a sync) and moves it back when switched to dynasty again. The
+   toast says so ("Its In-Season set, "…", is now its ROS set." / ""…" is its In-Season set again.").
+2. **The Trade Analyzer's Power Rankings after the trade ignored an In-Season-only league** ("Load your ROS
+   rankings…") while the Roster tab's table worked. It uses `activePowerRankings()` whenever it has rankings now, with
+   "by your In-Season rankings (no dynasty rankings loaded)"; the trade's value headline then uses the market's values,
+   or none, since "Your rankings" values come from the dynasty set (S24 shows both).
+3. **Manual leagues can't be dynasty** (no league type), so no In-Season rankings, Future or picks there. Not built:
+   the owner noted the payoff is small, since Power Rankings need a Sleeper league and the Waiver Wire can't tell who's
+   available in a manual league. Added to docs/TESTING.md's Open follow-ups ("Needs the owner's decision first").
+
+Tests: a spec case for both fixes (the Trade Analyzer's line; redraft and back, both slots and the marker).
+
+**Checks (round 12).** 424 unit; Playwright 507 passed, only `visual.spec.mjs` on the environment message. Screenshots
+vs. main: as in round 10 (only `mls-league-guide.png`).

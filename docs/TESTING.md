@@ -268,6 +268,10 @@ done or dropped, remove its line here in the same change. Background for each is
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Needs the owner's decision first**
+- Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
+  redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues
+  (beside League style on the Setup tab) would fix that, but the owner noted the payoff is small: Power Rankings need a
+  Sleeper league, and the Waiver Wire can't tell who's available in a manual league (it only knows your roster).
 - Merge `dropTitleRows` and `findHeaderRowIndex` in `js/shared/rankings/parse.js` into one title-row finder. That
   changes how some rankings files are read, so do it only if a file parses wrong (2C).
 - IDP positions (LB, DL, DB) get K/DEF's Boom/Bust floor of 4, and the simulator uses Sleeper's default scoring,

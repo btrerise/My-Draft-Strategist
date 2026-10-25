@@ -480,6 +480,34 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expectClean(page, state);
     });
 
+    test('a league whose only rankings are In-Season: the Trade Analyzer uses them; a keeper league switched to redraft keeps them', async ({ page }) => {
+        const { state, ids } = await setUp(page);
+        await patchLeagues(page, { 'Fixture League': { leagueType: 'keeper', rosRankingSetId: null, rosRankings: [], seasonRankingSetId: ids.season } });
+        expect((await powerTable(page)).key).toContain('Every column by In-Season');
+        // The Trade Analyzer's Power Rankings after the trade read the In-Season set too.
+        await showTab(page, 'scout');
+        await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
+        await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        await expect(page.locator('.mls-trade-impact-via').first()).toHaveText('by your In-Season rankings (no dynasty rankings loaded)');
+
+        // Plays like redraft: the In-Season set becomes the ROS set, so the league still has rankings.
+        await showTab(page, 'setup');
+        await page.locator('#leagueStyleSelect').selectOption('redraft');
+        await expect(toast(page, 'Its In-Season set, "Redraft ROS", is now its ROS set.')).toBeVisible();
+        let league = await fixture(page);
+        expect([league.rosRankingSetId, league.seasonRankingSetId]).toEqual([ids.season, null]);
+        await powerTable(page, { future: false });
+        expect(await page.evaluate(async () => (await import('/js/mls/state.js')).State.rosRankings.length)).toBe(24);
+        // And back.
+        await showTab(page, 'setup');
+        await page.locator('#leagueStyleSelect').selectOption('dynasty');
+        await expect(toast(page, '"Redraft ROS" is its In-Season set again.')).toBeVisible();
+        league = await fixture(page);
+        expect([league.rosRankingSetId, league.seasonRankingSetId, league.seasonMovedToRos]).toEqual([null, ids.season, undefined]);
+        await expectClean(page, state);
+    });
+
     test('Backup / Restore keeps the In-Season set and the switch', async ({ page }) => {
         const { state, ids } = await setUp(page);
         await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: ids.season, powerCompeting: true } });

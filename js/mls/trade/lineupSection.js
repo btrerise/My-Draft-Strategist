@@ -109,8 +109,11 @@ export async function buildTradeImpactHTML(league, getNames, giveNames, { getRes
 async function powerSection(league, title, give, get, notes, cards, tradedPicks) {
     // A dynasty league's In-Season set (improvements S23) scores Start, and the rooms with "I'm competing", as on the
     // Roster tab's table; Future stays on the dynasty set. All three are State.rosRankings without an In-Season set.
-    const own = State.rosRankings.length > 0 ? activePowerRankings() : null;
+    // A league whose only rankings are its In-Season set (round 12) is scored by it, as the Roster tab's table is.
+    const powered = activePowerRankings();
+    const own = powered.rooms.length > 0 ? powered : null;
     let rankings = own ? own.rooms : State.rosRankings, via = 'by your ROS rankings';
+    if (own && State.rosRankings.length === 0) via = 'by your In-Season rankings (no dynasty rankings loaded)';
     const powerOpts = own ? { startRankings: own.start, futureRankings: own.future } : {};
     // Which set gave what (round 5): the trade's values ("Your rankings") are always the dynasty set's, until S24.
     if (own && own.start !== own.future) via = own.rooms === own.start
@@ -171,7 +174,8 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     // loaded), and the lineup change, in one sentence (round 4).
     // No headline while a name matches no player, or while the market (when it's what's used) lacks a piece: the
     // banner above has no verdict then either (round 11).
-    const valueKey = own ? 'userValue' : 'marketValue';
+    // The trade's values ("Your rankings") come from the dynasty set; without one, the market's (S23, round 12).
+    const valueKey = own && State.rosRankings.length > 0 ? 'userValue' : 'marketValue';
     const settled = cards.getResults && cards.giveResults && !unknownNames(cards.getResults, cards.giveResults).length
         && (valueKey === 'userValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
     const value = settled ? tradeVerdictNumbers(cards.getResults, cards.giveResults, valueKey) : null;

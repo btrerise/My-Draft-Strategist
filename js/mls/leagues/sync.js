@@ -25,7 +25,7 @@ import { normalizeName } from '../../shared/names.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { withViewTransition } from '../../shared/ui/viewTransition.js';
-import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/season.js';
+import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from '../rankings/season.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -381,14 +381,38 @@ import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/
     export const setLeagueStyle = function(value) {
         const league = getActiveLeague();
         if (!league || league.leagueType !== 'keeper') return;
-        if (value === 'redraft') league.keeperStyle = 'redraft';
-        else delete league.keeperStyle;
+        // A league whose only rankings are its In-Season set (made with the FantasyCalc button, say) would have none
+        // as redraft, where there's no In-Season slot (S23, round 12). Then the set moves into the ROS slot, marked
+        // so that switching back to dynasty moves it back.
+        const sets = State.rankingSets.ros;
+        const legacy = Array.isArray(league.rosRankings) && league.rosRankings.length > 0;
+        let moved = null;
+        if (value === 'redraft') {
+            const season = league.keeperStyle !== 'redraft' ? seasonSetFor(league, sets) : null;
+            league.keeperStyle = 'redraft';
+            if (season && !league.rosRankingSetId && !legacy) {
+                league.rosRankingSetId = season.id;
+                league.seasonRankingSetId = null;
+                league.seasonMovedToRos = true;
+                moved = `Its In-Season set, "${season.name}", is now its ROS set.`;
+            }
+        } else {
+            delete league.keeperStyle;
+            if (league.seasonMovedToRos && league.rosRankingSetId) {
+                const set = sets.find(s => s.id === league.rosRankingSetId);
+                league.seasonRankingSetId = league.rosRankingSetId;
+                league.rosRankingSetId = null;
+                if (set) moved = `"${set.name}" is its In-Season set again.`;
+            }
+            delete league.seasonMovedToRos;
+        }
         localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        hydrateRankingsForLeague(league);
         // The market type, the ROS card's two pickers and Power Rankings all read the league's kind.
         applyLeagueDefaultsToMarketSettings(league);
         updateRankingsMetaDisplay();
         if (typeof loadRosterTab === 'function') loadRosterTab();
-        showToast(`${league.name || 'This league'} now plays like ${value === 'redraft' ? 'redraft' : 'dynasty'} here.`);
+        showToast(`${league.name || 'This league'} now plays like ${value === 'redraft' ? 'redraft' : 'dynasty'} here.${moved ? `\n\n${moved}` : ''}`);
     };
 
     export const saveRequirements = function(btn) {
@@ -648,6 +672,7 @@ import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/
                 // every other league type, so only kept here), and your League style, carried over like the sets.
                 maxKeepers: leagueType === 'keeper' ? (Number(leagueData.settings?.max_keepers) || null) : null,
                 keeperStyle: existingLeague && existingLeague.keeperStyle === 'redraft' ? 'redraft' : undefined,
+                seasonMovedToRos: existingLeague && existingLeague.seasonMovedToRos ? true : undefined,
                 // Yours, like the rankings assignment: whether you pay for this league (Edit mode's "$ Paid", S21).
                 paid: existingLeague ? !!existingLeague.paid : false,
                 // Set only here, i.e. only once every Sleeper fetch above has succeeded. A league
