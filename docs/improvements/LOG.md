@@ -6071,3 +6071,14 @@ set an upload fills stays clear. Dynasty and keeper leagues only; redraft league
 the order (dynasty picker, In-Season picker, the line, the file input, Auto-Fetch) and both wordings.
 Checks: 423 unit, 499 Playwright passed (only `visual.spec.mjs` on the environment message); screenshots vs. main (with
 S21) unchanged from round 7: only `mls-league-guide.png`.
+
+### S23, round 9: my fourth review as a user, at the owner's scale (21 leagues, 13 dynasty or keeper); two fixes
+
+With 13 leagues the bulk assign held up ("Use in all 12", then "…is now the In-Season set in 13 leagues."), the leagues
+dialog scrolls inside its box with Clear all, keyboard focus shows on the switch, and the Dashboard behaved. Fixed
+(owner: "do both"):
+1. **"In 13 of 13 dynasty and keeper leagues"** and "Choose leagues…" each wrapped to two lines on a phone; it reads
+   **"In all 13 dynasty leagues"** / "In 6 of 13 dynasty leagues" now (keeper leagues still count, as the (i) says).
+2. **The In-Season leagues dialog said "Already using this set as In-Season" on every checked row**; checked rows have
+   no note now (the checkmark says it). Rows that add something keep theirs: "This league", "In-Season now: <set>",
+   "No In-Season set (uses its dynasty rankings)", "Its dynasty rankings already". The ROS set's own dialog is unchanged.

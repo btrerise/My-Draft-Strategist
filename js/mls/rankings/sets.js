@@ -313,7 +313,8 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
             const seasonNow = isSeason ? seasonSetFor(l, State.rankingSets.ros) : null;
             const note = isActive ? 'This league'
                 : ownDynasty ? 'Its dynasty rankings already'
-                : onSet ? (isSeason ? 'Already using this set as In-Season' : 'Already using this set')
+                // The Season dialog's checked rows need no note: the checkmark says it (round 9; it repeated on every row).
+                : onSet ? (isSeason ? '' : 'Already using this set')
                 : isSeason ? (seasonNow ? `In-Season now: ${seasonNow.name}` : 'No In-Season set (uses its dynasty rankings)')
                 : `Currently: ${describeLeagueRankings(type, l)}`;
             return `
@@ -321,7 +322,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
                     <input type="checkbox" value="${escapeHtml(l.leagueId)}" data-was-on="${onSet ? '1' : '0'}"${(isActive || onSet) ? ' checked' : ''}${locked ? ' disabled' : ''}>
                     <span class="mls-league-picker-text">
                         <span class="mls-league-picker-name">${escapeHtml(l.name || 'Unnamed league')}</span>
-                        <span class="mls-league-picker-note">${escapeHtml(note)}</span>
+                        ${note ? `<span class="mls-league-picker-note">${escapeHtml(note)}</span>` : ''}
                     </span>
                 </label>`;
         }).join('');
@@ -579,7 +580,9 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
             const summary = document.getElementById('seasonSetLeaguesSummary');
             if (current && summary) {
                 const n = State.leagues.filter(l => seasonSetFor(l, sets) === current).length;
-                summary.textContent = `In ${n} of ${dynastyCount} dynasty and keeper leagues`; // the label above says In-Season
+                // Short, so it and "Choose leagues…" fit one line on a phone with double-digit counts (round 9; keeper
+                // leagues count, as the (i) and the Guide say).
+                summary.textContent = n === dynastyCount ? `In all ${n} dynasty leagues` : `In ${n} of ${dynastyCount} dynasty leagues`;
             }
         }
 

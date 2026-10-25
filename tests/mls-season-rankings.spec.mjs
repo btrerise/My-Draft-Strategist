@@ -260,7 +260,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         expect(Object.fromEntries(leagues.map(l => [l.name, l.seasonRankingSetId || null])))
             .toEqual({ 'Fixture League': ids.season, 'Bench League': null, 'Keeper League': ids.season });
         await expect(offer).toBeHidden();
-        await expect(page.locator('#seasonSetLeaguesSummary')).toHaveText('In 2 of 2 dynasty and keeper leagues');
+        await expect(page.locator('#seasonSetLeaguesSummary')).toHaveText('In all 2 dynasty leagues');
         await expect(page.locator('#rosSetLeaguesSummary')).toHaveText('Used in 2 of 3 leagues');
 
         // Choose leagues…: only the dynasty and keeper leagues; unchecking one sends it back to its dynasty set.
@@ -269,10 +269,13 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expect(dialog).toBeVisible();
         await expect(dialog.locator('#rankingLeaguesTitle')).toHaveText('Use "Redraft ROS" as In-\u2060Season rankings in…');
         await expect(dialog.locator('.mls-league-picker-name')).toHaveText(['Fixture League', 'Keeper League']);
+        // A checked row needs no note (the checkmark says it); the active league keeps "This league".
+        await expect(dialog.locator('label', { hasText: 'Keeper League' }).locator('.mls-league-picker-note')).toHaveCount(0);
         await dialog.locator('label', { hasText: 'Keeper League' }).locator('input').uncheck();
         await dialog.locator('[data-league-picker="ok"]').click();
         await expect(toast(page, 'is now the In-\u2060Season set in 1 league.')).toBeVisible();
         expect((await storedLeagues(page)).find(l => l.name === 'Keeper League').seasonRankingSetId).toBeNull();
+        await expect(page.locator('#seasonSetLeaguesSummary')).toHaveText('In 1 of 2 dynasty leagues');
 
         // Rename, from the redraft league that uses it: the dynasty league's picker and header show the new name.
         const bench = (await storedLeagues(page)).find(l => l.name === 'Bench League').leagueId;
