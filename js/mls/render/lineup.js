@@ -313,7 +313,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
             pushLineupUndoSnapshot(State.activeLeagueId);
         }
 
-        // No Weekly set: this season's rankings (a dynasty league's Season set, else its ROS; improvements S23).
+        // No Weekly set: this season's rankings (a dynasty league's In-Season set, else its ROS; improvements S23).
         let activeDataSet = State.weeklyRankings.length > 0 ? State.weeklyRankings : activeSeasonRankings();
         let locks = State.lockedPlayersMap[State.activeLeagueId] || [];
         let reqs = league.reqs || { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SFLEX: 0, K: 1, DEF: 1 };

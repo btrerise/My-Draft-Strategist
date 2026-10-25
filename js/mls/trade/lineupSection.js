@@ -107,12 +107,12 @@ export async function buildTradeImpactHTML(league, getNames, giveNames, { getRes
 
 // --- Sleeper leagues: Power Rankings before and after ---
 async function powerSection(league, title, give, get, notes, cards, tradedPicks) {
-    // A dynasty league's Season set (improvements S23) scores Start, and the rooms with "I'm competing", as on the
-    // Roster tab's table; Future stays on the dynasty set. All three are State.rosRankings without a Season set.
+    // A dynasty league's In-Season set (improvements S23) scores Start, and the rooms with "I'm competing", as on the
+    // Roster tab's table; Future stays on the dynasty set. All three are State.rosRankings without an In-Season set.
     const own = State.rosRankings.length > 0 ? activePowerRankings() : null;
     let rankings = own ? own.rooms : State.rosRankings, via = 'by your ROS rankings';
     const powerOpts = own ? { startRankings: own.start, futureRankings: own.future } : {};
-    if (own && own.start !== own.future) via = own.rooms === own.start ? 'by your Season rankings (Future by your dynasty rankings)' : 'by your dynasty rankings (Start by your Season rankings)';
+    if (own && own.start !== own.future) via = own.rooms === own.start ? 'by your In-Season rankings (Future by your dynasty rankings)' : 'by your dynasty rankings (Start by your In-Season rankings)';
     if (rankings.length === 0) {
         if (State.marketRankings.length === 0) {
             return oneLine(title, 'Load your ROS rankings (Roster tab) or Market Consensus data (Trade Finder below) to see how this trade changes your Power Rankings.');

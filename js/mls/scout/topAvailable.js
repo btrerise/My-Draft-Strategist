@@ -152,7 +152,7 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
 
     // The Scout tab was just shown (nav.js showTab).
     export function onScoutTabShown() {
-        applyWaiverScanSettingsToUI(); // Season Rank shows only in a league with a Season set (S23)
+        applyWaiverScanSettingsToUI(); // In-Season Rank shows only in a league with an In-Season set (S23)
         if (!inTopMode()) return;
         pageLimit = PAGE;
         renderTopAvailable();

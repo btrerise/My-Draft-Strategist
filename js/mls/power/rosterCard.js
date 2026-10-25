@@ -31,9 +31,9 @@ export const updatePowerSetting = function(key, value) {
 // Which rankings the card scores with: the person's pick, falling back to the other source
 // (with a note saying so) rather than showing nothing, the same way the All My Leagues search
 // falls back to Market Consensus for a league without rankings of its own.
-// With your own rankings, a dynasty league's Season set (improvements S23) gives Start, and Ovr and the
+// With your own rankings, a dynasty league's In-Season set (improvements S23) gives Start, and Ovr and the
 // rooms when "I'm competing" is on; `rankings` is then the rooms' list, `start` and `future` the other two
-// (all three the same list without a Season set). Market Consensus scores every column alike.
+// (all three the same list without an In-Season set). Market Consensus scores every column alike.
 function resolvePowerRankingsSource() {
     const wantMarket = State.powerSettings.source === 'market';
     const own = activePowerRankings();
@@ -58,7 +58,7 @@ export const setPowerCompeting = function(checked) {
     refreshPowerRankings();
 };
 
-// The switch shows only in a dynasty or keeper league with a Season set, and only with your own rankings
+// The switch shows only in a dynasty or keeper league with an In-Season set, and only with your own rankings
 // as the source (Market Consensus scores every column alike).
 function renderCompetingSwitch(league, src) {
     const wrap = document.getElementById('powerCompetingWrap');
@@ -69,7 +69,7 @@ function renderCompetingSwitch(league, src) {
     if (box) box.checked = !!(league && league.powerCompeting);
 }
 
-// Where each column came from, for the note under the table (S23). Null without a Season set.
+// Where each column came from, for the note under the table (S23). Null without an In-Season set.
 function seasonSourceText(league, src, futureLabel) {
     if (!league || !src || src.source !== 'custom') return null;
     const season = seasonSetFor(league, State.rankingSets.ros);
@@ -81,7 +81,7 @@ function seasonSourceText(league, src, futureLabel) {
     const dynName = name(dyn, 'your dynasty rankings');
     const competing = roomsUseSeason(league, State.rankingSets.ros);
     const seasonCols = competing ? '<strong>Start</strong>, <strong>Ovr</strong> and the position columns use' : '<strong>Start</strong> (and so the labels) uses';
-    let text = `${seasonCols} your Season rankings (${name(season, 'Season')}).`;
+    let text = `${seasonCols} your In-Season rankings (${name(season, 'In-Season')}).`;
     if (!hasDynasty) return text + ` No dynasty rankings are loaded, so every column uses them.`;
     if (!competing) text += ` <strong>Ovr</strong> and the position columns use your dynasty rankings (${dynName}).`;
     if (futureLabel === 'age') text += ` <strong>Future</strong> uses your dynasty rankings (${dynName}).`;
@@ -97,7 +97,7 @@ function competingHint(league, src, you) {
     if (!(updated > 0) || State.rosRankings.length === 0) return null;
     const days = Math.floor((Date.now() - updated) / 86400000);
     if (days < RANKING_TYPE_CONFIG.ros.staleAfterDays) return null;
-    return `Your dynasty rankings are ${days} days old. Competing this year? Turn on <strong>I'm competing this year</strong> to read your rooms by your Season rankings.`;
+    return `Your dynasty rankings are ${days} days old. Competing this year? Turn on <strong>I'm competing this year</strong> to read your rooms by your In-Season rankings.`;
 }
 
 export function refreshPowerRankings() {

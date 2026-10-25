@@ -157,13 +157,13 @@ import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/
         }).join('|') + seasonStamp(league, State.rankingSets.ros); // the lineup reads Season when there's no Weekly (S23)
     }
 
-    // This season's rankings for one league (improvements S23): its Season set (dynasty and keeper
+    // This season's rankings for one league (improvements S23): its In-Season set (dynasty and keeper
     // leagues), else its ROS rankings as getLeagueRankings gives them. See rankings/season.js.
     export function getLeagueSeasonRankings(league) {
         return resolveSeasonRankings(league, State.rankingSets.ros, getLeagueRankings(league, 'ros'));
     }
 
-    // The same for the active league, as the arrays the app reads: the Season set's data, else
+    // The same for the active league, as the arrays the app reads: the In-Season set's data, else
     // State.rosRankings (the active league's ROS rankings, which every ROS change keeps current). Looked
     // up on each call rather than kept in State, so no ROS change can leave it stale.
     export function activeSeasonRankings() {
@@ -174,7 +174,7 @@ import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/
 
     // Power Rankings' sources for the active league, with your own rankings: Start from this season's
     // rankings, Ovr and the rooms from the dynasty (ROS) set unless "I'm competing" is on, and Future
-    // from the dynasty set. Each is State.rosRankings when there's no Season set, so nothing changes then.
+    // from the dynasty set. Each is State.rosRankings when there's no In-Season set, so nothing changes then.
     export function activePowerRankings() {
         const league = getActiveLeague();
         const season = activeSeasonRankings();
@@ -603,7 +603,7 @@ import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/
                 weeklyRankingsUpdatedAt: existingLeague ? existingLeague.weeklyRankingsUpdatedAt : null,
                 rosRankingSetId: existingLeague ? existingLeague.rosRankingSetId : null,
                 weeklyRankingSetId: existingLeague ? existingLeague.weeklyRankingSetId : null,
-                // Dynasty and keeper leagues' Season set and "I'm competing" (improvements S23).
+                // Dynasty and keeper leagues' In-Season set and "I'm competing" (improvements S23).
                 seasonRankingSetId: existingLeague ? (existingLeague.seasonRankingSetId || null) : null,
                 powerCompeting: existingLeague ? !!existingLeague.powerCompeting : false,
                 // Set only here, i.e. only once every Sleeper fetch above has succeeded. A league

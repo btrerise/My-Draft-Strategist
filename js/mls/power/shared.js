@@ -67,7 +67,7 @@ function pickPowerStarters(players, reqs) {
 // Either can carry pickRank(pick) -> { rank, source } | null: then the picks in league.picks (improvements S19)
 // count toward each team's future value too.
 // Without it, teams carry no future fields -- the All My Leagues search doesn't use them.
-// opts.startRankings / opts.futureRankings (improvements S23): a dynasty league's Season set scores the
+// opts.startRankings / opts.futureRankings (improvements S23): a dynasty league's In-Season set scores the
 // starting lineup (Start) while `rankings` (its dynasty set) scores Ovr and the rooms, and Future's age
 // mode takes each player's value from futureRankings. Both default to `rankings`, which gives exactly the
 // numbers from before S23.

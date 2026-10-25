@@ -17,7 +17,7 @@ import { activePowerRankings, computePositionalPower, POWER_UNRANKED_RANK, power
     // of its own falls back to Market Consensus (flagged "mkt" on its row, since market data
     // is priced for one format -- see State.marketSettings -- not necessarily this league's);
     // with neither, the league simply gets no power rank.
-    // A dynasty or keeper league with a Season set (improvements S23) reads it as its table does: Start
+    // A dynasty or keeper league with an In-Season set (improvements S23) reads it as its table does: Start
     // from Season, the rooms from the dynasty set unless "I'm competing" is on (`start` beside `rankings`).
     function getLeaguePowerRankings(league) {
         if (league.leagueId === State.activeLeagueId && State.rosRankings.length > 0) {

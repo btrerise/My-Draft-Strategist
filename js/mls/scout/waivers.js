@@ -18,7 +18,7 @@ import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
-import { seasonSetFor } from '../rankings/season.js';
+import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
     // One scanner, two lenses, picked with the "Compare Against" toggle:
@@ -88,11 +88,15 @@ import { seasonSetFor } from '../rankings/season.js';
     export function applyWaiverScanSettingsToUI() {
         const s = State.waiverScanSettings;
         const set = (id, prop, val) => { const el = document.getElementById(id); if (el) el[prop] = val; };
-        // Season Rank shows only in a dynasty or keeper league with a Season set (improvements S23); elsewhere
-        // a saved 'season' reads the league's ROS rankings, so the drop-down shows ROS.
+        // Dynasty and keeper leagues (improvements S23): the ROS slot holds the dynasty set, so its choice reads
+        // "Dynasty Rank", and "In-Season Rank" shows when the league has an In-Season set. Elsewhere a saved
+        // 'season' reads the league's ROS rankings, so the drop-down shows ROS.
+        const league = getActiveLeague();
         const seasonOpt = document.querySelector('#waiverScanBasis option[value="season"]');
-        const seasonHere = !!seasonSetFor(getActiveLeague(), State.rankingSets.ros);
+        const rosOpt = document.querySelector('#waiverScanBasis option[value="ros"]');
+        const seasonHere = !!seasonSetFor(league, State.rankingSets.ros);
         if (seasonOpt) { seasonOpt.hidden = !seasonHere; seasonOpt.disabled = !seasonHere; }
+        if (rosOpt) rosOpt.textContent = hasSeasonSlot(league) ? 'Dynasty Rank' : 'ROS Rank';
         set('waiverScanBasis', 'value', s.basis === 'season' && !seasonHere ? 'ros' : s.basis);
         set('waiverScanLimit', 'value', String(s.limit));
         set('waiverScanStartersOnly', 'checked', !!s.startersOnly);
@@ -184,9 +188,15 @@ import { seasonSetFor } from '../rankings/season.js';
     // Pasted List so the two can't drift apart on which rankings a card is built from -- the
     // pasted list used to ignore Rank By entirely and always show Weekly-led cards.
     //
-    // Season Rank (improvements S23): this season's rankings (rankings/season.js), a dynasty league's
-    // Season set. It's ROS-shaped (an Overall, no FLEX list), so basis stays 'ros' and `season` marks it;
-    // a league without a Season set reads its ROS rankings for it, and says ROS.
+    // In-Season Rank (improvements S23): this season's rankings (rankings/season.js), a dynasty league's
+    // In-Season set. It's ROS-shaped (an Overall, no FLEX list), so basis stays 'ros' and `season` marks it;
+    // a league without an In-Season set reads its ROS rankings for it, and says ROS.
+    // The ROS-shaped choice's name: "In-Season", "Dynasty" (a dynasty or keeper league's ROS slot), or "ROS".
+    function rosName(season) {
+        if (season) return 'In-Season';
+        return hasSeasonSlot(getActiveLeague()) ? 'Dynasty' : 'ROS';
+    }
+
     export function resolveWaiverBasis() {
         const picked = State.waiverScanSettings.basis;
         const wanted = picked === 'ros' || picked === 'season' ? 'ros' : 'weekly';
@@ -196,17 +206,20 @@ import { seasonSetFor } from '../rankings/season.js';
         if (rankings.length === 0) {
             const other = wanted === 'ros' ? 'weekly' : 'ros';
             if (setFor(other).length === 0) return null;
-            note = `No ${wanted === 'ros' ? 'ROS' : 'Weekly'} rankings loaded for this league - using ${other === 'ros' ? 'ROS' : 'Weekly'} rank instead.`;
+            note = wanted === 'ros'
+                ? `No ${rosName(!!seasonSet)} rankings loaded for this league - using Weekly rank instead.`
+                : `No Weekly rankings loaded for this league - using ${rosName(!!seasonSet)} rank instead.`;
             basis = other;
             rankings = setFor(other);
         }
         const season = basis === 'ros' && !!seasonSet;
         const byName = {};
         rankings.forEach(r => { byName[r.cleanName] = r; });
+        const name = basis === 'ros' ? rosName(season) : 'Weekly';
         return {
             basis, rankings, byName, note, season,
-            label: season ? 'Season' : basis === 'ros' ? 'ROS' : 'Wk',
-            name: season ? 'Season' : basis === 'ros' ? 'ROS' : 'Weekly'
+            label: basis === 'ros' ? name : 'Wk',
+            name
         };
     }
 
@@ -357,7 +370,7 @@ import { seasonSetFor } from '../rankings/season.js';
         // 'overall' -- "ROS Flex" isn't a number any ROS source actually publishes.
         return {
             league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly,
-            checkLabel: checkIsWeekly ? 'Wk' : seasonRankings === State.rosRankings ? 'ROS' : 'Season',
+            checkLabel: checkIsWeekly ? 'Wk' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
             checkDisplay: checkIsWeekly ? wkDisplay : seasonDisplay,
             checkCross: checkIsWeekly ? 'flex' : 'overall',
             wkDisplay, rosDisplay, rosByName,
@@ -403,7 +416,7 @@ import { seasonSetFor } from '../rankings/season.js';
     // is about, not just whether it was the weekly or ROS one.
     function seasonSetLabel() {
         const set = seasonSetFor(getActiveLeague(), State.rankingSets.ros);
-        return set && set.name ? `Season rankings ("${escapeHtml(set.name)}")` : 'Season rankings';
+        return set && set.name ? `In-Season rankings ("${escapeHtml(set.name)}")` : 'In-Season rankings';
     }
 
     function rankingSetLabel(type) {
@@ -472,7 +485,7 @@ import { seasonSetFor } from '../rankings/season.js';
         const isFlexPos = FLEX_POSITIONS.includes(pos);
 
         if (ctx.scan && ctx.scan.basis === 'ros') {
-            // Season Rank (S23) reads the Season set's numbers the same way.
+            // In-Season Rank (S23) reads the In-Season set's numbers the same way.
             const d = ctx.scan.season ? (ctx.scanDisplay[cleanName] || {}) : ros;
             const raw = ctx.scan.season ? ctx.scan.byName[cleanName] : rosRaw;
             const lbl = ctx.scan.label;

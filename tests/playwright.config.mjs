@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { chromiumLaunchOptions } from './browser.mjs';
 
 const PORT = 4173;
 
@@ -23,6 +24,8 @@ export default defineConfig({
         baseURL: `http://localhost:${PORT}`,
         serviceWorkers: 'block',
         deviceScaleFactor: 1,
+        // The pinned Chromium, or the cloud image's preinstalled one when the pinned build isn't there (browser.mjs).
+        launchOptions: chromiumLaunchOptions(),
     },
     projects: [
         { name: 'desktop', use: { viewport: { width: 1280, height: 900 } } },

@@ -36,7 +36,7 @@ function chipsExpired(type, changes, now) {
 // A small button: hovering shows the explanation (title) on desktop, and a tap or click shows it as a
 // toast (data-action="explainRankMove"), since phones have no hover and the rows clip tooltips. The markup is
 // moveChipMarkup in js/mls/badges.js, shared with the Guide's badge legend (improvements S10).
-// type 'season' (improvements S23): a dynasty league's Season set when it has one, else its ROS set.
+// type 'season' (improvements S23): a dynasty league's In-Season set when it has one, else its ROS set.
 export function rankMoveChip(type, cleanName) {
     const isSeason = type === 'season';
     if (isSeason) type = 'ros';
@@ -48,7 +48,7 @@ export function rankMoveChip(type, cleanName) {
     const set = setId ? State.rankingSets[cfg.setsKey].find(s => s.id === setId) : null;
     const changes = set && set.lastChanges;
     if (!changes || chipsExpired(type, changes, Date.now())) return '';
-    const label = seasonSet ? 'Season rankings' : `${cfg.label} rankings`;
+    const label = seasonSet ? 'In-Season rankings' : `${cfg.label} rankings`;
     const since = Number.isFinite(changes.since) ? `since ${formatUploadTime(changes.since)}` : 'since the last update';
     const move = changes.moves && changes.moves[cleanName];
     if (move && Number.isFinite(move.d) && move.d !== 0) {

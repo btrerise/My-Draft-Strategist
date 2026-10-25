@@ -1490,7 +1490,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 }
 .mls-set-leagues-row .btn-link-inline { margin-left: auto; }
 
-/* Season rankings in dynasty and keeper leagues (improvements S23): the second picker in the ROS
+/* In-Season rankings in dynasty and keeper leagues (improvements S23): the second picker in the ROS
    card, its "Your redraft leagues use …" offer and its leagues row. */
 .mls-season-row {
     border-top: 1px solid var(--border);

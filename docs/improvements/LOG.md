@@ -5447,3 +5447,60 @@ CI, on 1194, is the real check for those.
   already did for one long name.
 - Market source split (above), for S25.
 - No open follow-up in docs/TESTING.md touches this area.
+
+### S23, round 2: "In-Season", Dynasty Rank, the Guide, and Chromium 153 in the cloud (owner's choices)
+
+**The owner's notes after round 1, and what was done.**
+1. **"Season" is now "In-Season"** everywhere users see it: the picker ("In-Season rankings"), the header ("Dynasty: … ·
+   In-Season: …"), the notes, "(k as In-Season)", toasts and dialogs. Code names (`seasonRankingSetId`, `season.js`)
+   stay, so nothing stored changes.
+2. **Waiver Wire labels** (owner: "ROS" and "Season" side by side weren't clear). In a dynasty or keeper league the ROS
+   slot is the dynasty set, so Rank By's ROS choice reads **Dynasty Rank** there (rows "Dynasty Pos / Dynasty Overall"),
+   and **In-Season Rank** shows when the league has an In-Season set. Redraft leagues keep **Weekly Rank / ROS Rank**.
+   The **Dashboard's best available keeps two buttons, Weekly | ROS**: round 1's third "Season" button is gone, and ROS
+   there is each league's this-season rankings (a dynasty league's In-Season set when it has one, its line saying
+   "In-Season · <set>"), since a free agent is a "now" question (decision 4). A saved In-Season Rank counts as ROS there;
+   View on a ROS line opens Top Available on In-Season Rank when that league has the set. Plus the optional rename the
+   owner took: in these leagues the ROS card is titled **"Dynasty and In-Season Rankings"** (redraft: unchanged).
+3. **The Guide:** step 3 (rankings) gets a "Dynasty and keeper leagues" item on the two sets; step 4 (Power Rankings)
+   says what In-Season changes and what "I'm competing this year" does; step 8 (Waiver Wire) names Dynasty Rank and
+   In-Season Rank. The Dashboard's (i) says ROS uses In-Season rankings in those leagues.
+4. **Cloud browser** (owner: update CLAUDE.md, and whatever else prevents it):
+   - `tests/browser.mjs` (new; tests only): when the pinned Chromium (revision 1194) isn't installed but
+     `/opt/pw-browsers/chromium` is, both Playwright configs and `visual.spec.mjs` launch that one. CI installs 1194,
+     so CI is unchanged. No more scratchpad alias.
+   - `tests/render-env.mjs` checks the browser actually launched: before, it read only the pin, so this container's
+     Chromium 153 passed the check and all 40 screenshots failed; now `visual.spec.mjs` fails with one message naming
+     the preinstalled build. `RENDER_ENV=any` (ignored in CI) skips the check, for rendering main and a branch in the
+     same container to compare with pxdiff.
+   - CLAUDE.md ("Before pushing") and docs/TESTING.md ("Chromium", "When your machine can't reproduce the baselines",
+     now with the worktree steps) say all of this.
+   - **The app fix (owner: in this branch):** `js/shared/ui/viewTransition.js` now also handles `transition.ready`.
+     A transition skipped by the next one (rapid tab taps) rejects `ready`, and Chrome 153 reports it as an unhandled
+     rejection; that was the "Transition was skipped" error that failed `view-transitions.spec.mjs` and parts of
+     `mls-lineup-needs.spec.mjs` here. Both pass on Chrome 153 now. Users saw only a console error (the boot banner
+     ignores rejections after start-up), in both apps; CHANGELOG lines under both.
+   - **Left for later, as its own PR:** upgrading Playwright so the pin matches the cloud image (Chromium 153 is
+     revision 1243), with `BASELINE_ENV` and all 40 baselines re-taken ("Upgrading Playwright or the CI runner" in
+     docs/TESTING.md). Check first that CI's Ubuntu fonts and the cloud image's agree, or the two will still differ.
+
+**Screenshots.** Rendered all 40 on main and on this branch in this container (Chromium 153's headless shell for both)
+and compared them with `npm run pxdiff`: only **`mls-league-guide.png`** changes, at both widths (`desktop/` 1280×6923 →
+1280×7097, `phone/` 390×14969 → 390×15488), from the Guide sentences. The other 38 are pixel-identical. The PNGs aren't
+re-taken here (this container can't render CI's); take both from the pull request's CI run ("Accepting an intended
+visual change" in docs/TESTING.md), checking that each `-expected.png` matches the committed baseline.
+- A trap found on the way: full Chrome and the headless shell draw the (i) icons' "i" and some MDS text a few pixels
+  apart, so a comparison must use the same build on both sides. `browser.mjs` falls back to the preinstalled
+  **headless shell** (what Playwright and CI launch) before full Chrome. Until this branch is on main, main's worktree
+  has no fallback and needs a `PLAYWRIGHT_BROWSERS_PATH` alias (a folder whose `chromium_headless_shell-1194/
+  chrome-linux/headless_shell` and `chromium-1194/chrome-linux/chrome` link to the 1243 binaries); after the merge both
+  sides use the fallback.
+
+**Checks.** check-precache OK; 405 unit tests; Playwright with the fallback, no alias: 471 passed, 5 skipped, and only
+`visual.spec.mjs` failed (4 failed, 6 did not run), with the one environment message. `view-transitions.spec.mjs` and `mls-lineup-needs.spec.mjs` now pass on
+Chrome 153 (they failed on main here).
+
+**Owner's question (3), answered in chat:** the competing suggestion from Record, PF and PA waits for S21's
+`league.record`; see the next entry once decided.
+
+**Left over.** The two Guide PNGs from CI. The Playwright upgrade (above). The competing suggestion (decision pending).
