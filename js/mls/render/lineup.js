@@ -1,6 +1,7 @@
 // Moved from js/mls/legacy.js in refactor chunk 3E: the Lineup tab part of RENDERERS. Locks, swaps, the
 // optimizer (optimizeLineup) and the lineup renderer (renderLineupUI).
 import { escapeHtml } from '../../shared/html.js';
+import { seasonSetFor } from '../rankings/season.js';
 import { SLOT_POSITIONS, slotDisplayName, tierTag } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
 import { pushLineupUndoSnapshot, State } from '../state.js';
@@ -572,6 +573,12 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         const rankDisplay = leagueRankDisplayIndex(league, rankedByRos ? seasonRankings : State.weeklyRankings, renderLineupUI);
 
         let html = "";
+        // A dynasty league with an In-Season set and no Weekly set (improvements S23, round 6): the ranks below are
+        // the In-Season set's, while the Roster tab's rows show the dynasty set's, so say which. Left out of the PNG.
+        const lineupSeasonSet = rankedByRos ? seasonSetFor(league, State.rankingSets.ros) : null;
+        if (lineupSeasonSet) {
+            html += `<div class="mls-lineup-source">Ranked by your <span class="mls-nowrap">In-Season</span> rankings (<strong>${escapeHtml(lineupSeasonSet.name)}</strong>) until you upload Weekly rankings.</div>`;
+        }
 
         ensureHeadshotNameIndex(league && league.roster, renderLineupUI);
 

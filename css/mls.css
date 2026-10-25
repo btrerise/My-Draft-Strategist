@@ -1503,6 +1503,13 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-season-row[hidden], .mls-season-row [hidden] { display: none; }
 .mls-season-row .tooltip-container { margin-bottom: 0.35rem; }
 .mls-season-row label { margin-bottom: 0.35rem; }
+/* The Lineup tab's "Ranked by your In-Season rankings (…)" line (S23, round 6). */
+.mls-lineup-source {
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.mls-lineup-source strong { color: var(--text-main); font-weight: 600; }
 /* Power Rankings: which set gave each column, right under the table. */
 .mls-power-source-key {
     margin-top: 0.5rem;

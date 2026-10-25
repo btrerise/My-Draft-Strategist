@@ -5586,3 +5586,25 @@ the unit test covers the own-dynasty-set rule.
 
 **Checks (round 5).** Unit 405 pass; Playwright 471 passed, 5 skipped, only `visual.spec.mjs` failing on the environment
 message. Main vs. this branch: still only `mls-league-guide.png` at both widths, unchanged from round 2.
+
+### S23, round 6: my third review as a user, four fixes (owner: "do all four")
+
+What held up: the Dashboard's best available by In-Season (the fixture's dynasty league showed three upgrades its
+dynasty set never would, its line reading "In-Season · <set name>"), Top Available on In-Season Rank, the lineup built
+from the In-Season set, long set names cut cleanly, and switching between a redraft and a dynasty league.
+1. **Top Available's and Auto-Find's derived-ranks note was about the dynasty set** while the list was ranked by
+   In-Season (and said nothing of the In-Season file, which lacked position ranks too). `waiverDerivedNotes` now
+   describes the set the rows show: "Your In-Season rankings ("…") don't include position ranks…".
+2. **The Lineup tab didn't say which rankings it used**, so a player read "Pos: #2 | Overall: #19" there (In-Season) and
+   "Ovr: #13 | Pos: #1" on the Roster tab (dynasty) with no label. In a dynasty or keeper league with an In-Season set
+   and no Weekly set, the lineup now starts with "Ranked by your In-Season rankings (<set>) until you upload Weekly
+   rankings." (`.mls-lineup-source`), left out of the lineup PNG like the needs box. Both ranks on the Roster tab's
+   rows are S24.
+3. **A redraft league's "Used in 2 of 2 leagues (1 as In-Season)"** and "Choose leagues…" each wrapped to two lines on a
+   phone; with In-Season use it reads "Used in 2 of 2 (1 as In-Season)". Without it, unchanged.
+4. **The Guide's step 4** had become one very long paragraph on a phone; the In-Season sentences are their own
+   paragraph now (the Guide PNG was changing anyway).
+
+**Checks (round 6).** Unit 405 pass; Playwright 471 passed, 5 skipped, only `visual.spec.mjs` failing on the environment
+message. Main vs. this branch: still only `mls-league-guide.png`, now `desktop/` 1280×6923 → 1280×7097 and `phone/`
+390×14969 → 390×15511 (the new paragraph); both from CI once there's a pull request.

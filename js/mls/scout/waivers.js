@@ -698,13 +698,18 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     // (Weekly / ROS, plus the saved set's name when there is one): with several sets loaded,
     // "a rankings file you loaded" left it unclear which one to fix.
     export function waiverDerivedNotes(ctx) {
-        const derivedNote = (display, type) => {
+        const derivedNote = (display, type, label = rankingSetLabel(type)) => {
             const vals = Object.values(display);
             const wording = derivedRanksWording(vals.some(d => d.posDerived), vals.some(d => d.flexDerived), type === 'weekly');
             if (!wording) return null;
-            return `Your ${rankingSetLabel(type)} don't include ${wording.short}, so those were derived from the file's order.`;
+            return `Your ${label} don't include ${wording.short}, so those were derived from the file's order.`;
         };
-        return [derivedNote(ctx.wkDisplay, 'weekly'), derivedNote(ctx.rosDisplay, 'ros')].filter(Boolean);
+        // Ranked by In-Season Rank (improvements S23, round 6): the note is about that set, whose numbers the rows
+        // show, not the dynasty set's.
+        const rosNote = ctx.scan && ctx.scan.season
+            ? derivedNote(ctx.scanDisplay, 'ros', seasonSetLabel())
+            : derivedNote(ctx.rosDisplay, 'ros');
+        return [derivedNote(ctx.wkDisplay, 'weekly'), rosNote].filter(Boolean);
     }
 
     export const setWaiverCompare = function(mode) {

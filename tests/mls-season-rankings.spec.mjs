@@ -177,12 +177,15 @@ test.describe('In-Season rankings in a dynasty league', () => {
         const { state, ids } = await setUp(page);
         await showTab(page, 'lineup');
         await expect.poll(async () => (await lineupStarters(page)).filter(s => s.startsWith('TE:'))).toEqual(['TE:Brock Bowers']);
+        await expect(page.locator('#lineupTab .mls-lineup-source')).toHaveCount(0);
         await expect(page.locator('#waiverScanBasis option[value="season"]')).toBeHidden();
 
         await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: ids.season } });
         await showTab(page, 'lineup');
         // The rankings stamp includes the In-Season set, so the lineup re-optimizes by it.
         await expect.poll(async () => (await lineupStarters(page)).filter(s => s.startsWith('TE:'))).toEqual(['TE:George Kittle']);
+        // It says so, since the Roster tab's rows show the dynasty set's ranks.
+        await expect(page.locator('#lineupTab .mls-lineup-source')).toHaveText('Ranked by your In-Season rankings (Redraft ROS) until you upload Weekly rankings.');
 
         await showTab(page, 'scout');
         const basis = page.locator('#waiverScanBasis');
@@ -204,7 +207,9 @@ test.describe('In-Season rankings in a dynasty league', () => {
         const out = page.locator('#waiverOutput');
         await expect(out).toContainText('starting lineup using In-Season ranks');
         await expect(out).toContainText('the Would Start check uses In-Season ranks (same as the optimizer)');
-        await expect(out).toContainText('Your dynasty rankings ("Dynasty SF") don\'t include position ranks');
+        // The derived-ranks note is about the set the list is ranked by.
+        await expect(out).toContainText('Your In-Season rankings ("Redraft ROS") don\'t include position ranks');
+        await expect(out).not.toContainText('Your dynasty rankings ("Dynasty SF") don\'t include');
         // The Trade Analyzer's Power Rankings say which set gave what.
         await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
         await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
@@ -266,7 +271,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await callApp(page, 'switchActiveLeague', bench);
         await openRosCard(page);
         await expect(page.locator('#seasonRankingsRow')).toBeHidden(); // a redraft league has no Season slot
-        await expect(page.locator('#rosSetLeaguesSummary')).toHaveText('Used in 2 of 3 leagues (1 as In-Season)');
+        await expect(page.locator('#rosSetLeaguesSummary')).toHaveText('Used in 2 of 3 (1 as In-\u2060Season)');
         await page.locator('#rosRenameSetBtn').click();
         await page.locator('#mds-prompt-input').fill('Redraft <b>Wk 7</b>');
         await page.locator('#mds-prompt-overlay').getByRole('button', { name: 'Rename' }).click();

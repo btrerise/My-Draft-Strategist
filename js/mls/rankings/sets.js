@@ -210,7 +210,11 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
         if (type === 'ros') {
             // A ROS set can also be a dynasty league's In-Season set (improvements S23); both count.
             const { used, asSeason } = setUsage(val, State.leagues);
-            if (summary) summary.textContent = `Used in ${used} of ${State.leagues.length} leagues${asSeason ? ` (${asSeason} as In-Season)` : ''}`;
+            // With In-Season use, shorter ("Used in 2 of 2 (1 as In-Season)"), so it and "Choose leagues…" fit one
+            // line on a phone (round 6).
+            if (summary) summary.textContent = asSeason
+                ? `Used in ${used} of ${State.leagues.length} (${asSeason} as ${IN_SEASON})`
+                : `Used in ${used} of ${State.leagues.length} leagues`;
         } else {
             const used = State.leagues.filter(l => l[cfg.leagueSetIdKey] === val).length;
             if (summary) summary.textContent = `Used in ${used} of ${State.leagues.length} leagues`;
