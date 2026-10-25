@@ -37,9 +37,10 @@ import { isBestBallLeague } from '../helpers.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getValidSleeperStarterIds, hasKickedOff } from '../lineup/gameInfo.js';
 import { needsYouCount } from '../lineup/issues.js';
-import { bestBallBadgeMarkup, leagueStatusChipMarkup } from '../badges.js';
+import { bestBallBadgeMarkup, leagueStatusChipMarkup, paidBadgeMarkup } from '../badges.js';
 import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, reoptimizeKickedOffLeagues, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
+import { refreshThisWeek, renderThisWeek } from '../week/thisWeek.js';
 import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/viewTransition.js';
 
     const CHEVRON = `<svg class="mls-lc-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
@@ -64,7 +65,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         } catch (e) { /* storage blocked: it still folds for this visit */ }
     }
 
-    // Reorder mode (the toolbar's Reorder / Done): ▲ ▼ ✕ on each card. In memory: it starts off on every visit.
+    // Edit mode (the toolbar's Edit / Done; Reorder until S21): ▲ ▼ ✕ and "$ Paid" on each card. In memory: it starts off on every visit.
     let reordering = false;
 
     // A league's status, as the Command Center's table worked it out before S12 (its Rankings and Lineup columns,
@@ -155,10 +156,11 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                 <div class="mls-lc-head">
                     <button type="button" class="btn-bare mls-lc-fold" data-focus-key="fold:${id}" data-action="toggleLeagueCard" data-league-id="${id}" aria-expanded="${collapsed ? 'false' : 'true'}" aria-label="${collapsed ? 'Unfold' : 'Fold'} ${name}">${CHEVRON}</button>
                     <button type="button" class="mls-lc-name-btn" data-focus-key="row:${id}" data-action="switchActiveLeague" data-league-id="${id}"${active ? ' aria-current="true"' : ''}>
-                        <strong class="mls-lc-name">${name}</strong>
+                        <strong class="mls-lc-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}${name}</strong>
                         ${meta ? `<span class="mls-lc-meta">${meta}</span>` : ''}
                     </button>
                     ${reordering ? `<div class="mls-lc-controls">
+                        ${isOffSleeper(l) ? '' : `<button type="button" class="btn-sm btn-secondary mls-lc-paid${l.paid ? ' is-on' : ''}" data-focus-key="paid:${id}" data-action="toggleLeaguePaid" data-league-id="${id}" aria-pressed="${l.paid ? 'true' : 'false'}" aria-label="Paid league: ${name}" title="A league you pay for: This week splits your W-L paid and free">$ Paid</button>`}
                         <button type="button" class="btn-sm btn-secondary mls-league-move-btn" data-focus-key="up:${id}" data-action="moveLeague" data-index="${index}" data-direction="-1" ${index === 0 ? 'disabled' : ''} aria-label="Move ${name} up">▲</button>
                         <button type="button" class="btn-sm btn-secondary mls-league-move-btn" data-focus-key="down:${id}" data-action="moveLeague" data-index="${index}" data-direction="1" ${index === n - 1 ? 'disabled' : ''} aria-label="Move ${name} down">▼</button>
                         <button type="button" class="btn-sm btn-danger mls-lc-delete" data-focus-key="del:${id}" data-action="deleteLeagueManager" data-league-id="${id}" aria-label="Remove ${name}">✕</button>
@@ -234,6 +236,20 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         renderToolbarButtons();
         // Each card's Best Available section and the toolbar's switch and summary (only while the Dashboard is shown).
         renderBestAvailable();
+        // The Dashboard's Week Recap line (improvements S21): loaded when the Dashboard shows (at most every 2 minutes),
+        // otherwise just redrawn from what it has.
+        if (dashboard && dashboard.classList.contains('active')) refreshThisWeek();
+        else renderThisWeek();
+    }
+
+    // Edit mode's "$ Paid" (improvements S21): marks a league you pay for, saved on the league (so Backup keeps it
+    // and a sync carries it over), for the This week card's paid / free W-L and the "$" badge.
+    export function toggleLeaguePaid(leagueId) {
+        const l = (State.leagues || []).find(x => x.leagueId === leagueId);
+        if (!l) return;
+        l.paid = !l.paid;
+        try { localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues)); } catch (e) { /* storage full: it holds for this visit */ }
+        renderLeagueCards();
     }
 
     // Cards you haven't folded or unfolded yourself: folded when there's nothing to do (no to-dos, no Sleeper changes,
@@ -260,13 +276,14 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         }
         const re = document.getElementById('reorderLeagueCards');
         if (re) {
-            re.textContent = reordering ? 'Done' : 'Reorder';
+            re.textContent = reordering ? 'Done' : 'Edit';
             re.setAttribute('aria-pressed', reordering ? 'true' : 'false');
-            re.setAttribute('aria-label', reordering ? 'Done reordering' : 'Reorder or remove leagues');
+            re.setAttribute('aria-label', reordering ? 'Done editing leagues' : 'Edit leagues: move, mark paid or remove');
         }
     }
 
-    // The toolbar's Reorder / Done: shows or hides ▲ ▼ ✕ on every card.
+    // The toolbar's Edit / Done ("Reorder" until improvements S21 added "$ Paid" to it): shows or hides ▲ ▼ ✕ and
+    // "$ Paid" on every card.
     export function toggleLeagueReorder() {
         withCardsTransition(() => {
             reordering = !reordering;

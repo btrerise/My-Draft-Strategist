@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import * as stats from '../../js/mls/sim/stats.js';
 import {
     MIN_RELIABLE_GAMES, calculateMean, calculateStandardDeviation, standardNormalCDF,
-    getBoomBustRates, getProbabilityBeats, getPlayerVarianceProfile
+    gameShareLeft, getBoomBustRates, getProbabilityBeats, getPlayerVarianceProfile
 } from '../../js/mls/sim/stats.js';
 
 const close = (actual, expected, eps = 1e-9) =>
@@ -18,7 +18,7 @@ const close = (actual, expected, eps = 1e-9) =>
 describe('exports', () => {
     test('public surface is unchanged', () => {
         assert.deepEqual(Object.keys(stats).sort(), [
-            'MIN_RELIABLE_GAMES', 'calculateMean', 'calculateStandardDeviation', 'getBoomBustRates',
+            'MIN_RELIABLE_GAMES', 'calculateMean', 'calculateStandardDeviation', 'gameShareLeft', 'getBoomBustRates',
             'getPlayerVarianceProfile', 'getProbabilityBeats', 'standardNormalCDF'
         ]);
         assert.equal(MIN_RELIABLE_GAMES, 3);
@@ -321,5 +321,33 @@ describe('getProbabilityBeats', () => {
         assert.equal(getProbabilityBeats({ mean: 11, stdDev: 0 }, { mean: 10, stdDev: 0 }), 100);
         assert.equal(getProbabilityBeats({ mean: 9, stdDev: 0 }, { mean: 10, stdDev: 0 }), 0);
         assert.equal(getProbabilityBeats({ mean: 10, stdDev: 0 }, { mean: 10, stdDev: 0 }), 50);
+    });
+});
+
+// Improvements S21, round 12: a player mid-game is his points so far plus the rest of his game, not a final score.
+describe('a game still being played', () => {
+    test('gameShareLeft: before 1, final 0, in between from the quarter and clock', () => {
+        const st = (state, period, clock) => ({ type: { state }, period, clock });
+        assert.equal(gameShareLeft(st('pre')), 1);
+        assert.equal(gameShareLeft(st('post', 4, 0)), 0);
+        assert.equal(gameShareLeft(st('in', 1, 900)), 1);
+        assert.equal(gameShareLeft(st('in', 2, 0)), 0.5); // halftime
+        assert.equal(gameShareLeft(st('in', 4, 450)), 0.125);
+        close(gameShareLeft(st('in', 5, 300)), 300 / 3600); // overtime
+        assert.equal(gameShareLeft(st('in')), 0.5); // no clock
+        assert.equal(gameShareLeft(null), 1);
+    });
+    test('shareLeft: points so far plus the rest, spread by the square root of the share', () => {
+        const full = getPlayerVarianceProfile([10, 30, 20], { projectedMean: 16 });
+        const p = getPlayerVarianceProfile([10, 30, 20], { projectedMean: 16, actualScore: 3, shareLeft: 0.25 });
+        assert.equal(p.mean, 7); // 3 + 16 x 0.25
+        close(p.stdDev, Number((full.stdDev * 0.5).toFixed(2)));
+        assert.equal(p.floorAt, 3);
+        assert.equal(p.isActual, false);
+        assert.equal(p.inProgress, true);
+        assert.equal(p.usingProjection, true);
+        assert.equal(p.actualSoFar, 3);
+        // shareLeft 0 (the game is final, or no clock asked): the fixed actual score, as before.
+        assert.deepEqual(getPlayerVarianceProfile([10, 30], { actualScore: 3, shareLeft: 0 }), getPlayerVarianceProfile([10, 30], { actualScore: 3 }));
     });
 });

@@ -18,6 +18,7 @@ import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRank
 import { KEYS } from '../../shared/storage/keys.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
+import { refreshThisWeek } from '../main.js';
 
 
     // Core lock/unlock mechanics shared by toggleLock (the manual lock icon) and the
@@ -804,4 +805,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
         // Fills in projections/final scores/opponents if they're missing or stale; a no-op
         // (and no re-render) when everything's already fresh. See refreshLineupStats.
         refreshLineupStats();
+        // The matchup strip above the lineup (improvements S21): this week's matchups, loaded at most every 2 minutes,
+        // and redrawn for the league now showing.
+        if (document.getElementById('lineupTab')?.classList.contains('active')) refreshThisWeek();
     }

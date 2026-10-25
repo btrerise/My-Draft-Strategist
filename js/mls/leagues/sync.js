@@ -5,6 +5,7 @@
 // syncActiveLeague), which sat under ADD PLAYER MANUALLY and IMPORT ALL LEAGUES.
 import { getSleeperLeague, getSleeperLeagueRosters, getSleeperLeagueUsers, getSleeperPlayerMap, getSleeperTradedPicks, getSleeperUser } from '../../shared/api/sleeper.js';
 import { pickOwnership } from './picks.js';
+import { isGuillotine, playsMedian, seasonRecord, teamNamesFrom } from '../week/scoreboard.js';
 import { nextDraftYears } from '../trade/makeFair.js';
 import { clearSimResults } from '../sim/ui.js';
 import { escapeHtml } from '../../shared/html.js';
@@ -585,6 +586,14 @@ import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge, leagueType: leagueType,
                 irRules, rosterSize, picks,
+                // For the Dashboard's This week card (improvements S21): each team's name by roster id, whether the
+                // league also plays the median, and whether it's a guillotine league (Sleeper type 3, which the
+                // format badge reads as Redraft: it is one, with no opponent). And for the Roster tab, your season
+                // record and where your points for and against rank (null before anyone has played).
+                teamNames: teamNamesFrom(usersData, rosters),
+                medianMatch: playsMedian(ls),
+                guillotine: isGuillotine(ls),
+                record: myTeam ? seasonRecord(rosters, myTeam.roster_id) : null,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
                 // Needed by the Matchup Simulator: rosterId identifies "us" within this
@@ -606,6 +615,8 @@ import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/
                 // Dynasty and keeper leagues' In-Season set and "I'm competing" (improvements S23).
                 seasonRankingSetId: existingLeague ? (existingLeague.seasonRankingSetId || null) : null,
                 powerCompeting: existingLeague ? !!existingLeague.powerCompeting : false,
+                // Yours, like the rankings assignment: whether you pay for this league (Edit mode's "$ Paid", S21).
+                paid: existingLeague ? !!existingLeague.paid : false,
                 // Set only here, i.e. only once every Sleeper fetch above has succeeded. A league
                 // that fails during Sync All keeps its previous object, and with it its previous
                 // lastSyncedAt -- which is exactly what the dashboard row's age label surfaces.

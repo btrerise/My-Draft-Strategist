@@ -2,7 +2,7 @@
 import { State } from './state.js';
 import { updatePulsePrompts } from './init.js';
 import { refreshLeagueDropdown } from './leagues/sync.js';
-import { loadRosterTab, onScoutTabShown, optimizeLineup } from './main.js';
+import { loadRosterTab, onScoutTabShown, optimizeLineup, refreshThisWeek } from './main.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderBadgeLegend } from './legend.js';
@@ -78,7 +78,7 @@ import { syncTradePicker } from './trade/picker.js';
         // 'guide' is deliberately left out of the swipe order -- it's still reachable from
         // the drawer, but swiping from Scout into a wall of documentation reads as a
         // misfire rather than a tab change. Scout is the last swipeable tab.
-        const tabs = ['setup', 'roster', 'lineup', 'scout'];
+        const tabs = ['setup', 'roster', 'lineup', 'scoreboard', 'scout'];
         const currentIdx = tabs.indexOf(activeTabBtn.getAttribute('data-target'));
         
         if (State.touchEndX < State.touchStartX - swipeThreshold) {
@@ -103,7 +103,7 @@ import { syncTradePicker } from './trade/picker.js';
 
     // --- NAVIGATION LOGIC ---
     // The tab bar's order, Guide last: a transition slides forward or back by it (improvements S16).
-    const TAB_ORDER = ['setup', 'roster', 'lineup', 'scout', 'guide'];
+    const TAB_ORDER = ['setup', 'roster', 'lineup', 'scoreboard', 'scout', 'guide'];
 
     // Every way of changing tab comes here (the tab bar, swipes, number keys, the drawer, Back and
     // Forward). The switch animates where the browser can (js/shared/ui/viewTransition.js), so the
@@ -141,6 +141,8 @@ import { syncTradePicker } from './trade/picker.js';
         if (tabId === 'roster') loadRosterTab();
         if (tabId === 'setup') refreshLeagueDropdown();
         if (tabId === 'scout') { onScoutTabShown(); syncTradePicker(); }
+        // The Scoreboard (improvements S21) loads this week's matchups when shown (at most every 2 minutes).
+        if (tabId === 'scoreboard') refreshThisWeek();
         // The Guide's badge legend is built the first time the Guide is shown (improvements S10).
         if (tabId === 'guide') renderBadgeLegend();
         window.scrollTo(0, 0);
