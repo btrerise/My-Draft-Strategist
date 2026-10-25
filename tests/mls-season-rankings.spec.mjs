@@ -326,6 +326,37 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expectClean(page, state);
     });
 
+    test("the suggestion beside I'm competing: your label, moved by your record", async ({ page }) => {
+        const { state, ids } = await setUp(page);
+        // By Redraft ROS you're 2nd of 2 in Start: Rebuild.
+        await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: ids.season } });
+        await powerTable(page);
+        const line = page.locator('#powerCompetingSuggestion');
+        // The fixture's synced record has one game: too early, so the label alone.
+        await expect(line).toHaveText('Suggested: Rebuilding · from your roster (too early in the season for your record).');
+
+        // 6-1 and 1st in points for: the results move it one step, to Retool.
+        await patchLeagues(page, { 'Fixture League': { record: { wins: 6, losses: 1, ties: 0, pf: 900, pa: 700, pfRank: 1, paRank: 2, of: 2 } } });
+        await powerTable(page);
+        await expect(line).toHaveText('Suggested: Retool (your call) · 6–1, 1st in points for, 2nd in Start. Your results beat your roster.');
+
+        // 1-6, last in points for, the most points against: Rebuilding, with the bad luck named.
+        await patchLeagues(page, { 'Fixture League': { record: { wins: 1, losses: 6, ties: 0, pf: 600, pa: 900, pfRank: 2, paRank: 1, of: 2 } } });
+        await powerTable(page);
+        await expect(line).toHaveText('Suggested: Rebuilding · 1–6 with the most points against, 2nd in points for, 2nd in Start.');
+
+        // A league synced before the record existed.
+        await patchLeagues(page, { 'Fixture League': { record: undefined } });
+        await powerTable(page);
+        await expect(line).toHaveText('Suggested: Rebuilding · from your roster; sync this league to add your record.');
+
+        // No In-Season set: no switch, no suggestion.
+        await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: null } });
+        await powerTable(page);
+        await expect(page.locator('#powerCompetingWrap')).toBeHidden();
+        await expectClean(page, state);
+    });
+
     test('Backup / Restore keeps the In-Season set and the switch', async ({ page }) => {
         const { state, ids } = await setUp(page);
         await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: ids.season, powerCompeting: true } });

@@ -100,3 +100,43 @@ test('without separate lists the numbers are what they were', () => {
     assert.deepEqual(strip(same), strip(before));
     assert.equal(before[0].startSeparate, false);
 });
+
+// "I'm competing this year": the suggestion (round 7, the owner's rule).
+const { competingSuggestion } = await import('../../js/mls/power/directionLabels.js');
+const rec = (wins, losses, pfRank, paRank = 6, of = 12, ties = 0) => ({ wins, losses, ties, pf: 0, pa: 0, pfRank, paRank, of });
+const verdict = (label, r) => competingSuggestion(label, r, { starterRank: 3 }).verdict;
+
+test('the label decides, and the standings move it one step at most', () => {
+    assert.equal(verdict('Contender', rec(5, 2, 2)), 'competing');
+    assert.equal(verdict('Contender', rec(2, 5, 9)), 'retool'); // losing, points for bottom half
+    assert.equal(verdict('Contender', rec(2, 5, 4)), 'competing'); // losing but scoring: stays
+    assert.equal(verdict('Retool', rec(5, 2, 3)), 'competing'); // winning, points for top half
+    assert.equal(verdict('Retool', rec(2, 5, 10)), 'rebuilding');
+    assert.equal(verdict('Retool', rec(4, 3, 9)), 'retool'); // winning, low scoring: your call
+    assert.equal(verdict('Rebuild', rec(6, 1, 1)), 'retool'); // never all the way to competing
+    assert.equal(verdict('Rebuild', rec(1, 6, 12)), 'rebuilding');
+    assert.equal(competingSuggestion('Bubble', rec(5, 2, 2)), null); // redraft labels: no suggestion
+});
+
+test('a .500 record, the middle team in points for and ties move nothing', () => {
+    assert.equal(verdict('Retool', rec(3, 3, 1)), 'retool');
+    assert.equal(verdict('Retool', rec(5, 2, 7, 6, 13)), 'retool'); // 7th of 13 is neither half
+    assert.equal(verdict('Retool', rec(4, 2, 2, 6, 12, 1)), 'competing'); // 4-2-1 is winning
+});
+
+test('points against is named as bad luck, never moves it', () => {
+    const s = competingSuggestion('Retool', rec(3, 4, 5, 2), { starterRank: 6 });
+    assert.equal(s.verdict, 'retool');
+    assert.equal(s.paRank, 2);
+    assert.equal(competingSuggestion('Retool', rec(3, 4, 5, 7)).paRank, null); // not top third
+    assert.equal(competingSuggestion('Retool', rec(4, 3, 5, 1)).paRank, null); // winning: no excuse needed
+});
+
+test('under four games, or with no record, the label alone', () => {
+    for (const r of [rec(2, 1, 1), null, undefined]) {
+        const s = competingSuggestion('Contender', r);
+        assert.equal(s.verdict, 'competing');
+        assert.equal(s.fromRoster, true);
+    }
+    assert.equal(competingSuggestion('Rebuild', rec(3, 0, 1)).verdict, 'rebuilding');
+});

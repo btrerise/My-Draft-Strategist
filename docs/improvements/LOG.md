@@ -6031,3 +6031,32 @@ from the In-Season set, long set names cut cleanly, and switching between a redr
 **Checks (round 6).** Unit 405 pass; Playwright 471 passed, 5 skipped, only `visual.spec.mjs` failing on the environment
 message. Main vs. this branch: still only `mls-league-guide.png`, now `desktop/` 1280×6923 → 1280×7097 and `phone/`
 390×14969 → 390×15511 (the new paragraph); both from CI once there's a pull request.
+
+### S23, round 7: main merged after S21 (btrerise/My-Draft-Strategist#205); the competing suggestion
+
+**Merge.** origin/main (with S21) merged into this branch. Conflicts: `sw.js` (`CACHE_NAME` now **v2.8.111**, above
+main's v2.8.110), `js/mls/leagues/sync.js` (S21's `paid` and S23's `seasonRankingSetId` / `powerCompeting` carry-over
+lines, both kept), the Dashboard's (i) in `lineup/index.html` (S21's "Edit" wording plus S23's In-Season sentence),
+and CHANGELOG / LOG (both sides kept, S21's first). S21's re-taken screenshots came in with main.
+
+**The suggestion (the owner's rule, round 3).** Under "I'm competing this year", a line such as "Suggested: **Rebuilding**
+· 1–6 with the most points against, 2nd in points for, 2nd in Start." or "Suggested: **Retool (your call)** · 6–1, 1st
+in points for, 2nd in Start. Your results beat your roster."
+- `competingSuggestion(label, record, { starterRank })` in `js/mls/power/directionLabels.js` (pure, beside the labels):
+  Contender → competing (losing and points for in the bottom half → retool); Retool → retool (winning and points for
+  in the top half → competing; losing and bottom half → rebuilding); Rebuild → rebuilding (winning and top half →
+  retool). Winning / losing = above / below .500 with ties as halves; "top half" = points-for rank ≤ teams ÷ 2, "bottom
+  half" > (teams + 1) ÷ 2, so the middle team of an odd league is neither. Points against is named only with a losing
+  record and a points-against rank in the top third ("with the most / 2nd-most points against"). Under 4 games, a null
+  record (before anyone has played, guillotine leagues) or a missing one (synced before S21: "sync this league to add
+  your record"), the label alone. In median leagues the record includes the median game, as Sleeper's standings do.
+- Shown only with the switch (a dynasty or keeper league with an In-Season set and your own rankings as the source);
+  it never flips the switch. The Guide's step 4 and the CHANGELOG line describe it. It's text, not a badge, so no
+  legend line.
+- Tests: unit (each row of the rule, .500, the odd league's middle team, ties, points against, under 4 games, no
+  record, redraft labels); spec (the fixture's one-game record, 6–1 and 1–6, a missing record, no In-Season set).
+
+**Checks (round 7).** check-precache OK; 423 unit tests pass; Playwright 499 passed, 5 skipped, only `visual.spec.mjs`
+failing on the environment message. Main (now with S21, 42 PNGs) vs. this branch, both rendered here: only
+**`mls-league-guide.png`** changes, `desktop/` 1280×7464 → 1280×7707 and `phone/` 390×16244 → 390×16994 (S23's Guide
+sentences); the other 40 are pixel-identical. Both from the pull request's CI run.

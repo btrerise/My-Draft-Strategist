@@ -139,7 +139,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   whose dynasty rankings are two weeks old gets a hint about it. The lineup uses the In-Season set when no Weekly set is
   loaded; the Waiver Wire's Rank By reads **Dynasty Rank** in these leagues and adds **In-Season Rank**; and the
   Dashboard's best available on **ROS** uses a dynasty league's In-Season set ("In-Season · …"). The Guide explains it.
-  With no In-Season set, and in redraft leagues, nothing changes.
+  Beside the switch, a **Suggested** line (Competing, Retool or Rebuilding) starts from your label and lets your record
+  and points for move it one step, naming bad luck when your points against is among the league's highest. With no
+  In-Season set, and in redraft leagues, nothing changes.
 - **No console errors when switching tabs quickly in Chrome 153.** A tab switch cut short by the next one no longer
   logs an "unhandled promise rejection".
 - **The Trade Analyzer's two sides line up on wider screens.** Side by side (tablets and computers), Players You

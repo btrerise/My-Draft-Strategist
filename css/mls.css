@@ -1503,6 +1503,10 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-season-row[hidden], .mls-season-row [hidden] { display: none; }
 .mls-season-row .tooltip-container { margin-bottom: 0.35rem; }
 .mls-season-row label { margin-bottom: 0.35rem; }
+/* "Suggested: Competing · 6–1, 2nd in points for, 1st in Start." under the switch (S23, round 7). */
+.mls-competing-suggestion { display: block; margin-top: 0.3rem; }
+.mls-competing-suggestion[hidden] { display: none; }
+.mls-competing-suggestion strong { color: var(--text-main); font-weight: 600; }
 /* The Lineup tab's "Ranked by your In-Season rankings (…)" line (S23, round 6). */
 .mls-lineup-source {
     margin-bottom: 0.75rem;

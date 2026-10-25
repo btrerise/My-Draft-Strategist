@@ -10,7 +10,7 @@ import { ordinal } from './allLeagues.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { POWER_POSITIONS, computePositionalPower, POWER_STARTER_CARRY_CAP, powerTier } from './shared.js';
 import { ensurePowerAgeIndex, futureRankText, futureMoreHTML, powerPicksNote, resolvePowerFuture } from './futureValue.js';
-import { getPowerLeagueKind, assignPowerLabels, powerLabelAdvice } from './directionLabels.js';
+import { getPowerLeagueKind, assignPowerLabels, competingSuggestion, powerLabelAdvice } from './directionLabels.js';
 import { renderRosterPowerStrip, scrollToPowerRankings } from './snapshot.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
@@ -67,6 +67,32 @@ function renderCompetingSwitch(league, src) {
     wrap.style.display = show ? '' : 'none'; // .toggle-row sets display, which would beat [hidden]
     const box = document.getElementById('powerCompeting');
     if (box) box.checked = !!(league && league.powerCompeting);
+}
+
+// The suggestion beside the switch (S23, round 7; the owner's rule in directionLabels.js): your label, moved at most one
+// step by your record and points for from the last sync (league.record, improvements S21). Shown with the switch only.
+const COMPETING_WORDS = { competing: 'Competing', retool: 'Retool (your call)', rebuilding: 'Rebuilding' };
+function renderCompetingSuggestion(league, you) {
+    const el = document.getElementById('powerCompetingSuggestion');
+    if (!el) return;
+    const wrap = document.getElementById('powerCompetingWrap');
+    const s = you && wrap && wrap.style.display !== 'none' ? competingSuggestion(you.label, league.record, { starterRank: you.starterRank }) : null;
+    if (!s) { el.hidden = true; el.innerHTML = ''; return; }
+    let text = `Suggested: <strong>${COMPETING_WORDS[s.verdict]}</strong>`;
+    if (s.fromRoster) {
+        text += league.record === undefined
+            ? ' &middot; from your roster; sync this league to add your record.'
+            : ' &middot; from your roster (too early in the season for your record).';
+    } else {
+        const r = s.record;
+        let rec = `${r.wins}&ndash;${r.losses}${r.ties ? `&ndash;${r.ties}` : ''}`;
+        if (s.paRank) rec += ` with the ${s.paRank === 1 ? '' : `${ordinal(s.paRank)}-`}most points against`;
+        const facts = [rec, `${ordinal(s.pfRank)} in points for`];
+        if (Number.isFinite(s.starterRank)) facts.push(`${ordinal(s.starterRank)} in Start`);
+        text += ` &middot; ${facts.join(', ')}.${s.reason ? ` ${escapeHtml(s.reason)}` : ''}`;
+    }
+    el.innerHTML = text;
+    el.hidden = false;
 }
 
 // Where each column came from (S23, round 4: a one-line key right under the table, in place of a long note), or
@@ -158,6 +184,7 @@ export function refreshPowerRankings() {
     }
     assignPowerLabels(teams, kind);
     teams.forEach(t => { t.starterTier = powerTier(t.starterRank, teams.length); });
+    if (kind === 'dynasty') renderCompetingSuggestion(league, teams.find(t => t.owner === 'You'));
     renderPowerRankingsTable(teams, { league, source: src, kind, futureLabel: futureInfo.label, picksLabel: futureInfo.picks });
     renderRosterPowerStrip(teams, { source: src, tag: seasonStripTag(league, src) });
 }
