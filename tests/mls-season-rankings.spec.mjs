@@ -470,6 +470,10 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expect(page.locator('#setupTab')).toHaveClass(/active/);
         const select = page.locator('#leagueStyleSelect');
         await expect(select).toBeVisible();
+        // Below Save Requirements, since it applies at once (round 14).
+        expect(await page.evaluate(() => !!(document.querySelector('[data-action="saveRequirements"]')
+            .compareDocumentPosition(document.getElementById('leagueStyleWrap')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+        await expect(page.locator('#leagueStyleWrap')).toContainText('Changes as soon as you pick.');
         await expect(select).toHaveValue('dynasty');
         await expect(page.locator('#leagueStyleKeepers')).toHaveText('Sleeper: each team keeps up to 3 players. Leagues that keep this few often play more like redraft.');
         await select.selectOption('redraft');
@@ -515,6 +519,23 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expect(toast(page, '"Redraft ROS" is its In-Season set again.')).toBeVisible();
         league = await fixture(page);
         expect([league.rosRankingSetId, league.seasonRankingSetId, league.seasonMovedToRos]).toEqual([null, ids.season, undefined]);
+        await expectClean(page, state);
+    });
+
+    test('a new dynasty league: the one-tap In-Season set counts as its ROS step', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await page.route(/^https:\/\/api\.fantasycalc\.com\//, (route) => route.fulfill({ status: 200, contentType: 'application/json',
+            body: JSON.stringify([...THEIRS, ...MINE].map((name, i) => ({ player: { name, position: byName[name][2] }, overallRank: i + 1 }))) }));
+        await patchLeagues(page, { 'Fixture League': { leagueType: 'dynasty' } });
+        await showTab(page, 'setup');
+        const checklist = page.locator('#setupChecklist');
+        await expect(checklist).toContainText('Upload a .csv or .xlsx of rest-of-season rankings');
+        await openRosCard(page);
+        await page.locator('#seasonOffer').getByRole('button', { name: "Get FantasyCalc's redraft values" }).click();
+        await expect(toast(page, "is now this league's In-\u2060Season set.")).toBeVisible();
+        await showTab(page, 'setup');
+        await expect(checklist).not.toContainText('Upload a .csv or .xlsx of rest-of-season rankings');
         await expectClean(page, state);
     });
 

@@ -1517,6 +1517,7 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-keeper-style-note strong { color: var(--text-main); font-weight: 600; }
 /* League style on the Setup tab (keeper leagues, S23 round 10): .input-group sets display, which beats [hidden]. */
 #leagueStyleWrap[hidden] { display: none; }
+.mls-league-style { border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1.25rem; margin-bottom: 0; }
 /* Its rows set display (flex), which would beat the hidden attribute the code toggles. */
 .mls-season-row[hidden], .mls-season-row [hidden] { display: none; }
 .mls-season-row .tooltip-container { margin-bottom: 0.35rem; }

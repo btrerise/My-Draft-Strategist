@@ -718,9 +718,9 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
     // Everything that shows the In-Season set: the card's header and rows, Power Rankings (on the Roster
     // tab), and the lineup, whose rankings stamp includes it (it re-optimizes when next opened).
     function refreshAfterSeasonChange() {
-        populateSeasonPicker();
-        updateRankingSetHeader('ros');
-        updateSetLeaguesRow('ros');
+        // Redraws both pickers, the header and the "Used in" rows, and the Setup checklist (round 14: an In-Season set
+        // counts as the league's ROS step).
+        updateRankingsMetaDisplay();
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab && activeTab.id === 'rosterTab' && typeof loadRosterTab === 'function') loadRosterTab();
     }

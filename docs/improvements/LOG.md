@@ -6191,3 +6191,19 @@ vs. main: as in round 10 (only `mls-league-guide.png`).
 **Checks (round 13).** 424 unit; Playwright 507 passed, only `visual.spec.mjs` on the environment message. Screenshots
 vs. main: only `mls-league-guide.png`, now `desktop/` 1280×7464 → 1280×7857 and `phone/` 390×16244 → 390×17490 (the
 Guide's sentence about where the suggestion shows). From CI once there's a pull request.
+
+### S23, round 14: my ninth review as a user (the Setup tab), two fixes; the pull request
+
+1. **League style looked as if it needed Save Requirements**: it sat between the slot numbers and the button, in a card
+   whose description is about slot numbers, though it applies as soon as it's picked. It's below the button now, after
+   a divider, with "Changes as soon as you pick." (`.mls-league-style`).
+2. **The Setup checklist still asked for ROS rankings** in a dynasty league whose only rankings were an In-Season set
+   (after the one-tap fetch, say), though Power Rankings, the lineup and the Waiver Wire already used it. The ROS step
+   counts an In-Season set now (`updatePulsePrompts`, js/mls/init.js), and a change of In-Season set redraws the
+   checklist (`refreshAfterSeasonChange` calls `updateRankingsMetaDisplay`).
+
+Then the owner asked for the pull request, so CI renders the two Guide PNGs.
+
+**Checks (round 14).** 424 unit; Playwright 509 passed, only `visual.spec.mjs` on the environment message. Screenshots
+vs. main: only `mls-league-guide.png` (as in round 13); `mls-league-setup.png` is unchanged (League style is hidden in
+the screenshot league, a redraft one).

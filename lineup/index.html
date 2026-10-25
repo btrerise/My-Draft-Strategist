@@ -352,8 +352,10 @@
             <div class="input-group"><label for="reqK">K</label><input type="number" id="reqK" class="form-input text-center" value="1" aria-label="K lineup slots"></div>
             <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
         </div>
-        <!-- Keeper leagues only (improvements S23, round 10): js/mls/leagues/sync.js, renderLeagueStyle. -->
-        <div id="leagueStyleWrap" class="input-group mb-4" hidden>
+        <button class="btn btn-primary" data-action="saveRequirements">Save Requirements</button>
+        <!-- Keeper leagues only (improvements S23, round 10): js/mls/leagues/sync.js, renderLeagueStyle. Below Save
+             Requirements (round 14): it applies as soon as it's picked, and above the button it looked as if it needed Save. -->
+        <div id="leagueStyleWrap" class="input-group mls-league-style" hidden>
             <div class="cluster cluster-sm">
                 <label for="leagueStyleSelect" class="mb-0">League style</label>
                 <div class="tooltip-container">
@@ -365,9 +367,9 @@
                 <option value="dynasty">Plays like dynasty</option>
                 <option value="redraft">Plays like redraft</option>
             </select>
-            <small id="leagueStyleKeepers" class="text-helper mt-1"></small>
+            <small class="text-helper">Changes as soon as you pick.</small>
+            <small id="leagueStyleKeepers" class="text-helper"></small>
         </div>
-        <button class="btn btn-primary" data-action="saveRequirements">Save Requirements</button>
     </section>
 
     <!-- ADVANCED SETTINGS ACCORDIONS -->
