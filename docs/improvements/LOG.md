@@ -6207,3 +6207,7 @@ Then the owner asked for the pull request, so CI renders the two Guide PNGs.
 **Checks (round 14).** 424 unit; Playwright 509 passed, only `visual.spec.mjs` on the environment message. Screenshots
 vs. main: only `mls-league-guide.png` (as in round 13); `mls-league-setup.png` is unchanged (League style is hidden in
 the screenshot league, a redraft one).
+
+**Guide baselines from CI.** The first CI run on the pull request (1af38ff) failed on exactly
+`desktop/` and `phone/mls-league-guide.png`; 517 other tests passed. Each `-expected.png` matched the committed baseline
+byte for byte, and CI's renders (desktop 1280×7577, phone 390×16616) were committed as the new baselines.
