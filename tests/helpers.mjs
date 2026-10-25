@@ -24,6 +24,9 @@ const SLEEPER_FIXTURES = [
     [/^\/v1\/state\/nfl$/, 'state-nfl.json'],
     [/^\/v1\/players\/nfl$/, 'players-nfl.json'],
     [/^\/v1\/players\/nfl\/trending\/add$/, 'trending-add.json'],
+    // The second league (dynasty, improvements S21's This week card): its own league and matchups, the same teams.
+    [/^\/v1\/league\/1000000000000000021$/, 'league2.json'],
+    [/^\/v1\/league\/1000000000000000021\/matchups\/\d+$/, 'league2-matchups.json'],
     [/^\/v1\/league\/\d+$/, 'league.json'],
     [/^\/v1\/league\/\d+\/users$/, 'league-users.json'],
     [/^\/v1\/league\/\d+\/rosters$/, 'league-rosters.json'],
@@ -113,7 +116,7 @@ export async function openApp(page, path) {
 
 // Tab ids per page, in nav order. Kept here so a renamed tab fails loudly in every spec.
 export const MDS_TABS = ['setup', 'tracker', 'team', 'board', 'guide'];
-export const MLS_TABS = ['setup', 'roster', 'lineup', 'scout', 'guide'];
+export const MLS_TABS = ['setup', 'roster', 'lineup', 'scoreboard', 'scout', 'guide'];
 export const TSCORE_TABS = ['researchTab', 'top50Tab', 'valuesTab', 'avoidsTab', 'sleepersTab', 'tab-2024'];
 
 /**
@@ -164,6 +167,7 @@ export const RANKINGS_CSV = readFileSync(here('./fixtures/rankings.csv'), 'utf8'
 export const WAIVER_RANKINGS_CSV = readFileSync(here('./fixtures/rankings-waivers.csv'), 'utf8');
 
 export const FIXTURE_LEAGUE_ID = '1000000000000000001';
+export const FIXTURE_LEAGUE2_ID = '1000000000000000021';
 
 /**
  * MDS (refactor 8C): a rankings upload or paste opens the upload preview and loads nothing until

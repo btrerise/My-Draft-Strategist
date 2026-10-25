@@ -7,10 +7,11 @@ import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from '../../shared/
 import { MIN_RELIABLE_GAMES, getPlayerVarianceProfile, getProbabilityBeats } from './stats.js';
 import { escapeHtml } from '../../shared/html.js';
 import { State, refreshGameTimes } from '../state.js';
+import { getByeWeek } from '../../shared/data/byes.js';
 import { getShortInjuryStatus, isExcludedFromSimulation, SIM_EXCLUDE_STATUSES, getActiveLeague, isConnectionError } from '../helpers.js';
 import { getCleanNameToIdIndex } from '../players.js';
 import { fantasyPosition } from '../constants.js';
-import { getLeagueScoringKey, hasKickedOff } from '../lineup/gameInfo.js';
+import { gameShareLeftFor, getLeagueScoringKey, hasKickedOff } from '../lineup/gameInfo.js';
 import { getWaiverInsights } from '../scout/waiverInsights.js';
 import { slotAcceptsPos } from '../render/lineup.js';
 import { normalizeName } from '../../shared/names.js';
@@ -192,7 +193,9 @@ export const runMatchupSim = async function() {
             return {
                 id, name, pos: fantasyPosition(p) || '', team: playerTeam, weeklyScores: history[id] || [], currentSeasonScores: currentSeasonOnly[id] || [],
                 isRookie: p.years_exp === 0, projectedMean: getProjectedMean(id),
-                actualScore
+                actualScore,
+                // His game still under way: his points so far plus the rest of it (sim/stats.js).
+                shareLeft: actualScore !== null ? gameShareLeftFor(playerTeam) : 0,
             };
         };
 
@@ -209,9 +212,14 @@ export const runMatchupSim = async function() {
         // bench player can't be suggested as a "swap in" pick either.
         let excludedCount = 0;
         let injuryExcludedCount = 0;
+        // A player on a bye is left out too (improvements S21, Sunday live check): Sleeper gives him no projection, so
+        // he fell back to his season average and counted for points he can't score (Josh Allen, 27.5 on BUF's bye).
+        let byeExcludedCount = 0;
         const toPlayerObjs = (ids, matchupEntry) => ids.reduce((arr, id) => {
             const rawPlayer = playerMap[id] || {};
             if (isExcludedFromSimulation(rawPlayer)) { injuryExcludedCount++; return arr; }
+            const byeTeam = rawPlayer.team || (fantasyPosition(rawPlayer) === 'DEF' ? id : null);
+            if (byeTeam && getByeWeek(byeTeam, season) === currentWeek) { byeExcludedCount++; return arr; }
             const playerObj = toPlayerObj(id, matchupEntry);
             if (playerObj.weeklyScores.length > 0) arr.push(playerObj); else excludedCount++;
             return arr;
@@ -223,6 +231,7 @@ export const runMatchupSim = async function() {
         const exclusionNotes = [];
         if (excludedCount > 0) exclusionNotes.push(`${excludedCount} without enough game history yet`);
         if (injuryExcludedCount > 0) exclusionNotes.push(`${injuryExcludedCount} listed as Doubtful, Out, or IR`);
+        if (byeExcludedCount > 0) exclusionNotes.push(`${byeExcludedCount} on a bye`);
         if (exclusionNotes.length > 0) {
             showToast(`${exclusionNotes.join(' and ')} excluded from the simulation.`);
         }
@@ -242,7 +251,7 @@ export const runMatchupSim = async function() {
             .map(s => ({ id: s.player.id, slotType: s.slot.replace(/[0-9]/g, '') }));
 
         const team1ProfilesById = {};
-        team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean, actualScore: p.actualScore }); });
+        team1Players.forEach(p => { team1ProfilesById[p.id] = getPlayerVarianceProfile(p.weeklyScores, { projectedMean: p.projectedMean, actualScore: p.actualScore, shareLeft: p.shareLeft }); });
 
         // Given a candidate's own variance profile and position, finds the weakest eligible
         // starter they could replace and returns the win probability against that starter --
@@ -277,7 +286,7 @@ export const runMatchupSim = async function() {
             const benchObjs = toPlayerObjs(benchIds, myEntry);
 
             benchObjs.forEach(benchPlayer => {
-                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores, { projectedMean: benchPlayer.projectedMean, actualScore: benchPlayer.actualScore });
+                const benchProfile = getPlayerVarianceProfile(benchPlayer.weeklyScores, { projectedMean: benchPlayer.projectedMean, actualScore: benchPlayer.actualScore, shareLeft: benchPlayer.shareLeft });
                 const result = compareAgainstWeakestStarter(benchProfile, benchPlayer.pos);
                 if (!result) return;
 

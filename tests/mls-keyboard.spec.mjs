@@ -13,7 +13,7 @@ const focusedIsBody = page => page.evaluate(() => document.activeElement === doc
 test.describe('Lineup Strategist keyboard', () => {
     test('shortcuts switch tabs, Escape closes the drawer, typing in a field does not', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
-        for (const [key, tab] of [['2', 'rosterTab'], ['3', 'lineupTab'], ['4', 'scoutTab'], ['5', 'guideTab'], ['1', 'setupTab']]) {
+        for (const [key, tab] of [['2', 'rosterTab'], ['3', 'lineupTab'], ['4', 'scoreboardTab'], ['5', 'scoutTab'], ['6', 'guideTab'], ['1', 'setupTab']]) {
             await blur(page);
             await page.keyboard.press(key);
             await transitionsDone(page);

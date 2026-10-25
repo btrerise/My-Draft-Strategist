@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A clearer tab bar.** The tab you're on now has a bold name and a heavier icon, with the green bar above it as
+  before.
 - **A faster first visit.** The page's font now comes from this site instead of Google Fonts, so on a phone's first
   visit the page appears about a second sooner (blank for less time). The logos download smaller and look the same.
 - **Export Team draws numbers without gaps.** Numbers in the exported image could be followed by a stray space
@@ -87,6 +89,44 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The Matchup Simulator during games.** A player whose game is still being played used to count as finished on the
+  points he had so far (a receiver on 3 in the first quarter counted as 3), so win chances during games were badly
+  off. He now counts as his points so far plus his usual output for the part of the game that's left (from the
+  quarter and clock), and as a fixed score once his game is final. On the Lineup tab, his range reads "(3 so far)".
+- **The Matchup Simulator leaves out players on a bye.** Sleeper gives them no projection, so they counted at their
+  season average: a lineup with Josh Allen on Buffalo's bye got about 27 points he couldn't score. They're now left
+  out like a player listed Out, and the toast says how many.
+- **A Scoreboard tab: every league's matchup, live.** A new tab (a scoreboard icon in the tab bar, between Lineup and Scout)
+  shows this week's score in every Sleeper league ("Week 7 Recap", with an info tip): your record as it stands (a
+  matchup joins it once at least 4 players a side have played; before that it's "too early to call"), split
+  paid / free and redraft / dynasty, each pair grouped (keeper leagues count with redraft; a guillotine league, with no opponent, isn't in the record), plus your record
+  against the median in the leagues that play one, the matchups still in play first
+  (both scores, the margin, your win chance from the Matchup Simulator, and who's still to play on each side: names
+  once it's down to 4 or fewer, a count before), the
+  most uncertain five ("Show all" for the rest), the effectively decided ones on one line (a matchup the Simulator
+  gives under 1% either way counts as decided, once nobody on either side is mid-game), then a
+  tile for every league, closest first while games are on and in your league order before and after (up to four across,
+  one per row on phones), with your score and your opponent's, the result and margin, the win chance while it's in play (none for Best Ball, where the bench can still
+  count), and "Median: W (3rd
+  of 12)" where it applies. Tap a tile to open that league's lineup.
+  It says Provisional until every game of the week is final, then Final. A guillotine league's tile shows your score
+  against the chop line and your place among the teams still alive; a league that also plays the median says where you
+  stand against it; a league whose matchups didn't load is named, with the rest still shown. It loads when you open
+  the Scoreboard, the Dashboard or the Lineup tab and when you tap Refresh (before SNF, before MNF, after MNF), never in
+  the background. The "mark the leagues you pay for" hint can be closed with its ✕. The User Guide explains it.
+- **The week on the Dashboard and the Lineup tab.** Above your league cards, one line ("Week 7 Recap · Record 9–6 · 4
+  still live") opens the Scoreboard. Above the lineup, the league's own matchup: your opponent, both scores, the
+  margin, your win chance (or Final) beside the score (under it on phones), and who's still to play.
+- **A clearer tab bar.** With five tabs, the tab you're on has a bold name and a heavier icon (with the green bar
+  above it, as before), and every tab keeps its name. Number keys on a computer: 4 is now the Scoreboard, 5 Scout and 6
+  the Guide.
+- **Edit instead of Reorder.** The League Command Center's Reorder button is now Edit: it moves leagues, marks the ones
+  you pay for ("$ Paid") and removes them.
+- **Mark the leagues you pay for.** Reorder on the League Command Center now has a "$ Paid" switch on each Sleeper
+  league. A paid league shows a "$" badge on its card and in This week, and a sync or a backup keeps it.
+- **Your record on the Roster tab.** With the league's name, above the header's line: your record this season and where
+  your points for and against rank in the league ("Points for 3rd of 12"), as of your last sync. A league shows it after
+  its next sync. On phones the league's name now gets the card's full width, with its format on the line below.
 - **The Trade Analyzer's two sides line up on wider screens.** Side by side (tablets and computers), Players You
   Receive and Players You Give Up now keep their search boxes, players and draft-pick rows level, even when one side
   has more players. In Sleeper leagues, Give has its own From line ("From  You (your username)") across from Receive's

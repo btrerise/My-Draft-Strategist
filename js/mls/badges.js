@@ -145,3 +145,16 @@ export const tierGapMarkup = (cls, text, title = '') =>
 export const edgeBadgeMarkup = (delta, buyLow) => buyLow
     ? `<span class="badge" style="background:var(--target-bg); color:var(--primary-green); border:1px solid var(--target-border);">+${delta} Edge</span>`
     : `<span class="badge" style="background:var(--avoid-bg); color:#fca5a5; border:1px solid var(--avoid-border);">${delta} Edge</span>`;
+
+// --- THIS WEEK (week/thisWeek.js, improvements S21) ---
+// "$" on a league you marked paid (Edit on the League Command Center): on its card's header and its line in the
+// This week card. The words are for screen readers; sighted users get the title on hover.
+export const paidBadgeMarkup = ({ sample = false } = {}) =>
+    `<span class="badge mls-paid-badge"${sample ? '' : ' title="Paid league"'}><span aria-hidden="true">$</span><span class="sr-only">Paid league</span></span>`;
+// A matchup's result as it stands: W, L or T (green, red, grey).
+export const weekResultMarkup = (result) =>
+    `<span class="badge mls-week-result is-${result === 'W' ? 'win' : (result === 'L' ? 'loss' : 'tie')}">${result === 'W' ? 'W' : (result === 'L' ? 'L' : 'T')}</span>`;
+// The week's state: Provisional (amber) until its last game is final, then Final.
+export const weekStatusMarkup = (final) => final
+    ? `<span class="badge mls-week-status is-final">Final</span>`
+    : `<span class="badge mls-week-status is-provisional">Provisional</span>`;
