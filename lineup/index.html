@@ -473,6 +473,28 @@
                 <input type="text" id="rosNewSetName" class="form-input" maxlength="60" placeholder="e.g. Dynasty PPR 2026">
             </div>
 
+            <!-- Dynasty and keeper leagues only (improvements S23): a ROS set for this season's questions.
+                 Filled by populateSeasonPicker (js/mls/rankings/sets.js). Under the dynasty set's picker (owner's choice,
+                 round 8: at the bottom it was easy to miss); #rosUploadTarget below it says the upload and
+                 Auto-Fetch fill the dynasty set. -->
+            <div id="seasonRankingsRow" class="mls-season-row mb-3" hidden>
+                <div class="input-group mb-0">
+                    <div class="cluster cluster-sm">
+                        <label for="seasonRankingSetSelect" class="mb-0">In-Season rankings</label>
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Any saved ROS set, usually the one your redraft leagues use, for questions about this season: Power Rankings' Start column and labels, the lineup when no Weekly set is loaded, and In-Season Rank in the Waiver Wire Assistant. Future stays on your dynasty rankings. None keeps everything on your dynasty rankings.</span>
+                        </div>
+                    </div>
+                    <select id="seasonRankingSetSelect" class="form-input" data-action="onSeasonSetChange" aria-label="Select In-Season Ranking Set"></select>
+                </div>
+                <div id="seasonOffer" class="mls-season-offer" hidden></div>
+                <div id="seasonSetLeaguesRow" class="mls-set-leagues-row" hidden>
+                    <span id="seasonSetLeaguesSummary" class="mls-set-leagues-summary"></span>
+                    <button class="mls-btn-sm btn-link-inline" data-action="openSeasonSetLeagues">Choose leagues&hellip;</button>
+                </div>
+            </div>
+            <div id="rosUploadTarget" class="mls-upload-target" hidden></div>
             <div id="rosMetaDisplay" class="status-badge-meta"></div>
 
             <div class="input-group mb-3">
@@ -572,26 +594,6 @@
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
                 Auto-Fetch ROS Rankings
             </button>
-            <!-- Dynasty and keeper leagues only (improvements S23): a ROS set for this season's questions.
-                 Filled by populateSeasonPicker (js/mls/rankings/sets.js). Last in the card, below the upload and
-                 Auto-Fetch, which fill the dynasty set picked at the top. -->
-            <div id="seasonRankingsRow" class="mls-season-row" hidden>
-                <div class="input-group mb-0">
-                    <div class="cluster cluster-sm">
-                        <label for="seasonRankingSetSelect" class="mb-0">In-Season rankings</label>
-                        <div class="tooltip-container">
-                            <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Any saved ROS set, usually the one your redraft leagues use, for questions about this season: Power Rankings' Start column and labels, the lineup when no Weekly set is loaded, and In-Season Rank in the Waiver Wire Assistant. Future stays on your dynasty rankings. None keeps everything on your dynasty rankings.</span>
-                        </div>
-                    </div>
-                    <select id="seasonRankingSetSelect" class="form-input" data-action="onSeasonSetChange" aria-label="Select In-Season Ranking Set"></select>
-                </div>
-                <div id="seasonOffer" class="mls-season-offer" hidden></div>
-                <div id="seasonSetLeaguesRow" class="mls-set-leagues-row" hidden>
-                    <span id="seasonSetLeaguesSummary" class="mls-set-leagues-summary"></span>
-                    <button class="mls-btn-sm btn-link-inline" data-action="openSeasonSetLeagues">Choose leagues&hellip;</button>
-                </div>
-            </div>
         </div>
     </section>
     <!-- "What changed" after a Replace Set or auto-fetch replace of the ROS set (improvements S3):

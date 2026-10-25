@@ -111,9 +111,17 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expect(page.locator('#seasonRankingsRow')).toBeVisible();
         await expect(page.locator('#rosRankingSetLabel')).toHaveText('Dynasty rankings for this league');
         await expect(page.locator('#rosRankingsTitle')).toHaveText('Dynasty & In-Season Rankings');
-        // Last in the card, below the upload and Auto-Fetch (which fill the dynasty set).
-        expect(await page.evaluate(() => !!(document.getElementById('autoFetchRosBtn').compareDocumentPosition(
-            document.getElementById('seasonRankingsRow')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+        // Right under the dynasty picker, then a line saying the upload and Auto-Fetch below fill the dynasty set.
+        expect(await page.evaluate(() => {
+            const order = ['rosRankingSetSelect', 'seasonRankingsRow', 'rosUploadTarget', 'rosFileInput', 'autoFetchRosBtn']
+                .map(id => document.getElementById(id));
+            return order.every((el, i) => i === 0 || !!(order[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING));
+        })).toBe(true);
+        await expect(page.locator('#rosUploadTarget')).toHaveText('Upload or Auto-Fetch below to update your dynasty set, Dynasty SF.');
+        await page.locator('#rosRankingSetSelect').selectOption('__new__');
+        await expect(page.locator('#rosUploadTarget')).toHaveText('Upload or Auto-Fetch below to save a new dynasty set.');
+        await page.locator('#rosRankingSetSelect').selectOption(ids.dynasty);
+        await openRosCard(page);
         const select = page.locator('#seasonRankingSetSelect');
         await expect(select.locator('option').first()).toHaveText('None (use your dynasty rankings)');
         await expect(select).toHaveValue('');
@@ -394,6 +402,7 @@ test('a redraft league shows no In-Season picker and no switch', async ({ page }
     await expect(page.locator('#seasonRankingsRow')).toBeHidden();
     await expect(page.locator('#rosRankingSetLabel')).toHaveText('Ranking Set for this League');
     await expect(page.locator('#rosRankingsTitle')).toHaveText('Rest-of-Season (ROS) Rankings');
+    await expect(page.locator('#rosUploadTarget')).toBeHidden();
     await expect(page.locator('#rosHeaderSetName')).toHaveText('Set: Dynasty SF');
     const table = await powerTable(page, { future: false });
     expect(table.key).toBe('');

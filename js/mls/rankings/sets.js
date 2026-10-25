@@ -232,6 +232,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
             if (nameWrap) nameWrap.style.display = 'flex';
             showSavedSetButtons(cfg, false);
             updateSetLeaguesRow(type);
+            if (type === 'ros') updateUploadTarget();
             return; // don't touch State yet -- wait for an actual upload/fetch to create the set
         }
         if (nameWrap) nameWrap.style.display = 'none';
@@ -548,6 +549,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
     // every saved ROS set. Shown only in dynasty and keeper leagues; a redraft league's card is exactly
     // as before. The resolver and its rules are in rankings/season.js.
     export function populateSeasonPicker() {
+        updateUploadTarget();
         const row = document.getElementById('seasonRankingsRow');
         const label = document.getElementById('rosRankingSetLabel');
         const league = getActiveLeague();
@@ -590,6 +592,25 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
                 ? `<span>Your redraft leagues use <strong>${escapeHtml(offer.name)}</strong>.</span> <button type="button" class="mls-btn-sm btn-link-inline" data-action="useSeasonOffer" data-set-id="${escapeHtml(offer.id)}">Use it here</button>`
                 : '';
         }
+    }
+
+    // The line between the two pickers and the upload controls (round 8): in a dynasty or keeper league, which set an
+    // upload or Auto-Fetch fills, since the In-Season picker sits right above them. Follows the dynasty drop-down,
+    // including "+ Create New Set". Hidden in redraft leagues.
+    export function updateUploadTarget() {
+        const el = document.getElementById('rosUploadTarget');
+        if (!el) return;
+        const league = getActiveLeague();
+        if (!hasSeasonSlot(league)) { el.hidden = true; el.textContent = ''; return; }
+        const selectEl = document.getElementById('rosRankingSetSelect');
+        const val = selectEl ? selectEl.value : '__new__';
+        const set = State.rankingSets.ros.find(s => s.id === val);
+        el.innerHTML = set
+            ? `Upload or Auto-Fetch below to update your dynasty set, <strong>${escapeHtml(set.name)}</strong>.`
+            : val === '__legacy__'
+                ? 'Upload or Auto-Fetch below to save your dynasty rankings as a set.'
+                : 'Upload or Auto-Fetch below to save a new dynasty set.';
+        el.hidden = false;
     }
 
     function setActiveSeason(setId) {

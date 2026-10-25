@@ -6060,3 +6060,14 @@ in points for, 2nd in Start. Your results beat your roster."
 failing on the environment message. Main (now with S21, 42 PNGs) vs. this branch, both rendered here: only
 **`mls-league-guide.png`** changes, `desktop/` 1280×7464 → 1280×7707 and `phone/` 390×16244 → 390×16994 (S23's Guide
 sentences); the other 40 are pixel-identical. Both from the pull request's CI run.
+
+### S23, round 8: the In-Season picker back under the dynasty one (owner's choice)
+
+The owner found the In-Season picker easy to miss at the bottom of the card (round 4 had moved it there so it wouldn't
+look like the upload's target). It's back right under the dynasty picker and its "Used in" row, and a divided line
+under it, **"Upload or Auto-Fetch below to update your dynasty set, <set>."** ("…to save a new dynasty set." with
+"+ Create New Set", `#rosUploadTarget`, `updateUploadTarget` in `rankings/sets.js`), starts the upload part, so which
+set an upload fills stays clear. Dynasty and keeper leagues only; redraft leagues' cards are unchanged. The spec checks
+the order (dynasty picker, In-Season picker, the line, the file input, Auto-Fetch) and both wordings.
+Checks: 423 unit, 499 Playwright passed (only `visual.spec.mjs` on the environment message); screenshots vs. main (with
+S21) unchanged from round 7: only `mls-league-guide.png`.
