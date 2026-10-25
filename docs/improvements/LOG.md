@@ -5504,3 +5504,21 @@ Chrome 153 (they failed on main here).
 `league.record`; see the next entry once decided.
 
 **Left over.** The two Guide PNGs from CI. The Playwright upgrade (above). The competing suggestion (decision pending).
+
+### S23, round 3: the competing suggestion's rule (owner's decision)
+
+**The owner approved the rule** for a suggestion beside "I'm competing this year", from the Power Rankings label plus
+the record, points for and points against that S21 (btrerise/My-Draft-Strategist#205) saves on each league at sync
+(`league.record`). It starts from the team's own label and lets the standings move it one step at most:
+- Contender → **Competing**; with a losing record and points for in the bottom half → **Retool** ("the roster says
+  contender; results don't yet").
+- Retool → **Retool** (your call); winning record and points for in the top half → **Competing**; losing record and
+  points for in the bottom half → **Rebuilding**.
+- Rebuild → **Rebuilding**; winning record and points for in the top half → **Retool**.
+- Points against only explains ("3–4 with the 2nd-most points against"), never moves it. Under about 4 games played,
+  the suggestion is the label alone. It never flips the switch.
+
+**Not built yet:** it needs `league.record` from #205. My recommendation (order not yet confirmed): merge S23 without
+it and add it in a small follow-up once #205 is on main, touching only the Power Rankings files. The owner asked me to
+draft a note for the S21 session suggesting the record code (`seasonRecord`, now in `js/mls/week/scoreboard.js`) move
+somewhere league-wide such as `js/mls/leagues/`, with that session making its own call.
