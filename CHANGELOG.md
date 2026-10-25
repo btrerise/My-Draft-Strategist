@@ -93,6 +93,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   points he had so far (a receiver on 3 in the first quarter counted as 3), so win chances during games were badly
   off. He now counts as his points so far plus his usual output for the part of the game that's left (from the
   quarter and clock), and as a fixed score once his game is final. On the Lineup tab, his range reads "(3 so far)".
+- **The Matchup Simulator leaves out players on a bye.** Sleeper gives them no projection, so they counted at their
+  season average: a lineup with Josh Allen on Buffalo's bye got about 27 points he couldn't score. They're now left
+  out like a player listed Out, and the toast says how many.
 - **A Scoreboard tab: every league's matchup, live.** A new tab (a scoreboard icon in the tab bar, between Lineup and Scout)
   shows this week's score in every Sleeper league ("Week 7 Recap", with an info tip): your record as it stands (a
   matchup joins it once at least 4 players a side have played; before that it's "too early to call"), split

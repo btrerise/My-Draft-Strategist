@@ -233,7 +233,8 @@ async function addWinChances() {
     if (!swings.length || key === view.chancesKey) return;
     view.chancesKey = key;
     view.chances = new Map(); // last scores' percents don't stay up beside new scores
-    const toPlayers = (side) => side.starters.map(p => ({ id: p.id, pos: p.pos, team: p.team, actual: p.actual, shareLeft: p.shareLeft, projected: p.projected, excluded: p.out }));
+    // On a bye: left out like Out (no projection, so he'd count at his season average; Sunday live check).
+    const toPlayers = (side) => side.starters.map(p => ({ id: p.id, pos: p.pos, team: p.team, actual: p.actual, shareLeft: p.shareLeft, projected: p.projected, excluded: p.out || p.onBye }));
     try {
         view.chances = await matchupWinChances(swings.map(r => ({ key: r.league.leagueId, scoringKey: r.res.scoringKey, mine: toPlayers(r.res.me), theirs: toPlayers(r.res.them) })),
             { season: ctx.season, week: ctx.week });
@@ -422,7 +423,7 @@ function swingHTML(r) {
             <span class="mls-week-line-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}<span class="mls-week-name">${leagueName(l)}</span></span>
             <span class="mls-week-margin${res.margin < 0 ? ' is-behind' : ''}">${signed(res.margin)}</span>
         </div>
-        <div class="mls-week-swing-score">You ${fmt(res.me.points)} &middot; ${escapeHtml(res.oppName)} ${fmt(res.them.points)}${chance != null ? `<span class="mls-week-chance">${pctText(chance)} to win</span>` : ''}</div>
+        <div class="mls-week-swing-score">You ${fmt(res.me.points)} &middot; ${escapeHtml(res.oppName)} ${fmt(res.them.points)}${chance != null ? ` <span class="mls-week-chance">${pctText(chance)} to win</span>` : ''}</div>
         <div class="mls-week-swing-live"><span class="mls-week-side">You:</span> ${liveText(liveOf(res.me))}</div>
         <div class="mls-week-swing-live"><span class="mls-week-side">Them:</span> ${liveText(liveOf(res.them))}</div>
     </li>`;

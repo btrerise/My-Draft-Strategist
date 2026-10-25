@@ -5735,3 +5735,21 @@ up as the clock ran down, and nothing read 0% or 100% while games were on. Two f
   can still add (`swingOrder`'s `trailReach`). The Simulator card has the same Best Ball limit (it simulates one
   fixed lineup); not changed here, a follow-up in TESTING.md.
 - **A mid-game player's range starts at his points so far** ("4.05-6.31 (3.9 so far)" read oddly).
+
+### S21, the Sunday live check (week 7, the 1pm games in the 1st quarter)
+
+Run against the owner's real leagues with nothing simulated, on phone and desktop, twice about ten minutes apart.
+What held up: players mid-game read "(14.9 so far)" with ranges that start at their points; no chance read 0% or
+100% while games were on; the record, "still live" and "too early to call" split made sense (11–8, 18 live, 1 too
+early, 1 decided); Best Ball tiles had no chance; no console errors.
+
+Found and fixed: **the Simulator counted players on a bye.** Sleeper's week-7 projections have no points for them, so
+`getPlayerVarianceProfile` fell back to the season average: Josh Allen (BUF, bye in week 7) counted 27.46 and Omarion
+Hampton (LAC, bye) 8.83 for an opponent in 2026 Late Round Charity League 2. The Simulator card read 21.5% for the
+owner; without them, 82.75%. Pre-existing in the Simulator card; the Scoreboard's win chances had it too.
+- `sim/matchup.js`: a starter or bench player whose team is on a bye this week (`getByeWeek`) is left out like a
+  Doubtful/Out/IR player, and the toast counts them ("1 on a bye").
+- `week/thisWeek.js`: the win-chance players mark a bye as excluded, so `matchupWinChances` drops them.
+- No automated test: the fixtures are week 2, which has no byes. Checked live instead (Allen and Hampton gone from
+  the card's lists).
+- Also: a space before "52% to win" in the in-play list (its text ran "48.752% to win" for screen readers).
