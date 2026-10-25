@@ -30,10 +30,12 @@ export function hasSeasonSlot(league) {
 
 // The saved set a league's In-Season slot points at, or null: not a dynasty league, nothing chosen, or
 // the set no longer exists.
+// The league's own dynasty set counts as none (round 5): reading it "for this season" changes nothing, and naming it
+// twice in the key and the hint only confused; the picker doesn't offer it.
 export function seasonSetFor(league, rosSets) {
     if (!hasSeasonSlot(league)) return null;
     const id = league[SEASON_SET_KEY];
-    if (!id) return null;
+    if (!id || id === league.rosRankingSetId) return null;
     return (rosSets || []).find(s => s.id === id && Array.isArray(s.data)) || null;
 }
 
@@ -64,7 +66,7 @@ export function roomsUseSeason(league, rosSets) {
 export function setUsage(setId, leagues) {
     let used = 0, asSeason = 0;
     (leagues || []).forEach(l => {
-        const season = hasSeasonSlot(l) && l[SEASON_SET_KEY] === setId;
+        const season = hasSeasonSlot(l) && l[SEASON_SET_KEY] === setId && l.rosRankingSetId !== setId;
         if (season) asSeason++;
         if (season || l.rosRankingSetId === setId) used++;
     });

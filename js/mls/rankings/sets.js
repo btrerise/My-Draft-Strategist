@@ -300,11 +300,14 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
         let selectableCount = 0;
         const rows = leagues.map(l => {
             const isActive = l.leagueId === activeId;
-            const onSet = !!setId && l[key] === setId;
-            const locked = isActive || (onSet && !allowRemove);
+            // The Season slot: a league whose dynasty set is this one can't also use it as In-Season (round 5).
+            const ownDynasty = isSeason && !!setId && l.rosRankingSetId === setId && !isActive;
+            const onSet = !!setId && l[key] === setId && !ownDynasty;
+            const locked = isActive || ownDynasty || (onSet && !allowRemove);
             if (!locked) selectableCount++;
             const seasonNow = isSeason ? seasonSetFor(l, State.rankingSets.ros) : null;
             const note = isActive ? 'This league'
+                : ownDynasty ? 'Its dynasty rankings already'
                 : onSet ? (isSeason ? 'Already using this set as In-Season' : 'Already using this set')
                 : isSeason ? (seasonNow ? `In-Season now: ${seasonNow.name}` : 'No In-Season set (uses its dynasty rankings)')
                 : `Currently: ${describeLeagueRankings(type, l)}`;
@@ -558,7 +561,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
         const selectEl = document.getElementById('seasonRankingSetSelect');
         if (selectEl) {
             selectEl.innerHTML = `<option value="">None (use your dynasty rankings)</option>`
-                + sets.map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} (${s.data.length} players)</option>`).join('');
+                + sets.filter(s => s.id !== league.rosRankingSetId).map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} (${s.data.length} players)</option>`).join('');
             selectEl.value = current ? current.id : '';
         }
 
@@ -570,7 +573,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
             const summary = document.getElementById('seasonSetLeaguesSummary');
             if (current && summary) {
                 const n = State.leagues.filter(l => seasonSetFor(l, sets) === current).length;
-                summary.textContent = `In-Season rankings in ${n} of ${dynastyCount} dynasty and keeper leagues`;
+                summary.textContent = `In ${n} of ${dynastyCount} dynasty and keeper leagues`; // the label above says In-Season
             }
         }
 
@@ -634,9 +637,16 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
         const set = State.rankingSets.ros.find(s => s.id === setId);
         if (!set || !setActiveSeason(set.id)) return;
         refreshAfterSeasonChange();
-        const others = leaguesWithoutSeason(State.leagues, State.rankingSets.ros, State.activeLeagueId);
+        // Not a league whose dynasty set is this one (it can't be its In-Season set too).
+        const others = leaguesWithoutSeason(State.leagues, State.rankingSets.ros, State.activeLeagueId)
+            .filter(l => l.rosRankingSetId !== set.id);
         if (others.length === 0) { showToast(`"${set.name}" is now this league's ${IN_SEASON} set.`); return; }
-        const all = await showConfirm(`Also use "${set.name}" in the ${others.length === 1 ? 'other dynasty or keeper league' : `${others.length} other dynasty and keeper leagues`} without ${IN_SEASON} rankings?`,
+        // Up to three are named, so you can answer without looking them up (round 5).
+        const names = others.map(l => `"${l.name || 'Unnamed league'}"`);
+        const where = others.length <= 3
+            ? `in ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`} too`
+            : `in the ${others.length} other dynasty and keeper leagues without ${IN_SEASON} rankings`;
+        const all = await showConfirm(`Also use "${set.name}" ${where}?`,
             { title: `${IN_SEASON} rankings`, confirmText: others.length === 1 ? 'Use in that one too' : `Use in all ${others.length}`, cancelText: 'Just this league' });
         if (!all) { showToast(`"${set.name}" is now this league's ${IN_SEASON} set.`); return; }
         assignSetToLeagues('ros', set.id, { add: others.map(l => l.leagueId) }, { slot: 'season' });

@@ -117,6 +117,14 @@ test.describe('In-Season rankings in a dynasty league', () => {
         const select = page.locator('#seasonRankingSetSelect');
         await expect(select.locator('option').first()).toHaveText('None (use your dynasty rankings)');
         await expect(select).toHaveValue('');
+        // The league's own dynasty set isn't offered, and a stored one counts as none.
+        await expect(select.locator('option')).toHaveText(['None (use your dynasty rankings)', 'Redraft ROS (24 players)']);
+        await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: ids.dynasty } });
+        await openRosCard(page);
+        await expect(select).toHaveValue('');
+        expect((await powerTable(page)).key).toBe('');
+        await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: null } });
+        await openRosCard(page);
         await select.selectOption(ids.season);
         await expect(page.locator('#rosHeaderSetName')).toHaveText('Dynasty: Dynasty SFIn-Season: Redraft ROS');
         expect((await fixture(page)).seasonRankingSetId).toBe(ids.season);
@@ -190,6 +198,19 @@ test.describe('In-Season rankings in a dynasty league', () => {
         });
         expect(scan).toEqual({ name: 'In-Season', season: true, first: 'Bijan Robinson' });
 
+        // Auto-Find names the set the Would Start check uses, and calls the ROS slot "dynasty rankings".
+        await page.locator('[data-action="setWaiverMode"][data-mode="auto"]').click();
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').first().click();
+        const out = page.locator('#waiverOutput');
+        await expect(out).toContainText('starting lineup using In-Season ranks');
+        await expect(out).toContainText('the Would Start check uses In-Season ranks (same as the optimizer)');
+        await expect(out).toContainText('Your dynasty rankings ("Dynasty SF") don\'t include position ranks');
+        // The Trade Analyzer's Power Rankings say which set gave what.
+        await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
+        await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        await expect(page.locator('.mls-trade-impact-via').first()).toHaveText('Start by In-Season; value, Ovr, positions and Future by dynasty');
+
         // The Dashboard's best available: two choices; ROS reads a dynasty league's In-Season set and says so.
         await showTab(page, 'setup'); // the Dashboard
         await page.locator('[data-action="setBestAvailableBasis"][data-basis="ros"]').click();
@@ -219,14 +240,14 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expect(offer).toContainText('Your redraft leagues use Redraft ROS.');
         await offer.getByRole('button', { name: 'Use it here' }).click();
         const confirm = page.locator('#mds-confirm-overlay');
-        await expect(confirm).toContainText('Also use "Redraft ROS" in the other dynasty or keeper league without In-\u2060Season rankings?');
+        await expect(confirm).toContainText('Also use "Redraft ROS" in "Keeper League" too?');
         await confirm.getByRole('button', { name: 'Use in that one too' }).click();
         await expect(toast(page, '"Redraft ROS" is now the In-\u2060Season set in 2 leagues.')).toBeVisible();
         const leagues = await storedLeagues(page);
         expect(Object.fromEntries(leagues.map(l => [l.name, l.seasonRankingSetId || null])))
             .toEqual({ 'Fixture League': ids.season, 'Bench League': null, 'Keeper League': ids.season });
         await expect(offer).toBeHidden();
-        await expect(page.locator('#seasonSetLeaguesSummary')).toHaveText('In-Season rankings in 2 of 2 dynasty and keeper leagues');
+        await expect(page.locator('#seasonSetLeaguesSummary')).toHaveText('In 2 of 2 dynasty and keeper leagues');
         await expect(page.locator('#rosSetLeaguesSummary')).toHaveText('Used in 2 of 3 leagues');
 
         // Choose leagues…: only the dynasty and keeper leagues; unchecking one sends it back to its dynasty set.
@@ -272,8 +293,15 @@ test.describe('In-Season rankings in a dynasty league', () => {
 
     test('a Contender whose dynasty rankings are two weeks old gets the hint', async ({ page }) => {
         const { state, ids } = await setUp(page);
-        // In-Season = whichever set makes you the Contender (1st in Start of 2).
-        await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: ids.dynasty } });
+        // In-Season = whichever set makes you the Contender (1st in Start of 2): a copy of the dynasty set (the
+        // dynasty set itself counts as no In-Season set), else Redraft ROS.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            const dyn = State.rankingSets.ros.find(s => s.name === 'Dynasty SF');
+            State.rankingSets.ros.push({ ...dyn, id: 'rset_copy', name: 'Dynasty copy' });
+            localStorage.setItem('mls_ranking_sets_ros', JSON.stringify(State.rankingSets.ros));
+        });
+        await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: 'rset_copy' } });
         await powerTable(page);
         const label = page.locator('#powerRankingsOutput .mls-power-you .mls-power-label');
         if (!(await label.textContent()).startsWith('Contender')) { // textContent: the chip is upper-cased by CSS
@@ -287,7 +315,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 15 * 86400000));
         await callApp(page, 'refreshPowerRankings');
         notes = (await powerTable(page)).notes;
-        expect(notes).toMatch(/Your dynasty rankings are 1[45] days old\. Competing this year\? Turn on I'm competing this year to read your rooms by your In-Season rankings\./);
+        expect(notes).toMatch(/Your dynasty rankings are 1[45] days old\. If you're competing, turn on I'm competing this year\./);
         await page.locator('#powerCompeting').check();
         expect((await powerTable(page)).notes).not.toContain('days old');
         await expectClean(page, state);

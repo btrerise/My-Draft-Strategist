@@ -112,7 +112,10 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     const own = State.rosRankings.length > 0 ? activePowerRankings() : null;
     let rankings = own ? own.rooms : State.rosRankings, via = 'by your ROS rankings';
     const powerOpts = own ? { startRankings: own.start, futureRankings: own.future } : {};
-    if (own && own.start !== own.future) via = own.rooms === own.start ? 'by your In-Season rankings (Future by your dynasty rankings)' : 'by your dynasty rankings (Start by your In-Season rankings)';
+    // Which set gave what (round 5): the trade's values ("Your rankings") are always the dynasty set's, until S24.
+    if (own && own.start !== own.future) via = own.rooms === own.start
+        ? 'Start, Ovr and positions by In-Season; value and Future by dynasty'
+        : 'Start by In-Season; value, Ovr, positions and Future by dynasty';
     if (rankings.length === 0) {
         if (State.marketRankings.length === 0) {
             return oneLine(title, 'Load your ROS rankings (Roster tab) or Market Consensus data (Trade Finder below) to see how this trade changes your Power Rankings.');

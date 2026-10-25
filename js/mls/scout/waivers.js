@@ -372,6 +372,8 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         return {
             league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly,
             checkLabel: checkIsWeekly ? 'Wk' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
+            // The same, written out for the notes ("using In-Season ranks"; S23, round 5).
+            checkName: checkIsWeekly ? 'Weekly' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
             checkDisplay: checkIsWeekly ? wkDisplay : seasonDisplay,
             checkCross: checkIsWeekly ? 'flex' : 'overall',
             wkDisplay, rosDisplay, rosByName,
@@ -425,7 +427,8 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         const league = getActiveLeague();
         const setId = league ? league[cfg.leagueSetIdKey] : null;
         const set = setId ? State.rankingSets[cfg.setsKey].find(x => x.id === setId) : null;
-        const base = `${cfg.label} rankings`;
+        // A dynasty or keeper league's ROS slot is its dynasty set (improvements S23).
+        const base = type === 'ros' && hasSeasonSlot(league) ? 'dynasty rankings' : `${cfg.label} rankings`;
         return set && set.name ? `${base} ("${escapeHtml(set.name)}")` : base;
     }
 
@@ -688,7 +691,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         const weekText = State.currentNflWeek ? `Week ${State.currentNflWeek} ` : '';
         return mode === 'roster'
             ? `compared against your weakest rostered player at each position`
-            : `checked against your current ${weekText}starting lineup using ${ctx.checkIsWeekly ? 'Weekly' : 'ROS'} ranks`;
+            : `checked against your current ${weekText}starting lineup using ${ctx.checkName || (ctx.checkIsWeekly ? 'Weekly' : 'ROS')} ranks`;
     }
 
     // Summary notes for rankings files whose Pos/Flex ranks had to be derived. Named per set
@@ -930,7 +933,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             if (mode === 'lineup' && playedExcluded > 0) notes.push(`${playedExcluded} player${playedExcluded === 1 ? "'s game has" : "s' games have"} already kicked off this week, so ${playedExcluded === 1 ? 'he was' : 'they were'} left out; everyone below can still help you this week. Switch to Whole Roster to include ${playedExcluded === 1 ? 'him' : 'them'}.`);
             if (mode === 'lineup' && allPlayed) notes.push(`Every available player's game has already kicked off this week, so they're shown anyway - treat these as adds for next week.`);
             if (mode === 'lineup' && !ctx.lineupReady) notes.push(`Couldn't build a starting lineup for this league yet, so there's no Would Start check - open the Lineup tab and tap Optimize Lineup.`);
-            else if (!ctx.checkIsWeekly) notes.push(`No Weekly rankings loaded, so the Would Start check uses ROS ranks (same as the optimizer).`);
+            else if (!ctx.checkIsWeekly) notes.push(`No Weekly rankings loaded, so the Would Start check uses ${ctx.checkName} ranks (same as the optimizer).`);
             notes.push(...waiverDerivedNotes(ctx));
             if (unrankedPositions.length > 0) {
                 const list = unrankedPositions.length === 1 ? unrankedPositions[0] : `${unrankedPositions.slice(0, -1).join(', ')} or ${unrankedPositions[unrankedPositions.length - 1]}`;

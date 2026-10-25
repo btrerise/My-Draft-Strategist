@@ -113,7 +113,7 @@ function competingHint(league, src, you) {
     if (!(updated > 0) || State.rosRankings.length === 0) return null;
     const days = Math.floor((Date.now() - updated) / 86400000);
     if (days < RANKING_TYPE_CONFIG.ros.staleAfterDays) return null;
-    return `Your dynasty rankings are ${days} days old. Competing this year? Turn on <strong>I'm competing this year</strong> to read your rooms by your In-Season rankings.`;
+    return `Your dynasty rankings are ${days} days old. If you're competing, turn on <strong>I'm competing this year</strong>.`;
 }
 
 export function refreshPowerRankings() {

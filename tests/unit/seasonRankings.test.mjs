@@ -39,6 +39,9 @@ test('this season = the Season set, else the ROS rankings as they are', () => {
     assert.equal(season.resolveSeasonRankings(dynasty({ seasonRankingSetId: 'gone' }), SETS, rosFound).fromSeason, false);
     assert.equal(season.resolveSeasonRankings(redraft({ seasonRankingSetId: 'red' }), SETS, rosFound).fromSeason, false);
     assert.equal(season.resolveSeasonRankings(dynasty(), SETS, null), null);
+    // The league's own dynasty set as In-Season counts as none.
+    assert.equal(season.seasonSetFor(dynasty({ seasonRankingSetId: 'dyn' }), SETS), null);
+    assert.deepEqual(season.setUsage('dyn', [dynasty({ seasonRankingSetId: 'dyn' })]), { used: 1, asSeason: 0 });
 });
 
 test('the stamp part is empty without a Season set and names the set with one', () => {

@@ -5557,3 +5557,32 @@ missing or null one (and guillotine leagues) as "label alone".
 environment message, as in round 2. Main vs. this branch rendered here: still only `mls-league-guide.png` at both widths
 (same sizes as round 2), from CI once there's a pull request. `CACHE_NAME` stays v2.8.101 (main v2.8.100; S21 is at
 v2.8.109, so whichever merges second goes above main's).
+
+### S23, round 5: my second review as a user, seven fixes (owner: "do all seven")
+
+1. **Auto-Find's notes named the wrong set** (from round 1): "checked against your current Week 2 starting lineup
+   using ROS ranks" and "the Would Start check uses ROS ranks (same as the optimizer)", while with an In-Season set and
+   no Weekly set both use In-Season. They now say "In-Season" (or "Dynasty" in a dynasty league without one; redraft
+   leagues still say ROS), from a new `ctx.checkName` in `buildWaiverContext`.
+2. **"Your ROS rankings ("Dynasty SF") don't include position ranks"** reads "Your dynasty rankings (…)" in dynasty and
+   keeper leagues (`rankingSetLabel`).
+3. **A league could pick its own dynasty set as its In-Season set**, which changes nothing but showed "by In-Season
+   (Dynasty SF) · … by dynasty (Dynasty SF)" and a hint to switch to the set already in use. Now `seasonSetFor` counts
+   that as no In-Season set (so the key, hint, strip tag, stamp and usage counts all ignore it), the picker leaves the
+   league's dynasty set out, the Season leagues dialog shows such a league locked ("Its dynasty rankings already"), and
+   the offer's "use it in the others too" skips leagues whose dynasty set is the offered one.
+4. **The "use it in other leagues too" dialog names them** when there are one to three ("Also use "Redraft ROS" in
+   "Keeper League" too?"); with more it gives the count as before.
+5. **The In-Season leagues line** reads "In 2 of 2 dynasty and keeper leagues" (the label above says In-Season), so it
+   fits one line with "Choose leagues…" on a phone.
+6. **The Trade Analyzer's source line** ("by your dynasty rankings (Start by your In-Season rankings)") reads "Start by
+   In-Season; value, Ovr, positions and Future by dynasty" ("Start, Ovr and positions by In-Season; value and Future
+   by dynasty" with I'm competing). The value verdict stays on the dynasty set; two verdicts are S24.
+7. **The hint is shorter:** "Your dynasty rankings are 17 days old. If you're competing, turn on I'm competing this
+   year."
+
+Tests: the spec checks each (the hint test now uses a copy of the dynasty set, since the set itself counts as none);
+the unit test covers the own-dynasty-set rule.
+
+**Checks (round 5).** Unit 405 pass; Playwright 471 passed, 5 skipped, only `visual.spec.mjs` failing on the environment
+message. Main vs. this branch: still only `mls-league-guide.png` at both widths, unchanged from round 2.
