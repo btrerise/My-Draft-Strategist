@@ -6172,3 +6172,22 @@ Tests: a spec case for both fixes (the Trade Analyzer's line; redraft and back, 
 
 **Checks (round 12).** 424 unit; Playwright 507 passed, only `visual.spec.mjs` on the environment message. Screenshots
 vs. main: as in round 10 (only `mls-league-guide.png`).
+
+### S23, round 13: my eighth review as a user (the Roster tab read top to bottom); the suggestion moved, one name, a source line
+
+1. **Two messages that disagreed, far apart** (owner: do it). At the top of the Roster tab a 6–1 record sat beside
+   "REBUILD · young core" on the power strip; the record-weighed "Suggested: Retool (your call)" was two cards down,
+   under the switch, right above the Your Team card's "keep adding youth". Now the suggestion is written **in the Your
+   Team card** under the label's advice (`.mls-power-summary-suggestion`), the switch keeps a pointer ("Suggested:
+   Retool (your call) · why, under Your Team below."), and the **power strip** adds "· with your record: Retool" when
+   the record moved the suggestion off the label. `suggestionFor` / `suggestionHTML` / `renderCompetingPointer` in
+   `power/rosterCard.js`; the rule is unchanged.
+2. **One name for the QB/RB/WR/TE columns**: "position rooms" everywhere (the key, the switch, the Trade Analyzer's
+   source line, the Guide, the CHANGELOG), as the tooltips already say "QB Room".
+3. **The Roster tab's player rows didn't say whose ranks they show** in a dynasty league with an In-Season set (the
+   dynasty set's, while the Lineup tab shows In-Season's). A line above the list: "Ranks by your dynasty rankings
+   (<set>)." (`.mls-roster-source`, `render/roster.js`). Both ranks per row stay S24.
+
+**Checks (round 13).** 424 unit; Playwright 507 passed, only `visual.spec.mjs` on the environment message. Screenshots
+vs. main: only `mls-league-guide.png`, now `desktop/` 1280×7464 → 1280×7857 and `phone/` 390×16244 → 390×17490 (the
+Guide's sentence about where the suggestion shows). From CI once there's a pull request.

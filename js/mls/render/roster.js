@@ -15,6 +15,7 @@ import { rankMoveChip } from '../rankings/moveChips.js';
 import { posCountChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { ordinal } from '../week/scoreboard.js';
+import { seasonSetFor } from '../rankings/season.js';
 
     // --- POSITION COUNTS (improvements S9) ---
     // The strip of chips above the roster list: one per position with how many you roster, a
@@ -175,6 +176,12 @@ import { ordinal } from '../week/scoreboard.js';
         if (picked) displayRoster = displayRoster.filter(p => p.pos === picked);
 
         let html = "";
+        // A dynasty or keeper league with an In-Season set (improvements S23, round 13): these rows show the dynasty set's
+        // ranks while the Lineup tab and Power Rankings' Start read In-Season, so say which. Both ranks per row are S24.
+        if (seasonSetFor(league, State.rankingSets.ros) && State.rosRankings.length > 0) {
+            const dyn = league.rosRankingSetId ? State.rankingSets.ros.find(s => s.id === league.rosRankingSetId) : null;
+            html += `<div class="mls-roster-source">Ranks by your dynasty rankings${dyn ? ` (<strong>${escapeHtml(dyn.name)}</strong>)` : ''}.</div>`;
+        }
         displayRoster.forEach(p => {
             let ovrStr = p.rosRank !== 999 ? `#${p.rosRank}${tierTag(p.rosTier)}` : "-";
             let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";

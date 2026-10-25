@@ -97,6 +97,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         // No In-Season set: every column by the dynasty set, no In-Season note, no switch.
         const before = await powerTable(page);
         expect(before.key).toBe(''); // no key line without an In-Season set
+        await expect(page.locator('#rosterList .mls-roster-source')).toHaveCount(0);
         await expect(page.locator('#rosterPowerStrip')).not.toContainText('In-Season');
         await expect(page.locator('#powerCompetingWrap')).toBeHidden();
 
@@ -146,9 +147,11 @@ test.describe('In-Season rankings in a dynasty league', () => {
             expect(after.data[owner].rb, `${owner} RB`).toBe(before.data[owner].rb);
             expect(after.data[owner].future, `${owner} Future`).toBe(before.data[owner].future);
         }
-        expect(after.key).toBe('Start and labels by In-Season (Redraft ROS) · Ovr, positions and Future by dynasty (Dynasty SF)');
+        expect(after.key).toBe('Start and labels by In-Season (Redraft ROS) · Ovr, position rooms and Future by dynasty (Dynasty SF)');
         expect(after.notes).toContain('its value from your dynasty rankings, adjusted for player age');
         await expect(page.locator('#rosterPowerStrip')).toContainText('out of 2 teams · Start by In-Season');
+        // The player rows say whose ranks they show.
+        await expect(page.locator('#rosterList .mls-roster-source')).toHaveText('Ranks by your dynasty rankings (Dynasty SF).');
 
         // I'm competing: Ovr and the rooms by In-Season too, Future still dynasty. Saved on the league.
         await expect(page.locator('#powerCompetingWrap')).toBeVisible();
@@ -158,7 +161,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
             expect(competing.data[owner].ovr, `${owner} Ovr`).toBe(seasonOnly.data[owner].ovr);
             expect(competing.data[owner].future, `${owner} Future`).toBe(before.data[owner].future);
         }
-        expect(competing.key).toBe('Start, labels, Ovr and positions by In-Season (Redraft ROS) · Future by dynasty (Dynasty SF)');
+        expect(competing.key).toBe('Start, labels, Ovr and position rooms by In-Season (Redraft ROS) · Future by dynasty (Dynasty SF)');
         await expect(page.locator('#rosterPowerStrip')).toContainText('out of 2 teams · by In-Season, Future by dynasty');
         expect((await fixture(page)).powerCompeting).toBe(true);
 
@@ -224,7 +227,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
         await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
-        await expect(page.locator('.mls-trade-impact-via').first()).toHaveText('Start by In-Season; value, Ovr, positions and Future by dynasty');
+        await expect(page.locator('.mls-trade-impact-via').first()).toHaveText('Start by In-Season; value, Ovr, position rooms and Future by dynasty');
 
         // The Dashboard's best available: two choices; ROS reads a dynasty league's In-Season set and says so.
         await showTab(page, 'setup'); // the Dashboard
@@ -344,14 +347,21 @@ test.describe('In-Season rankings in a dynasty league', () => {
         // By Redraft ROS you're 2nd of 2 in Start: Rebuild.
         await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: ids.season } });
         await powerTable(page);
-        const line = page.locator('#powerCompetingSuggestion');
+        // The reasons sit in the Your Team card, beside the label they weigh against; the switch points there.
+        const line = page.locator('#powerRankingsOutput .mls-power-summary-suggestion');
+        const pointer = page.locator('#powerCompetingSuggestion');
+        const strip = page.locator('#rosterPowerStrip');
         // The fixture's synced record has one game: too early, so the label alone.
         await expect(line).toHaveText('Suggested: Rebuilding · from your roster (too early in the season for your record).');
+        await expect(pointer).toHaveText('Suggested: Rebuilding · why, under Your Team below.');
+        await expect(strip).not.toContainText('with your record');
 
         // 6-1 and 1st in points for: the results move it one step, to Retool.
         await patchLeagues(page, { 'Fixture League': { record: { wins: 6, losses: 1, ties: 0, pf: 900, pa: 700, pfRank: 1, paRank: 2, of: 2 } } });
         await powerTable(page);
         await expect(line).toHaveText('Suggested: Retool (your call) · 6–1, 1st in points for, 2nd in Start. Your results beat your roster.');
+        // Moved off the label by the record: the strip at the top of the tab says so.
+        await expect(strip).toContainText('out of 2 teams · Start by In-Season · with your record: Retool');
 
         // 1-6, last in points for, the most points against: Rebuilding, with the bad luck named.
         await patchLeagues(page, { 'Fixture League': { record: { wins: 1, losses: 6, ties: 0, pf: 600, pa: 900, pfRank: 2, paRank: 1, of: 2 } } });

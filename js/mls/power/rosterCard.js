@@ -91,34 +91,45 @@ function renderCompetingSwitch(league, src) {
     if (box) box.checked = !!(league && league.powerCompeting);
 }
 
-// The suggestion beside the switch (S23, round 7; the owner's rule in directionLabels.js): your label, moved at most one
-// step by your record and points for from the last sync (league.record, improvements S21). Shown with the switch only.
+// The suggestion (S23, round 7; the owner's rule in directionLabels.js): your label, moved at most one step by your
+// record and points for from the last sync (league.record, improvements S21). Only with the switch (a dynasty or keeper
+// league with an In-Season set, your own rankings as the source). Since round 13 it's written in the Your Team card,
+// beside the label and advice it weighs against; the switch keeps a pointer, and the power strip at the top of the tab
+// a tag when the record moves it, so "Rebuild" next to a 6-1 record isn't the whole story at a glance.
 const COMPETING_WORDS = { competing: 'Competing', retool: 'Retool (your call)', rebuilding: 'Rebuilding' };
-function renderCompetingSuggestion(league, you) {
-    const el = document.getElementById('powerCompetingSuggestion');
-    if (!el) return;
-    const wrap = document.getElementById('powerCompetingWrap');
-    const s = you && wrap && wrap.style.display !== 'none' ? competingSuggestion(you.label, league.record, { starterRank: you.starterRank }) : null;
-    if (!s) { el.hidden = true; el.innerHTML = ''; return; }
+const COMPETING_SHORT = { competing: 'Competing', retool: 'Retool', rebuilding: 'Rebuilding' };
+function suggestionFor(league, you, src) {
+    if (!league || !you || !src || src.source !== 'custom' || !seasonSetFor(league, State.rankingSets.ros)) return null;
+    return competingSuggestion(you.label, league.record, { starterRank: you.starterRank });
+}
+
+// "Suggested: Retool (your call) · 6–1, 1st in points for, 2nd in Start. Your results beat your roster."
+function suggestionHTML(s, league) {
     let text = `Suggested: <strong>${COMPETING_WORDS[s.verdict]}</strong>`;
     if (s.fromRoster) {
-        text += league.record === undefined
+        return text + (league.record === undefined
             ? ' &middot; from your roster; sync this league to add your record.'
-            : ' &middot; from your roster (too early in the season for your record).';
-    } else {
-        const r = s.record;
-        let rec = `${r.wins}&ndash;${r.losses}${r.ties ? `&ndash;${r.ties}` : ''}`;
-        if (s.paRank) rec += ` with the ${s.paRank === 1 ? '' : `${ordinal(s.paRank)}-`}most points against`;
-        const facts = [rec, `${ordinal(s.pfRank)} in points for`];
-        if (Number.isFinite(s.starterRank)) facts.push(`${ordinal(s.starterRank)} in Start`);
-        text += ` &middot; ${facts.join(', ')}.${s.reason ? ` ${escapeHtml(s.reason)}` : ''}`;
+            : ' &middot; from your roster (too early in the season for your record).');
     }
-    el.innerHTML = text;
+    const r = s.record;
+    let rec = `${r.wins}&ndash;${r.losses}${r.ties ? `&ndash;${r.ties}` : ''}`;
+    if (s.paRank) rec += ` with the ${s.paRank === 1 ? '' : `${ordinal(s.paRank)}-`}most points against`;
+    const facts = [rec, `${ordinal(s.pfRank)} in points for`];
+    if (Number.isFinite(s.starterRank)) facts.push(`${ordinal(s.starterRank)} in Start`);
+    return text + ` &middot; ${facts.join(', ')}.${s.reason ? ` ${escapeHtml(s.reason)}` : ''}`;
+}
+
+// Under the switch: the verdict and where the reasons are.
+function renderCompetingPointer(s) {
+    const el = document.getElementById('powerCompetingSuggestion');
+    if (!el) return;
+    if (!s) { el.hidden = true; el.innerHTML = ''; return; }
+    el.innerHTML = `Suggested: <strong>${COMPETING_WORDS[s.verdict]}</strong> &middot; why, under Your Team below.`;
     el.hidden = false;
 }
 
 // Where each column came from (S23, round 4: a one-line key right under the table, in place of a long note), or
-// null without an In-Season set. "Start and labels by In-Season (Redraft ROS) · Ovr, positions and Future by dynasty
+// null without an In-Season set. "Start and labels by In-Season (Redraft ROS) · Ovr, position rooms and Future by dynasty
 // (Dynasty SF)". futureLabel: resolvePowerFuture's ('age' reads the dynasty set; 'market' dynasty Market Consensus).
 function seasonSourceKey(league, src, futureLabel) {
     if (!league || !src || src.source !== 'custom') return null;
@@ -135,12 +146,12 @@ function seasonSourceKey(league, src, futureLabel) {
     const future = futureLabel === 'age' ? 'Future' : null;
     const parts = [];
     if (competing) {
-        parts.push(part(`Start, labels, Ovr and positions by ${inSeason}`));
+        parts.push(part(`Start, labels, Ovr and position rooms by ${inSeason}`));
         if (future) parts.push(part(`Future by dynasty${named(dyn)}`));
         else if (futureLabel === 'market') parts.push(part('Future by dynasty Market Consensus'));
     } else {
         parts.push(part(`Start and labels by ${inSeason}`));
-        parts.push(part(`Ovr, positions${future ? ' and Future' : ''} by dynasty${named(dyn)}`));
+        parts.push(part(`Ovr, position rooms${future ? ' and Future' : ''} by dynasty${named(dyn)}`));
         if (futureLabel === 'market') parts.push(part('Future by dynasty Market Consensus'));
     }
     return parts.join(sep);
@@ -207,9 +218,12 @@ export function refreshPowerRankings() {
     }
     assignPowerLabels(teams, kind);
     teams.forEach(t => { t.starterTier = powerTier(t.starterRank, teams.length); });
-    if (kind === 'dynasty') renderCompetingSuggestion(league, teams.find(t => t.owner === 'You'));
-    renderPowerRankingsTable(teams, { league, source: src, kind, futureLabel: futureInfo.label, picksLabel: futureInfo.picks });
-    renderRosterPowerStrip(teams, { source: src, tag: seasonStripTag(league, src) });
+    const suggestion = kind === 'dynasty' ? suggestionFor(league, teams.find(t => t.owner === 'You'), src) : null;
+    renderCompetingPointer(suggestion);
+    renderPowerRankingsTable(teams, { league, source: src, kind, futureLabel: futureInfo.label, picksLabel: futureInfo.picks, suggestion });
+    const stripTag = [seasonStripTag(league, src), suggestion && suggestion.moved ? `with your record: ${COMPETING_SHORT[suggestion.verdict]}` : '']
+        .filter(Boolean).join(' · ');
+    renderRosterPowerStrip(teams, { source: src, tag: stripTag });
 }
 
 // Scout tab's one-line "moved to the Roster tab" pointer (see #powerRankingsScoutPointer in
@@ -321,6 +335,7 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
             <div class="mls-power-summary-head">Your Team: ${labelChip(you)}</div>
             <div class="mls-power-summary-facts">${facts.join(' <span class="mls-rank-sep">&middot;</span> ')}</div>
             <div class="mls-power-summary-advice">${escapeHtml(powerLabelAdvice(you))}</div>
+            ${ctx.suggestion ? `<div class="mls-power-summary-suggestion">${suggestionHTML(ctx.suggestion, ctx.league)}</div>` : ''}
         </div>`;
     }
 
