@@ -358,9 +358,38 @@ import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/
         
         const titleEl = document.getElementById('activeLeagueReqTitle');
         if (titleEl) titleEl.innerText = `(${league.name})`;
+        renderLeagueStyle(league);
         setVal('sleeperUsername', league.username !== "Manual" ? league.username : "");
         renderManualAddLog(); // show only this league's session adds
     }
+
+    // League style, keeper leagues only (improvements S23, round 10): plays like dynasty (the default) or redraft.
+    function renderLeagueStyle(league) {
+        const wrap = document.getElementById('leagueStyleWrap');
+        if (!wrap) return;
+        const isKeeper = !!league && league.leagueType === 'keeper';
+        wrap.hidden = !isKeeper;
+        if (!isKeeper) return;
+        const sel = document.getElementById('leagueStyleSelect');
+        if (sel) sel.value = league.keeperStyle === 'redraft' ? 'redraft' : 'dynasty';
+        const note = document.getElementById('leagueStyleKeepers');
+        if (note) note.textContent = league.maxKeepers
+            ? `Sleeper: each team keeps up to ${league.maxKeepers} player${league.maxKeepers === 1 ? '' : 's'}.${league.maxKeepers <= 3 ? ' Leagues that keep this few often play more like redraft.' : ''}`
+            : '';
+    }
+
+    export const setLeagueStyle = function(value) {
+        const league = getActiveLeague();
+        if (!league || league.leagueType !== 'keeper') return;
+        if (value === 'redraft') league.keeperStyle = 'redraft';
+        else delete league.keeperStyle;
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        // The market type, the ROS card's two pickers and Power Rankings all read the league's kind.
+        applyLeagueDefaultsToMarketSettings(league);
+        updateRankingsMetaDisplay();
+        if (typeof loadRosterTab === 'function') loadRosterTab();
+        showToast(`${league.name || 'This league'} now plays like ${value === 'redraft' ? 'redraft' : 'dynasty'} here.`);
+    };
 
     export const saveRequirements = function(btn) {
         let league = getActiveLeague();
@@ -615,6 +644,10 @@ import { resolveSeasonRankings, roomsUseSeason, seasonStamp } from '../rankings/
                 // Dynasty and keeper leagues' In-Season set and "I'm competing" (improvements S23).
                 seasonRankingSetId: existingLeague ? (existingLeague.seasonRankingSetId || null) : null,
                 powerCompeting: existingLeague ? !!existingLeague.powerCompeting : false,
+                // Keeper leagues (S23, round 10): how many players Sleeper lets each team keep (its max_keepers is 1 in
+                // every other league type, so only kept here), and your League style, carried over like the sets.
+                maxKeepers: leagueType === 'keeper' ? (Number(leagueData.settings?.max_keepers) || null) : null,
+                keeperStyle: existingLeague && existingLeague.keeperStyle === 'redraft' ? 'redraft' : undefined,
                 // Yours, like the rankings assignment: whether you pay for this league (Edit mode's "$ Paid", S21).
                 paid: existingLeague ? !!existingLeague.paid : false,
                 // Set only here, i.e. only once every Sleeper fetch above has succeeded. A league

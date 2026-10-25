@@ -117,9 +117,11 @@ test.describe('In-Season rankings in a dynasty league', () => {
                 .map(id => document.getElementById(id));
             return order.every((el, i) => i === 0 || !!(order[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING));
         })).toBe(true);
-        await expect(page.locator('#rosUploadTarget')).toHaveText('Upload or Auto-Fetch below to update your dynasty set, Dynasty SF.');
+        const caption = page.locator('#rosUploadTarget .mls-upload-target-caption');
+        await expect(page.locator('#rosUploadTarget [data-action="setRosUploadSlot"]')).toHaveText(['Dynasty', 'In-Season']);
+        await expect(caption).toHaveText('Updates your dynasty set, Dynasty SF.');
         await page.locator('#rosRankingSetSelect').selectOption('__new__');
-        await expect(page.locator('#rosUploadTarget')).toHaveText('Upload or Auto-Fetch below to save a new dynasty set.');
+        await expect(caption).toHaveText('Saves a new dynasty set.');
         await page.locator('#rosRankingSetSelect').selectOption(ids.dynasty);
         await openRosCard(page);
         const select = page.locator('#seasonRankingSetSelect');
@@ -365,6 +367,87 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: null } });
         await powerTable(page);
         await expect(page.locator('#powerCompetingWrap')).toBeHidden();
+        await expectClean(page, state);
+    });
+
+    test('Upload or Auto-Fetch into In-Season: a new In-Season set, the dynasty set untouched', async ({ page }) => {
+        const { state, ids } = await setUp(page);
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 2000)); // a new set id (they're 'rset_' + Date.now())
+        const dynastyBefore = await page.evaluate(async () => (await import('/js/mls/state.js')).State.rosRankings[0].name);
+        await openRosCard(page);
+        const target = page.locator('#rosUploadTarget');
+        await target.locator('[data-slot="season"]').click();
+        await expect(target.locator('.mls-upload-target-caption')).toHaveText("Saves a new In-\u2060Season set for this league. Auto-Fetch gets FantasyCalc's redraft values.");
+        await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(SEASON_CSV) });
+        await expect(page.locator('#rankingsPreviewOverlay')).toContainText("as this league's In-Season rankings");
+        await callApp(page, 'confirmRankingsPreview');
+        await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
+        const league = await fixture(page);
+        expect(league.rosRankingSetId).toBe(ids.dynasty);
+        const newSet = (await page.evaluate(() => JSON.parse(localStorage.getItem('mls_ranking_sets_ros')))).find(s => s.id === league.seasonRankingSetId);
+        expect(newSet.name).toMatch(/^In-\u2060Season Rankings – /);
+        expect(newSet.data[0].name).toBe('Bijan Robinson');
+        expect(await page.evaluate(async () => (await import('/js/mls/state.js')).State.rosRankings[0].name)).toBe(dynastyBefore);
+        // Back to Dynasty after the save, so the next upload can't go to the wrong slot.
+        await openRosCard(page);
+        await expect(target.locator('[data-slot="dynasty"]')).toHaveClass(/active/);
+        await expectClean(page, state);
+    });
+
+    test('only dynasty leagues: one tap gets FantasyCalc redraft values as the In-Season set', async ({ page }) => {
+        const { state, ids } = await setUp(page);
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 2000)); // a new set id (they're 'rset_' + Date.now())
+        const urls = [];
+        await page.route(/^https:\/\/api\.fantasycalc\.com\//, (route) => {
+            urls.push(route.request().url());
+            return route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify([...THEIRS, ...MINE].map((name, i) => ({ player: { name, position: byName[name][2] }, overallRank: i + 1 }))) });
+        });
+        await openRosCard(page);
+        // No redraft league uses a set here, so there's nothing to offer but the fetch.
+        const offer = page.locator('#seasonOffer');
+        await expect(offer).toContainText('No redraft set to use yet.');
+        await offer.getByRole('button', { name: "Get FantasyCalc's redraft values" }).click();
+        await expect(toast(page, "is now this league's In-\u2060Season set.")).toBeVisible();
+        expect(urls[0]).toContain('isDynasty=false');
+        const league = await fixture(page);
+        expect(league.rosRankingSetId).toBe(ids.dynasty);
+        const sets = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_ranking_sets_ros')));
+        expect(sets.find(s => s.id === league.seasonRankingSetId).name).toMatch(/^FantasyCalc Redraft – /);
+        await openRosCard(page);
+        await expect(page.locator('#seasonRankingSetSelect option:checked')).toHaveText(/^FantasyCalc Redraft – .* \(24 players\)$/);
+        await expect(offer).toBeHidden();
+        await expectClean(page, state);
+    });
+
+    test('a keeper league: League style on the Setup tab, a note on the Roster tab', async ({ page }) => {
+        const { state, ids } = await setUp(page);
+        await patchLeagues(page, { 'Fixture League': { leagueType: 'keeper', maxKeepers: 3, seasonRankingSetId: ids.season } });
+        await powerTable(page);
+        const note = page.locator('#keeperStyleNote');
+        await expect(note).toHaveText('Keeper league (each team keeps up to 3), treated as dynasty here. Change League style');
+        await expect(page.locator('#seasonRankingsRow')).toBeAttached();
+        await note.getByRole('button', { name: 'Change League style' }).click();
+        await expect(page.locator('#setupTab')).toHaveClass(/active/);
+        const select = page.locator('#leagueStyleSelect');
+        await expect(select).toBeVisible();
+        await expect(select).toHaveValue('dynasty');
+        await expect(page.locator('#leagueStyleKeepers')).toHaveText('Sleeper: each team keeps up to 3 players. Leagues that keep this few often play more like redraft.');
+        await select.selectOption('redraft');
+        expect((await fixture(page)).keeperStyle).toBe('redraft');
+        // Treated as redraft everywhere: no In-Season slot, no Future column, redraft labels.
+        const table = await powerTable(page, { future: false });
+        await expect(page.locator('#powerRankingsOutput thead th', { hasText: 'Future' })).toHaveCount(0);
+        expect(table.key).toBe('');
+        await expect(page.locator('#powerRankingsOutput .mls-power-you .mls-power-label')).toHaveText(/^(Contender|Bubble|Longshot)/);
+        await expect(note).toHaveText('Keeper league (each team keeps up to 3), treated as redraft here. Change League style');
+        await openRosCard(page);
+        await expect(page.locator('#seasonRankingsRow')).toBeHidden();
+        await expect(page.locator('#rosRankingsTitle')).toHaveText('Rest-of-Season (ROS) Rankings');
+        // A redraft or dynasty league has no League style.
+        await patchLeagues(page, { 'Fixture League': { leagueType: 'dynasty' } });
+        await showTab(page, 'setup');
+        await expect(page.locator('#leagueStyleWrap')).toBeHidden();
         await expectClean(page, state);
     });
 

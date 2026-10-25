@@ -21,7 +21,7 @@ import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
 import { addEarlyTeam, removeEarlyTeam } from './lineup/earlyGames.js';
 import { explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
-import { activePowerRankings, activeSeasonRankings, addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
+import { activePowerRankings, activeSeasonRankings, addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, setLeagueStyle, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
@@ -35,7 +35,7 @@ import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restore
 import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
-import { deleteRankingSet, onRankingSetSelectChange, onSeasonSetChange, openRankingSetLeagues, openSeasonSetLeagues, renameRankingSet, useSeasonOffer } from './rankings/sets.js';
+import { deleteRankingSet, onRankingSetSelectChange, onSeasonSetChange, openRankingSetLeagues, openSeasonSetLeagues, renameRankingSet, setRosUploadSlot, useSeasonOffer } from './rankings/sets.js';
 import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings } from './rankings/uploadPreview.js';
 import { dismissRankingsChange } from './rankings/changeSummary.js';
 import { explainRankMove } from './rankings/moveChips.js';
@@ -57,7 +57,7 @@ import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
 import { getPowerLeagueKind } from './power/directionLabels.js';
-import { goToPowerRankings, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
+import { goToLeagueStyle, goToPowerRankings, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
@@ -148,6 +148,10 @@ const clickActions = {
     // Season rankings in dynasty and keeper leagues (rankings/sets.js, improvements S23)
     openSeasonSetLeagues() { openSeasonSetLeagues(); },
     useSeasonOffer() { useSeasonOffer(this.dataset.setId); },
+    // The ROS card's "Upload or Auto-Fetch into: Dynasty | In-Season" (round 10), and the empty In-Season row's
+    // one tap: FantasyCalc's redraft values into the In-Season slot.
+    setRosUploadSlot() { setRosUploadSlot(this.dataset.slot); },
+    fetchSeasonFromMarket() { setRosUploadSlot('season'); autoFetchRosRankings(this); },
     dismissRankingsChange() { dismissRankingsChange(this.dataset.type); },
     // A rank-change chip (js/mls/rankings/moveChips.js): its explanation, for phones with no hover.
     explainRankMove() { explainRankMove(this); },
@@ -226,6 +230,7 @@ const clickActions = {
     },
     undoFairChange() { const before = takeFairUndo(); if (before) restoreTrade(before); },
     goToPowerRankings() { goToPowerRankings(); },
+    goToLeagueStyle() { goToLeagueStyle(); },
     fetchMarketValue() { fetchMarketValue(this); },
     runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },
     // Rankings upload preview modal
@@ -239,6 +244,7 @@ const changeActions = {
     selectActiveLeague() { const id = this.value; if (State.activeLeagueId) this.value = State.activeLeagueId; switchActiveLeague(id, { animate: true }); },
     onRankingSetSelectChange() { onRankingSetSelectChange(this.dataset.type, this); },
     onSeasonSetChange() { onSeasonSetChange(this); },
+    setLeagueStyle() { setLeagueStyle(this.value); },
     toggleUploadMode() { toggleUploadMode(this.dataset.type); },
     togglePosInput() { togglePosInput(this.dataset.type, this.dataset.pos); },
     updateMarketSetting() { updateMarketSetting(this.dataset.setting, this.value); },

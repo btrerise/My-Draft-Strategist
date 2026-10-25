@@ -5,7 +5,7 @@ import { fetchMarketConsensusData } from '../../shared/api/market.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { setRankingsCardExpanded } from './engine.js';
-import { resolveRankingsTarget, saveRankingsAsSet, assignSetToLeagues, openLeaguePickerDialog, leagueCountText } from './sets.js';
+import { resolveRankingsTarget, saveRankingsAsSet, assignSetToLeagues, openLeaguePickerDialog, leagueCountText, offerSeasonToOthers, rosUploadIntoSeason } from './sets.js';
 import { loadRosterTab } from '../main.js';
 import { showRankingsChange } from './changeSummary.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
@@ -38,7 +38,10 @@ import { showToast } from '../../shared/ui/toast.js';
             const isTEP = s.tep ? 'true' : 'false';
             let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
 
-            const { parsed, formatText } = await fetchMarketConsensusData(s.source, s.type, s.qbs, s.ppr, isTEP, teamCount);
+            // Into a dynasty league's In-Season slot (improvements S23, round 10): FantasyCalc's redraft values, whatever
+            // the shared League Type says, since "this season" is a redraft question.
+            const intoSeason = rosUploadIntoSeason();
+            const { parsed, formatText } = await fetchMarketConsensusData(s.source, intoSeason ? 'redraft' : s.type, s.qbs, s.ppr, isTEP, teamCount);
             if (parsed.length === 0) throw new Error("No players returned from the market data source.");
 
             // Convert to the same shape manual ROS uploads use (rank/posRank/flexRank), computed
@@ -71,7 +74,8 @@ import { showToast } from '../../shared/ui/toast.js';
                 }
             }
 
-            const savedSetId = saveRankingsAsSet('ros', rosRankings);
+            const savedSetId = saveRankingsAsSet('ros', rosRankings,
+                intoSeason ? { name: `FantasyCalc Redraft – ${new Date().toLocaleDateString()}` } : {});
             setRankingsCardExpanded('rosRankingsCard', false);
 
             showToast(`ROS Rankings pulled: ${rosRankings.length} players (${formatText})`);
@@ -86,7 +90,12 @@ import { showToast } from '../../shared/ui/toast.js';
             // set offers the same choice right after saving. A replaced set already carries its
             // leagues with it, so there's nothing to ask.
             const newSet = target.mode === 'new' && State.rankingSets.ros.find(s => s.id === savedSetId);
-            if (newSet && State.leagues.length > 1) {
+            if (newSet && intoSeason) {
+                btn.innerText = origText;
+                btn.style.opacity = "1";
+                btn.disabled = false;
+                await offerSeasonToOthers(newSet); // the In-Season slot's own "use it in the others too"
+            } else if (newSet && State.leagues.length > 1) {
                 // The fetch itself is done -- restore the button now rather than leaving it on
                 // "Fetching..." behind the dialog (finally below repeats this harmlessly).
                 btn.innerText = origText;

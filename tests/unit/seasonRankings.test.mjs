@@ -140,3 +140,13 @@ test('under four games, or with no record, the label alone', () => {
     }
     assert.equal(competingSuggestion('Rebuild', rec(3, 0, 1)).verdict, 'rebuilding');
 });
+
+// League style (round 10): a keeper league plays like dynasty unless set to redraft.
+test('a keeper league set to redraft has no In-Season slot; the default stays dynasty', async () => {
+    const { getPowerLeagueKind } = await import('../../js/mls/power/directionLabels.js');
+    assert.equal(getPowerLeagueKind({ leagueType: 'keeper' }), 'dynasty');
+    assert.equal(getPowerLeagueKind({ leagueType: 'keeper', keeperStyle: 'redraft' }), 'redraft');
+    assert.equal(getPowerLeagueKind({ leagueType: 'dynasty', keeperStyle: 'redraft' }), 'dynasty'); // dynasty leagues: no style
+    assert.equal(season.hasSeasonSlot({ leagueType: 'keeper', keeperStyle: 'redraft' }), false);
+    assert.equal(season.seasonSetFor({ leagueType: 'keeper', keeperStyle: 'redraft', seasonRankingSetId: 'red', rosRankingSetId: 'dyn' }, SETS), null);
+});

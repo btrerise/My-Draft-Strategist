@@ -1508,6 +1508,15 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     color: var(--text-muted);
 }
 .mls-upload-target strong { color: var(--text-main); font-weight: 600; }
+.mls-upload-target-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; margin-bottom: 0.4rem; }
+.mls-upload-target-row .mls-segmented { flex: 0 1 15rem; }
+.mls-upload-target-row .mls-segmented-btn { padding: 0.4rem 0.5rem; }
+/* "Keeper league (each team keeps up to 3), treated as dynasty here. Change League style" (S23 round 10). */
+.mls-keeper-style-note { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; font-size: 0.8rem; color: var(--text-muted); }
+.mls-keeper-style-note[hidden] { display: none; }
+.mls-keeper-style-note strong { color: var(--text-main); font-weight: 600; }
+/* League style on the Setup tab (keeper leagues, S23 round 10): .input-group sets display, which beats [hidden]. */
+#leagueStyleWrap[hidden] { display: none; }
 /* Its rows set display (flex), which would beat the hidden attribute the code toggles. */
 .mls-season-row[hidden], .mls-season-row [hidden] { display: none; }
 .mls-season-row .tooltip-container { margin-bottom: 0.35rem; }

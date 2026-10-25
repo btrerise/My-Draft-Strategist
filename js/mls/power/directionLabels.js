@@ -7,8 +7,12 @@ import { powerTier } from './shared.js';
 // Contender / Bubble / Longshot, since "rebuild" means nothing when rosters reset each year.
 // leagueType is stored at sync (see the leagueObj in the Sleeper sync); leagues synced before
 // it existed fall back to reading formatBadge.
+// A keeper league plays like dynasty unless you set its League style to redraft (improvements S23, round 10:
+// league.keeperStyle, the Setup tab's Active League Requirements card). Every dynasty-only feature asks this, so
+// labels, Future, draft picks, the market type and In-Season rankings all follow the one setting.
 export function getPowerLeagueKind(league) {
     const t = league && league.leagueType;
+    if (t === 'keeper' && league.keeperStyle === 'redraft') return 'redraft';
     if (t) return (t === 'dynasty' || t === 'keeper') ? 'dynasty' : 'redraft';
     return /^(Dynasty|Keeper)\b/.test((league && league.formatBadge) || '') ? 'dynasty' : 'redraft';
 }

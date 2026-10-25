@@ -352,6 +352,21 @@
             <div class="input-group"><label for="reqK">K</label><input type="number" id="reqK" class="form-input text-center" value="1" aria-label="K lineup slots"></div>
             <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
         </div>
+        <!-- Keeper leagues only (improvements S23, round 10): js/mls/leagues/sync.js, renderLeagueStyle. -->
+        <div id="leagueStyleWrap" class="input-group mb-4" hidden>
+            <div class="cluster cluster-sm">
+                <label for="leagueStyleSelect" class="mb-0">League style</label>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Keeper leagues differ: some keep most of a roster and play like dynasty, some keep a player or two and play like redraft. Like dynasty gives this league Contender / Retool / Rebuild labels, the Future column, draft picks in the Trade Analyzer, dynasty market values and In-Season rankings. Like redraft treats it as a redraft league everywhere in Lineup Strategist.</span>
+                </div>
+            </div>
+            <select id="leagueStyleSelect" class="form-input" data-action="setLeagueStyle" aria-label="League style">
+                <option value="dynasty">Plays like dynasty</option>
+                <option value="redraft">Plays like redraft</option>
+            </select>
+            <small id="leagueStyleKeepers" class="text-helper mt-1"></small>
+        </div>
         <button class="btn btn-primary" data-action="saveRequirements">Save Requirements</button>
     </section>
 
@@ -655,6 +670,9 @@
         <p class="card-desc">
             See how you stack up against the rest of the league. Hover or tap any rank to see the players behind it. Teams strong where you're weak make ideal trade partners.
         </p>
+
+        <!-- Keeper leagues (S23, round 10): which style the app treats this league as, and where to change it. -->
+        <div id="keeperStyleNote" class="mls-keeper-style-note mb-3" hidden></div>
 
         <div class="input-group mb-3">
             <label for="powerRankingsSource">Rankings Source</label>
@@ -1383,6 +1401,7 @@
                     </li>
                     <li><strong class="text-main">Paid leagues:</strong> Tap Edit, then "$ Paid" on each league you pay for. Paid leagues get a "$" badge and their own record in the Week Recap.</li>
                     <li><strong class="text-main">Active League Requirements:</strong> The number of starting slots at each position for the active league. These auto-populate during Sleeper sync; for manual leagues, set them yourself and tap "Save Requirements".</li>
+                    <li><strong class="text-main">League style (keeper leagues):</strong> Keeper leagues differ, so choose whether this one <strong class="text-main">Plays like dynasty</strong> (the default: Contender / Retool / Rebuild labels, the Future column, draft picks, dynasty market values and In-Season rankings) or <strong class="text-main">Plays like redraft</strong> (treated as a redraft league everywhere). It shows how many players Sleeper lets each team keep. The Roster tab's Power Rankings card says which style a keeper league uses, with a link here.</li>
                 </ul>
             </div>
 
@@ -1394,7 +1413,7 @@
                 <ul class="guide-list">
                     <li><strong class="text-main">Preview Before Saving:</strong> Every upload opens a preview first. It flags any names that didn't match a Sleeper player (those players stay unranked everywhere in the app, so rename them to match Sleeper if needed) and lets you pick which leagues should use the file.</li>
                     <li><strong class="text-main">Ranking Sets:</strong> Each upload is saved as a named set you can share across leagues. Pick a league's set with <strong class="text-main">Ranking Set for this League</strong>, or tap "Choose leagues&hellip;" to point several leagues at the same set.</li>
-                    <li><strong class="text-main">Dynasty and keeper leagues:</strong> The ROS card holds two sets. <strong class="text-main">Dynasty rankings for this league</strong> is your long-term set; <strong class="text-main">In-Season rankings</strong> can point at any saved ROS set (usually the one your redraft leagues use, which the card offers with a <strong class="text-main">Use it here</strong> button) for questions about this season: Power Rankings' Start and labels, the lineup when no Weekly set is loaded, and the Waiver Wire's <strong class="text-main">In-Season Rank</strong>. "Choose leagues&hellip;" under it sets it for many leagues at once. With None, everything uses your dynasty rankings.</li>
+                    <li><strong class="text-main">Dynasty and keeper leagues:</strong> The ROS card holds two sets. <strong class="text-main">Dynasty rankings for this league</strong> is your long-term set; <strong class="text-main">In-Season rankings</strong> can point at any saved ROS set (usually the one your redraft leagues use, which the card offers with a <strong class="text-main">Use it here</strong> button) for questions about this season: Power Rankings' Start and labels, the lineup when no Weekly set is loaded, and the Waiver Wire's <strong class="text-main">In-Season Rank</strong>. "Choose leagues&hellip;" under it sets it for many leagues at once. With None, everything uses your dynasty rankings. <strong class="text-main">Upload or Auto-Fetch into: Dynasty | In-Season</strong> picks which of the two an upload or Auto-Fetch fills (In-Season's Auto-Fetch gets FantasyCalc's redraft values), and with no redraft set to offer, <strong class="text-main">Get FantasyCalc's redraft values</strong> makes one in a tap.</li>
                     <li><strong class="text-main">Auto-Fetch ROS Rankings:</strong> No ROS file? Pull market consensus values from FantasyCalc instead, matched to your league type, QB format, scoring, and TE Premium. These settings are shared with the Scout tab's Trade Finder.</li>
                     <li><strong class="text-main">Manual SoS:</strong> Under "Edit Manual SoS Grid", enter each team's matchup rank (1-32: 1 = easiest, 32 = hardest) for QB, RB, WR, and TE, then tap "Save Manual SoS". With "My SoS files rank 1 = hardest" on, the grid uses that scale instead.</li>
                 </ul>

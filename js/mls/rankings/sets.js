@@ -42,6 +42,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
     // it (see the league picker below). The preview used to describe only the incoming file, never
     // what it was about to overwrite.
     export function resolveRankingsTarget(type) {
+        if (type === 'ros' && rosUploadIntoSeason()) return resolveSeasonTarget();
         const cfg = RANKING_TYPE_CONFIG[type];
         const selectEl = document.getElementById(cfg.selectId);
         const nameInput = document.getElementById(cfg.nameInputId);
@@ -67,7 +68,9 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
     // Called after a successful upload or auto-fetch with the freshly parsed data. Updates the
     // currently-selected set in place if one's selected in the dropdown; otherwise creates a new
     // named set (using the name field, or a sensible default) and assigns it to the active league.
-    export function saveRankingsAsSet(type, parsedData) {
+    // opts.name: a new set's name when nothing was typed (Auto-Fetch's "FantasyCalc Redraft – …").
+    export function saveRankingsAsSet(type, parsedData, opts = {}) {
+        if (type === 'ros' && rosUploadIntoSeason()) return saveSeasonSet(parsedData, opts);
         const cfg = RANKING_TYPE_CONFIG[type];
         const selectEl = document.getElementById(cfg.selectId);
         const nameInput = document.getElementById(cfg.nameInputId);
@@ -590,29 +593,91 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
         const offerEl = document.getElementById('seasonOffer');
         if (offerEl) {
             const offer = seasonOffer(league, State.leagues, sets);
-            offerEl.hidden = !offer;
-            offerEl.innerHTML = offer
-                ? `<span>Your redraft leagues use <strong>${escapeHtml(offer.name)}</strong>.</span> <button type="button" class="mls-btn-sm btn-link-inline" data-action="useSeasonOffer" data-set-id="${escapeHtml(offer.id)}">Use it here</button>`
-                : '';
+            // No redraft league's set to offer (someone with only dynasty leagues, round 10): one tap gets FantasyCalc's
+            // redraft values as this league's In-Season set.
+            offerEl.hidden = !!current;
+            offerEl.innerHTML = current ? ''
+                : offer
+                    ? `<span>Your redraft leagues use <strong>${escapeHtml(offer.name)}</strong>.</span> <button type="button" class="mls-btn-sm btn-link-inline" data-action="useSeasonOffer" data-set-id="${escapeHtml(offer.id)}">Use it here</button>`
+                    : `<span>No redraft set to use yet.</span> <button type="button" class="mls-btn-sm btn-link-inline" data-action="fetchSeasonFromMarket">Get FantasyCalc's redraft values</button>`;
         }
     }
 
-    // The line between the two pickers and the upload controls (round 8): in a dynasty or keeper league, which set an
-    // upload or Auto-Fetch fills, since the In-Season picker sits right above them. Follows the dynasty drop-down,
-    // including "+ Create New Set". Hidden in redraft leagues.
+    // --- UPLOADING INTO THE IN-SEASON SLOT (round 10) ---
+    // In a dynasty or keeper league the upload and Auto-Fetch controls fill one of two slots, picked with a switch
+    // between the pickers and the uploads: Dynasty (the league's ROS set, as always) or In-Season. So a league with no
+    // other saved ROS set (someone with only dynasty leagues) can make one without touching its dynasty set. In
+    // memory only, and back to Dynasty after each save and on a league switch, so a later upload can't quietly go
+    // to the wrong slot.
+    let rosUploadSlot = 'dynasty';
+    let rosUploadSlotLeague = null;
+    export function rosUploadIntoSeason() {
+        const league = getActiveLeague();
+        return rosUploadSlot === 'season' && !!league && rosUploadSlotLeague === league.leagueId && hasSeasonSlot(league);
+    }
+    export const setRosUploadSlot = function(slot) {
+        rosUploadSlot = slot === 'season' ? 'season' : 'dynasty';
+        rosUploadSlotLeague = State.activeLeagueId;
+        updateUploadTarget();
+    };
+
+    // Where an In-Season upload goes: the league's In-Season set (replaced in place), else a new set.
+    function resolveSeasonTarget(name) {
+        const set = seasonSetFor(getActiveLeague(), State.rankingSets.ros);
+        if (set) return { mode: 'replace', id: set.id, name: set.name, slot: 'season',
+            playerCount: Array.isArray(set.data) ? set.data.length : 0, leagueCount: setUsage(set.id, State.leagues).used };
+        return { mode: 'new', name: name || `${IN_SEASON} Rankings – ${new Date().toLocaleDateString()}`, slot: 'season' };
+    }
+
+    // saveRankingsAsSet for the In-Season slot: the league's dynasty set and State.rosRankings are left alone.
+    function saveSeasonSet(parsedData, opts) {
+        const league = getActiveLeague();
+        const target = resolveSeasonTarget(opts.name);
+        let set = target.mode === 'replace' ? State.rankingSets.ros.find(s => s.id === target.id) : null;
+        if (set) {
+            noteRankingsReplace('ros', { set, newData: parsedData });
+            delete set.lastChanges;
+            set.data = parsedData;
+            set.updatedAt = Date.now();
+        } else {
+            set = { id: 'rset_' + Date.now(), name: target.name, createdAt: Date.now(), updatedAt: Date.now(), data: parsedData };
+            State.rankingSets.ros.push(set);
+            noteNewRankingsSet('ros', set);
+        }
+        localStorage.setItem(RANKING_TYPE_CONFIG.ros.localStorageSetsKey, JSON.stringify(State.rankingSets.ros));
+        if (league) league[SEASON_SET_KEY] = set.id;
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        rosUploadSlot = 'dynasty';
+        updateRankingsMetaDisplay();
+        return set.id;
+    }
+
+    // The switch between the two pickers and the upload controls (round 10; round 8's line before it), dynasty and
+    // keeper leagues only: "Upload or Auto-Fetch into: Dynasty | In-Season", and what that does.
     export function updateUploadTarget() {
         const el = document.getElementById('rosUploadTarget');
         if (!el) return;
         const league = getActiveLeague();
-        if (!hasSeasonSlot(league)) { el.hidden = true; el.textContent = ''; return; }
-        const selectEl = document.getElementById('rosRankingSetSelect');
-        const val = selectEl ? selectEl.value : '__new__';
-        const set = State.rankingSets.ros.find(s => s.id === val);
-        el.innerHTML = set
-            ? `Upload or Auto-Fetch below to update your dynasty set, <strong>${escapeHtml(set.name)}</strong>.`
-            : val === '__legacy__'
-                ? 'Upload or Auto-Fetch below to save your dynasty rankings as a set.'
-                : 'Upload or Auto-Fetch below to save a new dynasty set.';
+        if (!hasSeasonSlot(league)) { el.hidden = true; el.innerHTML = ''; return; }
+        if (rosUploadSlotLeague !== league.leagueId) { rosUploadSlot = 'dynasty'; rosUploadSlotLeague = league.leagueId; }
+        const intoSeason = rosUploadSlot === 'season';
+        let caption;
+        if (intoSeason) {
+            const set = seasonSetFor(league, State.rankingSets.ros);
+            caption = set
+                ? `Replaces your ${IN_SEASON} set, <strong>${escapeHtml(set.name)}</strong>. Auto-Fetch gets FantasyCalc's redraft values.`
+                : `Saves a new ${IN_SEASON} set for this league. Auto-Fetch gets FantasyCalc's redraft values.`;
+        } else {
+            const selectEl = document.getElementById('rosRankingSetSelect');
+            const val = selectEl ? selectEl.value : '__new__';
+            const set = State.rankingSets.ros.find(s => s.id === val);
+            caption = set ? `Updates your dynasty set, <strong>${escapeHtml(set.name)}</strong>.`
+                : val === '__legacy__' ? 'Saves your dynasty rankings as a set.' : 'Saves a new dynasty set.';
+        }
+        const btn = (slot, label) => `<button type="button" class="mls-segmented-btn${(slot === 'season') === intoSeason ? ' active' : ''}" data-action="setRosUploadSlot" data-slot="${slot}" aria-pressed="${(slot === 'season') === intoSeason}">${label}</button>`;
+        el.innerHTML = `<div class="mls-upload-target-row"><span>Upload or Auto-Fetch into:</span>`
+            + `<div class="mls-segmented" role="group" aria-label="Upload or Auto-Fetch into">${btn('dynasty', 'Dynasty')}${btn('season', '<span class="mls-nowrap">In-Season</span>')}</div></div>`
+            + `<div class="mls-upload-target-caption">${caption}</div>`;
         el.hidden = false;
     }
 
@@ -665,6 +730,12 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
         const set = State.rankingSets.ros.find(s => s.id === setId);
         if (!set || !setActiveSeason(set.id)) return;
         refreshAfterSeasonChange();
+        await offerSeasonToOthers(set);
+    };
+
+    // After a set becomes this league's In-Season set (the offer, or an In-Season upload or fetch that made a new set):
+    // the same set for every other dynasty and keeper league that has none, in one step.
+    export async function offerSeasonToOthers(set) {
         // Not a league whose dynasty set is this one (it can't be its In-Season set too).
         const others = leaguesWithoutSeason(State.leagues, State.rankingSets.ros, State.activeLeagueId)
             .filter(l => l.rosRankingSetId !== set.id);
@@ -680,4 +751,4 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
         assignSetToLeagues('ros', set.id, { add: others.map(l => l.leagueId) }, { slot: 'season' });
         showToast(`"${set.name}" is now the ${IN_SEASON} set in ${leagueCountText(others.length + 1)}.`);
         refreshAfterSeasonChange();
-    };
+    }

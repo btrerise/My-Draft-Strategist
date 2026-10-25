@@ -6082,3 +6082,47 @@ dialog scrolls inside its box with Clear all, keyboard focus shows on the switch
 2. **The In-Season leagues dialog said "Already using this set as In-Season" on every checked row**; checked rows have
    no note now (the checkmark says it). Rows that add something keep theirs: "This league", "In-Season now: <set>",
    "No In-Season set (uses its dynasty rankings)", "Its dynasty rankings already". The ROS set's own dialog is unchanged.
+
+### S23, round 10: uploading into In-Season, and League style for keeper leagues (owner: "build both here")
+
+**Owner's questions.** (1) How does someone with only dynasty leagues get an In-Season set? Before this round they
+couldn't without a trap: the In-Season picker and the offer need a saved ROS set other than the league's dynasty set,
+and making one meant uploading into the dynasty slot. (2) Keeper leagues counted as dynasty everywhere, but many play
+like redraft. The owner chose: build both here; keep dynasty as keeper leagues' default; check Sleeper's keeper count;
+put a note on the Roster tab saying where to change the style.
+
+**1. Upload or Auto-Fetch into: Dynasty | In-Season.** Round 8's line under the two pickers is now a switch (dynasty and
+keeper leagues only), with a caption: "Updates your dynasty set, …" / "Saves a new In-Season set for this league.
+Auto-Fetch gets FantasyCalc's redraft values." / "Replaces your In-Season set, …". On In-Season, an upload (through the
+usual preview, which says "…, as this league's In-Season rankings" and offers other leagues' In-Season slots) or an
+Auto-Fetch saves a new set or replaces the In-Season one and assigns it to the In-Season slot; the dynasty set,
+`State.rosRankings` and the flat fallback keys are untouched. Auto-Fetch then asks FantasyCalc for redraft values
+(`isDynasty=false`) whatever the shared League Type says, and names the set "FantasyCalc Redraft – <date>". The switch
+lives in memory and goes back to Dynasty after each save and on a league switch, so a later upload can't quietly fill
+the wrong slot. With no redraft set to offer, the empty In-Season row says "No redraft set to use yet. **Get
+FantasyCalc's redraft values**", which does the In-Season Auto-Fetch in one tap; a new In-Season set then gets the
+offer's "Also use it in …?" (`offerSeasonToOthers`, shared with the offer). Code: `rosUploadIntoSeason`,
+`setRosUploadSlot`, `resolveSeasonTarget`, `saveSeasonSet`, `updateUploadTarget` (`rankings/sets.js`);
+`resolveRankingsTarget` / `saveRankingsAsSet` hand off to them; `rankings/uploadPreview.js`, `rankings/rosFetch.js`.
+
+**2. League style (keeper leagues).** Sleeper's `settings.max_keepers`, checked on the owner's 21 leagues: it's 1 in
+every league type (redraft, dynasty, guillotine, best ball), so it only means something in keeper leagues (type 1);
+the owner's one keeper league keeps 3. A sync now stores it as `league.maxKeepers` (keeper leagues only).
+`league.keeperStyle` ('redraft', or absent = dynasty, the default) is set on the Setup tab's Active League Requirements
+card ("League style": Plays like dynasty / Plays like redraft, an (i), and "Sleeper: each team keeps up to 3 players.
+Leagues that keep this few often play more like redraft." when it's 3 or fewer) and carried over by a sync.
+`getPowerLeagueKind` reads it, so everything that asks "is this dynasty?" follows: Power Rankings' labels and Future,
+the Trade Analyzer's draft picks and Future, "To make it fair", the market type, and the In-Season slot (hidden, its
+set kept but ignored, while redraft). The Roster tab's Power Rankings card has a note for keeper leagues: "Keeper league
+(each team keeps up to 3), treated as dynasty here. **Change League style**" (to the Setup tab, scrolled and focused).
+No new storage key: both fields are on the league.
+
+Guide: step 2 (League style), step 3 (the switch and the button). CHANGELOG lines under Lineup Strategist.
+Tests: unit (League style's rule); spec (an In-Season upload leaves the dynasty set alone and the switch resets; the
+FantasyCalc button with a stubbed response, `isDynasty=false`, the new set's name; a keeper league's note, the Setup
+control, Sleeper's count, redraft style dropping In-Season and Future; no League style in a dynasty league).
+
+**Checks (round 10).** 424 unit tests; Playwright 505 passed, 5 skipped, only `visual.spec.mjs` on the environment
+message. Main (unchanged since round 7) vs. this branch: only `mls-league-guide.png`, now `desktop/` 1280×7464 →
+1280×7834 and `phone/` 390×16244 → 390×17444 (the new Guide items). The Setup tab's League style and the Roster tab's
+keeper note are hidden in the screenshot league (redraft), so those PNGs are unchanged.

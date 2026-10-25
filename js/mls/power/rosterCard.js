@@ -49,6 +49,28 @@ function resolvePowerRankingsSource() {
     return null;
 }
 
+// Keeper leagues (S23, round 10): say how the app treats this one and where to change it (Setup tab, League style),
+// since labels, Future, picks and In-Season rankings all depend on it.
+function renderKeeperStyleNote(league) {
+    const el = document.getElementById('keeperStyleNote');
+    if (!el) return;
+    if (!league || league.leagueType !== 'keeper') { el.hidden = true; el.innerHTML = ''; return; }
+    const style = league.keeperStyle === 'redraft' ? 'redraft' : 'dynasty';
+    const keeps = league.maxKeepers ? ` (each team keeps up to ${league.maxKeepers})` : '';
+    el.innerHTML = `<span>Keeper league${keeps}, treated as <strong>${style}</strong> here.</span> `
+        + `<button type="button" class="mls-btn-sm btn-link-inline" data-action="goToLeagueStyle">Change League style</button>`;
+    el.hidden = false;
+}
+
+// The note's button: the Setup tab's League style drop-down, scrolled to and focused.
+export const goToLeagueStyle = function() {
+    showTab('setup').then(() => setTimeout(() => {
+        const wrap = document.getElementById('leagueStyleWrap');
+        if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('leagueStyleSelect')?.focus({ preventScroll: true });
+    }, 60));
+};
+
 // "I'm competing this year" (improvements S23): per league, saved on the league object.
 export const setPowerCompeting = function(checked) {
     const league = getActiveLeague();
@@ -155,6 +177,7 @@ export function refreshPowerRankings() {
     };
 
     const league = getActiveLeague();
+    renderKeeperStyleNote(league);
     if (!league) {
         showMessage('Select or sync a league on the Dashboard to see Positional Power Rankings.');
         return;
