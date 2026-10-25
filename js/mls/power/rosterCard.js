@@ -69,23 +69,39 @@ function renderCompetingSwitch(league, src) {
     if (box) box.checked = !!(league && league.powerCompeting);
 }
 
-// Where each column came from, for the note under the table (S23). Null without an In-Season set.
-function seasonSourceText(league, src, futureLabel) {
+// Where each column came from (S23, round 4: a one-line key right under the table, in place of a long note), or
+// null without an In-Season set. "Start and labels by In-Season (Redraft ROS) · Ovr, positions and Future by dynasty
+// (Dynasty SF)". futureLabel: resolvePowerFuture's ('age' reads the dynasty set; 'market' dynasty Market Consensus).
+function seasonSourceKey(league, src, futureLabel) {
     if (!league || !src || src.source !== 'custom') return null;
     const season = seasonSetFor(league, State.rankingSets.ros);
     if (!season) return null;
     const dynId = league.rosRankingSetId;
     const dyn = dynId ? State.rankingSets.ros.find(s => s.id === dynId) : null;
-    const name = (s, fallback) => s && s.name ? `<strong>${escapeHtml(s.name)}</strong>` : fallback;
-    const hasDynasty = State.rosRankings.length > 0;
-    const dynName = name(dyn, 'your dynasty rankings');
+    const named = (s) => s && s.name ? ` (<strong>${escapeHtml(s.name)}</strong>)` : '';
+    const inSeason = `<span class="mls-nowrap">In-Season</span>${named(season)}`;
+    const part = (html) => `<span class="mls-power-key-part">${html}</span>`;
+    const sep = ' <span class="mls-rank-sep">&middot;</span> ';
+    if (State.rosRankings.length === 0) return part(`Every column by ${inSeason}: no dynasty rankings are loaded`);
     const competing = roomsUseSeason(league, State.rankingSets.ros);
-    const seasonCols = competing ? '<strong>Start</strong>, <strong>Ovr</strong> and the position columns use' : '<strong>Start</strong> (and so the labels) uses';
-    let text = `${seasonCols} your In-Season rankings (${name(season, 'In-Season')}).`;
-    if (!hasDynasty) return text + ` No dynasty rankings are loaded, so every column uses them.`;
-    if (!competing) text += ` <strong>Ovr</strong> and the position columns use your dynasty rankings (${dynName}).`;
-    if (futureLabel === 'age') text += ` <strong>Future</strong> uses your dynasty rankings (${dynName}).`;
-    return text;
+    const future = futureLabel === 'age' ? 'Future' : null;
+    const parts = [];
+    if (competing) {
+        parts.push(part(`Start, labels, Ovr and positions by ${inSeason}`));
+        if (future) parts.push(part(`Future by dynasty${named(dyn)}`));
+        else if (futureLabel === 'market') parts.push(part('Future by dynasty Market Consensus'));
+    } else {
+        parts.push(part(`Start and labels by ${inSeason}`));
+        parts.push(part(`Ovr, positions${future ? ' and Future' : ''} by dynasty${named(dyn)}`));
+        if (futureLabel === 'market') parts.push(part('Future by dynasty Market Consensus'));
+    }
+    return parts.join(sep);
+}
+
+// The power strip's tag (S23, round 4): which columns In-Season gives, or '' without it.
+function seasonStripTag(league, src) {
+    if (!league || !src || src.source !== 'custom' || !seasonSetFor(league, State.rankingSets.ros)) return '';
+    return roomsUseSeason(league, State.rankingSets.ros) ? 'by In-Season, Future by dynasty' : 'Start by In-Season';
 }
 
 // The two-week hint (S23): a Contender whose dynasty rankings are 14+ days old (when the ROS freshness
@@ -143,7 +159,7 @@ export function refreshPowerRankings() {
     assignPowerLabels(teams, kind);
     teams.forEach(t => { t.starterTier = powerTier(t.starterRank, teams.length); });
     renderPowerRankingsTable(teams, { league, source: src, kind, futureLabel: futureInfo.label, picksLabel: futureInfo.picks });
-    renderRosterPowerStrip(teams, { source: src });
+    renderRosterPowerStrip(teams, { source: src, tag: seasonStripTag(league, src) });
 }
 
 // Scout tab's one-line "moved to the Roster tab" pointer (see #powerRankingsScoutPointer in
@@ -290,16 +306,17 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
     });
 
     html += `</tbody></table></div>`;
+    // In a dynasty league with an In-Season set, which set gave each column, right under the table (S23).
+    const seasonKey = seasonSourceKey(ctx.league, ctx.source, ctx.futureLabel);
+    if (seasonKey) html += `<div class="mls-power-source-key">${seasonKey}</div>`;
 
     const notes = [];
     if (ctx.source && ctx.source.note) notes.push(escapeHtml(ctx.source.note));
-    const seasonText = seasonSourceText(ctx.league, ctx.source, ctx.futureLabel);
-    if (seasonText) notes.push(seasonText);
     const hint = competingHint(ctx.league, ctx.source, you);
     if (hint) notes.push(hint);
     notes.push(`Ranked 1-${totalTeams} (1 = strongest). <strong>Start</strong> is each team's best legal lineup under this league's roster settings, with each position's starters measured against the league average and weighted by how many lineup spots it fills - so a stud at one position can't hide empty rooms at the others. <strong>Ovr</strong> is the whole roster, depth included.`);
     if (ctx.kind === 'dynasty') {
-        if (ctx.futureLabel === 'age') notes.push(`<strong>Future</strong> is each roster's future value: its value from ${seasonText && State.rosRankings.length > 0 ? 'your dynasty rankings' : 'these rankings'}, adjusted for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less.`);
+        if (ctx.futureLabel === 'age') notes.push(`<strong>Future</strong> is each roster's future value: its value from ${seasonKey && State.rosRankings.length > 0 ? 'your dynasty rankings' : 'these rankings'}, adjusted for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less.`);
         else if (ctx.futureLabel === 'market') notes.push(`<strong>Future</strong> is each roster's future value. Couldn't load player ages from Sleeper, so it uses dynasty Market Consensus values instead.`);
         // Draft picks in the Future column (improvements S19, round 3), when this league's picks were synced.
         if (ctx.futureLabel === 'age' || ctx.futureLabel === 'market') {

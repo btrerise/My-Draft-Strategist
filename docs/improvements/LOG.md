@@ -5522,3 +5522,38 @@ the record, points for and points against that S21 (btrerise/My-Draft-Strategist
 it and add it in a small follow-up once #205 is on main, touching only the Power Rankings files. The owner asked me to
 draft a note for the S21 session suggesting the record code (`seasonRecord`, now in `js/mls/week/scoreboard.js`) move
 somewhere league-wide such as `js/mls/leagues/`, with that session making its own call.
+
+### S23, round 4: my review as a user, all six fixes (owner: "do all six"); S21's answer on the record
+
+**From my review of the screens at 390px and 1280px, all fixed:**
+1. **The In-Season set's name showed nowhere with the card folded** (the header cut off after "In-Season:"). The
+   header now has one line per slot ("Dynasty: …" / "In-Season: …"), each cut on its own (`.rankings-header-slot`).
+2. **"In-Season" broke at its hyphen** in the card title ("Dynasty and In-" / "Season Rankings") and in toasts. The
+   title is now **"Dynasty & In-Season Rankings"** with "In-Season" kept whole (`.mls-nowrap`), as in the switch's
+   description; plain-text toasts and dialogs use `IN_SEASON` (`rankings/season.js`: "In-", a word joiner, "Season"),
+   which looks the same and doesn't break.
+3. **It looked as if an upload filled the In-Season set**, because its picker sat right above Upload Format. The
+   In-Season row is now **last in the card**, below the upload and Auto-Fetch, which fill the dynasty set at the top.
+4. **Rank By cut "In-Season Rank" off** at half a phone's width. In dynasty and keeper leagues, on screens up to
+   600px, Rank By takes the whole row (`.mls-rank-by-wide`); redraft leagues and wider screens are unchanged.
+5. **The power strip at the top of the Roster tab didn't say Start came from another set**: it now reads "out of 12
+   teams · Start by In-Season" ("· by In-Season, Future by dynasty" with I'm competing on).
+6. **The long sources note** became **one line right under the table**: "Start and labels by In-Season (Redraft ROS)
+   · Ovr, positions and Future by dynasty (Dynasty SF)" (with I'm competing: "Start, labels, Ovr and positions by
+   In-Season (…) · Future by dynasty (…)"; with Future from Market Consensus, "Future by dynasty Market Consensus").
+   The bullet it replaces is gone; the Guide's step 4 says "a line under the table".
+
+**S21's answer (from its session, via the owner):** `seasonRecord` stays in `js/mls/week/scoreboard.js` for now (one of
+four "from a sync" helpers there; a move adds churn before S21's live test). `league.record` keeps the shape
+`{ wins, losses, ties, pf, pa, pfRank, paRank, of }`, set at every successful sync from Sleeper's rosters; a failed sync
+keeps the old one; missing on leagues synced before S21 (treat as null); null before anyone has played, when your team
+isn't found, and in guillotine leagues. In median leagues wins and losses include the median game (Sleeper's
+standings; `league.medianMatch` marks them). `paRank` 1 = the most points against you (unlucky). Power Rankings already
+has its own `ordinal` (power/allLeagues.js). Either merge order works; S21's branch is at v2.8.109, so whichever merges
+second bumps `CACHE_NAME` above main's. For the suggestion (round 3): it reads `league.record` only, and treats a
+missing or null one (and guillotine leagues) as "label alone".
+
+**Checks (round 4).** Unit 405 pass; Playwright 471 passed, 5 skipped, and only `visual.spec.mjs` failed, on the one
+environment message, as in round 2. Main vs. this branch rendered here: still only `mls-league-guide.png` at both widths
+(same sizes as round 2), from CI once there's a pull request. `CACHE_NAME` stays v2.8.101 (main v2.8.100; S21 is at
+v2.8.109, so whichever merges second goes above main's).

@@ -89,12 +89,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **In-Season rankings in dynasty and keeper leagues.** In these leagues the Roster tab's ROS card is now "Dynasty and
-  In-Season Rankings": its set is "Dynasty rankings for this league", and a new **In-Season rankings** picker under it
-  takes any saved ROS set, usually the one your redraft leagues use (it offers that one, with a button, and then asks
+- **In-Season rankings in dynasty and keeper leagues.** In these leagues the Roster tab's ROS card is now "Dynasty &
+  In-Season Rankings" (its header names both sets): its set is "Dynasty rankings for this league", and a new
+  **In-Season rankings** picker at the bottom of the card takes any saved ROS set, usually the one your redraft leagues use (it offers that one, with a button, and then asks
   whether to use it in your other dynasty leagues too). "Choose leagues…" sets it for many leagues at once. With an
   In-Season set, Power Rankings' **Start** column and the Contender / Retool / Rebuild labels follow it, while **Future**
-  stays on your dynasty rankings, and the note under the table says which set gave each column. A new **I'm competing
+  stays on your dynasty rankings, and a line under the table (and the power strip at the top of the tab) says which set gave each column. A new **I'm competing
   this year** switch on the Power Rankings card moves Ovr and the position columns to In-Season too, and a Contender
   whose dynasty rankings are two weeks old gets a hint about it. The lineup uses the In-Season set when no Weekly set is
   loaded; the Waiver Wire's Rank By reads **Dynasty Rank** in these leagues and adds **In-Season Rank**; and the

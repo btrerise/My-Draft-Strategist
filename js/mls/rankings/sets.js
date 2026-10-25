@@ -14,7 +14,7 @@ import { showToast } from '../../shared/ui/toast.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showPrompt } from '../../shared/ui/prompt.js';
 import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
-import { SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonOffer, seasonSetFor, setUsage } from './season.js';
+import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonOffer, seasonSetFor, setUsage } from './season.js';
 
     // --- NAMED RANKING SETS ---
     // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
@@ -186,7 +186,9 @@ import { SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonOffer, seaso
         // A dynasty or keeper league names both slots (improvements S23): "Dynasty: … · In-Season: …".
         const season = type === 'ros' && hasSeasonSlot(league) ? seasonSetFor(league, State.rankingSets.ros) : null;
         if (season) {
-            el.innerHTML = `Dynasty: <strong>${escapeHtml(text)}</strong> <span class="mls-rank-sep">&middot;</span> In-Season: <strong>${escapeHtml(season.name)}</strong>`;
+            // One line each, so the In-Season set's name shows with the card folded (it was cut off after "In-Season:").
+            el.innerHTML = `<span class="rankings-header-slot">Dynasty: <strong>${escapeHtml(text)}</strong></span>`
+                + `<span class="rankings-header-slot"><span class="mls-nowrap">In-Season</span>: <strong>${escapeHtml(season.name)}</strong></span>`;
             el.title = `Dynasty: ${text} · In-Season: ${season.name}`;
             return;
         }
@@ -457,7 +459,7 @@ import { SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonOffer, seaso
         if (!set) return;
 
         const asSeason = type === 'ros' ? setUsage(setId, State.leagues).asSeason : 0;
-        const seasonLine = asSeason ? ` ${leagueCountText(asSeason)} using it as In-Season rankings will go back to their dynasty rankings.` : '';
+        const seasonLine = asSeason ? ` ${leagueCountText(asSeason)} using it as ${IN_SEASON} rankings will go back to their dynasty rankings.` : '';
         if (!await showConfirm(`Any league using this set will need a new one selected.${seasonLine} This can't be undone.`, { title: `Delete "${set.name}"?`, confirmText: 'Delete Set', danger: true })) return;
 
         State.rankingSets[cfg.setsKey] = State.rankingSets[cfg.setsKey].filter(s => s.id !== setId);
@@ -545,7 +547,8 @@ import { SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonOffer, seaso
         const show = hasSeasonSlot(league);
         if (label) label.textContent = show ? 'Dynasty rankings for this league' : 'Ranking Set for this League';
         const title = document.getElementById('rosRankingsTitle');
-        if (title) title.textContent = show ? 'Dynasty and In-Season Rankings' : 'Rest-of-Season (ROS) Rankings';
+        // "In-Season" kept whole: a phone wrapped the title at its hyphen.
+        if (title) title.innerHTML = show ? 'Dynasty &amp; <span class="mls-nowrap">In-Season</span> Rankings' : 'Rest-of-Season (ROS) Rankings';
         if (!row) return;
         row.hidden = !show;
         if (!show) return;
@@ -611,17 +614,17 @@ import { SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonOffer, seaso
     export const openSeasonSetLeagues = async function() {
         const league = getActiveLeague();
         const set = seasonSetFor(league, State.rankingSets.ros);
-        if (!set) { showToast('Choose an In-Season set first.', { isError: true }); return; }
+        if (!set) { showToast(`Choose an ${IN_SEASON} set first.`, { isError: true }); return; }
         const result = await openLeaguePickerDialog('ros', set, {
             slot: 'season', allowRemove: true,
-            title: `Use "${set.name}" as In-Season rankings in…`,
+            title: `Use "${set.name}" as ${IN_SEASON} rankings in…`,
             intro: 'Check each dynasty or keeper league that should use this set for this season. Unchecking a league sends it back to its dynasty rankings.'
         });
         if (!result) return;
         if (result.add.length === 0 && result.remove.length === 0) { showToast('No changes made.'); return; }
         assignSetToLeagues('ros', set.id, result, { slot: 'season' });
         const n = State.leagues.filter(l => seasonSetFor(l, State.rankingSets.ros) === set).length;
-        showToast(`"${set.name}" is now the In-Season set in ${leagueCountText(n)}.`);
+        showToast(`"${set.name}" is now the ${IN_SEASON} set in ${leagueCountText(n)}.`);
         refreshAfterSeasonChange();
     };
 
@@ -632,11 +635,11 @@ import { SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonOffer, seaso
         if (!set || !setActiveSeason(set.id)) return;
         refreshAfterSeasonChange();
         const others = leaguesWithoutSeason(State.leagues, State.rankingSets.ros, State.activeLeagueId);
-        if (others.length === 0) { showToast(`"${set.name}" is now this league's In-Season set.`); return; }
-        const all = await showConfirm(`Also use "${set.name}" in the ${others.length === 1 ? 'other dynasty or keeper league' : `${others.length} other dynasty and keeper leagues`} without In-Season rankings?`,
-            { title: 'In-Season rankings', confirmText: others.length === 1 ? 'Use in that one too' : `Use in all ${others.length}`, cancelText: 'Just this league' });
-        if (!all) { showToast(`"${set.name}" is now this league's In-Season set.`); return; }
+        if (others.length === 0) { showToast(`"${set.name}" is now this league's ${IN_SEASON} set.`); return; }
+        const all = await showConfirm(`Also use "${set.name}" in the ${others.length === 1 ? 'other dynasty or keeper league' : `${others.length} other dynasty and keeper leagues`} without ${IN_SEASON} rankings?`,
+            { title: `${IN_SEASON} rankings`, confirmText: others.length === 1 ? 'Use in that one too' : `Use in all ${others.length}`, cancelText: 'Just this league' });
+        if (!all) { showToast(`"${set.name}" is now this league's ${IN_SEASON} set.`); return; }
         assignSetToLeagues('ros', set.id, { add: others.map(l => l.leagueId) }, { slot: 'season' });
-        showToast(`"${set.name}" is now the In-Season set in ${leagueCountText(others.length + 1)}.`);
+        showToast(`"${set.name}" is now the ${IN_SEASON} set in ${leagueCountText(others.length + 1)}.`);
         refreshAfterSeasonChange();
     };

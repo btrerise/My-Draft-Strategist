@@ -97,6 +97,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         const seasonHere = !!seasonSetFor(league, State.rankingSets.ros);
         if (seasonOpt) { seasonOpt.hidden = !seasonHere; seasonOpt.disabled = !seasonHere; }
         if (rosOpt) rosOpt.textContent = hasSeasonSlot(league) ? 'Dynasty Rank' : 'ROS Rank';
+        document.getElementById('waiverScanBasisGroup')?.classList.toggle('mls-rank-by-wide', hasSeasonSlot(league));
         set('waiverScanBasis', 'value', s.basis === 'season' && !seasonHere ? 'ros' : s.basis);
         set('waiverScanLimit', 'value', String(s.limit));
         set('waiverScanStartersOnly', 'checked', !!s.startersOnly);

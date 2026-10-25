@@ -460,25 +460,6 @@
                 <span id="rosSetLeaguesSummary" class="mls-set-leagues-summary"></span>
                 <button class="mls-btn-sm btn-link-inline" data-action="openRankingSetLeagues" data-type="ros">Choose leagues&hellip;</button>
             </div>
-            <!-- Dynasty and keeper leagues only (improvements S23): a ROS set for this season's questions.
-                 Filled by populateSeasonPicker (js/mls/rankings/sets.js). -->
-            <div id="seasonRankingsRow" class="mls-season-row mb-3" hidden>
-                <div class="input-group mb-0">
-                    <div class="cluster cluster-sm">
-                        <label for="seasonRankingSetSelect" class="mb-0">In-Season rankings</label>
-                        <div class="tooltip-container">
-                            <div class="tooltip-icon">i</div>
-                            <span class="tooltip-text">Any saved ROS set, usually the one your redraft leagues use, for questions about this season: Power Rankings' Start column and labels, the lineup when no Weekly set is loaded, and In-Season Rank in the Waiver Wire Assistant. Future stays on your dynasty rankings. None keeps everything on your dynasty rankings.</span>
-                        </div>
-                    </div>
-                    <select id="seasonRankingSetSelect" class="form-input" data-action="onSeasonSetChange" aria-label="Select In-Season Ranking Set"></select>
-                </div>
-                <div id="seasonOffer" class="mls-season-offer" hidden></div>
-                <div id="seasonSetLeaguesRow" class="mls-set-leagues-row" hidden>
-                    <span id="seasonSetLeaguesSummary" class="mls-set-leagues-summary"></span>
-                    <button class="mls-btn-sm btn-link-inline" data-action="openSeasonSetLeagues">Choose leagues&hellip;</button>
-                </div>
-            </div>
             <div id="rosNewSetNameWrap" class="input-group mb-3">
                 <label for="rosNewSetName">New Set Name (optional)</label>
                 <input type="text" id="rosNewSetName" class="form-input" maxlength="60" placeholder="e.g. Dynasty PPR 2026">
@@ -583,6 +564,26 @@
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
                 Auto-Fetch ROS Rankings
             </button>
+            <!-- Dynasty and keeper leagues only (improvements S23): a ROS set for this season's questions.
+                 Filled by populateSeasonPicker (js/mls/rankings/sets.js). Last in the card, below the upload and
+                 Auto-Fetch, which fill the dynasty set picked at the top. -->
+            <div id="seasonRankingsRow" class="mls-season-row" hidden>
+                <div class="input-group mb-0">
+                    <div class="cluster cluster-sm">
+                        <label for="seasonRankingSetSelect" class="mb-0">In-Season rankings</label>
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Any saved ROS set, usually the one your redraft leagues use, for questions about this season: Power Rankings' Start column and labels, the lineup when no Weekly set is loaded, and In-Season Rank in the Waiver Wire Assistant. Future stays on your dynasty rankings. None keeps everything on your dynasty rankings.</span>
+                        </div>
+                    </div>
+                    <select id="seasonRankingSetSelect" class="form-input" data-action="onSeasonSetChange" aria-label="Select In-Season Ranking Set"></select>
+                </div>
+                <div id="seasonOffer" class="mls-season-offer" hidden></div>
+                <div id="seasonSetLeaguesRow" class="mls-set-leagues-row" hidden>
+                    <span id="seasonSetLeaguesSummary" class="mls-set-leagues-summary"></span>
+                    <button class="mls-btn-sm btn-link-inline" data-action="openSeasonSetLeagues">Choose leagues&hellip;</button>
+                </div>
+            </div>
         </div>
     </section>
     <!-- "What changed" after a Replace Set or auto-fetch replace of the ROS set (improvements S3):
@@ -652,7 +653,7 @@
         <div id="powerCompetingWrap" class="toggle-row mb-3" style="display: none;">
             <div class="toggle-info">
                 <label class="toggle-title" for="powerCompeting">I'm competing this year</label>
-                <span class="toggle-desc">Ovr and position rooms use your In-Season rankings.</span>
+                <span class="toggle-desc">Ovr and position rooms use your <span class="mls-nowrap">In-Season</span> rankings.</span>
             </div>
             <input type="checkbox" id="powerCompeting" class="toggle-switch" data-action="setPowerCompeting">
         </div>
@@ -989,7 +990,7 @@
         </div>
 
         <div class="settings-grid mb-2">
-            <div class="input-group">
+            <div class="input-group" id="waiverScanBasisGroup">
                 <label for="waiverScanBasis">Rank By</label>
                 <select id="waiverScanBasis" class="form-input" data-action="updateWaiverScanSetting" data-setting="basis" aria-label="Sort available players by Weekly or ROS rank">
                     <option value="weekly">Weekly Rank</option>
@@ -1365,7 +1366,7 @@
             <!-- Step 4 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">4</span> Positional Power Rankings</h4>
-                <p class="step-desc">Found on the <strong class="text-main">Roster</strong> tab and generated automatically from your rankings (or Market Consensus data). Every team in your league is ranked 1 to N: <strong class="text-main">Start</strong> scores each team's best legal starting lineup under your league's roster settings, measuring each position's starters against the league average and weighting by how many lineup spots that position fills (one position can lift a lineup, but only up to 150% of average, so an elite QB can't hide empty RB and WR rooms). <strong class="text-main">Ovr</strong> scores the whole roster, and QB/RB/WR/TE score each whole position room. Hover or tap any rank to see the players behind it; teams strong where you're weak make ideal trade partners. Each team also gets a label. In dynasty and keeper leagues it's <strong class="text-main">Contender</strong> (top-third starting lineup), <strong class="text-main">Retool</strong> (mid-pack lineup with a decent future) or <strong class="text-main">Rebuild</strong> (bottom-third lineup, or mid-pack with an aging roster), using a <strong class="text-main">Future</strong> column (future value) that adjusts each roster's value for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less. The draft picks each team holds (synced from Sleeper) count too, at their dynasty Market Consensus value or, without it, by a set table by round. It's a heuristic, not a projection. In redraft leagues it's <strong class="text-main">Contender</strong> / <strong class="text-main">Bubble</strong> / <strong class="text-main">Longshot</strong>. Labels reflect roster strength only, not the standings. In a dynasty or keeper league with <strong class="text-main">In-Season rankings</strong>, Start (and so the labels) uses them while Ovr, the position columns and Future stay on your dynasty rankings; turn on <strong class="text-main">I'm competing this year</strong> to move Ovr and the position columns to In-Season too. The note under the table says which set gave each column. The same rankings also power the Waiver Wire Assistant's <strong class="text-main">All My Leagues</strong> search: look up a player and each league shows your power rank at his position. Set <strong class="text-main">Looking To</strong> to <strong class="text-main">Buy / Add</strong> to flag the leagues where you're weak there and he'd move you up, or <strong class="text-main">Sell / Drop</strong> to flag the leagues where you own him and have depth to spare. Each league is scored with its own rankings (Market Consensus if it has none).</p>
+                <p class="step-desc">Found on the <strong class="text-main">Roster</strong> tab and generated automatically from your rankings (or Market Consensus data). Every team in your league is ranked 1 to N: <strong class="text-main">Start</strong> scores each team's best legal starting lineup under your league's roster settings, measuring each position's starters against the league average and weighting by how many lineup spots that position fills (one position can lift a lineup, but only up to 150% of average, so an elite QB can't hide empty RB and WR rooms). <strong class="text-main">Ovr</strong> scores the whole roster, and QB/RB/WR/TE score each whole position room. Hover or tap any rank to see the players behind it; teams strong where you're weak make ideal trade partners. Each team also gets a label. In dynasty and keeper leagues it's <strong class="text-main">Contender</strong> (top-third starting lineup), <strong class="text-main">Retool</strong> (mid-pack lineup with a decent future) or <strong class="text-main">Rebuild</strong> (bottom-third lineup, or mid-pack with an aging roster), using a <strong class="text-main">Future</strong> column (future value) that adjusts each roster's value for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less. The draft picks each team holds (synced from Sleeper) count too, at their dynasty Market Consensus value or, without it, by a set table by round. It's a heuristic, not a projection. In redraft leagues it's <strong class="text-main">Contender</strong> / <strong class="text-main">Bubble</strong> / <strong class="text-main">Longshot</strong>. Labels reflect roster strength only, not the standings. In a dynasty or keeper league with <strong class="text-main">In-Season rankings</strong>, Start (and so the labels) uses them while Ovr, the position columns and Future stay on your dynasty rankings; turn on <strong class="text-main">I'm competing this year</strong> to move Ovr and the position columns to In-Season too. A line under the table says which set gave each column. The same rankings also power the Waiver Wire Assistant's <strong class="text-main">All My Leagues</strong> search: look up a player and each league shows your power rank at his position. Set <strong class="text-main">Looking To</strong> to <strong class="text-main">Buy / Add</strong> to flag the leagues where you're weak there and he'd move you up, or <strong class="text-main">Sell / Drop</strong> to flag the leagues where you own him and have depth to spare. Each league is scored with its own rankings (Market Consensus if it has none).</p>
             </div>
 
             <!-- Step 5 -->

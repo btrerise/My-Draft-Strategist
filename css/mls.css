@@ -1471,6 +1471,8 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     text-overflow: ellipsis;
 }
 .rankings-header-set:empty { display: none; }
+/* Dynasty and keeper leagues with an In-Season set (improvements S23): one line per slot, each cut on its own. */
+.rankings-header-slot { display: block; overflow: hidden; text-overflow: ellipsis; }
 .rankings-header-set strong {
     color: var(--primary-green);
     font-weight: 600;
@@ -1501,6 +1503,18 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-season-row[hidden], .mls-season-row [hidden] { display: none; }
 .mls-season-row .tooltip-container { margin-bottom: 0.35rem; }
 .mls-season-row label { margin-bottom: 0.35rem; }
+/* Power Rankings: which set gave each column, right under the table. */
+.mls-power-source-key {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.mls-power-source-key strong { color: var(--text-main); font-weight: 600; }
+.mls-power-key-part { display: inline-block; } /* each part wraps as one phrase where it fits */
+/* Rank By in a dynasty or keeper league: "In-Season Rank" didn't fit half a phone's width. */
+@media (max-width: 600px) {
+    .settings-grid > .mls-rank-by-wide { grid-column: 1 / -1; }
+}
 .mls-season-offer {
     display: flex;
     flex-wrap: wrap;

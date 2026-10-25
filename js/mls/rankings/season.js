@@ -19,6 +19,10 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
 
 export const SEASON_SET_KEY = 'seasonRankingSetId';
 
+// "In-Season" for plain text (toasts, dialogs): a word joiner after the hyphen keeps a narrow toast from breaking the
+// word in two. Markup uses <span class="mls-nowrap">In-Season</span> instead.
+export const IN_SEASON = 'In-\u2060Season';
+
 // Only dynasty and keeper leagues have the slot (the Power Rankings' own rule).
 export function hasSeasonSlot(league) {
     return !!league && getPowerLeagueKind(league) === 'dynasty';

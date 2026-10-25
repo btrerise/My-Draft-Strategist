@@ -80,7 +80,9 @@ async function powerTable(page, { future = true } = {}) {
         }));
     });
     const notes = await page.locator('#powerRankingsOutput .mls-power-notes').innerText();
-    return { data, notes };
+    const keyEl = page.locator('#powerRankingsOutput .mls-power-source-key');
+    const key = (await keyEl.count()) ? await keyEl.innerText() : '';
+    return { data, notes, key };
 }
 
 const lineupStarters = (page) => page.evaluate(async (id) => {
@@ -94,7 +96,8 @@ test.describe('In-Season rankings in a dynasty league', () => {
 
         // No In-Season set: every column by the dynasty set, no In-Season note, no switch.
         const before = await powerTable(page);
-        expect(before.notes).not.toContain('In-Season rankings');
+        expect(before.key).toBe(''); // no key line without an In-Season set
+        await expect(page.locator('#rosterPowerStrip')).not.toContainText('In-Season');
         await expect(page.locator('#powerCompetingWrap')).toBeHidden();
 
         // The Season set alone as the league's rankings, for comparison (then back to the dynasty set).
@@ -107,12 +110,15 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await openRosCard(page);
         await expect(page.locator('#seasonRankingsRow')).toBeVisible();
         await expect(page.locator('#rosRankingSetLabel')).toHaveText('Dynasty rankings for this league');
-        await expect(page.locator('#rosRankingsTitle')).toHaveText('Dynasty and In-Season Rankings');
+        await expect(page.locator('#rosRankingsTitle')).toHaveText('Dynasty & In-Season Rankings');
+        // Last in the card, below the upload and Auto-Fetch (which fill the dynasty set).
+        expect(await page.evaluate(() => !!(document.getElementById('autoFetchRosBtn').compareDocumentPosition(
+            document.getElementById('seasonRankingsRow')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
         const select = page.locator('#seasonRankingSetSelect');
         await expect(select.locator('option').first()).toHaveText('None (use your dynasty rankings)');
         await expect(select).toHaveValue('');
         await select.selectOption(ids.season);
-        await expect(page.locator('#rosHeaderSetName')).toHaveText('Dynasty: Dynasty SF · In-Season: Redraft ROS');
+        await expect(page.locator('#rosHeaderSetName')).toHaveText('Dynasty: Dynasty SFIn-Season: Redraft ROS');
         expect((await fixture(page)).seasonRankingSetId).toBe(ids.season);
 
         const after = await powerTable(page);
@@ -122,9 +128,9 @@ test.describe('In-Season rankings in a dynasty league', () => {
             expect(after.data[owner].rb, `${owner} RB`).toBe(before.data[owner].rb);
             expect(after.data[owner].future, `${owner} Future`).toBe(before.data[owner].future);
         }
-        expect(after.notes).toContain('Start (and so the labels) uses your In-Season rankings (Redraft ROS).');
-        expect(after.notes).toContain('Ovr and the position columns use your dynasty rankings (Dynasty SF).');
-        expect(after.notes).toContain('Future uses your dynasty rankings (Dynasty SF).');
+        expect(after.key).toBe('Start and labels by In-Season (Redraft ROS) · Ovr, positions and Future by dynasty (Dynasty SF)');
+        expect(after.notes).toContain('its value from your dynasty rankings, adjusted for player age');
+        await expect(page.locator('#rosterPowerStrip')).toContainText('out of 2 teams · Start by In-Season');
 
         // I'm competing: Ovr and the rooms by In-Season too, Future still dynasty. Saved on the league.
         await expect(page.locator('#powerCompetingWrap')).toBeVisible();
@@ -134,7 +140,8 @@ test.describe('In-Season rankings in a dynasty league', () => {
             expect(competing.data[owner].ovr, `${owner} Ovr`).toBe(seasonOnly.data[owner].ovr);
             expect(competing.data[owner].future, `${owner} Future`).toBe(before.data[owner].future);
         }
-        expect(competing.notes).toContain('Start, Ovr and the position columns use your In-Season rankings (Redraft ROS).');
+        expect(competing.key).toBe('Start, labels, Ovr and positions by In-Season (Redraft ROS) · Future by dynasty (Dynasty SF)');
+        await expect(page.locator('#rosterPowerStrip')).toContainText('out of 2 teams · by In-Season, Future by dynasty');
         expect((await fixture(page)).powerCompeting).toBe(true);
 
         // Both survive a reload and a re-sync.
@@ -173,6 +180,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         const basis = page.locator('#waiverScanBasis');
         await expect(basis.locator('option[value="season"]')).toHaveText('In-Season Rank');
         await expect(basis.locator('option[value="ros"]')).toHaveText('Dynasty Rank');
+        await expect(page.locator('#waiverScanBasisGroup')).toHaveClass(/mls-rank-by-wide/);
         expect(await basis.locator('option[value="season"]').evaluate(o => o.hidden || o.disabled)).toBe(false);
         await basis.selectOption('season');
         const scan = await page.evaluate(async () => {
@@ -211,9 +219,9 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expect(offer).toContainText('Your redraft leagues use Redraft ROS.');
         await offer.getByRole('button', { name: 'Use it here' }).click();
         const confirm = page.locator('#mds-confirm-overlay');
-        await expect(confirm).toContainText('Also use "Redraft ROS" in the other dynasty or keeper league without In-Season rankings?');
+        await expect(confirm).toContainText('Also use "Redraft ROS" in the other dynasty or keeper league without In-\u2060Season rankings?');
         await confirm.getByRole('button', { name: 'Use in that one too' }).click();
-        await expect(toast(page, '"Redraft ROS" is now the In-Season set in 2 leagues.')).toBeVisible();
+        await expect(toast(page, '"Redraft ROS" is now the In-\u2060Season set in 2 leagues.')).toBeVisible();
         const leagues = await storedLeagues(page);
         expect(Object.fromEntries(leagues.map(l => [l.name, l.seasonRankingSetId || null])))
             .toEqual({ 'Fixture League': ids.season, 'Bench League': null, 'Keeper League': ids.season });
@@ -225,11 +233,11 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await page.locator('#seasonSetLeaguesRow').getByRole('button', { name: 'Choose leagues' }).click();
         const dialog = page.locator('#rankingLeaguesOverlay');
         await expect(dialog).toBeVisible();
-        await expect(dialog.locator('#rankingLeaguesTitle')).toHaveText('Use "Redraft ROS" as In-Season rankings in…');
+        await expect(dialog.locator('#rankingLeaguesTitle')).toHaveText('Use "Redraft ROS" as In-\u2060Season rankings in…');
         await expect(dialog.locator('.mls-league-picker-name')).toHaveText(['Fixture League', 'Keeper League']);
         await dialog.locator('label', { hasText: 'Keeper League' }).locator('input').uncheck();
         await dialog.locator('[data-league-picker="ok"]').click();
-        await expect(toast(page, 'is now the In-Season set in 1 league.')).toBeVisible();
+        await expect(toast(page, 'is now the In-\u2060Season set in 1 league.')).toBeVisible();
         expect((await storedLeagues(page)).find(l => l.name === 'Keeper League').seasonRankingSetId).toBeNull();
 
         // Rename, from the redraft league that uses it: the dynasty league's picker and header show the new name.
@@ -244,21 +252,21 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
         await openRosCard(page);
         await expect(page.locator('#seasonRankingSetSelect option:checked')).toHaveText('Redraft <b>Wk 7</b> (24 players)');
-        await expect(page.locator('#rosHeaderSetName')).toHaveText('Dynasty: Dynasty SF · In-Season: Redraft <b>Wk 7</b>');
-        expect((await powerTable(page)).notes).toContain('your In-Season rankings (Redraft <b>Wk 7</b>)');
+        await expect(page.locator('#rosHeaderSetName')).toHaveText('Dynasty: Dynasty SFIn-Season: Redraft <b>Wk 7</b>');
+        expect((await powerTable(page)).key).toContain('In-Season (Redraft <b>Wk 7</b>)');
 
         // Delete it (from the redraft league): the confirm says so, and the In-Season slot is cleared.
         await callApp(page, 'switchActiveLeague', bench);
         await openRosCard(page);
         await page.locator('#rosDeleteSetBtn').click();
-        await expect(confirm).toContainText('1 league using it as In-Season rankings will go back to their dynasty rankings.');
+        await expect(confirm).toContainText('1 league using it as In-\u2060Season rankings will go back to their dynasty rankings.');
         await confirm.locator('[data-confirm-action="ok"]').click();
         expect((await fixture(page)).seasonRankingSetId).toBeNull();
         await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
         await openRosCard(page);
         await expect(page.locator('#seasonRankingSetSelect')).toHaveValue('');
         await expect(page.locator('#rosHeaderSetName')).toHaveText('Set: Dynasty SF');
-        expect((await powerTable(page)).notes).not.toContain('In-Season rankings');
+        expect((await powerTable(page)).key).toBe('');
         await expectClean(page, state);
     });
 
@@ -324,10 +332,11 @@ test('a redraft league shows no In-Season picker and no switch', async ({ page }
     await expect(page.locator('#rosRankingsTitle')).toHaveText('Rest-of-Season (ROS) Rankings');
     await expect(page.locator('#rosHeaderSetName')).toHaveText('Set: Dynasty SF');
     const table = await powerTable(page, { future: false });
-    expect(table.notes).not.toContain('In-Season rankings');
+    expect(table.key).toBe('');
     await expect(page.locator('#powerCompetingWrap')).toBeHidden();
     await showTab(page, 'scout');
     expect(await page.locator('#waiverScanBasis option[value="season"]').evaluate(o => o.hidden && o.disabled)).toBe(true);
     await expect(page.locator('#waiverScanBasis option[value="ros"]')).toHaveText('ROS Rank');
+    await expect(page.locator('#waiverScanBasisGroup')).not.toHaveClass(/mls-rank-by-wide/);
     await expectClean(page, state);
 });
