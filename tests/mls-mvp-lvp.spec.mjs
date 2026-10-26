@@ -127,8 +127,9 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(extra.filter({ hasText: 'Started zeros' })).toContainText('Brock Bowers TE · 1 league');
         await expect(extra.filter({ hasText: 'Started zeros' })).toContainText("the app can't check that");
         await expect(extra.filter({ hasText: 'Boomed on your bench' })).toContainText('Amon-Ra St. Brown WR · 0.0–24.0 in 1 league');
-        // The league's slot order is saved at sync (round 2), so the benching names the slot: Lamb was in the FLEX.
-        await expect(extra.filter({ hasText: 'Worst benchings' })).toContainText('Amon-Ra St. Brown WR 24.0 on your bench in Second Fixture League, over CeeDee Lamb (FLEX) 8.0 (−16.0)');
+        // The league's slot order is saved at sync (round 2), so the benching names the slot when it's a flex (round 4: "(WR)"
+        // for a WR slot read as his position): Lamb was in the FLEX.
+        await expect(extra.filter({ hasText: 'Worst benchings' })).toContainText('Amon-Ra St. Brown WR 24.0 on your bench in Second Fixture League, over CeeDee Lamb WR in FLEX 8.0 (−16.0)');
         const slots = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).map(l => l.starterSlots));
         expect(slots[0]).toEqual(['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF']);
         await expectClean(page, state);
@@ -222,7 +223,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(btn).toHaveClass(/\bbtn-purple\b/);
         const download = page.waitForEvent('download');
         await btn.click();
-        expect((await download).suggestedFilename()).toBe('My_Recap_Lineup_Strategist.png');
+        expect((await download).suggestedFilename()).toBe('Week_2_Recap_My_Lineup_Strategist.png');
         const text = (await page.evaluate(() => window.__shareText)).replace(/\s+/g, ' ');
         for (const part of ['Week 2 Recap', 'Record 1–1 · 1 still live', 'Redraft 0–1', 'Dynasty 1–0',
             "MVPS Ja'Marr Chase WR boomed 2 of 2 20.0–25.0", 'Josh Allen QB', 'LVPS A.J. Brown WR started 0 of 2 0.0', '2 Sleeper leagues · provisional']) {
@@ -259,6 +260,33 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await showTab(page, 'scoreboard');
         await expect(page.locator('#thisWeekCard .mls-week-fold[data-fold="swings"] .mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'false');
         await expect(section(page).locator('.mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'true');
+        await expectClean(page, state);
+    });
+
+    // Round 4: Biggest win and Worst loss under the record, among matchups already settled.
+    test('Biggest win and Worst loss: settled matchups only, each opening its league\'s lineup', async ({ page }) => {
+        // Jefferson at the fixture's own projection: the Simulator settles Fixture League's −12.0 as a loss.
+        const state = await setup(page);
+        const ext = page.locator('#thisWeekCard .mls-week-extremes .mls-week-extreme');
+        await expect(ext).toHaveCount(2, { timeout: 15000 });
+        await expect(ext.nth(0)).toHaveText(/Biggest win\s*Second Fixture League\s*\+35\.2/);
+        await expect(ext.nth(1)).toHaveText(/Worst loss\s*Fixture League\s*−12\.0/);
+        // Above Still in play and the tiles, under the splits.
+        const order = await page.locator('#thisWeekCard .mls-week-body').evaluate(b => [...b.children].map(c => c.className.split(' ')[0]));
+        expect(order.indexOf('mls-week-extremes')).toBeGreaterThan(order.indexOf('mls-week-splits-row'));
+        expect(order.indexOf('mls-week-extremes')).toBeLessThan(order.indexOf('mls-week-tiles'));
+        await ext.nth(1).click();
+        await expect(page.locator('#lineupTab')).toHaveClass(/\bactive\b/);
+        await expect(page.locator('#headerLeagueSelect')).toHaveValue(FIXTURE_LEAGUE_ID);
+        await expectClean(page, state);
+    });
+
+    test('a loss still in play isn\'t the Worst loss', async ({ page }) => {
+        const state = await setup(page, { jefferson: 12.5 });
+        await expect(page.locator('#thisWeekCard .mls-week-swing .mls-week-chance')).toHaveText(/% to win/, { timeout: 15000 });
+        const ext = page.locator('#thisWeekCard .mls-week-extremes .mls-week-extreme');
+        await expect(ext).toHaveCount(1);
+        await expect(ext).toContainText('Biggest win');
         await expectClean(page, state);
     });
 

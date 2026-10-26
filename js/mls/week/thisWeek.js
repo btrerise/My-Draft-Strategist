@@ -422,6 +422,22 @@ function tileHTML(r, started) {
     </li>`;
 }
 
+// The week's biggest win and worst loss among head-to-head matchups already settled (every one once the week is final):
+// a matchup still in play could still flip. Each opens that league's lineup, like its tile. '' when there's neither.
+export function weekExtremes(callable, final) {
+    const settled = callable.filter(r => final || r.res.status !== 'swing');
+    const pick = (result, better) => settled.filter(r => r.res.result === result).reduce((a, r) => (!a || better(r.res.margin, a.res.margin) ? r : a), null);
+    return { win: pick('W', (a, b) => a > b), loss: pick('L', (a, b) => a < b) };
+}
+function extremesHTML(callable, final) {
+    const { win, loss } = weekExtremes(callable, final);
+    const item = (r, label, tone) => `<button type="button" class="btn-bare mls-week-extreme is-${tone}" data-action="openLeagueLineup" data-league-id="${escapeHtml(r.league.leagueId)}" aria-label="${label}: ${leagueName(r.league)}, ${signed(r.res.margin)}. Open its lineup">
+        <span class="mls-week-extreme-label">${label}</span><span class="mls-week-name">${leagueName(r.league)}</span><span class="mls-week-tile-margin${r.res.margin < 0 ? ' is-behind' : ''}">${signed(r.res.margin)}</span>
+    </button>`;
+    const items = [win && item(win, 'Biggest win', 'win'), loss && item(loss, 'Worst loss', 'loss')].filter(Boolean);
+    return items.length ? `<div class="mls-week-extremes">${items.join('')}</div>` : '';
+}
+
 function swingHTML(r) {
     const l = r.league, res = r.res;
     const chance = view.chances.get(l.leagueId);
@@ -502,6 +518,9 @@ function renderScoreboard(m) {
         // What the groups mean (keeper with redraft, Median only where it's played) is in the header's info tip
         // (owner, round 11: four lines of helper text on a phone before the first tile).
         if (!anyPaid && !paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Edit, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
+        // Biggest win and worst loss (owner, S22 round 4): under the record, where the week's headline is, rather than
+        // below the tiles (19 of them run about 1,700px on a phone). Among matchups already settled (all, once final).
+        parts.push(extremesHTML(callable, final));
         const swings = callable.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) }))
             .sort(swingOrder);
         if (swings.length) {
@@ -615,7 +634,8 @@ export async function exportScoreboard() {
             }
         });
         const link = document.createElement('a');
-        link.download = 'My_Recap_Lineup_Strategist.png'; // like My_Trade_Lineup_Strategist.png
+        // The week and the app's full name (owner, round 4). The other exports' names differ; a follow-up in docs/TESTING.md.
+        link.download = `Week_${data.week}_Recap_My_Lineup_Strategist.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
     } catch (err) {
@@ -778,7 +798,7 @@ function recapHTML(m) {
     if (rc.deadWeight.length) extra.push(extraItem('Dead weight', '', rc.deadWeight.map(r => playerItem(r, `on ${r.own} benches, 0.0`))));
     if (rc.stillOpen.length) extra.push(extraItem('Still open', 'Their games aren\'t final, so they could land on either list.', rc.stillOpen.map(r => playerItem(r, leaguesText(r.own)))));
     if (rc.worstBenchings.length) {
-        extra.push(extraItem('Worst benchings', '', rc.worstBenchings.map(b => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} on your bench in ${escapeHtml(b.league.name)}, over ${escapeHtml(b.starter.name)}${b.starter.slot ? ` (${escapeHtml(slotLabel(b.starter.slot))})` : ''} ${fmt(b.starter.points)} (${signed(-b.gap)})`)));
+        extra.push(extraItem('Worst benchings', '', rc.worstBenchings.map(b => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} on your bench in ${escapeHtml(b.league.name)}, over ${escapeHtml(b.starter.name)} <span class="mls-week-pos">${escapeHtml(b.starter.pos)}</span>${b.starter.slot && b.starter.slot !== b.starter.pos ? ` in ${escapeHtml(slotLabel(b.starter.slot))}` : ''} ${fmt(b.starter.points)} (${signed(-b.gap)})`)));
     }
     if (rc.unresolved.length) {
         const big = rc.unresolved.filter(u => u.boomLevel);

@@ -2522,3 +2522,15 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-share-detail { flex-shrink: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
 .mls-share-num { flex-shrink: 0; min-width: 4.5rem; text-align: right; white-space: nowrap; }
 .mls-share-foot { margin-top: 0.8rem; font-size: 0.7rem; color: var(--text-muted); }
+
+/* Biggest win / worst loss under the record (S22, round 4): two compact rows, side by side on wider screens, each
+   opening its league's lineup. The colored edge matches the tiles'. */
+.mls-week-extremes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.4rem 0.6rem; margin: 0.5rem 0 0.2rem; }
+.mls-week-extreme { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; padding: 0.35rem 0.55rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.mls-week-extreme:hover { background: rgba(255, 255, 255, 0.04); }
+.mls-week-extreme:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+.mls-week-extreme.is-win { border-left-color: #10b981; }
+.mls-week-extreme.is-loss { border-left-color: #ef4444; }
+.mls-week-extreme-label { flex-shrink: 0; font-size: 0.72rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-muted); }
+.mls-week-extreme .mls-week-name { flex: 1 1 auto; min-width: 0; font-size: 0.85rem; }
+.mls-week-extreme .mls-week-tile-margin { flex-shrink: 0; font-size: 0.85rem; }

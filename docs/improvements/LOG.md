@@ -6397,3 +6397,38 @@ Checked against the owner's real week-7 data (Sleeper's API, every game counted 
 **Checks (round 3).** check-precache OK; 444 unit tests pass; Playwright 529 passed, 5 skipped, only `visual.spec.mjs`
 stopping on the environment message. Screenshots vs. main: the same six as rounds 1 and 2, the other 36 identical. Still
 to take from CI.
+
+**Found while writing round 4:** round 3's Guide and CHANGELOG edits never applied (the edit script ran inside the
+background check command, failed on a sentence it expected in another order, and the command still exited 0). That's
+why the Guide PNGs' size didn't change in round 3. Applied in round 4, in the foreground.
+
+### S22, round 4: the file name, Biggest win / Worst loss on the Scoreboard, and a user-hat review
+
+1. **File name** (owner: combine both choices): `Week_7_Recap_My_Lineup_Strategist.png`. The other exports and the
+   backups each name their files differently; a cleanup item is under "Open follow-ups" in docs/TESTING.md ("One naming
+   pattern for exported files").
+2. **Biggest win and Worst loss on the Scoreboard** (owner suggested below the tiles, above MVPs & LVPs, open to my
+   opinion). I put them **under the record and splits, above Still in play**: with 19 leagues the tiles run about
+   1,700px on a phone, so below them is a long way down, and once the week is final the tiles go back to league order,
+   so the extremes are hard to spot anywhere else. Two compact rows (side by side from about 500px), a green or red edge
+   like the tiles, the league's name whole and the margin; each opens that league's lineup. Among matchups already
+   settled (decided or done; every one once the week is final), since a loss still in play could flip (`weekExtremes`,
+   `extremesHTML` in week/thisWeek.js). They stay out of the image (round 3: no league names there).
+3. **User-hat review** with the owner's 21 real leagues (Sunday night of week 7, MNF to come; the app served locally,
+   Sleeper and ESPN live, phone and desktop). What reads well: the record and splits at a glance; Biggest win (How I Met
+   Your Punter +115.6) and Worst loss right under them; Still in play naming who's left for MNF; Still open (Tanner
+   McKee QB in 8 leagues, CeeDee Lamb in 6) as the "who do I need tonight" list; the image (record, splits, three MVPs
+   and LVPs) is short and readable. Fixed at once: worst benchings printed "over Nico Collins (WR) 2.6", where "(WR)" was
+   the slot but read as his position; now "over Nico Collins WR 2.6", and the slot only for a flex ("over Malik Nabers WR
+   in FLEX 14.6"). Put to the owner (see the summary): LVPs counted 114 (every bench player under his Bust line whose
+   game is final); MVPs' Boomed column ("6 of 6" for Raridon, started 33%) reads against the ranking by started booms;
+   the five-line intro on phones; the image's split pills lose their outlines (html2canvas); a Best Ball league's
+   Sleeper score during the week is its set lineup's, so Worst loss read Legacy Best Ball −73.8 though Raridon's 17.6
+   will count there (the scoreboard's math, S21).
+
+**Tests.** Spec: the two rows (settled only: a loss still in play isn't the Worst loss; under the splits, above the
+tiles; a tap opens the league's lineup), the file name, the benching's wording.
+
+**Checks (round 4).** check-precache OK; 444 unit tests pass; Playwright 533 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six, the Guide PNGs now taller with rounds 3 and 4's
+lines (desktop 1280×8053, phone 390×18169); the other 36 identical. Still to take from CI.
