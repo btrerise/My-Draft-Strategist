@@ -57,6 +57,8 @@ const TOOLTIP = [
     '<strong>Median:</strong> your record against the league median, in the leagues that play one.',
     '<strong>Still in play:</strong> the side that\'s behind can still turn it around. Your chance to win comes from the Matchup Simulator (Lineup tab); none for Best Ball, where the bench can still count.',
     '<strong>Effectively decided:</strong> the side that\'s behind has nobody left, or too little.',
+    // S22 round 6: a Best Ball tile can differ from the Sleeper app during the week (round 5 scores the lineup it would pick).
+    '<strong>Best Ball:</strong> Sleeper sets the lineup after the games, so until then both scores here are the lineup Best Ball would pick from the points so far, which can differ from the Sleeper app.',
     '<strong>Provisional</strong> until the week\'s last game is final. Tap a league to open its lineup; tap Refresh for the latest.',
 ].join('<br><br>');
 

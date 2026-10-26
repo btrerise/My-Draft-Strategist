@@ -311,6 +311,8 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(tile.locator('.mls-week-tile-pts')).toHaveText(['137.4', '95.2']);
         await expect(tile.locator('.mls-week-tile-margin')).toHaveText('+42.2');
         await expect(tile).toContainText('Best Ball');
+        // The Scoreboard's (i) says why a Best Ball score can differ from the Sleeper app (round 6).
+        await expect(page.locator('#thisWeekCard .mls-week-head .tooltip-text')).toContainText('the lineup Best Ball would pick from the points so far');
         // St. Brown counts in Best Ball's lineup, so he's an MVP there (started in 1 of 2), not a bench boom.
         await openRecap(page);
         const asb = rowsOf(page, 'mvp').filter({ hasText: 'Amon-Ra St. Brown' });

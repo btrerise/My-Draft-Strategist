@@ -6463,3 +6463,24 @@ Dynasty (−7.1 in Sleeper's numbers, still in play) and LRD Cucks read as wins.
 **Checks (round 5).** check-precache OK; 444 unit tests pass; Playwright 535 passed, 5 skipped, only `visual.spec.mjs`
 stopping on the environment message. Screenshots vs. main: the same six, the Guide PNGs taller again (desktop 1280×8076,
 phone 390×18284); the other 36 identical. Still to take from CI.
+
+### S22, round 6: a second user-hat pass (the owner's 21 leagues, Monday early hours of week 7, MNF to come)
+
+Walked through it as a user on phone and desktop: the Dashboard line, the Scoreboard top, Still in play, the tiles, MVPs &
+LVPs folded and open, its (i), the lines under the tables, Export Recap and its image, a Best Ball league's Lineup strip
+(opened from its tile), and MVP / LVP Lines in Advanced Settings. No console errors from the app.
+
+Fixed at once: **the Scoreboard's (i) didn't say why a Best Ball score can differ from the Sleeper app** (round 5 scores
+the lineup Best Ball would pick: Legacy Best Ball reads 116.2 here, 80.1 in Sleeper). A "Best Ball:" line in the header's
+tip now says so; the spec checks it.
+
+Checked and fine: the Lineup strip uses the re-scored Best Ball numbers (116.2–184.4, −68.2, "Effectively decided"), the
+same as the tile; the (i) beside MVPs closes on a second tap or a tap elsewhere (a capture mid-fade looked as if it
+hadn't); folds, rows and Started on phones as designed.
+
+Put to the owner (see the summary): the LVP table has no Busted count, so its order can look wrong (Sam LaPorta, busted
+in all 4 starts, sits above DK Metcalf, started 7, because Metcalf's 7.6 in four leagues is over the 7.5 line); the
+headings and the image read "MVPS" / "LVPS" (the subheadings' uppercase); worst benchings run three lines each on a phone.
+
+**Checks (round 6).** check-precache OK; 444 unit tests; Playwright: mls-this-week, tooltips-onscreen and mls-mvp-lvp,
+56 passed (only a tooltip string changed, so no full run; screenshots unaffected, the tip is closed in them).
