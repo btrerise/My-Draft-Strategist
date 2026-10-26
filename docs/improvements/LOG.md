@@ -6432,3 +6432,34 @@ tiles; a tap opens the league's lineup), the file name, the benching's wording.
 **Checks (round 4).** check-precache OK; 444 unit tests pass; Playwright 533 passed, 5 skipped, only `visual.spec.mjs`
 stopping on the environment message. Screenshots vs. main: the same six, the Guide PNGs now taller with rounds 3 and 4's
 lines (desktop 1280×8053, phone 390×18169); the other 36 identical. Still to take from CI.
+
+### S22, round 5: the review's five points, all built (owner: "Do 1-5")
+
+1. **LVPs are players you started.** An LVP busted (under his Bust line, game final) in at least one league where you
+   started him (Best Ball: in the lineup it would pick). Bench busts aren't LVPs: bench zeros are dead weight. The
+   owner's week 7 went from 114 LVPs to 30.
+2. **Boomed counts booms where you started him**, the number MVPs rank by ("3 of 4" for Luther Burden III, started 75%),
+   in the table and the image. Partial booms still compare booms in any league (that's about scoring, not lineups).
+3. **The intro moved into an (i) beside the MVPs heading** (`.mls-recap-info`), in short labelled lines: the leagues
+   counted, Own and Started (and Best Ball), MVPs / Boomed / LVPs, the Boom / Bust lines. The Best Ball line under the
+   tables went into the tip too; "Sync again" stays.
+4. **Best Ball scores during the week** (S21's Scoreboard math, the owner agreed to it here). `leagueResult` scores each
+   side of a Best Ball matchup by `bestBallLineup` over the league's `starterSlots` (saved at sync since round 2), and
+   uses that lineup as its starters for who's live; the median and a guillotine league's place use the same scores.
+   Without the slot order, Sleeper's points as before. Owner's week 7: Legacy Best Ball went from 80.1–153.9 to
+   116.2–184.4 (both sides re-scored), and one Best Ball matchup turned into a win (record 4–16 → 5–15). The Simulator's
+   win chance still isn't shown for Best Ball (it plays one fixed lineup; the open follow-up in TESTING.md stands).
+5. **The image's split pills** draw each part's own border and rounding (html2canvas dropped the outline of one bordered
+   box with `overflow: hidden`); **Biggest win / Worst loss** keep a 760px reading width on desktop, like the tables.
+
+**Tests.** Unit (444): bench busts aren't LVPs. Spec: no LVPs in the base fixture (its two were bench zeros) with the
+empty line; Boomed as started booms; the tip's text, and at 375px and 1280px that it opens on the screen in normal case;
+a new test with Second Fixture League as Best Ball (Sleeper's `settings.best_ball`): its tile reads 137.4–95.2, +42.2,
+where Sleeper's own total was 130.4, and St. Brown's 24.0 on the bench is an MVP there (started 50%), not a bench boom.
+Also checked again with the owner's 21 leagues (Sunday night of week 7, live): the five changes as above; the only console
+errors were requests this container's proxy blocks (photos, fonts), none from the app. With Best Ball re-scored, BB Yang
+Dynasty (−7.1 in Sleeper's numbers, still in play) and LRD Cucks read as wins.
+
+**Checks (round 5).** check-precache OK; 444 unit tests pass; Playwright 535 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six, the Guide PNGs taller again (desktop 1280×8076,
+phone 390×18284); the other 36 identical. Still to take from CI.

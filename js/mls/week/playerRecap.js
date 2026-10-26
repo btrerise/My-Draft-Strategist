@@ -19,8 +19,9 @@
 //   was left (a TE on 17.6 can sit behind one on 0.0). With the league's slot order (saved at sync), "started" there is
 //   the lineup Best Ball would pick from the points so far (bestBallLineup), so started booms, started zeros and LVPs
 //   follow what will count. Without slot order (a league not synced since), Sleeper's starters as they stand.
-// - LVP: on a roster, below Bust in at least one league, and his game is final. Ranked by the leagues where he started
-//   and busted (what hurt), then ownership.
+// - LVP: below Bust in at least one league where you started him, and his game is final (round 5, owner: counting every
+//   bench player under his line made "114 LVPs"; bench zeros are dead weight). Ranked by those started busts (what
+//   hurt), then ownership.
 // - The extra lines: started zeros (a starter on 0.0 whose game is final; usually inactive, which the app can't verify),
 //   dead weight (widely owned, nothing scored, on the bench everywhere, and no injury designation: round 3), still open (game not final: could land on either
 //   list), boomed on your bench (round 2) and worst benchings (outside Best Ball, a benched player who boomed while the
@@ -185,7 +186,7 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
     const mvpIds = new Set([...mvps, ...benchBooms].map(r => r.id));
 
     const final = (r) => r.state === 'post';
-    const lvps = rows.filter(r => final(r) && r.busted > 0 && !mvpIds.has(r.id))
+    const lvps = rows.filter(r => final(r) && r.startedBusted > 0 && !mvpIds.has(r.id))
         .sort((a, b) => b.startedBusted - a.startedBusted || byOwn(a, b) || a.min - b.min);
 
     const startedZeros = rows.filter(r => final(r) && r.leagues.some(x => x.started && x.points === 0))

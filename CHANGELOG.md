@@ -98,9 +98,13 @@ What changed for users in each version of the two apps, in plain language. Newes
   dead weight on your benches, players whose games aren't final yet, and your worst benchings (outside Best Ball).
   Provisional until the week's last game is final. An MVP has to have boomed in a league where you started him, and
   Started shows the share of the leagues that own him where he started ("67% (4)"); a boom only on your bench gets its
-  own line. In Best Ball, Started is the lineup Best Ball would pick from the points so far, since Sleeper sets it after
+  own line. An LVP has to have busted in a league where you started him (bench zeros are dead weight), and Boomed counts
+  the leagues where you started him and he boomed. What the columns mean is in the (i) beside MVPs. In Best Ball, Started is the lineup Best Ball would pick from the points so far, since Sleeper sets it after
   the games. Injured players aren't counted as dead weight. The section and "Still in play" fold with a tap, and their
   arrows turn like the Dashboard's.
+- **Best Ball scores that count.** During the week Sleeper shows a Best Ball team's score as the lineup it was left
+  with, though the best lineup is what will count. The Scoreboard now scores both sides of a Best Ball matchup by the
+  lineup Best Ball would pick from the points so far (after the league's next sync).
 - **Biggest win and worst loss.** Under the Scoreboard's record, the week's biggest win and worst loss among the
   matchups already settled, each opening that league's lineup.
 - **Share your week.** Export Recap at the bottom of the Scoreboard saves one summary image for a group chat, however

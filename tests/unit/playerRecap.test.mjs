@@ -108,14 +108,15 @@ test('MVPs rank by booms where you started him, then ownership', () => {
     assert.deepEqual(r.mvps.map(x => x.startedBoomed), [2, 1, 1]);
 });
 
-test('LVPs: below Bust with a final game, ranked by started busts, then ownership', () => {
+test('LVPs: below Bust where you started him, game final, ranked by started busts, then ownership', () => {
     const r = recap([
         lg('a', { allen: 8, henry: 5, lamb: 4 }, ['allen', 'henry']),
         lg('b', { allen: 9, henry: 6, lamb: 3 }, ['allen']),
         lg('c', { lamb: 2, nacua: 6 }, ['nacua']),
     ]);
-    // Allen started and busted twice; Henry and Nacua once each (Henry owned twice); Lamb busted on the bench only.
-    assert.deepEqual(ids(r.lvps), ['allen', 'henry', 'nacua', 'lamb']);
+    // Allen started and busted twice; Henry and Nacua once each (Henry owned twice). Lamb busted on the bench only: not an
+    // LVP (round 5: bench busts made "114 LVPs").
+    assert.deepEqual(ids(r.lvps), ['allen', 'henry', 'nacua']);
     assert.equal(r.lvps[0].startedBusted, 2);
 });
 
