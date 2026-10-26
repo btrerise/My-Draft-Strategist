@@ -25,6 +25,7 @@ import { normalizeName } from '../../shared/names.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { withViewTransition } from '../../shared/ui/viewTransition.js';
+import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from '../rankings/season.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -154,7 +155,32 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
             const legacy = league[cfg.leagueLegacyDataKey];
             if (Array.isArray(legacy) && legacy.length > 0) return `legacy@${league[cfg.leagueLegacyUpdatedKey] || 0}:${legacy.length}`;
             return 'none';
-        }).join('|');
+        }).join('|') + seasonStamp(league, State.rankingSets.ros); // the lineup reads Season when there's no Weekly (S23)
+    }
+
+    // This season's rankings for one league (improvements S23): its In-Season set (dynasty and keeper
+    // leagues), else its ROS rankings as getLeagueRankings gives them. See rankings/season.js.
+    export function getLeagueSeasonRankings(league) {
+        return resolveSeasonRankings(league, State.rankingSets.ros, getLeagueRankings(league, 'ros'));
+    }
+
+    // The same for the active league, as the arrays the app reads: the In-Season set's data, else
+    // State.rosRankings (the active league's ROS rankings, which every ROS change keeps current). Looked
+    // up on each call rather than kept in State, so no ROS change can leave it stale.
+    export function activeSeasonRankings() {
+        const league = getActiveLeague();
+        const found = league ? resolveSeasonRankings(league, State.rankingSets.ros, null) : null;
+        return found ? found.data : State.rosRankings;
+    }
+
+    // Power Rankings' sources for the active league, with your own rankings: Start from this season's
+    // rankings, Ovr and the rooms from the dynasty (ROS) set unless "I'm competing" is on, and Future
+    // from the dynasty set. Each is State.rosRankings when there's no In-Season set, so nothing changes then.
+    export function activePowerRankings() {
+        const league = getActiveLeague();
+        const season = activeSeasonRankings();
+        const dynasty = State.rosRankings.length > 0 ? State.rosRankings : season;
+        return { start: season, rooms: roomsUseSeason(league, State.rankingSets.ros) ? season : dynasty, future: dynasty };
     }
 
     // `animate`: a switch you make yourself (the header's drop-down and arrows, a card's name, Switch on a
@@ -332,9 +358,62 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
         
         const titleEl = document.getElementById('activeLeagueReqTitle');
         if (titleEl) titleEl.innerText = `(${league.name})`;
+        renderLeagueStyle(league);
         setVal('sleeperUsername', league.username !== "Manual" ? league.username : "");
         renderManualAddLog(); // show only this league's session adds
     }
+
+    // League style, keeper leagues only (improvements S23, round 10): plays like dynasty (the default) or redraft.
+    function renderLeagueStyle(league) {
+        const wrap = document.getElementById('leagueStyleWrap');
+        if (!wrap) return;
+        const isKeeper = !!league && league.leagueType === 'keeper';
+        wrap.hidden = !isKeeper;
+        if (!isKeeper) return;
+        const sel = document.getElementById('leagueStyleSelect');
+        if (sel) sel.value = league.keeperStyle === 'redraft' ? 'redraft' : 'dynasty';
+        const note = document.getElementById('leagueStyleKeepers');
+        if (note) note.textContent = league.maxKeepers
+            ? `Sleeper: each team keeps up to ${league.maxKeepers} player${league.maxKeepers === 1 ? '' : 's'}.${league.maxKeepers <= 3 ? ' Leagues that keep this few often play more like redraft.' : ''}`
+            : '';
+    }
+
+    export const setLeagueStyle = function(value) {
+        const league = getActiveLeague();
+        if (!league || league.leagueType !== 'keeper') return;
+        // A league whose only rankings are its In-Season set (made with the FantasyCalc button, say) would have none
+        // as redraft, where there's no In-Season slot (S23, round 12). Then the set moves into the ROS slot, marked
+        // so that switching back to dynasty moves it back.
+        const sets = State.rankingSets.ros;
+        const legacy = Array.isArray(league.rosRankings) && league.rosRankings.length > 0;
+        let moved = null;
+        if (value === 'redraft') {
+            const season = league.keeperStyle !== 'redraft' ? seasonSetFor(league, sets) : null;
+            league.keeperStyle = 'redraft';
+            if (season && !league.rosRankingSetId && !legacy) {
+                league.rosRankingSetId = season.id;
+                league.seasonRankingSetId = null;
+                league.seasonMovedToRos = true;
+                moved = `Its In-Season set, "${season.name}", is now its ROS set.`;
+            }
+        } else {
+            delete league.keeperStyle;
+            if (league.seasonMovedToRos && league.rosRankingSetId) {
+                const set = sets.find(s => s.id === league.rosRankingSetId);
+                league.seasonRankingSetId = league.rosRankingSetId;
+                league.rosRankingSetId = null;
+                if (set) moved = `"${set.name}" is its In-Season set again.`;
+            }
+            delete league.seasonMovedToRos;
+        }
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        hydrateRankingsForLeague(league);
+        // The market type, the ROS card's two pickers and Power Rankings all read the league's kind.
+        applyLeagueDefaultsToMarketSettings(league);
+        updateRankingsMetaDisplay();
+        if (typeof loadRosterTab === 'function') loadRosterTab();
+        showToast(`${league.name || 'This league'} now plays like ${value === 'redraft' ? 'redraft' : 'dynasty'} here.${moved ? `\n\n${moved}` : ''}`);
+    };
 
     export const saveRequirements = function(btn) {
         let league = getActiveLeague();
@@ -586,6 +665,14 @@ import { withViewTransition } from '../../shared/ui/viewTransition.js';
                 weeklyRankingsUpdatedAt: existingLeague ? existingLeague.weeklyRankingsUpdatedAt : null,
                 rosRankingSetId: existingLeague ? existingLeague.rosRankingSetId : null,
                 weeklyRankingSetId: existingLeague ? existingLeague.weeklyRankingSetId : null,
+                // Dynasty and keeper leagues' In-Season set and "I'm competing" (improvements S23).
+                seasonRankingSetId: existingLeague ? (existingLeague.seasonRankingSetId || null) : null,
+                powerCompeting: existingLeague ? !!existingLeague.powerCompeting : false,
+                // Keeper leagues (S23, round 10): how many players Sleeper lets each team keep (its max_keepers is 1 in
+                // every other league type, so only kept here), and your League style, carried over like the sets.
+                maxKeepers: leagueType === 'keeper' ? (Number(leagueData.settings?.max_keepers) || null) : null,
+                keeperStyle: existingLeague && existingLeague.keeperStyle === 'redraft' ? 'redraft' : undefined,
+                seasonMovedToRos: existingLeague && existingLeague.seasonMovedToRos ? true : undefined,
                 // Yours, like the rankings assignment: whether you pay for this league (Edit mode's "$ Paid", S21).
                 paid: existingLeague ? !!existingLeague.paid : false,
                 // Set only here, i.e. only once every Sleeper fetch above has succeeded. A league

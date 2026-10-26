@@ -10,6 +10,7 @@ import { rankingIndex } from '../helpers.js';
 import { computePositionalPower, POWER_DEFAULT_REQS, POWER_POSITIONS } from '../power/shared.js';
 import { futureRankText, futureMoreHTML, powerPicksNote, resolvePowerFuture, whenPowerAgesLoaded } from '../power/futureValue.js';
 import { getPowerLeagueKind } from '../power/directionLabels.js';
+import { activePowerRankings } from '../main.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
@@ -106,7 +107,18 @@ export async function buildTradeImpactHTML(league, getNames, giveNames, { getRes
 
 // --- Sleeper leagues: Power Rankings before and after ---
 async function powerSection(league, title, give, get, notes, cards, tradedPicks) {
-    let rankings = State.rosRankings, via = 'by your ROS rankings';
+    // A dynasty league's In-Season set (improvements S23) scores Start, and the rooms with "I'm competing", as on the
+    // Roster tab's table; Future stays on the dynasty set. All three are State.rosRankings without an In-Season set.
+    // A league whose only rankings are its In-Season set (round 12) is scored by it, as the Roster tab's table is.
+    const powered = activePowerRankings();
+    const own = powered.rooms.length > 0 ? powered : null;
+    let rankings = own ? own.rooms : State.rosRankings, via = 'by your ROS rankings';
+    if (own && State.rosRankings.length === 0) via = 'by your In-Season rankings (no dynasty rankings loaded)';
+    const powerOpts = own ? { startRankings: own.start, futureRankings: own.future } : {};
+    // Which set gave what (round 5): the trade's values ("Your rankings") are always the dynasty set's, until S24.
+    if (own && own.start !== own.future) via = own.rooms === own.start
+        ? 'Start, Ovr and position rooms by In-Season; value and Future by dynasty'
+        : 'Start by In-Season; value, Ovr, position rooms and Future by dynasty';
     if (rankings.length === 0) {
         if (State.marketRankings.length === 0) {
             return oneLine(title, 'Load your ROS rankings (Roster tab) or Market Consensus data (Trade Finder below) to see how this trade changes your Power Rankings.');
@@ -134,7 +146,7 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
 
     const reqs = Object.assign({}, POWER_DEFAULT_REQS, league.reqs || {});
     const impact = powerTradeImpact(league, { give: give.map(p => p.cleanName), get, partner, reqs, picks: tradedPicks },
-        (l) => computePositionalPower(l, rankings, { future: futureInfo.future }));
+        (l) => computePositionalPower(l, rankings, { future: futureInfo.future, ...powerOpts }));
     if (!impact) return oneLine(title, 'Not enough roster data to score this league yet. Try re-syncing it.');
     const hasFuture = Number.isFinite(impact.you.before.futureRank) && Number.isFinite(impact.you.after.futureRank);
     const columns = hasFuture ? [...POWER_COLUMNS, FUTURE_COLUMN] : POWER_COLUMNS;
@@ -162,7 +174,8 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     // loaded), and the lineup change, in one sentence (round 4).
     // No headline while a name matches no player, or while the market (when it's what's used) lacks a piece: the
     // banner above has no verdict then either (round 11).
-    const valueKey = rankings === State.rosRankings ? 'userValue' : 'marketValue';
+    // The trade's values ("Your rankings") come from the dynasty set; without one, the market's (S23, round 12).
+    const valueKey = own && State.rosRankings.length > 0 ? 'userValue' : 'marketValue';
     const settled = cards.getResults && cards.giveResults && !unknownNames(cards.getResults, cards.giveResults).length
         && (valueKey === 'userValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
     const value = settled ? tradeVerdictNumbers(cards.getResults, cards.giveResults, valueKey) : null;

@@ -7,8 +7,12 @@ import { powerTier } from './shared.js';
 // Contender / Bubble / Longshot, since "rebuild" means nothing when rosters reset each year.
 // leagueType is stored at sync (see the leagueObj in the Sleeper sync); leagues synced before
 // it existed fall back to reading formatBadge.
+// A keeper league plays like dynasty unless you set its League style to redraft (improvements S23, round 10:
+// league.keeperStyle, the Setup tab's Active League Requirements card). Every dynasty-only feature asks this, so
+// labels, Future, draft picks, the market type and In-Season rankings all follow the one setting.
 export function getPowerLeagueKind(league) {
     const t = league && league.leagueType;
+    if (t === 'keeper' && league.keeperStyle === 'redraft') return 'redraft';
     if (t) return (t === 'dynasty' || t === 'keeper') ? 'dynasty' : 'redraft';
     return /^(Dynasty|Keeper)\b/.test((league && league.formatBadge) || '') ? 'dynasty' : 'redraft';
 }
@@ -61,4 +65,37 @@ export function powerLabelAdvice(t) {
         'Bubble': "Your lineup is mid-pack. A starter upgrade or two could swing a playoff spot.",
         'Longshot': "Your starting lineup is in the bottom third. Take swings on upside, on waivers and in trades."
     })[key] || '';
+}
+
+// --- "I'M COMPETING THIS YEAR": THE SUGGESTION (improvements S23, round 7; the owner's rule) ---
+// Starts from the team's own label (roster strength, as above) and lets the standings move it at most one step:
+//   Contender -> competing; with a losing record and points for in the bottom half -> retool
+//   Retool    -> retool (your call); winning record and points for in the top half -> competing;
+//                losing record and points for in the bottom half -> rebuilding
+//   Rebuild   -> rebuilding; winning record and points for in the top half -> retool
+// Points against never moves it; with a losing record and points against in the top third (the most against you)
+// it's named, as bad luck. Under MIN_GAMES games, or with no record (league.record from the sync, improvements S21:
+// missing before S21, null before anyone has played and in guillotine leagues), it's the label alone.
+// Pure: label 'Contender' | 'Retool' | 'Rebuild'; record league.record; starterRank your Start rank.
+export const COMPETING_MIN_GAMES = 4;
+export function competingSuggestion(label, record, { starterRank = null } = {}) {
+    const base = { Contender: 'competing', Retool: 'retool', Rebuild: 'rebuilding' }[label];
+    if (!base) return null;
+    const games = record ? (record.wins || 0) + (record.losses || 0) + (record.ties || 0) : 0;
+    if (!record || games < COMPETING_MIN_GAMES || !(record.of > 0)) {
+        return { verdict: base, moved: false, fromRoster: true, reason: '' };
+    }
+    const pct = ((record.wins || 0) + (record.ties || 0) / 2) / games;
+    const winning = pct > 0.5, losing = pct < 0.5;
+    const pfTop = record.pfRank <= record.of / 2, pfBottom = record.pfRank > (record.of + 1) / 2;
+    let verdict = base, reason = '';
+    if (base === 'competing' && losing && pfBottom) { verdict = 'retool'; reason = "Your roster says contender; your results don't yet."; }
+    else if (base === 'retool' && winning && pfTop) { verdict = 'competing'; reason = "You're in the race."; }
+    else if (base === 'retool' && losing && pfBottom) { verdict = 'rebuilding'; reason = 'Your results say rebuild.'; }
+    else if (base === 'rebuilding' && winning && pfTop) { verdict = 'retool'; reason = 'Your results beat your roster.'; }
+    // Numbers only; the card words them (rosterCard.js, with allLeagues.js's ordinal).
+    const unlucky = losing && record.paRank <= Math.ceil(record.of / 3);
+    return { verdict, moved: verdict !== base, fromRoster: false, reason,
+        record: { wins: record.wins || 0, losses: record.losses || 0, ties: record.ties || 0 },
+        pfRank: record.pfRank, paRank: unlucky ? record.paRank : null, starterRank };
 }

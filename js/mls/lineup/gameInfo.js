@@ -12,7 +12,7 @@ import { getByeWeek } from '../../shared/data/byes.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { refreshGameTimes, State } from '../state.js';
 import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../helpers.js';
-import { getLeagueRankings, isAutoLockOverridden, renderLineupUI, optimizeLineup, reoptimizeProjectionlessLeagues } from '../main.js';
+import { getLeagueRankings, getLeagueSeasonRankings, isAutoLockOverridden, renderLineupUI, optimizeLineup, reoptimizeProjectionlessLeagues } from '../main.js';
 import { normalizeName } from '../../shared/names.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
@@ -536,10 +536,10 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         // still lets him play ("Q"), or his absence from the rankings it used ("not in Wk5"; Weekly, else ROS, as the
         // optimizer picks). A star benched with no reason given made you check everything else (round 8).
         const weekly = getLeagueRankings(league, 'weekly');
-        const used = weekly || getLeagueRankings(league, 'ros');
+        const used = weekly || getLeagueSeasonRankings(league); // no Weekly: this season's (S23)
         const rankedNames = used ? new Set(used.data.map(r => r.cleanName)) : null;
         // A short name you gave the set ("Wk5"); a long one (the default "Weekly Rankings – 9/15/2026") would crowd the line.
-        const setLabel = used && used.setName && used.setName.length <= 16 ? used.setName : `your ${weekly ? 'Weekly' : 'ROS'} rankings`;
+        const setLabel = used && used.setName && used.setName.length <= 16 ? used.setName : `your ${weekly ? 'Weekly' : used && used.fromSeason ? 'In-Season' : 'ROS'} rankings`;
         const why = (id) => {
             const p = playerOf(id);
             if (!p) return '';

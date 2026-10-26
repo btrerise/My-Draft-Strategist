@@ -3,17 +3,19 @@
 // (goToPowerRankings, runPositionalStrength, renderPowerRankingsTable), which sat after ACTIVE
 // ROSTER: POWER RANKINGS SNAPSHOT.
 import { escapeHtml } from '../../shared/html.js';
-import { slotDisplayName, tierTag } from '../constants.js';
+import { RANKING_TYPE_CONFIG, slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { ordinal } from './allLeagues.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { POWER_POSITIONS, computePositionalPower, POWER_STARTER_CARRY_CAP, powerTier } from './shared.js';
 import { ensurePowerAgeIndex, futureRankText, futureMoreHTML, powerPicksNote, resolvePowerFuture } from './futureValue.js';
-import { getPowerLeagueKind, assignPowerLabels, powerLabelAdvice } from './directionLabels.js';
+import { getPowerLeagueKind, assignPowerLabels, competingSuggestion, powerLabelAdvice } from './directionLabels.js';
 import { renderRosterPowerStrip, scrollToPowerRankings } from './snapshot.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
 import { showTab } from '../nav.js';
+import { activePowerRankings } from '../main.js';
 
 // --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
 // Generated automatically (no Calculate button) every time the Roster tab renders -- see the
@@ -29,17 +31,148 @@ export const updatePowerSetting = function(key, value) {
 // Which rankings the card scores with: the person's pick, falling back to the other source
 // (with a note saying so) rather than showing nothing, the same way the All My Leagues search
 // falls back to Market Consensus for a league without rankings of its own.
+// With your own rankings, a dynasty league's In-Season set (improvements S23) gives Start, and Ovr and the
+// rooms when "I'm competing" is on; `rankings` is then the rooms' list, `start` and `future` the other two
+// (all three the same list without an In-Season set). Market Consensus scores every column alike.
 function resolvePowerRankingsSource() {
     const wantMarket = State.powerSettings.source === 'market';
-    const mine = State.rosRankings, market = State.marketRankings;
+    const own = activePowerRankings();
+    const mine = own.rooms, market = State.marketRankings;
+    const fromMine = (note) => ({ rankings: mine, start: own.start, future: own.future, source: 'custom', note });
     if (wantMarket) {
         if (market.length > 0) return { rankings: market, source: 'market', note: '' };
-        if (mine.length > 0) return { rankings: mine, source: 'custom', note: 'No Market Consensus data loaded yet, so this uses your own rankings instead.' };
+        if (mine.length > 0) return fromMine('No Market Consensus data loaded yet, so this uses your own rankings instead.');
     } else {
-        if (mine.length > 0) return { rankings: mine, source: 'custom', note: '' };
+        if (mine.length > 0) return fromMine('');
         if (market.length > 0) return { rankings: market, source: 'market', note: 'No rankings of your own loaded for this league, so this uses Market Consensus instead. Upload rankings above for a board built for this league.' };
     }
     return null;
+}
+
+// Keeper leagues (S23, round 10): say how the app treats this one and where to change it (Setup tab, League style),
+// since labels, Future, picks and In-Season rankings all depend on it.
+function renderKeeperStyleNote(league) {
+    const el = document.getElementById('keeperStyleNote');
+    if (!el) return;
+    if (!league || league.leagueType !== 'keeper') { el.hidden = true; el.innerHTML = ''; return; }
+    const style = league.keeperStyle === 'redraft' ? 'redraft' : 'dynasty';
+    const keeps = league.maxKeepers ? ` (each team keeps up to ${league.maxKeepers})` : '';
+    el.innerHTML = `<span>Keeper league${keeps}, treated as <strong>${style}</strong> here.</span> `
+        + `<button type="button" class="mls-btn-sm btn-link-inline" data-action="goToLeagueStyle">Change League style</button>`;
+    el.hidden = false;
+}
+
+// The note's button: the Setup tab's League style drop-down, scrolled to and focused.
+export const goToLeagueStyle = function() {
+    showTab('setup').then(() => setTimeout(() => {
+        const wrap = document.getElementById('leagueStyleWrap');
+        if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('leagueStyleSelect')?.focus({ preventScroll: true });
+    }, 60));
+};
+
+// "I'm competing this year" (improvements S23): per league, saved on the league object.
+export const setPowerCompeting = function(checked) {
+    const league = getActiveLeague();
+    if (!league) return;
+    league.powerCompeting = !!checked;
+    localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+    refreshPowerRankings();
+};
+
+// The switch shows only in a dynasty or keeper league with an In-Season set, and only with your own rankings
+// as the source (Market Consensus scores every column alike).
+function renderCompetingSwitch(league, src) {
+    const wrap = document.getElementById('powerCompetingWrap');
+    if (!wrap) return;
+    const show = !!league && !!seasonSetFor(league, State.rankingSets.ros) && !!src && src.source === 'custom';
+    wrap.style.display = show ? '' : 'none'; // .toggle-row sets display, which would beat [hidden]
+    const box = document.getElementById('powerCompeting');
+    if (box) box.checked = !!(league && league.powerCompeting);
+}
+
+// The suggestion (S23, round 7; the owner's rule in directionLabels.js): your label, moved at most one step by your
+// record and points for from the last sync (league.record, improvements S21). Only with the switch (a dynasty or keeper
+// league with an In-Season set, your own rankings as the source). Since round 13 it's written in the Your Team card,
+// beside the label and advice it weighs against; the switch keeps a pointer, and the power strip at the top of the tab
+// a tag when the record moves it, so "Rebuild" next to a 6-1 record isn't the whole story at a glance.
+const COMPETING_WORDS = { competing: 'Competing', retool: 'Retool (your call)', rebuilding: 'Rebuilding' };
+const COMPETING_SHORT = { competing: 'Competing', retool: 'Retool', rebuilding: 'Rebuilding' };
+function suggestionFor(league, you, src) {
+    if (!league || !you || !src || src.source !== 'custom' || !seasonSetFor(league, State.rankingSets.ros)) return null;
+    return competingSuggestion(you.label, league.record, { starterRank: you.starterRank });
+}
+
+// "Suggested: Retool (your call) · 6–1, 1st in points for, 2nd in Start. Your results beat your roster."
+function suggestionHTML(s, league) {
+    let text = `Suggested: <strong>${COMPETING_WORDS[s.verdict]}</strong>`;
+    if (s.fromRoster) {
+        return text + (league.record === undefined
+            ? ' &middot; from your roster; sync this league to add your record.'
+            : ' &middot; from your roster (too early in the season for your record).');
+    }
+    const r = s.record;
+    let rec = `${r.wins}&ndash;${r.losses}${r.ties ? `&ndash;${r.ties}` : ''}`;
+    if (s.paRank) rec += ` with the ${s.paRank === 1 ? '' : `${ordinal(s.paRank)}-`}most points against`;
+    const facts = [rec, `${ordinal(s.pfRank)} in points for`];
+    if (Number.isFinite(s.starterRank)) facts.push(`${ordinal(s.starterRank)} in Start`);
+    return text + ` &middot; ${facts.join(', ')}.${s.reason ? ` ${escapeHtml(s.reason)}` : ''}`;
+}
+
+// Under the switch: the verdict and where the reasons are.
+function renderCompetingPointer(s) {
+    const el = document.getElementById('powerCompetingSuggestion');
+    if (!el) return;
+    if (!s) { el.hidden = true; el.innerHTML = ''; return; }
+    el.innerHTML = `Suggested: <strong>${COMPETING_WORDS[s.verdict]}</strong> &middot; why, under Your Team below.`;
+    el.hidden = false;
+}
+
+// Where each column came from (S23, round 4: a one-line key right under the table, in place of a long note), or
+// null without an In-Season set. "Start and labels by In-Season (Redraft ROS) · Ovr, position rooms and Future by dynasty
+// (Dynasty SF)". futureLabel: resolvePowerFuture's ('age' reads the dynasty set; 'market' dynasty Market Consensus).
+function seasonSourceKey(league, src, futureLabel) {
+    if (!league || !src || src.source !== 'custom') return null;
+    const season = seasonSetFor(league, State.rankingSets.ros);
+    if (!season) return null;
+    const dynId = league.rosRankingSetId;
+    const dyn = dynId ? State.rankingSets.ros.find(s => s.id === dynId) : null;
+    const named = (s) => s && s.name ? ` (<strong>${escapeHtml(s.name)}</strong>)` : '';
+    const inSeason = `<span class="mls-nowrap">In-Season</span>${named(season)}`;
+    const part = (html) => `<span class="mls-power-key-part">${html}</span>`;
+    const sep = ' <span class="mls-rank-sep">&middot;</span> ';
+    if (State.rosRankings.length === 0) return part(`Every column by ${inSeason}: no dynasty rankings are loaded`);
+    const competing = roomsUseSeason(league, State.rankingSets.ros);
+    const future = futureLabel === 'age' ? 'Future' : null;
+    const parts = [];
+    if (competing) {
+        parts.push(part(`Start, labels, Ovr and position rooms by ${inSeason}`));
+        if (future) parts.push(part(`Future by dynasty${named(dyn)}`));
+        else if (futureLabel === 'market') parts.push(part('Future by dynasty Market Consensus'));
+    } else {
+        parts.push(part(`Start and labels by ${inSeason}`));
+        parts.push(part(`Ovr, position rooms${future ? ' and Future' : ''} by dynasty${named(dyn)}`));
+        if (futureLabel === 'market') parts.push(part('Future by dynasty Market Consensus'));
+    }
+    return parts.join(sep);
+}
+
+// The power strip's tag (S23, round 4): which columns In-Season gives, or '' without it.
+function seasonStripTag(league, src) {
+    if (!league || !src || src.source !== 'custom' || !seasonSetFor(league, State.rankingSets.ros)) return '';
+    return roomsUseSeason(league, State.rankingSets.ros) ? 'by In-Season, Future by dynasty' : 'Start by In-Season';
+}
+
+// The two-week hint (S23): a Contender whose dynasty rankings are 14+ days old (when the ROS freshness
+// label turns amber), with "I'm competing" off.
+function competingHint(league, src, you) {
+    if (!league || !src || src.source !== 'custom' || league.powerCompeting) return null;
+    if (!seasonSetFor(league, State.rankingSets.ros) || !you || you.label !== 'Contender') return null;
+    const updated = Number(State.rosRankingsUpdatedAt);
+    if (!(updated > 0) || State.rosRankings.length === 0) return null;
+    const days = Math.floor((Date.now() - updated) / 86400000);
+    if (days < RANKING_TYPE_CONFIG.ros.staleAfterDays) return null;
+    return `Your dynasty rankings are ${days} days old. If you're competing, turn on <strong>I'm competing this year</strong>.`;
 }
 
 export function refreshPowerRankings() {
@@ -55,6 +188,7 @@ export function refreshPowerRankings() {
     };
 
     const league = getActiveLeague();
+    renderKeeperStyleNote(league);
     if (!league) {
         showMessage('Select or sync a league on the Dashboard to see Positional Power Rankings.');
         return;
@@ -64,6 +198,7 @@ export function refreshPowerRankings() {
         return;
     }
     const src = resolvePowerRankingsSource();
+    renderCompetingSwitch(league, src);
     if (!src) {
         showMessage('Upload your rankings above (or Auto-Fetch them) to see how every team in this league stacks up.');
         return;
@@ -76,15 +211,19 @@ export function refreshPowerRankings() {
         ensurePowerAgeIndex();
         futureInfo = resolvePowerFuture();
     }
-    const teams = computePositionalPower(league, src.rankings, { future: futureInfo.future });
+    const teams = computePositionalPower(league, src.rankings, { future: futureInfo.future, startRankings: src.start, futureRankings: src.future });
     if (teams.length === 0) {
         showMessage('Not enough roster data to evaluate yet. Try re-syncing this league.');
         return;
     }
     assignPowerLabels(teams, kind);
     teams.forEach(t => { t.starterTier = powerTier(t.starterRank, teams.length); });
-    renderPowerRankingsTable(teams, { league, source: src, kind, futureLabel: futureInfo.label, picksLabel: futureInfo.picks });
-    renderRosterPowerStrip(teams, { source: src });
+    const suggestion = kind === 'dynasty' ? suggestionFor(league, teams.find(t => t.owner === 'You'), src) : null;
+    renderCompetingPointer(suggestion);
+    renderPowerRankingsTable(teams, { league, source: src, kind, futureLabel: futureInfo.label, picksLabel: futureInfo.picks, suggestion });
+    const stripTag = [seasonStripTag(league, src), suggestion && suggestion.moved ? `with your record: ${COMPETING_SHORT[suggestion.verdict]}` : '']
+        .filter(Boolean).join(' · ');
+    renderRosterPowerStrip(teams, { source: src, tag: stripTag });
 }
 
 // Scout tab's one-line "moved to the Roster tab" pointer (see #powerRankingsScoutPointer in
@@ -196,6 +335,7 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
             <div class="mls-power-summary-head">Your Team: ${labelChip(you)}</div>
             <div class="mls-power-summary-facts">${facts.join(' <span class="mls-rank-sep">&middot;</span> ')}</div>
             <div class="mls-power-summary-advice">${escapeHtml(powerLabelAdvice(you))}</div>
+            ${ctx.suggestion ? `<div class="mls-power-summary-suggestion">${suggestionHTML(ctx.suggestion, ctx.league)}</div>` : ''}
         </div>`;
     }
 
@@ -221,7 +361,7 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
             <tr class="${t.owner === 'You' ? 'mls-power-you' : ''}">
                 <td class="mls-power-manager"><span class="mls-power-owner">${escapeHtml(t.owner)}</span>${labelChip(t)}</td>
                 ${cell(t.starterRank, startTooltip(t), 'mls-power-strong-col')}
-                ${cell(t.overallRank, buildTooltip([...t.starters, ...t.bench].sort((a, b) => a.rank - b.rank), 'Top of the Roster', { limit: 8 }))}
+                ${cell(t.overallRank, buildTooltip((t.startSeparate ? POWER_POSITIONS.flatMap(pos => t.players[pos]) : [...t.starters, ...t.bench]).sort((a, b) => a.rank - b.rank), 'Top of the Roster', { limit: 8 }))}
                 ${cell(t.qbRank, buildTooltip(t.players.QB, 'QB Room'))}
                 ${cell(t.rbRank, buildTooltip(t.players.RB, 'RB Room', { rightEdge: true }))}
                 ${cell(t.wrRank, buildTooltip(t.players.WR, 'WR Room', { rightEdge: true }))}
@@ -231,12 +371,17 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
     });
 
     html += `</tbody></table></div>`;
+    // In a dynasty league with an In-Season set, which set gave each column, right under the table (S23).
+    const seasonKey = seasonSourceKey(ctx.league, ctx.source, ctx.futureLabel);
+    if (seasonKey) html += `<div class="mls-power-source-key">${seasonKey}</div>`;
 
     const notes = [];
     if (ctx.source && ctx.source.note) notes.push(escapeHtml(ctx.source.note));
+    const hint = competingHint(ctx.league, ctx.source, you);
+    if (hint) notes.push(hint);
     notes.push(`Ranked 1-${totalTeams} (1 = strongest). <strong>Start</strong> is each team's best legal lineup under this league's roster settings, with each position's starters measured against the league average and weighted by how many lineup spots it fills - so a stud at one position can't hide empty rooms at the others. <strong>Ovr</strong> is the whole roster, depth included.`);
     if (ctx.kind === 'dynasty') {
-        if (ctx.futureLabel === 'age') notes.push(`<strong>Future</strong> is each roster's future value: its value from these rankings, adjusted for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less.`);
+        if (ctx.futureLabel === 'age') notes.push(`<strong>Future</strong> is each roster's future value: its value from ${seasonKey && State.rosRankings.length > 0 ? 'your dynasty rankings' : 'these rankings'}, adjusted for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less.`);
         else if (ctx.futureLabel === 'market') notes.push(`<strong>Future</strong> is each roster's future value. Couldn't load player ages from Sleeper, so it uses dynasty Market Consensus values instead.`);
         // Draft picks in the Future column (improvements S19, round 3), when this league's picks were synced.
         if (ctx.futureLabel === 'age' || ctx.futureLabel === 'market') {

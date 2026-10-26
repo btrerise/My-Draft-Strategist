@@ -8,7 +8,7 @@ import { setRankingsCardExpanded, updateRankingsMetaDisplay } from './rankings/e
 import { RANKING_TYPE_CONFIG } from './constants.js';
 import { attachPlayerAutocomplete, attachScoutSuggestionHandler } from './players.js';
 import { populateEarlyGameDropdown } from './lineup/earlyGames.js';
-import { getLeagueRankings, loadActiveLeagueData, refreshLeagueDropdown, syncHeaderLeagueLabel } from './leagues/sync.js';
+import { activeSeasonRankings, getLeagueRankings, loadActiveLeagueData, refreshLeagueDropdown, syncHeaderLeagueLabel } from './leagues/sync.js';
 import { initManualAddForm } from './leagues/addPlayer.js';
 import { initTradePicker } from './trade/picker.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
@@ -63,7 +63,9 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         // highlight whichever card is next.
         const leagueCount = State.leagues.length;
         const hasLeagues = leagueCount > 0;
-        const hasRos = State.rosRankings.length > 0;
+        // An In-Season set counts (improvements S23, round 14): after the one-tap FantasyCalc fetch it can be a dynasty
+        // league's only rankings, and Power Rankings, the lineup and the Waiver Wire already use it.
+        const hasRos = State.rosRankings.length > 0 || activeSeasonRankings().length > 0;
         // Best Ball sets its own lineups, so there's no weekly lineup to rank for -- the rest of
         // the app skips it too (Optimize All, the injury audit). Count the step as done there.
         // Like the rankings themselves, this follows the active league.

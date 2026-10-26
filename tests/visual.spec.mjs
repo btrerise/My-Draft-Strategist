@@ -7,10 +7,14 @@ import {
     MDS_TABS, MLS_TABS, TSCORE_TABS,
 } from './helpers.mjs';
 import { renderEnvProblems, renderEnvError } from './render-env.mjs';
+import { chromiumLaunchOptions } from './browser.mjs';
 
 // The baselines only hold for the Playwright version and OS they were rendered with (render-env.mjs).
 // Elsewhere every screenshot would fail by a few pixels; fail once instead, naming what changed.
+// RENDER_ENV=any skips the check, for rendering main and a branch in the same mismatched container to compare
+// them with pxdiff (docs/TESTING.md, "When your machine can't reproduce the baselines"); never in CI.
 test.beforeAll(() => {
+    if (process.env.RENDER_ENV === 'any' && !process.env.CI) return;
     const problems = renderEnvProblems();
     if (problems.length) throw new Error(renderEnvError(problems));
 });
@@ -20,7 +24,7 @@ test.beforeAll(() => {
 // capture's own resize) came out a few pixels different depending on what the page did before. Some
 // MDS, MLS and T-Score PNGs varied from run to run (7C saw up to 56,654 px), within the tolerance.
 // Full raster gives the same pixels every time. Only this spec takes screenshots, so it's set here.
-test.use({ launchOptions: { args: ['--disable-partial-raster'] } });
+test.use({ launchOptions: { ...chromiumLaunchOptions(), args: ['--disable-partial-raster'] } });
 
 // Park the mouse before each shot. A click leaves the pointer over whatever the page re-renders under it
 // (seedMds's last "Taken" click lands on the next card's "Taken" button once the pool redraws), and

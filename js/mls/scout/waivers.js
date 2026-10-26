@@ -11,13 +11,14 @@ import { getByeBadgeHTML, getGameInfoHTML, getLineupProjection, hasKickedOff, ki
 import { getSoSBadgeHTML } from '../sos.js';
 import { runScout } from './engine.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
-import { optimizeLineup } from '../main.js';
+import { activeSeasonRankings, optimizeLineup } from '../main.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
+import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
     // One scanner, two lenses, picked with the "Compare Against" toggle:
@@ -87,7 +88,17 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
     export function applyWaiverScanSettingsToUI() {
         const s = State.waiverScanSettings;
         const set = (id, prop, val) => { const el = document.getElementById(id); if (el) el[prop] = val; };
-        set('waiverScanBasis', 'value', s.basis);
+        // Dynasty and keeper leagues (improvements S23): the ROS slot holds the dynasty set, so its choice reads
+        // "Dynasty Rank", and "In-Season Rank" shows when the league has an In-Season set. Elsewhere a saved
+        // 'season' reads the league's ROS rankings, so the drop-down shows ROS.
+        const league = getActiveLeague();
+        const seasonOpt = document.querySelector('#waiverScanBasis option[value="season"]');
+        const rosOpt = document.querySelector('#waiverScanBasis option[value="ros"]');
+        const seasonHere = !!seasonSetFor(league, State.rankingSets.ros);
+        if (seasonOpt) { seasonOpt.hidden = !seasonHere; seasonOpt.disabled = !seasonHere; }
+        if (rosOpt) rosOpt.textContent = hasSeasonSlot(league) ? 'Dynasty Rank' : 'ROS Rank';
+        document.getElementById('waiverScanBasisGroup')?.classList.toggle('mls-rank-by-wide', hasSeasonSlot(league));
+        set('waiverScanBasis', 'value', s.basis === 'season' && !seasonHere ? 'ros' : s.basis);
         set('waiverScanLimit', 'value', String(s.limit));
         set('waiverScanStartersOnly', 'checked', !!s.startersOnly);
         const pressed = (selector, isOn) => document.querySelectorAll(selector).forEach(b => {
@@ -177,23 +188,39 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
     // been uploaded. Returns null only when neither set exists. Shared by Auto-Find and Scan
     // Pasted List so the two can't drift apart on which rankings a card is built from -- the
     // pasted list used to ignore Rank By entirely and always show Weekly-led cards.
+    //
+    // In-Season Rank (improvements S23): this season's rankings (rankings/season.js), a dynasty league's
+    // In-Season set. It's ROS-shaped (an Overall, no FLEX list), so basis stays 'ros' and `season` marks it;
+    // a league without an In-Season set reads its ROS rankings for it, and says ROS.
+    // The ROS-shaped choice's name: "In-Season", "Dynasty" (a dynasty or keeper league's ROS slot), or "ROS".
+    function rosName(season) {
+        if (season) return 'In-Season';
+        return hasSeasonSlot(getActiveLeague()) ? 'Dynasty' : 'ROS';
+    }
+
     export function resolveWaiverBasis() {
-        const wanted = State.waiverScanSettings.basis === 'ros' ? 'ros' : 'weekly';
-        const setFor = (b) => (b === 'ros' ? State.rosRankings : State.weeklyRankings);
+        const picked = State.waiverScanSettings.basis;
+        const wanted = picked === 'ros' || picked === 'season' ? 'ros' : 'weekly';
+        const seasonSet = picked === 'season' ? seasonSetFor(getActiveLeague(), State.rankingSets.ros) : null;
+        const setFor = (b) => (b === 'ros' ? (seasonSet ? seasonSet.data : State.rosRankings) : State.weeklyRankings);
         let basis = wanted, rankings = setFor(wanted), note = '';
         if (rankings.length === 0) {
             const other = wanted === 'ros' ? 'weekly' : 'ros';
             if (setFor(other).length === 0) return null;
-            note = `No ${wanted === 'ros' ? 'ROS' : 'Weekly'} rankings loaded for this league - using ${other === 'ros' ? 'ROS' : 'Weekly'} rank instead.`;
+            note = wanted === 'ros'
+                ? `No ${rosName(!!seasonSet)} rankings loaded for this league - using Weekly rank instead.`
+                : `No Weekly rankings loaded for this league - using ${rosName(!!seasonSet)} rank instead.`;
             basis = other;
             rankings = setFor(other);
         }
+        const season = basis === 'ros' && !!seasonSet;
         const byName = {};
         rankings.forEach(r => { byName[r.cleanName] = r; });
+        const name = basis === 'ros' ? rosName(season) : 'Weekly';
         return {
-            basis, rankings, byName, note,
-            label: basis === 'ros' ? 'ROS' : 'Wk',
-            name: basis === 'ros' ? 'ROS' : 'Weekly'
+            basis, rankings, byName, note, season,
+            label: basis === 'ros' ? name : 'Wk',
+            name
         };
     }
 
@@ -305,13 +332,16 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
         const getPos = makeLeagueGetPos(league, meta);
 
         const checkIsWeekly = State.weeklyRankings.length > 0;
-        const checkRankings = checkIsWeekly ? State.weeklyRankings : State.rosRankings;
+        // The optimizer's own choice: Weekly, else this season's rankings (improvements S23).
+        const seasonRankings = activeSeasonRankings();
+        const checkRankings = checkIsWeekly ? State.weeklyRankings : seasonRankings;
         const checkByName = {};
         checkRankings.forEach(r => { checkByName[r.cleanName] = r; });
         const rosByName = {};
         State.rosRankings.forEach(r => { rosByName[r.cleanName] = r; });
         const wkDisplay = buildRankDisplayIndex(State.weeklyRankings, getPos);
         const rosDisplay = buildRankDisplayIndex(State.rosRankings, getPos);
+        const seasonDisplay = seasonRankings === State.rosRankings ? rosDisplay : buildRankDisplayIndex(seasonRankings, getPos);
 
         if (!State.manualStartersMap[State.activeLeagueId]) optimizeLineup(false);
         const currentStarters = savedStarters(State.activeLeagueId);
@@ -341,12 +371,14 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
         // 'overall' -- "ROS Flex" isn't a number any ROS source actually publishes.
         return {
             league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly,
-            checkLabel: checkIsWeekly ? 'Wk' : 'ROS',
-            checkDisplay: checkIsWeekly ? wkDisplay : rosDisplay,
+            checkLabel: checkIsWeekly ? 'Wk' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
+            // The same, written out for the notes ("using In-Season ranks"; S23, round 5).
+            checkName: checkIsWeekly ? 'Weekly' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
+            checkDisplay: checkIsWeekly ? wkDisplay : seasonDisplay,
             checkCross: checkIsWeekly ? 'flex' : 'overall',
             wkDisplay, rosDisplay, rosByName,
             scan,
-            scanDisplay: scan && scan.basis === 'ros' ? rosDisplay : wkDisplay,
+            scanDisplay: scan && scan.basis === 'ros' ? (scan.season ? buildRankDisplayIndex(scan.rankings, getPos) : rosDisplay) : wkDisplay,
             scanCross: scan && scan.basis === 'ros' ? 'overall' : 'flex'
         };
     }
@@ -385,12 +417,18 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
     // "Weekly rankings" -- or 'Weekly rankings ("Borischen Wk 2")' when this league has a saved
     // named set assigned, since someone juggling several sets needs to know WHICH file a notice
     // is about, not just whether it was the weekly or ROS one.
+    function seasonSetLabel() {
+        const set = seasonSetFor(getActiveLeague(), State.rankingSets.ros);
+        return set && set.name ? `In-Season rankings ("${escapeHtml(set.name)}")` : 'In-Season rankings';
+    }
+
     function rankingSetLabel(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const league = getActiveLeague();
         const setId = league ? league[cfg.leagueSetIdKey] : null;
         const set = setId ? State.rankingSets[cfg.setsKey].find(x => x.id === setId) : null;
-        const base = `${cfg.label} rankings`;
+        // A dynasty or keeper league's ROS slot is its dynasty set (improvements S23).
+        const base = type === 'ros' && hasSeasonSlot(league) ? 'dynasty rankings' : `${cfg.label} rankings`;
         return set && set.name ? `${base} ("${escapeHtml(set.name)}")` : base;
     }
 
@@ -451,8 +489,12 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
         const isFlexPos = FLEX_POSITIONS.includes(pos);
 
         if (ctx.scan && ctx.scan.basis === 'ros') {
-            const rosPos = ros.posRank ? `<strong class="mls-stat-green">${escapeHtml(pos)}${ros.posRank}</strong>${tierTag(ros.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
-            return `<div class="mls-meta-row mls-scan-ranks"><span>ROS Pos: ${rosPos}</span><span>ROS Overall: ${waiverRankHTML(rosRaw ? rosRaw.rank : null, rosRaw ? rosRaw.tier : null)}</span></div>`;
+            // In-Season Rank (S23) reads the In-Season set's numbers the same way.
+            const d = ctx.scan.season ? (ctx.scanDisplay[cleanName] || {}) : ros;
+            const raw = ctx.scan.season ? ctx.scan.byName[cleanName] : rosRaw;
+            const lbl = ctx.scan.label;
+            const rosPos = d.posRank ? `<strong class="mls-stat-green">${escapeHtml(pos)}${d.posRank}</strong>${tierTag(d.posTier)}` : `<strong class="mls-muted-rank">UR</strong>`;
+            return `<div class="mls-meta-row mls-scan-ranks"><span>${lbl} Pos: ${rosPos}</span><span>${lbl} Overall: ${waiverRankHTML(raw ? raw.rank : null, raw ? raw.tier : null)}</span></div>`;
         }
 
         const rosCell = rosRaw
@@ -649,20 +691,25 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
         const weekText = State.currentNflWeek ? `Week ${State.currentNflWeek} ` : '';
         return mode === 'roster'
             ? `compared against your weakest rostered player at each position`
-            : `checked against your current ${weekText}starting lineup using ${ctx.checkIsWeekly ? 'Weekly' : 'ROS'} ranks`;
+            : `checked against your current ${weekText}starting lineup using ${ctx.checkName || (ctx.checkIsWeekly ? 'Weekly' : 'ROS')} ranks`;
     }
 
     // Summary notes for rankings files whose Pos/Flex ranks had to be derived. Named per set
     // (Weekly / ROS, plus the saved set's name when there is one): with several sets loaded,
     // "a rankings file you loaded" left it unclear which one to fix.
     export function waiverDerivedNotes(ctx) {
-        const derivedNote = (display, type) => {
+        const derivedNote = (display, type, label = rankingSetLabel(type)) => {
             const vals = Object.values(display);
             const wording = derivedRanksWording(vals.some(d => d.posDerived), vals.some(d => d.flexDerived), type === 'weekly');
             if (!wording) return null;
-            return `Your ${rankingSetLabel(type)} don't include ${wording.short}, so those were derived from the file's order.`;
+            return `Your ${label} don't include ${wording.short}, so those were derived from the file's order.`;
         };
-        return [derivedNote(ctx.wkDisplay, 'weekly'), derivedNote(ctx.rosDisplay, 'ros')].filter(Boolean);
+        // Ranked by In-Season Rank (improvements S23, round 6): the note is about that set, whose numbers the rows
+        // show, not the dynasty set's.
+        const rosNote = ctx.scan && ctx.scan.season
+            ? derivedNote(ctx.scanDisplay, 'ros', seasonSetLabel())
+            : derivedNote(ctx.rosDisplay, 'ros');
+        return [derivedNote(ctx.wkDisplay, 'weekly'), rosNote].filter(Boolean);
     }
 
     export const setWaiverCompare = function(mode) {
@@ -724,7 +771,7 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
 
         try {
             const ctx = await buildWaiverContext(league);
-            const basisDisplay = basis === 'ros' ? ctx.rosDisplay : ctx.wkDisplay;
+            const basisDisplay = ctx.scanDisplay;
             // In a manual / handoff league the scan still works -- it just can't exclude other
             // teams' players, because it never saw them (see isFullyMappedLeague). So the wording
             // says "not on your roster" instead of "available", and a note says to double-check.
@@ -891,11 +938,11 @@ import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
             if (mode === 'lineup' && playedExcluded > 0) notes.push(`${playedExcluded} player${playedExcluded === 1 ? "'s game has" : "s' games have"} already kicked off this week, so ${playedExcluded === 1 ? 'he was' : 'they were'} left out; everyone below can still help you this week. Switch to Whole Roster to include ${playedExcluded === 1 ? 'him' : 'them'}.`);
             if (mode === 'lineup' && allPlayed) notes.push(`Every available player's game has already kicked off this week, so they're shown anyway - treat these as adds for next week.`);
             if (mode === 'lineup' && !ctx.lineupReady) notes.push(`Couldn't build a starting lineup for this league yet, so there's no Would Start check - open the Lineup tab and tap Optimize Lineup.`);
-            else if (!ctx.checkIsWeekly) notes.push(`No Weekly rankings loaded, so the Would Start check uses ROS ranks (same as the optimizer).`);
+            else if (!ctx.checkIsWeekly) notes.push(`No Weekly rankings loaded, so the Would Start check uses ${ctx.checkName} ranks (same as the optimizer).`);
             notes.push(...waiverDerivedNotes(ctx));
             if (unrankedPositions.length > 0) {
                 const list = unrankedPositions.length === 1 ? unrankedPositions[0] : `${unrankedPositions.slice(0, -1).join(', ')} or ${unrankedPositions[unrankedPositions.length - 1]}`;
-                notes.push(`Your ${rankingSetLabel(basis)} don't rank any ${list}, so ${unrankedPositions.length === 1 ? "that position isn't" : "those positions aren't"} shown.`);
+                notes.push(`Your ${scan.season ? seasonSetLabel() : rankingSetLabel(basis)} don't rank any ${list}, so ${unrankedPositions.length === 1 ? "that position isn't" : "those positions aren't"} shown.`);
             }
             if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference; renaming them in your rankings file to match Sleeper brings them back.`);
 

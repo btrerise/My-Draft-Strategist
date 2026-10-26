@@ -1471,6 +1471,8 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     text-overflow: ellipsis;
 }
 .rankings-header-set:empty { display: none; }
+/* Dynasty and keeper leagues with an In-Season set (improvements S23): one line per slot, each cut on its own. */
+.rankings-header-slot { display: block; overflow: hidden; text-overflow: ellipsis; }
 .rankings-header-set strong {
     color: var(--primary-green);
     font-weight: 600;
@@ -1489,6 +1491,75 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     color: var(--text-muted);
 }
 .mls-set-leagues-row .btn-link-inline { margin-left: auto; }
+
+/* In-Season rankings in dynasty and keeper leagues (improvements S23): the second picker in the ROS
+   card, its "Your redraft leagues use …" offer and its leagues row. */
+.mls-season-row {
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+}
+/* "Upload or Auto-Fetch below to update your dynasty set, …" (round 8): ends the two pickers, starts the uploads. */
+.mls-upload-target {
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.mls-upload-target strong { color: var(--text-main); font-weight: 600; }
+.mls-upload-target-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; margin-bottom: 0.4rem; }
+.mls-upload-target-row .mls-segmented { flex: 0 1 15rem; }
+.mls-upload-target-row .mls-segmented-btn { padding: 0.4rem 0.5rem; }
+/* "Keeper league (each team keeps up to 3), treated as dynasty here. Change League style" (S23 round 10). */
+.mls-keeper-style-note { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; font-size: 0.8rem; color: var(--text-muted); }
+.mls-keeper-style-note[hidden] { display: none; }
+.mls-keeper-style-note strong { color: var(--text-main); font-weight: 600; }
+/* League style on the Setup tab (keeper leagues, S23 round 10): .input-group sets display, which beats [hidden]. */
+#leagueStyleWrap[hidden] { display: none; }
+.mls-league-style { border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1.25rem; margin-bottom: 0; }
+/* Its rows set display (flex), which would beat the hidden attribute the code toggles. */
+.mls-season-row[hidden], .mls-season-row [hidden] { display: none; }
+.mls-season-row .tooltip-container { margin-bottom: 0.35rem; }
+.mls-season-row label { margin-bottom: 0.35rem; }
+/* "Suggested: Competing · 6–1, 2nd in points for, 1st in Start." under the switch (S23, round 7). */
+.mls-competing-suggestion { display: block; margin-top: 0.3rem; }
+.mls-competing-suggestion[hidden] { display: none; }
+.mls-competing-suggestion strong { color: var(--text-main); font-weight: 600; }
+/* The suggestion in the Your Team card (round 13), under the label's advice. */
+.mls-power-summary-suggestion { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); }
+.mls-power-summary-suggestion strong { color: var(--text-main); font-weight: 600; }
+/* The Roster tab's "Ranks by your dynasty rankings (…)" line (S23, round 13). */
+.mls-roster-source { margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); text-align: left; }
+.mls-roster-source strong { color: var(--text-main); font-weight: 600; }
+/* The Lineup tab's "Ranked by your In-Season rankings (…)" line (S23, round 6). */
+.mls-lineup-source {
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.mls-lineup-source strong { color: var(--text-main); font-weight: 600; }
+/* Power Rankings: which set gave each column, right under the table. */
+.mls-power-source-key {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.mls-power-source-key strong { color: var(--text-main); font-weight: 600; }
+.mls-power-key-part { display: inline-block; } /* each part wraps as one phrase where it fits */
+/* Rank By in a dynasty or keeper league: "In-Season Rank" didn't fit half a phone's width. */
+@media (max-width: 600px) {
+    .settings-grid > .mls-rank-by-wide { grid-column: 1 / -1; }
+}
+.mls-season-offer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
 
 /* Rename button beside a saved set's delete button (improvements S2). The border matches its fill
    so it stands as tall as the bordered .btn-danger beside it. */

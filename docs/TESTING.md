@@ -37,7 +37,12 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   `node --test tests/unit/rankingsParser.test.mjs`. One Playwright spec: `npx playwright test mls-sim.spec.mjs`.
 - **Chromium:** Claude Code cloud sessions have it preinstalled at `/opt/pw-browsers`; don't run
   `playwright install` there. Elsewhere (CI, a laptop): `npx playwright install --with-deps chromium`. The pinned
-  `@playwright/test` (1.56.1) uses Chromium revision 1194, the one in `/opt/pw-browsers`.
+  `@playwright/test` (1.56.1) uses Chromium revision 1194. The cloud image's build can run ahead of it (since 2026-10
+  it's Chromium 153, revision 1243, and 1194 isn't there): then `tests/browser.mjs` has both configs launch
+  `/opt/pw-browsers/chromium` instead (improvements S23; before, every test failed with "Executable doesn't exist").
+  `node render-env.mjs` names the browser in use, and `visual.spec.mjs` fails with one message rather than 40 diffs.
+  Compare main and your branch for screenshots (below) and treat a failure that main shows in the same container as
+  the container's, not yours.
 - **check-precache** (`scripts/check-precache.mjs`) walks the import graph from each page's scripts, adds
   `new Worker()` targets, and diffs the result against `PRECACHE_ASSETS` in `sw.js`.
 
@@ -144,8 +149,12 @@ something looks:
 3. Look at each changed PNG, then list them (and why) in your commit message or PR.
 
 **When your machine can't reproduce the baselines** (Claude Code cloud sessions since 2026-10-03, whose image adds
-fonts and font rules CI doesn't have; see docs/improvements/LOG.md, F1 and S9): render main and your branch the same
-way there and compare them with `npm run pxdiff` to find the PNGs your change touches. Push without re-taking them, and
+fonts and font rules CI doesn't have, and since 2026-10 a newer Chromium; see docs/improvements/LOG.md, F1, S9 and S23):
+render main and your branch the same way there and compare them with `npm run pxdiff` to find the PNGs your change
+touches. For main, a worktree works: `git worktree add <scratch dir> origin/main`, `npm ci` in its `tests/`, then
+`RENDER_ENV=any npx playwright test visual.spec.mjs --update-snapshots=all` there and in yours, one at a time (both
+use port 4173; `RENDER_ENV=any` skips the environment check, outside CI only),
+and compare the two `baselines/linux` folders; put your own back with `git checkout -- tests/baselines`. Push without re-taking them, and
 let the PR's CI fail on exactly those. Then take CI's renders from the run's `playwright-results` artifact:
 `gh run download <run-id> -R btrerise/My-Draft-Strategist -n playwright-results -D <new empty folder>` works from
 cloud sessions. Before committing an `-actual.png` as the baseline, check that its `-expected.png` is identical to the
@@ -259,6 +268,10 @@ done or dropped, remove its line here in the same change. Background for each is
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Needs the owner's decision first**
+- Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
+  redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues
+  (beside League style on the Setup tab) would fix that, but the owner noted the payoff is small: Power Rankings need a
+  Sleeper league, and the Waiver Wire can't tell who's available in a manual league (it only knows your roster).
 - Merge `dropTitleRows` and `findHeaderRowIndex` in `js/shared/rankings/parse.js` into one title-row finder. That
   changes how some rankings files are read, so do it only if a file parses wrong (2C).
 - IDP positions (LB, DL, DB) get K/DEF's Boom/Bust floor of 4, and the simulator uses Sleeper's default scoring,

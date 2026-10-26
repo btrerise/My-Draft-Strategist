@@ -17,6 +17,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **A clearer tab bar.** The tab you're on now has a bold name and a heavier icon, with the green bar above it as
   before.
+- **No console errors when switching tabs quickly in Chrome 153.** A tab switch cut short by the next one no longer
+  logs an "unhandled promise rejection".
 - **A faster first visit.** The page's font now comes from this site instead of Google Fonts, so on a phone's first
   visit the page appears about a second sooner (blank for less time). The logos download smaller and look the same.
 - **Export Team draws numbers without gaps.** Numbers in the exported image could be followed by a stray space
@@ -127,6 +129,23 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Your record on the Roster tab.** With the league's name, above the header's line: your record this season and where
   your points for and against rank in the league ("Points for 3rd of 12"), as of your last sync. A league shows it after
   its next sync. On phones the league's name now gets the card's full width, with its format on the line below.
+- **In-Season rankings in dynasty and keeper leagues.** In these leagues the Roster tab's ROS card is now "Dynasty &
+  In-Season Rankings" (its header names both sets): its set is "Dynasty rankings for this league", and a new
+  **In-Season rankings** picker at the bottom of the card takes any saved ROS set, usually the one your redraft leagues use (it offers that one, with a button, and then asks
+  whether to use it in your other dynasty leagues too). "Choose leagues…" sets it for many leagues at once. With an
+  In-Season set, Power Rankings' **Start** column and the Contender / Retool / Rebuild labels follow it, while **Future**
+  stays on your dynasty rankings, and a line under the table (and the power strip at the top of the tab) says which set gave each column. A new **I'm competing
+  this year** switch on the Power Rankings card moves Ovr and the position rooms to In-Season too, and a Contender
+  whose dynasty rankings are two weeks old gets a hint about it. The lineup uses the In-Season set when no Weekly set is
+  loaded; the Waiver Wire's Rank By reads **Dynasty Rank** in these leagues and adds **In-Season Rank**; and the
+  Dashboard's best available on **ROS** uses a dynasty league's In-Season set ("In-Season · …"). The Guide explains it.
+  A **Suggested** line (Competing, Retool or Rebuilding) in the Your Team card starts from your label and lets your
+  record and points for move it one step, naming bad luck when your points against is among the league's highest; the
+  switch points to it, and the power strip at the top of the Roster tab shows it when it differs from your label. Player
+  rows on the Roster tab say which rankings their ranks come from. With no
+  In-Season set, and in redraft leagues, nothing changes.
+- **No console errors when switching tabs quickly in Chrome 153.** A tab switch cut short by the next one no longer
+  logs an "unhandled promise rejection".
 - **The Trade Analyzer's two sides line up on wider screens.** Side by side (tablets and computers), Players You
   Receive and Players You Give Up now keep their search boxes, players and draft-pick rows level, even when one side
   has more players. In Sleeper leagues, Give has its own From line ("From  You (your username)") across from Receive's

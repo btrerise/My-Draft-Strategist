@@ -234,7 +234,7 @@
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">One card per league, in your order (Edit shows the arrows to move them, "$ Paid" to mark the leagues you pay for, and ✕ to remove one). Tap a league's name to make it the active league. Each card shows whether its Weekly rankings are fresh and whether its lineup matches the one on Sleeper (tap a chip for more), what its lineup needs from you before kickoff (an injured, bye or IR-slot starter, an empty slot, an IR move) with the buttons that fix it, how it differs from your Sleeper lineup, and its best available players. The chevron folds a card to its header; that's remembered, and a card with nothing to do starts folded. 'Optimize All Lineups' updates every lineup from your latest Weekly rankings. 'Sync All Leagues' also gets the latest injury news for every league. Best available: for each Sleeper-synced league, the three best-ranked RBs, WRs and TEs nobody has rostered, by that league's own Weekly or ROS rankings (the switch is the same Rank By the Scout tab's Waiver Wire Assistant uses), from the last sync. An upgrade is a ranked free agent who beats one of your players at his position: on Weekly, a starter in your best lineup this week; on ROS, your weakest rostered player. He must be in a better tier when your rankings have tiers (otherwise at least 3 spots better). On a computer, Sleeper opens the league's page on sleeper.com. View opens that league's full Top Available list on the Scout tab.</span>
+                <span class="tooltip-text">One card per league, in your order (Edit shows the arrows to move them, "$ Paid" to mark the leagues you pay for, and ✕ to remove one). Tap a league's name to make it the active league. Each card shows whether its Weekly rankings are fresh and whether its lineup matches the one on Sleeper (tap a chip for more), what its lineup needs from you before kickoff (an injured, bye or IR-slot starter, an empty slot, an IR move) with the buttons that fix it, how it differs from your Sleeper lineup, and its best available players. The chevron folds a card to its header; that's remembered, and a card with nothing to do starts folded. 'Optimize All Lineups' updates every lineup from your latest Weekly rankings. 'Sync All Leagues' also gets the latest injury news for every league. Best available: for each Sleeper-synced league, the three best-ranked RBs, WRs and TEs nobody has rostered, by that league's own Weekly or ROS rankings (the switch is the same Rank By the Scout tab's Waiver Wire Assistant uses; in a dynasty or keeper league with In-Season rankings, ROS uses those), from the last sync. An upgrade is a ranked free agent who beats one of your players at his position: on Weekly, a starter in your best lineup this week; on ROS, your weakest rostered player. He must be in a better tier when your rankings have tiers (otherwise at least 3 spots better). On a computer, Sleeper opens the league's page on sleeper.com. View opens that league's full Top Available list on the Scout tab.</span>
             </div>
         </header>
         
@@ -353,6 +353,23 @@
             <div class="input-group"><label for="reqDEF">DEF</label><input type="number" id="reqDEF" class="form-input text-center" value="1" aria-label="DEF lineup slots"></div>
         </div>
         <button class="btn btn-primary" data-action="saveRequirements">Save Requirements</button>
+        <!-- Keeper leagues only (improvements S23, round 10): js/mls/leagues/sync.js, renderLeagueStyle. Below Save
+             Requirements (round 14): it applies as soon as it's picked, and above the button it looked as if it needed Save. -->
+        <div id="leagueStyleWrap" class="input-group mls-league-style" hidden>
+            <div class="cluster cluster-sm">
+                <label for="leagueStyleSelect" class="mb-0">League style</label>
+                <div class="tooltip-container">
+                    <div class="tooltip-icon">i</div>
+                    <span class="tooltip-text">Keeper leagues differ: some keep most of a roster and play like dynasty, some keep a player or two and play like redraft. Like dynasty gives this league Contender / Retool / Rebuild labels, the Future column, draft picks in the Trade Analyzer, dynasty market values and In-Season rankings. Like redraft treats it as a redraft league everywhere in Lineup Strategist.</span>
+                </div>
+            </div>
+            <select id="leagueStyleSelect" class="form-input" data-action="setLeagueStyle" aria-label="League style">
+                <option value="dynasty">Plays like dynasty</option>
+                <option value="redraft">Plays like redraft</option>
+            </select>
+            <small class="text-helper">Changes as soon as you pick.</small>
+            <small id="leagueStyleKeepers" class="text-helper"></small>
+        </div>
     </section>
 
     <!-- ADVANCED SETTINGS ACCORDIONS -->
@@ -440,7 +457,7 @@
     <section class="settings-card rankings-card" id="rosRankingsCard">
         <header class="card-header rankings-card-header">
             <div class="rankings-header-titles">
-                <h3><button type="button" class="rankings-card-toggle btn-bare" data-action="toggleRankingsCard" data-card="rosRankingsCard" aria-expanded="false" aria-controls="rosRankingsBody"><span>Rest-of-Season (ROS) Rankings</span><svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button></h3>
+                <h3><button type="button" class="rankings-card-toggle btn-bare" data-action="toggleRankingsCard" data-card="rosRankingsCard" aria-expanded="false" aria-controls="rosRankingsBody"><span id="rosRankingsTitle">Rest-of-Season (ROS) Rankings</span><svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button></h3>
                 <!-- Name of the set this league uses, filled by populateRankingSetDropdown.
                      Lives in the header so it stays readable with the card collapsed. -->
                 <div id="rosHeaderSetName" class="rankings-header-set"></div>
@@ -456,7 +473,7 @@
         
         <div class="rankings-card-body" id="rosRankingsBody">
             <div class="input-group mb-0">
-                <label for="rosRankingSetSelect">Ranking Set for this League</label>
+                <label for="rosRankingSetSelect" id="rosRankingSetLabel">Ranking Set for this League</label>
                 <div class="cluster cluster-sm">
                     <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" data-action="onRankingSetSelectChange" data-type="ros" aria-label="Select ROS Ranking Set">
                     </select>
@@ -473,6 +490,32 @@
                 <input type="text" id="rosNewSetName" class="form-input" maxlength="60" placeholder="e.g. Dynasty PPR 2026">
             </div>
 
+            <!-- Dynasty and keeper leagues only (improvements S23): a ROS set for this season's questions.
+                 Filled by populateSeasonPicker (js/mls/rankings/sets.js). Under the dynasty set's picker (owner's choice,
+                 round 8: at the bottom it was easy to miss); #rosUploadTarget below it says the upload and
+                 Auto-Fetch fill the dynasty set. -->
+            <div id="seasonRankingsRow" class="mls-season-row mb-3" hidden>
+                <div class="input-group mb-0">
+                    <div class="cluster cluster-sm">
+                        <label for="seasonRankingSetSelect" class="mb-0">In-Season rankings</label>
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">i</div>
+                            <span class="tooltip-text">Any saved ROS set, usually the one your redraft leagues use, for questions about this season: Power Rankings' Start column and labels, the lineup when no Weekly set is loaded, and In-Season Rank in the Waiver Wire Assistant. Future stays on your dynasty rankings. None keeps everything on your dynasty rankings.</span>
+                        </div>
+                    </div>
+                    <div class="cluster cluster-sm">
+                        <select id="seasonRankingSetSelect" class="form-input" style="flex: 1;" data-action="onSeasonSetChange" aria-label="Select In-Season Ranking Set"></select>
+                        <button id="seasonRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="ros" data-slot="season" title="Rename this In-Season set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>Rename</button>
+                        <button id="seasonDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" data-action="deleteRankingSet" data-type="ros" data-slot="season" title="Delete this In-Season set" aria-label="Delete this In-Season set">✕</button>
+                    </div>
+                </div>
+                <div id="seasonOffer" class="mls-season-offer" hidden></div>
+                <div id="seasonSetLeaguesRow" class="mls-set-leagues-row" hidden>
+                    <span id="seasonSetLeaguesSummary" class="mls-set-leagues-summary"></span>
+                    <button class="mls-btn-sm btn-link-inline" data-action="openSeasonSetLeagues">Choose leagues&hellip;</button>
+                </div>
+            </div>
+            <div id="rosUploadTarget" class="mls-upload-target" hidden></div>
             <div id="rosMetaDisplay" class="status-badge-meta"></div>
 
             <div class="input-group mb-3">
@@ -634,12 +677,26 @@
             See how you stack up against the rest of the league. Hover or tap any rank to see the players behind it. Teams strong where you're weak make ideal trade partners.
         </p>
 
+        <!-- Keeper leagues (S23, round 10): which style the app treats this league as, and where to change it. -->
+        <div id="keeperStyleNote" class="mls-keeper-style-note mb-3" hidden></div>
+
         <div class="input-group mb-3">
             <label for="powerRankingsSource">Rankings Source</label>
             <select id="powerRankingsSource" class="form-input" data-action="updatePowerSetting" data-setting="source" aria-label="Select Source for Power Rankings">
                 <option value="custom" selected>My Rankings (uploaded above)</option>
                 <option value="market">Market Consensus (FantasyCalc)</option>
             </select>
+        </div>
+
+        <!-- Dynasty and keeper leagues with an In-Season set (improvements S23); js/mls/power/rosterCard.js. -->
+        <div id="powerCompetingWrap" class="toggle-row mb-3" style="display: none;">
+            <div class="toggle-info">
+                <label class="toggle-title" for="powerCompeting">I'm competing this year</label>
+                <span class="toggle-desc">Ovr and position rooms use your <span class="mls-nowrap">In-Season</span> rankings.</span>
+                <!-- The suggestion from your label and record (S23, round 7); filled by rosterCard.js. -->
+                <span id="powerCompetingSuggestion" class="toggle-desc mls-competing-suggestion" hidden></span>
+            </div>
+            <input type="checkbox" id="powerCompeting" class="toggle-switch" data-action="setPowerCompeting">
         </div>
 
         <div id="powerRankingsOutput" class="mt-3" style="display: none;" aria-live="polite">
@@ -984,11 +1041,12 @@
         </div>
 
         <div class="settings-grid mb-2">
-            <div class="input-group">
+            <div class="input-group" id="waiverScanBasisGroup">
                 <label for="waiverScanBasis">Rank By</label>
                 <select id="waiverScanBasis" class="form-input" data-action="updateWaiverScanSetting" data-setting="basis" aria-label="Sort available players by Weekly or ROS rank">
                     <option value="weekly">Weekly Rank</option>
                     <option value="ros">ROS Rank</option>
+                    <option value="season" hidden disabled>In-Season Rank</option>
                 </select>
             </div>
             <div class="input-group" data-waiver-modes="auto" hidden>
@@ -1349,6 +1407,7 @@
                     </li>
                     <li><strong class="text-main">Paid leagues:</strong> Tap Edit, then "$ Paid" on each league you pay for. Paid leagues get a "$" badge and their own record in the Week Recap.</li>
                     <li><strong class="text-main">Active League Requirements:</strong> The number of starting slots at each position for the active league. These auto-populate during Sleeper sync; for manual leagues, set them yourself and tap "Save Requirements".</li>
+                    <li><strong class="text-main">League style (keeper leagues):</strong> Keeper leagues differ, so choose whether this one <strong class="text-main">Plays like dynasty</strong> (the default: Contender / Retool / Rebuild labels, the Future column, draft picks, dynasty market values and In-Season rankings) or <strong class="text-main">Plays like redraft</strong> (treated as a redraft league everywhere). It shows how many players Sleeper lets each team keep. The Roster tab's Power Rankings card says which style a keeper league uses, with a link here.</li>
                 </ul>
             </div>
 
@@ -1360,6 +1419,7 @@
                 <ul class="guide-list">
                     <li><strong class="text-main">Preview Before Saving:</strong> Every upload opens a preview first. It flags any names that didn't match a Sleeper player (those players stay unranked everywhere in the app, so rename them to match Sleeper if needed) and lets you pick which leagues should use the file.</li>
                     <li><strong class="text-main">Ranking Sets:</strong> Each upload is saved as a named set you can share across leagues. Pick a league's set with <strong class="text-main">Ranking Set for this League</strong>, or tap "Choose leagues&hellip;" to point several leagues at the same set.</li>
+                    <li><strong class="text-main">Dynasty and keeper leagues:</strong> The ROS card holds two sets. <strong class="text-main">Dynasty rankings for this league</strong> is your long-term set; <strong class="text-main">In-Season rankings</strong> can point at any saved ROS set (usually the one your redraft leagues use, which the card offers with a <strong class="text-main">Use it here</strong> button) for questions about this season: Power Rankings' Start and labels, the lineup when no Weekly set is loaded, and the Waiver Wire's <strong class="text-main">In-Season Rank</strong>. "Choose leagues&hellip;" under it sets it for many leagues at once. With None, everything uses your dynasty rankings. <strong class="text-main">Upload or Auto-Fetch into: Dynasty | In-Season</strong> picks which of the two an upload or Auto-Fetch fills (In-Season's Auto-Fetch gets FantasyCalc's redraft values), and with no redraft set to offer, <strong class="text-main">Get FantasyCalc's redraft values</strong> makes one in a tap.</li>
                     <li><strong class="text-main">Auto-Fetch ROS Rankings:</strong> No ROS file? Pull market consensus values from FantasyCalc instead, matched to your league type, QB format, scoring, and TE Premium. These settings are shared with the Scout tab's Trade Finder.</li>
                     <li><strong class="text-main">Manual SoS:</strong> Under "Edit Manual SoS Grid", enter each team's matchup rank (1-32: 1 = easiest, 32 = hardest) for QB, RB, WR, and TE, then tap "Save Manual SoS". With "My SoS files rank 1 = hardest" on, the grid uses that scale instead.</li>
                 </ul>
@@ -1369,6 +1429,7 @@
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">4</span> Positional Power Rankings</h4>
                 <p class="step-desc">Found on the <strong class="text-main">Roster</strong> tab and generated automatically from your rankings (or Market Consensus data). Every team in your league is ranked 1 to N: <strong class="text-main">Start</strong> scores each team's best legal starting lineup under your league's roster settings, measuring each position's starters against the league average and weighting by how many lineup spots that position fills (one position can lift a lineup, but only up to 150% of average, so an elite QB can't hide empty RB and WR rooms). <strong class="text-main">Ovr</strong> scores the whole roster, and QB/RB/WR/TE score each whole position room. Hover or tap any rank to see the players behind it; teams strong where you're weak make ideal trade partners. Each team also gets a label. In dynasty and keeper leagues it's <strong class="text-main">Contender</strong> (top-third starting lineup), <strong class="text-main">Retool</strong> (mid-pack lineup with a decent future) or <strong class="text-main">Rebuild</strong> (bottom-third lineup, or mid-pack with an aging roster), using a <strong class="text-main">Future</strong> column (future value) that adjusts each roster's value for player age (from Sleeper) with rough positional age curves - younger players count a bit more, older players less. The draft picks each team holds (synced from Sleeper) count too, at their dynasty Market Consensus value or, without it, by a set table by round. It's a heuristic, not a projection. In redraft leagues it's <strong class="text-main">Contender</strong> / <strong class="text-main">Bubble</strong> / <strong class="text-main">Longshot</strong>. Labels reflect roster strength only, not the standings. The same rankings also power the Waiver Wire Assistant's <strong class="text-main">All My Leagues</strong> search: look up a player and each league shows your power rank at his position. Set <strong class="text-main">Looking To</strong> to <strong class="text-main">Buy / Add</strong> to flag the leagues where you're weak there and he'd move you up, or <strong class="text-main">Sell / Drop</strong> to flag the leagues where you own him and have depth to spare. Each league is scored with its own rankings (Market Consensus if it has none).</p>
+                <p class="step-desc mt-2">In a dynasty or keeper league with <strong class="text-main">In-Season rankings</strong>, Start (and so the labels) uses them while Ovr, the position rooms and Future stay on your dynasty rankings; turn on <strong class="text-main">I'm competing this year</strong> to move Ovr and the position rooms to In-Season too. A line under the table says which set gave each column. The Your Team card adds a <strong class="text-main">Suggested</strong> line (also shown under the switch, and on the Roster tab's power strip when it differs from your label). It starts from your label and lets your record and points for (from the last sync) move it one step: a Contender with a losing record and low scoring reads Retool, a Retool team winning and scoring reads Competing, a Rebuild team winning and scoring reads Retool. Points against only explains a bad record, and before 4 games it's your label alone. It never flips the switch.</p>
             </div>
 
             <!-- Step 5 -->
@@ -1416,7 +1477,7 @@
                 <h4 class="step-title"><span class="step-num blue-step">8</span> Scout: Waiver Wire Assistant</h4>
                 <p class="step-desc">The <strong class="text-main">Scout</strong> tab is your interactive transaction hub. The app cross-references your <strong class="text-main">Sleeper Sync</strong> data to show whether players are available on waivers, on your roster, or owned by opponents, alongside side-by-side Weekly and ROS ranks.</p>
                 <ul class="guide-list">
-                    <li><strong class="text-main">Auto-Find:</strong> Lists the top available players by your Weekly or ROS rankings (<strong class="text-main">Rank By</strong>), filtered by <strong class="text-main">Position</strong> and <strong class="text-main">Show Top</strong>, with each one's weekly positional and FLEX rank. Turn on <strong class="text-main">Only Would-Starts</strong> to hide anyone who wouldn't crack your lineup.</li>
+                    <li><strong class="text-main">Auto-Find:</strong> Lists the top available players by your Weekly or ROS rankings (<strong class="text-main">Rank By</strong>; in dynasty and keeper leagues ROS reads <strong class="text-main">Dynasty Rank</strong>, plus <strong class="text-main">In-Season Rank</strong> when the league has In-Season rankings), filtered by <strong class="text-main">Position</strong> and <strong class="text-main">Show Top</strong>, with each one's weekly positional and FLEX rank. Turn on <strong class="text-main">Only Would-Starts</strong> to hide anyone who wouldn't crack your lineup.</li>
                     <li><strong class="text-main">Compare Against:</strong> <strong class="text-main">Starting Lineup</strong> checks whether he'd start for you this week and names who he'd bench. <strong class="text-main">Whole Roster</strong> checks whether he's better than your weakest player at the position (your drop candidate).</li>
                     <li><strong class="text-main">Pasted Lists:</strong> Paste waiver recommendations or trade targets and tap "Scan Pasted List" to get the same checks. Set <strong class="text-main">Search In</strong> to <strong class="text-main">All My Leagues</strong> to run that list against <em>every</em> league you have synced at once - one card per player showing where he is a free agent, where he is already on your roster, and who owns him in the rest, with a Switch button to jump straight to any of them.</li>
                 </ul>

@@ -2,6 +2,7 @@
 // matches *.spec.mjs only, so `npx playwright test` never runs the *.tool.mjs files here.
 // Run with `npm run compare-css` from tests/ (see css-compare.tool.mjs for what it does).
 import { defineConfig } from '@playwright/test';
+import { chromiumLaunchOptions } from '../browser.mjs';
 
 const PORT = 4173;
 
@@ -12,7 +13,7 @@ export default defineConfig({
     workers: 4,
     reporter: [['list']],
     timeout: 300_000,
-    use: { baseURL: `http://localhost:${PORT}` },
+    use: { baseURL: `http://localhost:${PORT}`, launchOptions: chromiumLaunchOptions() },
     projects: [
         { name: 'desktop', use: { viewport: { width: 1280, height: 900 } } },
         { name: 'phone', use: { viewport: { width: 390, height: 844 }, hasTouch: true } },

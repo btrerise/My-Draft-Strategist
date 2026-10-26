@@ -82,7 +82,8 @@
 import { escapeHtml } from '../../shared/html.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { refreshGameTimes, State } from '../state.js';
-import { getLeagueRankings } from '../leagues/sync.js';
+import { getLeagueRankings, getLeagueSeasonRankings } from '../leagues/sync.js';
+import { seasonSetFor } from '../rankings/season.js';
 import { bestLineup, buildRankDisplayIndex, checkAgainstLineup, findFreeAgents, FLEX_POSITIONS, upgradeGap } from './waiverScanner.js';
 import { freeAgentPlayer, getSleeperMetaByName, lineupCheckDeps, makeLeagueGetPos, rosterBenchmark, updateWaiverScanSetting } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
@@ -142,16 +143,22 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
     const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
     const NAMES = { weekly: 'Weekly', ros: 'ROS' };
-    const chosenBasis = () => (State.waiverScanSettings.basis === 'ros' ? 'ros' : 'weekly');
+    // The Waiver Wire's In-Season Rank (a stored 'season') counts as ROS here: since improvements S23 ROS on this card
+    // is this season's rankings for every league anyway.
+    const chosenBasis = () => (State.waiverScanSettings.basis === 'ros' || State.waiverScanSettings.basis === 'season' ? 'ros' : 'weekly');
 
     // The rankings a league's line uses: the chosen type (the Weekly | ROS switch), else the
-    // other one, flagged as a fallback; else none.
+    // other one, flagged as a fallback; else none. ROS is this season's rankings (improvements S23): a dynasty
+    // league's In-Season set when it has one (a free agent is a question about now), else its ROS set.
     function leagueBasis(league) {
         const wanted = chosenBasis();
         const other = wanted === 'ros' ? 'weekly' : 'ros';
         for (const type of [wanted, other]) {
-            const found = getLeagueRankings(league, type);
-            if (found && found.data.length > 0) return { ...found, type, name: NAMES[type], fallback: type !== wanted };
+            const found = type === 'ros' ? getLeagueSeasonRankings(league) : getLeagueRankings(league, type);
+            if (found && found.data.length > 0) {
+                const name = found.fromSeason ? 'In-Season' : NAMES[type];
+                return { ...found, type, name, fallback: type !== wanted };
+            }
         }
         return null;
     }
@@ -163,7 +170,8 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
     // names its type: "Weekly · Wk5 (no ROS set)".
     function sourceLabel(basis) {
         const name = escapeHtml((basis.setName || '').replace(/^(Weekly|ROS) Rankings\s*[–-]\s*/i, '').trim());
-        if (!basis.fallback) return name;
+        // A dynasty league's In-Season set on the ROS switch (S23) says so: "In-Season · Redraft ROS".
+        if (!basis.fallback) return basis.fromSeason ? `In-Season${name ? ` · ${name}` : ''}` : name;
         return `${name ? `${basis.name} · ${name}` : basis.name} (no ${NAMES[chosenBasis()]} set)`;
     }
 
@@ -431,6 +439,9 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
         if (!(State.leagues || []).some(l => l.leagueId === leagueId)) return;
         if (leagueId !== State.activeLeagueId) switchActiveLeague(leagueId);
         updateWaiverScanSetting('mode', 'top');
+        // A ROS line in a league with an In-Season set was ranked by it (S23): Top Available opens on the same.
+        const league = State.leagues.find(l => l.leagueId === leagueId);
+        if (chosenBasis() === 'ros') updateWaiverScanSetting('basis', seasonSetFor(league, State.rankingSets.ros) ? 'season' : 'ros');
         updateWaiverScanSetting('pos', 'FLEX');
         showTab('scout');
     }

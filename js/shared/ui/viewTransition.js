@@ -58,6 +58,9 @@ export function withViewTransition(update, { kind = 'tab', direction = '', insta
 
     const transition = document.startViewTransition(() => runReporting(update));
     current = transition;
+    // A transition skipped by the next one (rapid taps) rejects `ready`. Chrome 153 reports that as an unhandled
+    // rejection unless something handles it; nothing here waits on `ready`, so swallow it like `finished`.
+    transition.ready.catch(() => {});
     transition.finished.catch(() => {}).then(() => {
         if (onEnd) onEnd();
         if (current !== transition) return; // a later transition owns the attributes now

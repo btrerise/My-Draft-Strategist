@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fallbackChromium, fallbackChromiumVersion } from './browser.mjs';
 
 export const BASELINE_ENV = {
     playwright: '1.56.1',        // @playwright/test; it decides the Chromium build
@@ -41,10 +42,14 @@ export function currentRenderEnv() {
     const core = dirname(require.resolve('playwright-core/package.json'));
     const { browsers } = JSON.parse(readFileSync(join(core, 'browsers.json'), 'utf8'));
     const chromium = browsers.find((b) => b.name === 'chromium');
+    // The browser the tests actually launch (browser.mjs): the pinned build, or the cloud image's preinstalled
+    // Chromium when the pinned one isn't installed. Before improvements S23 this read only the pin, so a newer
+    // preinstalled build passed the check and all 40 screenshots failed instead.
+    const fallback = fallbackChromium();
     return {
         playwright,
-        chromiumRevision: chromium.revision,
-        chromiumVersion: chromium.browserVersion,
+        chromiumRevision: fallback ? `${chromium.revision} not installed, so the preinstalled ${fallback}` : chromium.revision,
+        chromiumVersion: fallback ? fallbackChromiumVersion() : chromium.browserVersion,
         os: process.platform === 'linux' ? readOs() : process.platform,
         // Set on GitHub's hosted runners (for example 20250929.1). Shown, not checked: it changes weekly.
         runnerImage: process.env.ImageVersion,

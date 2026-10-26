@@ -29,11 +29,13 @@ export function renderRosterPowerStrip(teams, ctx = {}) {
     const label = you.label
         ? `<span class="mls-power-label mls-power-label-${String(you.label).toLowerCase()}">${escapeHtml(you.label)}${you.labelNote ? ` <span class="mls-power-label-note">&middot; ${escapeHtml(you.labelNote)}</span>` : ''}</span>` : '';
     const via = ctx.source && ctx.source.source === 'market' ? ' &middot; via Market Consensus' : '';
+    // A dynasty league's In-Season set gives Start (and more with "I'm competing"; improvements S23): ctx.tag says so.
+    const tag = ctx.tag ? ` &middot; ${escapeHtml(ctx.tag)}` : '';
     el.innerHTML = `
         <div class="mls-roster-power-head">
             <span class="mls-roster-power-title">Positional Power Rankings</span>
             ${label}
-            <span class="mls-roster-power-of">out of ${N} teams${via}</span>
+            <span class="mls-roster-power-of">out of ${N} teams${via}${tag}</span>
         </div>
         <div class="mls-roster-power-stats" style="grid-template-columns: repeat(${stats.length}, minmax(0, 1fr));">
             ${stats.map(([name, rank]) => `

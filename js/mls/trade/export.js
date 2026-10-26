@@ -115,7 +115,7 @@ function splitBlendedBorders(root) {
                     // The box above the lineup ("This lineup needs you": injured and IR-slot starters, swaps,
                     // the Sleeper differences; improvements S9 round 7, S11 round 4) is a to-do list for you, not
                     // for the league chat this image gets posted in (owner's decision). The rows' badges stay.
-                    clonedContainer.querySelectorAll('.lineup-needs-box').forEach(el => el.remove());
+                    clonedContainer.querySelectorAll('.lineup-needs-box, .mls-lineup-source').forEach(el => el.remove());
                     splitBlendedBorders(clonedContainer);
                     clonedContainer.style.width = '480px';
                     clonedContainer.style.maxWidth = '100%';
