@@ -32,8 +32,12 @@ import { fantasyPosition } from '../constants.js';
 import { ensureLineupProjections, formatKickoffLabel, getLeagueScoringKey, storeLeagueMatchups } from '../lineup/gameInfo.js';
 import { paidBadgeMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
 import { matchupWinChances } from '../sim/winChance.js';
-import { buildPlayerRecap, ownText, pointsRange } from './playerRecap.js';
+import { buildPlayerRecap, ownText, pointsRange, slotLabel, startedText } from './playerRecap.js';
 import { getRecapLines } from './recapLines.js';
+import { scoreboardImageHTML } from './shareImage.js';
+import { ensureHtml2Canvas } from '../../shared/ui/scriptLoader.js';
+import { useProportionalDigits } from '../../shared/ui/exportImage.js';
+import { showToast } from '../../shared/ui/toast.js';
 import {
     MIN_PLAYED, classifyMatchup, guillotinePlace, isGuillotine, medianPlace, ordinal, playsMedian, recordText, resultOf,
     sideSummary, summarize, swingOrder, teamNamesFrom, tooEarlyToCall, weekFromSearch,
@@ -462,6 +466,8 @@ function renderScoreboard(m) {
         return;
     }
     const loading = !!view.loading;
+    // Export (S22, round 2): a summary image for a group chat, once there are scores to sum up. On phones, its icon only.
+    const exportBtn = started && listed.length ? `<button type="button" id="exportScoreboardBtn" class="btn-bare mls-week-refresh" data-action="exportScoreboard" aria-label="Export a summary image of this week">${SHARE_ICON}<span class="mls-week-refresh-label">Export</span></button>` : '';
     const refreshBtn = `<button type="button" class="btn-bare mls-week-refresh" data-action="refreshThisWeek"${loading ? ' disabled aria-busy="true"' : ''} aria-label="Refresh this week's scores">${REFRESH_ICON(loading)}<span class="mls-week-refresh-label">Refresh</span></button>`;
     const info = `<span class="tooltip-container mls-week-info"><span class="tooltip-icon">i</span><span class="tooltip-text">${TOOLTIP}</span></span>`;
     if (ctx.week == null) {
@@ -472,7 +478,7 @@ function renderScoreboard(m) {
     const head = `<header class="mls-week-head">
         <div class="mls-week-heading"><h3 class="mls-week-title">${titleText(m)}</h3><span class="mls-week-summary">${summaryText(m)}</span></div>
         ${info}
-        <span class="mls-week-actions">${started && listed.length ? weekStatusMarkup(final) : ''}${refreshBtn}</span>
+        <span class="mls-week-actions">${started && listed.length ? weekStatusMarkup(final) : ''}${exportBtn}${refreshBtn}</span>
     </header>`;
 
     const parts = [];
@@ -548,6 +554,80 @@ function renderScoreboard(m) {
 const SCOREBOARD_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"></rect><path d="M6.5 6.5h2.5v5H6.5z"></path><path d="M15 6.5h2.5v5H15z"></path><line x1="12" y1="8" x2="12" y2="8.01"></line><line x1="12" y1="10" x2="12" y2="10.01"></line><line x1="8" y1="15" x2="8" y2="21"></line><line x1="16" y1="15" x2="16" y2="21"></line></svg>`;
 const ARROW_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
 
+// --- THE SHARE IMAGE (improvements S22, round 2) ---
+// Export saves a summary of the week as a PNG (owner: a "TL;DR", not every league's tile). The HTML is
+// week/shareImage.js's; it's drawn from html2canvas's clone of #thisWeekCard, whose content is swapped for the image's,
+// so the page doesn't change (as Export Trade does with #tradeOutput).
+const SHARE_ICON = `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+
+// What the image shows, from the same model and recap the tab draws. null before kickoff.
+export function scoreboardSummary() {
+    const m = buildModel();
+    if (!m.started || !m.listed.length) return null;
+    const callable = m.h2h.filter(r => !r.res.early);
+    const anyPaid = m.sleeperLeagues.some(l => l.paid);
+    const medians = callable.filter(r => r.res.median);
+    const medRec = { W: medians.filter(r => r.res.median.above).length, L: medians.filter(r => !r.res.median.above).length, T: 0 };
+    const splits = [
+        ...(anyPaid ? [{ label: 'By stakes', groups: [['Paid', m.sum.paid], ['Free', m.sum.free]] }] : []),
+        { label: 'By format', groups: [['Redraft', m.sum.redraft], ['Dynasty', m.sum.dynasty]] },
+        ...(medians.length ? [{ label: 'Median', groups: [['Median', medRec]] }] : []),
+    ];
+    const swings = callable.filter(r => r.res.status === 'swing')
+        .map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) }))
+        .sort(swingOrder)
+        .map(r => ({ name: r.league.name || 'Unnamed league', margin: r.res.margin, chance: r.winChance }));
+    // Biggest win and worst loss among the matchups already settled (every one, once the week is final).
+    const settled = callable.filter(r => m.final || r.res.status !== 'swing');
+    const pick = (result, better) => settled.filter(r => r.res.result === result).reduce((a, r) => (!a || better(r.res.margin, a.margin) ? { name: r.league.name || 'Unnamed league', margin: r.res.margin } : a), null);
+    const rc = buildPlayerRecap(recapInput(m.ctx));
+    return {
+        week: m.ctx.week, final: m.final, statusHTML: weekStatusMarkup(m.final),
+        record: callable.length ? m.sum.all : null, stillLive: m.sum.stillLive, tooEarly: m.sum.tooEarly,
+        splits: callable.length ? splits : [], swings,
+        bestWin: pick('W', (a, b) => a > b), worstLoss: pick('L', (a, b) => a < b),
+        mvps: rc.mvps.map(r => ({ name: r.name, pos: r.pos, boomed: r.boomed, own: r.own, range: pointsRange(r) })),
+        lvps: rc.lvps.map(r => ({ name: r.name, pos: r.pos, started: r.started, own: r.own, range: pointsRange(r) })),
+        leagueCount: m.listed.length,
+    };
+}
+
+export async function exportScoreboard() {
+    const card = document.getElementById('thisWeekCard');
+    const btn = document.getElementById('exportScoreboardBtn');
+    const data = scoreboardSummary();
+    if (!card || !data) return;
+    if (!(await ensureHtml2Canvas())) {
+        showToast("Couldn't load the screenshot library. Check your connection and try again.", { isError: true });
+        return;
+    }
+    const imageHTML = scoreboardImageHTML(data);
+    if (btn) btn.disabled = true;
+    try {
+        const canvas = await html2canvas(card, {
+            backgroundColor: '#1c2541',
+            scale: 2,
+            onclone: (clonedDoc) => {
+                const clone = clonedDoc.getElementById('thisWeekCard');
+                if (!clone) return;
+                clone.innerHTML = imageHTML;
+                clone.className = 'mls-share-image';
+                useProportionalDigits(clone); // no gaps after numbers in the image (S19, round 12)
+            }
+        });
+        const link = document.createElement('a');
+        link.download = `Week_${data.week}_Recap_Lineup_Strategist.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } catch (err) {
+        console.error('Export failed:', err);
+        showToast('Export failed. Please try again.', { isError: true });
+    } finally {
+        const b = document.getElementById('exportScoreboardBtn');
+        if (b) b.disabled = false;
+    }
+}
+
 // --- MVPs & LVPs (improvements S22) ---
 // A folded section under the tiles (owner's choice): which of your players won and lost the week across your Sleeper
 // leagues, from the same matchups (no second fetch). The rules are in week/playerRecap.js; the lines in Advanced Settings
@@ -585,7 +665,7 @@ function recapInput(ctx) {
             if (!p || players[id]) return;
             players[id] = { name: p.first_name ? `${p.first_name} ${p.last_name}`.trim() : (p.full_name || p.last_name || id), pos: fantasyPosition(p) || p.position || '', team: p.team || null };
         });
-        leagues.push({ id: l.leagueId, name: l.name || 'Unnamed league', bestBall: isBestBallLeague(l), entry });
+        leagues.push({ id: l.leagueId, name: l.name || 'Unnamed league', bestBall: isBestBallLeague(l), slots: l.starterSlots || null, entry });
     });
     const byeTeams = Object.values(players).map(p => p.team).filter(t => t && ctx.week != null && getByeWeek(t, ctx.season) === ctx.week);
     return { leagues, players, games: ctx.games, byeTeams, lines: getRecapLines() };
@@ -606,8 +686,8 @@ function recapTable(kind, rows, week) {
     const cell = (cls, label, html) => `<span class="mls-recap-cell mls-recap-${cls}" role="cell"><span class="mls-recap-cell-label">${label} </span>${html}</span>`;
     const row = (r) => {
         const cells = kind === 'mvp'
-            ? [cell('player', '', recapName(r)), cell('own', 'Own', ownText(r)), cell('boomed', 'Boomed', `${r.boomed} of ${r.own}`), cell('pts', 'Pts', pointsRange(r)), cell('started', 'Started', `${r.started} of ${r.own}`)]
-            : [cell('player', '', recapName(r)), cell('own', 'Own', ownText(r)), cell('started', 'Started', `${r.started} of ${r.own}`), cell('pts', 'Pts', pointsRange(r))];
+            ? [cell('player', '', recapName(r)), cell('own', 'Own', ownText(r)), cell('boomed', 'Boomed', `${r.boomed} of ${r.own}`), cell('pts', 'Pts', pointsRange(r)), cell('started', 'Started', startedText(r))]
+            : [cell('player', '', recapName(r)), cell('own', 'Own', ownText(r)), cell('started', 'Started', startedText(r)), cell('pts', 'Pts', pointsRange(r))];
         return `<li class="mls-recap-row${r.partial ? ' is-partial' : ''}" role="row">${cells.join('')}</li>`;
     };
     const head = `<li class="mls-recap-row mls-recap-headrow" role="row">${cols.map((c, i) => `<span class="mls-recap-cell mls-recap-${['player', 'own', kind === 'mvp' ? 'boomed' : 'started', 'pts', 'started'][i]}" role="columnheader">${c}</span>`).join('')}</li>`;
@@ -640,11 +720,12 @@ function recapHTML(m) {
     parts.push(rc.lvps.length ? recapTable('lvp', rc.lvps, ctx.week) : `<p class="text-helper">No LVPs${m.final ? '' : ' yet'}: nobody whose game is final is under his Bust line.</p>`);
 
     const extra = [];
+    if (rc.benchBooms.length) extra.push(`<li><strong>Boomed on your bench:</strong> ${nameList(rc.benchBooms, r => `${pointsRange(r)} in ${leaguesText(r.boomed)}`)}. Not MVPs: you didn't start them where they boomed.</li>`);
     if (rc.startedZeros.length) extra.push(`<li><strong>Started zeros:</strong> ${nameList(rc.startedZeros, r => leaguesText(r.zeroIn))}. 0.0 usually means he didn't play; the app can't check that.</li>`);
     if (rc.deadWeight.length) extra.push(`<li><strong>Dead weight:</strong> ${nameList(rc.deadWeight, r => `on ${r.own} benches, 0.0`)}.</li>`);
     if (rc.stillOpen.length) extra.push(`<li><strong>Still open:</strong> ${nameList(rc.stillOpen, r => r.own)}. Their games aren't final, so they could land on either list.</li>`);
     if (rc.worstBenchings.length) {
-        extra.push(`<li><strong>Worst benchings:</strong> ${rc.worstBenchings.slice(0, 3).map(b => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} on your bench in ${escapeHtml(b.league.name)}, over ${escapeHtml(b.starter.name)} ${fmt(b.starter.points)} (${signed(-b.gap)})`).join('; ')}.</li>`);
+        extra.push(`<li><strong>Worst benchings:</strong> ${rc.worstBenchings.slice(0, 3).map(b => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} on your bench in ${escapeHtml(b.league.name)}, over ${escapeHtml(b.starter.name)}${b.starter.slot ? ` (${escapeHtml(slotLabel(b.starter.slot))})` : ''} ${fmt(b.starter.points)} (${signed(-b.gap)})`).join('; ')}.</li>`);
     }
     if (rc.unresolved.length) {
         const big = rc.unresolved.filter(u => u.boomLevel);

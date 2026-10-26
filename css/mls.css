@@ -2494,3 +2494,25 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .recap-lines-msg { margin-top: 0.5rem; font-size: 0.8rem; color: var(--primary-green); }
 .recap-lines-msg:empty { display: none; }
 .recap-lines-msg.is-error { color: #fb923c; }
+
+/* The Scoreboard's share image (week/shareImage.js, S22 round 2): drawn only in html2canvas's clone of #thisWeekCard. */
+.mls-share-image { width: 480px; max-width: none; margin: 0; padding: 1rem 1.1rem; box-sizing: border-box; border-radius: 8px; background: #1c2541; color: var(--text-main); font-size: 0.85rem; }
+.mls-share-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.mls-share-title { font-size: 1rem; font-weight: 700; }
+.mls-share-summary { margin-top: 0.3rem; font-size: 0.9rem; font-weight: 600; }
+.mls-share-splits { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; margin-top: 0.5rem; }
+.mls-share-split { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+.mls-share-split-part { padding: 2px 9px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+.mls-share-split-part + .mls-share-split-part { border-left: 1px solid var(--border); }
+.mls-share-muted { font-weight: 500; color: var(--text-muted); }
+.mls-share-section { margin-top: 0.7rem; padding-top: 0.55rem; border-top: 1px solid var(--border); }
+.mls-share-sub { margin-bottom: 0.25rem; font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.mls-share-row { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.15rem 0; }
+.mls-share-name { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+.mls-share-label { font-weight: 500; color: var(--text-muted); margin-right: 0.25rem; }
+.mls-share-detail, .mls-share-chance { flex-shrink: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+.mls-share-chance { color: var(--primary-green); font-weight: 700; }
+.mls-share-num { flex-shrink: 0; min-width: 4.5rem; text-align: right; white-space: nowrap; }
+.mls-share-num .is-ahead { color: var(--primary-green); font-weight: 600; }
+.mls-share-num .is-behind { color: #ef4444; font-weight: 600; }
+.mls-share-foot { margin-top: 0.8rem; font-size: 0.7rem; color: var(--text-muted); }

@@ -3,7 +3,7 @@
 // and the editable lines' validation.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPlayerRecap, normalizeLines, validateLines, DEFAULT_LINES, ownText, pointsRange } from '../../js/mls/week/playerRecap.js';
+import { buildPlayerRecap, normalizeLines, validateLines, DEFAULT_LINES, ownText, pointsRange, startedText } from '../../js/mls/week/playerRecap.js';
 
 const PLAYERS = {
     chase: { name: "Ja'Marr Chase", pos: 'WR', team: 'CIN' },
@@ -31,6 +31,7 @@ test('ownership counts the Sleeper leagues with your roster, bench included', ()
     assert.equal(r.leagueCount, 3);
     const chase = r.mvps.find(x => x.id === 'chase');
     assert.deepEqual([chase.own, chase.ownPct, ownText(chase), chase.boomed, chase.started], [2, 67, '67% (2)', 2, 1]);
+    assert.equal(startedText(chase), '50% (1)'); // started in 1 of the 2 leagues that own him
     assert.equal(pointsRange(chase), '22.0–25.0');
 });
 
@@ -47,7 +48,7 @@ test('MVPs rank by leagues boomed, then ownership', () => {
 
 test('a partial boom (one TE-premium league of six) ranks below the full booms and is called out', () => {
     const six = ['a', 'b', 'c', 'd', 'e', 'f'];
-    const leagues = six.map((id, i) => lg(id, { mcbride: i === 0 ? 15.7 : 12 + i * 0.2, ...(i === 0 ? { chase: 21 } : {}) }, ['mcbride']));
+    const leagues = six.map((id, i) => lg(id, { mcbride: i === 0 ? 15.7 : 12 + i * 0.2, ...(i === 0 ? { chase: 21 } : {}) }, ['mcbride', 'chase']));
     const r = recap(leagues);
     assert.deepEqual(ids(r.mvps), ['chase', 'mcbride']); // Chase boomed in 1 of 1, so he's above McBride's 1 of 6
     const tePartial = r.mvps[1];
@@ -55,6 +56,31 @@ test('a partial boom (one TE-premium league of six) ranks below the full booms a
     assert.deepEqual(ids(r.partial), ['mcbride']);
     assert.equal(pointsRange(tePartial), '12.2–15.7');
     assert.equal(r.mvps[0].partial, false);
+});
+
+test('a boom only on your bench isn\'t an MVP: it gets its own line (round 2); in Best Ball a bench boom counts', () => {
+    // Raridon boomed in all three leagues, benched in each; Chase boomed once, started.
+    const raridon = { name: 'Eli Raridon', pos: 'TE', team: 'CIN' };
+    const r = buildPlayerRecap({
+        leagues: [lg('a', { er: 16, chase: 21 }, ['chase']), lg('b', { er: 17 }, []), lg('c', { er: 15.4 }, [])],
+        players: { ...PLAYERS, er: raridon }, games: GAMES,
+    });
+    assert.deepEqual(ids(r.mvps), ['chase']);
+    assert.deepEqual(ids(r.benchBooms), ['er']);
+    assert.deepEqual([r.benchBooms[0].boomed, r.benchBooms[0].started, startedText(r.benchBooms[0])], [3, 0, '0% (0)']);
+    assert.ok(!ids(r.stillOpen).includes('er') && !ids(r.lvps).includes('er'));
+    const bb = buildPlayerRecap({ leagues: [lg('bb', { er: 16 }, [], { bestBall: true })], players: { ...PLAYERS, er: raridon }, games: GAMES });
+    assert.deepEqual([ids(bb.mvps), ids(bb.benchBooms)], [['er'], []]);
+});
+
+test('MVPs rank by booms where you started him, then all booms, then ownership', () => {
+    // Allen: boomed 2, started in 1 of them. Chase: boomed 1, started. Henry: boomed 2, started in both.
+    const r = recap([
+        lg('a', { allen: 30, chase: 22, henry: 21 }, ['allen', 'chase', 'henry']),
+        lg('b', { allen: 26, henry: 25 }, ['henry']),
+    ]);
+    assert.deepEqual(ids(r.mvps), ['henry', 'allen', 'chase']);
+    assert.deepEqual(r.mvps.map(x => x.startedBoomed), [2, 1, 1]);
 });
 
 test('LVPs: below Bust with a final game, ranked by started busts, then ownership', () => {
@@ -113,6 +139,16 @@ test('worst benchings: a benched boom over a far lower starter at his position; 
     // A gap under BENCHING_GAP isn't one of the worst.
     const close = recap([lg('a', { lamb: 21, chase: 15 }, ['chase'])]);
     assert.deepEqual(close.worstBenchings, []);
+    // With the league's slot order (round 2): Lamb (WR) could have taken the FLEX, where Henry (RB) scored 3, which a
+    // same-position comparison misses (the WR starter scored 18).
+    const slotted = recap([{ ...lg('s', { lamb: 25, nacua: 18, henry: 3, allen: 30 }, ['allen', 'nacua', 'henry']), slots: ['QB', 'WR', 'FLEX'] }]);
+    assert.deepEqual(slotted.worstBenchings.map(b => [b.starter.id, b.starter.slot, b.gap]), [['henry', 'FLEX', 22]]);
+    // A QB can't go in a FLEX: no benching for a benched QB over that RB.
+    const qb = recap([{ ...lg('q', { allen: 30, chase: 2, henry: 3 }, ['chase', 'henry']), slots: ['WR', 'FLEX'] }]);
+    assert.deepEqual(qb.worstBenchings, []);
+    // Slots that don't match the starters (an old sync, a changed league): the same-position rule.
+    const off = recap([{ ...lg('o', { lamb: 25, nacua: 4, henry: 3 }, ['nacua', 'henry']), slots: ['QB', 'WR', 'FLEX'] }]);
+    assert.deepEqual(off.worstBenchings.map(b => [b.starter.id, b.starter.slot]), [['nacua', null]]);
     // A starter whose game isn't final could still catch up.
     const open = recap([lg('a', { lamb: 25, jj: 2 }, ['jj'])]);
     assert.deepEqual(open.worstBenchings, []);

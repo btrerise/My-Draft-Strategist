@@ -183,6 +183,7 @@ const PRECACHE_ASSETS = [
     '/js/mls/week/scoreboard.js',
     '/js/mls/week/playerRecap.js',    // the Scoreboard's MVPs & LVPs (improvements S22)
     '/js/mls/week/recapLines.js',
+    '/js/mls/week/shareImage.js',
     '/js/mls/shortcuts.js',
     '/js/mls/power/shared.js',
     '/js/mls/power/futureValue.js',

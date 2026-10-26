@@ -6300,3 +6300,50 @@ on the environment message (as on main here).
 - Worst benchings by actual slot would need the league's `roster_positions` order saved at sync (the starters array
   follows it); a small sync change if same-position comparisons ever miss one the owner cares about.
 - Best Ball's "Started" is Sleeper's lineup as it stands; the note says so rather than recomputing Best Ball's lineup.
+
+### S22, round 2: the owner's review (real leagues, week 8): Started %, slot order, the share image
+
+The owner looked at the section with their 19 Sleeper leagues (screenshot: 21 MVPs, 97 LVPs) and asked for three things.
+I asked three questions first; the owner took my suggestion each time.
+
+1. **MVPs need Started, not just Own** ("Eli Raridon may be owned in 6 leagues, but I didn't start him anywhere. So he
+   isn't really an MVP"). Decisions: **an MVP must have boomed in a league where you started him**; in Best Ball any boom
+   counts, since its lineup picks itself. MVPs rank by those started booms, then all booms, then ownership. A player who
+   boomed only on your bench leaves the table for a line of his own: **"Boomed on your bench: Eli Raridon TE (15.4–17.6
+   in 6 leagues). Not MVPs: you didn't start them where they boomed."** **Started reads as a share of the leagues that own
+   him**, "67% (4)", in both tables (Own stays the share of all your leagues). Bench boomers aren't LVPs or "still open"
+   either. (`startedBoomed`, `startedPct`, `benchBooms`, `startedText` in week/playerRecap.js.)
+2. **Each league's slot order, saved at sync** (owner: useful later for the Lineup tab too). `league.starterSlots`:
+   Sleeper's `roster_positions` without BN, in order (`leagues/sync.js`); a matchup's `starters` follow it, so
+   `starters[i]` filled `starterSlots[i]`. Rebuilt on every sync, so nothing to carry over; Backup / Restore copies it
+   with the league. A league synced before this has none until its next sync. Used now by **worst benchings**: the
+   benched player is compared with the lowest starter in any slot that takes his position (`SLEEPER_SLOT_POSITIONS`: FLEX,
+   SUPER_FLEX, REC_FLEX, WRRB_FLEX), so a WR benched for an RB in the FLEX counts, and the line names the slot ("over
+   CeeDee Lamb (FLEX) 8.0"). Without slots, or when they don't match the starters, the same-position rule from round 1.
+3. **The Scoreboard image** (the open follow-up from S21), as **a summary, a "TL;DR"** (owner: 21 tiles would be too
+   much to share). Decision: **headline plus highlights**, at any number of leagues: "My Lineup Strategist · Week 7
+   Recap" and Provisional / Final; the record ("Record 12–7 · 2 still live", or too early to call); the splits; **Still
+   in play**: up to 3, most uncertain first, with the win chance and the margin; **Biggest win** and **Worst loss** among
+   the matchups already settled (every one once the week is final); the top 3 **MVPs** ("boomed 6 of 6", points) and
+   **LVPs** ("started 4 of 4", points); "19 Sleeper leagues · provisional until the last game is final ·
+   mydraftstrategist.com". 480px wide, like Export Trade. **Export** sits by Refresh in the Scoreboard's header (an icon on
+   phones), only once there are scores. The HTML comes from `js/mls/week/shareImage.js` (pure, unit-tested);
+   `scoreboardSummary` and `exportScoreboard` in week/thisWeek.js gather the data and draw it from html2canvas's clone of
+   `#thisWeekCard` with proportional digits; the page doesn't change. Saved as `Week_7_Recap_Lineup_Strategist.png`.
+   The "Wanted by the owner" line for it in docs/TESTING.md is removed; the Roster tab's Export stays there.
+
+Also: the Guide's line says what Started means, the new MVP rule and Export; CHANGELOG lines updated; `sw.js` precaches
+`shareImage.js` (CACHE_NAME stays v2.8.112, this branch's one bump, still above main's).
+
+**Tests.** `tests/unit/playerRecap.test.mjs` (15): bench-only booms out of MVPs onto their own line, Best Ball bench booms
+counting, started booms ranking first, slot-aware benchings (a WR over the FLEX RB; a QB never over a FLEX; slots that
+don't match fall back). `tests/unit/shareImage.test.mjs` (2): at most 3 swings and 3 MVPs / LVPs from many, names
+escaped, empty sections left out, Final. `tests/mls-mvp-lvp.spec.mjs`: Started as "100% (2)"; St. Brown's bench boom on
+its line and out of the MVPs; the benching naming the FLEX; `starterSlots` saved by the sync; **Export**: the download's
+name, the image's text (record, the swing with its chance, biggest win, MVPs, LVPs, no tiles), 480px, no tabular digits,
+the page's tiles unchanged; no Export before kickoff.
+
+**Checks (round 2).** check-precache OK; 441 unit tests pass; Playwright 527 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six as round 1 (the Guide PNGs taller with this
+round's sentence), the other 36 identical; the Scoreboard PNG is before kickoff, so it shows no Export. Still to take
+from CI.
