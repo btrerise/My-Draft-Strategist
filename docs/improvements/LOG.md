@@ -6550,3 +6550,18 @@ points". MVP / LVP Lines shows "Judge on: Half PPR". No app errors.
 stopping on the environment message (then mls-mvp-lvp, mls-this-week and tooltips-onscreen again after the tip edit: 58
 passed). Screenshots vs. main: the same six as before (the Guide PNGs taller with this round's sentence: desktop
 1280×8099, phone 390×18400), the other 36 identical, the Scoreboard's included. Still to take from CI.
+
+### S22, round 9: a third user-hat pass (owner's 21 leagues, Monday of week 7; and a one-league user)
+
+Looked at the owner's leagues again (phone and desktop, live, no app errors) and, for the first time, at someone with a
+single Sleeper league (the fixture league alone, mid-Sunday). Nothing built this round; put to the owner:
+1. **Two lists name the same player.** Tony Pollard is under "Boomed on your bench" (35.0 half PPR, benched in 1 league)
+   and again under "Worst benchings" (35.0 over Malik Nabers WR in FLEX 14.6). Suggestion: one "Benched booms" list, each
+   with what it cost where that's known ("over Malik Nabers WR in FLEX 14.6 · League of Ordinary Gentlemen").
+2. **The (i) beside MVPs fills a phone screen** (five paragraphs since round 8). Suggestion: three short lines (what Half
+   PPR and Pts are, what Own and Started are, the lines), the Best Ball detail kept to a clause.
+3. **One league: Own and Started always read "100% (1)"**, two columns of noise. Suggestion: with one league counted,
+   drop both (MVPs need a start anyway).
+4. **One league: "Worst loss" repeats the only tile** right above it. Suggestion: Biggest win / Worst loss only with two
+   or more head-to-head matchups.
+5. Seen in passing, S21's area: the splits show "Dynasty 0–0" to someone with no dynasty league.
