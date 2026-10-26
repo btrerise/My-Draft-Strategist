@@ -6290,7 +6290,7 @@ checks now look in the header (the section has its own pill).
 - `desktop/` and `phone/mls-league-guide.png`: the Guide's MVPs & LVPs line.
 This container can't reproduce CI's renders (its newer Chromium), so take the six from the pull request's CI run.
 
-**Checks run.** check-precache OK; 436 unit tests pass; Playwright 525 passed, 5 skipped, only `visual.spec.mjs` stopping
+**Checks run.** check-precache OK; 437 unit tests pass; Playwright 525 passed, 5 skipped, only `visual.spec.mjs` stopping
 on the environment message (as on main here).
 
 **Left over.**
