@@ -102,6 +102,10 @@ What changed for users in each version of the two apps, in plain language. Newes
   the leagues where you started him and he boomed. What the columns mean is in the (i) beside MVPs. In Best Ball, Started is the lineup Best Ball would pick from the points so far, since Sleeper sets it after
   the games. Injured players aren't counted as dead weight. The section and "Still in play" fold with a tap, and their
   arrows turn like the Dashboard's.
+- **One fair Boom / Bust line.** A player is now judged once for the week, on his half-PPR points from Sleeper's stats,
+  the same in every league, so full PPR, TE premium or 6-point passing TDs no longer make a line easier to reach in some
+  leagues. The MVP and LVP tables show that number beside each league's own points, and MVP / LVP Lines in Advanced
+  Settings can switch it to Full PPR or Standard.
 - **Best Ball scores that count.** During the week Sleeper shows a Best Ball team's score as the lineup it was left
   with, though the best lineup is what will count. The Scoreboard now scores both sides of a Best Ball matchup by the
   lineup Best Ball would pick from the points so far (after the league's next sync).

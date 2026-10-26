@@ -6,6 +6,8 @@
 // Sunday night); LAR, ARI, NYJ and SF aren't in it, so their players' games count as not final. Your points:
 // Fixture League: Allen 22, Henry 18, Chase 20, Jefferson 0, Bowers 10, Lamb 16 (bench all 0).
 // Second Fixture League: Allen 28.4, Henry 22, Chase 25, Jefferson 0, Bowers 12, Lamb 25.
+// Round 8: Boom / Bust is one verdict per player on Sleeper's half-PPR points for the week (stats-2026-2.json): Allen 25.0
+// and Chase 21.0 boom; Lamb's 25.0 in Second Fixture League is 18.0 in half PPR, so he doesn't; Jefferson has none yet.
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, FIXTURE_LEAGUE_ID, FIXTURE_LEAGUE2_ID } from './helpers.mjs';
 import { readFileSync } from 'node:fs';
@@ -26,7 +28,16 @@ const scoreboard = ({ minFinal = false } = {}) => ({
 // league2Points: your points to change in Second Fixture League ({ playerId: points }).
 // jefferson: his projection (S21's spec: at the fixture's own 8.3 the Simulator settles his matchup at 0%).
 // league2BestBall: Second Fixture League is a Best Ball league (Sleeper's settings.best_ball), so the sync marks it so.
-async function routeWeek(page, { minFinal = false, matchups = 'live', league2Points = null, league2 = 'ok', jefferson = null, league2BestBall = false } = {}) {
+// stats: 'final' (Jefferson's 20.5 after the MIN game) or 'fail'; statsHalf: half-PPR points to change ({ playerId: points }).
+async function routeWeek(page, { minFinal = false, matchups = 'live', league2Points = null, league2 = 'ok', jefferson = null, league2BestBall = false, stats = null, statsHalf = null } = {}) {
+    if (stats || statsHalf) {
+        await page.route(/sleeper\.app\/v1\/stats\/nfl\/regular\/2026\/2$/, route => {
+            if (stats === 'fail') return route.fulfill({ status: 500, body: '' });
+            const data = JSON.parse(fixture(stats === 'final' ? 'stats-2026-2-final.json' : 'stats-2026-2.json'));
+            Object.entries(statsHalf || {}).forEach(([id, half]) => { data[id] = { ...(data[id] || {}), pts_half_ppr: half, pts_ppr: half + 1, pts_std: Math.max(half - 1, 0) }; });
+            return route.fulfill({ json: data });
+        });
+    }
     if (league2BestBall) {
         await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}$`), route => {
             const l = JSON.parse(fixture('league2.json'));
@@ -85,27 +96,30 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         const state = await setup(page);
         const toggle = section(page).locator('.mls-week-fold-toggle');
         await expect(toggle).toContainText('MVPs & LVPs');
-        await expect(toggle).toContainText('4 MVPs · 0 LVPs');
+        await expect(toggle).toContainText('2 MVPs · 0 LVPs');
         await expect(toggle.locator('.mls-week-status')).toHaveText('Provisional');
         await expect(section(page).locator('#mlsWeekFold-recap')).toBeHidden();
 
         await openRecap(page);
         // What the columns mean is in the (i) beside MVPs (round 5), not a paragraph above the table.
-        await expect(section(page).locator('.mls-recap-info .tooltip-text')).toContainText('Your 2 leagues on Sleeper, each in its own scoring');
+        await expect(section(page).locator('.mls-recap-info .tooltip-text')).toContainText('Your 2 leagues on Sleeper.');
+        await expect(section(page).locator('.mls-recap-info .tooltip-text')).toContainText('Boom and Bust are judged on this one number, the same in every league');
         await expect(section(page).locator('.mls-recap-intro')).toHaveCount(0);
-        // MVPs: Chase boomed in both; Allen, Lamb and Henry in one each, ordered by their best score.
+        // MVPs (round 8): Allen 25.0 and Chase 21.0 in half PPR, both started in 2 of 2. Lamb scored 25.0 in Second Fixture
+        // League's own scoring but 18.0 in half PPR, so he isn't one; nor is Henry (22.0 there, 18.0 in half PPR).
         const mvps = rowsOf(page, 'mvp');
-        await expect(mvps.locator('.mls-recap-name')).toHaveText(["Ja'Marr Chase WR", 'Josh Allen QB', 'CeeDee Lamb WR', 'Derrick Henry RB']);
-        expect(await cells(mvps.first())).toEqual(["Ja'Marr Chase WR", '100% (2)', '2 of 2', '20.0–25.0', '100% (2)']);
-        expect(await cells(mvps.nth(2))).toEqual(['CeeDee Lamb WR', '100% (2)', '1 of 2', '16.0–25.0', '100% (2)']);
-        // No LVPs: the two under their line (A.J. Brown, St. Brown, 0.0) were on your benches (round 5: an LVP busted where
-        // you started him); they're dead weight below.
+        await expect(mvps.locator('.mls-recap-name')).toHaveText(['Josh Allen QB', "Ja'Marr Chase WR"]);
+        await expect(section(page).locator('.mls-recap-table.is-mvp .mls-recap-headrow .mls-recap-verdict')).toHaveText('Half PPR');
+        expect(await cells(mvps.first())).toEqual(['Josh Allen QB', '100% (2)', '25.0', '22.0–28.4', '100% (2)']);
+        // No LVPs: the two under their line (A.J. Brown 0.0, St. Brown 0.4) were on your benches (round 5: an LVP busted
+        // where you started him).
         await expect(rowsOf(page, 'lvp')).toHaveCount(0);
         await expect(section(page)).toContainText('No LVPs yet: nobody you started, whose game is final, is under his Bust line.');
 
         const extra = section(page).locator('.mls-recap-extra > li');
         await expect(extra.filter({ hasText: 'Dead weight' })).toContainText('A.J. Brown WR · on 2 benches, 0.0');
-        await expect(extra.filter({ hasText: 'Dead weight' }).locator('li')).toHaveText(['A.J. Brown WR · on 2 benches, 0.0', 'Amon-Ra St. Brown WR · on 2 benches, 0.0']);
+        // St. Brown scored 0.4 in half PPR: not dead weight, which is nothing scored.
+        await expect(extra.filter({ hasText: 'Dead weight' }).locator('li')).toHaveText(['A.J. Brown WR · on 2 benches, 0.0']);
         // Jefferson plays tonight; the four whose games aren't in the scoreboard aren't final either.
         // A bullet each, three of them, then "and N more" (owner, round 3).
         await expect(extra.filter({ hasText: 'Still open' }).locator('li')).toHaveText(['Justin Jefferson WR · 2 leagues', 'Garrett Wilson WR · 2 leagues', 'George Kittle TE · 2 leagues', 'and 2 more']);
@@ -118,25 +132,25 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await routeWeek(page);
         await showTab(page, 'scoreboard');
         await expect(section(page).locator('.mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'true');
-        await expect(rowsOf(page, 'mvp')).toHaveCount(4);
+        await expect(rowsOf(page, 'mvp')).toHaveCount(2);
         await expectClean(page, state);
     });
 
     test('a started zero, an LVP who started, a boom on the bench (not an MVP) and a worst benching by slot', async ({ page }) => {
         // Second Fixture League: Bowers (LV, final) on 0.0 in your lineup; Lamb 8 in FLEX while St. Brown (DET, final)
-        // scored 24 on your bench.
-        const state = await setup(page, { league2Points: { 11604: 0, 6786: 8, 7547: 24 } });
+        // scored 24 on your bench. Half PPR: Bowers 4.0 (under TE's 5.5), St. Brown 21.0 (a boom).
+        const state = await setup(page, { league2Points: { 11604: 0, 6786: 8, 7547: 24 }, statsHalf: { 11604: 4, 7547: 21 } });
         await openRecap(page);
         // St. Brown boomed only on your bench: not an MVP (owner, round 2), but named on a line of his own.
-        await expect(rowsOf(page, 'mvp').locator('.mls-recap-name')).toHaveText(["Ja'Marr Chase WR", 'Josh Allen QB', 'Derrick Henry RB']);
-        // Bowers started and busted once (0.0), so he ranks above A.J. Brown's bench zeros.
+        await expect(rowsOf(page, 'mvp').locator('.mls-recap-name')).toHaveText(['Josh Allen QB', "Ja'Marr Chase WR"]);
+        // Bowers busted (4.0 in half PPR) and you started him in both: an LVP, his half-PPR points in their own column.
         const lvps = rowsOf(page, 'lvp');
         await expect(lvps.locator('.mls-recap-name')).toHaveText(['Brock Bowers TE']);
-        expect(await cells(lvps.first())).toEqual(['Brock Bowers TE', '100% (2)', '100% (2)', '0.0–10.0']);
+        expect(await cells(lvps.first())).toEqual(['Brock Bowers TE', '100% (2)', '4.0', '0.0–10.0', '100% (2)']);
         const extra = section(page).locator('.mls-recap-extra > li');
         await expect(extra.filter({ hasText: 'Started zeros' })).toContainText('Brock Bowers TE · 1 league');
         await expect(extra.filter({ hasText: 'Started zeros' })).toContainText("the app can't check that");
-        await expect(extra.filter({ hasText: 'Boomed on your bench' })).toContainText('Amon-Ra St. Brown WR · 0.0–24.0 in 1 league');
+        await expect(extra.filter({ hasText: 'Boomed on your bench' })).toContainText('Amon-Ra St. Brown WR · 21.0 Half PPR · benched in 2 leagues');
         // The league's slot order is saved at sync (round 2), so the benching names the slot when it's a flex (round 4: "(WR)"
         // for a WR slot read as his position): Lamb was in the FLEX.
         await expect(extra.filter({ hasText: 'Worst benchings' })).toContainText('Amon-Ra St. Brown WR 24.0 over CeeDee Lamb WR in FLEX 8.0 (−16.0) · Second Fixture League');
@@ -153,12 +167,12 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await page.unroute(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`));
         await page.unroute(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}/matchups/\\d+$`));
         await page.clock.setFixedTime(new Date('2026-09-21T04:00:00Z'));
-        await routeWeek(page, { matchups: 'final', minFinal: true });
+        await routeWeek(page, { matchups: 'final', minFinal: true, stats: 'final' });
         await page.locator('#thisWeekCard [data-action="refreshThisWeek"]').click();
         await expect(page.locator('#thisWeekCard .mls-week-head .mls-week-status')).toHaveText('Final');
         await expect(section(page).locator('.mls-week-fold-toggle .mls-week-status')).toHaveText('Final');
         await openRecap(page);
-        // Jefferson: 20.0 in Fixture League (a Boom), 0.0 in the other, which still has him on 0.
+        // Jefferson: 20.5 in half PPR after the MIN game, a boom, started in both.
         await expect(rowsOf(page, 'mvp').locator('.mls-recap-name')).toContainText(['Justin Jefferson WR']);
         await expect(section(page).locator('.mls-recap-extra > li').filter({ hasText: 'Still open' })).not.toContainText('Jefferson');
         await expect(section(page)).not.toContainText('Provisional until');
@@ -169,13 +183,13 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         const state = await setup(page, { league2: 'fail' });
         await openRecap(page);
         await expect(section(page)).toContainText('Your 1 league on Sleeper');
-        expect(await cells(rowsOf(page, 'mvp').first())).toEqual(["Ja'Marr Chase WR", '100% (1)', '1 of 1', '20.0', '100% (1)']);
+        expect(await cells(rowsOf(page, 'mvp').first())).toEqual(['Josh Allen QB', '100% (1)', '25.0', '22.0', '100% (1)']);
         await expectClean(page, state);
     });
 
     test('the lines in Advanced Settings: validation, Save, Show all, Reset', async ({ page }) => {
-        // Jefferson has 3 so far in Second Fixture League, so six of your starters have points.
-        const state = await setup(page, { league2Points: { 6794: 3 } });
+        // Jefferson has 3 so far (half PPR too), so six of your starters have points.
+        const state = await setup(page, { league2Points: { 6794: 3 }, statsHalf: { 6794: 3 } });
         await openRecap(page);
         await showTab(page, 'setup');
         await page.locator('summary', { hasText: 'MVP / LVP Lines' }).click();
@@ -209,7 +223,16 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(page.locator('#recapLineWRBoom')).toHaveValue('20');
         expect(await page.evaluate(() => localStorage.getItem('mls_recap_lines'))).toBeNull();
         await showTab(page, 'scoreboard');
-        await expect(rowsOf(page, 'mvp')).toHaveCount(4);
+        await expect(rowsOf(page, 'mvp')).toHaveCount(2);
+
+        // The scale (round 8): Full PPR instead of half; the column and the numbers follow (Allen 26.0).
+        await showTab(page, 'setup');
+        await page.selectOption('#recapLineScale', 'ppr');
+        await page.click('[data-action="saveRecapLines"]');
+        expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_recap_lines'))).scale).toBe('ppr');
+        await showTab(page, 'scoreboard');
+        await expect(section(page).locator('.mls-recap-table.is-mvp .mls-recap-headrow .mls-recap-verdict')).toHaveText('Full PPR');
+        expect(await cells(rowsOf(page, 'mvp').first())).toEqual(['Josh Allen QB', '100% (2)', '26.0', '22.0–28.4', '100% (2)']);
         await expectClean(page, state);
     });
 
@@ -238,7 +261,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         expect((await download).suggestedFilename()).toBe('Week_2_Recap_My_Lineup_Strategist.png');
         const text = (await page.evaluate(() => window.__shareText)).replace(/\s+/g, ' ');
         for (const part of ['Week 2 Recap', 'Record 1–1 · 1 still live', 'Redraft 0–1', 'Dynasty 1–0',
-            "MVPs Ja'Marr Chase WR boomed 2 of 2 20.0–25.0", 'Josh Allen QB', '2 Sleeper leagues · provisional']) {
+            'MVPs Josh Allen QB started 2 of 2 25.0', "Ja'Marr Chase WR started 2 of 2 21.0", '2 Sleeper leagues · Boom / Bust on Half PPR points · provisional']) {
             expect(text).toContain(part);
         }
         expect(text).not.toContain('Every league'); // no tiles
@@ -308,7 +331,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         // Your lineup in Sleeper: Lamb (8.0) in the FLEX, St. Brown (24.0) and Jefferson (0.0) as you left them. Sleeper's
         // own total stays 130.4 (the fixture's). Best Ball's pick: Allen 28.4, Henry 22, Chase 25, St. Brown 24, Bowers 12,
         // Lamb 8 in the FLEX, Tucker 10, BAL 8 = 137.4. Rival's best lineup is the one Sleeper has: 95.2.
-        const state = await setup(page, { league2BestBall: true, league2Points: { 6786: 8, 7547: 24 } });
+        const state = await setup(page, { league2BestBall: true, league2Points: { 6786: 8, 7547: 24 }, statsHalf: { 7547: 21 } });
         const tile = page.locator('#thisWeekCard .mls-week-tile').filter({ hasText: 'Second Fixture League' });
         await expect(tile.locator('.mls-week-tile-pts')).toHaveText(['137.4', '95.2']);
         await expect(tile.locator('.mls-week-tile-margin')).toHaveText('+42.2');
@@ -318,9 +341,20 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         // St. Brown counts in Best Ball's lineup, so he's an MVP there (started in 1 of 2), not a bench boom.
         await openRecap(page);
         const asb = rowsOf(page, 'mvp').filter({ hasText: 'Amon-Ra St. Brown' });
-        expect(await cells(asb)).toEqual(['Amon-Ra St. Brown WR', '100% (2)', '1 of 2', '0.0–24.0', '50% (1)']);
+        expect(await cells(asb)).toEqual(['Amon-Ra St. Brown WR', '100% (2)', '21.0', '0.0–24.0', '50% (1)']);
         await expect(section(page).locator('.mls-recap-extra > li').filter({ hasText: 'Boomed on your bench' })).toHaveCount(0);
         await expect(section(page).locator('.mls-recap-extra > li').filter({ hasText: 'Worst benchings' })).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    // Round 8: if Sleeper's week stats don't load, each league's own points decide, as before, and the section says so.
+    test('without the week\'s stats: each league\'s own points, Boomed counts, and a note', async ({ page }) => {
+        const state = await setup(page, { stats: 'fail' });
+        await openRecap(page);
+        await expect(section(page).locator('.mls-recap-table.is-mvp .mls-recap-headrow .mls-recap-verdict')).toHaveText('Boomed');
+        await expect(rowsOf(page, 'mvp').locator('.mls-recap-name')).toHaveText(["Ja'Marr Chase WR", 'Josh Allen QB', 'CeeDee Lamb WR', 'Derrick Henry RB']);
+        expect(await cells(rowsOf(page, 'mvp').first())).toEqual(["Ja'Marr Chase WR", '100% (2)', '2 of 2', '20.0–25.0', '100% (2)']);
+        await expect(section(page).locator('.mls-recap-extra > li').filter({ hasText: "Week stats didn't load" })).toHaveCount(1);
         await expectClean(page, state);
     });
 
@@ -337,8 +371,8 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
     for (const width of [375, 1280]) {
         test(`at ${width}px: names whole, nothing past the edge${width < 600 ? ', Started on a second line' : ''}`, async ({ page }) => {
             await page.setViewportSize({ width, height: 800 });
-            // Second Fixture League's points changed so both tables have rows: 3 MVPs and Bowers, a started LVP.
-            const state = await setup(page, { league2Points: { 11604: 0, 6786: 8, 7547: 24 } });
+            // Points changed so both tables have rows: 2 MVPs and Bowers, a started LVP.
+            const state = await setup(page, { league2Points: { 11604: 0, 6786: 8, 7547: 24 }, statsHalf: { 11604: 4, 7547: 21 } });
             await openRecap(page);
             const rows = await section(page).locator('.mls-recap-row:not(.mls-recap-headrow)').evaluateAll(rs => rs.map(r => {
                 const name = r.querySelector('.mls-recap-name'), started = r.querySelector('.mls-recap-started');
@@ -349,12 +383,13 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
                 const cut = [...r.querySelectorAll('.mls-recap-cell')].some(c => c.scrollWidth > c.clientWidth + 1);
                 return { right, edge, cut, nameWhole: name.scrollWidth <= name.clientWidth + 1, nameTop: nb.top, startedTop: sb.top, mvp: !!r.closest('.is-mvp') };
             }));
-            expect(rows.length).toBe(4);
+            expect(rows.length).toBe(3);
             for (const r of rows) {
                 expect(r.right).toBeLessThanOrEqual(r.edge + 0.5);
                 expect(r.cut).toBe(false);
                 expect(r.nameWhole).toBe(true);
-                if (r.mvp && width < 600) expect(r.startedTop).toBeGreaterThan(r.nameTop + 5);
+                // Both tables since round 8 (LVPs have five columns too).
+                if (width < 600) expect(r.startedTop).toBeGreaterThan(r.nameTop + 5);
                 else expect(Math.abs(r.startedTop - r.nameTop)).toBeLessThan(6);
             }
             expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

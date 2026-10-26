@@ -6496,3 +6496,57 @@ headings and the image read "MVPS" / "LVPS" (the subheadings' uppercase); worst 
   owner (see the summary); waiting on their choice before building it or the Busted column.
 
 **Checks (round 7).** 444 unit tests; Playwright `mls-mvp-lvp.spec.mjs` 26 passed (CSS and wording in this section only).
+
+### S22, round 8: one Boom / Bust verdict per player, on half-PPR points
+
+The owner's question after round 6: one line is easier to reach in full PPR than half PPR (RB/WR/TE), and in 6-point
+passing TD leagues for QBs. I offered (A) judge each player once on one scale, (B) move each league's line by its
+scoring (rules of thumb), (C) convert each league's points with the player's stat line. The owner asked for A and B in
+plain terms (same score for everyone with one line, versus each league's own score with a different estimated line),
+then chose **A, on half PPR** ("a more common format, and a good in-between of Standard and Full PPR").
+
+- **The verdict.** `buildPlayerRecap` takes `verdict: { points }`, each player's points on the chosen scale; Boom / Bust
+  is decided once from it, so `boomed` / `busted` are all his leagues or none, and `startedBoomed` / `startedBusted` are
+  his starts. MVPs: boomed and started somewhere, ranked by starts, then ownership, then the verdict's points; LVPs: busted,
+  started, game final, ranked by starts, then ownership, then the lower points. Dead weight is a verdict of 0; a bench
+  boom (and so a worst benching) is a verdict boom, the gap still in that league's points. Partial booms no longer arise
+  (they only came from scoring differences). A player missing from the stats scored 0 (he hasn't played).
+- **The numbers.** Sleeper's week stats (`/stats/nfl/regular/<season>/<week>`, the endpoint the Simulator's history uses)
+  carry `pts_half_ppr`, `pts_ppr` and `pts_std` (Sleeper's default 4-point passing TDs). `getLiveWeekStats`
+  (js/shared/api/sleeperStats.js) fetches the current week uncached (`getWeekStats` keeps a week for good once stored, fine
+  for finished weeks only), with the matchups on every load and Refresh. Owner's example: Eli Raridon was 15.35–17.6 in
+  his leagues (TE premium) and 13.1 in half PPR.
+- **Settings.** MVP / LVP Lines has "Judge on": Half PPR (default), Full PPR, Standard, saved as `scale` in the same
+  `mls_recap_lines` object (no new key); Reset returns to Half PPR.
+- **Tables.** MVPs and LVPs share one shape: Player | Own | Half PPR (the verdict's points) | Pts (each league's own
+  scoring, the range) | Started; on phones Started moves under the name in both. This is the round-6 "Busted" idea in the
+  form A gives it: LaPorta above Metcalf now shows why (Metcalf's 7.6s were his leagues' scoring).
+- **Fallback.** If the stats don't load, each league's own points decide as before round 8, the third column reads
+  Boomed / Busted counts, and a line says "Week stats didn't load".
+- **The (i), the image, the Guide.** The tip explains the scale column and Pts; the image's rows read "started 2 of 2 ·
+  25.0" with "Boom / Bust on Half PPR points" in the footer; the Guide's MVPs & LVPs item says how players are judged.
+- **Fixtures.** The generator writes `stats-2026-2.json` (half-PPR points set apart from the leagues' own: Lamb 25.0 in
+  Second Fixture League is 18.0) and `stats-2026-2-final.json` (Jefferson's 20.5).
+
+**Tests.** Unit (448): the verdict overrides each league's scoring (and without it, each league's own), LVP order by
+starts and lower points, a player missing from the stats, no partial booms, a verdict bench boom as a worst benching,
+the scale in normalize / validate; the image's "started X of N" and footer. Spec (28): the half-PPR column and numbers,
+Lamb not an MVP on his 25.0, Bowers an LVP on 4.0, the bench boom's line, Jefferson after the final, the Full PPR switch
+(Allen 25.0 → 26.0), the fallback when the stats fail, both tables' Started on a second line on phones.
+
+**A slip from round 6, found here.** Round 6 lengthened the Scoreboard header's (i) (the Best Ball line) and I said the
+screenshots were unaffected without rendering them. They weren't: a closed tooltip is hidden (`visibility`, `opacity`)
+but still absolutely positioned, so a long one hangs below a short page and adds empty scroll. Before kickoff the
+Scoreboard is short, so `mls-league-scoreboard.png` grew (phone 844 → 925, desktop 900 → 952). Fixed by tightening that
+tip's Best Ball and Still in play lines (same meaning); both PNGs match main again. Making every closed tooltip take no
+layout would be a site-wide CSS change, so I left it alone.
+
+**Real leagues (week 7, Monday early hours).** 9 MVPs (18 before: booms that came from full PPR or TE premium drop out,
+e.g. Eli Raridon at 13.1 half PPR), 36 LVPs led by DK Metcalf (6.6, started in all 7); Colston Loveland TE an MVP on 16.4
+half PPR (19.9–23.4 in his leagues). The image: "Drake Maye QB · started 6 of 6 · 28.4", footer "Boom / Bust on Half PPR
+points". MVP / LVP Lines shows "Judge on: Half PPR". No app errors.
+
+**Checks (round 8).** check-precache OK; 448 unit tests pass; Playwright 537 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message (then mls-mvp-lvp, mls-this-week and tooltips-onscreen again after the tip edit: 58
+passed). Screenshots vs. main: the same six as before (the Guide PNGs taller with this round's sentence: desktop
+1280×8099, phone 390×18400), the other 36 identical, the Scoreboard's included. Still to take from CI.

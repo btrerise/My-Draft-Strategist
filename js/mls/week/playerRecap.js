@@ -6,6 +6,12 @@
 // draws what comes back in a folded section of the Scoreboard tab.
 //
 // The rules (the skill's, with the owner's answers in S22):
+// - One verdict per player (round 8, owner's choice): Boom / Bust is judged once, on one scale for every league: the
+//   player's own points for the week in Sleeper's stats, half PPR by default (Full PPR and Standard in Settings; Sleeper's
+//   default 4-point passing TDs). A line is easier to reach in a full-PPR or 6-point-TD league, so judging each league's
+//   own score made the same game a boom in one league and not another. TE premium and 6-point TDs don't count toward
+//   the verdict; each league's own points still show (the Pts range). Without the week's stats (they didn't load), each
+//   league's own points against the lines, as before round 8.
 // - Boom / Bust lines by position, in each league's own scoring (Sleeper's points): QB Boom 24+, Bust under 12; RB 20 /
 //   7; WR 20 / 7.5; TE 15 / 5.5. Editable in Advanced Settings (week/thisWeek.js keeps them under mls_recap_lines);
 //   they're separate from the Matchup Simulator's boom/bust chances. K and DEF aren't covered.
@@ -36,7 +42,16 @@ export const DEFAULT_LINES = Object.freeze({
     WR: Object.freeze({ boom: 20, bust: 7.5 }),
     TE: Object.freeze({ boom: 15, bust: 5.5 }),
 });
-// A partial boom: boomed in fewer than this share of the leagues that own him.
+// The scales a verdict can use (round 8): Sleeper's week stats carry all three. Half PPR by default (owner: the more
+// common format, between Standard and Full PPR).
+export const RECAP_SCALES = Object.freeze({
+    half: Object.freeze({ key: 'pts_half_ppr', label: 'Half PPR' }),
+    ppr: Object.freeze({ key: 'pts_ppr', label: 'Full PPR' }),
+    std: Object.freeze({ key: 'pts_std', label: 'Standard' }),
+});
+export const DEFAULT_SCALE = 'half';
+const scaleOf = (v) => (typeof v === 'string' && RECAP_SCALES[v] ? v : DEFAULT_SCALE);
+// A partial boom (without a verdict only): boomed in fewer than this share of the leagues that own him.
 export const PARTIAL_SHARE = 0.5;
 // Dead weight is "widely owned": on at least this share of your leagues, and in at least 2.
 export const WIDE_SHARE = 0.2;
@@ -54,6 +69,7 @@ export function normalizeLines(raw) {
         const boom = num(r && r.boom), bust = num(r && r.bust);
         out[pos] = Number.isFinite(boom) && Number.isFinite(bust) && bust > 0 && boom > bust ? { boom, bust } : { ...DEFAULT_LINES[pos] };
     });
+    out.scale = scaleOf(raw && typeof raw === 'object' ? raw.scale : null);
     return out;
 }
 
@@ -69,6 +85,7 @@ export function validateLines(input) {
         if (Number.isFinite(boom) && Number.isFinite(bust) && boom > 0 && bust > 0 && boom <= bust) errors.push({ pos, field: 'boom', message: `${pos} Boom must be above its Bust line.` });
         lines[pos] = { boom, bust };
     });
+    lines.scale = scaleOf(input && input.scale);
     return errors.length ? { ok: false, lines: null, errors } : { ok: true, lines, errors };
 }
 
@@ -108,15 +125,19 @@ export function bestBallLineup(slots, playerIds, pointsOf, posOf, preferred = ne
 //   designation, IR, Out, Questionable...). K and DEF entries too: Best Ball's lineup needs them.
 // games: { TEAM: { state: 'pre' | 'in' | 'post' } } (none: game states unknown, so nobody is final).
 // byeTeams: the teams on a bye this week (a Set or an array).
+// verdict (round 8): { points: { id: number } }, each player's points for the week on lines.scale (Sleeper's week
+//   stats); a player missing from it scored 0 (he hasn't played). null: each league's own points decide, as before.
 // Returns { leagueCount, mvps, lvps, partial, benchBooms, startedZeros, deadWeight, stillOpen, worstBenchings, unresolved,
-// bestBallNote, bestBallUnslotted }. Each player row: { id, name, pos, team, own, ownPct, boomed, startedBoomed, busted, started, startedPct,
-// startedBusted, min, max, state, partial, leagues: [{ id, name, bestBall, points, started }] }.
-export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTeams = [], lines: rawLines } = {}) {
+// bestBallNote, bestBallUnslotted, scale (null without a verdict) }. Each player row: { id, name, pos, team, own, ownPct, boomed,
+// startedBoomed, busted, started, startedPct, startedBusted, min, max, ref (his verdict points, or null), state, partial, leagues: [{ id, name, bestBall, points, started }] }.
+export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTeams = [], lines: rawLines, verdict = null } = {}) {
     const lines = normalizeLines(rawLines);
+    const refPts = verdict && verdict.points && typeof verdict.points === 'object' ? verdict.points : null;
+    const refOf = (id) => (refPts ? round1(typeof refPts[id] === 'number' ? refPts[id] : 0) : null);
     const byes = byeTeams instanceof Set ? byeTeams : new Set(byeTeams || []);
     const counted = leagues.filter(l => l && l.entry && Array.isArray(l.entry.players) && l.entry.players.length);
     const n = counted.length;
-    const empty = { leagueCount: n, mvps: [], lvps: [], partial: [], benchBooms: [], startedZeros: [], deadWeight: [], stillOpen: [], worstBenchings: [], unresolved: [], bestBallNote: false, bestBallUnslotted: [] };
+    const empty = { leagueCount: n, mvps: [], lvps: [], partial: [], benchBooms: [], startedZeros: [], deadWeight: [], stillOpen: [], worstBenchings: [], unresolved: [], bestBallNote: false, bestBallUnslotted: [], scale: refPts ? lines.scale : null };
     if (!n) return empty;
 
     const stateOf = (team) => (team && games[team] && games[team].state) || null;
@@ -147,7 +168,7 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
             if (!RECAP_POSITIONS.includes(p.pos) || !p.team || byes.has(p.team)) return;
             let row = byId.get(id);
             if (!row) {
-                row = { id, name: p.name || id, pos: p.pos, team: p.team, injured: !!p.injured, state: stateOf(p.team), leagues: [] };
+                row = { id, name: p.name || id, pos: p.pos, team: p.team, injured: !!p.injured, state: stateOf(p.team), ref: refOf(id), leagues: [] };
                 byId.set(id, row);
             }
             row.leagues.push({ id: l.id, name: l.name, bestBall: !!l.bestBall, points: round1(points), started: starters.has(id) });
@@ -157,8 +178,9 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
     const rows = [...byId.values()].map(r => {
         const line = lines[r.pos];
         const ls = r.leagues;
-        const boomedIn = ls.filter(x => x.points >= line.boom);
-        const bustedIn = ls.filter(x => x.points < line.bust);
+        // With a verdict, one answer for every league that owns him (round 8); without, each league's own points.
+        const boomedIn = r.ref != null ? (r.ref >= line.boom ? ls : []) : ls.filter(x => x.points >= line.boom);
+        const bustedIn = r.ref != null ? (r.ref < line.bust ? ls : []) : ls.filter(x => x.points < line.bust);
         const values = ls.map(x => x.points);
         const own = ls.length;
         const started = ls.filter(x => x.started).length;
@@ -170,11 +192,13 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
             started, startedPct: Math.round(started / own * 100),
             startedBusted: bustedIn.filter(x => x.started).length,
             min: Math.min(...values), max: Math.max(...values),
-            partial: boomedIn.length > 0 && boomedIn.length / own < PARTIAL_SHARE,
+            partial: r.ref == null && boomedIn.length > 0 && boomedIn.length / own < PARTIAL_SHARE,
         };
     });
 
-    const byOwn = (a, b) => b.own - a.own || b.max - a.max || a.name.localeCompare(b.name);
+    // The verdict's points when there is one (round 8), else his best league score.
+    const scoreOf = (r) => (r.ref != null ? r.ref : r.max);
+    const byOwn = (a, b) => b.own - a.own || scoreOf(b) - scoreOf(a) || a.name.localeCompare(b.name);
     const mvpAll = rows.filter(r => r.startedBoomed > 0);
     // Booms where you started him, then ownership (round 3: a tiebreak on booms anywhere lifted bench booms).
     const byBooms = (a, b) => b.startedBoomed - a.startedBoomed || byOwn(a, b);
@@ -187,14 +211,14 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
 
     const final = (r) => r.state === 'post';
     const lvps = rows.filter(r => final(r) && r.startedBusted > 0 && !mvpIds.has(r.id))
-        .sort((a, b) => b.startedBusted - a.startedBusted || byOwn(a, b) || a.min - b.min);
+        .sort((a, b) => b.startedBusted - a.startedBusted || b.own - a.own || (a.ref != null ? a.ref : a.min) - (b.ref != null ? b.ref : b.min) || a.name.localeCompare(b.name));
 
     const startedZeros = rows.filter(r => final(r) && r.leagues.some(x => x.started && x.points === 0))
         .map(r => ({ ...r, zeroIn: r.leagues.filter(x => x.started && x.points === 0).length }))
         .sort((a, b) => b.zeroIn - a.zeroIn || byOwn(a, b));
 
     const wide = Math.max(2, Math.ceil(n * WIDE_SHARE));
-    const deadWeight = rows.filter(r => final(r) && r.own >= wide && !r.injured && r.started === 0 && r.leagues.every(x => x.points === 0)).sort(byOwn);
+    const deadWeight = rows.filter(r => final(r) && r.own >= wide && !r.injured && r.started === 0 && (r.ref != null ? r.ref === 0 : r.leagues.every(x => x.points === 0))).sort(byOwn);
 
     const stillOpen = rows.filter(r => !final(r) && !mvpIds.has(r.id)).sort((a, b) => b.own - a.own || b.started - a.started || a.name.localeCompare(b.name));
 
@@ -215,7 +239,8 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
             const p = players[id];
             if (!p || !RECAP_POSITIONS.includes(p.pos) || !p.team || byes.has(p.team)) return;
             const benchPts = pointsOf(id);
-            if (benchPts < lines[p.pos].boom) return;
+            // Boomed by the verdict when there is one (round 8); the gap is still this league's points.
+            if ((refPts ? refOf(id) : benchPts) < lines[p.pos].boom) return;
             const rivals = starters.map((sid, i) => ({ sid, sp: players[sid], slot: slots ? slots[i] : null }))
                 .filter(x => x.sid && x.sid !== '0' && x.sp)
                 .filter(x => x.slot ? (SLEEPER_SLOT_POSITIONS[x.slot] || []).includes(p.pos) : x.sp.pos === p.pos)
@@ -239,7 +264,7 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
     const unresolvedList = [...unresolved.values()].map(u => ({ ...u, max: round1(u.max), boomLevel: u.max >= floor }))
         .sort((a, b) => b.max - a.max);
 
-    return { leagueCount: n, mvps, lvps, partial, benchBooms, startedZeros, deadWeight, stillOpen, worstBenchings, unresolved: unresolvedList, bestBallNote, bestBallUnslotted };
+    return { leagueCount: n, mvps, lvps, partial, benchBooms, startedZeros, deadWeight, stillOpen, worstBenchings, unresolved: unresolvedList, bestBallNote, bestBallUnslotted, scale: refPts ? lines.scale : null };
 }
 
 // "26% (5)".

@@ -211,7 +211,48 @@ test('lines: validation and normalizing', () => {
     const bad = validateLines({ QB: { boom: '10', bust: '12' }, RB: { boom: '', bust: 7 }, WR: { boom: 20, bust: -1 }, TE: { boom: 15, bust: 5.5 } });
     assert.equal(bad.ok, false);
     assert.deepEqual(bad.errors.map(e => `${e.pos}.${e.field}`), ['QB.boom', 'RB.boom', 'WR.bust']);
-    assert.deepEqual(normalizeLines(null), { QB: { boom: 24, bust: 12 }, RB: { boom: 20, bust: 7 }, WR: { boom: 20, bust: 7.5 }, TE: { boom: 15, bust: 5.5 } });
+    assert.deepEqual(normalizeLines(null), { QB: { boom: 24, bust: 12 }, RB: { boom: 20, bust: 7 }, WR: { boom: 20, bust: 7.5 }, TE: { boom: 15, bust: 5.5 }, scale: 'half' });
+    // The verdict's scale (round 8): half PPR unless Full PPR or Standard was chosen.
+    assert.equal(normalizeLines({ scale: 'ppr' }).scale, 'ppr');
+    assert.equal(normalizeLines({ scale: 'nonsense' }).scale, 'half');
+    assert.equal(good.lines.scale, 'half');
     assert.deepEqual(normalizeLines({ QB: { boom: 30, bust: 15 }, RB: { boom: 5, bust: 9 } }).RB, { boom: 20, bust: 7 });
     assert.deepEqual(normalizeLines({ QB: { boom: 30, bust: 15 } }).QB, { boom: 30, bust: 15 });
+});
+
+// Round 8 (owner's choice): one verdict per player, on one scale, the same in every league.
+test('with a verdict, Boom / Bust is judged once on its points, not on each league\'s scoring', () => {
+    // Chase: 21.0 and 19.0 in his two leagues' own scoring, 19.6 in half PPR: under the 20 line, so not an MVP anywhere,
+    // where each league's own score would have made him one in the first league.
+    const leagues = [lg('a', { chase: 21, lamb: 22, allen: 26 }, ['chase', 'lamb', 'allen']), lg('b', { chase: 19, lamb: 18 }, ['chase'])];
+    const verdict = { points: { chase: 19.6, lamb: 20.4, allen: 25 } };
+    const r = recap(leagues, { verdict });
+    assert.equal(r.scale, 'half');
+    assert.deepEqual(ids(r.mvps), ['lamb', 'allen']); // both started once; Lamb owned twice
+    const lamb = r.mvps[0];
+    assert.deepEqual([lamb.ref, lamb.boomed, lamb.startedBoomed, lamb.started, lamb.partial], [20.4, 2, 1, 1, false]);
+    assert.equal(pointsRange(lamb), '18.0–22.0'); // each league's own points still show
+    // Without the verdict (stats didn't load), each league's own points decide, as before.
+    assert.deepEqual(ids(recap(leagues).mvps), ['lamb', 'chase', 'allen']);
+});
+
+test('with a verdict: LVPs bust on its points (game final, started), ordered by starts, then lower points', () => {
+    const leagues = [lg('a', { henry: 8, lamb: 7.6 }, ['henry', 'lamb']), lg('b', { henry: 9, lamb: 7.6 }, ['henry', 'lamb']), lg('c', { lamb: 7.6 }, ['lamb'])];
+    // Half PPR: Henry 6.5 (under RB 7), Lamb 7.2 (under WR 7.5). Lamb started 3 times, Henry twice.
+    const r = recap(leagues, { verdict: { points: { henry: 6.5, lamb: 7.2 } } });
+    assert.deepEqual(ids(r.lvps), ['lamb', 'henry']);
+    assert.deepEqual(r.lvps.map(x => x.ref), [7.2, 6.5]);
+});
+
+test('with a verdict: a player missing from the stats scored 0; no partial booms', () => {
+    const r = recap([lg('a', { nacua: 0 }, []), lg('b', { nacua: 0 }, [])], { verdict: { points: {} } });
+    assert.deepEqual(ids(r.deadWeight), ['nacua']);
+    const six = ['a', 'b', 'c'].map((id, i) => lg(id, { mcbride: i === 0 ? 15.7 : 12 }, ['mcbride']));
+    const v = recap(six, { verdict: { points: { mcbride: 15.2 } } });
+    assert.deepEqual([ids(v.mvps), v.mvps[0].startedBoomed, ids(v.partial)], [['mcbride'], 3, []]);
+});
+
+test('with a verdict: a bench boom by its points makes a worst benching', () => {
+    const r = recap([lg('a', { lamb: 19, chase: 6 }, ['chase'])], { verdict: { points: { lamb: 20.5, chase: 5.5 } } });
+    assert.deepEqual(r.worstBenchings.map(b => [b.bench.id, b.bench.points, b.starter.id, b.gap]), [['lamb', 19, 'chase', 13]]);
 });

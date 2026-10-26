@@ -20,8 +20,10 @@ const rec = (r) => `${r.W}–${r.L}${r.T ? `–${r.T}` : ''}`;
 // data: {
 //   week, final, statusHTML (the Provisional / Final pill), record ({ W, L, T } or null when nothing counts yet),
 //   stillLive, tooEarly, splits: [{ label, groups: [[name, { W, L, T }], ...] }],
-//   mvps: [{ name, pos, boomed, own, range }], lvps: [{ name, pos, started, own, range }], leagueCount,
+//   mvps / lvps: [{ name, pos, started, own, value }]: value is his points on the verdict's scale ("28.4"), or each
+//   league's range without one; scaleLabel ("Half PPR") or null, leagueCount,
 // }
+// Round 8: both lists read "started X of N" and the number Boom / Bust was judged on; the footer names the scale.
 export function scoreboardImageHTML(d) {
     const summary = [
         d.record ? `Record ${rec(d.record)}` : '',
@@ -32,10 +34,10 @@ export function scoreboardImageHTML(d) {
         `<span class="mls-share-split">${g.groups.map(([name, r]) => `<span class="mls-share-split-part"><span class="mls-share-muted">${escapeHtml(name)}</span> ${rec(r)}</span>`).join('')}</span>`).join('');
     const sections = [];
     const row = (left, right, extra = '') => `<div class="mls-share-row"><span class="mls-share-name">${left}</span>${extra}<span class="mls-share-num">${right}</span></div>`;
-    const player = (p, detail) => row(`${escapeHtml(p.name)} <span class="mls-share-muted">${escapeHtml(p.pos)}</span>`, escapeHtml(p.range), `<span class="mls-share-detail">${detail}</span>`);
+    const player = (p) => row(`${escapeHtml(p.name)} <span class="mls-share-muted">${escapeHtml(p.pos)}</span>`, escapeHtml(p.value), `<span class="mls-share-detail">started ${p.started} of ${p.own}</span>`);
     const mvps = (d.mvps || []).slice(0, SHARE_PLAYERS), lvps = (d.lvps || []).slice(0, SHARE_PLAYERS);
-    if (mvps.length) sections.push(`<div class="mls-share-sub">MVPs</div>` + mvps.map(p => player(p, `boomed ${p.boomed} of ${p.own}`)).join(''));
-    if (lvps.length) sections.push(`<div class="mls-share-sub">LVPs</div>` + lvps.map(p => player(p, `started ${p.started} of ${p.own}`)).join(''));
+    if (mvps.length) sections.push(`<div class="mls-share-sub">MVPs</div>` + mvps.map(player).join(''));
+    if (lvps.length) sections.push(`<div class="mls-share-sub">LVPs</div>` + lvps.map(player).join(''));
     return `
         <div class="mls-share-head">
             <span class="mls-share-title">My Lineup Strategist &middot; Week ${escapeHtml(d.week)} Recap</span>${d.statusHTML || ''}
@@ -43,5 +45,5 @@ export function scoreboardImageHTML(d) {
         ${summary ? `<div class="mls-share-summary">${summary}</div>` : ''}
         ${splits ? `<div class="mls-share-splits">${splits}</div>` : ''}
         ${sections.map(s => `<div class="mls-share-section">${s}</div>`).join('')}
-        <div class="mls-share-foot">${d.leagueCount} Sleeper league${d.leagueCount === 1 ? '' : 's'}${d.final ? '' : ' · provisional until the last game is final'} · mydraftstrategist.com</div>`;
+        <div class="mls-share-foot">${d.leagueCount} Sleeper league${d.leagueCount === 1 ? '' : 's'}${d.scaleLabel ? ` · Boom / Bust on ${escapeHtml(d.scaleLabel)} points` : ''}${d.final ? '' : ' · provisional'} · mydraftstrategist.com</div>`;
 }

@@ -1,9 +1,10 @@
 // --- THE MVPs & LVPs BOOM / BUST LINES (improvements S22) ---
 // The Scoreboard's MVPs and LVPs (week/playerRecap.js) use the owner's lines by default; Advanced Settings on the
 // Dashboard ("MVP / LVP lines") lets you change them (owner's choice in S22). One object under mls_recap_lines,
-// { QB: { boom, bust }, RB, WR, TE }. Separate from the Matchup Simulator's boom/bust chances (sim/stats.js).
+// { QB: { boom, bust }, RB, WR, TE, scale }; scale (round 8) is the format every player is judged on: 'half' (default),
+// 'ppr' or 'std'. Separate from the Matchup Simulator's boom/bust chances (sim/stats.js).
 import { KEYS } from '../../shared/storage/keys.js';
-import { DEFAULT_LINES, RECAP_POSITIONS, normalizeLines, validateLines } from './playerRecap.js';
+import { DEFAULT_LINES, DEFAULT_SCALE, RECAP_POSITIONS, normalizeLines, validateLines } from './playerRecap.js';
 
 export function getRecapLines() {
     try {
@@ -15,7 +16,7 @@ export function getRecapLines() {
 }
 
 const inputId = (pos, field) => `recapLine${pos}${field === 'boom' ? 'Boom' : 'Bust'}`;
-const isDefault = (lines) => RECAP_POSITIONS.every(p => lines[p].boom === DEFAULT_LINES[p].boom && lines[p].bust === DEFAULT_LINES[p].bust);
+const isDefault = (lines) => lines.scale === DEFAULT_SCALE && RECAP_POSITIONS.every(p => lines[p].boom === DEFAULT_LINES[p].boom && lines[p].bust === DEFAULT_LINES[p].bust);
 
 function setMessage(text, isError) {
     const el = document.getElementById('recapLinesMsg');
@@ -31,6 +32,8 @@ export function applyRecapLinesToUI() {
         const el = document.getElementById(inputId(pos, field));
         if (el) { el.value = String(lines[pos][field]); el.removeAttribute('aria-invalid'); }
     }));
+    const scale = document.getElementById('recapLineScale');
+    if (scale) scale.value = lines.scale;
 }
 
 // Save: true when the lines were valid and saved (the caller redraws the Scoreboard).
@@ -43,6 +46,8 @@ export function saveRecapLines() {
             input[pos][field] = el ? el.value : '';
         });
     });
+    const scaleEl = document.getElementById('recapLineScale');
+    input.scale = scaleEl ? scaleEl.value : DEFAULT_SCALE;
     const res = validateLines(input);
     RECAP_POSITIONS.forEach(pos => ['boom', 'bust'].forEach(field => {
         const el = document.getElementById(inputId(pos, field));
